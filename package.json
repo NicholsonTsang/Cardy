@@ -12,10 +12,14 @@
   },
   "dependencies": {
     "@primevue/themes": "^4.3.3",
+    "@supabase/supabase-js": "^2.49.4",
+    "browser-image-compression": "^2.0.2",
     "pinia": "^3.0.1",
     "primeicons": "^7.0.0",
     "primevue": "^4.3.3",
+    "tailwindcss-container-query": "^1.1.0",
     "tailwindcss-primeui": "^0.6.1",
+    "uuid": "^11.1.0",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0"
   },
