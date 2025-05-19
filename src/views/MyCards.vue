@@ -180,12 +180,14 @@ const onDialogHide = () => {
 // Handler for the update-card event from CardGeneral (which passes it from CardCreateEditView)
 const handleCardUpdateFromGeneral = async (payload) => {
     try {
-        await cardStore.updateCard({ ...payload, id: selectedCard.value }); // Ensure ID is correctly passed
+        // Get the card ID from the selected card
+        const cardId = cards.value[selectedCard.value].id;
+        
+        // Pass the parameters correctly
+        await cardStore.updateCard(cardId, payload);
+        
         await cardStore.fetchCards(); // Refresh the list
         toast.add({ severity: 'success', summary: 'Updated', detail: `Card "${payload.name}" updated successfully.`, life: 3000 });
-        // CardCreateEditView (inside CardGeneral) should switch to 'view' mode.
-        // Since CardGeneral always passes modeProp="view", a re-render due to cardProp change
-        // should ensure CardCreateEditView initializes in 'view' mode.
     } catch (error) {
         console.error('Failed to update card:', error);
         toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to update card.', life: 3000 });

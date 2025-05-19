@@ -33,6 +33,7 @@ create table cards (
     image_urls text[],
     published boolean default false,
     conversation_ai_enabled boolean default false,
+    ai_prompt text default '' not null,
     created_at timestamp with time zone default now(),
     updated_at timestamp with time zone default now()
 );
@@ -47,6 +48,9 @@ create table content_items (
     parent_id uuid references content_items(id) on delete cascade,
     name text not null,
     content text default '' not null, 
+    image_urls text[],
+    conversation_ai_enabled boolean default false,
+    ai_prompt text default '' not null,
     created_at timestamp with time zone default now(),
     updated_at timestamp with time zone default now(),
     -- Enforce that parent_id can't reference itself

@@ -79,7 +79,9 @@ export const useCardStore = defineStore('card', () => {
                     p_description: cardData.description,
                     p_image_urls: imageUrls,
                     p_conversation_ai_enabled: cardData.conversationAiEnabled,
-                    p_published: cardData.published || false
+                    p_ai_prompt: cardData.aiPrompt || '',
+                    p_published: cardData.published || false,
+                    p_qr_code_position: cardData.qrCodePosition || 'BR'
                 });
                 
             if (createError) throw createError;
@@ -125,7 +127,7 @@ export const useCardStore = defineStore('card', () => {
         
         try {
             // Handle image upload if there's a new image
-            if (updateData.imageFile) {
+            if (updateData && updateData.imageFile) {
                 const { data: user } = await supabase.auth.getUser();
                 const fileExt = updateData.imageFile.name.split('.').pop();
                 const fileName = `${uuidv4()}.${fileExt}`;
@@ -146,20 +148,20 @@ export const useCardStore = defineStore('card', () => {
                 updateData.image_urls = [publicUrl];
             }
             
-            // Remove the file object before sending to API
-            if (updateData.imageFile) {
-                delete updateData.imageFile;
-            }
+            // Create a clean payload without the file object
+            const payload = {
+                p_card_id: cardId,
+                p_name: updateData.name,
+                p_description: updateData.description,
+                p_image_urls: updateData.image_urls || null,
+                p_conversation_ai_enabled: updateData.conversationAiEnabled,
+                p_ai_prompt: updateData.aiPrompt || '',
+                p_published: updateData.published,
+                p_qr_code_position: updateData.qrCodePosition
+            };
             
             const { data, error: updateError } = await supabase
-                .rpc('update_card', {
-                    p_card_id: cardId,
-                    p_name: updateData.name,
-                    p_description: updateData.description,
-                    p_image_urls: updateData.image_urls,
-                    p_conversation_ai_enabled: updateData.conversation_ai_enabled,
-                    p_published: updateData.published
-                });
+                .rpc('update_card', payload);
                 
             if (updateError) throw updateError;
             

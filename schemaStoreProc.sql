@@ -7,6 +7,7 @@ RETURNS TABLE (
     image_urls TEXT[],
     published BOOLEAN,
     conversation_ai_enabled BOOLEAN,
+    ai_prompt TEXT,
     qr_code_position TEXT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
@@ -20,6 +21,7 @@ BEGIN
         c.image_urls, 
         c.published, 
         c.conversation_ai_enabled,
+        c.ai_prompt,
         c.qr_code_position::TEXT,
         c.created_at,
         c.updated_at
@@ -35,6 +37,7 @@ CREATE OR REPLACE FUNCTION create_card(
     p_description TEXT,
     p_image_urls TEXT[] DEFAULT ARRAY[]::TEXT[],
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
+    p_ai_prompt TEXT DEFAULT '',
     p_published BOOLEAN DEFAULT FALSE,
     p_qr_code_position TEXT DEFAULT 'BR'
 ) RETURNS UUID LANGUAGE plpgsql SECURITY INVOKER AS $$
@@ -47,6 +50,7 @@ BEGIN
         description,
         image_urls,
         conversation_ai_enabled,
+        ai_prompt,
         published,
         qr_code_position
     ) VALUES (
@@ -55,6 +59,7 @@ BEGIN
         p_description,
         p_image_urls,
         p_conversation_ai_enabled,
+        p_ai_prompt,
         p_published,
         p_qr_code_position::"QRCodePosition"
     )
@@ -76,6 +81,7 @@ RETURNS TABLE (
     image_urls TEXT[],
     published BOOLEAN,
     conversation_ai_enabled BOOLEAN,
+    ai_prompt TEXT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY INVOKER AS $$
@@ -90,7 +96,8 @@ BEGIN
         c.qr_code_position::TEXT,
         c.image_urls, 
         c.published, 
-        c.conversation_ai_enabled, 
+        c.conversation_ai_enabled,
+        c.ai_prompt,
         c.created_at, 
         c.updated_at
     FROM cards c
@@ -106,6 +113,7 @@ CREATE OR REPLACE FUNCTION update_card(
     p_description TEXT,
     p_image_urls TEXT[] DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT NULL,
+    p_ai_prompt TEXT DEFAULT NULL,
     p_published BOOLEAN DEFAULT NULL,
     p_qr_code_position TEXT DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY INVOKER AS $$
@@ -116,6 +124,7 @@ BEGIN
         description = COALESCE(p_description, description),
         image_urls = COALESCE(p_image_urls, image_urls),
         conversation_ai_enabled = COALESCE(p_conversation_ai_enabled, conversation_ai_enabled),
+        ai_prompt = COALESCE(p_ai_prompt, ai_prompt),
         published = COALESCE(p_published, published),
         qr_code_position = COALESCE(p_qr_code_position::"QRCodePosition", qr_code_position),
         updated_at = now()
