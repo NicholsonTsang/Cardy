@@ -3,8 +3,8 @@
         <CardView 
             v-if="currentMode === 'view'" 
             :cardProp="cardProp" 
-            @edit="switchToEditMode"
             @delete-requested="handleDeleteRequested"
+            @update-card="handleUpdateCard"
         />
         <CardCreateEditForm 
             v-else 
@@ -19,8 +19,8 @@
 
 <script setup>
 import { ref, onMounted, watch } from 'vue';
-import CardView from './Card.vue/CardView.vue';
-import CardCreateEditForm from './Card.vue/CardCreateEditForm.vue';
+import CardView from './CardView.vue';
+import CardCreateEditForm from './CardCreateEditForm.vue';
 
 const props = defineProps({
     cardProp: {
@@ -48,10 +48,6 @@ onMounted(() => {
     currentMode.value = props.modeProp;
 });
 
-const switchToEditMode = () => {
-    currentMode.value = 'edit';
-};
-
 const handleSave = (payload) => {
     if (currentMode.value === 'create') {
         emit('create-card', payload);
@@ -62,6 +58,10 @@ const handleSave = (payload) => {
     if (currentMode.value === 'edit') {
         currentMode.value = 'view';
     }
+};
+
+const handleUpdateCard = (payload) => {
+    emit('update-card', payload);
 };
 
 const handleCancel = () => {
@@ -122,4 +122,8 @@ defineExpose({
     }
 }
 
+/* Override PrimeVue component font sizes */
+:deep(.p-fileupload-basic .p-button) {
+    font-size: 0.75rem;
+}
 </style>

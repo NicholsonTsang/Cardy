@@ -6,30 +6,35 @@
     :modal="props.modal"
     :style="props.style"
     :draggable="false"
-    class="custom-dialog w-full mx-4 md:w-2/3 lg:w-3/5"
+    class="custom-dialog w-full mx-4 md:w-4/5 lg:w-3/4 xl:w-2/3 2xl:w-1/2"
     @hide="onInternalDialogHide"
+    :maximizable="true"
+    :closable="true"
   >
     <!-- Content slot for custom dialog content -->
-    <div class="dialog-content">
+    <div class="dialog-content max-h-[70vh] overflow-y-auto">
       <slot></slot>
     </div>
     
     <!-- Footer with action buttons -->
     <template #footer>
-      <Button 
-        :label="props.cancelLabel" 
-        icon="pi pi-times" 
-        :severity="props.cancelSeverity"
-        text
-        @click="handleCancel" 
-      />
-      <Button 
-        :label="props.confirmLabel" 
-        icon="pi pi-check" 
-        :severity="props.confirmSeverity"
-        :loading="loading" 
-        @click="handleConfirm" 
-      />
+      <div class="flex justify-end gap-2 w-full">
+        <Button 
+          :label="props.cancelLabel" 
+          icon="pi pi-times" 
+          :severity="props.cancelSeverity"
+          text
+          @click="handleCancel" 
+        />
+        <Button 
+          v-if="props.showConfirm"
+          :label="props.confirmLabel" 
+          icon="pi pi-check" 
+          :severity="props.confirmSeverity"
+          :loading="loading" 
+          @click="handleConfirm" 
+        />
+      </div>
     </template>
   </PDialog>
 
@@ -60,7 +65,7 @@ const props = defineProps({
   style: [Object, String],
   confirmHandle: {
     type: Function,
-    required: true
+    default: () => Promise.resolve()
   },
   confirmLabel: {
     type: String,
@@ -85,6 +90,10 @@ const props = defineProps({
   errorMessage: {
     type: String,
     default: 'An error occurred'
+  },
+  showConfirm: {
+    type: Boolean,
+    default: true
   },
 });
 
