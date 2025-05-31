@@ -19,6 +19,7 @@ DROP FUNCTION IF EXISTS activate_issued_card(UUID, TEXT);
 DROP FUNCTION IF EXISTS get_card_issuance_stats(UUID);
 DROP FUNCTION IF EXISTS request_card_printing(UUID, TEXT);
 DROP FUNCTION IF EXISTS get_print_requests_for_batch(UUID);
+DROP FUNCTION IF EXISTS get_public_card_content(UUID, TEXT);
 
 -- Get all cards for the current user (more secure)
 CREATE FUNCTION get_user_cards()
@@ -772,5 +773,70 @@ BEGIN
     FROM print_requests pr
     WHERE pr.batch_id = p_batch_id
     ORDER BY pr.requested_at DESC;
+END;
+$$;
+
+-- Get public card content and activate if necessary
+CREATE OR REPLACE FUNCTION get_public_card_content(p_issue_card_id UUID, p_activation_code TEXT)
+RETURNS TABLE (
+    card_name TEXT,
+    card_description TEXT,
+    card_image_urls TEXT[],
+    content_item_id UUID,
+    content_item_parent_id UUID,
+    content_item_name TEXT,
+    content_item_content TEXT,
+    content_item_image_urls TEXT[],
+    content_item_sort_order INTEGER,
+    is_activated BOOLEAN
+) LANGUAGE plpgsql SECURITY INVOKER AS $$
+DECLARE
+    v_card_design_id UUID;
+    v_is_card_active BOOLEAN;
+    v_activation_attempted BOOLEAN := FALSE;
+BEGIN
+    -- Check if the issued card exists and get its card_id (design_id) and current active status
+    SELECT ic.card_id, ic.active INTO v_card_design_id, v_is_card_active
+    FROM issue_cards ic
+    WHERE ic.id = p_issue_card_id AND ic.activation_code = p_activation_code;
+
+    IF NOT FOUND THEN
+        -- If no card matches ID and activation code, return empty
+        RETURN;
+    END IF;
+
+    -- If the card is not active, attempt to activate it
+    IF NOT v_is_card_active THEN
+        UPDATE issue_cards
+        SET 
+            active = true,
+            active_at = NOW()
+            -- activated_by could be NULL for public activation or a generic system user ID
+        WHERE id = p_issue_card_id AND activation_code = p_activation_code AND active = false;
+        
+        v_activation_attempted := TRUE;
+        v_is_card_active := TRUE; -- Assume activation was successful for the current request
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        c.name AS card_name,
+        c.description AS card_description,
+        c.image_urls AS card_image_urls,
+        ci.id AS content_item_id,
+        ci.parent_id AS content_item_parent_id,
+        ci.name AS content_item_name,
+        ci.content AS content_item_content,
+        ci.image_urls AS content_item_image_urls,
+        ci.sort_order AS content_item_sort_order,
+        v_is_card_active AS is_activated -- Return the current/newly activated status
+    FROM cards c
+    LEFT JOIN content_items ci ON c.id = ci.card_id
+    WHERE c.id = v_card_design_id AND c.published = TRUE -- Only show published cards
+    ORDER BY 
+        CASE WHEN ci.parent_id IS NULL THEN ci.sort_order ELSE 999999 END,
+        ci.parent_id NULLS FIRST,
+        ci.sort_order ASC,
+        ci.created_at ASC;
 END;
 $$;

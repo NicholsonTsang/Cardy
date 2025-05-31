@@ -464,9 +464,9 @@
     </MyDialog>
 
     <!-- Delete Confirmation Dialog -->
-    <ConfirmDialog group="deleteCardConfirmation"></ConfirmDialog>
     <ConfirmDialog group="toggleBatchConfirmation"></ConfirmDialog>
     <ConfirmDialog group="requestPrintConfirmation"></ConfirmDialog>
+    <ConfirmDialog group="deleteIssuedCardConfirmation"></ConfirmDialog>
   </div>
 </template>
 
@@ -721,23 +721,26 @@ const viewCard = (card) => {
 // Confirm delete card
 const confirmDeleteCard = (card) => {
   confirm.require({
-    group: 'deleteCardConfirmation',
-    message: `Are you sure you want to delete card "${card.id.substring(0, 8)}..."? This action cannot be undone.`,
-    header: 'Confirm Card Deletion',
+    group: 'deleteIssuedCardConfirmation',
+    message: `Are you sure you want to delete issued card record ID "${card.id.substring(0, 8)}..."? This refers to a single instance of an issued card, not the card design itself. This action cannot be undone.`,
+    header: 'Confirm Issued Card Deletion',
     icon: 'pi pi-exclamation-triangle',
-    acceptLabel: 'Delete',
+    acceptLabel: 'Delete Issued Card',
     rejectLabel: 'Cancel',
     acceptClass: 'p-button-danger',
     accept: async () => {
-      await deleteCard(card);
+      try {
+        await issuedCardStore.deleteIssuedCard(card.id, props.cardId);
+        toast.add({ severity: 'success', summary: 'Deleted', detail: `Issued card record deleted successfully.`, life: 3000 });
+        // No need to call fetchIssuedCards here as deleteIssuedCard should update the store reactively
+        // or it should be handled by a watcher if necessary.
+      } catch (error) {
+        console.error('Failed to delete issued card:', error);
+        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete issued card.', life: 3000 });
+      }
     },
     reject: () => {
-      toast.add({ 
-        severity: 'info', 
-        summary: 'Cancelled', 
-        detail: 'Card deletion cancelled', 
-        life: 2000 
-      });
+      toast.add({ severity: 'info', summary: 'Cancelled', detail: 'Issued card deletion cancelled.', life: 3000 });
     }
   });
 };

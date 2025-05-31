@@ -3,17 +3,44 @@ import { ref } from 'vue';
 import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
-// Get storage bucket name from environment variable
-const CARD_STORAGE_BUCKET = import.meta.env.VITE_SUPABASE_CARD_STORAGE_BUCKET as string;
+// Define interfaces for Card data
+export interface Card {
+    id: string;
+    name: string;
+    description: string;
+    image_urls: string[];
+    published: boolean;
+    conversation_ai_enabled: boolean;
+    ai_prompt: string;
+    qr_code_position: string;
+    created_at: string;
+    updated_at: string;
+    // Add other fields from get_user_cards if necessary
+}
 
-if (!CARD_STORAGE_BUCKET) {
-  console.warn('Supabase storage bucket name not provided in .env, using default "cards"');
+export interface CardFormData {
+    name: string;
+    description: string;
+    imageFile?: File | null;
+    image_urls?: string[];
+    conversationAiEnabled: boolean;
+    aiPrompt: string;
+    published: boolean;
+    qrCodePosition: string;
+    id?: string; // Optional for updates
+}
+
+// Get storage bucket name from environment variable
+const USER_FILES_BUCKET = import.meta.env.VITE_SUPABASE_USER_FILES_BUCKET as string;
+
+if (!USER_FILES_BUCKET) {
+  console.warn('Supabase user files bucket name (VITE_SUPABASE_USER_FILES_BUCKET) not provided in .env. Uploads may fail.');
 }
 
 export const useCardStore = defineStore('card', () => {
-    const cards = ref([]);
+    const cards = ref<Card[]>([]);
     const isLoading = ref(false);
-    const error = ref(null);
+    const error = ref<string | null>(null);
 
     // Fetch all cards for the current user
     const fetchCards = async () => {
@@ -26,53 +53,53 @@ export const useCardStore = defineStore('card', () => {
                 
             if (err) throw err;
             
-            cards.value = data || [];
-        } catch (err) {
+            cards.value = data as Card[] || [];
+        } catch (err: any) {
             console.error('Error fetching cards:', err);
-            error.value = err.message;
+            error.value = err.message || 'An unknown error occurred';
         } finally {
             isLoading.value = false;
         }
     };
 
     // Add a new card
-    const addCard = async (cardData) => {
+    const addCard = async (cardData: CardFormData) => {
         isLoading.value = true;
         error.value = null;
         
         try {
-            const { data: user } = await supabase.auth.getUser();
+            const { data: { user } } = await supabase.auth.getUser(); // Destructure user directly
             
-            if (!user?.user?.id) {
+            if (!user || !user.id) { // Check user and user.id
                 throw new Error('User not authenticated');
             }
             
-            // Upload image first if provided
-            let imageUrls = [];
+            let imageUrls: string[] = []; // Explicitly type imageUrls
             
             if (cardData.imageFile) {
                 const fileExt = cardData.imageFile.name.split('.').pop();
                 const fileName = `${uuidv4()}.${fileExt}`;
-                const filePath = `card-images/${user.user.id}/${fileName}`;
+                // Updated filePath to include user.id
+                const filePath = `${user.id}/card-images/${fileName}`;
                 
                 console.log('Uploading image to:', filePath);
                 const { error: uploadError } = await supabase.storage
-                    .from(CARD_STORAGE_BUCKET || 'cards')
+                    .from(USER_FILES_BUCKET)
                     .upload(filePath, cardData.imageFile);
                     
                 if (uploadError) throw uploadError;
                 console.log('Image uploaded successfully');
 
-                // Get public URL for the uploaded image
                 const { data: { publicUrl } } = supabase.storage
-                    .from(CARD_STORAGE_BUCKET || 'cards')
+                    .from(USER_FILES_BUCKET)
                     .getPublicUrl(filePath);
                     
-                imageUrls = [publicUrl];
+                if (publicUrl) {
+                    imageUrls = [publicUrl];
+                }
                 console.log('Image URL:', publicUrl);
             }
             
-            // Create card in database
             const { data, error: createError } = await supabase
                 .rpc('create_card', {
                     p_name: cardData.name,
@@ -86,19 +113,17 @@ export const useCardStore = defineStore('card', () => {
                 
             if (createError) throw createError;
             
-            // Return the newly created card
-            return data;
-        } catch (err) {
+            return data; // Assuming data is the new card ID or object
+        } catch (err: any) {
             console.error('Error adding card:', err);
-            error.value = err.message;
+            error.value = err.message || 'An unknown error occurred';
             throw err;
         } finally {
             isLoading.value = false;
         }
     };
 
-    // Get card by ID
-    const getCardById = async (cardId) => {
+    const getCardById = async (cardId: string): Promise<Card | null> => {
         isLoading.value = true;
         error.value = null;
         
@@ -110,45 +135,48 @@ export const useCardStore = defineStore('card', () => {
                 
             if (err) throw err;
             
-            return data;
-        } catch (err) {
+            return data ? data[0] as Card : null; // Assuming RPC returns an array
+        } catch (err: any) {
             console.error('Error fetching card details:', err);
-            error.value = err.message;
+            error.value = err.message || 'An unknown error occurred';
             return null;
         } finally {
             isLoading.value = false;
         }
     };
 
-    // Update an existing card
-    const updateCard = async (cardId, updateData) => {
+    const updateCard = async (cardId: string, updateData: CardFormData) => {
         isLoading.value = true;
         error.value = null;
         
         try {
-            // Handle image upload if there's a new image
-            if (updateData && updateData.imageFile) {
-                const { data: user } = await supabase.auth.getUser();
+            if (updateData.imageFile) {
+                const { data: { user } } = await supabase.auth.getUser();
+                 if (!user || !user.id) { 
+                    throw new Error('User not authenticated for image upload');
+                }
                 const fileExt = updateData.imageFile.name.split('.').pop();
                 const fileName = `${uuidv4()}.${fileExt}`;
-                const filePath = `card-images/${user.user.id}/${fileName}`;
+                 // Updated filePath to include user.id
+                const filePath = `${user.id}/card-images/${fileName}`;
                 
                 const { error: uploadError } = await supabase.storage
-                    .from(CARD_STORAGE_BUCKET || 'cards')
+                    .from(USER_FILES_BUCKET)
                     .upload(filePath, updateData.imageFile);
                     
                 if (uploadError) throw uploadError;
                 
-                // Get public URL
                 const { data: { publicUrl } } = supabase.storage
-                    .from(CARD_STORAGE_BUCKET || 'cards')
+                    .from(USER_FILES_BUCKET)
                     .getPublicUrl(filePath);
                 
-                // Add to image URLs
-                updateData.image_urls = [publicUrl];
+                if (publicUrl) {
+                    updateData.image_urls = [publicUrl]; // Ensure image_urls is part of CardFormData
+                } else {
+                    updateData.image_urls = updateData.image_urls || []; // Keep existing or initialize
+                }
             }
             
-            // Create a clean payload without the file object
             const payload = {
                 p_card_id: cardId,
                 p_name: updateData.name,
@@ -165,39 +193,36 @@ export const useCardStore = defineStore('card', () => {
                 
             if (updateError) throw updateError;
             
-            // Refresh the cards list
             await fetchCards();
             
             return data;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error updating card:', err);
-            error.value = err.message;
+            error.value = err.message || 'An unknown error occurred';
             throw err;
         } finally {
             isLoading.value = false;
         }
     };
 
-    // Delete a card
-    const deleteCard = async (cardId) => {
+    const deleteCard = async (cardId: string): Promise<boolean> => {
         isLoading.value = true;
         error.value = null;
         
         try {
-            const { data, error: deleteError } = await supabase
+            const { error: deleteError } = await supabase // Removed `data` as it's not used
                 .rpc('delete_card', {
                     p_card_id: cardId
                 });
                 
             if (deleteError) throw deleteError;
             
-            // Remove from local state
             cards.value = cards.value.filter(card => card.id !== cardId);
             
             return true;
-        } catch (err) {
+        } catch (err: any) {
             console.error('Error deleting card:', err);
-            error.value = err.message;
+            error.value = err.message || 'An unknown error occurred';
             return false;
         } finally {
             isLoading.value = false;

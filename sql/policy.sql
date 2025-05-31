@@ -7,6 +7,12 @@ CREATE POLICY "Users can view their own cards"
 ON cards FOR SELECT 
 USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "Anonymous users can view published cards" ON cards;
+CREATE POLICY "Anonymous users can view published cards"
+ON cards FOR SELECT
+TO anon  -- Or 'public' if that's your anonymous role
+USING (published = TRUE);
+
 DROP POLICY IF EXISTS "Users can insert their own cards" ON cards;
 CREATE POLICY "Users can insert their own cards" 
 ON cards FOR INSERT 
@@ -34,6 +40,18 @@ USING (
         SELECT 1 FROM cards 
         WHERE cards.id = content_items.card_id 
         AND cards.user_id = auth.uid()
+    )
+);
+
+DROP POLICY IF EXISTS "Anonymous users can view content items of published cards" ON content_items;
+CREATE POLICY "Anonymous users can view content items of published cards"
+ON content_items FOR SELECT
+TO anon -- Or 'public'
+USING (
+    EXISTS (
+        SELECT 1 FROM cards c
+        WHERE c.id = content_items.card_id
+        AND c.published = TRUE
     )
 );
 
@@ -132,6 +150,13 @@ USING (
         AND cards.user_id = auth.uid()
     )
 );
+
+DROP POLICY IF EXISTS "Allow activation and public viewing of issue_cards via specific function" ON issue_cards;
+CREATE POLICY "Allow activation and public viewing of issue_cards via specific function"
+ON issue_cards FOR ALL -- SELECT and UPDATE needed by the function
+TO anon -- Or 'public'
+USING (true) -- The function get_public_card_content provides the actual security check
+WITH CHECK (true); -- The function get_public_card_content provides the actual security check
 
 DROP POLICY IF EXISTS "Users can insert their own issued cards" ON issue_cards;
 CREATE POLICY "Users can insert their own issued cards" 
