@@ -30,7 +30,7 @@
                     </h3>
                     <div class="w-full"> 
                         <div
-                            class="aspect-[3/4] border-2 border-dashed border-slate-300 rounded-xl p-4 relative mb-4 transition-all duration-200 hover:border-blue-400 hover:bg-blue-50/50"
+                            class="card-artwork-container border-2 border-dashed border-slate-300 rounded-xl p-4 relative mb-4 transition-all duration-200 hover:border-blue-400 hover:bg-blue-50/50"
                             :class="{ 
                                 'border-solid border-blue-400 bg-blue-50/30': previewImage,
                                 'bg-slate-50': !previewImage 
@@ -46,6 +46,17 @@
                                 <i class="pi pi-image text-3xl mb-3 opacity-50"></i>
                                 <span class="text-sm font-medium">Upload artwork</span>
                                 <span class="text-xs text-slate-400 mt-1">Drag & drop or click to browse</span>
+                            </div>
+                            
+                            <!-- Mock QR Code Overlay -->
+                            <div 
+                                v-if="formData.qr_code_position"
+                                class="absolute w-12 h-12 bg-white border-2 border-slate-300 rounded-lg shadow-lg flex items-center justify-center transition-all duration-300"
+                                :class="getQrCodePositionClass(formData.qr_code_position)"
+                            >
+                                <div class="w-8 h-8 bg-slate-800 rounded-sm flex items-center justify-center">
+                                    <i class="pi pi-qrcode text-white text-xs"></i>
+                                </div>
                             </div>
                         </div>
                         <FileUpload
@@ -106,10 +117,10 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
-                                    <label for="qrCodePosition" class="block text-sm font-medium text-slate-700 mb-2">QR Code Position</label>
+                                    <label for="qr_code_position" class="block text-sm font-medium text-slate-700 mb-2">QR Code Position</label>
                                     <Dropdown 
-                                        id="qrCodePosition"
-                                        v-model="formData.qrCodePosition" 
+                                        id="qr_code_position"
+                                        v-model="formData.qr_code_position" 
                                         :options="qrCodePositions" 
                                         optionLabel="name" 
                                         optionValue="code" 
@@ -133,36 +144,37 @@
                     
                     <!-- AI Configuration Section -->
                     <div class="border-t border-slate-200 pt-6">
-                        <div class="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200 mb-4">
-                            <ToggleSwitch v-model="formData.conversationAiEnabled" inputId="conversationAiEnabled" />
-                            <div class="flex-1">
-                                <label for="conversationAiEnabled" class="block text-sm font-medium text-blue-900 flex items-center gap-2">
-                                    <i class="pi pi-robot"></i>
-                                    Enable AI Assistant
-                                </label>
-                                <p class="text-xs text-blue-700">Allow AI-powered conversations about this card</p>
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                                    <i class="pi pi-robot text-blue-600"></i>
+                                    AI Assistant Configuration
+                                </h3>
+                                <p class="text-sm text-slate-600 mt-1">Enable AI assistance for content item questions and provide instructions</p>
                             </div>
-                            <i class="pi pi-info-circle text-blue-400 cursor-help" 
-                               v-tooltip="'AI will help users learn about this card through conversations'"></i>
+                            <ToggleSwitch 
+                                v-model="formData.conversation_ai_enabled" 
+                                class="ml-4"
+                            />
                         </div>
 
-                        <div v-if="formData.conversationAiEnabled" class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg border border-amber-200 p-4">
-                            <label for="aiPrompt" class="block text-sm font-medium text-amber-900 mb-2 flex items-center gap-2">
-                                <i class="pi pi-microphone"></i>
-                                AI Conversation Instructions
+                        <!-- AI Instructions Field (shown when AI is enabled) -->
+                        <div v-if="formData.conversation_ai_enabled" class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                            <label class="block text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
+                                <i class="pi pi-lightbulb"></i>
+                                AI Assistance Instructions
                             </label>
                             <Textarea 
-                                id="aiPrompt" 
-                                v-model="formData.aiPrompt" 
+                                v-model="formData.ai_prompt" 
                                 rows="4" 
-                                class="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors resize-none bg-white"
-                                placeholder="Provide detailed instructions for the AI when users ask about this card. Be specific about the card's purpose, key features, and how the AI should respond to questions..."
+                                class="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none bg-white" 
+                                placeholder="Provide instructions for the AI assistant when helping visitors with questions about content items in this card. For example: 'You are an expert travel guide. Help visitors plan their adventures and understand safety requirements.'"
                                 autoResize
                             />
-                            <div class="mt-3 p-3 bg-amber-100 rounded-lg">
-                                <p class="text-xs text-amber-800 flex items-start gap-2">
-                                    <i class="pi pi-lightbulb mt-0.5 flex-shrink-0"></i>
-                                    <span><strong>Tip:</strong> Be specific about the card's purpose, historical context, and key features. The AI will use this to provide engaging and informative responses to visitor questions.</span>
+                            <div class="mt-3 p-3 bg-blue-100 rounded-lg">
+                                <p class="text-xs text-blue-800 flex items-start gap-2">
+                                    <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
+                                    <span><strong>Instructions:</strong> These instructions will guide the AI when answering questions about any content item in this card. The AI will use these instructions along with the content item's description and metadata to provide helpful responses.</span>
                                 </p>
                             </div>
                         </div>
@@ -181,6 +193,7 @@ import Textarea from 'primevue/textarea';
 import Dropdown from 'primevue/dropdown';
 import ToggleSwitch from 'primevue/toggleswitch';
 import FileUpload from 'primevue/fileupload';
+import { processImage } from '@/utils/imageUtils.js';
 
 const props = defineProps({
     cardProp: {
@@ -203,10 +216,10 @@ const formData = reactive({
     id: null,
     name: '',
     description: '',
-    qrCodePosition: 'BR',
-    conversationAiEnabled: false,
-    aiPrompt: '',
-    published: false
+    qr_code_position: 'BR',
+    ai_prompt: '',
+    published: false,
+    conversation_ai_enabled: false
 });
 
 const previewImage = ref(null);
@@ -242,10 +255,10 @@ const initializeForm = () => {
         formData.id = props.cardProp.id;
         formData.name = props.cardProp.name || '';
         formData.description = props.cardProp.description || '';
-        formData.qrCodePosition = props.cardProp.qr_code_position || 'BR';
-        formData.conversationAiEnabled = props.cardProp.conversation_ai_enabled || false;
-        formData.aiPrompt = props.cardProp.ai_prompt || '';
+        formData.qr_code_position = props.cardProp.qr_code_position || 'BR';
+        formData.ai_prompt = props.cardProp.ai_prompt || '';
         formData.published = props.cardProp.published || false;
+        formData.conversation_ai_enabled = props.cardProp.conversation_ai_enabled || false;
         
         // Set preview image if available
         if (props.cardProp.image_urls && props.cardProp.image_urls.length > 0) {
@@ -265,10 +278,10 @@ const resetForm = () => {
     formData.id = null;
     formData.name = '';
     formData.description = '';
-    formData.qrCodePosition = 'BR';
-    formData.conversationAiEnabled = false;
-    formData.aiPrompt = '';
+    formData.qr_code_position = 'BR';
+    formData.ai_prompt = '';
     formData.published = false;
+    formData.conversation_ai_enabled = false;
     previewImage.value = null;
     imageFile.value = null;
 };
@@ -296,8 +309,8 @@ const getPayload = () => {
     const payload = { ...formData };
     
     // Ensure QR code position is valid
-    if (!['TL', 'TR', 'BL', 'BR'].includes(payload.qrCodePosition)) {
-        payload.qrCodePosition = 'BR'; // Default to Bottom Right if invalid
+    if (!['TL', 'TR', 'BL', 'BR'].includes(payload.qr_code_position)) {
+        payload.qr_code_position = 'BR'; // Default to Bottom Right if invalid
     }
     
     // Only add imageFile if it exists
@@ -326,6 +339,21 @@ const handleCancel = () => {
     initializeForm(); // Reset form to original values
 };
 
+const getQrCodePositionClass = (position) => {
+    switch (position) {
+        case 'TL':
+            return 'left-2 top-2';
+        case 'TR':
+            return 'right-2 top-2';
+        case 'BL':
+            return 'left-2 bottom-2';
+        case 'BR':
+            return 'right-2 bottom-2';
+        default:
+            return 'right-2 bottom-2'; // Default to bottom-right
+    }
+};
+
 defineExpose({
     resetForm,
     getPayload,
@@ -334,8 +362,27 @@ defineExpose({
 </script>
 
 <style scoped>
-.aspect-\[3\/4\] {
-    aspect-ratio: 3 / 4;
+/* Fixed height container with 3:4 aspect ratio */
+.card-artwork-container {
+    height: 320px; /* 80 * 4 = 320px (h-80) */
+    width: 240px;   /* 60 * 4 = 240px (w-60) */
+    aspect-ratio: 3/4;
+    margin: 0 auto;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 640px) {
+    .card-artwork-container {
+        height: 280px; /* Slightly smaller on mobile */
+        width: 210px;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-artwork-container {
+        height: 240px; /* Even smaller on very small screens */
+        width: 180px;
+    }
 }
 
 /* Override PrimeVue component font sizes */

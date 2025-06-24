@@ -1,20 +1,5 @@
 <template>
     <div class="space-y-6">
-        <!-- Page Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-bold text-slate-900">Card Designs</h1>
-                <p class="text-slate-600 mt-1">Create and manage your card templates</p>
-            </div>
-            <Button 
-                icon="pi pi-plus" 
-                label="Create New Card" 
-                severity="primary" 
-                @click="showAddCardDialog = true" 
-                class="shadow-lg hover:shadow-xl transition-shadow"
-            />
-        </div>
-        
         <!-- Add Card Dialog -->
         <MyDialog 
             v-model="showAddCardDialog"
@@ -25,6 +10,7 @@
             confirmSeverity="success"
             successMessage="Card created successfully!"
             errorMessage="Failed to create card"
+            :showToasts="true"
             @hide="onDialogHide"
         >
             <CardCreateEditView ref="cardCreateEditRef" modeProp="create" />
@@ -33,16 +19,22 @@
         <!-- PrimeVue ConfirmDialog for delete confirmation -->
         <ConfirmDialog group="deleteCardConfirmation"></ConfirmDialog>
 
-        <div class="grid grid-cols-1 xl:grid-cols-4 gap-6 min-h-[calc(100vh-200px)]">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[calc(100vh-200px)]">
             <!-- Card Designs List -->
-            <div class="xl:col-span-1 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden"> 
-                <div class="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+            <div class="lg:col-span-1 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden"> 
+                <div class="p-4 border-b border-slate-200 bg-white">
                     <div class="flex items-center justify-between mb-3">
-                        <h2 class="text-lg font-semibold text-slate-900">Your Cards</h2>
-                        <span class="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-                            {{ cards.length }}
-                        </span>
+                        <h1 class="text-2xl font-bold text-slate-900">Card Designs</h1>
+                        <Button 
+                            icon="pi pi-plus" 
+                            @click="showAddCardDialog = true" 
+                            rounded
+                            text
+                            aria-label="Create New Card"
+                            v-tooltip.top="'Create New Card'"
+                        />
                     </div>
+                     <p class="text-slate-600 -mt-2 mb-4 text-sm">Create and manage your templates.</p>
                     
                     <!-- Search -->
                     <IconField>
@@ -88,17 +80,21 @@
                 </div>
 
                 <!-- Empty State -->
-                <div v-if="cards.length === 0" class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                <div v-if="cards.length === 0 && !search" class="flex-1 flex flex-col items-center justify-center p-8 text-center">
                     <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                         <i class="pi pi-id-card text-2xl text-slate-400"></i>
                     </div>
                     <h3 class="text-lg font-medium text-slate-900 mb-2">No Cards Yet</h3>
-                    <p class="text-slate-500 mb-4">Create your first card design to get started</p>
-                    <Button 
-                        icon="pi pi-plus" 
-                        label="Create Card"
-                        @click="showAddCardDialog = true"
-                    />
+                    <p class="text-slate-500 mb-4">Click the '+' button above to create one.</p>
+                </div>
+
+                <!-- No Search Results -->
+                 <div v-if="filteredCards.length === 0 && search" class="flex-1 flex flex-col items-center justify-center p-8 text-center">
+                    <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+                        <i class="pi pi-search-slash text-2xl text-slate-400"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-slate-900 mb-2">No Results Found</h3>
+                    <p class="text-slate-500 mb-4">No cards match your search criteria.</p>
                 </div>
 
                 <!-- Cards List -->
@@ -163,57 +159,68 @@
             </div>
 
             <!-- Card Details Preview -->
-            <div class="xl:col-span-3 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
-                <!-- Empty State -->
-                <div v-if="selectedCard === null" class="flex-1 flex items-center justify-center">
+            <div class="lg:col-span-3 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
+                <!-- NEW: Unified empty state for the details pane. It shows if no card is selected. -->
+                <div v-if="selectedCard === null" class="flex-1 flex items-center justify-center p-8">
                     <div class="text-center">
                         <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <i class="pi pi-id-card text-3xl text-slate-400"></i>
                         </div>
-                        <h3 class="text-xl font-medium text-slate-900 mb-2">Select a Card Design</h3>
-                        <p class="text-slate-500">Choose a card from the list to view and edit its details</p>
+                        <h3 class="text-xl font-medium text-slate-900 mb-2">
+                            {{ cards.length === 0 ? 'No Card Designs' : 'Select a Card Design' }}
+                        </h3>
+                        <p class="text-slate-500">
+                            {{ cards.length === 0 ? 'Create your first card design by clicking the '+' button' : 'Choose a card from the list to view its details' }}
+                        </p>
                     </div>
                 </div>
 
-                <!-- Card Details -->
+                <!-- Card Details - now safely rendered only when a card is selected -->
                 <div v-else class="flex-1 flex flex-col">
                     <!-- Card Header -->
-                    <div class="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+                    <div class="p-6 border-b border-slate-200 bg-white">
                         <div class="flex items-center justify-between">
                             <div>
                                 <h2 class="text-xl font-semibold text-slate-900">{{ cards[selectedCard].name }}</h2>
-                                <p class="text-slate-600 mt-1">Manage your card design and content</p>
+                                <p class="text-slate-600 mt-1">Manage your card design, content, and issuance.</p>
                             </div>
                             <div class="flex items-center gap-2">
-                                <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                                    <i class="pi pi-check-circle mr-1"></i>
-                                    Active
-                                </span>
+                                 <Tag 
+                                    :value="cards[selectedCard].published ? 'Published' : 'Draft'" 
+                                    :severity="cards[selectedCard].published ? 'success' : 'info'" 
+                                />
                             </div>
                         </div>
                     </div>
 
                     <!-- Tabs -->
-                    <Tabs value="0" class="flex-1 flex flex-col">
+                    <Tabs :value="activeTabString" @update:value="handleTabChange" class="flex-1 flex flex-col">
                         <TabList class="flex-shrink-0 border-b border-slate-200 bg-white px-6">
                             <Tab v-for="(tabLabel, index) in tabs" :key="index" :value="index.toString()" 
-                                 class="px-4 py-3 font-medium text-slate-600 hover:text-slate-900 transition-colors">
+                                 class="px-4 py-3 font-medium text-sm text-slate-600 hover:text-slate-900 transition-colors">
                                 <i :class="getTabIcon(index)" class="mr-2"></i>
                                 {{ tabLabel }}
                             </Tab>
                         </TabList>
-                        <TabPanels class="flex-1 overflow-hidden">
+                        <TabPanels class="flex-1 overflow-hidden bg-slate-50">
                             <TabPanel v-for="(tabLabel, index) in tabs" :value="index.toString()" class="h-full">
                                 <div class="h-full overflow-y-auto p-6">
                                     <CardGeneral 
                                         v-if="index === 0"
                                         :cardProp="cards[selectedCard]"
-                                        @update-card="handleCardUpdateFromGeneral"
+                                        @update-card="handleCardUpdateFromGeneral(cards[selectedCard].id, $event)"
                                         @cancel-edit="handleCardCancelFromGeneral"
                                         @delete-card-requested="triggerDeleteConfirmation"
                                     />
-                                    <CardContent v-if="index === 1" :cardId="cards[selectedCard].id" :key="cards[selectedCard].id + '-content'" />
+                                    <CardContent v-if="index === 1" :cardId="cards[selectedCard].id" :cardAiEnabled="cards[selectedCard].conversation_ai_enabled" :key="cards[selectedCard].id + '-content'" />
                                     <CardIssurance v-if="index === 2" :cardId="cards[selectedCard].id" :key="cards[selectedCard].id + '-issurance'" />
+                                    <MobilePreview 
+                                        v-if="index === 3" 
+                                        :cardProp="cards[selectedCard]" 
+                                        :key="cards[selectedCard].id + '-mobile-preview'"
+                                        @publish-card="handlePublishCard"
+                                        @switch-to-issuance="handleSwitchToIssuance"
+                                    />
                                 </div>
                             </TabPanel>
                         </TabPanels>
@@ -230,6 +237,7 @@ import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
 import { ref, onMounted, computed, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import cardPlaceholder from '@/assets/images/card-placeholder.jpg';
 import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
@@ -239,9 +247,10 @@ import TabPanel from 'primevue/tabpanel';
 import CardGeneral from '@/components/Card.vue/Card.vue';
 import CardContent from '@/components/CardContent/CardContent.vue';
 import CardIssurance from '@/components/CardIssurance.vue';
+import MobilePreview from '@/components/Card.vue/MobilePreview.vue';
 import MyDialog from '@/components/MyDialog.vue';
 import CardCreateEditView from '@/components/Card.vue/CardCreateEditView.vue';
-import { useCardStore } from '@/stores/card';
+import { useCardStore } from '@/stores/card.js';
 import { storeToRefs } from 'pinia';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from "primevue/useconfirm";
@@ -254,6 +263,8 @@ const cardStore = useCardStore();
 const { cards } = storeToRefs(cardStore);
 const confirm = useConfirm();
 const toast = useToast();
+const route = useRoute();
+const router = useRouter();
 
 const search = ref('');
 const selectedCard = ref(null);
@@ -328,6 +339,26 @@ watch([search, selectedYear, selectedMonth], () => {
     currentPageFirstRecord.value = 0;
 });
 
+// Watch for route changes (browser back/forward)
+watch(
+    () => route.query,
+    (newQuery, oldQuery) => {
+        if (newQuery.cardId !== oldQuery.cardId || newQuery.tab !== oldQuery.tab) {
+            initializeFromURL();
+        }
+    }
+);
+
+// Watch for cards being loaded to initialize from URL
+watch(
+    () => cards.value.length,
+    (newLength) => {
+        if (newLength > 0) {
+            initializeFromURL();
+        }
+    }
+);
+
 const onPageChange = (event) => {
     currentPageFirstRecord.value = event.first;
     // itemsPerPage.value = event.rows; // If you want to allow changing items per page via paginator
@@ -336,11 +367,80 @@ const onPageChange = (event) => {
 // Fetch cards when component mounts
 onMounted(async () => {
     await cardStore.fetchCards();
+    initializeFromURL();
 });
 
 const setSelectedCardById = (cardId) => {
-    selectedCard.value = cards.value.findIndex(card => card.id === cardId);
-}
+    const cardIndex = cards.value.findIndex(card => card.id === cardId);
+    if (cardIndex !== -1) {
+        selectedCard.value = cardIndex;
+        // Update URL to reflect the selected card
+        updateURL(cardId, activeTab.value);
+    }
+};
+
+// Update URL with card and tab parameters
+const updateURL = (cardId = null, tab = 0) => {
+    const currentCardId = cardId || (selectedCard.value !== null ? cards.value[selectedCard.value]?.id : null);
+    const query = {};
+    
+    if (currentCardId) {
+        query.cardId = currentCardId;
+    }
+    
+    if (tab > 0) {
+        query.tab = getTabName(tab);
+    }
+    
+    // Only update if the URL would actually change
+    if (route.query.cardId !== query.cardId || route.query.tab !== query.tab) {
+        router.replace({ 
+            name: route.name, 
+            query: query 
+        });
+    }
+};
+
+// Convert tab index to tab name for URL
+const getTabName = (tabIndex) => {
+    const tabNames = ['general', 'content', 'issuance', 'preview'];
+    return tabNames[tabIndex] || 'general';
+};
+
+// Convert tab name from URL to tab index
+const getTabIndex = (tabName) => {
+    const tabNames = ['general', 'content', 'issuance', 'preview'];
+    const index = tabNames.indexOf(tabName);
+    return index !== -1 ? index : 0;
+};
+
+// Handle tab changes and update URL
+const handleTabChange = (value) => {
+    const tabIndex = parseInt(value);
+    activeTab.value = tabIndex;
+    updateURL(null, tabIndex);
+};
+
+// Initialize from URL parameters
+const initializeFromURL = () => {
+    // Initialize tab from URL
+    if (route.query.tab) {
+        activeTab.value = getTabIndex(route.query.tab);
+    }
+    
+    // Initialize selected card from URL
+    if (route.query.cardId && cards.value.length > 0) {
+        const cardIndex = cards.value.findIndex(card => card.id === route.query.cardId);
+        if (cardIndex !== -1) {
+            selectedCard.value = cardIndex;
+        } else {
+            // Card ID in URL doesn't exist, clear it
+            if (route.query.cardId) {
+                router.replace({ name: route.name, query: {} });
+            }
+        }
+    }
+};
 
 const formatDate = (dateString) => {
     return new Date(dateString).toLocaleDateString('en-US', {
@@ -351,7 +451,7 @@ const formatDate = (dateString) => {
 };
 
 const getTabIcon = (index) => {
-    const icons = ['pi pi-cog', 'pi pi-file-edit', 'pi pi-send'];
+    const icons = ['pi pi-cog', 'pi pi-file-edit', 'pi pi-send', 'pi pi-mobile'];
     return icons[index] || 'pi pi-circle';
 };
 
@@ -363,21 +463,19 @@ const clearDateFilters = () => {
 const handleAddCard = async () => {
     if (!cardCreateEditRef.value) {
         console.error("CardCreateEditView reference is not available.");
-        return Promise.reject("Form component not ready.");
+        throw new Error("Form component not ready.");
     }
     try {
         const payload = cardCreateEditRef.value.getPayload();
         if (!payload.name) {
-            toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Card name is required.', life: 3000 });
-            return Promise.reject("Card name is required.");
+            throw new Error('Card name is required.');
         }
         
         await cardStore.addCard(payload);
         await cardStore.fetchCards();
-        return Promise.resolve(); 
     } catch (error) {
         console.error("Failed to add card:", error);
-        return Promise.reject(typeof error === 'string' ? error : (error.message || 'Failed to create card'));
+        throw new Error(typeof error === 'string' ? error : (error.message || 'Failed to create card'));
     }
 };
 
@@ -387,9 +485,8 @@ const onDialogHide = () => {
     }
 };
 
-const handleCardUpdateFromGeneral = async (payload) => {
+const handleCardUpdateFromGeneral = async (cardId, payload) => {
     try {
-        const cardId = cards.value[selectedCard.value].id;
         await cardStore.updateCard(cardId, payload);
         await cardStore.fetchCards();
         toast.add({ severity: 'success', summary: 'Updated', detail: `Card "${payload.name}" updated successfully.`, life: 3000 });
@@ -403,7 +500,7 @@ const handleCardCancelFromGeneral = () => {
     // Handle cancel edit if needed
 };
 
-const tabs = ref(['General', 'Content', 'Issuance']);
+const tabs = ref(['General', 'Content', 'Issuance', 'Mobile Preview']);
 
 const triggerDeleteConfirmation = (cardId) => {
     const cardToDelete = cards.value.find(card => card.id === cardId);
@@ -425,8 +522,11 @@ const triggerDeleteConfirmation = (cardId) => {
                 await cardStore.deleteCard(cardId);
                 toast.add({ severity: 'success', summary: 'Deleted', detail: `Card "${cardToDelete.name}" deleted successfully.`, life: 3000 });
                 await cardStore.fetchCards();
-                if (selectedCard.value === cards.value.findIndex(c => c.id === cardId)) {
+                
+                // If the deleted card was selected, clear selection and URL
+                if (selectedCard.value !== null && cards.value[selectedCard.value]?.id === cardId) {
                     selectedCard.value = null;
+                    router.replace({ name: route.name, query: {} });
                 }
             } catch (error) {
                 console.error('Failed to delete card:', error);
@@ -437,6 +537,50 @@ const triggerDeleteConfirmation = (cardId) => {
             toast.add({ severity: 'info', summary: 'Cancelled', detail: 'Deletion cancelled.', life: 3000 });
         }
     });
+};
+
+const activeTab = ref(0);
+
+// Computed property to convert activeTab to string for PrimeVue Tabs
+const activeTabString = computed(() => activeTab.value.toString());
+
+// Helper function to navigate to a specific card and tab
+const navigateToCard = (cardId, tabName = 'general') => {
+    const cardIndex = cards.value.findIndex(card => card.id === cardId);
+    if (cardIndex !== -1) {
+        selectedCard.value = cardIndex;
+        activeTab.value = getTabIndex(tabName);
+        updateURL(cardId, activeTab.value);
+    }
+};
+
+const handlePublishCard = async () => {
+    if (selectedCard.value !== null) {
+        try {
+            const cardId = cards.value[selectedCard.value].id;
+            await cardStore.updateCard(cardId, { published: true });
+            await cardStore.fetchCards();
+            toast.add({ 
+                severity: 'success', 
+                summary: 'Published', 
+                detail: 'Card published successfully! Mobile preview is now available.', 
+                life: 3000 
+            });
+        } catch (error) {
+            console.error('Failed to publish card:', error);
+            toast.add({ 
+                severity: 'error', 
+                summary: 'Error', 
+                detail: 'Failed to publish card.', 
+                life: 3000 
+            });
+        }
+    }
+};
+
+const handleSwitchToIssuance = () => {
+    activeTab.value = 2;
+    updateURL(null, activeTab.value);
 };
 </script>
 

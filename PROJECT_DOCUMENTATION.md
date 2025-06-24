@@ -111,11 +111,14 @@ src/
 │   ├── CardIssurance.vue # Card issuance and batch management
 │   └── MyDialog.vue     # Reusable dialog component
 ├── views/               # Page-level components
-│   ├── MyCards.vue      # Main card management interface
+│   ├── Dashboard/
+│   │   ├── CardIssuer/
+│   │   │   ├── MyCards.vue      # Card management dashboard
+│   │   │   ├── IssuedCards.vue  # Issued cards overview
+│   │   │   └── Profile.vue      # User profile management
 │   ├── SignIn.vue       # Authentication pages
 │   ├── SignUp.vue
-│   ├── Profile.vue      # User profile management
-│   └── IssuedCards.vue  # Issued cards overview
+│   └── CardCreateEditForm.vue  # Card creation and editing forms
 ├── stores/              # Pinia state management
 │   ├── auth.ts          # Authentication state
 │   ├── card.ts          # Card management state

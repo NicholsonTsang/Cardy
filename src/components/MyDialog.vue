@@ -20,6 +20,7 @@
     <template #footer>
       <div class="flex justify-end gap-2 w-full">
         <Button 
+          v-if="props.showCancel"
           :label="props.cancelLabel" 
           icon="pi pi-times" 
           :severity="props.cancelSeverity"
@@ -95,6 +96,14 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
+  showCancel: {
+    type: Boolean,
+    default: true
+  },
+  showToasts: {
+    type: Boolean,
+    default: false
+  },
 });
 
 const emit = defineEmits(['update:modelValue', 'cancel', 'hide']);
@@ -132,14 +141,17 @@ const handleConfirm = async () => {
   try {
     loading.value = true;
     await props.confirmHandle();
+    if (props.showToasts) {
     toast.add({
       severity: 'success',
       summary: 'Success',
       detail: props.successMessage,
       life: 3000
     });
+    }
     dialogVisible.value = false;
   } catch (error) {
+    if (props.showToasts) {
     const detailMessage = typeof error === 'string' ? error : (error?.message || props.errorMessage);
     toast.add({
       severity: 'error',
@@ -147,6 +159,9 @@ const handleConfirm = async () => {
       detail: detailMessage,
       life: 5000
     });
+    }
+    // Re-throw the error so parent components can handle it
+    throw error;
   } finally {
     loading.value = false;
   }

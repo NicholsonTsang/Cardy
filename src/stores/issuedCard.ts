@@ -24,6 +24,18 @@ export interface CardBatch {
   cards_count: number;
   active_cards_count: number;
   is_disabled: boolean;
+  payment_required: boolean;
+  payment_completed: boolean;
+  payment_amount_cents: number | null;
+  payment_completed_at: string | null;
+  // Admin fee waiver fields
+  payment_waived: boolean;
+  payment_waived_by: string | null;
+  payment_waived_at: string | null;
+  payment_waiver_reason: string | null;
+  // Cards generation status
+  cards_generated: boolean;
+  cards_generated_at: string | null;
   created_at: string;
   updated_at: string;
   print_requests?: PrintRequest[];
@@ -57,6 +69,49 @@ export interface IssuanceStats {
   total_batches: number;
 }
 
+export interface UserIssuedCard extends IssuedCard {
+  card_name: string;
+  card_image_urls: string[] | null;
+}
+
+export interface UserCardBatch extends CardBatch {
+  card_name: string;
+  card_published: boolean;
+}
+
+export interface UserIssuanceStats {
+  total_issued: number;
+  total_activated: number;
+  activation_rate: number;
+  total_batches: number;
+  total_cards: number;
+  pending_cards: number;
+  disabled_batches: number;
+  active_print_requests: number;
+}
+
+export interface RecentActivity {
+  activity_type: string;
+  activity_date: string;
+  card_name: string;
+  batch_name: string;
+  description: string;
+  count: number;
+}
+
+export interface BatchPayment {
+  payment_id: string;
+  stripe_payment_intent_id: string;
+  stripe_client_secret: string;
+  amount_cents: number;
+  currency: string;
+  payment_status: 'pending' | 'succeeded' | 'failed' | 'canceled';
+  payment_method: string | null;
+  failure_reason: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export const useIssuedCardStore = defineStore('issuedCard', () => {
   const issuedCards = ref<IssuedCard[]>([]);
   const batches = ref<CardBatch[]>([]);
@@ -68,6 +123,22 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
   });
   const isLoading = ref(false);
   const printRequestsForBatch = ref<Record<string, PrintRequest[]>>({});
+
+  // User-level data (across all cards)
+  const userIssuedCards = ref<UserIssuedCard[]>([]);
+  const userBatches = ref<UserCardBatch[]>([]);
+  const userStats = ref<UserIssuanceStats>({
+    total_issued: 0,
+    total_activated: 0,
+    activation_rate: 0,
+    total_batches: 0,
+    total_cards: 0,
+    pending_cards: 0,
+    disabled_batches: 0,
+    active_print_requests: 0
+  });
+  const recentActivity = ref<RecentActivity[]>([]);
+  const isLoadingUserData = ref(false);
 
   const fetchIssuedCards = async (cardId: string): Promise<IssuedCard[]> => {
     const { data, error } = await supabase.rpc('get_issued_cards_with_batch', {
@@ -107,6 +178,49 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     return data;
   };
 
+  // New payment-related functions for Stripe integration
+  const createBatchPaymentIntent = async (
+    batchId: string, 
+    stripePaymentIntentId: string, 
+    stripeClientSecret: string, 
+    amountCents: number
+  ) => {
+    const { data, error } = await supabase.rpc('create_batch_payment_intent', {
+      p_batch_id: batchId,
+      p_stripe_payment_intent_id: stripePaymentIntentId,
+      p_stripe_client_secret: stripeClientSecret,
+      p_amount_cents: amountCents
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const confirmBatchPayment = async (stripePaymentIntentId: string, paymentMethod?: string) => {
+    const { data, error } = await supabase.rpc('confirm_batch_payment', {
+      p_stripe_payment_intent_id: stripePaymentIntentId,
+      p_payment_method: paymentMethod
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const handleFailedBatchPayment = async (stripePaymentIntentId: string, failureReason?: string) => {
+    const { data, error } = await supabase.rpc('handle_failed_batch_payment', {
+      p_stripe_payment_intent_id: stripePaymentIntentId,
+      p_failure_reason: failureReason
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const getBatchPaymentInfo = async (batchId: string): Promise<BatchPayment | null> => {
+    const { data, error } = await supabase.rpc('get_batch_payment_info', {
+      p_batch_id: batchId
+    });
+    if (error) throw error;
+    return data && data.length > 0 ? data[0] : null;
+  };
+
   const toggleBatchDisabledStatus = async (batchId: string, disableStatus: boolean, cardDesignId?: string) => {
     const { data, error } = await supabase.rpc('toggle_card_batch_disabled_status', {
       p_batch_id: batchId,
@@ -135,11 +249,11 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
   };
 
   const deleteIssuedCard = async (issuedCardId: string) => {
-    const { error } = await supabase
-      .from('issue_cards')
-      .delete()
-      .eq('id', issuedCardId);
+    const { data, error } = await supabase.rpc('delete_issued_card', {
+      p_issued_card_id: issuedCardId
+    });
     if (error) throw error;
+    return data;
   };
 
   const fetchPrintRequestsForBatch = async (batchId: string): Promise<PrintRequest[]> => {
@@ -158,6 +272,15 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     });
     if (error) throw error;
     await fetchPrintRequestsForBatch(batchId);
+    return data;
+  };
+
+  const withdrawPrintRequest = async (requestId: string, withdrawalReason?: string) => {
+    const { data, error } = await supabase.rpc('withdraw_print_request', {
+      p_request_id: requestId,
+      p_withdrawal_reason: withdrawalReason || null
+    });
+    if (error) throw error;
     return data;
   };
 
@@ -184,6 +307,71 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     }
   };
 
+  // User-level functions (across all cards)
+  const fetchUserIssuedCards = async (): Promise<UserIssuedCard[]> => {
+    const { data, error } = await supabase.rpc('get_user_all_issued_cards');
+    if (error) throw error;
+    userIssuedCards.value = data || [];
+    return data as UserIssuedCard[];
+  };
+
+  const fetchUserBatches = async (): Promise<UserCardBatch[]> => {
+    const { data, error } = await supabase.rpc('get_user_all_card_batches');
+    if (error) throw error;
+    userBatches.value = data || [];
+    return data as UserCardBatch[];
+  };
+
+  const fetchUserStats = async (): Promise<UserIssuanceStats[]> => {
+    const { data, error } = await supabase.rpc('get_user_issuance_stats');
+    if (error) throw error;
+    if (data && data.length > 0) {
+      userStats.value = data[0];
+    }
+    return data as UserIssuanceStats[];
+  };
+
+  const fetchRecentActivity = async (limit: number = 50): Promise<RecentActivity[]> => {
+    const { data, error } = await supabase.rpc('get_user_recent_activity', {
+      p_limit: limit
+    });
+    if (error) throw error;
+    recentActivity.value = data || [];
+    return data as RecentActivity[];
+  };
+
+  const loadUserData = async () => {
+    isLoadingUserData.value = true;
+    try {
+      await Promise.all([
+        fetchUserIssuedCards(),
+        fetchUserBatches(),
+        fetchUserStats(),
+        fetchRecentActivity(20) // Limit to 20 recent activities
+      ]);
+    } finally {
+      isLoadingUserData.value = false;
+    }
+  };
+
+  // Admin functions for fee waiver and card generation
+  const adminWaiveBatchPayment = async (batchId: string, waiverReason: string) => {
+    const { data, error } = await supabase.rpc('admin_waive_batch_payment', {
+      p_batch_id: batchId,
+      p_waiver_reason: waiverReason
+    });
+    if (error) throw error;
+    return data;
+  };
+
+  const generateBatchCards = async (batchId: string) => {
+    const { data, error } = await supabase.rpc('generate_batch_cards', {
+      p_batch_id: batchId
+    });
+    if (error) throw error;
+    return data;
+  };
+
   return {
     issuedCards,
     batches,
@@ -199,6 +387,19 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     deleteIssuedCard,
     requestPrintForBatch,
     fetchPrintRequestsForBatch,
-    loadCardData
+    loadCardData,
+    userIssuedCards,
+    userBatches,
+    userStats,
+    recentActivity,
+    isLoadingUserData,
+    loadUserData,
+    createBatchPaymentIntent,
+    confirmBatchPayment,
+    handleFailedBatchPayment,
+    getBatchPaymentInfo,
+    adminWaiveBatchPayment,
+    generateBatchCards,
+    withdrawPrintRequest
   };
 });

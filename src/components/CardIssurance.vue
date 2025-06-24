@@ -40,21 +40,6 @@
       </div>
     </div>
 
-    <!-- Actions Bar -->
-    <div class="flex justify-between items-center">
-      <div>
-        <h2 class="text-xl font-semibold text-slate-900">Card Operations</h2>
-        <p class="text-slate-600 mt-1">Issue new batches and manage existing ones</p>
-      </div>
-      <Button 
-        icon="pi pi-plus" 
-        label="Issue New Batch" 
-        severity="primary"
-        class="px-4 py-2 shadow-lg hover:shadow-xl transition-shadow"
-        @click="showIssueBatchDialog = true" 
-      />
-    </div>
-
     <!-- Batches DataTable -->
     <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
       <div class="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
@@ -64,85 +49,136 @@
         <DataTable 
           :value="batches" 
           :loading="isLoading"
+          class="p-datatable-sm"
+          :paginator="batches.length > 10"
+          :rows="10"
+          :rowsPerPageOptions="[5, 10, 20]"
+          paginatorTemplate="RowsPerPageDropdown FirstPageLink PrevPageLink CurrentPageReport NextPageLink LastPageLink"
+          currentPageReportTemplate="{first} to {last} of {totalRecords}"
           responsiveLayout="scroll"
+          :globalFilterFields="['batch_name', 'batch_number']"
+          :filters="filters"
+          filterDisplay="menu"
           emptyMessage="No batches created yet for this card design."
-          class="border-0"
-          v-model:expandedRows="expandedBatchRows"
-          dataKey="id"
         >
-          <Column :expander="true" headerStyle="width: 3rem" />
-          <Column field="batch_name" header="Batch Name" sortable>
+          <template #header>
+            <div class="flex justify-end">
+              <Button 
+                label="Issue New Batch" 
+                icon="pi pi-plus" 
+                @click="showIssueBatchDialog = true"
+                :disabled="!currentCard?.published"
+                v-tooltip.top="currentCard?.published ? 'Create a new batch of cards' : 'Card must be published to issue batches'"
+              />
+            </div>
+          </template>
+
+          <Column field="batch_name" header="Batch" sortable style="min-width:12rem">
             <template #body="{ data }">
-              <span class="font-semibold">{{ data.batch_name }}</span>
+              <div>
+                <div class="font-medium text-slate-900">{{ data.batch_name }}</div>
+                <div class="text-xs text-slate-500">#{{ data.batch_number }}</div>
+              </div>
             </template>
           </Column>
-          <Column field="cards_count" header="Cards Issued" sortable></Column>
-          <Column field="active_cards_count" header="Cards Active" sortable></Column>
-          <Column field="is_disabled" header="Status" sortable>
+
+          <Column field="cards_count" header="Cards" sortable style="min-width:8rem">
             <template #body="{ data }">
-              <Tag :value="data.is_disabled ? 'Disabled' : 'Enabled'" 
-                   :severity="data.is_disabled ? 'danger' : 'success'" />
+              <div class="text-center">
+                <div class="font-medium text-slate-900">{{ data.cards_count }}</div>
+                <div class="text-xs text-slate-500">{{ data.active_cards_count }} active</div>
+              </div>
             </template>
           </Column>
-          <Column field="created_at" header="Created" sortable>
+
+          <Column field="payment_status" header="Payment" sortable style="min-width:10rem">
             <template #body="{ data }">
-              {{ formatDate(data.created_at) }}
+              <div class="flex flex-col gap-1">
+                <Tag 
+                  v-if="data.payment_completed" 
+                  value="PAID" 
+                  severity="success" 
+                  class="px-2 py-1 text-xs"
+                />
+                <Tag 
+                  v-else-if="data.payment_waived" 
+                  value="WAIVED" 
+                  severity="info" 
+                  class="px-2 py-1 text-xs"
+                />
+                <Tag 
+                  v-else 
+                  value="PENDING" 
+                  severity="warning" 
+                  class="px-2 py-1 text-xs"
+                />
+                <div v-if="isPaymentSettled(data)" class="text-xs text-slate-500">
+                  ${{ (data.cards_count * 2).toFixed(2) }}
+                </div>
+              </div>
             </template>
           </Column>
-          <Column header="Actions" style="min-width:12rem">
+
+          <Column field="print_status" header="Print Status" style="min-width:12rem">
+            <template #body="{ data }">
+              <div v-if="isLoading" class="flex items-center gap-2">
+                <i class="pi pi-spin pi-spinner text-slate-400 text-xs"></i>
+                <span class="text-xs text-slate-500">Loading...</span>
+              </div>
+              <PrintRequestStatusDisplay 
+                v-else
+                :batch="data" 
+                :print-requests="getPrintRequestsFor(data.id)"
+                @request-print="openRequestPrintDialog(data)"
+                @withdraw-request="confirmWithdrawPrintRequest"
+              />
+            </template>
+          </Column>
+
+          <Column field="created_at" header="Created" sortable style="min-width:10rem">
+            <template #body="{ data }">
+              <span class="text-sm text-slate-600">{{ formatDate(data.created_at) }}</span>
+            </template>
+          </Column>
+
+          <Column header="Actions" :exportable="false" style="min-width:12rem">
             <template #body="{ data }">
               <div class="flex gap-2">
+                <!-- Only show print request if payment is settled and no active request -->
                 <Button 
-                  :icon="data.is_disabled ? 'pi pi-check-circle' : 'pi pi-times-circle'" 
+                  v-if="isPaymentSettled(data) && !data.is_disabled && !hasActivePrintRequest(data.id)"
+                  label="Print Request" 
+                  icon="pi pi-print" 
+                  severity="info" 
+                  size="small"
+                  @click="openRequestPrintDialog(data)"
+                  v-tooltip.top="'Request printing for this batch'"
+                />
+                
+                <!-- Payment required button - only show if payment not settled -->
+                <Button 
+                  v-if="!isPaymentSettled(data) && data.payment_required"
+                  label="Complete Payment" 
+                  icon="pi pi-credit-card" 
+                  severity="warning" 
+                  size="small"
+                  @click="resumePayment(data)"
+                  v-tooltip.top="'Complete payment to generate cards'"
+                />
+                
+                <Button 
                   :label="data.is_disabled ? 'Enable' : 'Disable'"
+                  :icon="data.is_disabled ? 'pi pi-check' : 'pi pi-times'" 
                   :severity="data.is_disabled ? 'success' : 'warning'" 
                   outlined
                   size="small"
-                  class="p-2"
                   @click="confirmToggleBatchStatus(data)"
-                  v-tooltip.top="data.is_disabled ? 'Enable Batch' : 'Disable Batch'"
-                />
-                <Button 
-                  icon="pi pi-print" 
-                  label="Print"
-                  severity="info" 
-                  outlined
-                  size="small"
-                  class="p-2"
-                  @click="openRequestPrintDialog(data)"
-                  :disabled="data.is_disabled || hasActivePrintRequest(data.id)"
-                  v-tooltip.top="data.is_disabled ? 'Batch is disabled' : (hasActivePrintRequest(data.id) ? 'Print request active' : 'Request Printing')"
+                  :disabled="!isPaymentSettled(data) && data.payment_required"
+                  v-tooltip.top="isPaymentSettled(data) ? (data.is_disabled ? 'Enable batch' : 'Disable batch') : 'Payment required before managing batch'"
                 />
               </div>
             </template>
           </Column>
-          <template #expansion="{ data: batch }">
-            <div class="p-4 bg-slate-50 border-t border-slate-200">
-              <h4 class="text-md font-semibold text-slate-800 mb-3">Print Requests for {{ batch.batch_name }}</h4>
-              <div v-if="isLoadingPrintRequestsForBatch(batch.id)" class="text-center py-4">
-                <i class="pi pi-spin pi-spinner" style="font-size: 2rem"></i>
-                <p>Loading print requests...</p>
-              </div>
-              <div v-else-if="getPrintRequestsFor(batch.id) && getPrintRequestsFor(batch.id).length > 0">
-                <ul class="space-y-2">
-                  <li v-for="pr in getPrintRequestsFor(batch.id)" :key="pr.id" class="p-3 bg-white rounded-lg shadow border border-slate-200">
-                    <div class="flex justify-between items-center">
-                      <span class="font-medium text-slate-700">Status: 
-                        <Tag :value="pr.status" :severity="getPrintRequestStatusSeverity(pr.status)" class="ml-1" />
-                      </span>
-                       <span class="text-xs text-slate-500">Requested: {{ formatDate(pr.requested_at) }}</span>
-                    </div>
-                    <p class="text-sm text-slate-600 mt-1" v-if="pr.shipping_address">Shipping to: {{ pr.shipping_address }}</p>
-                    <p class="text-sm text-slate-500 mt-1" v-if="pr.admin_notes">Admin Notes: {{ pr.admin_notes }}</p>
-                     <p class="text-sm text-slate-500 mt-1" v-if="pr.payment_details">Payment: {{ pr.payment_details }}</p>
-                  </li>
-                </ul>
-              </div>
-              <div v-else class="text-center py-4 text-slate-500">
-                No print requests found for this batch.
-              </div>
-            </div>
-          </template>
         </DataTable>
       </div>
     </div>
@@ -156,31 +192,277 @@
       confirmSeverity="success"
       successMessage="Print request submitted successfully!"
       errorMessage="Failed to submit print request"
+      :showToasts="true"
       @hide="onPrintDialogHide"
       style="width: 90vw; max-width: 500px;"
     >
       <div class="space-y-4" v-if="selectedBatchForPrinting">
         <p class="text-sm text-slate-700">
           You are about to request printing for <strong>{{ selectedBatchForPrinting.batch_name }}</strong> ({{ selectedBatchForPrinting.cards_count }} cards).
-          The cost is <strong>$2 USD per card</strong>, totaling approximately <strong>${{ selectedBatchForPrinting.cards_count * 2 }} USD</strong>.
         </p>
-        <p class="text-sm text-slate-600">
-          After submission, our team will contact you via email with payment instructions and to confirm your shipping address.
-        </p>
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">Preferred Shipping Address</label>
-          <Textarea 
-            v-model="printRequestForm.shippingAddress" 
-            rows="3"
-            class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
-            placeholder="Enter your preferred shipping address..."
-            autoResize
-            :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': !printRequestForm.shippingAddress.trim() && printRequestForm.submitted }"
-          />
-          <small v-if="!printRequestForm.shippingAddress.trim() && printRequestForm.submitted" class="p-error">Shipping address is required.</small>
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div class="flex items-start gap-3">
+            <i class="pi pi-info-circle text-blue-600 text-lg mt-0.5"></i>
+            <div>
+              <h4 class="font-semibold text-blue-900 mb-2">Physical Printing & Shipping Service</h4>
+              <p class="text-sm text-blue-800 mb-3">
+                Your batch payment already covers both digital card generation and physical printing. 
+                This request initiates the printing and shipping process for your already-paid cards.
+              </p>
+              <p class="text-sm text-blue-800 mb-3">
+                Our team will handle the printing and contact you with shipping details.
+              </p>
+              <div class="text-xs text-blue-700 bg-blue-100 p-2 rounded">
+                <strong>Note:</strong> No additional payment required - your ${{ (selectedBatchForPrinting.cards_count * 2).toFixed(2) }} batch payment covers everything!
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200">
+          <div class="flex items-start gap-2">
+            <i class="pi pi-info-circle text-slate-600 text-sm mt-0.5"></i>
+            <div class="text-xs text-slate-600">
+              <p class="mb-1"><strong>Withdrawal Policy:</strong> You can withdraw print requests that are in "SUBMITTED" status.</p>
+              <p>Once processing begins, withdrawal is no longer possible. Contact support if you need assistance.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Shipping Address Selection -->
+        <div class="space-y-4">
+            <div class="flex items-center justify-between">
+                <label class="block text-sm font-medium text-slate-700">
+                    Select Shipping Address <span class="text-red-500">*</span>
+                </label>
+                <Button
+                    label="Manage Addresses"
+                    icon="pi pi-cog"
+                    severity="secondary"
+                    size="small"
+                    outlined
+                    @click="printRequestData.showAddressDialog = true"
+                    class="text-xs"
+                />
+            </div>
+            
+            <!-- Show address selection only if addresses exist -->
+            <div v-if="hasAddresses">
+                <Select
+                    v-model="printRequestData.selectedAddressId"
+                    :options="sortedAddresses"
+                    optionLabel="label"
+                    optionValue="id"
+                    placeholder="Choose shipping address"
+                    class="w-full"
+                    :class="{ 'border-red-300': printRequestForm.submitted && !printRequestData.selectedAddressId }"
+                >
+                    <template #option="{ option }">
+                        <div class="flex flex-col py-2">
+                            <div class="flex items-center justify-between mb-1">
+                                <span class="font-medium text-slate-800">{{ option.label }}</span>
+                                <div class="flex items-center gap-2">
+                                    <Tag v-if="option.is_default" value="Default" severity="success" class="text-xs" />
+                                    <i class="pi pi-map-marker text-slate-400 text-xs"></i>
+                                </div>
+                            </div>
+                            <div class="text-sm text-slate-600">
+                                <div>{{ option.recipient_name }}</div>
+                                <div>{{ option.address_line1 }}</div>
+                                <div>{{ option.city }}, {{ option.state_province }} {{ option.postal_code }}</div>
+                            </div>
+                        </div>
+                    </template>
+                    <template #value="{ value }">
+                        <div v-if="value" class="flex items-center justify-between w-full">
+                            <div class="flex items-center gap-2">
+                                <i class="pi pi-map-marker text-slate-500"></i>
+                                <span class="font-medium">{{ sortedAddresses.find(addr => addr.id === value)?.label }}</span>
+                            </div>
+                            <Tag v-if="sortedAddresses.find(addr => addr.id === value)?.is_default" 
+                                 value="Default" severity="success" class="text-xs" />
+                        </div>
+                    </template>
+                </Select>
+                
+                <small v-if="printRequestForm.submitted && !printRequestData.selectedAddressId"
+                       class="text-red-500 text-xs flex items-center gap-1 mt-2">
+                    <i class="pi pi-exclamation-circle"></i>
+                    Please select a shipping address.
+                </small>
+            </div>
+
+            <!-- No addresses state -->
+            <div v-else class="text-center py-12">
+                <div class="w-16 h-16 mx-auto bg-gradient-to-r from-slate-100 to-slate-200 rounded-full flex items-center justify-center mb-4">
+                    <i class="pi pi-map-marker text-2xl text-slate-400"></i>
+                </div>
+                <h4 class="font-medium text-slate-800 mb-2">No addresses yet</h4>
+                <p class="text-sm text-slate-600 max-w-sm mx-auto">
+                    Click "Add Address" above to create your first shipping address for card printing services.
+                </p>
+            </div>
         </div>
       </div>
     </MyDialog>
+
+    <!-- Shipping Address Management Dialog -->
+    <Dialog
+        v-model:visible="printRequestData.showAddressDialog"
+        header="Manage Shipping Addresses"
+        modal
+        style="width: 55rem"
+        class="mx-4"
+        :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
+    >
+        <div class="space-y-6">
+            <!-- Header with Add Button -->
+            <div class="flex items-center justify-between pb-4 border-b border-slate-200">
+                <div>
+                    <h4 class="font-semibold text-slate-800 text-lg">Your Shipping Addresses</h4>
+                    <p class="text-sm text-slate-600 mt-1">Manage your delivery addresses for card printing</p>
+                </div>
+                <Button
+                    label="Add Address"
+                    icon="pi pi-plus"
+                    size="small"
+                    @click="addressStore.startEdit()"
+                    :disabled="addressStore.loading"
+                    class="bg-blue-600 hover:bg-blue-700 border-blue-600 hover:border-blue-700"
+                />
+            </div>
+
+            <!-- Existing Addresses -->
+            <div v-if="hasAddresses" class="space-y-4">
+                <div
+                    v-for="address in sortedAddresses"
+                    :key="address.id"
+                    class="group relative border border-slate-200 rounded-xl p-5 hover:border-slate-300 hover:shadow-md transition-all duration-200"
+                    :class="{ 
+                        'border-blue-300 bg-gradient-to-r from-blue-50 to-indigo-50 shadow-sm': address.is_default,
+                        'bg-white hover:bg-slate-50': !address.is_default 
+                    }"
+                >
+                    <!-- Default Badge -->
+                    <div v-if="address.is_default" class="absolute -top-2 -right-2">
+                        <div class="bg-gradient-to-r from-blue-500 to-indigo-500 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
+                            <i class="pi pi-star mr-1"></i>
+                            Default
+                        </div>
+                    </div>
+
+                    <div class="flex items-start justify-between">
+                        <div class="flex-1 pr-4">
+                            <!-- Address Header -->
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-10 h-10 rounded-full bg-gradient-to-r from-slate-100 to-slate-200 flex items-center justify-center">
+                                    <i class="pi pi-map-marker text-slate-600"></i>
+                                </div>
+                                <div>
+                                    <h5 class="font-semibold text-slate-800 text-lg">{{ address.label }}</h5>
+                                    <p class="text-sm text-slate-500">{{ address.recipient_name }}</p>
+                                </div>
+                            </div>
+                            
+                            <!-- Address Details -->
+                            <div class="ml-13 space-y-1">
+                                <p class="text-sm text-slate-700 leading-relaxed">
+                                    <span class="block">{{ address.address_line1 }}</span>
+                                    <span v-if="address.address_line2" class="block">{{ address.address_line2 }}</span>
+                                    <span class="block">{{ address.city }}, {{ address.state_province }} {{ address.postal_code }}</span>
+                                    <span class="block font-medium">{{ address.country }}</span>
+                                </p>
+                                <p v-if="address.phone" class="text-sm text-slate-600 flex items-center gap-1 mt-2">
+                                    <i class="pi pi-phone text-xs"></i>
+                                    {{ address.phone }}
+                                </p>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="flex flex-col gap-2 opacity-100 group-hover:opacity-100 transition-opacity">
+                            <!-- Set Default Button -->
+                            <Button
+                                v-if="!address.is_default"
+                                icon="pi pi-star"
+                                severity="secondary"
+                                size="small"
+                                outlined
+                                @click="addressStore.setDefault(address.id)"
+                                v-tooltip.left="'Set as default'"
+                                class="w-10 h-10 p-0 hover:bg-yellow-50 hover:border-yellow-300 hover:text-yellow-600"
+                                :loading="addressStore.loading"
+                            />
+                            
+                            <!-- Edit Button -->
+                            <Button
+                                icon="pi pi-pencil"
+                                severity="secondary"
+                                size="small"
+                                outlined
+                                @click="addressStore.startEdit(address.id)"
+                                v-tooltip.left="'Edit address'"
+                                class="w-10 h-10 p-0 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600"
+                                :loading="addressStore.loading"
+                            />
+                            
+                            <!-- Delete Button -->
+                            <Button
+                                icon="pi pi-trash"
+                                severity="danger"
+                                size="small"
+                                outlined
+                                @click="confirmDeleteAddress(address)"
+                                v-tooltip.left="'Delete address'"
+                                class="w-10 h-10 p-0 hover:bg-red-50 hover:border-red-300 hover:text-red-600"
+                                :loading="addressStore.loading"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-else class="text-center py-12">
+                <div class="w-16 h-16 mx-auto bg-gradient-to-r from-slate-100 to-slate-200 rounded-full flex items-center justify-center mb-4">
+                    <i class="pi pi-map-marker text-2xl text-slate-400"></i>
+                </div>
+                <h4 class="font-medium text-slate-800 mb-2">No addresses yet</h4>
+                <p class="text-sm text-slate-600 max-w-sm mx-auto">
+                    Click "Add Address" above to create your first shipping address for card printing services.
+                </p>
+            </div>
+        </div>
+
+        <template #footer>
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-slate-500">
+                    {{ hasAddresses ? `${sortedAddresses.length} address${sortedAddresses.length !== 1 ? 'es' : ''}` : '' }}
+                </div>
+                <Button
+                    label="Close"
+                    severity="secondary"
+                    @click="printRequestData.showAddressDialog = false"
+                    outlined
+                />
+            </div>
+        </template>
+    </Dialog>
+
+    <!-- Address Form Dialog -->
+    <Dialog
+        v-model:visible="addressStore.isEditMode"
+        :header="addressStore.editingAddressId ? 'Edit Address' : 'Add New Address'"
+        modal
+        style="width: 40rem"
+        class="mx-4"
+    >
+        <AddressForm
+            :address-id="addressStore.editingAddressId"
+            @saved="onAddressSaved"
+            @cancelled="addressStore.cancelEdit"
+        />
+    </Dialog>
 
     <!-- Issued Cards DataTable -->
     <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
@@ -349,14 +631,28 @@
       v-model="showIssueBatchDialog"
       header="Issue New Batch"
       :confirmHandle="handleIssueBatch"
-      confirmLabel="Issue Batch"
-      confirmSeverity="success"
-      successMessage="Batch issued successfully!"
-      errorMessage="Failed to issue batch"
+      confirmLabel="Continue to Payment"
+      confirmSeverity="primary"
+      successMessage="Batch created! Proceeding to payment..."
+      errorMessage="Failed to create batch"
+      :showToasts="true"
       @hide="onIssueBatchDialogHide"
       style="width: 90vw; max-width: 600px;"
     >
       <div class="space-y-6">
+        <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <div class="flex items-start gap-3">
+            <i class="pi pi-info-circle text-blue-600 text-lg mt-0.5"></i>
+            <div>
+              <h4 class="font-semibold text-blue-900 mb-2">Payment Required</h4>
+              <p class="text-sm text-blue-800">
+                Card issuance requires payment of <strong>$2 USD per card</strong> before cards are generated.
+                After payment confirmation, your cards will be immediately available for distribution.
+              </p>
+            </div>
+          </div>
+        </div>
+
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-2">Number of Cards</label>
           <InputNumber 
@@ -365,8 +661,26 @@
             :max="1000"
             class="w-full"
             placeholder="Enter number of cards to issue"
+            @update:modelValue="updateCostCalculation"
           />
            <small v-if="batchForm.errors.quantity" class="p-error">{{ batchForm.errors.quantity }}</small>
+        </div>
+
+        <!-- Cost Summary -->
+        <div v-if="batchForm.quantity > 0" class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <h4 class="font-semibold text-slate-900 mb-3">Cost Summary</h4>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-slate-600">{{ batchForm.quantity }} cards × $2.00 USD</span>
+              <span class="font-medium">{{ costCalculation.totalFormatted }}</span>
+            </div>
+            <div class="border-t border-slate-300 pt-2 mt-2">
+              <div class="flex justify-between font-semibold">
+                <span>Total</span>
+                <span class="text-blue-600">{{ costCalculation.totalFormatted }}</span>
+              </div>
+            </div>
+          </div>
         </div>
         
         <div>
@@ -377,6 +691,81 @@
             class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
             placeholder="Describe this batch... (e.g., purpose, event)"
             autoResize
+          />
+        </div>
+      </div>
+    </MyDialog>
+
+    <!-- Payment Dialog -->
+    <MyDialog
+      v-model="showPaymentDialog"
+      header="Complete Payment"
+      :showConfirm="false"
+      :showCancel="false"
+      @hide="onPaymentDialogHide"
+      style="width: 90vw; max-width: 500px;"
+    >
+      <div class="space-y-6" v-if="pendingBatch">
+        <!-- Payment Summary -->
+        <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+          <h4 class="font-semibold text-slate-900 mb-3">Payment Details</h4>
+          <div class="space-y-2 text-sm">
+            <div class="flex justify-between">
+              <span class="text-slate-600">Batch:</span>
+              <span class="font-medium">{{ pendingBatch.batch_name }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-600">Cards:</span>
+              <span class="font-medium">{{ pendingBatch.cards_count }}</span>
+            </div>
+            <div class="flex justify-between">
+              <span class="text-slate-600">Amount:</span>
+              <span class="font-medium text-blue-600">{{ formatAmount(pendingBatch.payment_amount_cents) }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Payment Form -->
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-3">Payment Information</label>
+          <div id="stripe-payment-element" class="mb-4"></div>
+        </div>
+
+        <!-- Payment Status -->
+        <div v-if="paymentStatus.processing" class="text-center py-4">
+          <div class="inline-flex items-center gap-2 text-blue-600">
+            <i class="pi pi-spin pi-spinner"></i>
+            <span>Processing payment...</span>
+          </div>
+        </div>
+
+        <div v-if="paymentStatus.error" class="bg-red-50 p-4 rounded-lg border border-red-200">
+          <div class="flex items-start gap-3">
+            <i class="pi pi-exclamation-triangle text-red-600 text-lg mt-0.5"></i>
+            <div>
+              <h4 class="font-semibold text-red-900 mb-1">Payment Failed</h4>
+              <p class="text-sm text-red-800">{{ paymentStatus.error }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-3 pt-4">
+          <Button 
+            label="Pay Now" 
+            icon="pi pi-credit-card"
+            severity="primary"
+            class="flex-1"
+            :loading="paymentStatus.processing"
+            :disabled="!stripePaymentElement || paymentStatus.processing"
+            @click="handlePayment"
+          />
+          <Button 
+            label="Cancel" 
+            severity="secondary"
+            outlined
+            :disabled="paymentStatus.processing"
+            @click="cancelPayment"
           />
         </div>
       </div>
@@ -467,16 +856,74 @@
     <ConfirmDialog group="toggleBatchConfirmation"></ConfirmDialog>
     <ConfirmDialog group="requestPrintConfirmation"></ConfirmDialog>
     <ConfirmDialog group="deleteIssuedCardConfirmation"></ConfirmDialog>
+    <ConfirmDialog group="deleteAddressConfirmation"></ConfirmDialog>
+    <ConfirmDialog group="withdrawPrintRequestConfirmation"></ConfirmDialog>
+
+    <!-- New section for print request statistics -->
+    <div class="mb-6">
+      <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+        <i class="pi pi-box text-blue-600"></i>
+        Card Batches & Print Requests
+      </h3>
+      
+      <!-- Print Request Summary -->
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-blue-900">Total Batches</p>
+              <p class="text-2xl font-bold text-blue-700">{{ batches.length }}</p>
+            </div>
+            <i class="pi pi-box text-blue-600 text-2xl"></i>
+          </div>
+        </div>
+        
+        <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-green-900">Active Requests</p>
+              <p class="text-2xl font-bold text-green-700">{{ activePrintRequestsCount }}</p>
+            </div>
+            <i class="pi pi-print text-green-600 text-2xl"></i>
+          </div>
+        </div>
+        
+        <div class="bg-gradient-to-r from-purple-50 to-violet-50 border border-purple-200 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-purple-900">Completed</p>
+              <p class="text-2xl font-bold text-purple-700">{{ completedPrintRequestsCount }}</p>
+            </div>
+            <i class="pi pi-check-circle text-purple-600 text-2xl"></i>
+          </div>
+        </div>
+        
+        <div class="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-4">
+          <div class="flex items-center justify-between">
+            <div>
+              <p class="text-sm font-medium text-amber-900">Available</p>
+              <p class="text-2xl font-bold text-amber-700">{{ availableForPrintCount }}</p>
+            </div>
+            <i class="pi pi-plus-circle text-amber-600 text-2xl"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Batch Management Table -->
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, computed, watch, onUnmounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import { useIssuedCardStore, PrintRequestStatus } from '@/stores/issuedCard';
 import QrcodeVue from 'qrcode.vue';
 import { FilterMatchMode } from '@primevue/core/api';
+import { getStripe, createBatchPaymentIntent, confirmBatchPayment, formatAmount, calculateBatchCost } from '@/utils/stripe';
+import { useCardStore } from '@/stores/card';
+import { useShippingAddressStore } from '@/stores/shippingAddress';
 
 // PrimeVue Components
 import Card from 'primevue/card';
@@ -494,6 +941,8 @@ import MyDialog from './MyDialog.vue';
 import Select from 'primevue/select';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
+import AddressForm from './AddressForm.vue';
+import PrintRequestStatusDisplay from './PrintRequestStatusDisplay.vue';
 
 // Props
 const props = defineProps({
@@ -507,9 +956,12 @@ const props = defineProps({
 const issuedCardStore = useIssuedCardStore();
 const toast = useToast();
 const confirm = useConfirm();
+const cardStore = useCardStore();
+const addressStore = useShippingAddressStore();
 
 // Reactive data
 const showIssueBatchDialog = ref(false);
+const showPaymentDialog = ref(false);
 const showCardDetailsDialog = ref(false);
 const selectedCard = ref(null);
 const batchForm = ref({
@@ -521,6 +973,27 @@ const batchForm = ref({
 });
 const copied = ref(false);
 
+// Payment-related state
+const pendingBatch = ref(null);
+const stripePaymentElement = ref(null);
+const stripeElements = ref(null);
+const currentPaymentIntent = ref(null);
+const paymentStatus = ref({
+  processing: false,
+  error: null,
+  success: false
+});
+
+// Cost calculation
+const costCalculation = ref(calculateBatchCost(10));
+
+// Update cost calculation when quantity changes
+const updateCostCalculation = () => {
+  if (batchForm.value.quantity > 0) {
+    costCalculation.value = calculateBatchCost(batchForm.value.quantity);
+  }
+};
+
 // Filters for Individual Issued Cards table
 const filters = ref({
   global: { value: null, matchMode: FilterMatchMode.CONTAINS },
@@ -530,14 +1003,19 @@ const filters = ref({
 });
 
 // For Batch Management Table
-const expandedBatchRows = ref([]);
 const showRequestPrintDialog = ref(false);
 const selectedBatchForPrinting = ref(null);
 const printRequestForm = ref({
   shippingAddress: '',
   submitted: false, // To track if form submission was attempted for validation
 });
-const isLoadingPrintRequests = ref(false);
+
+// Print request data
+const printRequestData = ref({
+    batchId: '',
+    selectedAddressId: '', // Changed from manual address to address selection
+    showAddressDialog: false
+});
 
 // Computed properties
 const isLoading = computed(() => issuedCardStore.isLoading);
@@ -545,6 +1023,11 @@ const issuedCards = computed(() => issuedCardStore.issuedCards);
 const batches = computed(() => issuedCardStore.batches);
 const stats = computed(() => issuedCardStore.stats);
 const printRequestsForBatchMap = computed(() => issuedCardStore.printRequestsForBatch);
+
+// Get current card data from cardStore
+const currentCard = computed(() => {
+  return cardStore.cards.find(card => card.id === props.cardId) || null;
+});
 
 const selectedCardActivationUrl = computed(() => {
   if (selectedCard.value && selectedCard.value.id && selectedCard.value.activation_code) {
@@ -569,14 +1052,39 @@ const getPrintRequestsFor = (batchId) => {
   return printRequestsForBatchMap.value[batchId] || [];
 };
 
+// Computed properties for print request statistics
+const activePrintRequestsCount = computed(() => {
+  return batches.value.reduce((count, batch) => {
+    const requests = getPrintRequestsFor(batch.id);
+    const activeRequests = requests.filter(pr => !['COMPLETED', 'CANCELLED'].includes(pr.status));
+    return count + activeRequests.length;
+  }, 0);
+});
+
+const completedPrintRequestsCount = computed(() => {
+  return batches.value.reduce((count, batch) => {
+    const requests = getPrintRequestsFor(batch.id);
+    const completedRequests = requests.filter(pr => pr.status === 'COMPLETED');
+    return count + completedRequests.length;
+  }, 0);
+});
+
+const availableForPrintCount = computed(() => {
+  return batches.value.filter(batch => 
+    isPaymentSettled(batch) && 
+    !batch.is_disabled && 
+    !hasActivePrintRequest(batch.id)
+  ).length;
+});
+
 const hasActivePrintRequest = (batchId) => {
   const requests = getPrintRequestsFor(batchId);
   return requests.some(pr => ![PrintRequestStatus.COMPLETED, PrintRequestStatus.CANCELLED].includes(pr.status));
 };
 
-const isLoadingPrintRequestsForBatch = (batchId) => {
-    // This is a simplified check; ideally, track loading per batch
-    return isLoadingPrintRequests.value; 
+// Helper function to check if payment is settled (completed or waived)
+const isPaymentSettled = (batch) => {
+  return batch.payment_completed || batch.payment_waived;
 };
 
 // Format date helper
@@ -617,51 +1125,183 @@ const validateBatchForm = () => {
   return isValid;
 };
 
-// Handle issue batch
+// Handle issue batch - now creates batch and proceeds to payment
 const handleIssueBatch = async () => {
   if (!validateBatchForm()) {
     if (!batchForm.value.errors.quantity && batchForm.value.quantity && (batchForm.value.quantity < 1 || batchForm.value.quantity > 1000)) {
         batchForm.value.errors.quantity = 'Quantity must be between 1 and 1000.';
     }
-    return Promise.reject('Validation failed');
+    throw new Error('Validation failed');
   }
 
   if (!props.cardId) {
-    toast.add({ 
-      severity: 'error', 
-      summary: 'Error', 
-      detail: 'No card selected for batch issuance.', 
-      life: 3000 
-    });
-    return Promise.reject('No card selected');
+    throw new Error('No card selected for batch issuance.');
   }
 
   try {
-    await issuedCardStore.issueBatch(props.cardId, batchForm.value.quantity);
+    // Create batch (without cards - they'll be created after payment)
+    const batchId = await issuedCardStore.issueBatch(props.cardId, batchForm.value.quantity);
+    
+    // Fetch the created batch details
+    await issuedCardStore.loadCardData(props.cardId);
+    const createdBatch = Array.isArray(batches.value) ? batches.value.find(b => b.id === batchId) : null;
+    
+    if (!createdBatch) {
+      throw new Error('Failed to retrieve created batch details');
+    }
+    
+    pendingBatch.value = createdBatch;
+    
+    // Close batch dialog and open payment dialog
+    showIssueBatchDialog.value = false;
+    showPaymentDialog.value = true;
+    
+    // Initialize payment
+    await initializePayment();
+    
+  } catch (error) {
+    console.error('Error creating batch:', error);
+    const errorMessage = error.message || 'Failed to create card batch';
+    throw new Error(errorMessage);
+  }
+};
+
+// Initialize Stripe payment
+const initializePayment = async () => {
+  if (!pendingBatch.value) return;
+  
+  try {
+    paymentStatus.value.processing = true;
+    paymentStatus.value.error = null;
+    
+    // Create payment intent
+    const paymentIntent = await createBatchPaymentIntent(
+      pendingBatch.value.cards_count,
+      {
+        batch_id: pendingBatch.value.id,
+        card_id: props.cardId
+      }
+    );
+    
+    currentPaymentIntent.value = paymentIntent;
+    
+    // Store payment intent in database
+    await issuedCardStore.createBatchPaymentIntent(
+      pendingBatch.value.id,
+      paymentIntent.id,
+      paymentIntent.client_secret,
+      paymentIntent.amount
+    );
+    
+    // Initialize Stripe Elements
+    const stripe = getStripe();
+    stripeElements.value = stripe.elements();
+    
+    // Create and mount payment element
+    stripePaymentElement.value = stripeElements.value.create('payment');
+    
+    // Wait for DOM to update
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    stripePaymentElement.value.mount('#stripe-payment-element');
+    
+    stripePaymentElement.value.on('ready', () => {
+      paymentStatus.value.processing = false;
+    });
+    
+  } catch (error) {
+    console.error('Error initializing payment:', error);
+    paymentStatus.value.error = error.message || 'Failed to initialize payment';
+    paymentStatus.value.processing = false;
+  }
+};
+
+// Handle payment submission
+const handlePayment = async () => {
+  if (!currentPaymentIntent.value || !stripePaymentElement.value) {
+    paymentStatus.value.error = 'Payment not properly initialized';
+    return;
+  }
+
+  paymentStatus.value.processing = true;
+  paymentStatus.value.error = null;
+  
+  try {
+    // Confirm payment with Stripe
+    const result = await confirmBatchPayment(currentPaymentIntent.value.client_secret);
+    
+    if (result.error) {
+      // Payment failed
+      await issuedCardStore.handleFailedBatchPayment(
+        currentPaymentIntent.value.id,
+        result.error.message
+      );
+      
+      paymentStatus.value.error = result.error.message;
+      paymentStatus.value.processing = false;
+      return;
+    }
+    
+    // Payment succeeded - confirm in database and create cards
+    await issuedCardStore.confirmBatchPayment(
+      currentPaymentIntent.value.id,
+      result.paymentIntent.payment_method?.card?.brand || 'card'
+    );
+    
+    // Refresh data
+    await issuedCardStore.loadCardData(props.cardId);
     
     toast.add({ 
       severity: 'success', 
-      summary: 'Success', 
-      detail: `Batch with ${batchForm.value.quantity} cards issued successfully!`, 
-      life: 3000 
-    });
-
-    await issuedCardStore.loadCardData(props.cardId);
-    
-    batchForm.value.quantity = 10;
-    batchForm.value.description = '';
-    return Promise.resolve();
-  } catch (error) {
-    console.error('Error issuing batch:', error);
-    const errorMessage = error.message || 'Failed to issue card batch';
-    toast.add({ 
-      severity: 'error', 
-      summary: 'Error Issuing Batch', 
-      detail: errorMessage, 
+      summary: 'Payment Successful', 
+      detail: `Batch created with ${pendingBatch.value.cards_count} cards!`, 
       life: 5000 
     });
-    return Promise.reject(errorMessage);
+
+    // Close payment dialog
+    showPaymentDialog.value = false;
+    resetPaymentState();
+    
+    // Reset batch form
+    batchForm.value.quantity = 10;
+    batchForm.value.description = '';
+    updateCostCalculation();
+    
+  } catch (error) {
+    console.error('Error processing payment:', error);
+    paymentStatus.value.error = error.message || 'Payment processing failed';
+  } finally {
+    paymentStatus.value.processing = false;
   }
+};
+
+// Cancel payment
+const cancelPayment = () => {
+  showPaymentDialog.value = false;
+  resetPaymentState();
+  
+    toast.add({ 
+    severity: 'info', 
+    summary: 'Payment Cancelled', 
+    detail: 'Batch creation was cancelled. No payment was processed.', 
+    life: 3000 
+    });
+};
+
+// Reset payment state
+const resetPaymentState = () => {
+  if (stripePaymentElement.value) {
+    stripePaymentElement.value.unmount();
+    stripePaymentElement.value = null;
+  }
+  stripeElements.value = null;
+  currentPaymentIntent.value = null;
+  pendingBatch.value = null;
+  paymentStatus.value = {
+    processing: false,
+    error: null,
+    success: false
+  };
 };
 
 // Activate a card
@@ -750,7 +1390,13 @@ const onIssueBatchDialogHide = () => {
   batchForm.value.quantity = 10;
   batchForm.value.description = '';
   batchForm.value.errors = { quantity: '' };
+  updateCostCalculation();
   showIssueBatchDialog.value = false;
+};
+
+const onPaymentDialogHide = () => {
+  resetPaymentState();
+  showPaymentDialog.value = false;
 };
 
 const onCardDetailsDialogHide = () => {
@@ -801,36 +1447,61 @@ const confirmToggleBatchStatus = (batch) => {
   });
 };
 
-const openRequestPrintDialog = (batch) => {
-  if (batch.is_disabled || hasActivePrintRequest(batch.id)) {
-    toast.add({ severity: 'warn', summary: 'Cannot Request Print', detail: batch.is_disabled ? 'Batch is disabled.' : 'An active print request already exists.', life: 3000 });
-    return;
-  }
-  selectedBatchForPrinting.value = batch;
-  printRequestForm.value.shippingAddress = ''; // Reset form
-  printRequestForm.value.submitted = false;
-  showRequestPrintDialog.value = true;
+const openRequestPrintDialog = async (batch) => {
+    if (batch.is_disabled || hasActivePrintRequest(batch.id)) {
+        toast.add({ 
+            severity: 'warn', 
+            summary: 'Cannot Request Print', 
+            detail: batch.is_disabled ? 'Batch is disabled.' : 'An active print request already exists.', 
+            life: 3000 
+        });
+        return;
+    }
+
+    // Load shipping addresses first
+    await addressStore.fetchAddresses();
+
+    selectedBatchForPrinting.value = batch;
+    printRequestForm.value.shippingAddress = ''; // Reset form
+    printRequestForm.value.submitted = false;
+    
+    // Auto-select default address if available
+    autoSelectDefaultAddress();
+    
+    // Always show the print dialog first
+    showRequestPrintDialog.value = true;
 };
 
 const handleRequestPrint = async () => {
-  printRequestForm.value.submitted = true;
-  if (!printRequestForm.value.shippingAddress.trim()) {
-    return Promise.reject('Shipping address is required.');
-  }
-  if (!selectedBatchForPrinting.value) return Promise.reject('No batch selected.');
-
-  try {
-    await issuedCardStore.requestPrintForBatch(selectedBatchForPrinting.value.id, printRequestForm.value.shippingAddress);
-    toast.add({ severity: 'success', summary: 'Success', detail: 'Print request submitted.', life: 3000 });
-    // The store action fetchPrintRequestsForBatch should update the data.
-    // Optionally, call loadCardData if a full refresh is desired or if specific batch data isn't updating.
-    // await issuedCardStore.loadCardData(props.cardId); // To ensure full consistency
-    return Promise.resolve();
-  } catch (error) {
-    console.error('Error requesting print:', error);
-    toast.add({ severity: 'error', summary: 'Error', detail: error.message || 'Failed to submit print request.', life: 3000 });
-    return Promise.reject(error.message || 'Failed to submit print request.');
-  }
+    printRequestForm.value.submitted = true;
+    
+    // Validate address selection
+    if (!printRequestData.value.selectedAddressId) {
+        toast.add({
+            severity: 'error',
+            summary: 'Address Required',
+            detail: 'Please select a shipping address.',
+            life: 3000
+        });
+        return false;
+    }
+    
+    if (!selectedBatchForPrinting.value) {
+        return false;
+    }
+    
+    try {
+        // Get formatted address for the request
+        const formattedAddress = await addressStore.getFormattedAddress(printRequestData.value.selectedAddressId);
+        
+        await issuedCardStore.requestPrintForBatch(selectedBatchForPrinting.value.id, formattedAddress);
+        
+        // The store action fetchPrintRequestsForBatch should update the data.
+        return true;
+    } catch (error) {
+        console.error('Error requesting print:', error);
+        throw new Error(error.message || 'Failed to submit print request.');
+    }
 };
 
 const onPrintDialogHide = () => {
@@ -838,6 +1509,49 @@ const onPrintDialogHide = () => {
   selectedBatchForPrinting.value = null;
   printRequestForm.value.shippingAddress = '';
   printRequestForm.value.submitted = false;
+};
+
+const confirmWithdrawPrintRequest = (printRequest, batch) => {
+  confirm.require({
+    group: 'withdrawPrintRequestConfirmation',
+    message: `Are you sure you want to withdraw the print request for "${batch.batch_name}"? This action cannot be undone and you'll need to submit a new request if you want to print these cards later.`,
+    header: 'Withdraw Print Request',
+    icon: 'pi pi-exclamation-triangle',
+    acceptLabel: 'Withdraw Request',
+    rejectLabel: 'Keep Request',
+    acceptClass: 'p-button-danger',
+    accept: async () => {
+      try {
+        await issuedCardStore.withdrawPrintRequest(printRequest.id, 'Withdrawn by card issuer');
+        
+        // Refresh print requests for this batch
+        await issuedCardStore.fetchPrintRequestsForBatch(batch.id);
+        
+        toast.add({ 
+          severity: 'success', 
+          summary: 'Request Withdrawn', 
+          detail: `Print request for ${batch.batch_name} has been withdrawn successfully.`, 
+          life: 5000 
+        });
+      } catch (error) {
+        console.error('Failed to withdraw print request:', error);
+        toast.add({ 
+          severity: 'error', 
+          summary: 'Withdrawal Failed', 
+          detail: error.message || 'Failed to withdraw print request.', 
+          life: 5000 
+        });
+      }
+    },
+    reject: () => {
+      toast.add({ 
+        severity: 'info', 
+        summary: 'Withdrawal Cancelled', 
+        detail: 'Print request withdrawal was cancelled.', 
+        life: 3000 
+      });
+    }
+  });
 };
 
 const getPrintRequestStatusSeverity = (status) => {
@@ -852,37 +1566,140 @@ const getPrintRequestStatusSeverity = (status) => {
   }
 };
 
-// Fetch print requests when a batch row is expanded
-watch(expandedBatchRows, async (newExpandedRows, oldExpandedRows) => {
-  if (!newExpandedRows) return;
-  
-  // Find newly expanded rows
-  const newlyExpandedBatch = newExpandedRows.find(row => 
-    !(oldExpandedRows && oldExpandedRows.some(oldRow => oldRow.id === row.id))
-  );
-
-  if (newlyExpandedBatch && newlyExpandedBatch.id) {
-    // Check if data already exists or is fresh enough
-    const existingRequests = getPrintRequestsFor(newlyExpandedBatch.id);
-    if (!existingRequests || existingRequests.length === 0) { // Or add a timestamp check for freshness
-        isLoadingPrintRequests.value = true;
-        try {
-            await issuedCardStore.fetchPrintRequestsForBatch(newlyExpandedBatch.id);
-        } catch (error) {
-            console.error('Failed to fetch print requests for batch:', newlyExpandedBatch.id, error);
-            toast.add({ severity: 'error', summary: 'Load Error', detail: 'Could not load print requests.', life: 3000 });
-        } finally {
-            isLoadingPrintRequests.value = false;
-        }
+// Resume payment for an existing batch
+const resumePayment = async (batch) => {
+  try {
+    // Check if payment is already settled (completed or waived)
+    if (isPaymentSettled(batch)) {
+      const settlementType = batch.payment_completed ? 'paid for' : 'waived by admin';
+      toast.add({ 
+        severity: 'info', 
+        summary: 'Payment Already Settled', 
+        detail: `This batch has already been ${settlementType}.`, 
+        life: 3000 
+      });
+      return;
     }
+    
+    // Check if batch already has payment info
+    const paymentInfo = await issuedCardStore.getBatchPaymentInfo(batch.id);
+    
+    if (paymentInfo && paymentInfo.payment_status === 'succeeded') {
+      toast.add({ 
+        severity: 'info', 
+        summary: 'Already Paid', 
+        detail: 'This batch has already been paid for.', 
+        life: 3000 
+      });
+      return;
+    }
+    
+    // Set as pending batch and open payment dialog
+    pendingBatch.value = batch;
+    showPaymentDialog.value = true;
+    
+    if (paymentInfo && paymentInfo.payment_status === 'pending') {
+      // Use existing payment intent
+      currentPaymentIntent.value = {
+        id: paymentInfo.stripe_payment_intent_id,
+        client_secret: paymentInfo.stripe_client_secret,
+        amount: paymentInfo.amount_cents
+      };
+      
+      // Initialize Stripe Elements with existing intent
+      const stripe = getStripe();
+      stripeElements.value = stripe.elements();
+      stripePaymentElement.value = stripeElements.value.create('payment');
+      
+      await new Promise(resolve => setTimeout(resolve, 100));
+      stripePaymentElement.value.mount('#stripe-payment-element');
+      
+    } else {
+      // Create new payment intent
+      await initializePayment();
+    }
+    
+  } catch (error) {
+    console.error('Error resuming payment:', error);
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Error', 
+      detail: error.message || 'Failed to resume payment process', 
+      life: 3000 
+    });
   }
+};
+
+// Computed properties for address management
+const hasAddresses = computed(() => addressStore.hasAddresses);
+const defaultAddress = computed(() => addressStore.defaultAddress);
+const sortedAddresses = computed(() => addressStore.sortedAddresses);
+
+// Auto-select default address if available
+const autoSelectDefaultAddress = () => {
+    if (defaultAddress.value) {
+        printRequestData.value.selectedAddressId = defaultAddress.value.id;
+    }
+};
+
+// Address management functions
+const confirmDeleteAddress = (address) => {
+    confirm.require({
+        group: 'deleteAddressConfirmation',
+        message: `Are you sure you want to delete "${address.label}"?`,
+        header: 'Delete Shipping Address',
+        icon: 'pi pi-exclamation-triangle',
+        rejectProps: {
+            label: 'Cancel',
+            severity: 'secondary',
+            outlined: true
+        },
+        acceptProps: {
+            label: 'Delete',
+            severity: 'danger'
+        },
+        accept: async () => {
+            try {
+                await addressStore.deleteAddress(address.id);
+                // Auto-select default address after deletion
+                autoSelectDefaultAddress();
+                toast.add({
+                    severity: 'success',
+                    summary: 'Address Deleted',
+                    detail: `"${address.label}" has been removed from your addresses.`,
+                    life: 3000
+                });
+            } catch (error) {
+                // Error handling is done in the store, but we can add a fallback
+                console.error('Failed to delete address:', error);
+            }
+        }
+    });
+};
+
+const onAddressSaved = async () => {
+    // Refresh addresses and auto-select default
+    await addressStore.fetchAddresses();
+    autoSelectDefaultAddress();
+    
+    // Close address dialog if no addresses were available before
+    if (hasAddresses.value && printRequestData.value.showAddressDialog) {
+        printRequestData.value.showAddressDialog = false;
+    }
+};
+
+// Lifecycle hooks
+onMounted(async () => {
+    await Promise.all([
+        issuedCardStore.loadCardData(props.cardId),
+        addressStore.fetchAddresses()
+    ]);
+    autoSelectDefaultAddress();
 });
 
-// Initialize component
-onMounted(() => {
-  if (props.cardId) {
-    issuedCardStore.loadCardData(props.cardId);
-  }
+onUnmounted(() => {
+  // Clean up Stripe elements
+  resetPaymentState();
 });
 </script>
 

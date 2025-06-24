@@ -84,7 +84,6 @@
                                             {{ item.children.length }} sub-item{{ item.children.length !== 1 ? 's' : '' }}
                                         </span>
                                         <span v-else class="text-slate-400">No sub-items</span>
-                                        <i v-if="item.conversation_ai_enabled" class="pi pi-robot text-blue-500" title="AI Guide Enabled"></i>
                                     </div>
                                 </div>
                                 
@@ -143,7 +142,6 @@
                                                     <div class="font-medium text-slate-800 truncate group-hover:text-blue-600 transition-colors">{{ child.name }}</div>
                                                     <div class="text-sm text-slate-500 flex items-center gap-2 mt-1">
                                                         <span>Sub-item {{ childIndex + 1 }}</span>
-                                                        <i v-if="child.conversation_ai_enabled" class="pi pi-robot text-blue-500" title="AI Guide Enabled"></i>
                                                     </div>
                                                 </div>
                                                 
@@ -231,7 +229,7 @@
             errorMessage="Failed to add content item"
             @hide="onAddDialogHide"
         >
-            <CardContentCreateEditForm ref="cardContentCreateFormRef" mode="create" :cardId="cardId" />
+            <CardContentCreateEditForm ref="cardContentCreateFormRef" mode="create" :cardId="cardId" :cardAiEnabled="cardAiEnabled" />
         </MyDialog>
 
         <!-- Add Sub-item Dialog -->
@@ -246,7 +244,7 @@
             errorMessage="Failed to add sub-item"
             @hide="onAddSubItemDialogHide"
         >
-            <CardContentCreateEditForm ref="cardContentSubItemCreateFormRef" mode="create" :cardId="cardId" :parentId="parentItemId" />
+            <CardContentCreateEditForm ref="cardContentSubItemCreateFormRef" mode="create" :cardId="cardId" :parentId="parentItemId" :cardAiEnabled="cardAiEnabled" />
         </MyDialog>
 
         <!-- Edit Content Dialog -->
@@ -261,7 +259,7 @@
             errorMessage="Failed to update content item"
             @hide="onEditDialogHide"
         >
-            <CardContentCreateEditForm ref="cardContentEditFormRef" mode="edit" :cardId="cardId" :contentItem="editingContentItem" />
+            <CardContentCreateEditForm ref="cardContentEditFormRef" mode="edit" :cardId="cardId" :contentItem="editingContentItem" :cardAiEnabled="cardAiEnabled" />
         </MyDialog>
 
         <!-- Confirm Dialog -->
@@ -286,6 +284,10 @@ const props = defineProps({
     cardId: {
         type: String,
         required: true
+    },
+    cardAiEnabled: {
+        type: Boolean,
+        default: false
     }
 });
 

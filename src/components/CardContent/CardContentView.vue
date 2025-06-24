@@ -5,10 +5,6 @@
                 <span class="inline-flex items-center px-3 py-1 bg-slate-100 rounded-full text-sm font-medium text-slate-700">
                     {{ contentItem?.parent_id ? 'Sub-item' : 'Content Item' }}
                 </span>
-                <span v-if="contentItem?.conversation_ai_enabled || contentItem?.conversationAiEnabled" 
-                      class="inline-flex items-center px-3 py-1 bg-blue-100 rounded-full text-sm font-medium text-blue-700">
-                    <i class="pi pi-robot mr-2"></i>AI Enabled
-                </span>
             </div>
         </div>
         
@@ -55,22 +51,22 @@
                     </div>
                 </div>
 
-                <!-- AI Configuration -->
-                <div v-if="contentItem?.conversation_ai_enabled || contentItem?.conversationAiEnabled" 
+                <!-- AI Metadata -->
+                <div v-if="contentItem?.ai_metadata" 
                      class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-200">
                     <h3 class="text-lg font-semibold text-amber-900 mb-4 flex items-center gap-2">
-                        <i class="pi pi-microphone text-amber-600"></i>
-                        AI Instructions
+                        <i class="pi pi-database text-amber-600"></i>
+                        AI Metadata
                     </h3>
                     <div class="bg-white rounded-lg p-4 border border-amber-200">
                         <p class="text-sm text-amber-800 whitespace-pre-wrap leading-relaxed">
-                            {{ contentItem?.ai_prompt || contentItem?.aiPrompt || 'No AI instructions provided' }}
+                            {{ contentItem.ai_metadata }}
                         </p>
                     </div>
                     <div class="mt-3 p-3 bg-amber-100 rounded-lg">
-                        <p class="text-xs text-amber-800 flex items-center gap-2">
-                            <i class="pi pi-info-circle"></i>
-                            <span>This content has AI assistance enabled to help answer visitor questions.</span>
+                        <p class="text-xs text-amber-800 flex items-start gap-2">
+                            <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
+                            <span>This additional knowledge data helps the AI provide more accurate and detailed responses about this content item.</span>
                         </p>
                     </div>
                 </div>

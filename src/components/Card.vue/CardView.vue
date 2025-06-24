@@ -9,13 +9,6 @@
                     icon="pi pi-circle-fill"
                     class="px-3 py-1"
                 />
-                <Tag 
-                    v-if="cardProp.conversation_ai_enabled" 
-                    value="AI Enabled" 
-                    severity="info"
-                    icon="pi pi-robot"
-                    class="px-3 py-1"
-                />
             </div>
             <div class="flex gap-3">
                 <Button 
@@ -47,17 +40,28 @@
                                 <i class="pi pi-image text-blue-600"></i>
                                 Card Artwork
                             </h3>
-                            <div class="relative">
+                            <div class="card-artwork-container relative">
                                 <img
                                     :src="displayImageForView || cardPlaceholder"
                                     alt="Card Artwork"
-                                    class="w-full h-auto object-cover rounded-lg border border-slate-200 aspect-[3/4] shadow-md"
+                                    class="w-full h-full object-cover rounded-lg border border-slate-200 shadow-md"
                                 />
                                 <div v-if="!displayImageForView" 
                                      class="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg">
                                     <div class="text-center text-slate-400">
                                         <i class="pi pi-image text-3xl mb-3"></i>
                                         <p class="text-sm font-medium">No artwork uploaded</p>
+                                    </div>
+                                </div>
+                                
+                                <!-- Mock QR Code Overlay -->
+                                <div 
+                                    v-if="cardProp && cardProp.qr_code_position"
+                                    class="absolute w-12 h-12 bg-white border-2 border-slate-300 rounded-lg shadow-lg flex items-center justify-center"
+                                    :class="getQrCodePositionClass(cardProp.qr_code_position)"
+                                >
+                                    <div class="w-8 h-8 bg-slate-800 rounded-sm flex items-center justify-center">
+                                        <i class="pi pi-qrcode text-white text-xs"></i>
                                     </div>
                                 </div>
                             </div>
@@ -99,32 +103,24 @@
                                     </h4>
                                     <p class="text-sm text-slate-600">{{ displayQrCodePositionForView || 'Not set' }}</p>
                                 </div>
-                                
-                                <div class="bg-white rounded-lg p-4 border border-slate-200">
-                                    <h4 class="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                                        <i class="pi pi-robot text-slate-500"></i>
-                                        AI Assistant
-                                    </h4>
-                                    <div class="flex items-center gap-2">
-                                        <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                                              :class="cardProp.conversation_ai_enabled ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-600'">
-                                            <i :class="cardProp.conversation_ai_enabled ? 'pi pi-check' : 'pi pi-times'" class="mr-1"></i>
-                                            {{ cardProp.conversation_ai_enabled ? 'Enabled' : 'Disabled' }}
-                                        </span>
-                                    </div>
-                                </div>
                             </div>
                         </div>
 
                         <!-- AI Configuration -->
-                        <div v-if="cardProp.conversation_ai_enabled && cardProp.ai_prompt" 
+                        <div v-if="cardProp.ai_prompt" 
                              class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-200">
                             <h3 class="text-lg font-semibold text-amber-900 mb-4 flex items-center gap-2">
                                 <i class="pi pi-microphone text-amber-600"></i>
-                                AI Instructions
+                                AI Assistance Instructions
                             </h3>
                             <div class="bg-white rounded-lg p-4 border border-amber-200">
                                 <p class="text-sm text-amber-800 whitespace-pre-wrap leading-relaxed">{{ cardProp.ai_prompt }}</p>
+                            </div>
+                            <div class="mt-3 p-3 bg-amber-100 rounded-lg">
+                                <p class="text-xs text-amber-800 flex items-center gap-2">
+                                    <i class="pi pi-info-circle"></i>
+                                    <span>These instructions guide AI assistance for content items in this card.</span>
+                                </p>
                             </div>
                         </div>
 
@@ -266,11 +262,40 @@ const formatDate = (dateString) => {
         minute: '2-digit'
     });
 };
+
+const getQrCodePositionClass = (position) => {
+    const classes = {
+        'TL': 'top-2 left-2',
+        'TR': 'top-2 right-2',
+        'BL': 'bottom-2 left-2',
+        'BR': 'bottom-2 right-2'
+    };
+    return classes[position] || 'bottom-2 right-2'; // Default to bottom-right
+};
 </script>
 
 <style scoped>
-.aspect-\[3\/4\] {
-    aspect-ratio: 3 / 4;
+/* Fixed height container with 3:4 aspect ratio */
+.card-artwork-container {
+    height: 320px; /* 80 * 4 = 320px (h-80) */
+    width: 240px;   /* 60 * 4 = 240px (w-60) */
+    aspect-ratio: 3/4;
+    margin: 0 auto;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 640px) {
+    .card-artwork-container {
+        height: 280px; /* Slightly smaller on mobile */
+        width: 210px;
+    }
+}
+
+@media (max-width: 480px) {
+    .card-artwork-container {
+        height: 240px; /* Even smaller on very small screens */
+        width: 180px;
+    }
 }
 
 /* Override PrimeVue component font sizes */

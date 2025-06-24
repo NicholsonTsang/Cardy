@@ -11,8 +11,7 @@ export interface ContentItem {
     name: string;
     content: string;
     image_urls: string[] | null;
-    conversation_ai_enabled: boolean;
-    ai_prompt: string;
+    ai_metadata: string;
     sort_order: number;
     created_at: string;
     updated_at: string;
@@ -24,8 +23,7 @@ export interface ContentItemFormData {
     imageUrl?: string | null;
     imageFile?: File | null;
     image_urls?: string[];
-    conversationAiEnabled?: boolean;
-    aiPrompt?: string;
+    aiMetadata?: string;
     // card_id and parent_id are passed as separate params to createContentItem
 }
 
@@ -106,8 +104,7 @@ export const useContentItemStore = defineStore('contentItem', () => {
           p_name: itemData.name,
           p_content: itemData.description || '',
           p_image_urls: finalImageUrls,
-          p_conversation_ai_enabled: itemData.conversationAiEnabled || false,
-          p_ai_prompt: itemData.aiPrompt || ''
+          p_ai_metadata: itemData.aiMetadata || '',
         });
       
       if (err) throw err;
@@ -145,8 +142,7 @@ export const useContentItemStore = defineStore('contentItem', () => {
           p_name: itemData.name,
           p_content: itemData.description || '',
           p_image_urls: finalImageUrls, // Can be null to remove images
-          p_conversation_ai_enabled: itemData.conversationAiEnabled,
-          p_ai_prompt: itemData.aiPrompt || ''
+          p_ai_metadata: itemData.aiMetadata || '',
         });
       
       if (err) throw err;

@@ -132,7 +132,7 @@ import Checkbox from 'primevue/checkbox';
 import InputText from 'primevue/inputtext';
 import Message from 'primevue/message';
 import { ref, computed } from 'vue';
-import { useAuthStore } from '@/stores/auth';
+import { useAuthStore } from '@/stores/auth.js';
 import { useRouter } from 'vue-router';
 
 const email = ref('');

@@ -59,26 +59,15 @@
                         </h3>
                         
                         <div class="space-y-4">
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-700 mb-2">Name *</label>
-                                    <InputText 
-                                        v-model="formData.name" 
-                                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
-                                        :placeholder="`Enter ${itemTypeLabel.toLowerCase()} name`"
-                                        :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': !formData.name.trim() }"
-                                    />
-                                    <p v-if="!formData.name.trim()" class="text-sm text-red-600 mt-1">Name is required</p>
-                                </div>
-
-                                <div class="flex items-center gap-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                                    <i class="pi pi-robot text-blue-600 text-lg"></i>
-                                    <div class="flex-1 min-w-0">
-                                        <label class="block text-sm font-medium text-blue-900">AI Guide</label>
-                                        <p class="text-xs text-blue-700">Enable AI assistance</p>
-                                    </div>
-                                    <ToggleSwitch v-model="formData.conversationAiEnabled" />
-                                </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Name *</label>
+                                <InputText 
+                                    v-model="formData.name" 
+                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                                    :placeholder="`Enter ${itemTypeLabel.toLowerCase()} name`"
+                                    :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': !formData.name.trim() }"
+                                />
+                                <p v-if="!formData.name.trim()" class="text-sm text-red-600 mt-1">Name is required</p>
                             </div>
 
                             <div>
@@ -94,24 +83,24 @@
                         </div>
                     </div>
 
-                    <!-- AI Configuration Section -->
-                    <div v-if="formData.conversationAiEnabled" class="border-t border-slate-200 pt-6">
+                    <!-- AI Metadata Section (shown only if card has AI enabled) -->
+                    <div v-if="cardAiEnabled" class="border-t border-slate-200 pt-6">
                         <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
                             <label class="block text-sm font-medium text-amber-900 mb-2 flex items-center gap-2">
-                                <i class="pi pi-microphone"></i>
-                                AI Instructions
+                                <i class="pi pi-database"></i>
+                                AI Metadata
                             </label>
                             <Textarea 
-                                v-model="formData.aiPrompt" 
+                                v-model="formData.aiMetadata" 
                                 rows="4" 
                                 class="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors resize-none bg-white" 
-                                :placeholder="getAiPromptPlaceholder()"
+                                :placeholder="getAiMetadataPlaceholder()"
                                 autoResize
                             />
                             <div class="mt-3 p-3 bg-amber-100 rounded-lg">
                                 <p class="text-xs text-amber-800 flex items-start gap-2">
                                     <i class="pi pi-lightbulb mt-0.5 flex-shrink-0"></i>
-                                    <span><strong>Tip:</strong> Provide specific context about this {{ itemTypeLabel.toLowerCase() }}. The AI will use this information to answer visitor questions accurately and engagingly.</span>
+                                    <span><strong>Tip:</strong> Provide additional knowledge data about this {{ itemTypeLabel.toLowerCase() }}. Include facts, specifications, historical details, or other information that will help the AI provide accurate and detailed responses to visitor questions.</span>
                                 </p>
                             </div>
                         </div>
@@ -128,7 +117,6 @@ import FileUpload from 'primevue/fileupload';
 import Button from 'primevue/button';
 import Textarea from 'primevue/textarea';
 import InputText from 'primevue/inputtext';
-import ToggleSwitch from 'primevue/toggleswitch';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
 
 const props = defineProps({
@@ -147,6 +135,10 @@ const props = defineProps({
     parentId: {
         type: String,
         default: null
+    },
+    cardAiEnabled: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -166,12 +158,12 @@ const getDescriptionPlaceholder = () => {
     }
 };
 
-// Generate appropriate placeholder text for AI prompt
-const getAiPromptPlaceholder = () => {
+// Generate appropriate placeholder text for AI metadata
+const getAiMetadataPlaceholder = () => {
     if (props.parentId) {
-        return 'You are a knowledgeable guide explaining this sub-item to visitors. Provide detailed information about its significance, context, and interesting details. Answer visitor questions in their preferred language. Keep responses engaging and informative...';
+        return 'Provide additional knowledge data about this sub-item. Include facts, specifications, historical details, or other information that will help the AI provide accurate and detailed responses to visitor questions...';
     } else {
-        return 'You are a knowledgeable guide introducing this content to visitors. Explain its significance, context, and key highlights. Answer visitor questions in their preferred language. Keep responses engaging and educational...';
+        return 'Provide additional knowledge data about this content item. Include facts, specifications, historical details, or other information that will help the AI provide accurate and detailed responses to visitor questions...';
     }
 };
 
@@ -180,8 +172,7 @@ const formData = ref({
     name: '',
     description: '',
     imageUrl: null,
-    conversationAiEnabled: false,
-    aiPrompt: ''
+    aiMetadata: ''
 });
 
 const previewImage = ref(null);
@@ -196,8 +187,7 @@ watch(() => props.contentItem, (newVal) => {
             name: newVal.name || '',
             description: newVal.description || newVal.content || '',
             imageUrl: newVal.imageUrl || (newVal.image_urls && newVal.image_urls.length > 0 ? newVal.image_urls[0] : null),
-            conversationAiEnabled: newVal.conversationAiEnabled || newVal.conversation_ai_enabled || false,
-            aiPrompt: newVal.aiPrompt || newVal.ai_prompt || ''
+            aiMetadata: newVal.aiMetadata || newVal.ai_metadata || ''
         };
         originalData.value = { ...formData.value };
         previewImage.value = formData.value.imageUrl;
@@ -255,8 +245,7 @@ const resetForm = () => {
         name: '',
         description: '',
         imageUrl: null,
-        conversationAiEnabled: false,
-        aiPrompt: ''
+        aiMetadata: ''
     };
     previewImage.value = null;
     imageFile.value = null;

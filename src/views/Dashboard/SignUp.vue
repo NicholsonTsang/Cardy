@@ -54,7 +54,7 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Message from 'primevue/message';
 import { ref } from 'vue';
-import { useAuthStore } from '@/stores/auth';
+import { useAuthStore } from '@/stores/auth.js';
 import { useRouter } from 'vue-router';
 
 const email = ref('');

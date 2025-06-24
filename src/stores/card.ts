@@ -6,13 +6,15 @@ import { v4 as uuidv4 } from 'uuid';
 // Define interfaces for Card data
 export interface Card {
     id: string;
+    user_id: string;
     name: string;
     description: string;
-    image_urls: string[];
+    content_render_mode: string;
+    qr_code_position: string;
+    image_urls: string[] | null;
     published: boolean;
     conversation_ai_enabled: boolean;
     ai_prompt: string;
-    qr_code_position: string;
     created_at: string;
     updated_at: string;
     // Add other fields from get_user_cards if necessary
@@ -23,10 +25,10 @@ export interface CardFormData {
     description: string;
     imageFile?: File | null;
     image_urls?: string[];
-    conversationAiEnabled: boolean;
-    aiPrompt: string;
+    conversation_ai_enabled: boolean;
+    ai_prompt: string;
     published: boolean;
-    qrCodePosition: string;
+    qr_code_position: string;
     id?: string; // Optional for updates
 }
 
@@ -105,10 +107,10 @@ export const useCardStore = defineStore('card', () => {
                     p_name: cardData.name,
                     p_description: cardData.description,
                     p_image_urls: imageUrls,
-                    p_conversation_ai_enabled: cardData.conversationAiEnabled,
-                    p_ai_prompt: cardData.aiPrompt || '',
-                    p_published: cardData.published || false,
-                    p_qr_code_position: cardData.qrCodePosition || 'BR'
+                    p_conversation_ai_enabled: cardData.conversation_ai_enabled,
+                    p_ai_prompt: cardData.ai_prompt,
+                    p_published: cardData.published,
+                    p_qr_code_position: cardData.qr_code_position
                 });
                 
             if (createError) throw createError;
@@ -182,10 +184,10 @@ export const useCardStore = defineStore('card', () => {
                 p_name: updateData.name,
                 p_description: updateData.description,
                 p_image_urls: updateData.image_urls || null,
-                p_conversation_ai_enabled: updateData.conversationAiEnabled,
-                p_ai_prompt: updateData.aiPrompt || '',
+                p_conversation_ai_enabled: updateData.conversation_ai_enabled,
+                p_ai_prompt: updateData.ai_prompt,
                 p_published: updateData.published,
-                p_qr_code_position: updateData.qrCodePosition
+                p_qr_code_position: updateData.qr_code_position
             };
             
             const { data, error: updateError } = await supabase
