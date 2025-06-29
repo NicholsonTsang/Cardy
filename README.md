@@ -1,22 +1,42 @@
-# Cardy - The Modern Card Issuance & Management Platform
+# Cardy - AI-Powered Digital Souvenir & Exhibition Platform
 
-Cardy is a comprehensive, modern web application designed for creating, issuing, and managing physical and digital cards. It provides a robust platform for "Card Issuers" to design card templates, manage content, issue cards in batches, and handle physical print requests. The system also includes a full-featured "Admin" panel for user verification, print request fulfillment, and overall system management.
+Cardy is a comprehensive platform that transforms visitor experiences at museums, exhibitions, and cultural sites through interactive AI-powered digital souvenirs. The platform enables institutions to create beautiful physical souvenir cards with QR codes that link to rich multimedia content and natural voice conversations with AI guides.
 
-The platform is built on a modern tech stack, including Vue.js 3, PrimeVue, Tailwind CSS for the frontend, and a powerful Supabase backend with a PostgreSQL database and stored procedures for business logic.
+The platform features a complete **Landing Page** that showcases the product to potential customers, along with robust dashboards for institutions ("Card Issuers") to design cards, manage content, issue souvenir batches, and handle physical printing. The system includes a full-featured "Admin" panel for user verification, print request fulfillment, and system management.
+
+Built on a modern tech stack including Vue.js 3, PrimeVue, Tailwind CSS, Supabase backend with PostgreSQL, and **OpenAI Realtime API** for voice-based AI conversations.
 
 ## Features
 
-### For Card Issuers
--   Create and manage digital cards.
--   Design card templates.
--   Issue cards in batches for distribution.
--   Track card activation and usage.
--   Request physical printing services.
+### 🏛️ Public Landing Page
+- **Professional Marketing Site**: Comprehensive landing page showcasing Cardy's capabilities
+- **Interactive Demo**: Sample souvenir card with working QR code demonstration
+- **Multi-language AI Showcase**: Highlights voice conversation capabilities in 5 languages
+- **Use Case Examples**: Museums, tourist attractions, cultural heritage sites, theme parks
+- **Flexible Pricing Plans**: Full-service, self-service, and pilot program options
+- **Direct CTA Integration**: Seamless routing to signup and login portals
 
-### For Card Recipients
--   Activate cards using QR codes or activation codes.
--   View interactive card content.
--   Access additional resources and information.
+### 🏛️ For Institutions (Card Issuers)
+- Create and manage digital souvenir cards for exhibits and attractions
+- Design interactive card templates with 2:3 aspect ratio for collectibles
+- Configure AI voice guides with custom prompts for specific exhibits
+- Issue souvenir cards in batches for visitors
+- Track visitor engagement and analytics
+- Request professional physical printing and shipping services
+
+### 👥 For Visitors
+- Scan QR codes on physical souvenir cards with any smartphone
+- Access rich multimedia content about exhibits, artifacts, and locations
+- Engage in natural voice conversations with AI guides in multiple languages
+- No app downloads or account creation required
+- Take home beautiful physical collectible souvenirs
+
+### 🤖 AI-Powered Features
+- **Real-time Voice Conversations**: Natural dialogue with OpenAI Realtime API
+- **Multi-language Support**: English, Cantonese, Mandarin, Spanish, French
+- **Context-Aware Responses**: AI understands specific exhibit and cultural content
+- **Low-latency Audio**: WebRTC streaming for responsive conversations
+- **Secure Token Management**: Ephemeral authentication via Supabase Edge Functions
 
 ## Key Features & Workflows
 

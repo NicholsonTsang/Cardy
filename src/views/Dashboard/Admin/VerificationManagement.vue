@@ -216,11 +216,16 @@
           :rows="20"
           :rowsPerPageOptions="[10, 20, 50]"
           responsiveLayout="scroll"
-          emptyMessage="No verifications found."
           class="border-0"
           dataKey="user_id"
           :globalFilterFields="['user_email', 'public_name', 'full_name', 'company_name']"
         >
+          <template #empty>
+            <EmptyState 
+              v-bind="currentEmptyStateConfig"
+              @action="handleEmptyStateAction"
+            />
+          </template>
           <template #header>
             <div class="flex justify-between items-center">
               <span class="text-lg font-semibold text-slate-900">
@@ -519,6 +524,8 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import MyDialog from '@/components/MyDialog.vue'
 import Calendar from 'primevue/calendar'
+import EmptyState from '@/components/EmptyState.vue'
+import { getEmptyStateConfig, determineEmptyScenario } from '@/utils/emptyStateConfigs.js'
 
 const router = useRouter()
 const verificationsStore = useAdminVerificationsStore()
@@ -610,6 +617,20 @@ const averageReviewTime = computed(() => {
 
 const displayedVerifications = computed(() => {
   return filteredVerifications.value
+})
+
+// Empty state configuration
+const currentEmptyStateConfig = computed(() => {
+  const scenario = determineEmptyScenario(
+    displayedVerifications.value,
+    verificationsStore.isLoadingVerifications,
+    false, // hasError - could be extended with error handling
+    hasActiveFilters.value
+  )
+  
+  if (!scenario) return null
+  
+  return getEmptyStateConfig('verifications', scenario)
 })
 
 // Enhanced filtering methods
@@ -716,6 +737,12 @@ const refreshData = async () => {
   ])
   allVerifications.value = verificationsStore.allVerifications
   filterVerifications()
+}
+
+const handleEmptyStateAction = () => {
+  if (hasActiveFilters.value) {
+    clearAllFilters()
+  }
 }
 
 const onStatusFilterChange = async () => {

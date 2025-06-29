@@ -2,7 +2,7 @@
     <div class="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center p-4">
         <div class="w-full max-w-md">
             <!-- Main Card -->
-            <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+            <main class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden" role="main" aria-labelledby="signin-title">
                 <!-- Header Section -->
                 <div class="px-8 pt-8 pb-6 text-center">
                     <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl mb-6 shadow-lg">
@@ -15,8 +15,20 @@
                             />
                         </svg>
                     </div>
-                    <h1 class="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h1>
-                    <p class="text-slate-600">Sign in to your Cardy CMS account</p>
+                    <h1 id="signin-title" class="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h1>
+                    <p class="text-slate-600" id="signin-description">Sign in to your Cardy CMS account</p>
+                    
+                    <!-- Back to Landing Page -->
+                    <div class="mt-4">
+                        <Button 
+                            @click="router.push('/')" 
+                            text 
+                            icon="pi pi-arrow-left" 
+                            label="Back to Home" 
+                            class="text-slate-600 hover:text-blue-600 transition-colors"
+                            size="small"
+                        />
+                    </div>
                 </div>
 
                 <!-- Form Section -->
@@ -30,7 +42,8 @@
                             icon="pi pi-google" 
                             severity="secondary" 
                             class="w-full py-3 border-slate-300 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200"
-                            label="Continue with Google" 
+                            label="Continue with Google"
+                            :aria-label="isLoading ? 'Signing in with Google...' : 'Sign in with Google'"
                         />
                     </div>
 
@@ -111,17 +124,23 @@
                         </p>
                     </div>
                 </div>
-            </div>
+            </main>
 
             <!-- Footer -->
-            <div class="mt-8 text-center">
+            <footer class="mt-8 text-center" role="contentinfo">
                 <p class="text-sm text-slate-500">
                     By signing in, you agree to our 
-                    <a href="#" class="text-blue-600 hover:text-blue-800 transition-colors">Terms of Service</a> 
+                    <a href="#" 
+                       class="text-blue-600 hover:text-blue-800 transition-colors"
+                       aria-label="Read our Terms of Service"
+                       @keydown.enter.prevent="$event.target.click()">Terms of Service</a> 
                     and 
-                    <a href="#" class="text-blue-600 hover:text-blue-800 transition-colors">Privacy Policy</a>
+                    <a href="#" 
+                       class="text-blue-600 hover:text-blue-800 transition-colors"
+                       aria-label="Read our Privacy Policy"
+                       @keydown.enter.prevent="$event.target.click()">Privacy Policy</a>
                 </p>
-            </div>
+            </footer>
         </div>
     </div>
 </template>
@@ -197,6 +216,19 @@ function goToSignUp() {
 </script>
 
 <style scoped>
+/* Screen reader only content */
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
 /* Custom input styling */
 :deep(.p-inputtext) {
     transition: all 0.2s ease-in-out;
@@ -205,6 +237,8 @@ function goToSignUp() {
 :deep(.p-inputtext:focus) {
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
 }
 
 /* Custom button styling */
@@ -216,6 +250,17 @@ function goToSignUp() {
     transform: translateY(-1px);
 }
 
+:deep(.p-button:focus) {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+:deep(.p-button:disabled) {
+    transform: none;
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 /* Custom checkbox styling */
 :deep(.p-checkbox .p-checkbox-box) {
     border-color: #cbd5e1;
@@ -224,5 +269,42 @@ function goToSignUp() {
 
 :deep(.p-checkbox .p-checkbox-box:hover) {
     border-color: #3b82f6;
+}
+
+:deep(.p-checkbox .p-checkbox-box:focus) {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* Enhanced focus indicators for links */
+a:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    :deep(.p-inputtext) {
+        border-width: 2px;
+    }
+    
+    :deep(.p-button) {
+        border-width: 2px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    :deep(.p-inputtext),
+    :deep(.p-button),
+    :deep(.p-checkbox .p-checkbox-box) {
+        transition: none;
+    }
+    
+    :deep(.p-inputtext:focus),
+    :deep(.p-button:hover) {
+        transform: none;
+    }
 }
 </style>

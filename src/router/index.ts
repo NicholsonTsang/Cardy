@@ -95,7 +95,8 @@ const router = createRouter({
     },
     {
       path: '/',
-      redirect: '/login'
+      name: 'landing',
+      component: () => import('@/views/Public/LandingPage.vue')
     },
     // Catch-all for any other routes
     {
@@ -187,7 +188,7 @@ router.beforeEach(async (to, from, next) => {
       });
       next(getDefaultRouteForRole(userRole));
     } else {
-      // Allow navigation
+      // Allow navigation to public routes (landing, login, signup, public card view)
       next();
     }
   }

@@ -149,12 +149,17 @@
                             :rowsPerPageOptions="[20, 50, 100]"
                             stripedRows
                             responsiveLayout="scroll"
-                            emptyMessage="No cards have been issued yet."
                             class="border-0"
                             dataKey="id"
                             filterDisplay="menu"
                             :globalFilterFields="['id', 'activation_code', 'card_name', 'batch_name']"
                         >
+                            <template #empty>
+                                <EmptyState 
+                                    v-bind="issuedCardsEmptyStateConfig"
+                                    @action="handleIssuedCardsEmptyAction"
+                                />
+                            </template>
                             <template #header>
                                 <div class="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-4">
                                     <div class="flex flex-col sm:flex-row gap-3 flex-1">
@@ -313,12 +318,17 @@
                             :rowsPerPageOptions="[15, 30, 50]"
                             stripedRows
                             responsiveLayout="scroll"
-                            emptyMessage="No batches created yet."
                             class="border-0"
                             dataKey="id"
                             filterDisplay="menu"
                             :globalFilterFields="['batch_name', 'card_name']"
                         >
+                            <template #empty>
+                                <EmptyState 
+                                    v-bind="batchesEmptyStateConfig"
+                                    @action="handleBatchesEmptyAction"
+                                />
+                            </template>
                             <template #header>
                                 <div class="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center mb-4">
                                     <div class="flex flex-col sm:flex-row gap-3 flex-1">
@@ -617,6 +627,8 @@ import Tab from 'primevue/tab'
 import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import MyDialog from '@/components/MyDialog.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import { getEmptyStateConfig, determineEmptyScenario } from '@/utils/emptyStateConfigs.js'
 
 // Placeholder image
 import cardPlaceholder from '@/assets/images/card-placeholder.svg'
@@ -698,6 +710,52 @@ const filteredBatches = computed(() => {
   return filtered
 })
 
+// Helper to check if card filters are active
+const hasActiveCardFilters = computed(() => {
+  return !!(
+    cardFilters.value.global?.value || 
+    cardFilters.value.card_name?.value || 
+    cardFilters.value.active?.value
+  )
+})
+
+// Helper to check if batch filters are active
+const hasActiveBatchFilters = computed(() => {
+  return !!(
+    batchFilters.value.global?.value || 
+    batchFilters.value.is_disabled?.value || 
+    selectedPaymentFilter.value
+  )
+})
+
+// Empty state configuration for issued cards
+const issuedCardsEmptyStateConfig = computed(() => {
+  const scenario = determineEmptyScenario(
+    userIssuedCards.value,
+    isLoadingUserData.value,
+    false, // hasError - could be extended with error handling
+    hasActiveCardFilters.value
+  )
+  
+  if (!scenario) return null
+  
+  return getEmptyStateConfig('issuedCards', scenario)
+})
+
+// Empty state configuration for batches
+const batchesEmptyStateConfig = computed(() => {
+  const scenario = determineEmptyScenario(
+    filteredBatches.value,
+    isLoadingUserData.value,
+    false, // hasError - could be extended with error handling
+    hasActiveBatchFilters.value
+  )
+  
+  if (!scenario) return null
+  
+  return getEmptyStateConfig('cardBatches', scenario)
+})
+
 // Methods
 const formatDate = (dateString) => {
   if (!dateString) return '-'
@@ -724,6 +782,25 @@ const clearBatchFilters = () => {
     is_disabled: { value: null, matchMode: FilterMatchMode.EQUALS }
   }
   selectedPaymentFilter.value = null
+}
+
+// Handle empty state actions
+const handleIssuedCardsEmptyAction = () => {
+  if (hasActiveCardFilters.value) {
+    clearCardFilters()
+  } else {
+    // Navigate to card creation
+    router.push('/cms/mycards')
+  }
+}
+
+const handleBatchesEmptyAction = () => {
+  if (hasActiveBatchFilters.value) {
+    clearBatchFilters()
+  } else {
+    // Navigate to card creation to issue new batches
+    router.push('/cms/mycards')
+  }
 }
 
 const viewCardDetails = (card) => {

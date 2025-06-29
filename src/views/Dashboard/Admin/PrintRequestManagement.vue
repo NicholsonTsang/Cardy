@@ -235,11 +235,16 @@
           :rows="20"
           :rowsPerPageOptions="[10, 20, 50]"
           responsiveLayout="scroll"
-          emptyMessage="No print requests found."
           class="border-0"
           dataKey="id"
           :globalFilterFields="['user_email', 'user_public_name', 'card_name', 'batch_name']"
         >
+          <template #empty>
+            <EmptyState 
+              v-bind="currentEmptyStateConfig"
+              @action="handleEmptyStateAction"
+            />
+          </template>
           <template #header>
             <div class="flex justify-between items-center">
               <span class="text-lg font-semibold text-slate-900">
@@ -521,6 +526,8 @@ import Dialog from 'primevue/dialog'
 import ConfirmDialog from 'primevue/confirmdialog'
 import MyDialog from '@/components/MyDialog.vue'
 import Calendar from 'primevue/calendar'
+import EmptyState from '@/components/EmptyState.vue'
+import { getEmptyStateConfig, determineEmptyScenario } from '@/utils/emptyStateConfigs.js'
 
 const printRequestsStore = useAdminPrintRequestsStore()
 const confirm = useConfirm()
@@ -606,11 +613,31 @@ const displayedPrintRequests = computed(() => {
   return filteredPrintRequests.value
 })
 
+// Empty state configuration
+const currentEmptyStateConfig = computed(() => {
+  const scenario = determineEmptyScenario(
+    displayedPrintRequests.value,
+    printRequestsStore.isLoadingPrintRequests,
+    false, // hasError - could be extended with error handling
+    hasActiveFilters.value
+  )
+  
+  if (!scenario) return null
+  
+  return getEmptyStateConfig('printRequests', scenario)
+})
+
 // Methods
 const refreshData = async () => {
   await printRequestsStore.fetchAllPrintRequests()
   allPrintRequests.value = printRequestsStore.printRequests
   filterPrintRequests()
+}
+
+const handleEmptyStateAction = () => {
+  if (hasActiveFilters.value) {
+    clearAllFilters()
+  }
 }
 
 const onStatusFilterChange = async () => {

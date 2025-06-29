@@ -59,8 +59,13 @@
           :globalFilterFields="['batch_name', 'batch_number']"
           :filters="filters"
           filterDisplay="menu"
-          emptyMessage="No batches created yet for this card design."
         >
+          <template #empty>
+            <EmptyState 
+              v-bind="emptyStateConfig"
+              @action="handleEmptyStateAction"
+            />
+          </template>
           <template #header>
             <div class="flex justify-end">
               <Button 
@@ -942,6 +947,8 @@ import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import AddressForm from './AddressForm.vue';
 import PrintRequestStatusDisplay from './PrintRequestStatusDisplay.vue';
+import EmptyState from './EmptyState.vue';
+import { getEmptyStateConfig } from '@/utils/emptyStateConfigs.js';
 
 // Props
 const props = defineProps({
@@ -1041,6 +1048,14 @@ const batchOptions = computed(() => {
   return uniqueBatches.map(batch => ({ label: batch, value: batch }));
 });
 
+// Empty state configuration for card batches
+const emptyStateConfig = computed(() => {
+  return getEmptyStateConfig('cardBatches', 'noData', {
+    buttonLabel: 'Issue New Batch',
+    buttonIcon: 'pi pi-send'
+  });
+});
+
 const statusOptions = computed(() => [
   { label: 'All', value: null },
   { label: 'Active', value: true },
@@ -1106,6 +1121,11 @@ const clearFilters = () => {
     batch_name: { value: null, matchMode: FilterMatchMode.EQUALS },
     active: { value: null, matchMode: FilterMatchMode.EQUALS }
   };
+};
+
+// Handle empty state action
+const handleEmptyStateAction = () => {
+  showIssueBatchDialog.value = true;
 };
 
 // Validate batch form

@@ -5,17 +5,19 @@
             <div class="flex flex-col h-full">
                 <!-- Logo Section -->
                 <div class="flex items-center justify-center flex-shrink-0 p-4 lg:p-3" :class="theme.sidebarHeader">
-                    <div class="relative">
-                        <svg class="fill-white w-8 h-8 lg:w-6 lg:h-6" viewBox="0 0 28 29" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path
-                                fill-rule="evenodd"
-                                clip-rule="evenodd"
-                                d="M14 28.5C21.732 28.5 28 22.232 28 14.5C28 6.76802 21.732 0.5 14 0.5C6.26801 0.5 0 6.76802 0 14.5C0 22.232 6.26801 28.5 14 28.5ZM18.3675 7.02179C18.5801 6.26664 17.8473 5.82009 17.178 6.29691L7.83519 12.9527C7.10936 13.4698 7.22353 14.5 8.00669 14.5H10.4669V14.4809H15.2618L11.3549 15.8595L9.63251 21.9782C9.41992 22.7334 10.1527 23.1799 10.822 22.7031L20.1649 16.0473C20.8907 15.5302 20.7764 14.5 19.9934 14.5H16.2625L18.3675 7.02179Z"
-                            />
-                        </svg>
-                        <div class="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white" :class="userRole === 'admin' ? 'bg-yellow-400' : 'bg-green-400'"></div>
-                    </div>
-                    <span class="ml-3 lg:hidden text-white font-semibold text-lg">{{ sidebarTitle }}</span>
+                    <router-link :to="{ name: 'landing' }" class="flex items-center cursor-pointer hover:opacity-80 transition-opacity">
+                        <div class="relative">
+                            <svg class="fill-white w-8 h-8 lg:w-6 lg:h-6" viewBox="0 0 28 29" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path
+                                    fill-rule="evenodd"
+                                    clip-rule="evenodd"
+                                    d="M14 28.5C21.732 28.5 28 22.232 28 14.5C28 6.76802 21.732 0.5 14 0.5C6.26801 0.5 0 6.76802 0 14.5C0 22.232 6.26801 28.5 14 28.5ZM18.3675 7.02179C18.5801 6.26664 17.8473 5.82009 17.178 6.29691L7.83519 12.9527C7.10936 13.4698 7.22353 14.5 8.00669 14.5H10.4669V14.4809H15.2618L11.3549 15.8595L9.63251 21.9782C9.41992 22.7334 10.1527 23.1799 10.822 22.7031L20.1649 16.0473C20.8907 15.5302 20.7764 14.5 19.9934 14.5H16.2625L18.3675 7.02179Z"
+                                />
+                            </svg>
+                            <div class="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-white" :class="userRole === 'admin' ? 'bg-yellow-400' : 'bg-green-400'"></div>
+                        </div>
+                        <span class="ml-3 lg:hidden text-white font-semibold text-lg">{{ sidebarTitle }}</span>
+                    </router-link>
                 </div>
 
                 <!-- Navigation Items -->
