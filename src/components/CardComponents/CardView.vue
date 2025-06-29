@@ -270,36 +270,35 @@ const getQrCodePositionClass = (position) => {
 </script>
 
 <style scoped>
-/* Fixed height container with 3:4 aspect ratio */
+/* Fixed height container with 2:3 aspect ratio (card standard) */
 .card-artwork-container {
-    height: 320px; /* 80 * 4 = 320px (h-80) */
-    width: 240px;   /* 60 * 4 = 240px (w-60) */
-    aspect-ratio: 3/4;
+    height: 360px; /* 240 * 1.5 = 360px for 2:3 ratio */
+    width: 240px;   /* Base width */
+    aspect-ratio: 2/3;
     margin: 0 auto;
 }
 
 /* Responsive adjustments for smaller screens */
 @media (max-width: 640px) {
     .card-artwork-container {
-        height: 280px; /* Slightly smaller on mobile */
+        height: 315px; /* 210 * 1.5 = 315px for 2:3 ratio */
         width: 210px;
     }
 }
 
 @media (max-width: 480px) {
     .card-artwork-container {
-        height: 240px; /* Even smaller on very small screens */
+        height: 270px; /* 180 * 1.5 = 270px for 2:3 ratio */
         width: 180px;
     }
 }
 
-/* Override PrimeVue component font sizes */
-:deep(.p-tag) {
-    font-size: 0.75rem;
-    padding: 0.125rem 0.375rem;
+/* Component-specific styles */
+.card-artwork-container img {
+    transition: all 0.2s ease-in-out;
 }
 
-:deep(.p-button) {
-    font-size: 0.75rem;
+.card-artwork-container:hover img {
+    transform: scale(1.02);
 }
 </style>

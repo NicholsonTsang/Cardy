@@ -847,27 +847,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-/* Custom DataTable styling */
-:deep(.p-datatable .p-datatable-tbody > tr > td) {
-  padding: 0.75rem;
-}
-
-:deep(.p-datatable .p-datatable-thead > tr > th) {
-  padding: 0.75rem;
-  font-weight: 600;
-  background-color: rgb(248 250 252);
-}
-
-/* Tag styling */
-:deep(.p-tag) {
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-/* Button consistency */
-:deep(.p-button) {
-  font-size: 0.75rem;
-}
+/* Component-specific styles - global table theme now handles standard styling */
 
 /* Dialog max height handling */
 :deep(.p-dialog-content) {

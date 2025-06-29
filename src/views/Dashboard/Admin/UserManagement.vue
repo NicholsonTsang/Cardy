@@ -175,7 +175,7 @@
       <DataTable 
         :value="paginatedUsers"
         :loading="verificationsStore.isLoadingVerifications"
-        class="p-datatable-sm"
+        class="border-0"
         stripedRows
         responsiveLayout="scroll"
       >
@@ -1034,18 +1034,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* DataTable customizations */
-:deep(.p-datatable .p-datatable-tbody > tr > td) {
-  padding: 1rem 0.75rem;
-}
-
-:deep(.p-tag) {
-  font-size: 0.75rem;
-}
-
-:deep(.p-button) {
-  font-size: 0.75rem;
-}
+/* Component-specific styles - global table theme now handles standard styling */
 
 /* Responsive adjustments */
 @media (max-width: 768px) {

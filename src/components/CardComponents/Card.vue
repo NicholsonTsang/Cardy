@@ -43,12 +43,5 @@ const handleDeleteCardRequested = (cardId) => {
 /* Styles for CardGeneral itself, if any, can go here. */
 /* The aspect-ratio style is now in CardCreateEditView's view mode */
 
-/* Ensure consistent typography */
-:deep(.p-button) {
-    font-size: 0.75rem;
-}
-
-:deep(.p-tag) {
-    font-size: 0.75rem;
-}
+/* Component-specific styles - typography now handled by global theme */
 </style>

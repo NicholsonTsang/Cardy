@@ -381,12 +381,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* Component-specific styles - global table theme now handles standard styling */
+
 :deep(.p-datatable .p-datatable-tbody > tr:hover) {
   background-color: #f8fafc;
-}
-
-:deep(.p-button-small) {
-  font-size: 0.75rem;
-  padding: 0.375rem 0.75rem;
 }
 </style> 

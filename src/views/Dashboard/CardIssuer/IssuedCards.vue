@@ -819,33 +819,5 @@ onMounted(async () => {
 }
 
 /* Compact DataTable styling */
-:deep(.p-datatable-sm) {
-  font-size: 0.75rem;
-  line-height: 1.2;
-}
-
-:deep(.p-datatable-sm .p-datatable-thead > tr > th) {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-:deep(.p-datatable-sm .p-datatable-tbody > tr > td) {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.75rem;
-}
-
-:deep(.p-paginator) {
-  padding: 0.5rem;
-  font-size: 0.75rem;
-}
-
-:deep(.p-button) {
-  font-size: 0.75rem;
-}
-
-:deep(.p-tag) {
-  font-size: 0.75rem;
-  padding: 0.125rem 0.375rem;
-}
+/* Component-specific styles - global table theme now handles standard styling */
 </style>

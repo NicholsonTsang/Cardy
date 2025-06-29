@@ -49,7 +49,7 @@
         <DataTable 
           :value="batches" 
           :loading="isLoading"
-          class="p-datatable-sm"
+          class="border-0"
           :paginator="batches.length > 10"
           :rows="10"
           :rowsPerPageOptions="[5, 10, 20]"
@@ -1703,44 +1703,19 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* Ultra compact DataTable styling */
-:deep(.p-datatable-sm) {
-  font-size: 0.75rem;
-  line-height: 1.2;
-}
-
-:deep(.p-datatable-sm .p-datatable-thead > tr > th) {
-  padding: 0.25rem 0.375rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-:deep(.p-datatable-sm .p-datatable-tbody > tr > td) {
-  padding: 0.25rem 0.375rem;
-  font-size: 0.75rem;
-}
-
-:deep(.p-paginator) {
-  padding: 0.375rem;
-  font-size: 0.75rem;
-}
-
+/* Component-specific styles - global table theme now handles standard styling */
 :deep(.p-card .p-card-content) {
   padding: 0;
 }
 
-:deep(.p-button) {
-  font-size: 0.75rem;
-}
-
-:deep(.p-tag) {
-  font-size: 0.75rem;
-  padding: 0.125rem 0.375rem;
-}
-
+/* Custom badge sizing for this component */
 :deep(.p-badge) {
-  font-size: 0.75rem;
   min-width: 1.25rem;
   height: 1.25rem;
+}
+
+/* Stripe payment specific styles */
+.stripe-elements {
+  transition: all 0.2s ease-in-out;
 }
 </style>

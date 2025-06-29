@@ -109,8 +109,8 @@ defineExpose({
     width: 100%;
     justify-content: center;
 }
-.aspect-\[3\/4\] { /* Added from CardGeneral */
-    aspect-ratio: 3 / 4;
+.aspect-\[2\/3\] { /* Card standard aspect ratio */
+    aspect-ratio: 2 / 3;
 }
 
 .view-section {
@@ -122,8 +122,5 @@ defineExpose({
     }
 }
 
-/* Override PrimeVue component font sizes */
-:deep(.p-fileupload-basic .p-button) {
-    font-size: 0.75rem;
-}
+/* Component-specific styles - styles now handled by global theme */
 </style>
