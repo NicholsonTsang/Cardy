@@ -9,21 +9,6 @@
                 </h3>
                 <p class="text-sm text-slate-600 mt-1">See how your card will appear to visitors on mobile devices</p>
             </div>
-            <div class="flex items-center gap-2">
-                <Tag 
-                    :value="cardProp.published ? 'Published' : 'Draft'" 
-                    :severity="cardProp.published ? 'success' : 'warning'"
-                    icon="pi pi-circle-fill"
-                />
-                <Button 
-                    v-if="cardProp.published"
-                    label="Publish Card" 
-                    icon="pi pi-globe" 
-                    @click="handlePublishCard" 
-                    severity="success"
-                    size="small"
-                />
-            </div>
         </div>
 
         <!-- Preview Content -->
@@ -140,7 +125,6 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { supabase } from '@/lib/supabase';
 import Button from 'primevue/button';
-import Tag from 'primevue/tag';
 import ProgressSpinner from 'primevue/progressspinner';
 
 const props = defineProps({
@@ -149,8 +133,6 @@ const props = defineProps({
         required: true
     }
 });
-
-const emit = defineEmits(['publish-card', 'switch-to-issuance']);
 
 const isLoading = ref(false);
 const iframeLoading = ref(true);
@@ -219,10 +201,6 @@ const handleIframeLoad = () => {
 const handleIframeError = () => {
     iframeLoading.value = false;
     error.value = 'Failed to load mobile preview content';
-};
-
-const handlePublishCard = () => {
-    emit('publish-card');
 };
 
 // Watch for card changes

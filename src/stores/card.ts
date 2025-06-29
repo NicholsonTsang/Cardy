@@ -12,7 +12,6 @@ export interface Card {
     content_render_mode: string;
     qr_code_position: string;
     image_urls: string[] | null;
-    published: boolean;
     conversation_ai_enabled: boolean;
     ai_prompt: string;
     created_at: string;
@@ -27,7 +26,6 @@ export interface CardFormData {
     image_urls?: string[];
     conversation_ai_enabled: boolean;
     ai_prompt: string;
-    published: boolean;
     qr_code_position: string;
     id?: string; // Optional for updates
 }
@@ -109,7 +107,6 @@ export const useCardStore = defineStore('card', () => {
                     p_image_urls: imageUrls,
                     p_conversation_ai_enabled: cardData.conversation_ai_enabled,
                     p_ai_prompt: cardData.ai_prompt,
-                    p_published: cardData.published,
                     p_qr_code_position: cardData.qr_code_position
                 });
                 
@@ -186,7 +183,6 @@ export const useCardStore = defineStore('card', () => {
                 p_image_urls: updateData.image_urls || null,
                 p_conversation_ai_enabled: updateData.conversation_ai_enabled,
                 p_ai_prompt: updateData.ai_prompt,
-                p_published: updateData.published,
                 p_qr_code_position: updateData.qr_code_position
             };
             

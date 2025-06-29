@@ -44,7 +44,6 @@ RETURNS TABLE (
     name TEXT,
     description TEXT,
     image_urls TEXT[],
-    published BOOLEAN,
     conversation_ai_enabled BOOLEAN,
     ai_prompt TEXT,
     qr_code_position TEXT,
@@ -58,7 +57,6 @@ BEGIN
         c.name, 
         c.description, 
         c.image_urls, 
-        c.published, 
         c.conversation_ai_enabled,
         c.ai_prompt,
         c.qr_code_position::TEXT,
@@ -77,7 +75,6 @@ CREATE OR REPLACE FUNCTION create_card(
     p_image_urls TEXT[] DEFAULT ARRAY[]::TEXT[],
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
     p_ai_prompt TEXT DEFAULT '',
-    p_published BOOLEAN DEFAULT FALSE,
     p_qr_code_position TEXT DEFAULT 'BR'
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -90,7 +87,6 @@ BEGIN
         image_urls,
         conversation_ai_enabled,
         ai_prompt,
-        published,
         qr_code_position
     ) VALUES (
         auth.uid(),
@@ -99,7 +95,6 @@ BEGIN
         p_image_urls,
         p_conversation_ai_enabled,
         p_ai_prompt,
-        p_published,
         p_qr_code_position::"QRCodePosition"
     )
     RETURNING id INTO v_card_id;
@@ -118,7 +113,6 @@ RETURNS TABLE (
     content_render_mode TEXT,
     qr_code_position TEXT,
     image_urls TEXT[],
-    published BOOLEAN,
     conversation_ai_enabled BOOLEAN,
     ai_prompt TEXT,
     created_at TIMESTAMPTZ,
@@ -134,7 +128,6 @@ BEGIN
         c.content_render_mode::TEXT,
         c.qr_code_position::TEXT,
         c.image_urls, 
-        c.published, 
         c.conversation_ai_enabled,
         c.ai_prompt,
         c.created_at, 
@@ -153,7 +146,6 @@ CREATE OR REPLACE FUNCTION update_card(
     p_image_urls TEXT[] DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT NULL,
     p_ai_prompt TEXT DEFAULT NULL,
-    p_published BOOLEAN DEFAULT NULL,
     p_qr_code_position TEXT DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
@@ -164,7 +156,6 @@ BEGIN
         image_urls = COALESCE(p_image_urls, image_urls),
         conversation_ai_enabled = COALESCE(p_conversation_ai_enabled, conversation_ai_enabled),
         ai_prompt = COALESCE(p_ai_prompt, ai_prompt),
-        published = COALESCE(p_published, published),
         qr_code_position = COALESCE(p_qr_code_position::"QRCodePosition", qr_code_position),
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
@@ -470,15 +461,14 @@ DECLARE
     v_batch_number INTEGER;
     v_batch_name TEXT;
     v_card_owner_id UUID;
-    v_card_published BOOLEAN;
 BEGIN
     -- Validate inputs
     IF p_quantity <= 0 OR p_quantity > 1000 THEN
         RAISE EXCEPTION 'Quantity must be between 1 and 1000';
     END IF;
     
-    -- Check if the user owns the card and if the card is published
-    SELECT user_id, published INTO v_card_owner_id, v_card_published
+    -- Check if the user owns the card
+    SELECT user_id INTO v_card_owner_id
     FROM cards
     WHERE id = p_card_id;
     
@@ -488,10 +478,6 @@ BEGIN
 
     IF v_card_owner_id != auth.uid() THEN
         RAISE EXCEPTION 'Not authorized to issue cards for this card.';
-    END IF;
-
-    IF v_card_published = FALSE THEN
-        RAISE EXCEPTION 'Cannot issue batches for an unpublished card. Please publish the card design first.';
     END IF;
     
     -- Get next batch number
@@ -1263,7 +1249,6 @@ BEGIN
     FROM cards c
     LEFT JOIN content_items ci ON c.id = ci.card_id
     WHERE c.id = v_card_design_id 
-    AND (c.published = TRUE OR v_is_owner_access = TRUE) -- Show published cards or allow owner access
     ORDER BY 
         CASE WHEN ci.parent_id IS NULL THEN ci.sort_order ELSE 999999 END,
         ci.parent_id NULLS FIRST,
@@ -1674,7 +1659,6 @@ RETURNS TABLE (
     id UUID,
     card_id UUID,
     card_name TEXT,
-    card_published BOOLEAN,
     batch_name TEXT,
     batch_number INTEGER,
     cards_count INTEGER,
@@ -1699,7 +1683,6 @@ BEGIN
         cb.id,
         cb.card_id,
         c.name as card_name,
-        c.published as card_published,
         cb.batch_name,
         cb.batch_number,
         cb.cards_count,
@@ -1721,7 +1704,7 @@ BEGIN
     LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
     JOIN cards c ON cb.card_id = c.id
     WHERE c.user_id = auth.uid()
-    GROUP BY cb.id, cb.card_id, c.name, c.published, cb.batch_name, cb.batch_number, cb.cards_count, cb.is_disabled, 
+    GROUP BY cb.id, cb.card_id, c.name, cb.batch_name, cb.batch_number, cb.cards_count, cb.is_disabled, 
              cb.payment_required, cb.payment_completed, cb.payment_amount_cents, cb.payment_completed_at,
              cb.payment_waived, cb.payment_waived_by, cb.payment_waived_at, cb.payment_waiver_reason,
              cb.cards_generated, cb.cards_generated_at, cb.created_at, cb.updated_at
@@ -2545,7 +2528,6 @@ GRANT EXECUTE ON FUNCTION reset_user_verification(UUID) TO authenticated;
 CREATE OR REPLACE FUNCTION get_user_activity_summary(p_user_id UUID)
 RETURNS TABLE (
     total_cards BIGINT,
-    published_cards BIGINT,
     total_batches BIGINT,
     total_issued_cards BIGINT,
     activated_cards BIGINT,
@@ -2570,7 +2552,6 @@ BEGIN
     RETURN QUERY
     SELECT 
         COALESCE(card_stats.total_cards, 0) as total_cards,
-        COALESCE(card_stats.published_cards, 0) as published_cards,
         COALESCE(batch_stats.total_batches, 0) as total_batches,
         COALESCE(issued_stats.total_issued, 0) as total_issued_cards,
         COALESCE(issued_stats.activated, 0) as activated_cards,
@@ -2582,7 +2563,6 @@ BEGIN
     FROM (
         SELECT 
             COUNT(*) as total_cards,
-            COUNT(*) FILTER (WHERE published = true) as published_cards,
             MAX(created_at) as last_created
         FROM cards
         WHERE user_id = p_user_id

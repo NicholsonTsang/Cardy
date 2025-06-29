@@ -4,6 +4,20 @@ Cardy is a comprehensive, modern web application designed for creating, issuing,
 
 The platform is built on a modern tech stack, including Vue.js 3, PrimeVue, Tailwind CSS for the frontend, and a powerful Supabase backend with a PostgreSQL database and stored procedures for business logic.
 
+## Features
+
+### For Card Issuers
+-   Create and manage digital cards.
+-   Design card templates.
+-   Issue cards in batches for distribution.
+-   Track card activation and usage.
+-   Request physical printing services.
+
+### For Card Recipients
+-   Activate cards using QR codes or activation codes.
+-   View interactive card content.
+-   Access additional resources and information.
+
 ## Key Features & Workflows
 
 ### 1. User Roles & Authentication
@@ -34,22 +48,20 @@ The core workflow for a Card Issuer from creation to a physical product is as fo
 graph TD
     A[Sign Up / Login] --> B{Design Card};
     B --> C{Add Content};
-    C --> D{Publish Card Design};
-    D --> E{Issue New Batch};
-    E --> F{Complete Payment};
-    F --> G{Request Print};
-    G --> H[Admin Fulfills Request];
+    C --> D{Issue New Batch};
+    D --> E{Complete Payment};
+    E --> F{Request Print};
+    F --> G[Admin Fulfills Request];
 ```
 
 **Functional Description:**
 
 1.  **Design Card**: Issuers create a new card design, providing a name, description, and images.
 2.  **Add Content**: They add structured content items to the card, which can be viewed by the end-user. This includes an optional AI-powered conversational feature.
-3.  **Publish Card**: A card design must be "Published" before any batches can be issued. This finalizes the design.
-4.  **Issue New Batch**: The issuer creates a batch of a specific quantity for a published card. At this stage, a payment requirement is generated.
-5.  **Complete Payment**: The issuer must pay for the batch ($2.00 per card) via Stripe integration. The system generates a payment intent, and upon successful payment, the cards are officially "generated" in the database.
-6.  **Request Print**: Once a batch is paid for and cards are generated, the issuer can submit a print request, selecting a shipping address.
-7.  **Withdraw Request**: Issuers can withdraw a print request only if its status is `SUBMITTED`. Once it is `PROCESSING`, it cannot be withdrawn.
+3.  **Issue New Batch**: The issuer creates a batch of a specific quantity for their card. At this stage, a payment requirement is generated.
+4.  **Complete Payment**: The issuer must pay for the batch ($2.00 per card) via Stripe integration. The system generates a payment intent, and upon successful payment, the cards are officially "generated" in the database.
+5.  **Request Print**: Once a batch is paid for and cards are generated, the issuer can submit a print request, selecting a shipping address.
+6.  **Withdraw Request**: Issuers can withdraw a print request only if its status is `SUBMITTED`. Once it is `PROCESSING`, it cannot be withdrawn.
 
 ### 3. Admin Workflow
 

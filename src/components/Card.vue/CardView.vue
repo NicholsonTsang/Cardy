@@ -3,12 +3,7 @@
         <!-- Action Bar -->
         <div class="flex justify-between items-center" v-if="cardProp">
             <div class="flex items-center gap-3">
-                <Tag 
-                    :value="cardProp.published ? 'Published' : 'Draft'" 
-                    :severity="cardProp.published ? 'success' : 'warning'"
-                    icon="pi pi-circle-fill"
-                    class="px-3 py-1"
-                />
+                <!-- Remove the publishing tag -->
             </div>
             <div class="flex gap-3">
                 <Button 

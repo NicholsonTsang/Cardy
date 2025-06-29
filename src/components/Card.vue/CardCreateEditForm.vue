@@ -69,7 +69,7 @@
                             @select="handleImageUpload"
                             :auto="false"
                             customUpload
-                            class="w-full"
+                            class="w-full mt-4"
                             severity="info"
                         />
                         <p class="text-xs text-slate-500 mt-2 flex items-center gap-1">
@@ -128,34 +128,26 @@
                                         class="w-full"
                                     />
                                 </div>
-                                
-                                <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                                    <ToggleSwitch v-model="formData.published" inputId="published" />
-                                    <div class="flex-1">
-                                        <label for="published" class="block text-sm font-medium text-slate-700">Published</label>
-                                        <p class="text-xs text-slate-500">Make this card visible to users</p>
-                                    </div>
-                                    <i class="pi pi-info-circle text-slate-400 cursor-help" 
-                                       v-tooltip="'Published cards are visible to users'"></i>
-                                </div>
                             </div>
                         </div>
                     </div>
                     
                     <!-- AI Configuration Section -->
-                    <div class="border-t border-slate-200 pt-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <div>
-                                <h3 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                                    <i class="pi pi-robot text-blue-600"></i>
-                                    AI Assistant Configuration
-                                </h3>
-                                <p class="text-sm text-slate-600 mt-1">Enable AI assistance for content item questions and provide instructions</p>
+                    <div class="p-4 border border-slate-200 rounded-lg">
+                        <h4 class="font-medium text-slate-900 mb-3 flex items-center gap-2">
+                            <i class="pi pi-brain text-blue-600"></i>
+                            AI Assistant Configuration
+                        </h4>
+                        
+                        <!-- AI Toggle -->
+                        <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200 mb-4">
+                            <ToggleSwitch v-model="formData.conversation_ai_enabled" inputId="ai_enabled" />
+                            <div class="flex-1">
+                                <label for="ai_enabled" class="block text-sm font-medium text-slate-700">Enable AI Assistant</label>
+                                <p class="text-xs text-slate-500">Allow visitors to ask questions about your card content</p>
                             </div>
-                            <ToggleSwitch 
-                                v-model="formData.conversation_ai_enabled" 
-                                class="ml-4"
-                            />
+                            <i class="pi pi-info-circle text-slate-400 cursor-help" 
+                               v-tooltip="'AI assistant helps visitors interact with your card content'"></i>
                         </div>
 
                         <!-- AI Instructions Field (shown when AI is enabled) -->
@@ -218,7 +210,6 @@ const formData = reactive({
     description: '',
     qr_code_position: 'BR',
     ai_prompt: '',
-    published: false,
     conversation_ai_enabled: false
 });
 
@@ -257,7 +248,6 @@ const initializeForm = () => {
         formData.description = props.cardProp.description || '';
         formData.qr_code_position = props.cardProp.qr_code_position || 'BR';
         formData.ai_prompt = props.cardProp.ai_prompt || '';
-        formData.published = props.cardProp.published || false;
         formData.conversation_ai_enabled = props.cardProp.conversation_ai_enabled || false;
         
         // Set preview image if available
@@ -280,7 +270,6 @@ const resetForm = () => {
     formData.description = '';
     formData.qr_code_position = 'BR';
     formData.ai_prompt = '';
-    formData.published = false;
     formData.conversation_ai_enabled = false;
     previewImage.value = null;
     imageFile.value = null;

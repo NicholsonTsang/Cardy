@@ -10,14 +10,14 @@
 -- =================================================================
 ALTER TABLE cards ENABLE ROW LEVEL SECURITY;
 
--- SELECT: Users can read their own cards, admins can read all, anon can read published
+-- SELECT: Users can read their own cards, admins can read all, anon can read all cards
 DROP POLICY IF EXISTS "Allow card reads" ON cards;
 CREATE POLICY "Allow card reads"
 ON cards FOR SELECT
 USING (
     auth.uid() = user_id OR 
     auth.jwt()->>'role' = 'admin' OR
-    (auth.role() = 'anon' AND published = TRUE)
+    auth.role() = 'anon'
 );
 
 -- MODIFICATIONS: Only admins can directly modify (forces stored procedure usage)
@@ -32,14 +32,14 @@ WITH CHECK (auth.jwt()->>'role' = 'admin');
 -- =================================================================
 ALTER TABLE content_items ENABLE ROW LEVEL SECURITY;
 
--- SELECT: Users can read content for their cards, admins all, anon for published cards
+-- SELECT: Users can read content for their cards, admins all, anon for all cards
 DROP POLICY IF EXISTS "Allow content reads" ON content_items;
 CREATE POLICY "Allow content reads"
 ON content_items FOR SELECT
 USING (
     auth.jwt()->>'role' = 'admin' OR
     EXISTS (SELECT 1 FROM cards c WHERE c.id = content_items.card_id AND 
-        (c.user_id = auth.uid() OR (auth.role() = 'anon' AND c.published = TRUE)))
+        (c.user_id = auth.uid() OR auth.role() = 'anon'))
 );
 
 -- MODIFICATIONS: Admin only (forces stored procedure usage)
@@ -75,14 +75,14 @@ WITH CHECK (auth.jwt()->>'role' = 'admin');
 -- =================================================================
 ALTER TABLE issue_cards ENABLE ROW LEVEL SECURITY;
 
--- SELECT: Users can read issued cards for their designs, admins all, anon for published cards
+-- SELECT: Users can read issued cards for their designs, admins all, anon for all cards
 DROP POLICY IF EXISTS "Allow issued card reads" ON issue_cards;
 CREATE POLICY "Allow issued card reads"
 ON issue_cards FOR SELECT 
 USING (
     auth.jwt()->>'role' = 'admin' OR
     EXISTS (SELECT 1 FROM cards c WHERE c.id = issue_cards.card_id AND 
-        (c.user_id = auth.uid() OR (auth.role() = 'anon' AND c.published = TRUE)))
+        (c.user_id = auth.uid() OR auth.role() = 'anon'))
 );
 
 -- UPDATE: Allow anon activation only (specific stored procedure operation)
@@ -90,9 +90,7 @@ DROP POLICY IF EXISTS "Allow anon activation only" ON issue_cards;
 CREATE POLICY "Allow anon activation only"
 ON issue_cards FOR UPDATE 
 TO anon
-USING (
-    EXISTS (SELECT 1 FROM cards c WHERE c.id = issue_cards.card_id AND c.published = TRUE)
-    )
+USING (TRUE)
 WITH CHECK (TRUE); -- Validation handled by stored procedure
 
 -- MODIFICATIONS: Admin only for other operations (forces stored procedure usage)
@@ -206,3 +204,62 @@ DROP POLICY IF EXISTS "Users can view their own profile" ON user_profiles;
 DROP POLICY IF EXISTS "Users can create their own profile" ON user_profiles;
 DROP POLICY IF EXISTS "Users can update their own basic profile" ON user_profiles;
 DROP POLICY IF EXISTS "Allow full access to admins on user_profiles" ON user_profiles;
+
+-- ===========================================
+-- CARDS TABLE POLICIES
+-- ===========================================
+
+-- Authenticated users can CRUD their own cards, admins can read all
+CREATE POLICY "Users can CRUD their own cards, admins can read all" ON cards
+FOR ALL USING (
+  (auth.role() = 'authenticated' AND user_id = auth.uid()) OR
+  (auth.role() = 'authenticated' AND (auth.jwt() ->> 'user_metadata')::jsonb ->> 'role' = 'admin')
+);
+
+-- ===========================================
+-- CONTENT ITEMS TABLE POLICIES
+-- ===========================================
+
+-- Authenticated users can CRUD content for their cards, admins can read all
+CREATE POLICY "Users can CRUD content for their cards, admins can read all" ON content_items
+FOR ALL USING (
+EXISTS (
+  SELECT 1 FROM cards c 
+  WHERE c.id = content_items.card_id AND 
+  ((auth.role() = 'authenticated' AND c.user_id = auth.uid()) OR
+   (auth.role() = 'authenticated' AND (auth.jwt() ->> 'user_metadata')::jsonb ->> 'role' = 'admin'))
+));
+
+-- ===========================================
+-- CARD BATCHES TABLE POLICIES
+-- ===========================================
+
+-- Authenticated users can CRUD batches for their cards, admins can read all
+CREATE POLICY "Users can CRUD batches for their cards, admins can read all" ON card_batches
+FOR ALL USING (
+EXISTS (
+  SELECT 1 FROM cards c 
+  WHERE c.id = card_batches.card_id AND 
+  ((auth.role() = 'authenticated' AND c.user_id = auth.uid()) OR
+   (auth.role() = 'authenticated' AND (auth.jwt() ->> 'user_metadata')::jsonb ->> 'role' = 'admin'))
+));
+
+-- ===========================================
+-- ISSUE CARDS TABLE POLICIES
+-- ===========================================
+
+-- Authenticated users can read issued cards for their designs, admins can read all
+CREATE POLICY "Users can read issued cards for their designs, admins can read all" ON issue_cards
+FOR ALL USING (
+EXISTS (
+  SELECT 1 FROM cards c 
+  WHERE c.id = issue_cards.card_id AND 
+  ((auth.role() = 'authenticated' AND c.user_id = auth.uid()) OR
+   (auth.role() = 'authenticated' AND (auth.jwt() ->> 'user_metadata')::jsonb ->> 'role' = 'admin'))
+));
+
+-- Anonymous users can activate cards (no condition needed as activation is a public action)
+CREATE POLICY "Anonymous users can activate any card" ON issue_cards
+FOR UPDATE USING (
+TRUE
+);

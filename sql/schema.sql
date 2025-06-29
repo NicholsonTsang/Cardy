@@ -122,7 +122,6 @@ CREATE TABLE cards (
     content_render_mode "ContentRenderMode" DEFAULT 'SINGLE_SERIES_MULTI_ITEMS',
     qr_code_position "QRCodePosition" DEFAULT 'BR',
     image_urls TEXT[],
-    published BOOLEAN DEFAULT false,
     conversation_ai_enabled BOOLEAN DEFAULT false,
     ai_prompt TEXT DEFAULT '' NOT NULL, -- Instructions for AI assistance when answering content item questions
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

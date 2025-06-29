@@ -67,8 +67,7 @@
                 label="Issue New Batch" 
                 icon="pi pi-plus" 
                 @click="showIssueBatchDialog = true"
-                :disabled="!currentCard?.published"
-                v-tooltip.top="currentCard?.published ? 'Create a new batch of cards' : 'Card must be published to issue batches'"
+                v-tooltip.top="'Create a new batch of cards'"
               />
             </div>
           </template>

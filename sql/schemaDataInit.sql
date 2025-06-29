@@ -66,8 +66,15 @@ BEGIN
   );
 
   -- Card 1: Adventure Travel Guide (AI enabled)
-  INSERT INTO public.cards (user_id, name, description, image_urls, published, conversation_ai_enabled, ai_prompt)
-  VALUES (v_user_id, 'Adventure Travel Guide', 'Your comprehensive guide to extreme adventures and outdoor expeditions around the world. From mountain climbing to deep-sea diving, discover thrilling experiences that push the boundaries of human exploration.', ARRAY['https://picsum.photos/seed/card1/600/400'], true, true, 'You are an expert adventure travel guide with extensive knowledge of extreme sports, outdoor expeditions, and adventure destinations worldwide. Help visitors plan their adventures, understand safety requirements, and discover new thrilling experiences. Be enthusiastic and knowledgeable about adventure travel.')
+  INSERT INTO public.cards (user_id, name, description, image_urls, conversation_ai_enabled, ai_prompt)
+  VALUES (
+    v_user_id, 
+    'Adventure Series', 
+    'Explore breathtaking destinations and outdoor adventures around the world.',
+    ARRAY['https://images.unsplash.com/photo-1464822759844-d150ad6d1dff?w=400&h=300&fit=crop']::TEXT[],
+    TRUE, 
+    'You are an adventure travel expert who helps people discover amazing outdoor experiences. Answer questions about destinations, activities, gear, and travel tips with enthusiasm and practical knowledge.'
+  )
   RETURNING id INTO v_card_id_1;
 
   -- Content Items for Card 1 - 5 parent items with 7+ children each
@@ -157,8 +164,8 @@ BEGIN
     (v_card_id_1, 'Photography Tips', 'Capture stunning adventure moments with professional techniques.', ARRAY['https://picsum.photos/seed/c1s3/600/400'], 7);
 
   -- Card 2: Culinary Masterclass (AI enabled)
-  INSERT INTO public.cards (user_id, name, description, image_urls, published, conversation_ai_enabled, ai_prompt)
-  VALUES (v_user_id, 'Culinary Masterclass', 'Master the art of international cuisine with professional techniques, authentic recipes, and cultural insights from renowned chefs around the globe.', ARRAY['https://picsum.photos/seed/card2/600/400'], true, true, 'You are a world-class chef and culinary instructor with expertise in international cuisines, cooking techniques, and food culture. Help visitors learn cooking skills, understand ingredients, and explore culinary traditions from around the world. Be passionate and detailed in your culinary guidance.')
+  INSERT INTO public.cards (user_id, name, description, image_urls, conversation_ai_enabled, ai_prompt)
+  VALUES (v_user_id, 'Culinary Masterclass', 'Master the art of international cuisine with professional techniques, authentic recipes, and cultural insights from renowned chefs around the globe.', ARRAY['https://picsum.photos/seed/card2/600/400']::TEXT[], true, true, 'You are a world-class chef and culinary instructor with expertise in international cuisines, cooking techniques, and food culture. Help visitors learn cooking skills, understand ingredients, and explore culinary traditions from around the world. Be passionate and detailed in your culinary guidance.')
   RETURNING id INTO v_card_id_2;
 
   -- Content Items for Card 2 - 5 parent items with 7+ children each
@@ -249,8 +256,8 @@ BEGIN
     (v_card_id_2, 'Culinary Nutrition', 'Understanding the health benefits of different cooking methods.', ARRAY['https://picsum.photos/seed/c2s3/600/400'], 7);
 
   -- Card 3: Historical Chronicles (AI enabled)
-  INSERT INTO public.cards (user_id, name, description, image_urls, published, conversation_ai_enabled, ai_prompt)
-  VALUES (v_user_id, 'Historical Chronicles', 'Journey through pivotal moments in human history, exploring ancient civilizations, major conflicts, and cultural transformations that shaped our modern world.', ARRAY['https://picsum.photos/seed/card3/600/400'], true, true, 'You are a distinguished historian with deep knowledge of world history, ancient civilizations, and historical events. Help visitors understand historical contexts, analyze historical significance, and connect past events to modern times. Be scholarly yet engaging in your historical explanations.')
+  INSERT INTO public.cards (user_id, name, description, image_urls, conversation_ai_enabled, ai_prompt)
+  VALUES (v_user_id, 'Historical Chronicles', 'Journey through pivotal moments in human history, exploring ancient civilizations, major conflicts, and cultural transformations that shaped our modern world.', ARRAY['https://picsum.photos/seed/card3/600/400']::TEXT[], true, true, 'You are a distinguished historian with deep knowledge of world history, ancient civilizations, and historical events. Help visitors understand historical contexts, analyze historical significance, and connect past events to modern times. Be scholarly yet engaging in your historical explanations.')
   RETURNING id INTO v_card_id_3;
   
   -- Content Items for Card 3 - 5 parent items with 7+ children each
@@ -362,7 +369,7 @@ BEGIN
   VALUES (v_card_id_2, 'batch-2', 2, 30, true, v_user_id, NOW() - INTERVAL '3 days')
   RETURNING id INTO v_batch_id_2_2;
 
-  -- Batches for Card 3 (Historical Journeys) - Unpublished card, so smaller batches
+  -- Batches for Card 3 (Historical Journeys) - smaller test batch
   INSERT INTO public.card_batches (card_id, batch_name, batch_number, cards_count, is_disabled, created_by, created_at)
   VALUES (v_card_id_3, 'batch-1', 1, 10, false, v_user_id, NOW() - INTERVAL '2 days')
   RETURNING id INTO v_batch_id_3_1;

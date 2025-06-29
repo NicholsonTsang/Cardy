@@ -1,42 +1,12 @@
--- Migration: Add preview mode functionality for cards
--- Date: 2024-12-01
--- Description: Allow card owners to preview their cards without requiring issued cards
+-- Migration: Remove published column from cards table
+-- Date: 2024-12-15
+-- Description: This migration removes the published field from the cards table and updates related functions
 
--- Get card preview URL without requiring issued cards (for card owners)
-CREATE OR REPLACE FUNCTION get_card_preview_access(p_card_id UUID)
-RETURNS TABLE (
-    preview_mode BOOLEAN,
-    card_id UUID,
-    activation_code TEXT
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID;
-BEGIN
-    -- Check if the user owns the card
-    SELECT user_id INTO v_user_id FROM cards WHERE id = p_card_id;
-    
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Card not found.';
-    END IF;
-    
-    IF v_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to preview this card.';
-    END IF;
-    
-    -- Return preview access with special preview mode flag and the card_id as the "issue_card_id"
-    -- Using a special preview activation code that will be recognized by the backend
-    RETURN QUERY
-    SELECT 
-        TRUE as preview_mode,
-        p_card_id as card_id,
-        'PREVIEW_' || p_card_id::TEXT as activation_code;
-END;
-$$;
+-- First drop the column from the cards table
+ALTER TABLE cards DROP COLUMN IF EXISTS published;
 
--- Grant execute permission for the new preview access function
-GRANT EXECUTE ON FUNCTION get_card_preview_access(UUID) TO authenticated;
-
--- Enhanced get_public_card_content to support preview mode
+-- Update the get_public_card_content function to remove published condition
+-- (This would have been done in the stored procedures file, but ensuring it's applied in migration)
 CREATE OR REPLACE FUNCTION get_public_card_content(p_issue_card_id UUID, p_activation_code TEXT)
 RETURNS TABLE (
     card_name TEXT,
@@ -49,8 +19,7 @@ RETURNS TABLE (
     content_item_name TEXT,
     content_item_content TEXT,
     content_item_image_urls TEXT[],
-    content_item_conversation_ai_enabled BOOLEAN,
-    content_item_ai_prompt TEXT,
+    content_item_ai_metadata TEXT,
     content_item_sort_order INTEGER,
     is_activated BOOLEAN
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -117,7 +86,7 @@ BEGIN
                 -- If activation code doesn't match, return empty
                 RETURN;
             END IF;
-            
+
             -- If the card is not active, attempt to activate it
             IF NOT v_is_card_active THEN
                 UPDATE issue_cards
@@ -145,8 +114,7 @@ BEGIN
         ci.name AS content_item_name,
         ci.content AS content_item_content,
         ci.image_urls AS content_item_image_urls,
-        ci.conversation_ai_enabled AS content_item_conversation_ai_enabled,
-        ci.ai_prompt AS content_item_ai_prompt,
+        ci.ai_metadata AS content_item_ai_metadata,
         ci.sort_order AS content_item_sort_order,
         v_is_card_active AS is_activated -- Return the current/newly activated status
     FROM cards c

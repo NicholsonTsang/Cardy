@@ -378,7 +378,6 @@
                                 <template #body="{ data }">
                                     <div class="flex items-center gap-2">
                                         <span class="font-medium text-slate-900">{{ data.card_name }}</span>
-                                        <Tag v-if="!data.card_published" value="Draft" severity="warning" class="text-xs"/>
                                     </div>
                                 </template>
                             </Column>

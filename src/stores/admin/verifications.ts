@@ -39,7 +39,6 @@ export interface AdminUser {
 
 export interface AdminUserActivity {
   total_cards: number
-  published_cards: number
   total_batches: number
   total_issued_cards: number
   activated_cards: number
@@ -48,6 +47,26 @@ export interface AdminUserActivity {
   last_card_created?: string
   last_batch_created?: string
   last_print_request?: string
+}
+
+export interface AdminDashboardStats {
+  total_users: number
+  total_card_designs: number
+  total_issued_cards: number
+  total_activated_cards: number
+  pending_verifications: number
+  approved_verifications: number
+  rejected_verifications: number
+  pending_print_requests: number
+  active_print_requests: number
+  completed_print_requests: number
+  total_batches: number
+  paid_batches: number
+  unpaid_batches: number
+  waived_batches: number
+  pending_payment_batches: number
+  total_revenue_cents: number
+  total_waived_amount_cents: number
 }
 
 export const useAdminVerificationsStore = defineStore('adminVerifications', () => {
@@ -227,7 +246,6 @@ export const useAdminVerificationsStore = defineStore('adminVerifications', () =
       
       return data?.[0] || {
         total_cards: 0,
-        published_cards: 0,
         total_batches: 0,
         total_issued_cards: 0,
         activated_cards: 0,

@@ -105,8 +105,8 @@
                             :key="card.id" 
                             class="group relative p-4 rounded-lg border border-slate-200 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-blue-300"
                             :class="{ 
-                                'bg-blue-50 border-blue-300 shadow-md': selectedCard === cards.findIndex(c => c.id === card.id),
-                                'bg-white hover:bg-slate-50': selectedCard !== cards.findIndex(c => c.id === card.id)
+                                'bg-blue-50 border-blue-300 shadow-md': selectedCardId === card.id,
+                                'bg-white hover:bg-slate-50': selectedCardId !== card.id
                             }"
                             @click="setSelectedCardById(card.id)"
                         >
@@ -128,18 +128,11 @@
                                     <p class="text-sm text-slate-500 mt-1">
                                         Created {{ formatDate(card.created_at) }}
                                     </p>
-                                    <div class="flex items-center gap-2 mt-2">
-                                        <Tag 
-                                            :value="card.published ? 'Published' : 'Draft'" 
-                                            :severity="card.published ? 'success' : 'info'" 
-                                            class="px-2 py-0.5"
-                                        />
-                                    </div>
                                 </div>
                             </div>
                             
                             <!-- Selection Indicator -->
-                            <div v-if="selectedCard === cards.findIndex(c => c.id === card.id)" class="absolute top-2 right-2">
+                            <div v-if="selectedCardId === card.id" class="absolute top-2 right-2">
                                 <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
                             </div>
                         </div>
@@ -161,7 +154,7 @@
             <!-- Card Details Preview -->
             <div class="lg:col-span-3 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
                 <!-- NEW: Unified empty state for the details pane. It shows if no card is selected. -->
-                <div v-if="selectedCard === null" class="flex-1 flex items-center justify-center p-8">
+                <div v-if="selectedCardId === null" class="flex-1 flex items-center justify-center p-8">
                     <div class="text-center">
                         <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <i class="pi pi-id-card text-3xl text-slate-400"></i>
@@ -176,19 +169,13 @@
                 </div>
 
                 <!-- Card Details - now safely rendered only when a card is selected -->
-                <div v-else class="flex-1 flex flex-col">
+                <div v-else-if="selectedCardObject" class="flex-1 flex flex-col">
                     <!-- Card Header -->
                     <div class="p-6 border-b border-slate-200 bg-white">
                         <div class="flex items-center justify-between">
                             <div>
-                                <h2 class="text-xl font-semibold text-slate-900">{{ cards[selectedCard].name }}</h2>
+                                <h2 class="text-xl font-semibold text-slate-900">{{ selectedCardObject.name }}</h2>
                                 <p class="text-slate-600 mt-1">Manage your card design, content, and issuance.</p>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                 <Tag 
-                                    :value="cards[selectedCard].published ? 'Published' : 'Draft'" 
-                                    :severity="cards[selectedCard].published ? 'success' : 'info'" 
-                                />
                             </div>
                         </div>
                     </div>
@@ -207,24 +194,33 @@
                                 <div class="h-full overflow-y-auto p-6">
                                     <CardGeneral 
                                         v-if="index === 0"
-                                        :cardProp="cards[selectedCard]"
-                                        @update-card="handleCardUpdateFromGeneral(cards[selectedCard].id, $event)"
+                                        :cardProp="selectedCardObject"
+                                        @update-card="handleCardUpdateFromGeneral(selectedCardObject.id, $event)"
                                         @cancel-edit="handleCardCancelFromGeneral"
                                         @delete-card-requested="triggerDeleteConfirmation"
                                     />
-                                    <CardContent v-if="index === 1" :cardId="cards[selectedCard].id" :cardAiEnabled="cards[selectedCard].conversation_ai_enabled" :key="cards[selectedCard].id + '-content'" />
-                                    <CardIssurance v-if="index === 2" :cardId="cards[selectedCard].id" :key="cards[selectedCard].id + '-issurance'" />
+                                    <CardContent v-if="index === 1" :cardId="selectedCardObject.id" :cardAiEnabled="selectedCardObject.conversation_ai_enabled" :key="selectedCardObject.id + '-content'" />
+                                    <CardIssurance v-if="index === 2" :cardId="selectedCardObject.id" :key="selectedCardObject.id + '-issurance'" />
                                     <MobilePreview 
                                         v-if="index === 3" 
-                                        :cardProp="cards[selectedCard]" 
-                                        :key="cards[selectedCard].id + '-mobile-preview'"
-                                        @publish-card="handlePublishCard"
-                                        @switch-to-issuance="handleSwitchToIssuance"
+                                        :cardProp="selectedCardObject" 
+                                        :key="selectedCardObject.id + '-mobile-preview'"
                                     />
                                 </div>
                             </TabPanel>
                         </TabPanels>
                     </Tabs>
+                </div>
+
+                <!-- Fallback for when selectedCard is not null but selectedCardObject is null -->
+                <div v-else class="flex-1 flex items-center justify-center p-8">
+                    <div class="text-center">
+                        <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="pi pi-exclamation-triangle text-3xl text-slate-400"></i>
+                        </div>
+                        <h3 class="text-xl font-medium text-slate-900 mb-2">Card Not Found</h3>
+                        <p class="text-slate-500">The selected card could not be found. Please select another card.</p>
+                    </div>
                 </div>
             </div>
         </div>
@@ -267,7 +263,7 @@ const route = useRoute();
 const router = useRouter();
 
 const search = ref('');
-const selectedCard = ref(null);
+const selectedCardId = ref(null);
 const showAddCardDialog = ref(false);
 const cardCreateEditRef = ref(null);
 
@@ -278,6 +274,14 @@ const selectedMonth = ref(null);
 // Pagination
 const currentPageFirstRecord = ref(0); // PrimeVue Paginator uses 'first' for the index of the first record
 const itemsPerPage = ref(5);
+
+// Add computed property for selected card object with safety check
+const selectedCardObject = computed(() => {
+    if (selectedCardId.value === null || !cards.value) {
+        return null;
+    }
+    return cards.value.find(card => card.id === selectedCardId.value) || null;
+});
 
 const yearOptions = computed(() => {
     if (!cards.value || cards.value.length === 0) return [];
@@ -339,6 +343,18 @@ watch([search, selectedYear, selectedMonth], () => {
     currentPageFirstRecord.value = 0;
 });
 
+// Watch for selectedCard to ensure it's always valid
+watch([selectedCardId, cards], () => {
+    if (selectedCardId.value !== null && (!cards.value || !cards.value.find(card => card.id === selectedCardId.value))) {
+        // If selectedCard points to an invalid index, reset it
+        selectedCardId.value = null;
+        // Also clear the URL params
+        if (route.query.cardId || route.query.tab) {
+            router.replace({ name: route.name, query: {} });
+        }
+    }
+}, { deep: true });
+
 // Watch for route changes (browser back/forward)
 watch(
     () => route.query,
@@ -371,17 +387,14 @@ onMounted(async () => {
 });
 
 const setSelectedCardById = (cardId) => {
-    const cardIndex = cards.value.findIndex(card => card.id === cardId);
-    if (cardIndex !== -1) {
-        selectedCard.value = cardIndex;
-        // Update URL to reflect the selected card
-        updateURL(cardId, activeTab.value);
-    }
+    selectedCardId.value = cardId;
+    // Update URL to reflect the selected card
+    updateURL(cardId, activeTab.value);
 };
 
 // Update URL with card and tab parameters
 const updateURL = (cardId = null, tab = 0) => {
-    const currentCardId = cardId || (selectedCard.value !== null ? cards.value[selectedCard.value]?.id : null);
+    const currentCardId = cardId || (selectedCardId.value !== null ? selectedCardId.value : null);
     const query = {};
     
     if (currentCardId) {
@@ -432,7 +445,7 @@ const initializeFromURL = () => {
     if (route.query.cardId && cards.value.length > 0) {
         const cardIndex = cards.value.findIndex(card => card.id === route.query.cardId);
         if (cardIndex !== -1) {
-            selectedCard.value = cardIndex;
+            selectedCardId.value = cards.value[cardIndex].id;
         } else {
             // Card ID in URL doesn't exist, clear it
             if (route.query.cardId) {
@@ -524,8 +537,8 @@ const triggerDeleteConfirmation = (cardId) => {
                 await cardStore.fetchCards();
                 
                 // If the deleted card was selected, clear selection and URL
-                if (selectedCard.value !== null && cards.value[selectedCard.value]?.id === cardId) {
-                    selectedCard.value = null;
+                if (selectedCardId.value === cardId) {
+                    selectedCardId.value = null;
                     router.replace({ name: route.name, query: {} });
                 }
             } catch (error) {
@@ -546,41 +559,9 @@ const activeTabString = computed(() => activeTab.value.toString());
 
 // Helper function to navigate to a specific card and tab
 const navigateToCard = (cardId, tabName = 'general') => {
-    const cardIndex = cards.value.findIndex(card => card.id === cardId);
-    if (cardIndex !== -1) {
-        selectedCard.value = cardIndex;
-        activeTab.value = getTabIndex(tabName);
-        updateURL(cardId, activeTab.value);
-    }
-};
-
-const handlePublishCard = async () => {
-    if (selectedCard.value !== null) {
-        try {
-            const cardId = cards.value[selectedCard.value].id;
-            await cardStore.updateCard(cardId, { published: true });
-            await cardStore.fetchCards();
-            toast.add({ 
-                severity: 'success', 
-                summary: 'Published', 
-                detail: 'Card published successfully! Mobile preview is now available.', 
-                life: 3000 
-            });
-        } catch (error) {
-            console.error('Failed to publish card:', error);
-            toast.add({ 
-                severity: 'error', 
-                summary: 'Error', 
-                detail: 'Failed to publish card.', 
-                life: 3000 
-            });
-        }
-    }
-};
-
-const handleSwitchToIssuance = () => {
-    activeTab.value = 2;
-    updateURL(null, activeTab.value);
+    selectedCardId.value = cardId;
+    activeTab.value = getTabIndex(tabName);
+    updateURL(cardId, activeTab.value);
 };
 </script>
 

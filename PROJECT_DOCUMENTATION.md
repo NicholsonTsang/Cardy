@@ -24,18 +24,23 @@ The platform operates on a **card issuance and printing service model**:
 
 ## Core Features
 
+### Card Management System
+- **Card Creation & Editing**: Dynamic card design with images, descriptions, and content
+- **Content Management**: Hierarchical content structure with categories and items
+- **QR Code Integration**: Automatic QR code generation for card access
+- **AI Integration**: Optional conversational AI for enhanced user interaction
+
 ### 1. Card Design & Management
 - **Visual Card Designer**: Create cards with custom images, descriptions, and branding
 - **QR Code Positioning**: Configurable QR code placement (Top Left, Top Right, Bottom Left, Bottom Right)
 - **AI Integration**: Conversation AI capabilities with custom prompts
-- **Publishing System**: Draft/Published status for card designs
 - **Content Render Modes**: Support for different content organization patterns
 
 ### 2. Content Management System
-- **Hierarchical Content**: Organize content in series and items
-- **Rich Media Support**: Text, images, links, and multimedia content
-- **Drag & Drop Interface**: Intuitive content organization
-- **Content Versioning**: Track changes and updates to content
+- **Hierarchical Content**: Organize content in series (categories) and items
+- **Rich Media Support**: Images, text, and multimedia content
+- **Content Ordering**: Drag-and-drop content organization
+- **AI Metadata**: Enhanced content with AI-powered interactions
 
 ### 3. Card Issuance & Batch Management
 - **Batch Issuance**: Issue cards in configurable quantities (default: 10-100 cards)
@@ -153,12 +158,12 @@ src/
 3. Click "Create New Card" button
 4. Fill in card details (name, description, image)
 5. Configure QR code position and AI settings
-6. Save card as draft or publish immediately
+6. Save card design
 7. Add content items to the card
 8. Organize content in series and items
 
 ### 2. Card Issuance Workflow
-1. Select a published card design
+1. Select a card design
 2. Navigate to "Card Issuance" tab
 3. Click "Issue New Batch" button
 4. Specify quantity (default: 10 cards)

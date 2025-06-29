@@ -76,7 +76,6 @@ export interface UserIssuedCard extends IssuedCard {
 
 export interface UserCardBatch extends CardBatch {
   card_name: string;
-  card_published: boolean;
 }
 
 export interface UserIssuanceStats {
