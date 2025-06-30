@@ -147,6 +147,34 @@ Cardy implements sophisticated voice-based AI conversations using OpenAI's Realt
 - Language selection and voice settings management
 - Real-time audio visualization and connection status
 
+### AI Content Configuration
+
+**Card AI Prompt (ai_prompt field):**
+- **Purpose**: Sets the overall AI assistance instructions and role definition
+- **Scope**: Applies to all content items within the card
+- **Content**: Defines the AI's role, personality, knowledge domain, and interaction requirements
+- **Example**: "You are a knowledgeable museum curator specializing in ancient history. Provide detailed, educational explanations about historical artifacts and civilizations. Use engaging storytelling to make complex historical concepts accessible to visitors of all ages."
+
+**Content Item AI Metadata (ai_metadata field):**
+- **Purpose**: Provides supplemental information for AI to answer user questions about specific content items
+- **Scope**: Specific to individual content items (exhibits, artifacts, etc.)
+- **Content**: Keywords, topics, and contextual information relevant to the specific content
+- **Format**: Short phrases separated by commas and spaces for optimal UI display
+- **Example**: "ancient civilizations, mesopotamia, egypt, greece, rome"
+- **Usage**: AI uses this metadata to understand the context and provide relevant responses about specific exhibits
+
+**AI Conversation Flow:**
+1. **Card-Level Context**: AI prompt establishes the overall role and interaction style
+2. **Content-Specific Context**: AI metadata provides detailed information about the specific exhibit/artifact
+3. **Dynamic Responses**: AI combines both contexts to provide accurate, engaging answers about the content
+4. **Multi-Language Support**: All AI responses adapt to the visitor's selected language
+
+**Best Practices:**
+- Keep AI metadata concise with short phrases to prevent UI overflow
+- Use descriptive but brief terms that capture the essence of the content
+- Separate metadata items with commas and spaces for proper text wrapping
+- Ensure AI prompts are clear and specific to the museum/exhibition context
+
 ## Database Schema Key Points
 
 ### Core Tables
