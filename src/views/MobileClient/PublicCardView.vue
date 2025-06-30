@@ -1,410 +1,325 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-indigo-900">
+  <div class="mobile-card-container">
     <!-- Loading State -->
-    <div v-if="loading" class="flex items-center justify-center min-h-screen">
-      <div class="text-center">
-        <ProgressSpinner class="w-12 h-12" stroke="3" />
-        <p class="text-white mt-4 text-base">Loading card...</p>
-      </div>
+    <div v-if="isLoading" class="loading-container">
+      <ProgressSpinner class="spinner" />
+      <p class="loading-text">Loading card...</p>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="flex items-center justify-center min-h-screen p-6">
-      <div class="text-center">
-        <i class="pi pi-exclamation-triangle text-red-400 text-5xl mb-4" />
-        <h2 class="text-white text-lg font-bold mb-2">Card Not Found</h2>
-        <p class="text-gray-300 mb-4 text-sm">{{ error }}</p>
-        <Button 
-          label="Try Again" 
-          @click="fetchCardData" 
-          class="p-button-outlined p-button-secondary text-sm"
-        />
-      </div>
+    <div v-else-if="error" class="error-container">
+      <i class="pi pi-exclamation-triangle error-icon" />
+      <h2 class="error-title">Card Not Found</h2>
+      <p class="error-message">{{ error }}</p>
+      <Button 
+        label="Try Again" 
+        @click="handleRetry" 
+        class="retry-button"
+      />
     </div>
 
-    <!-- Card Content -->
-    <div v-else-if="cardData" class="relative">
-      <!-- Header with Back Navigation -->
-      <div v-if="currentView !== 'card'" 
-           class="fixed top-0 left-0 right-0 z-50 bg-black/20 backdrop-blur-md border-b border-white/10">
-        <div class="flex items-center p-4">
-          <Button 
-            @click="navigateBack"
-            icon="pi pi-arrow-left"
-            class="p-button-text p-button-rounded mr-3"
-            style="color: white"
-          />
-          <div>
-            <h3 class="text-white font-semibold text-base">{{ currentTitle }}</h3>
-            <p class="text-gray-300 text-xs">{{ cardData.card_name }}</p>
-          </div>
-        </div>
-      </div>
+    <!-- Main Content -->
+    <div v-else-if="cardData" class="content-wrapper">
+      <!-- Navigation Header -->
+      <MobileHeader 
+        v-if="!isCardView"
+        :title="headerTitle"
+        :subtitle="cardData.card_name"
+        @back="handleNavigation"
+      />
 
-      <!-- Card Overview -->
-      <div v-if="currentView === 'card'" class="relative">
-        <!-- Card Hero Section -->
-        <div class="relative h-screen flex flex-col">
-          <!-- Background Image -->
-          <div class="absolute inset-0">
-            <img 
-              v-if="cardData.card_image_urls && cardData.card_image_urls.length > 0"
-              :src="cardData.card_image_urls[0]" 
-              :alt="cardData.card_name"
-              class="w-full h-full object-cover"
-            />
-            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
-          </div>
-          
-          <!-- Card Content -->
-          <div class="relative z-10 flex-1 flex flex-col justify-end p-6 pb-8">
-            <div class="text-center mb-8">
-              <h1 class="text-2xl font-bold text-white mb-3">{{ cardData.card_name }}</h1>
-              <p class="text-gray-100 text-base leading-relaxed">{{ cardData.card_description }}</p>
-              
-              <!-- Activation Status -->
-              <div class="mt-4">
-                <span v-if="cardData.is_activated" 
-                      class="inline-flex items-center px-3 py-1 rounded-full bg-green-500/20 border border-green-400/30 text-green-300 text-xs">
-                  <i class="pi pi-check-circle mr-2" />
-                  Card Activated
-                </span>
-                <span v-else 
-                      class="inline-flex items-center px-3 py-1 rounded-full bg-yellow-500/20 border border-yellow-400/30 text-yellow-300 text-xs">
-                  <i class="pi pi-clock mr-2" />
-                  Just Activated
-                </span>
-              </div>
-            </div>
+      <!-- Dynamic View Container -->
+      <transition name="view-transition" mode="out-in">
+        <!-- Card Overview -->
+        <CardOverview 
+          v-if="isCardView"
+          :card="cardData"
+          @explore="openContentList"
+        />
 
-            <!-- Explore Button -->
-            <Button 
-              @click="navigateToContentList"
-              class="w-full p-3 text-base font-semibold bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/20 transition-all"
-              style="color: white"
-            >
-              <i class="pi pi-compass mr-2" />
-              Explore Content
-            </Button>
-          </div>
-        </div>
-      </div>
+        <!-- Content List -->
+        <ContentList 
+          v-else-if="isContentListView"
+          :items="topLevelContent"
+          :card-ai-enabled="cardData.conversation_ai_enabled"
+          :all-items="contentItems"
+          @select="selectContent"
+        />
 
-      <!-- First Layer Content List -->
-      <div v-else-if="currentView === 'content-list'" class="min-h-screen" :class="{ 'pt-20': true }">
-        <div class="p-6">
-          <div class="grid gap-4">
-            <div 
-              v-for="item in firstLayerItems" 
-              :key="item.content_item_id"
-              @click="selectContentItem(item)"
-              class="group relative bg-white/10 backdrop-blur-md rounded-xl overflow-hidden border border-white/20 hover:border-white/40 transition-all cursor-pointer"
-            >
-              <!-- Content Item Image -->
-              <div class="aspect-video relative overflow-hidden">
-                <img 
-                  v-if="item.content_item_image_urls && item.content_item_image_urls.length > 0"
-                  :src="item.content_item_image_urls[0]" 
-                  :alt="item.content_item_name"
-                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-                <div v-else class="w-full h-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                  <i class="pi pi-image text-white/40 text-3xl" />
-                </div>
-                <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                
-                <!-- Sub-items indicator -->
-                <div v-if="getSubItemsCount(item.content_item_id) > 0" 
-                     class="absolute top-3 right-3 bg-blue-500/80 backdrop-blur-sm rounded-full px-2 py-1 text-xs text-white font-medium">
-                  {{ getSubItemsCount(item.content_item_id) }} items
-                </div>
-              </div>
-
-              <!-- Content Info -->
-              <div class="p-4">
-                <h3 class="text-white font-semibold text-base mb-2">{{ item.content_item_name }}</h3>
-                <p class="text-gray-300 text-sm line-clamp-2">{{ item.content_item_content }}</p>
-                
-                <div class="flex items-center justify-between mt-3">
-                  <div class="flex items-center text-gray-400 text-xs">
-                    <i class="pi pi-arrow-right mr-1" />
-                    Tap to explore
-                  </div>
-                  <div v-if="item.content_item_conversation_ai_enabled" 
-                       class="text-blue-400 text-xs">
-                    <i class="pi pi-microphone mr-1" />
-                    AI Chat
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Content Item Detail -->
-      <div v-else-if="currentView === 'content-detail'" class="min-h-screen" :class="{ 'pt-20': true }">
-        <div class="p-6">
-          <!-- Selected Content Item -->
-          <div v-if="selectedContentItem" class="mb-8">
-            <!-- Hero Image -->
-            <div class="aspect-video relative overflow-hidden rounded-xl mb-6">
-              <img 
-                v-if="selectedContentItem.content_item_image_urls && selectedContentItem.content_item_image_urls.length > 0"
-                :src="selectedContentItem.content_item_image_urls[0]" 
-                :alt="selectedContentItem.content_item_name"
-                class="w-full h-full object-cover"
-              />
-              <div v-else class="w-full h-full bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
-                <i class="pi pi-image text-white/40 text-5xl" />
-              </div>
-              <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-            </div>
-
-            <!-- Content Info -->
-            <div class="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 mb-6">
-              <h2 class="text-sm font-bold text-white mb-3">{{ selectedContentItem.content_item_name }}</h2>
-              <p class="text-gray-100 leading-relaxed mb-4 text-xs">{{ selectedContentItem.content_item_content }}</p>
-              
-              <!-- Content Item AI Conversation (Compact Button) -->
-              <div v-if="selectedContentItem && cardData.conversation_ai_enabled" class="flex justify-start">
-                <ContentItemConversationAI 
-                  :content-item-name="selectedContentItem.content_item_name"
-                  :content-item-content="selectedContentItem.content_item_content"
-                  :ai-metadata="selectedContentItem.content_item_ai_metadata || ''"
-                  :card-data="{ card_name: cardData.card_name, card_description: cardData.card_description, ai_prompt: cardData.card_ai_prompt }"
-                  :is-mobile="true"
-                  :compact="true"
-                />
-              </div>
-            </div>
-
-            <!-- Sub Items -->
-            <div v-if="currentSubItems.length > 0">
-              <h3 class="text-lg font-semibold text-white mb-4">Related Content</h3>
-              <div class="grid gap-4">
-                <div 
-                  v-for="subItem in currentSubItems" 
-                  :key="subItem.content_item_id"
-                  @click="selectContentItem(subItem)"
-                  class="group bg-white/10 backdrop-blur-md rounded-xl overflow-hidden border border-white/20 hover:border-white/40 transition-all cursor-pointer"
-                >
-                  <div class="flex items-center">
-                    <!-- Sub Item Image -->
-                    <div class="w-20 h-20 flex-shrink-0 relative ml-3">
-                      <img 
-                        v-if="subItem.content_item_image_urls && subItem.content_item_image_urls.length > 0"
-                        :src="subItem.content_item_image_urls[0]" 
-                        :alt="subItem.content_item_name"
-                        class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 rounded-lg"
-                      />
-                      <div v-else class="w-full h-full bg-gradient-to-br from-gray-500/20 to-gray-600/20 flex items-center justify-center rounded-lg">
-                        <i class="pi pi-file text-white/40 text-base" />
-                      </div>
-                    </div>
-                    
-                    <!-- Sub Item Info -->
-                    <div class="flex-1 p-3 text-center">
-                      <h4 class="text-white font-medium mb-1 text-sm">{{ subItem.content_item_name }}</h4>
-                      <p class="text-gray-300 text-xs line-clamp-2">{{ subItem.content_item_content }}</p>
-                      
-                      <div class="flex items-center justify-center gap-4 mt-2">
-                        <div class="flex items-center text-gray-400 text-xs">
-                          <i class="pi pi-arrow-right mr-1" />
-                          Tap to explore
-                        </div>
-                        
-                        <div v-if="cardData.card_conversation_ai_enabled" 
-                             class="text-blue-400 text-xs">
-                          <i class="pi pi-microphone mr-1" />
-                          AI Chat
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+        <!-- Content Detail -->
+        <ContentDetail 
+          v-else-if="isContentDetailView && selectedContent"
+          :content="selectedContent"
+          :sub-items="subContent"
+          :card="cardData"
+          @select="selectContent"
+        />
+      </transition>
     </div>
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted } from 'vue';
-import { useRoute } from 'vue-router';
-import { supabase } from '@/lib/supabase';
-import ProgressSpinner from 'primevue/progressspinner';
-import Button from 'primevue/button';
-import ContentItemConversationAI from '@/components/ContentItemConversationAI.vue';
+<script setup lang="ts">
+import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
+import { supabase } from '@/lib/supabase'
+import ProgressSpinner from 'primevue/progressspinner'
+import Button from 'primevue/button'
 
-const route = useRoute();
+// Child Components - We'll create these next
+import MobileHeader from './components/MobileHeader.vue'
+import CardOverview from './components/CardOverview.vue'
+import ContentList from './components/ContentList.vue'
+import ContentDetail from './components/ContentDetail.vue'
 
-// Reactive data
-const loading = ref(true);
-const error = ref(null);
-const cardData = ref(null);
-const contentItems = ref([]);
-const currentView = ref('card'); // 'card', 'content-list', 'content-detail'
-const selectedContentItem = ref(null);
-const navigationHistory = ref([]); // Track navigation history for proper back navigation
+// Types
+interface CardData {
+  card_name: string
+  card_description: string
+  card_image_urls: string[]
+  conversation_ai_enabled: boolean
+  ai_prompt: string
+  is_activated: boolean
+}
 
-// Computed properties
-const firstLayerItems = computed(() => {
-  return contentItems.value.filter(item => !item.content_item_parent_id);
-});
+interface ContentItem {
+  content_item_id: string
+  content_item_parent_id: string | null
+  content_item_name: string
+  content_item_content: string
+  content_item_image_urls: string[]
+  content_item_ai_metadata: string
+  content_item_sort_order: number
+}
 
-const currentSubItems = computed(() => {
-  if (!selectedContentItem.value) return [];
-  return contentItems.value.filter(item => 
-    item.content_item_parent_id === selectedContentItem.value.content_item_id
-  );
-});
+type ViewType = 'card' | 'content-list' | 'content-detail'
 
-const currentTitle = computed(() => {
-  if (currentView.value === 'content-list') {
-    return 'Explore Content';
-  } else if (currentView.value === 'content-detail' && selectedContentItem.value) {
-    return selectedContentItem.value.content_item_name;
+// Route
+const route = useRoute()
+
+// State
+const isLoading = ref(true)
+const error = ref<string | null>(null)
+const cardData = ref<CardData | null>(null)
+const contentItems = ref<ContentItem[]>([])
+const currentView = ref<ViewType>('card')
+const selectedContent = ref<ContentItem | null>(null)
+const navigationStack = ref<Array<{ view: ViewType; content: ContentItem | null }>>([])
+
+// Computed
+const isCardView = computed(() => currentView.value === 'card')
+const isContentListView = computed(() => currentView.value === 'content-list')
+const isContentDetailView = computed(() => currentView.value === 'content-detail')
+
+const headerTitle = computed(() => {
+  if (isContentListView.value) return 'Explore Content'
+  if (isContentDetailView.value && selectedContent.value) {
+    return selectedContent.value.content_item_name
   }
-  return '';
-});
+  return ''
+})
+
+const topLevelContent = computed(() => 
+  contentItems.value.filter(item => !item.content_item_parent_id)
+)
+
+const subContent = computed(() => {
+  if (!selectedContent.value) return []
+  return contentItems.value.filter(
+    item => item.content_item_parent_id === selectedContent.value!.content_item_id
+  )
+})
 
 // Methods
-const fetchCardData = async () => {
+async function fetchCardData() {
   try {
-    loading.value = true;
-    error.value = null;
+    isLoading.value = true
+    error.value = null
 
-    const issueCardId = route.params.issue_card_id;
-    const activationCode = route.params.activation_code;
+    const issueCardId = route.params.issue_card_id as string
+    const activationCode = route.params.activation_code as string
 
     const { data, error: fetchError } = await supabase.rpc('get_public_card_content', {
       p_issue_card_id: issueCardId,
       p_activation_code: activationCode
-    });
+    })
 
-    if (fetchError) {
-      throw fetchError;
-    }
-
+    if (fetchError) throw fetchError
     if (!data || data.length === 0) {
-      throw new Error('Card not found or invalid activation code');
+      throw new Error('Card not found or invalid activation code')
     }
 
-    // Process the data
-    const cardInfo = data[0];
+    // Process card data
+    const firstRow = data[0]
     cardData.value = {
-      card_name: cardInfo.card_name,
-      card_description: cardInfo.card_description,
-      card_image_urls: cardInfo.card_image_urls,
-      conversation_ai_enabled: cardInfo.card_conversation_ai_enabled,
-      ai_prompt: cardInfo.card_ai_prompt,
-      is_activated: cardInfo.is_activated
-    };
+      card_name: firstRow.card_name,
+      card_description: firstRow.card_description,
+      card_image_urls: firstRow.card_image_urls || [],
+      conversation_ai_enabled: firstRow.card_conversation_ai_enabled,
+      ai_prompt: firstRow.card_ai_prompt,
+      is_activated: firstRow.is_activated
+    }
 
-    // Process content items (excluding the card-level row which has null content_item_id)
+    // Process content items
     contentItems.value = data
-      .filter(item => item.content_item_id !== null)
-      .map(item => ({
+      .filter((item: any) => item.content_item_id !== null)
+      .map((item: any) => ({
         content_item_id: item.content_item_id,
         content_item_parent_id: item.content_item_parent_id,
         content_item_name: item.content_item_name,
         content_item_content: item.content_item_content,
-        content_item_image_urls: item.content_item_image_urls,
+        content_item_image_urls: item.content_item_image_urls || [],
         content_item_ai_metadata: item.content_item_ai_metadata,
-        content_item_sort_order: item.content_item_sort_order
+        content_item_sort_order: item.content_item_sort_order || 0
       }))
-      .sort((a, b) => (a.content_item_sort_order || 0) - (b.content_item_sort_order || 0));
+      .sort((a: ContentItem, b: ContentItem) => a.content_item_sort_order - b.content_item_sort_order)
 
-  } catch (err) {
-    console.error('Error fetching card data:', err);
-    error.value = err.message || 'Failed to load card data';
+  } catch (err: any) {
+    console.error('Error fetching card data:', err)
+    error.value = err.message || 'Failed to load card data'
   } finally {
-    loading.value = false;
+    isLoading.value = false
   }
-};
+}
 
-const selectContentItem = (item) => {
-  // Add current state to navigation history
-  navigationHistory.value.push({
+function openContentList() {
+  pushNavigation()
+  currentView.value = 'content-list'
+}
+
+function selectContent(item: ContentItem) {
+  pushNavigation()
+  selectedContent.value = item
+  currentView.value = 'content-detail'
+}
+
+function pushNavigation() {
+  navigationStack.value.push({
     view: currentView.value,
-    selectedItem: selectedContentItem.value
-  });
-  
-  selectedContentItem.value = item;
-  currentView.value = 'content-detail';
-};
+    content: selectedContent.value
+  })
+}
 
-const navigateBack = () => {
-  if (navigationHistory.value.length > 0) {
-    // Go back to previous state in history
-    const previousState = navigationHistory.value.pop();
-    currentView.value = previousState.view;
-    selectedContentItem.value = previousState.selectedItem;
-  } else {
-    // Fallback to default navigation if no history
-    if (currentView.value === 'content-detail') {
-      currentView.value = 'content-list';
-      selectedContentItem.value = null;
-    } else if (currentView.value === 'content-list') {
-      currentView.value = 'card';
-    }
+function handleNavigation() {
+  if (navigationStack.value.length > 0) {
+    const previousState = navigationStack.value.pop()!
+    currentView.value = previousState.view
+    selectedContent.value = previousState.content
   }
-};
+}
 
-const navigateToContentList = () => {
-  // Add current state to navigation history
-  navigationHistory.value.push({
-    view: currentView.value,
-    selectedItem: selectedContentItem.value
-  });
-  
-  currentView.value = 'content-list';
-};
-
-const getSubItemsCount = (parentId) => {
-  return contentItems.value.filter(item => item.content_item_parent_id === parentId).length;
-};
+function handleRetry() {
+  fetchCardData()
+}
 
 // Lifecycle
 onMounted(() => {
-  fetchCardData();
-});
+  fetchCardData()
+})
 </script>
 
 <style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+/* Base Container */
+.mobile-card-container {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
+  position: relative;
   overflow: hidden;
 }
 
-/* Ensure proper spacing for mobile */
+/* Loading State */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  gap: 1rem;
+}
+
+.spinner {
+  width: 3rem;
+  height: 3rem;
+}
+
+.loading-text {
+  color: white;
+  font-size: 1.125rem;
+}
+
+/* Error State */
+.error-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.error-icon {
+  font-size: 3rem;
+  color: #f87171;
+  margin-bottom: 1rem;
+}
+
+.error-title {
+  color: white;
+  font-size: 1.25rem;
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+}
+
+.error-message {
+  color: #d1d5db;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+}
+
+.retry-button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: white;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+}
+
+/* Content Wrapper */
+.content-wrapper {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+/* View Transitions */
+.view-transition-enter-active,
+.view-transition-leave-active {
+  transition: all 0.3s ease;
+}
+
+.view-transition-enter-from {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.view-transition-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+
+/* Global Mobile Optimizations */
 @media (max-width: 640px) {
-  .min-h-screen {
-    min-height: 100dvh;
+  * {
+    -webkit-tap-highlight-color: transparent;
   }
-}
-
-/* Custom scrollbar for webkit browsers */
-::-webkit-scrollbar {
-  width: 4px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 2px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.5);
+  
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
 }
 </style>

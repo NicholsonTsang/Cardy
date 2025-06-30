@@ -25,9 +25,20 @@ serve(async (req: Request) => {
     // You could potentially get these from the request body if the client sends them
     // const { model, voice } = await req.json().catch(() => ({})); // Example if client sends params
     const sessionParams = {
-      model: "gpt-4o-realtime-preview", // Default or from request
+      model: "gpt-4o-realtime-preview-2025-06-03", // Latest stable model version
       modalities: ["audio", "text"],
       voice: "alloy", // Default or from request
+      input_audio_format: "pcm16",
+      output_audio_format: "pcm16",
+      input_audio_transcription: {
+        model: "whisper-1"
+      },
+      turn_detection: {
+        type: "server_vad",
+        threshold: 0.5,
+        prefix_padding_ms: 300,
+        silence_duration_ms: 500
+      }
       // Add other parameters like instructions if desired for session init
     }
 

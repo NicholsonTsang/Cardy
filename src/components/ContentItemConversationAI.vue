@@ -78,6 +78,11 @@ watch(selectedLanguage, (newLanguage) => {
 onMounted(async () => {
   audioElement.value = new Audio()
   audioElement.value.autoplay = true
+  // Set proper audio element attributes for mobile
+  audioElement.value.setAttribute('playsinline', 'true')
+  audioElement.value.setAttribute('webkit-playsinline', 'true')
+  audioElement.value.muted = false
+  
   try {
     await requestMicrophonePermission()
   } catch (err) {
@@ -145,9 +150,50 @@ async function connectToOpenAI() {
     dataChannel.value = peerConnection.value.createDataChannel('oai-events')
     setupDataChannelListeners()
 
-    peerConnection.value.ontrack = (event) => {
+    peerConnection.value.ontrack = async (event) => {
       console.log('Received audio track from OpenAI')
-      audioElement.value.srcObject = event.streams[0]
+      const remoteStream = event.streams[0]
+      audioElement.value.srcObject = remoteStream
+      
+      // Mobile audio playback fix
+      const playAudio = async () => {
+        try {
+          // Ensure the audio element is properly configured
+          audioElement.value.muted = false
+          audioElement.value.volume = 1.0
+          
+          // Create audio context if needed (for iOS)
+          if (window.AudioContext || window.webkitAudioContext) {
+            const AudioContext = window.AudioContext || window.webkitAudioContext
+            const audioContext = new AudioContext()
+            if (audioContext.state === 'suspended') {
+              await audioContext.resume()
+            }
+          }
+          
+          await audioElement.value.play()
+          console.log('Audio playback started successfully')
+        } catch (playError) {
+          console.warn('Audio play failed:', playError)
+          // Will retry on next user interaction
+        }
+      }
+      
+      // Try to play immediately
+      await playAudio()
+      
+      // Also ensure play on any user interaction if autoplay was blocked
+      if (audioElement.value.paused) {
+        const playOnInteraction = async () => {
+          if (audioElement.value.paused && audioElement.value.srcObject) {
+            await playAudio()
+            document.removeEventListener('click', playOnInteraction)
+            document.removeEventListener('touchstart', playOnInteraction)
+          }
+        }
+        document.addEventListener('click', playOnInteraction)
+        document.addEventListener('touchstart', playOnInteraction)
+      }
     }
 
     if (stream.value) {
@@ -409,15 +455,48 @@ function updateSession() {
 }
 
 // UI Methods
-function openModal() {
+async function openModal() {
   isModalOpen.value = true
   isMinimized.value = false
+  // Initialize audio context when modal opens
+  await ensureAudioContext()
+  // Prevent body scroll when modal is open
+  document.body.style.overflow = 'hidden'
 }
 
 function closeModal() {
   isModalOpen.value = false
   if (isConnected.value) {
     disconnectFromOpenAI()
+  }
+  // Re-enable body scroll
+  document.body.style.overflow = ''
+}
+
+// Ensure audio context is resumed on user gesture (iOS fix)
+async function ensureAudioContext() {
+  if (window.AudioContext || window.webkitAudioContext) {
+    const AudioContext = window.AudioContext || window.webkitAudioContext
+    const audioContext = new AudioContext()
+    
+    if (audioContext.state === 'suspended') {
+      try {
+        await audioContext.resume()
+        console.log('Audio context resumed')
+      } catch (err) {
+        console.warn('Failed to resume audio context:', err)
+      }
+    }
+  }
+  
+  // Also try to play the audio element if it's paused
+  if (audioElement.value && audioElement.value.paused && audioElement.value.srcObject) {
+    try {
+      await audioElement.value.play()
+      console.log('Audio element played after user gesture')
+    } catch (err) {
+      console.warn('Failed to play audio after user gesture:', err)
+    }
   }
 }
 
@@ -475,18 +554,19 @@ function getStatusColor() {
     <!-- Modal Overlay -->
     <div
       v-if="isModalOpen"
-      class="fixed inset-0 z-50 flex items-center justify-center p-4"
-      :class="isMobile ? 'bg-black/50' : 'bg-black/30'"
+      class="fixed inset-0 z-[9999] flex items-center justify-center backdrop-blur-sm"
+      :class="isMobile ? 'bg-black/90' : 'bg-black/70'"
       @click="closeModal"
     >
       <!-- Modal Content -->
       <div
         @click.stop
-        class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all"
+        class="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden transform transition-all animate-modal-enter"
         :class="[
-          isMobile ? 'max-h-[80vh]' : 'max-h-[70vh]',
+          isMobile ? 'max-h-[75vh]' : 'max-h-[70vh]',
           isMinimized ? 'h-auto' : ''
         ]"
+        style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);"
       >
     <!-- Header -->
         <div class="bg-gradient-to-r from-blue-500 to-indigo-600 px-6 py-4">
@@ -496,8 +576,8 @@ function getStatusColor() {
                 <i class="pi pi-comments text-white text-sm" />
               </div>
               <div>
-                <h3 class="text-white font-semibold text-lg">AI Assistant</h3>
-                <p class="text-blue-100 text-sm truncate max-w-48">{{ contentItemName }}</p>
+                <h3 class="text-white font-semibold text-base sm:text-lg">AI Assistant</h3>
+                <p class="text-blue-100 text-xs sm:text-sm truncate max-w-48">{{ contentItemName }}</p>
               </div>
             </div>
             <div class="flex items-center gap-2">
@@ -531,10 +611,10 @@ function getStatusColor() {
           <div v-if="!isConnected" class="space-y-4">
             <!-- Language Selector -->
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">Language</label>
+              <label class="block text-sm sm:text-base font-medium text-gray-700 mb-2">Language</label>
               <select
               v-model="selectedLanguage" 
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                class="w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm sm:text-base"
               :disabled="isConnecting"
             >
                 <option v-for="lang in availableLanguages" :key="lang.code" :value="lang">
@@ -545,18 +625,18 @@ function getStatusColor() {
 
             <!-- AI Instructions Preview -->
             <div v-if="aiMetadata" class="bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <div class="flex items-start gap-2">
-                <i class="pi pi-info-circle text-amber-600 text-sm mt-0.5" />
+              <div class="flex items-start gap-3">
+                <i class="pi pi-info-circle text-amber-600 text-base mt-1" />
               <div>
-                  <h4 class="text-amber-800 font-medium text-sm mb-1">Additional Knowledge</h4>
-                  <p class="text-amber-700 text-xs leading-relaxed">{{ aiMetadata }}</p>
+                  <h4 class="text-amber-800 font-medium text-sm sm:text-base mb-1">Additional Knowledge</h4>
+                  <p class="text-amber-700 text-sm leading-relaxed break-words">{{ aiMetadata }}</p>
               </div>
             </div>
           </div>
 
           <!-- Start Button -->
             <button
-            @click="connectToOpenAI"
+            @click="async () => { await ensureAudioContext(); connectToOpenAI() }"
             :disabled="!isMicReady || isConnecting"
               class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg font-medium transition-all"
               :class="[
@@ -566,7 +646,7 @@ function getStatusColor() {
               ]"
             >
               <i class="pi text-sm" :class="isConnecting ? 'pi-spin pi-spinner' : 'pi-microphone'" />
-              <span>
+              <span class="text-sm sm:text-base">
                 {{ isConnecting ? 'Connecting...' : isMicReady ? 'Start Voice Chat' : 'Microphone Permission Needed' }}
               </span>
             </button>
@@ -587,13 +667,13 @@ function getStatusColor() {
                     />
                   </div>
                   <div>
-                    <p class="font-medium text-gray-900">{{ getStatusText() }}</p>
-                    <p class="text-sm text-gray-500">{{ selectedLanguage.name }}</p>
+                    <p class="font-medium text-gray-900 text-sm sm:text-base">{{ getStatusText() }}</p>
+                    <p class="text-xs sm:text-sm text-gray-500">{{ selectedLanguage.name }}</p>
                   </div>
                 </div>
                 <button
                   @click="disconnectFromOpenAI"
-                  class="px-3 py-1 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm font-medium transition-colors"
+                  class="px-3 py-1.5 sm:px-4 sm:py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg text-sm sm:text-base font-medium transition-colors"
                 >
                   End Chat
                 </button>
@@ -602,10 +682,10 @@ function getStatusColor() {
             
             <!-- Instructions -->
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div class="flex items-start gap-2">
-                <i class="pi pi-info-circle text-blue-600 text-sm mt-0.5" />
+              <div class="flex items-start gap-3">
+                <i class="pi pi-info-circle text-blue-600 text-base mt-1" />
                 <div>
-                  <p class="text-blue-800 text-sm">
+                  <p class="text-blue-800 text-sm sm:text-base break-words">
                     <strong>Ready to chat!</strong> Start speaking to ask questions about "{{ contentItemName }}".
                     The AI will respond with voice and can help you understand this content better.
                   </p>
@@ -618,14 +698,14 @@ function getStatusColor() {
         <!-- Minimized Status Bar -->
         <div v-else class="px-6 py-3 bg-gray-50 border-t">
           <div class="flex items-center justify-between">
-            <div class="flex items-center gap-2">
-              <i class="pi pi-microphone text-sm" :class="getStatusColor()" />
-              <span class="text-sm font-medium text-gray-700">{{ getStatusText() }}</span>
+            <div class="flex items-center gap-3">
+              <i class="pi pi-microphone text-base" :class="getStatusColor()" />
+              <span class="text-sm sm:text-base font-medium text-gray-700">{{ getStatusText() }}</span>
             </div>
             <button
               v-if="isConnected"
               @click="disconnectFromOpenAI"
-              class="text-xs text-red-600 hover:text-red-700 font-medium"
+              class="text-sm text-red-600 hover:text-red-700 font-medium"
             >
               End
             </button>
@@ -645,6 +725,21 @@ function getStatusColor() {
 
 .animate-pulse {
   animation: pulse 1.5s infinite;
+}
+
+@keyframes modal-enter {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+.animate-modal-enter {
+  animation: modal-enter 0.2s ease-out;
 }
 
 /* Scrollbar styling */
