@@ -128,7 +128,8 @@ class DummyElement {
 const STRIPE_CONFIG = {
   // Replace with your actual Stripe publishable key
   publicKey: import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || 'pk_test_dummy_key_for_development',
-  apiVersion: '2023-10-16'
+  apiVersion: '2023-10-16',
+  defaultCurrency: import.meta.env.VITE_DEFAULT_CURRENCY || 'USD'
 };
 
 // Initialize Stripe instance
@@ -151,11 +152,13 @@ export const getStripe = () => {
  */
 export const createBatchPaymentIntent = async (cardCount, metadata = {}) => {
   const stripe = getStripe();
-  const amountCents = cardCount * 200; // $2 per card = 200 cents per card
+  const pricePerCard = parseInt(import.meta.env.VITE_CARD_PRICE_CENTS) || 200;
+  const amountCents = cardCount * pricePerCard; // Price per card in cents
+  const currency = (import.meta.env.VITE_DEFAULT_CURRENCY || 'USD').toLowerCase();
   
   const paymentIntent = await stripe.createPaymentIntent(
     amountCents,
-    'usd',
+    currency,
     {
       ...metadata,
       purpose: 'batch_issuance',
@@ -190,10 +193,11 @@ export const confirmBatchPayment = async (clientSecret, paymentMethodData = {}) 
  * @param {number} amountCents - Amount in cents
  * @returns {string} Formatted amount string
  */
-export const formatAmount = (amountCents) => {
+export const formatAmount = (amountCents, currency = 'USD') => {
+  const currencyCode = currency.toUpperCase();
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'USD'
+    currency: currencyCode
   }).format(amountCents / 100);
 };
 
@@ -203,15 +207,17 @@ export const formatAmount = (amountCents) => {
  * @returns {Object} Cost breakdown
  */
 export const calculateBatchCost = (cardCount) => {
-  const pricePerCard = 200; // 200 cents = $2
+  const pricePerCard = parseInt(import.meta.env.VITE_CARD_PRICE_CENTS) || 200;
+  const currency = import.meta.env.VITE_DEFAULT_CURRENCY || 'USD';
   const totalCents = cardCount * pricePerCard;
   
   return {
     cardCount,
     pricePerCardCents: pricePerCard,
-    pricePerCardFormatted: formatAmount(pricePerCard),
+    pricePerCardFormatted: formatAmount(pricePerCard, currency),
     totalCents,
-    totalFormatted: formatAmount(totalCents)
+    totalFormatted: formatAmount(totalCents, currency),
+    currency
   };
 };
 

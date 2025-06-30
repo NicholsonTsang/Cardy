@@ -1037,7 +1037,8 @@ const currentCard = computed(() => {
 
 const selectedCardActivationUrl = computed(() => {
   if (selectedCard.value && selectedCard.value.id && selectedCard.value.activation_code) {
-    return `https://app.cardy.com/issuedcard/${selectedCard.value.id}/${selectedCard.value.activation_code}`;
+    const baseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://app.cardy.com'
+    return `${baseUrl}/issuedcard/${selectedCard.value.id}/${selectedCard.value.activation_code}`;
   }
   return '';
 });

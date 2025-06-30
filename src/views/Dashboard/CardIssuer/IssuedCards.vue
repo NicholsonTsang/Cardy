@@ -813,7 +813,8 @@ const goToCardDesign = (cardId) => {
 }
 
 const getActivationUrl = (card) => {
-  return `https://app.cardy.com/issuedcard/${card.id}/${card.activation_code}`
+  const baseUrl = import.meta.env.VITE_APP_BASE_URL || 'https://app.cardy.com'
+  return `${baseUrl}/issuedcard/${card.id}/${card.activation_code}`
 }
 
 const copyToClipboard = async (text) => {

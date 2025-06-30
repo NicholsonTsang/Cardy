@@ -330,6 +330,57 @@ try {
 - Manual testing on mobile devices
 - Database migration testing
 
+## Environment Variables Configuration
+
+### Required Environment Variables
+
+**Core Configuration:**
+```bash
+# Supabase Backend
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key-here
+VITE_SUPABASE_USER_FILES_BUCKET=userfiles
+
+# Payment Processing
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_key_here
+
+# AI Features (configured in Supabase Edge Function secrets)
+# OPENAI_API_KEY is set in Supabase dashboard secrets, not in .env
+
+# Application URLs
+VITE_APP_BASE_URL=https://app.cardy.com
+```
+
+**Business Configuration:**
+```bash
+# Pricing (200 cents = $2.00 USD per card)
+VITE_CARD_PRICE_CENTS=200
+VITE_DEFAULT_CURRENCY=USD
+
+# Contact Information
+VITE_CONTACT_WHATSAPP_URL=https://wa.me/852xxxxxx
+VITE_CONTACT_PHONE=+852 xxxxxx
+```
+
+### Environment Setup
+
+1. **Development**: Copy `.env.example` to `.env` and configure for local development
+2. **Production**: Set environment variables in your hosting platform
+3. **Supabase Edge Functions**: Configure secrets in Supabase dashboard
+
+### Configuration Files
+
+- `.env.example` - Template with all available environment variables
+- `supabase/config.toml` - Supabase local development configuration
+- Environment variables override hardcoded values for deployment flexibility
+
+### Critical Production Settings
+
+1. **Security**: Never commit actual API keys to version control
+2. **URLs**: Update `VITE_APP_BASE_URL` for proper card QR code generation
+3. **Pricing**: Configure `VITE_CARD_PRICE_CENTS` for different markets
+4. **Contact**: Set appropriate contact information for customer support
+
 ## Deployment
 
 - Production builds deploy to CDN

@@ -90,7 +90,7 @@
               <div class="bg-white rounded-2xl shadow-2xl p-6 transform rotate-3 hover:rotate-0 transition-transform duration-500">
                 <div class="aspect-[2/3] bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl overflow-hidden relative mb-4">
                   <img 
-                    src="https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?w=400&h=600&fit=crop&crop=center" 
+                    :src="heroImageUrl" 
                     alt="Museum Exhibition" 
                     class="w-full h-full object-cover"
                   />
@@ -347,7 +347,7 @@
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
               <div class="h-48 bg-gradient-to-br from-blue-500 to-purple-600 relative overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?w=400&h=300&fit=crop" 
+:src="featureImage1Url" 
                   alt="Museums & Art Galleries" 
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
@@ -370,7 +370,7 @@
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
               <div class="h-48 bg-gradient-to-br from-green-500 to-blue-600 relative overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1539650116574-75c0c6d73c6e?w=400&h=300&fit=crop" 
+:src="featureImage2Url" 
                   alt="Tourist Attractions" 
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
@@ -393,7 +393,7 @@
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
               <div class="h-48 bg-gradient-to-br from-purple-500 to-pink-600 relative overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop" 
+:src="featureImage3Url" 
                   alt="Cultural Heritage" 
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
@@ -419,7 +419,7 @@
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
               <div class="h-48 bg-gradient-to-br from-orange-500 to-red-600 relative overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=300&fit=crop" 
+:src="featureImage4Url" 
                   alt="Exhibition Centers" 
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
@@ -442,7 +442,7 @@
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
               <div class="h-48 bg-gradient-to-br from-pink-500 to-purple-600 relative overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1596444080749-6ac1ba12a236?w=400&h=300&fit=crop" 
+:src="featureImage5Url" 
                   alt="Theme Parks" 
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
@@ -465,7 +465,7 @@
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
               <div class="h-48 bg-gradient-to-br from-indigo-500 to-blue-600 relative overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&h=300&fit=crop" 
+:src="featureImage6Url" 
                   alt="Events" 
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
@@ -706,7 +706,7 @@
     <!-- Footer -->
     <footer class="bg-slate-900 text-white py-16">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
           <!-- Brand -->
           <div class="space-y-4">
             <div class="flex items-center">
@@ -718,55 +718,25 @@
             <p class="text-slate-400 max-w-sm">
               Transforming visitor experiences through AI-powered digital souvenirs and interactive cultural engagement.
             </p>
-            <div class="flex space-x-4">
-              <a href="#" class="text-slate-400 hover:text-white transition-colors">
-                <i class="pi pi-linkedin text-xl"></i>
-              </a>
-              <a href="#" class="text-slate-400 hover:text-white transition-colors">
-                <i class="pi pi-twitter text-xl"></i>
-              </a>
-            </div>
-          </div>
-
-          <!-- Product -->
-          <div>
-            <h4 class="font-bold text-lg mb-4">Product</h4>
-            <ul class="space-y-2 text-slate-400">
-              <li><a href="#" class="hover:text-white transition-colors">Features</a></li>
-              <li><a href="#" class="hover:text-white transition-colors">Pricing</a></li>
-              <li><a href="#" class="hover:text-white transition-colors">Use Cases</a></li>
-              <li><a href="#" class="hover:text-white transition-colors">AI Technology</a></li>
-            </ul>
-          </div>
-
-          <!-- Support -->
-          <div>
-            <h4 class="font-bold text-lg mb-4">Support</h4>
-            <ul class="space-y-2 text-slate-400">
-              <li><a href="#" class="hover:text-white transition-colors">Documentation</a></li>
-              <li><a href="#" class="hover:text-white transition-colors">Help Center</a></li>
-              <li><a href="#" class="hover:text-white transition-colors">Contact Us</a></li>
-              <li><a href="#" class="hover:text-white transition-colors">Status</a></li>
-            </ul>
           </div>
 
           <!-- Contact -->
           <div>
-            <h4 class="font-bold text-lg mb-4">Contact</h4>
-            <ul class="space-y-2 text-slate-400">
-              <li class="flex items-center">
-                <i class="pi pi-envelope mr-2"></i>
-                <a href="mailto:abc@gmail.com" class="hover:text-white transition-colors">abc@gmail.com</a>
-              </li>
-              <li class="flex items-center">
-                <i class="pi pi-phone mr-2"></i>
-                <a href="tel:+852xxxxxx" class="hover:text-white transition-colors">+852 xxxxxx</a>
-              </li>
-              <li class="flex items-center">
-                <i class="pi pi-whatsapp mr-2"></i>
-                <a href="https://wa.me/852xxxxxx" class="hover:text-white transition-colors">WhatsApp</a>
-              </li>
-            </ul>
+            <h4 class="font-bold text-lg mb-4">Contact Us</h4>
+            <div class="space-y-3">
+              <div class="flex items-center">
+                <i class="pi pi-envelope text-blue-400 mr-3"></i>
+                <a :href="`mailto:${contactEmail}`" class="text-slate-400 hover:text-white transition-colors">{{ contactEmail }}</a>
+              </div>
+              <div class="flex items-center">
+                <i class="pi pi-phone text-purple-400 mr-3"></i>
+                <a :href="`tel:${contactPhone}`" class="text-slate-400 hover:text-white transition-colors">{{ contactPhone }}</a>
+              </div>
+              <div class="flex items-center">
+                <i class="pi pi-whatsapp text-green-400 mr-3"></i>
+                <a :href="contactWhatsApp" class="text-slate-400 hover:text-white transition-colors">WhatsApp Chat</a>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -775,8 +745,9 @@
             © 2025 Cardy. All rights reserved.
           </p>
           <div class="flex space-x-6 mt-4 md:mt-0">
-            <a href="#" class="text-slate-400 hover:text-white text-sm transition-colors">Privacy Policy</a>
-            <a href="#" class="text-slate-400 hover:text-white text-sm transition-colors">Terms of Service</a>
+            <a @click="scrollToSection('features')" class="text-slate-400 hover:text-white text-sm transition-colors cursor-pointer">Features</a>
+            <a @click="scrollToSection('pricing')" class="text-slate-400 hover:text-white text-sm transition-colors cursor-pointer">Pricing</a>
+            <a @click="openContactModal" class="text-slate-400 hover:text-white text-sm transition-colors cursor-pointer">Contact</a>
           </div>
         </div>
       </div>
@@ -801,7 +772,7 @@
             <i class="pi pi-envelope text-blue-600 text-xl mr-4"></i>
             <div>
               <h4 class="font-semibold text-slate-900">Email</h4>
-              <a href="mailto:abc@gmail.com" class="text-blue-600 hover:underline">abc@gmail.com</a>
+              <a :href="`mailto:${contactEmail}`" class="text-blue-600 hover:underline">{{ contactEmail }}</a>
             </div>
           </div>
           
@@ -809,7 +780,7 @@
             <i class="pi pi-whatsapp text-green-600 text-xl mr-4"></i>
             <div>
               <h4 class="font-semibold text-slate-900">WhatsApp</h4>
-              <a href="https://wa.me/852xxxxxx" class="text-green-600 hover:underline">+852 xxxxxx</a>
+              <a :href="contactWhatsApp" class="text-green-600 hover:underline">{{ contactWhatsAppDisplay }}</a>
             </div>
           </div>
           
@@ -817,7 +788,7 @@
             <i class="pi pi-phone text-purple-600 text-xl mr-4"></i>
             <div>
               <h4 class="font-semibold text-slate-900">Phone</h4>
-              <a href="tel:+852xxxxxx" class="text-purple-600 hover:underline">+852 xxxxxx</a>
+              <a :href="`tel:${contactPhone}`" class="text-purple-600 hover:underline">{{ contactPhone }}</a>
             </div>
           </div>
         </div>
@@ -850,10 +821,27 @@ import QrCode from 'qrcode.vue'
 const router = useRouter()
 
 // Sample QR code URL for demonstration
-const sampleQrUrl = ref('https://cardy.example.com/demo/ancient-artifacts')
+const sampleQrUrl = ref(import.meta.env.VITE_SAMPLE_QR_URL || 'https://cardy.example.com/demo/ancient-artifacts')
 
 // Contact modal
 const showContactModal = ref(false)
+
+// Contact information from environment variables
+const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || 'support@cardy.com'
+const contactWhatsApp = import.meta.env.VITE_CONTACT_WHATSAPP_URL || 'https://wa.me/852xxxxxx'
+const contactPhone = import.meta.env.VITE_CONTACT_PHONE || '+852 xxxxxx'
+const contactWhatsAppDisplay = import.meta.env.VITE_CONTACT_WHATSAPP_DISPLAY || contactPhone
+
+// Environment variables successfully integrated
+
+// Image URLs from environment variables
+const heroImageUrl = import.meta.env.VITE_HERO_IMAGE_URL || 'https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?w=400&h=600&fit=crop&crop=center'
+const featureImage1Url = import.meta.env.VITE_FEATURE_IMAGE_1_URL || 'https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?w=400&h=300&fit=crop'
+const featureImage2Url = import.meta.env.VITE_FEATURE_IMAGE_2_URL || 'https://images.unsplash.com/photo-1539650116574-75c0c6d73c6e?w=400&h=300&fit=crop'
+const featureImage3Url = import.meta.env.VITE_FEATURE_IMAGE_3_URL || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop'
+const featureImage4Url = import.meta.env.VITE_FEATURE_IMAGE_4_URL || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=300&fit=crop'
+const featureImage5Url = import.meta.env.VITE_FEATURE_IMAGE_5_URL || 'https://images.unsplash.com/photo-1596444080749-6ac1ba12a236?w=400&h=300&fit=crop'
+const featureImage6Url = import.meta.env.VITE_FEATURE_IMAGE_6_URL || 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&h=300&fit=crop'
 
 // FAQ functionality
 const openFaqIndex = ref(-1)

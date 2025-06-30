@@ -53,11 +53,11 @@ const props = defineProps({
   },
   cardImageUrl: {
     type: String,
-    default: 'https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?w=400&h=600&fit=crop&crop=center'
+    default: import.meta.env.VITE_DEFAULT_CARD_IMAGE_URL || 'https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?w=400&h=600&fit=crop&crop=center'
   },
   qrCodeUrl: {
     type: String,
-    default: 'https://cardy.demo/ancient-artifacts'
+    default: (import.meta.env.VITE_DEMO_BASE_URL || 'https://cardy.demo') + '/ancient-artifacts'
   },
   qrCodeSize: {
     type: Number,
