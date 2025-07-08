@@ -21,9 +21,20 @@ serve(async (req: Request) => {
       throw new Error('Server configuration error: OpenAI API Key missing.')
     }
 
-    // 2. Define session parameters (optional, can customize model/voice here)
-    // You could potentially get these from the request body if the client sends them
-    // const { model, voice } = await req.json().catch(() => ({})); // Example if client sends params
+    // 2. Get session parameters from request body (including instructions)
+    let requestBody: any = {}
+    try {
+      requestBody = await req.json()
+    } catch (e) {
+      // No body provided, use defaults
+      console.log('No request body provided, using defaults')
+    }
+    
+    const { instructions, language = 'English' } = requestBody
+    
+    console.log('Instructions received:', instructions ? instructions.substring(0, 200) + '...' : 'None')
+    console.log('Language received:', language)
+    
     const sessionParams = {
       model: "gpt-4o-realtime-preview-2025-06-03", // Latest stable model version
       modalities: ["audio", "text"],
@@ -38,11 +49,13 @@ serve(async (req: Request) => {
         threshold: 0.5,
         prefix_padding_ms: 300,
         silence_duration_ms: 500
-      }
-      // Add other parameters like instructions if desired for session init
+      },
+      // Include instructions if provided
+      ...(instructions && { instructions: instructions })
     }
 
     console.log(`Requesting ephemeral key from OpenAI API for model: ${sessionParams.model}...`);
+    console.log('Session params being sent to OpenAI:', JSON.stringify(sessionParams, null, 2));
 
     // 3. Make the POST request to OpenAI's REST API
     const openaiResponse = await fetch("https://api.openai.com/v1/realtime/sessions", {

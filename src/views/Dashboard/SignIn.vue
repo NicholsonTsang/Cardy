@@ -16,7 +16,7 @@
                         </svg>
                     </div>
                     <h1 id="signin-title" class="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h1>
-                    <p class="text-slate-600" id="signin-description">Sign in to your Cardy CMS account</p>
+                    <p class="text-slate-600" id="signin-description">Sign in to your CardStudio CMS account</p>
                     
                     <!-- Back to Landing Page -->
                     <div class="mt-4">

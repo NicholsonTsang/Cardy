@@ -44,15 +44,14 @@ export const usePublicCardStore = defineStore('publicCard', () => {
     const isLoading = ref(false);
     const error = ref<string | null>(null);
 
-    const fetchPublicCard = async (issueCardId: string, activationCode: string) => {
+    const fetchPublicCard = async (issueCardId: string) => {
         isLoading.value = true;
         error.value = null;
         cardData.value = null;
 
         try {
             const { data, error: rpcError } = await supabase.rpc('get_public_card_content', {
-                p_issue_card_id: issueCardId,
-                p_activation_code: activationCode,
+                p_issue_card_id: issueCardId
             });
 
             if (rpcError) {

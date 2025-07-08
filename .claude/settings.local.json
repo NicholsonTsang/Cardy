@@ -2,7 +2,19 @@
   "permissions": {
     "allow": [
       "Bash(ls:*)",
-      "Bash(rg:*)"
+      "Bash(rg:*)",
+      "Bash(npm install:*)",
+      "Bash(find:*)",
+      "Bash(chmod:*)",
+      "Bash(grep:*)",
+      "Bash(rm:*)",
+      "Bash(npm run type-check:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(supabase functions delete:*)",
+      "WebFetch(domain:supabase.com)",
+      "WebFetch(domain:docs.anthropic.com)"
     ],
     "deny": []
   }

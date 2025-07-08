@@ -96,7 +96,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
-import { sendOpenAIRealtimeRequest } from '@/utils/http' // @ts-ignore
+import { sendOpenAIRealtimeRequest } from '@/utils/http'
 
 interface Props {
   contentItemName: string
@@ -129,6 +129,7 @@ const isMicReady = ref(false)
 const isListening = ref(false)
 const isSpeaking = ref(false)
 const error = ref<string | null>(null)
+const storedInstructions = ref<string>('')
 
 // WebRTC
 const audioElement = ref<HTMLAudioElement | null>(null)
@@ -200,7 +201,7 @@ async function initAudioContext() {
   if (!audioElement.value) {
     audioElement.value = new Audio()
     audioElement.value.autoplay = true
-    audioElement.value.playsInline = true
+    ;(audioElement.value as any).playsInline = true
     audioElement.value.muted = false
     audioElement.value.volume = 1.0
     audioElement.value.setAttribute('playsinline', 'true')
@@ -279,10 +280,41 @@ async function connect() {
     }
     console.log('✅ Microphone stream ready')
 
+    // Prepare comprehensive instructions
+    const instructions = `You are an AI assistant for the content item "${props.contentItemName}" within the digital card "${props.cardData.card_name}".
+
+Your role: Provide helpful information about this specific content item to museum/exhibition visitors.
+
+Content Details:
+- Item Name: ${props.contentItemName}
+- Item Description: ${props.contentItemContent}
+
+${props.aiMetadata ? `Additional Knowledge: ${props.aiMetadata}` : ''}
+
+${props.cardData.ai_prompt ? `Special Instructions: ${props.cardData.ai_prompt}` : ''}
+
+Communication Guidelines:
+- Speak ONLY in ${selectedLanguage.value.code}
+- Be conversational and friendly
+- Focus specifically on this content item
+- Provide engaging and educational responses
+- Keep responses concise but informative
+
+Begin the conversation by greeting the visitor and asking how you can help them learn about "${props.contentItemName}".`
+
+    // Store instructions for session updates
+    storedInstructions.value = instructions
+
     console.log('🔑 Getting ephemeral token from Supabase...')
+    console.log('📋 Instructions prepared:', instructions.substring(0, 200) + '...')
     const { data: tokenData, error: tokenError } = await supabase
       .functions
-      .invoke('get-openai-ephemeral-token')
+      .invoke('get-openai-ephemeral-token', {
+        body: {
+          instructions: instructions,
+          language: selectedLanguage.value.code
+        }
+      })
     
     console.log('📡 Supabase function response:', { data: tokenData, error: tokenError })
     
@@ -367,29 +399,7 @@ async function connect() {
     await peerConnection.value.setLocalDescription(offer)
     console.log('Local description set')
 
-    // Prepare comprehensive instructions
-    const instructions = `You are an AI assistant for the content item "${props.contentItemName}" within the digital card "${props.cardData.card_name}".
-
-Your role: Provide helpful information about this specific content item to museum/exhibition visitors.
-
-Content Details:
-- Item Name: ${props.contentItemName}
-- Item Description: ${props.contentItemContent}
-
-${props.aiMetadata ? `Additional Knowledge: ${props.aiMetadata}` : ''}
-
-${props.cardData.ai_prompt ? `Special Instructions: ${props.cardData.ai_prompt}` : ''}
-
-Communication Guidelines:
-- Speak ONLY in ${selectedLanguage.value.code}
-- Be conversational and friendly
-- Focus specifically on this content item
-- Provide engaging and educational responses
-- Keep responses concise but informative
-
-Begin the conversation by greeting the visitor and asking how you can help them learn about "${props.contentItemName}".`
-
-    // Send SDP offer to OpenAI via Supabase proxy
+    // Send SDP offer to OpenAI via Supabase proxy (instructions already sent with token)
     console.log('Sending SDP offer to OpenAI...')
     const result = await sendOpenAIRealtimeRequest(
       'gpt-4o-realtime-preview-2025-06-03',
@@ -480,6 +490,7 @@ function disconnect() {
   isConnected.value = false
   isListening.value = false
   isSpeaking.value = false
+  storedInstructions.value = ''
 }
 
 function setupDataChannel() {
@@ -612,11 +623,12 @@ function updateSession() {
         prefix_padding_ms: 300,
         silence_duration_ms: 500
       },
-      instructions: `You are an AI assistant. Respond ONLY in ${selectedLanguage.value.code}.`
+      instructions: storedInstructions.value || `You are an AI assistant. Respond ONLY in ${selectedLanguage.value.code}.`
     }
   }
 
-  console.log('Sending session update:', sessionUpdate)
+  console.log('Sending session update with preserved instructions')
+  console.log('Instructions length:', storedInstructions.value.length)
   dataChannel.value.send(JSON.stringify(sessionUpdate))
 }
 

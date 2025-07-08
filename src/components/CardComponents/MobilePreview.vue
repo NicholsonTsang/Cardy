@@ -35,33 +35,19 @@
                 />
             </div>
 
-            <!-- No Issued Cards State -->
-            <div v-else-if="!previewUrl" class="flex flex-col items-center justify-center py-12 px-6 text-center">
-                <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mb-3">
-                    <i class="pi pi-info-circle text-xl text-amber-500"></i>
-                </div>
-                <h4 class="text-sm font-medium text-amber-600 mb-2">Preview Loading</h4>
-                <p class="text-xs text-slate-600 mb-4">
-                    Preparing your mobile card preview...
-                </p>
-                <Button 
-                    label="Retry" 
-                    icon="pi pi-refresh" 
-                    @click="loadPreview" 
-                    size="small"
-                    severity="info"
-                />
-            </div>
 
             <!-- Mobile Frame with Iframe -->
             <div v-else class="p-6">
-                <div class="mx-auto max-w-sm">
-                    <!-- Mobile Device Frame -->
-                    <div class="relative bg-slate-900 rounded-[2.5rem] p-2 shadow-2xl">
+                <div class="mx-auto iphone-container">
+                    <!-- iPhone 17 Device Frame -->
+                    <div class="relative bg-slate-900 rounded-[3rem] p-1 shadow-2xl iphone-frame">
+                        <!-- Dynamic Island -->
+                        <div class="absolute top-2 left-1/2 transform -translate-x-1/2 w-28 h-7 bg-black rounded-2xl z-10"></div>
+                        
                         <!-- Screen -->
-                        <div class="bg-white rounded-[2rem] overflow-hidden relative">
+                        <div class="bg-white rounded-[2.5rem] overflow-hidden relative iphone-screen">
                             <!-- Status Bar -->
-                            <div class="bg-white px-6 py-2 flex justify-between items-center text-xs font-medium text-slate-900 border-b border-slate-100">
+                            <div class="bg-white px-8 py-3 flex justify-between items-center text-sm font-medium text-slate-900">
                                 <span>9:41</span>
                                 <div class="flex items-center gap-1">
                                     <div class="flex gap-1">
@@ -77,7 +63,7 @@
                             </div>
                             
                             <!-- Iframe Container -->
-                            <div class="relative" style="height: 600px;">
+                            <div class="relative iphone-content">
                                 <iframe
                                     :src="previewUrl"
                                     class="w-full h-full border-0"
@@ -101,17 +87,16 @@
                     
                     <!-- Preview Info -->
                     <div class="mt-4 text-center">
-                        <p class="text-xs text-slate-500">
-                            Live preview of your mobile card experience
-                        </p>
+                        <p class="text-xs text-slate-500">iPhone 17 Pro Simulation</p>
+                        <p class="text-xs text-slate-500">Live preview of your mobile card experience</p>
                         <div v-if="sampleCard" class="mt-2 text-xs text-slate-400">
-                            <span v-if="sampleCard.activation_code && sampleCard.activation_code.startsWith('PREVIEW_')" 
+                            <span v-if="sampleCard.preview_mode" 
                                   class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
                                 <i class="pi pi-eye text-xs"></i>
                                 Preview Mode
                             </span>
                             <span v-else>
-                                Using sample card: {{ sampleCard.activation_code.substring(0, 8) }}...
+                                Using sample card: {{ sampleCard.issue_card_id.substring(0, 8) }}...
                             </span>
                         </div>
                     </div>
@@ -140,9 +125,12 @@ const error = ref(null);
 const sampleCard = ref(null);
 
 const previewUrl = computed(() => {
-    if (!sampleCard.value) return null;
+    if (!props.cardProp?.id) return null;
     const baseUrl = window.location.origin;
-    return `${baseUrl}/issuedcard/${sampleCard.value.issue_card_id}/${sampleCard.value.activation_code}`;
+    // Always use preview route for the mobile preview
+    const url = `${baseUrl}/preview/${props.cardProp.id}`;
+    console.log('Preview URL:', url);
+    return url;
 });
 
 const loadPreview = async () => {
@@ -150,40 +138,23 @@ const loadPreview = async () => {
     
     isLoading.value = true;
     error.value = null;
-    sampleCard.value = null;
     
     try {
-        // First try to get preview access (works without issued cards)
+        // Verify preview access (optional - checks if user owns the card)
         const { data: previewData, error: previewError } = await supabase.rpc('get_card_preview_access', {
             p_card_id: props.cardProp.id
         });
         
-        if (previewData && previewData.length > 0) {
-            // Use preview mode
-            const preview = previewData[0];
-            sampleCard.value = {
-                issue_card_id: preview.card_id, // Use card_id as issue_card_id in preview mode
-                activation_code: preview.activation_code // Special preview activation code
-            };
-            iframeLoading.value = true;
+        if (previewError) {
+            throw new Error(previewError.message);
+        }
+        
+        if (!previewData || previewData.length === 0) {
+            error.value = 'Preview access denied. You can only preview your own cards.';
             return;
         }
         
-        // Fall back to existing function for issued cards
-        const { data, error: rpcError } = await supabase.rpc('get_sample_issued_card_for_preview', {
-            p_card_id: props.cardProp.id
-        });
-        
-        if (rpcError) {
-            throw new Error(rpcError.message);
-        }
-        
-        if (!data || data.length === 0) {
-            error.value = 'No issued cards available for preview. Please issue a batch first.';
-            return;
-        }
-        
-        sampleCard.value = data[0];
+        // Preview URL is already set via computed property
         iframeLoading.value = true;
         
     } catch (err) {
@@ -225,6 +196,63 @@ onMounted(() => {
 /* Ensure iframe scales properly */
 iframe {
     transform-origin: top left;
+}
+
+/* iPhone 17 Dimensions and Styling */
+.iphone-container {
+    max-width: 320px; /* Slightly increased iPhone 17 Pro width scale */
+}
+
+.iphone-frame {
+    width: 100%;
+    /* iPhone 17 Pro aspect ratio: 19.5:9 (approximately 2.17:1) */
+    aspect-ratio: 9 / 19.5;
+    max-width: 320px;
+    max-height: 693px; /* Increased proportionally: 320 * (19.5/9) ≈ 693 */
+    margin: 0 auto;
+}
+
+.iphone-screen {
+    width: 100%;
+    height: 100%;
+    /* Account for the frame padding */
+}
+
+.iphone-content {
+    /* Subtract status bar height from total */
+    height: calc(100% - 3.5rem);
+    min-height: 600px; /* Increased proportionally */
+}
+
+/* Responsive adjustments for iPhone 17 */
+@media (max-width: 480px) {
+    .iphone-container {
+        max-width: 280px;
+    }
+    
+    .iphone-frame {
+        max-width: 280px;
+        max-height: 607px;
+    }
+    
+    .iphone-content {
+        min-height: 520px;
+    }
+}
+
+@media (max-width: 360px) {
+    .iphone-container {
+        max-width: 240px;
+    }
+    
+    .iphone-frame {
+        max-width: 240px;
+        max-height: 520px;
+    }
+    
+    .iphone-content {
+        min-height: 450px;
+    }
 }
 
 /* Custom scrollbar for mobile frame */

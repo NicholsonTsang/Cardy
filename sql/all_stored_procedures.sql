@@ -1,0 +1,2706 @@
+-- Combined Stored Procedures
+-- Generated: Sun Jul  6 12:17:25 HKT 2025
+
+-- Drop all existing functions first
+-- Simple version: Drop all Cardy CMS functions
+-- Add this at the beginning of your deployment to ensure clean state
+
+DO $$
+DECLARE
+    r RECORD;
+BEGIN
+    -- Drop all functions that are likely from Cardy CMS
+    FOR r IN 
+        SELECT format('DROP FUNCTION IF EXISTS %I(%s) CASCADE', 
+                     p.proname, 
+                     pg_get_function_identity_arguments(p.oid)) as drop_cmd
+        FROM pg_proc p
+        JOIN pg_namespace n ON p.pronamespace = n.oid
+        WHERE n.nspname = 'public'
+        AND p.prokind = 'f'
+        AND p.proname IN (
+            -- Card management functions
+            'create_card', 'update_card', 'delete_card', 'get_card_by_id',
+            'get_user_cards', 'duplicate_card',
+            
+            -- Content management functions
+            'create_content_item', 'update_content_item', 'delete_content_item',
+            'get_content_items', 'reorder_content_items', 'update_content_item_parent',
+            
+            -- User management functions
+            'get_or_create_user_profile', 'update_user_profile', 'get_user_profile_status',
+            'submit_user_verification', 'upload_verification_document',
+            
+            -- Batch management functions
+            'get_next_batch_number', 'issue_card_batch', 'get_card_batches',
+            'get_issued_cards_with_batch', 'toggle_card_batch_disabled_status',
+            'activate_issued_card', 'get_card_issuance_stats', 'delete_issued_card',
+            'generate_batch_cards',
+            
+            -- Payment management functions
+            'create_batch_payment', 'update_batch_payment_status', 'get_batch_payment_info',
+            'confirm_batch_payment', 'process_stripe_payment',
+            
+            -- Print request functions
+            'request_card_printing', 'get_print_requests_for_batch', 'withdraw_print_request',
+            'get_user_print_requests',
+            
+            -- Public access functions
+            'get_public_card_content', 'get_sample_issued_card_for_preview',
+            'get_card_preview_access',
+            
+            -- Admin functions
+            'admin_confirm_batch_payment', 'admin_waive_batch_payment',
+            'get_user_all_issued_cards', 'get_user_issuance_stats',
+            'get_user_all_card_batches', 'get_user_recent_activity',
+            'admin_update_user_role', 'admin_update_verification_status',
+            'admin_get_user_verification_details', 'admin_reset_user_verification',
+            'admin_get_platform_stats', 'admin_get_pending_verifications',
+            'admin_get_all_users', 'admin_update_print_request_status',
+            'admin_get_all_print_requests', 'admin_add_print_notes',
+            'admin_get_batch_details', 'admin_get_all_batches',
+            'admin_disable_batch', 'admin_generate_cards_for_batch'
+        )
+    LOOP
+        EXECUTE r.drop_cmd;
+    END LOOP;
+    
+    RAISE NOTICE 'All Cardy CMS functions dropped';
+END $$;
+-- =================================================================
+-- CLIENT-SIDE PROCEDURES
+-- =================================================================
+
+-- File: 01_auth_functions.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS handle_new_user CASCADE;
+DROP FUNCTION IF EXISTS get_user_role CASCADE;
+
+-- =================================================================
+-- AUTH FUNCTIONS
+-- Functions for user authentication, role management, and triggers
+-- =================================================================
+
+-- Function to set default role for new users (from triggers.sql)
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER -- Required to modify auth.users table
+SET search_path = public
+AS $$
+BEGIN
+  UPDATE auth.users
+  SET raw_user_meta_data = raw_user_meta_data || jsonb_build_object('role', 'cardIssuer')
+  WHERE id = NEW.id;
+  RETURN NEW;
+END;
+$$;
+
+-- Grant execute permission for handle_new_user (from triggers.sql)
+GRANT EXECUTE ON FUNCTION public.handle_new_user() TO supabase_auth_admin;
+
+-- Function to get user role (from auth_triggers.sql)
+CREATE OR REPLACE FUNCTION public.get_user_role(user_id UUID)
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  role TEXT;
+BEGIN
+  SELECT raw_user_meta_data->>'role' INTO role FROM auth.users WHERE id = user_id;
+  RETURN role;
+END;
+$$;
+
+-- Grant execute permission for get_user_role (from auth_triggers.sql)
+GRANT EXECUTE ON FUNCTION public.get_user_role(UUID) TO postgres, anon, authenticated, service_role; 
+
+-- File: 02_card_management.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_user_cards CASCADE;
+DROP FUNCTION IF EXISTS create_card CASCADE;
+DROP FUNCTION IF EXISTS get_card_by_id CASCADE;
+DROP FUNCTION IF EXISTS update_card CASCADE;
+DROP FUNCTION IF EXISTS delete_card CASCADE;
+
+-- =================================================================
+-- CARD MANAGEMENT FUNCTIONS
+-- Functions for managing card designs (CRUD operations)
+-- =================================================================
+
+-- Get all cards for the current user (more secure)
+CREATE OR REPLACE FUNCTION get_user_cards()
+RETURNS TABLE (
+    id UUID,
+    name TEXT,
+    description TEXT,
+    image_urls TEXT[],
+    conversation_ai_enabled BOOLEAN,
+    ai_prompt TEXT,
+    qr_code_position TEXT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.id, 
+        c.name, 
+        c.description, 
+        c.image_urls, 
+        c.conversation_ai_enabled,
+        c.ai_prompt,
+        c.qr_code_position::TEXT,
+        c.created_at,
+        c.updated_at
+    FROM cards c
+    WHERE c.user_id = auth.uid()
+    ORDER BY c.created_at DESC;
+END;
+$$;
+
+-- Create a new card (more secure)
+CREATE OR REPLACE FUNCTION create_card(
+    p_name TEXT,
+    p_description TEXT,
+    p_image_urls TEXT[] DEFAULT ARRAY[]::TEXT[],
+    p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
+    p_ai_prompt TEXT DEFAULT '',
+    p_qr_code_position TEXT DEFAULT 'BR'
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_card_id UUID;
+BEGIN
+    INSERT INTO cards (
+        user_id,
+        name,
+        description,
+        image_urls,
+        conversation_ai_enabled,
+        ai_prompt,
+        qr_code_position
+    ) VALUES (
+        auth.uid(),
+        p_name,
+        p_description,
+        p_image_urls,
+        p_conversation_ai_enabled,
+        p_ai_prompt,
+        p_qr_code_position::"QRCodePosition"
+    )
+    RETURNING id INTO v_card_id;
+    
+    RETURN v_card_id;
+END;
+$$;
+
+-- Get a card by ID (more secure, relies on RLS policy)
+CREATE OR REPLACE FUNCTION get_card_by_id(p_card_id UUID)
+RETURNS TABLE (
+    id UUID,
+    user_id UUID,
+    name TEXT,
+    description TEXT,
+    content_render_mode TEXT,
+    qr_code_position TEXT,
+    image_urls TEXT[],
+    conversation_ai_enabled BOOLEAN,
+    ai_prompt TEXT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.id, 
+        c.user_id,
+        c.name, 
+        c.description, 
+        c.content_render_mode::TEXT,
+        c.qr_code_position::TEXT,
+        c.image_urls, 
+        c.conversation_ai_enabled,
+        c.ai_prompt,
+        c.created_at, 
+        c.updated_at
+    FROM cards c
+    WHERE c.id = p_card_id;
+    -- No need to check user_id = auth.uid() as RLS policy will handle this
+END;
+$$;
+
+-- Update an existing card (more secure)
+CREATE OR REPLACE FUNCTION update_card(
+    p_card_id UUID,
+    p_name TEXT DEFAULT NULL,
+    p_description TEXT DEFAULT NULL,
+    p_image_urls TEXT[] DEFAULT NULL,
+    p_conversation_ai_enabled BOOLEAN DEFAULT NULL,
+    p_ai_prompt TEXT DEFAULT NULL,
+    p_qr_code_position TEXT DEFAULT NULL
+) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    UPDATE cards
+    SET 
+        name = COALESCE(p_name, name),
+        description = COALESCE(p_description, description),
+        image_urls = COALESCE(p_image_urls, image_urls),
+        conversation_ai_enabled = COALESCE(p_conversation_ai_enabled, conversation_ai_enabled),
+        ai_prompt = COALESCE(p_ai_prompt, ai_prompt),
+        qr_code_position = COALESCE(p_qr_code_position::"QRCodePosition", qr_code_position),
+        updated_at = now()
+    WHERE id = p_card_id AND user_id = auth.uid();
+    
+    RETURN FOUND;
+END;
+$$;
+
+-- Delete a card (more secure)
+CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    DELETE FROM cards WHERE id = p_card_id AND user_id = auth.uid();
+    RETURN FOUND;
+END;
+$$; 
+
+-- File: 03_content_management.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_card_content_items CASCADE;
+DROP FUNCTION IF EXISTS get_content_item_by_id CASCADE;
+DROP FUNCTION IF EXISTS create_content_item CASCADE;
+DROP FUNCTION IF EXISTS update_content_item CASCADE;
+DROP FUNCTION IF EXISTS update_content_item_order CASCADE;
+DROP FUNCTION IF EXISTS delete_content_item CASCADE;
+
+-- =================================================================
+-- CONTENT ITEM MANAGEMENT FUNCTIONS
+-- Functions for managing content items within cards
+-- =================================================================
+
+-- Get all content items for a card (updated with ordering)
+CREATE OR REPLACE FUNCTION get_card_content_items(p_card_id UUID)
+RETURNS TABLE (
+    id UUID,
+    card_id UUID,
+    parent_id UUID,
+    name TEXT,
+    content TEXT,
+    image_urls TEXT[],
+    ai_metadata TEXT,
+    sort_order INTEGER,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ci.id, 
+        ci.card_id,
+        ci.parent_id,
+        ci.name, 
+        ci.content, 
+        ci.image_urls, 
+        ci.ai_metadata,
+        ci.sort_order,
+        ci.created_at,
+        ci.updated_at
+    FROM content_items ci
+    JOIN cards c ON ci.card_id = c.id
+    WHERE ci.card_id = p_card_id AND c.user_id = auth.uid()
+    ORDER BY 
+        CASE WHEN ci.parent_id IS NULL THEN ci.sort_order ELSE 999999 END,
+        ci.parent_id NULLS FIRST,
+        ci.sort_order ASC,
+        ci.created_at ASC;
+END;
+$$;
+
+-- Get a content item by ID (updated with ordering)
+CREATE OR REPLACE FUNCTION get_content_item_by_id(p_content_item_id UUID)
+RETURNS TABLE (
+    id UUID,
+    card_id UUID,
+    parent_id UUID,
+    name TEXT,
+    content TEXT,
+    image_urls TEXT[],
+    ai_metadata TEXT,
+    sort_order INTEGER,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ci.id, 
+        ci.card_id,
+        ci.parent_id,
+        ci.name, 
+        ci.content, 
+        ci.image_urls, 
+        ci.ai_metadata,
+        ci.sort_order,
+        ci.created_at,
+        ci.updated_at
+    FROM content_items ci
+    JOIN cards c ON ci.card_id = c.id
+    WHERE ci.id = p_content_item_id AND c.user_id = auth.uid();
+END;
+$$;
+
+-- Create a new content item (updated with ordering)
+CREATE OR REPLACE FUNCTION create_content_item(
+    p_card_id UUID,
+    p_name TEXT,
+    p_parent_id UUID DEFAULT NULL,
+    p_content TEXT DEFAULT '',
+    p_image_urls TEXT[] DEFAULT ARRAY[]::TEXT[],
+    p_ai_metadata TEXT DEFAULT ''
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_content_item_id UUID;
+    v_user_id UUID;
+    v_next_sort_order INTEGER;
+BEGIN
+    -- Check if the user owns the card
+    SELECT user_id INTO v_user_id
+    FROM cards
+    WHERE id = p_card_id;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to add content to this card';
+    END IF;
+    
+    -- If parent_id is provided, check if it exists and belongs to the same card
+    IF p_parent_id IS NOT NULL THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM content_items 
+            WHERE id = p_parent_id AND card_id = p_card_id
+        ) THEN
+            RAISE EXCEPTION 'Parent content item not found or does not belong to this card';
+        END IF;
+    END IF;
+    
+    -- Get the next sort order for this level
+    SELECT COALESCE(MAX(sort_order), 0) + 1 INTO v_next_sort_order
+    FROM content_items
+    WHERE card_id = p_card_id 
+    AND (
+        (p_parent_id IS NULL AND parent_id IS NULL) OR 
+        (p_parent_id IS NOT NULL AND parent_id = p_parent_id)
+    );
+    
+    -- Insert the content item
+    INSERT INTO content_items (
+        card_id,
+        parent_id,
+        name,
+        content,
+        image_urls,
+        ai_metadata,
+        sort_order
+    ) VALUES (
+        p_card_id,
+        p_parent_id,
+        p_name,
+        p_content,
+        p_image_urls,
+        p_ai_metadata,
+        v_next_sort_order
+    )
+    RETURNING id INTO v_content_item_id;
+    
+    RETURN v_content_item_id;
+END;
+$$;
+
+-- Update an existing content item (updated with ordering)
+CREATE OR REPLACE FUNCTION update_content_item(
+    p_content_item_id UUID,
+    p_name TEXT DEFAULT NULL,
+    p_content TEXT DEFAULT NULL,
+    p_image_urls TEXT[] DEFAULT NULL,
+    p_ai_metadata TEXT DEFAULT NULL
+) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Check if the user owns the card that contains this content item
+    SELECT c.user_id INTO v_user_id
+    FROM content_items ci
+    JOIN cards c ON ci.card_id = c.id
+    WHERE ci.id = p_content_item_id;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to update this content item';
+    END IF;
+    
+    -- Update the content item
+    UPDATE content_items
+    SET 
+        name = COALESCE(p_name, name),
+        content = COALESCE(p_content, content),
+        image_urls = COALESCE(p_image_urls, image_urls),
+        ai_metadata = COALESCE(p_ai_metadata, ai_metadata),
+        updated_at = now()
+    WHERE id = p_content_item_id;
+    
+    RETURN FOUND;
+END;
+$$;
+
+-- Update content item order
+CREATE OR REPLACE FUNCTION update_content_item_order(
+    p_content_item_id UUID,
+    p_new_sort_order INTEGER
+) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_id UUID;
+    v_parent_id UUID;
+    v_old_sort_order INTEGER;
+BEGIN
+    -- Get content item details and check ownership
+    SELECT c.user_id, ci.card_id, ci.parent_id, ci.sort_order 
+    INTO v_user_id, v_card_id, v_parent_id, v_old_sort_order
+    FROM content_items ci
+    JOIN cards c ON ci.card_id = c.id
+    WHERE ci.id = p_content_item_id;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to reorder this content item';
+    END IF;
+    
+    -- Update sort orders for items in the same level
+    IF v_old_sort_order < p_new_sort_order THEN
+        -- Moving down: shift items up
+        UPDATE content_items 
+        SET sort_order = sort_order - 1
+        WHERE card_id = v_card_id 
+        AND (
+            (v_parent_id IS NULL AND parent_id IS NULL) OR 
+            (v_parent_id IS NOT NULL AND parent_id = v_parent_id)
+        )
+        AND sort_order > v_old_sort_order 
+        AND sort_order <= p_new_sort_order;
+    ELSE
+        -- Moving up: shift items down
+        UPDATE content_items 
+        SET sort_order = sort_order + 1
+        WHERE card_id = v_card_id 
+        AND (
+            (v_parent_id IS NULL AND parent_id IS NULL) OR 
+            (v_parent_id IS NOT NULL AND parent_id = v_parent_id)
+        )
+        AND sort_order >= p_new_sort_order 
+        AND sort_order < v_old_sort_order;
+    END IF;
+    
+    -- Update the target item's sort order
+    UPDATE content_items
+    SET sort_order = p_new_sort_order
+    WHERE id = p_content_item_id;
+    
+    RETURN FOUND;
+END;
+$$;
+
+-- Delete a content item
+CREATE OR REPLACE FUNCTION delete_content_item(p_content_item_id UUID)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Check if the user owns the card that contains this content item
+    SELECT c.user_id INTO v_user_id
+    FROM content_items ci
+    JOIN cards c ON ci.card_id = c.id
+    WHERE ci.id = p_content_item_id;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to delete this content item';
+    END IF;
+    
+    -- Delete the content item (cascade will handle children)
+    DELETE FROM content_items WHERE id = p_content_item_id;
+    
+    RETURN FOUND;
+END;
+$$; 
+
+-- File: 04_batch_management.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_next_batch_number CASCADE;
+DROP FUNCTION IF EXISTS issue_card_batch CASCADE;
+DROP FUNCTION IF EXISTS get_card_batches CASCADE;
+DROP FUNCTION IF EXISTS get_issued_cards_with_batch CASCADE;
+DROP FUNCTION IF EXISTS toggle_card_batch_disabled_status CASCADE;
+DROP FUNCTION IF EXISTS activate_issued_card CASCADE;
+DROP FUNCTION IF EXISTS get_card_issuance_stats CASCADE;
+DROP FUNCTION IF EXISTS delete_issued_card CASCADE;
+DROP FUNCTION IF EXISTS generate_batch_cards CASCADE;
+
+-- =================================================================
+-- CARD BATCH MANAGEMENT FUNCTIONS
+-- Functions for managing card batches and issued cards
+-- =================================================================
+
+-- Get next batch number for a card
+CREATE OR REPLACE FUNCTION get_next_batch_number(p_card_id UUID)
+RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_max_batch_number INTEGER;
+    v_user_id UUID;
+BEGIN
+    -- Check if the user owns the card
+    SELECT user_id INTO v_user_id FROM cards WHERE id = p_card_id;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to access this card';
+    END IF;
+    
+    -- Get the maximum batch number for this card
+    SELECT COALESCE(MAX(batch_number), 0) INTO v_max_batch_number
+    FROM card_batches
+    WHERE card_id = p_card_id;
+    
+    RETURN v_max_batch_number + 1;
+END;
+$$;
+
+-- Create a new card batch and issue cards
+CREATE OR REPLACE FUNCTION issue_card_batch(
+    p_card_id UUID,
+    p_quantity INTEGER
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_batch_id UUID;
+    v_batch_number INTEGER;
+    v_batch_name TEXT;
+    v_card_owner_id UUID;
+BEGIN
+    -- Validate inputs
+    IF p_quantity <= 0 OR p_quantity > 1000 THEN
+        RAISE EXCEPTION 'Quantity must be between 1 and 1000';
+    END IF;
+    
+    -- Check if the user owns the card
+    SELECT user_id INTO v_card_owner_id
+    FROM cards
+    WHERE id = p_card_id;
+    
+    IF v_card_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Card not found.';
+    END IF;
+
+    IF v_card_owner_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to issue cards for this card.';
+    END IF;
+    
+    -- Get next batch number
+    SELECT get_next_batch_number(p_card_id) INTO v_batch_number;
+    v_batch_name := 'batch-' || v_batch_number;
+    
+    -- Create the batch (Step 1: Batch creation only)
+    INSERT INTO card_batches (
+        card_id,
+        batch_name,
+        batch_number,
+        cards_count,
+        created_by,
+        payment_required,
+        payment_completed,
+        payment_amount_cents,
+        payment_waived,
+        cards_generated
+    ) VALUES (
+        p_card_id,
+        v_batch_name,
+        v_batch_number,
+        p_quantity,
+        auth.uid(),
+        TRUE,
+        FALSE,
+        p_quantity * 200, -- $2 USD per card = 200 cents per card
+        FALSE,
+        FALSE -- Cards not generated yet
+    )
+    RETURNING id INTO v_batch_id;
+    
+    -- NOTE: Cards are NOT created here in the two-step process
+    -- Cards will only be created after payment is confirmed via confirm_batch_payment()
+    -- OR when admin waives payment via admin_waive_batch_payment()
+    
+    RETURN v_batch_id;
+END;
+$$;
+
+-- Get card batches for a card
+CREATE OR REPLACE FUNCTION get_card_batches(p_card_id UUID)
+RETURNS TABLE (
+    id UUID,
+    card_id UUID,
+    batch_name TEXT,
+    batch_number INTEGER,
+    cards_count INTEGER,
+    active_cards_count BIGINT,
+    is_disabled BOOLEAN,
+    payment_required BOOLEAN,
+    payment_completed BOOLEAN,
+    payment_amount_cents INTEGER,
+    payment_completed_at TIMESTAMPTZ,
+    payment_waived BOOLEAN,
+    payment_waived_by UUID,
+    payment_waived_at TIMESTAMPTZ,
+    payment_waiver_reason TEXT,
+    cards_generated BOOLEAN,
+    cards_generated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        cb.id,
+        cb.card_id,
+        cb.batch_name,
+        cb.batch_number,
+        cb.cards_count,
+        COUNT(ic.id) FILTER (WHERE ic.active = true) as active_cards_count,
+        cb.is_disabled,
+        cb.payment_required,
+        cb.payment_completed,
+        cb.payment_amount_cents,
+        cb.payment_completed_at,
+        cb.payment_waived,
+        cb.payment_waived_by,
+        cb.payment_waived_at,
+        cb.payment_waiver_reason,
+        cb.cards_generated,
+        cb.cards_generated_at,
+        cb.created_at,
+        cb.updated_at
+    FROM card_batches cb
+    LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
+    JOIN cards c ON cb.card_id = c.id
+    WHERE cb.card_id = p_card_id AND c.user_id = auth.uid()
+    GROUP BY cb.id, cb.card_id, cb.batch_name, cb.batch_number, cb.cards_count, cb.is_disabled, 
+             cb.payment_required, cb.payment_completed, cb.payment_amount_cents, cb.payment_completed_at, 
+             cb.payment_waived, cb.payment_waived_by, cb.payment_waived_at, cb.payment_waiver_reason,
+             cb.cards_generated, cb.cards_generated_at, cb.created_at, cb.updated_at
+    ORDER BY cb.batch_number ASC;
+END;
+$$;
+
+-- Get issued cards with batch information (including batch disabled status)
+CREATE OR REPLACE FUNCTION get_issued_cards_with_batch(p_card_id UUID)
+RETURNS TABLE (
+    id UUID,
+    card_id UUID,
+    active BOOLEAN,
+    issue_at TIMESTAMPTZ,
+    active_at TIMESTAMPTZ,
+    activated_by UUID,
+    batch_id UUID,
+    batch_name TEXT,
+    batch_number INTEGER,
+    batch_is_disabled BOOLEAN
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ic.id,
+        c.id as card_id,
+        ic.active,
+        ic.issue_at,
+        ic.active_at,
+        ic.activated_by,
+        cb.id as batch_id,
+        cb.batch_name,
+        cb.batch_number,
+        cb.is_disabled as batch_is_disabled
+    FROM issue_cards ic
+    JOIN card_batches cb ON ic.batch_id = cb.id
+    JOIN cards c ON ic.card_id = c.id
+    WHERE ic.card_id = p_card_id AND c.user_id = auth.uid()
+    ORDER BY ic.issue_at DESC;
+END;
+$$;
+
+-- Toggle disable status of a card batch
+CREATE OR REPLACE FUNCTION toggle_card_batch_disabled_status(p_batch_id UUID, p_disable_status BOOLEAN)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_id UUID;
+BEGIN
+    -- Check if the user owns the card that contains this batch
+    SELECT c.user_id, cb.card_id INTO v_user_id, v_card_id
+    FROM card_batches cb
+    JOIN cards c ON cb.card_id = c.id
+    WHERE cb.id = p_batch_id;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to modify this batch.';
+    END IF;
+
+    -- Check if there is an active print request for this batch if attempting to disable
+    IF p_disable_status = TRUE THEN
+        IF EXISTS (
+            SELECT 1 FROM print_requests pr
+            WHERE pr.batch_id = p_batch_id AND pr.status NOT IN ('COMPLETED', 'CANCELLED')
+        ) THEN
+            RAISE EXCEPTION 'Cannot disable a batch with an active print request. Please cancel or complete the print request first.';
+        END IF;
+    END IF;
+    
+    UPDATE card_batches
+    SET is_disabled = p_disable_status,
+        updated_at = now()
+    WHERE id = p_batch_id;
+    
+    RETURN FOUND;
+END;
+$$;
+
+-- Activate an issued card by ID (simplified without activation code)
+CREATE OR REPLACE FUNCTION activate_issued_card(p_card_id UUID)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    UPDATE issue_cards
+    SET 
+        active = true,
+        active_at = NOW(),
+        activated_by = auth.uid()
+    WHERE id = p_card_id AND active = false;
+    
+    RETURN FOUND;
+END;
+$$;
+
+-- Get card issuance statistics
+CREATE OR REPLACE FUNCTION get_card_issuance_stats(p_card_id UUID)
+RETURNS TABLE (
+    total_issued BIGINT,
+    total_activated BIGINT,
+    activation_rate NUMERIC,
+    total_batches BIGINT
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        COUNT(ic.id) as total_issued,
+        COUNT(ic.id) FILTER (WHERE ic.active = true) as total_activated,
+        CASE 
+            WHEN COUNT(ic.id) > 0 THEN 
+                ROUND((COUNT(ic.id) FILTER (WHERE ic.active = true) * 100.0 / COUNT(ic.id)), 2)
+            ELSE 0 
+        END as activation_rate,
+        COUNT(DISTINCT cb.id) as total_batches
+    FROM issue_cards ic
+    JOIN card_batches cb ON ic.batch_id = cb.id
+    JOIN cards c ON ic.card_id = c.id
+    WHERE ic.card_id = p_card_id AND c.user_id = auth.uid();
+END;
+$$;
+
+-- Delete an issued card (secure replacement for direct table access)
+CREATE OR REPLACE FUNCTION delete_issued_card(p_issued_card_id UUID)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_card_owner_id UUID;
+BEGIN
+    -- Check if the user owns the card that contains this issued card
+    SELECT c.user_id INTO v_card_owner_id
+    FROM issue_cards ic
+    JOIN cards c ON ic.card_id = c.id
+    WHERE ic.id = p_issued_card_id;
+    
+    IF v_card_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Issued card not found';
+    END IF;
+    
+    IF v_card_owner_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to delete this issued card';
+    END IF;
+    
+    -- Delete the issued card
+    DELETE FROM issue_cards WHERE id = p_issued_card_id;
+    
+    RETURN FOUND;
+END;
+$$;
+
+-- Generate cards for a paid or waived batch
+CREATE OR REPLACE FUNCTION generate_batch_cards(
+    p_batch_id UUID
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_batch_record RECORD;
+    v_batch_owner_id UUID;
+    i INTEGER;
+BEGIN
+    -- Get batch information and check ownership
+    SELECT cb.*, c.user_id as card_owner INTO v_batch_record
+    FROM card_batches cb
+    JOIN cards c ON cb.card_id = c.id
+    WHERE cb.id = p_batch_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Batch not found.';
+    END IF;
+    
+    -- Check if user owns the batch or is admin
+    IF v_batch_record.card_owner != auth.uid() THEN
+        -- Check if caller is admin
+        DECLARE
+            caller_role TEXT;
+        BEGIN
+            SELECT raw_user_meta_data->>'role' INTO caller_role
+            FROM auth.users
+            WHERE auth.users.id = auth.uid();
+            
+            IF caller_role != 'admin' THEN
+                RAISE EXCEPTION 'Not authorized to generate cards for this batch.';
+            END IF;
+        END;
+    END IF;
+    
+    -- Check if cards can be generated
+    IF v_batch_record.cards_generated = TRUE THEN
+        RAISE EXCEPTION 'Cards have already been generated for this batch.';
+    END IF;
+    
+    IF v_batch_record.payment_completed = FALSE AND v_batch_record.payment_waived = FALSE THEN
+        RAISE EXCEPTION 'Payment required or must be waived before generating cards.';
+    END IF;
+    
+    -- Generate the issued cards
+    FOR i IN 1..v_batch_record.cards_count LOOP
+        INSERT INTO issue_cards (
+            card_id,
+            batch_id,
+            active,
+            issue_at
+        ) VALUES (
+            v_batch_record.card_id,
+            p_batch_id,
+            false,
+            NOW()
+        );
+    END LOOP;
+    
+    -- Update batch to mark cards as generated
+    UPDATE card_batches 
+    SET 
+        cards_generated = TRUE,
+        cards_generated_at = NOW(),
+        updated_at = NOW()
+    WHERE id = p_batch_id;
+    
+    RETURN p_batch_id;
+END;
+$$; 
+
+-- File: 05_payment_management_client.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_batch_payment_info CASCADE;
+
+-- =================================================================
+-- PAYMENT MANAGEMENT FUNCTIONS (CLIENT-SIDE)
+-- Functions called by Vue.js frontend application
+-- =================================================================
+
+-- Get batch payment information (Used by frontend)
+CREATE OR REPLACE FUNCTION get_batch_payment_info(p_batch_id UUID)
+RETURNS TABLE (
+    payment_id UUID,
+    stripe_checkout_session_id TEXT,
+    stripe_payment_intent_id TEXT,
+    amount_cents INTEGER,
+    currency TEXT,
+    payment_status TEXT,
+    payment_method TEXT,
+    failure_reason TEXT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_batch_owner_id UUID;
+BEGIN
+    -- Check batch ownership
+    SELECT created_by INTO v_batch_owner_id
+    FROM card_batches 
+    WHERE id = p_batch_id;
+    
+    IF v_batch_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Batch not found.';
+    END IF;
+    
+    IF v_batch_owner_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to view payment info for this batch.';
+    END IF;
+    
+    RETURN QUERY
+    SELECT 
+        bp.id as payment_id,
+        bp.stripe_checkout_session_id,
+        bp.stripe_payment_intent_id,
+        bp.amount_cents,
+        bp.currency,
+        bp.payment_status,
+        bp.payment_method,
+        bp.failure_reason,
+        bp.created_at,
+        bp.updated_at
+    FROM batch_payments bp
+    WHERE bp.batch_id = p_batch_id;
+END;
+$$;
+
+-- File: 06_print_requests.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS request_card_printing CASCADE;
+DROP FUNCTION IF EXISTS request_card_printing_with_address CASCADE;
+DROP FUNCTION IF EXISTS get_print_requests_for_batch CASCADE;
+DROP FUNCTION IF EXISTS withdraw_print_request CASCADE;
+
+-- =================================================================
+-- PRINT REQUEST FUNCTIONS
+-- Functions for managing physical card printing requests
+-- =================================================================
+
+-- Request card printing for a batch
+CREATE OR REPLACE FUNCTION request_card_printing(p_batch_id UUID, p_shipping_address TEXT)
+RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_print_request_id UUID;
+    v_user_id UUID;
+    v_batch_is_disabled BOOLEAN;
+    v_payment_completed BOOLEAN;
+    v_payment_waived BOOLEAN;
+    v_cards_generated BOOLEAN;
+BEGIN
+    -- Check if the user owns the card associated with the batch and get payment status
+    SELECT c.user_id, cb.is_disabled, cb.payment_completed, cb.payment_waived, cb.cards_generated
+    INTO v_user_id, v_batch_is_disabled, v_payment_completed, v_payment_waived, v_cards_generated
+    FROM card_batches cb
+    JOIN cards c ON cb.card_id = c.id
+    WHERE cb.id = p_batch_id;
+
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Batch not found.';
+    END IF;
+
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to request printing for this batch.';
+    END IF;
+
+    IF v_batch_is_disabled THEN
+        RAISE EXCEPTION 'Cannot request printing for a disabled batch.';
+    END IF;
+
+    -- NEW: Validate payment status
+    IF NOT v_payment_completed AND NOT v_payment_waived THEN
+        RAISE EXCEPTION 'Payment must be completed or waived before requesting card printing.';
+    END IF;
+
+    -- NEW: Validate cards are generated
+    IF NOT v_cards_generated THEN
+        RAISE EXCEPTION 'Cards must be generated before requesting printing. Please contact support if payment was completed but cards are not generated.';
+    END IF;
+
+    -- Check if there is already an active print request for this batch
+    IF EXISTS (
+        SELECT 1 FROM print_requests pr
+        WHERE pr.batch_id = p_batch_id AND pr.status NOT IN ('COMPLETED', 'CANCELLED')
+    ) THEN
+        RAISE EXCEPTION 'An active print request already exists for this batch.';
+    END IF;
+
+    INSERT INTO print_requests (
+        batch_id,
+        user_id,
+        shipping_address,
+        status
+    ) VALUES (
+        p_batch_id,
+        auth.uid(),
+        p_shipping_address,
+        'SUBMITTED'
+    )
+    RETURNING id INTO v_print_request_id;
+
+    RETURN v_print_request_id;
+END;
+$$;
+
+-- Request card printing for a batch with shipping address ID
+CREATE OR REPLACE FUNCTION request_card_printing_with_address(
+    p_batch_id UUID, 
+    p_shipping_address_id UUID
+)
+RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_print_request_id UUID;
+    v_user_id UUID;
+    v_batch_is_disabled BOOLEAN;
+    v_payment_completed BOOLEAN;
+    v_payment_waived BOOLEAN;
+    v_cards_generated BOOLEAN;
+    v_formatted_address TEXT;
+BEGIN
+    -- Check if the user owns the card associated with the batch and get payment status
+    SELECT c.user_id, cb.is_disabled, cb.payment_completed, cb.payment_waived, cb.cards_generated
+    INTO v_user_id, v_batch_is_disabled, v_payment_completed, v_payment_waived, v_cards_generated
+    FROM card_batches cb
+    JOIN cards c ON cb.card_id = c.id
+    WHERE cb.id = p_batch_id;
+
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Batch not found.';
+    END IF;
+
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to request printing for this batch.';
+    END IF;
+
+    IF v_batch_is_disabled THEN
+        RAISE EXCEPTION 'Cannot request printing for a disabled batch.';
+    END IF;
+
+    -- NEW: Validate payment status
+    IF NOT v_payment_completed AND NOT v_payment_waived THEN
+        RAISE EXCEPTION 'Payment must be completed or waived before requesting card printing.';
+    END IF;
+
+    -- NEW: Validate cards are generated
+    IF NOT v_cards_generated THEN
+        RAISE EXCEPTION 'Cards must be generated before requesting printing. Please contact support if payment was completed but cards are not generated.';
+    END IF;
+
+    -- Check if there is already an active print request for this batch
+    IF EXISTS (
+        SELECT 1 FROM print_requests pr
+        WHERE pr.batch_id = p_batch_id AND pr.status NOT IN ('COMPLETED', 'CANCELLED')
+    ) THEN
+        RAISE EXCEPTION 'An active print request already exists for this batch.';
+    END IF;
+
+    -- Get formatted address
+    SELECT format_shipping_address(p_shipping_address_id) INTO v_formatted_address;
+
+    INSERT INTO print_requests (
+        batch_id,
+        user_id,
+        shipping_address,
+        status
+    ) VALUES (
+        p_batch_id,
+        auth.uid(),
+        v_formatted_address,
+        'SUBMITTED'
+    )
+    RETURNING id INTO v_print_request_id;
+
+    RETURN v_print_request_id;
+END;
+$$;
+
+-- Get print requests for a batch
+CREATE OR REPLACE FUNCTION get_print_requests_for_batch(p_batch_id UUID)
+RETURNS TABLE (
+    id UUID,
+    batch_id UUID,
+    user_id UUID,
+    status TEXT, -- "PrintRequestStatus"
+    shipping_address TEXT,
+    admin_notes TEXT,
+    requested_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id_check UUID;
+BEGIN
+    -- Check if the user owns the card associated with the batch
+    SELECT c.user_id INTO v_user_id_check
+    FROM card_batches cb
+    JOIN cards c ON cb.card_id = c.id
+    WHERE cb.id = p_batch_id;
+
+    IF v_user_id_check IS NULL THEN
+        RAISE EXCEPTION 'Batch not found.';
+    END IF;
+
+    IF v_user_id_check != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to view print requests for this batch.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        pr.id,
+        pr.batch_id,
+        pr.user_id,
+        pr.status::TEXT, -- Cast ENUM to TEXT for broader client compatibility if needed
+        pr.shipping_address,
+        pr.admin_notes,
+        pr.requested_at,
+        pr.updated_at
+    FROM print_requests pr
+    WHERE pr.batch_id = p_batch_id
+    ORDER BY pr.requested_at DESC;
+END;
+$$;
+
+-- Withdraw/Cancel a print request (card issuer only)
+CREATE OR REPLACE FUNCTION withdraw_print_request(
+    p_request_id UUID,
+    p_withdrawal_reason TEXT DEFAULT NULL
+)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+    v_current_status "PrintRequestStatus";
+    v_batch_id UUID;
+    v_card_name TEXT;
+    v_batch_name TEXT;
+BEGIN
+    -- Get print request details and verify ownership
+    SELECT pr.user_id, pr.status, pr.batch_id, c.name, cb.batch_name
+    INTO v_user_id, v_current_status, v_batch_id, v_card_name, v_batch_name
+    FROM print_requests pr
+    JOIN card_batches cb ON pr.batch_id = cb.id
+    JOIN cards c ON cb.card_id = c.id
+    WHERE pr.id = p_request_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Print request not found.';
+    END IF;
+
+    -- Check authorization
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to withdraw this print request.';
+    END IF;
+
+    -- Check if withdrawal is allowed based on current status
+    IF v_current_status != 'SUBMITTED' THEN
+        RAISE EXCEPTION 'Print request can only be withdrawn when status is SUBMITTED. Current status: %', v_current_status;
+    END IF;
+
+    -- Update the print request status to CANCELLED
+    UPDATE print_requests
+    SET 
+        status = 'CANCELLED',
+        admin_notes = CASE 
+            WHEN admin_notes IS NULL OR admin_notes = '' THEN 
+                'Withdrawn by card issuer' || COALESCE(': ' || p_withdrawal_reason, '')
+            ELSE 
+                admin_notes || E'\n\n[WITHDRAWN] ' || COALESCE(p_withdrawal_reason, 'Withdrawn by card issuer')
+        END,
+        updated_at = NOW()
+    WHERE id = p_request_id;
+
+    -- Log the withdrawal in audit table for admin visibility
+    INSERT INTO admin_audit_log (
+        admin_user_id,
+        target_user_id,
+        action_type,
+        reason,
+        old_values,
+        new_values,
+        action_details
+    ) VALUES (
+        auth.uid(), -- The card issuer is performing this action
+        auth.uid(), -- They are the target user as well
+        'PRINT_REQUEST_WITHDRAWAL',
+        COALESCE(p_withdrawal_reason, 'Print request withdrawn by card issuer'),
+        jsonb_build_object(
+            'status', 'SUBMITTED'
+        ),
+        jsonb_build_object(
+            'status', 'CANCELLED',
+            'withdrawal_reason', p_withdrawal_reason
+        ),
+        jsonb_build_object(
+            'request_id', p_request_id,
+            'batch_id', v_batch_id,
+            'card_name', v_card_name,
+            'batch_name', v_batch_name,
+            'self_withdrawal', true
+        )
+    );
+    
+    RETURN FOUND;
+END;
+$$; 
+
+-- File: 07_public_access.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_public_card_content CASCADE;
+DROP FUNCTION IF EXISTS get_sample_issued_card_for_preview CASCADE;
+DROP FUNCTION IF EXISTS get_card_preview_access CASCADE;
+DROP FUNCTION IF EXISTS get_card_preview_content CASCADE;
+
+-- =================================================================
+-- PUBLIC CARD ACCESS FUNCTIONS
+-- Functions for public card access and mobile preview
+-- =================================================================
+
+-- Get public card content by issue card ID
+CREATE OR REPLACE FUNCTION get_public_card_content(p_issue_card_id UUID)
+RETURNS TABLE (
+    card_name TEXT,
+    card_description TEXT,
+    card_image_urls TEXT[],
+    card_conversation_ai_enabled BOOLEAN,
+    card_ai_prompt TEXT,
+    content_item_id UUID,
+    content_item_parent_id UUID,
+    content_item_name TEXT,
+    content_item_content TEXT,
+    content_item_image_urls TEXT[],
+    content_item_ai_metadata TEXT,
+    content_item_sort_order INTEGER,
+    is_activated BOOLEAN
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_card_design_id UUID;
+    v_is_card_active BOOLEAN;
+    v_card_owner_id UUID;
+    v_caller_id UUID;
+    v_is_owner_access BOOLEAN := FALSE;
+BEGIN
+    -- Get the caller's user ID
+    v_caller_id := auth.uid();
+    
+    -- Get card information by issue card ID
+    SELECT ic.card_id, ic.active, c.user_id 
+    INTO v_card_design_id, v_is_card_active, v_card_owner_id
+    FROM issue_cards ic
+    JOIN cards c ON ic.card_id = c.id
+    WHERE ic.id = p_issue_card_id;
+
+    IF NOT FOUND THEN
+        -- If no card matches, return empty
+        RETURN;
+    END IF;
+
+    -- Check if the caller is the card owner
+    IF v_caller_id IS NOT NULL AND v_caller_id = v_card_owner_id THEN
+        v_is_owner_access := TRUE;
+        -- For owner access, we consider the card as "activated" for preview purposes
+        v_is_card_active := TRUE;
+    END IF;
+
+    -- If the card is not active, activate it automatically (regardless of owner status)
+    -- This ensures all first-time accesses are tracked, including owner previews
+    IF NOT v_is_card_active THEN
+        UPDATE issue_cards
+        SET 
+            active = true,
+            active_at = NOW(),
+            activated_by = auth.uid() -- Set to current user ID if authenticated, NULL if not
+        WHERE id = p_issue_card_id AND active = false;
+        
+        v_is_card_active := TRUE; -- Mark as active for current request
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        c.name AS card_name,
+        c.description AS card_description,
+        c.image_urls AS card_image_urls,
+        c.conversation_ai_enabled AS card_conversation_ai_enabled,
+        c.ai_prompt AS card_ai_prompt,
+        ci.id AS content_item_id,
+        ci.parent_id AS content_item_parent_id,
+        ci.name AS content_item_name,
+        ci.content AS content_item_content,
+        ci.image_urls AS content_item_image_urls,
+        ci.ai_metadata AS content_item_ai_metadata,
+        ci.sort_order AS content_item_sort_order,
+        v_is_card_active AS is_activated -- Return the current/newly activated status
+    FROM cards c
+    LEFT JOIN content_items ci ON c.id = ci.card_id
+    WHERE c.id = v_card_design_id 
+    ORDER BY 
+        CASE WHEN ci.parent_id IS NULL THEN ci.sort_order ELSE 999999 END,
+        ci.parent_id NULLS FIRST,
+        ci.sort_order ASC,
+        ci.created_at ASC;
+END;
+$$;
+
+-- Get a sample issued card for mobile preview (card issuer only)
+CREATE OR REPLACE FUNCTION get_sample_issued_card_for_preview(p_card_id UUID)
+RETURNS TABLE (
+    issue_card_id UUID
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Check if the user owns the card
+    SELECT user_id INTO v_user_id FROM cards WHERE id = p_card_id;
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Card not found.';
+    END IF;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to preview this card.';
+    END IF;
+    
+    -- Get the first available issued card for this card design
+    -- Prefer active cards, but fall back to inactive ones if needed
+    RETURN QUERY
+    SELECT 
+        ic.id as issue_card_id
+    FROM issue_cards ic
+    JOIN card_batches cb ON ic.batch_id = cb.id
+    WHERE ic.card_id = p_card_id 
+    AND cb.is_disabled = FALSE -- Only from enabled batches
+    ORDER BY 
+        ic.active DESC, -- Active cards first
+        ic.issue_at DESC -- Most recent first
+    LIMIT 1;
+END;
+$$;
+
+-- Get card preview URL without requiring issued cards (for card owners)
+CREATE OR REPLACE FUNCTION get_card_preview_access(p_card_id UUID)
+RETURNS TABLE (
+    preview_mode BOOLEAN,
+    card_id UUID
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Check if the user owns the card
+    SELECT user_id INTO v_user_id FROM cards WHERE id = p_card_id;
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Card not found.';
+    END IF;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to preview this card.';
+    END IF;
+    
+    -- Return preview access with special preview mode flag
+    RETURN QUERY
+    SELECT 
+        TRUE as preview_mode,
+        p_card_id as card_id;
+END;
+$$;
+
+-- Get card content for preview mode (card owner only)
+CREATE OR REPLACE FUNCTION get_card_preview_content(p_card_id UUID)
+RETURNS TABLE (
+    card_name TEXT,
+    card_description TEXT,
+    card_image_urls TEXT[],
+    card_conversation_ai_enabled BOOLEAN,
+    card_ai_prompt TEXT,
+    content_item_id UUID,
+    content_item_parent_id UUID,
+    content_item_name TEXT,
+    content_item_content TEXT,
+    content_item_image_urls TEXT[],
+    content_item_ai_metadata TEXT,
+    content_item_sort_order INTEGER,
+    is_preview BOOLEAN
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+    v_caller_id UUID;
+BEGIN
+    -- Get the caller's user ID
+    v_caller_id := auth.uid();
+    
+    -- Verify the user is authenticated
+    IF v_caller_id IS NULL THEN
+        RAISE EXCEPTION 'Authentication required for card preview.';
+    END IF;
+    
+    -- Check if the user owns the card
+    SELECT user_id INTO v_user_id FROM cards WHERE id = p_card_id;
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Card not found.';
+    END IF;
+    
+    IF v_user_id != v_caller_id THEN
+        RAISE EXCEPTION 'Not authorized to preview this card.';
+    END IF;
+    
+    -- Return card content directly (no issued card needed)
+    RETURN QUERY
+    SELECT 
+        c.name AS card_name,
+        c.description AS card_description,
+        c.image_urls AS card_image_urls,
+        c.conversation_ai_enabled AS card_conversation_ai_enabled,
+        c.ai_prompt AS card_ai_prompt,
+        ci.id AS content_item_id,
+        ci.parent_id AS content_item_parent_id,
+        ci.name AS content_item_name,
+        ci.content AS content_item_content,
+        ci.image_urls AS content_item_image_urls,
+        ci.ai_metadata AS content_item_ai_metadata,
+        ci.sort_order AS content_item_sort_order,
+        TRUE AS is_preview -- Indicate this is preview mode
+    FROM cards c
+    LEFT JOIN content_items ci ON c.id = ci.card_id
+    WHERE c.id = p_card_id 
+    ORDER BY 
+        CASE WHEN ci.parent_id IS NULL THEN ci.sort_order ELSE 999999 END,
+        ci.parent_id NULLS FIRST,
+        ci.sort_order ASC,
+        ci.created_at ASC;
+END;
+$$; 
+
+-- File: 08_user_profiles.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_user_profile CASCADE;
+DROP FUNCTION IF EXISTS create_or_update_basic_profile CASCADE;
+DROP FUNCTION IF EXISTS submit_verification CASCADE;
+DROP FUNCTION IF EXISTS review_verification CASCADE;
+DROP FUNCTION IF EXISTS withdraw_verification CASCADE;
+
+-- =================================================================
+-- USER PROFILE FUNCTIONS
+-- Functions for user profile management and verification
+-- =================================================================
+
+-- Get the profile for the currently authenticated user
+CREATE OR REPLACE FUNCTION public.get_user_profile()
+RETURNS TABLE (
+    user_id UUID,
+    public_name TEXT,
+    bio TEXT,
+    company_name TEXT,
+    full_name TEXT,
+    verification_status "ProfileStatus",
+    supporting_documents TEXT[],
+    admin_feedback TEXT,
+    verified_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        up.user_id,
+        up.public_name,
+        up.bio,
+        up.company_name,
+        up.full_name,
+        up.verification_status,
+        up.supporting_documents,
+        up.admin_feedback,
+        up.verified_at,
+        up.created_at,
+        up.updated_at
+    FROM public.user_profiles up
+    WHERE up.user_id = auth.uid();
+END;
+$$;
+
+-- Create or Update basic user profile (no verification)
+CREATE OR REPLACE FUNCTION public.create_or_update_basic_profile(
+    p_public_name TEXT,
+    p_bio TEXT,
+    p_company_name TEXT DEFAULT NULL
+)
+RETURNS UUID
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID := auth.uid();
+BEGIN
+    INSERT INTO public.user_profiles (user_id, public_name, bio, company_name)
+    VALUES (v_user_id, p_public_name, p_bio, p_company_name)
+    ON CONFLICT (user_id) DO UPDATE 
+    SET 
+        public_name = EXCLUDED.public_name,
+        bio = EXCLUDED.bio,
+        company_name = EXCLUDED.company_name,
+        updated_at = NOW();
+    
+    RETURN v_user_id;
+END;
+$$;
+
+-- Submit verification application
+CREATE OR REPLACE FUNCTION public.submit_verification(
+    p_full_name TEXT,
+    p_supporting_documents TEXT[]
+)
+RETURNS UUID
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID := auth.uid();
+BEGIN
+    -- Update the profile with verification info
+    UPDATE public.user_profiles 
+    SET 
+        full_name = p_full_name,
+        supporting_documents = p_supporting_documents,
+        verification_status = 'PENDING_REVIEW',
+        admin_feedback = NULL, -- Clear previous feedback
+        updated_at = NOW()
+    WHERE user_id = v_user_id;
+    
+    -- If no profile exists yet, create one (shouldn't happen in normal flow)
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Profile must be created before submitting verification';
+    END IF;
+    
+    RETURN v_user_id;
+END;
+$$;
+
+-- (Admin) Function to review a verification
+CREATE OR REPLACE FUNCTION public.review_verification(
+    p_target_user_id UUID,
+    p_new_status "ProfileStatus",
+    p_admin_feedback TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can review verifications.';
+    END IF;
+
+    -- Ensure status is only set to APPROVED or REJECTED
+    IF p_new_status NOT IN ('APPROVED', 'REJECTED') THEN
+        RAISE EXCEPTION 'Review status must be APPROVED or REJECTED.';
+    END IF;
+
+    UPDATE public.user_profiles
+    SET 
+        verification_status = p_new_status,
+        admin_feedback = p_admin_feedback,
+        verified_at = CASE WHEN p_new_status = 'APPROVED' THEN NOW() ELSE NULL END,
+        updated_at = NOW()
+    WHERE user_id = p_target_user_id;
+
+    -- Create feedback history entry with full traceability
+    PERFORM create_or_update_admin_feedback(
+        'user_verification',
+        p_target_user_id,
+        p_target_user_id,
+        'verification_feedback',
+        p_admin_feedback,
+        jsonb_build_object(
+            'action', 'verification_review',
+            'new_status', p_new_status,
+            'timestamp', NOW()
+        )
+    );
+
+    -- Log in audit table
+    INSERT INTO admin_audit_log (
+        admin_user_id,
+        target_user_id,
+        action_type,
+        reason,
+        new_values,
+        action_details
+    ) VALUES (
+        auth.uid(),
+        p_target_user_id,
+        'VERIFICATION_REVIEW',
+        p_admin_feedback,
+        jsonb_build_object(
+            'verification_status', p_new_status,
+            'verified_at', CASE WHEN p_new_status = 'APPROVED' THEN NOW() ELSE NULL END
+        ),
+        jsonb_build_object('review_verification', true)
+    );
+    
+    RETURN FOUND;
+END;
+$$;
+
+-- (User) Function to withdraw verification submission
+CREATE OR REPLACE FUNCTION public.withdraw_verification()
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID := auth.uid();
+    v_current_status "ProfileStatus";
+BEGIN
+    -- Get current verification status
+    SELECT verification_status INTO v_current_status
+    FROM public.user_profiles
+    WHERE user_id = v_user_id;
+    
+    -- Only allow withdrawal if status is PENDING_REVIEW
+    IF v_current_status != 'PENDING_REVIEW' THEN
+        RAISE EXCEPTION 'Verification can only be withdrawn when status is PENDING_REVIEW. Current status: %', v_current_status;
+    END IF;
+
+    -- Reset verification status and clear verification data
+    UPDATE public.user_profiles
+    SET 
+        verification_status = 'NOT_SUBMITTED',
+        full_name = NULL,
+        supporting_documents = NULL,
+        admin_feedback = NULL,
+        verified_at = NULL,
+        updated_at = NOW()
+    WHERE user_id = v_user_id;
+    
+    RETURN FOUND;
+END;
+$$; 
+
+-- File: 09_user_analytics.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_user_all_issued_cards CASCADE;
+DROP FUNCTION IF EXISTS get_user_issuance_stats CASCADE;
+DROP FUNCTION IF EXISTS get_user_all_card_batches CASCADE;
+DROP FUNCTION IF EXISTS get_user_recent_activity CASCADE;
+
+-- =================================================================
+-- USER-LEVEL ANALYTICS FUNCTIONS
+-- Functions for user analytics and statistics across all cards
+-- =================================================================
+
+-- Get all issued cards for the current user across all their card designs
+CREATE OR REPLACE FUNCTION get_user_all_issued_cards()
+RETURNS TABLE (
+    id UUID,
+    card_id UUID,
+    card_name TEXT,
+    card_image_urls TEXT[],
+    active BOOLEAN,
+    issue_at TIMESTAMPTZ,
+    active_at TIMESTAMPTZ,
+    activated_by UUID,
+    batch_id UUID,
+    batch_name TEXT,
+    batch_number INTEGER,
+    batch_is_disabled BOOLEAN
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ic.id,
+        c.id as card_id,
+        c.name as card_name,
+        c.image_urls as card_image_urls,
+        ic.active,
+        ic.issue_at,
+        ic.active_at,
+        ic.activated_by,
+        cb.id as batch_id,
+        cb.batch_name,
+        cb.batch_number,
+        cb.is_disabled as batch_is_disabled
+    FROM issue_cards ic
+    JOIN card_batches cb ON ic.batch_id = cb.id
+    JOIN cards c ON ic.card_id = c.id
+    WHERE c.user_id = auth.uid()
+    ORDER BY ic.issue_at DESC;
+END;
+$$;
+
+-- Get aggregated statistics for all cards of the current user
+CREATE OR REPLACE FUNCTION get_user_issuance_stats()
+RETURNS TABLE (
+    total_issued BIGINT,
+    total_activated BIGINT,
+    activation_rate NUMERIC,
+    total_batches BIGINT,
+    total_cards BIGINT,
+    pending_cards BIGINT,
+    disabled_batches BIGINT,
+    active_print_requests BIGINT
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        COUNT(ic.id) as total_issued,
+        COUNT(ic.id) FILTER (WHERE ic.active = true) as total_activated,
+        CASE 
+            WHEN COUNT(ic.id) > 0 THEN 
+                ROUND((COUNT(ic.id) FILTER (WHERE ic.active = true) * 100.0 / COUNT(ic.id)), 2)
+            ELSE 0 
+        END as activation_rate,
+        COUNT(DISTINCT cb.id) as total_batches,
+        COUNT(DISTINCT c.id) as total_cards,
+        COUNT(ic.id) FILTER (WHERE ic.active = false) as pending_cards,
+        COUNT(DISTINCT cb.id) FILTER (WHERE cb.is_disabled = true) as disabled_batches,
+        COUNT(DISTINCT pr.id) FILTER (WHERE pr.status NOT IN ('COMPLETED', 'CANCELLED')) as active_print_requests
+    FROM cards c
+    LEFT JOIN card_batches cb ON c.id = cb.card_id
+    LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
+    LEFT JOIN print_requests pr ON cb.id = pr.batch_id
+    WHERE c.user_id = auth.uid();
+END;
+$$;
+
+-- Get all card batches for the current user across all their card designs
+CREATE OR REPLACE FUNCTION get_user_all_card_batches()
+RETURNS TABLE (
+    id UUID,
+    card_id UUID,
+    card_name TEXT,
+    batch_name TEXT,
+    batch_number INTEGER,
+    cards_count INTEGER,
+    active_cards_count BIGINT,
+    is_disabled BOOLEAN,
+    payment_required BOOLEAN,
+    payment_completed BOOLEAN,
+    payment_amount_cents INTEGER,
+    payment_completed_at TIMESTAMPTZ,
+    payment_waived BOOLEAN,
+    payment_waived_by UUID,
+    payment_waived_at TIMESTAMPTZ,
+    payment_waiver_reason TEXT,
+    cards_generated BOOLEAN,
+    cards_generated_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        cb.id,
+        cb.card_id,
+        c.name as card_name,
+        cb.batch_name,
+        cb.batch_number,
+        cb.cards_count,
+        COUNT(ic.id) FILTER (WHERE ic.active = true) as active_cards_count,
+        cb.is_disabled,
+        cb.payment_required,
+        cb.payment_completed,
+        cb.payment_amount_cents,
+        cb.payment_completed_at,
+        cb.payment_waived,
+        cb.payment_waived_by,
+        cb.payment_waived_at,
+        cb.payment_waiver_reason,
+        cb.cards_generated,
+        cb.cards_generated_at,
+        cb.created_at,
+        cb.updated_at
+    FROM card_batches cb
+    LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
+    JOIN cards c ON cb.card_id = c.id
+    WHERE c.user_id = auth.uid()
+    GROUP BY cb.id, cb.card_id, c.name, cb.batch_name, cb.batch_number, cb.cards_count, cb.is_disabled, 
+             cb.payment_required, cb.payment_completed, cb.payment_amount_cents, cb.payment_completed_at,
+             cb.payment_waived, cb.payment_waived_by, cb.payment_waived_at, cb.payment_waiver_reason,
+             cb.cards_generated, cb.cards_generated_at, cb.created_at, cb.updated_at
+    ORDER BY cb.created_at DESC;
+END;
+$$;
+
+-- Get recent issuance activity across all cards
+CREATE OR REPLACE FUNCTION get_user_recent_activity(p_limit INTEGER DEFAULT 50)
+RETURNS TABLE (
+    activity_type TEXT,
+    activity_date TIMESTAMPTZ,
+    card_name TEXT,
+    batch_name TEXT,
+    description TEXT,
+    count INTEGER
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    (
+        -- Recent batch creations
+        SELECT 
+            'batch_created'::TEXT as activity_type,
+            cb.created_at as activity_date,
+            c.name as card_name,
+            cb.batch_name,
+            'Batch created with ' || cb.cards_count || ' cards' as description,
+            cb.cards_count as count
+        FROM card_batches cb
+        JOIN cards c ON cb.card_id = c.id
+        WHERE c.user_id = auth.uid()
+        
+        UNION ALL
+        
+        -- Recent card activations
+        SELECT 
+            'card_activated'::TEXT as activity_type,
+            ic.active_at as activity_date,
+            c.name as card_name,
+            cb.batch_name,
+            'Card activated' as description,
+            1 as count
+        FROM issue_cards ic
+        JOIN card_batches cb ON ic.batch_id = cb.id
+        JOIN cards c ON ic.card_id = c.id
+        WHERE c.user_id = auth.uid() AND ic.active_at IS NOT NULL
+        
+        UNION ALL
+        
+        -- Recent print requests
+        SELECT 
+            'print_requested'::TEXT as activity_type,
+            pr.requested_at as activity_date,
+            c.name as card_name,
+            cb.batch_name,
+            'Print request submitted' as description,
+            cb.cards_count as count
+        FROM print_requests pr
+        JOIN card_batches cb ON pr.batch_id = cb.id
+        JOIN cards c ON cb.card_id = c.id
+        WHERE c.user_id = auth.uid()
+    )
+    ORDER BY activity_date DESC
+    LIMIT p_limit;
+END;
+$$; 
+
+-- File: 10_shipping_addresses.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_user_shipping_addresses CASCADE;
+DROP FUNCTION IF EXISTS create_shipping_address CASCADE;
+DROP FUNCTION IF EXISTS update_shipping_address CASCADE;
+DROP FUNCTION IF EXISTS delete_shipping_address CASCADE;
+DROP FUNCTION IF EXISTS set_default_shipping_address CASCADE;
+DROP FUNCTION IF EXISTS format_shipping_address CASCADE;
+
+-- =================================================================
+-- SHIPPING ADDRESS FUNCTIONS
+-- Functions for managing user shipping addresses
+-- =================================================================
+
+-- Get all shipping addresses for the current user
+CREATE OR REPLACE FUNCTION get_user_shipping_addresses()
+RETURNS TABLE (
+    id UUID,
+    label TEXT,
+    recipient_name TEXT,
+    address_line_1 TEXT,
+    address_line_2 TEXT,
+    city TEXT,
+    state_province TEXT,
+    postal_code TEXT,
+    country TEXT,
+    phone TEXT,
+    is_default BOOLEAN,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        sa.id,
+        sa.label,
+        sa.recipient_name,
+        sa.address_line_1,
+        sa.address_line_2,
+        sa.city,
+        sa.state_province,
+        sa.postal_code,
+        sa.country,
+        sa.phone,
+        sa.is_default,
+        sa.created_at,
+        sa.updated_at
+    FROM shipping_addresses sa
+    WHERE sa.user_id = auth.uid()
+    ORDER BY sa.is_default DESC, sa.created_at DESC;
+END;
+$$;
+
+-- Create a new shipping address
+CREATE OR REPLACE FUNCTION create_shipping_address(
+    p_label TEXT,
+    p_recipient_name TEXT,
+    p_address_line_1 TEXT,
+    p_city TEXT,
+    p_postal_code TEXT,
+    p_country TEXT,
+    p_address_line_2 TEXT DEFAULT NULL,
+    p_state_province TEXT DEFAULT NULL,
+    p_phone TEXT DEFAULT NULL,
+    p_is_default BOOLEAN DEFAULT FALSE
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_address_id UUID;
+BEGIN
+    -- If this is being set as default, unset all other defaults first
+    IF p_is_default THEN
+        UPDATE shipping_addresses 
+        SET is_default = FALSE, updated_at = NOW()
+        WHERE user_id = auth.uid();
+    END IF;
+    
+    INSERT INTO shipping_addresses (
+        user_id,
+        label,
+        recipient_name,
+        address_line_1,
+        address_line_2,
+        city,
+        state_province,
+        postal_code,
+        country,
+        phone,
+        is_default
+    ) VALUES (
+        auth.uid(),
+        p_label,
+        p_recipient_name,
+        p_address_line_1,
+        p_address_line_2,
+        p_city,
+        p_state_province,
+        p_postal_code,
+        p_country,
+        p_phone,
+        p_is_default
+    )
+    RETURNING id INTO v_address_id;
+    
+    RETURN v_address_id;
+END;
+$$;
+
+-- Update a shipping address
+CREATE OR REPLACE FUNCTION update_shipping_address(
+    p_address_id UUID,
+    p_label TEXT,
+    p_recipient_name TEXT,
+    p_address_line_1 TEXT,
+    p_city TEXT,
+    p_postal_code TEXT,
+    p_country TEXT,
+    p_address_line_2 TEXT DEFAULT NULL,
+    p_state_province TEXT DEFAULT NULL,
+    p_phone TEXT DEFAULT NULL,
+    p_is_default BOOLEAN DEFAULT FALSE
+) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Check if the user owns this address
+    SELECT user_id INTO v_user_id FROM shipping_addresses WHERE id = p_address_id;
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Shipping address not found';
+    END IF;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to update this shipping address';
+    END IF;
+    
+    -- If this is being set as default, unset all other defaults first
+    IF p_is_default THEN
+        UPDATE shipping_addresses 
+        SET is_default = FALSE, updated_at = NOW()
+        WHERE user_id = auth.uid() AND id != p_address_id;
+    END IF;
+    
+    UPDATE shipping_addresses
+    SET 
+        label = p_label,
+        recipient_name = p_recipient_name,
+        address_line_1 = p_address_line_1,
+        address_line_2 = p_address_line_2,
+        city = p_city,
+        state_province = p_state_province,
+        postal_code = p_postal_code,
+        country = p_country,
+        phone = p_phone,
+        is_default = p_is_default,
+        updated_at = NOW()
+    WHERE id = p_address_id;
+    
+    RETURN FOUND;
+END;
+$$;
+
+-- Delete a shipping address
+CREATE OR REPLACE FUNCTION delete_shipping_address(p_address_id UUID)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+    v_is_default BOOLEAN;
+    v_remaining_count INTEGER;
+BEGIN
+    -- Check if the user owns this address and get its default status
+    SELECT user_id, is_default INTO v_user_id, v_is_default 
+    FROM shipping_addresses 
+    WHERE id = p_address_id;
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Shipping address not found';
+    END IF;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to delete this shipping address';
+    END IF;
+    
+    -- Delete the address
+    DELETE FROM shipping_addresses WHERE id = p_address_id;
+    
+    -- If we deleted the default address, set another one as default
+    IF v_is_default THEN
+        -- Count remaining addresses
+        SELECT COUNT(*) INTO v_remaining_count
+        FROM shipping_addresses
+        WHERE user_id = auth.uid();
+        
+        -- If there are remaining addresses, set the most recent one as default
+        IF v_remaining_count > 0 THEN
+            UPDATE shipping_addresses
+            SET is_default = TRUE, updated_at = NOW()
+            WHERE user_id = auth.uid()
+            AND id = (
+                SELECT id FROM shipping_addresses 
+                WHERE user_id = auth.uid() 
+                ORDER BY created_at DESC 
+                LIMIT 1
+            );
+        END IF;
+    END IF;
+    
+    RETURN FOUND;
+END;
+$$;
+
+-- Set a shipping address as default
+CREATE OR REPLACE FUNCTION set_default_shipping_address(p_address_id UUID)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    -- Check if the user owns this address
+    SELECT user_id INTO v_user_id FROM shipping_addresses WHERE id = p_address_id;
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Shipping address not found';
+    END IF;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to modify this shipping address';
+    END IF;
+    
+    -- Unset all other defaults first
+    UPDATE shipping_addresses 
+    SET is_default = FALSE, updated_at = NOW()
+    WHERE user_id = auth.uid();
+    
+    -- Set this address as default
+    UPDATE shipping_addresses
+    SET is_default = TRUE, updated_at = NOW()
+    WHERE id = p_address_id;
+    
+    RETURN FOUND;
+END;
+$$;
+
+-- Format shipping address for display/printing
+CREATE OR REPLACE FUNCTION format_shipping_address(p_address_id UUID)
+RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_address RECORD;
+    v_formatted_address TEXT;
+BEGIN
+    -- Get the address details
+    SELECT * INTO v_address
+    FROM shipping_addresses
+    WHERE id = p_address_id;
+    
+    IF NOT FOUND THEN
+        RETURN NULL;
+    END IF;
+    
+    -- Format the address
+    v_formatted_address := v_address.recipient_name || E'\n' ||
+                          v_address.address_line_1;
+    
+    -- Add second address line if present
+    IF v_address.address_line_2 IS NOT NULL AND v_address.address_line_2 != '' THEN
+        v_formatted_address := v_formatted_address || E'\n' || v_address.address_line_2;
+    END IF;
+    
+    -- Add city, state/province, postal code
+    v_formatted_address := v_formatted_address || E'\n' || v_address.city;
+    
+    IF v_address.state_province IS NOT NULL AND v_address.state_province != '' THEN
+        v_formatted_address := v_formatted_address || ', ' || v_address.state_province;
+    END IF;
+    
+    v_formatted_address := v_formatted_address || ' ' || v_address.postal_code;
+    
+    -- Add country
+    v_formatted_address := v_formatted_address || E'\n' || v_address.country;
+    
+    -- Add phone if present
+    IF v_address.phone IS NOT NULL AND v_address.phone != '' THEN
+        v_formatted_address := v_formatted_address || E'\nPhone: ' || v_address.phone;
+    END IF;
+    
+    RETURN v_formatted_address;
+END;
+$$; 
+
+-- File: 11_admin_functions.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS admin_waive_batch_payment CASCADE;
+DROP FUNCTION IF EXISTS admin_get_all_print_requests CASCADE;
+DROP FUNCTION IF EXISTS admin_update_print_request_status CASCADE;
+DROP FUNCTION IF EXISTS admin_get_system_stats CASCADE;
+DROP FUNCTION IF EXISTS admin_get_pending_verifications CASCADE;
+DROP FUNCTION IF EXISTS create_or_update_admin_feedback CASCADE;
+
+-- =================================================================
+-- ADMIN FUNCTIONS
+-- Functions for admin-only operations and system management
+-- =================================================================
+
+-- (Admin) Waive payment for a batch and generate cards
+CREATE OR REPLACE FUNCTION admin_waive_batch_payment(
+    p_batch_id UUID,
+    p_waiver_reason TEXT
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_batch_record RECORD;
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can waive batch payments.';
+    END IF;
+
+    -- Get batch information
+    SELECT * INTO v_batch_record
+    FROM card_batches
+    WHERE id = p_batch_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Batch not found.';
+    END IF;
+    
+    -- Check if payment can be waived
+    IF v_batch_record.payment_completed = TRUE THEN
+        RAISE EXCEPTION 'Cannot waive payment for a batch that has already been paid.';
+    END IF;
+    
+    IF v_batch_record.payment_waived = TRUE THEN
+        RAISE EXCEPTION 'Payment has already been waived for this batch.';
+    END IF;
+    
+    -- Update batch to mark payment as waived
+    UPDATE card_batches 
+    SET 
+        payment_waived = TRUE,
+        payment_waived_by = auth.uid(),
+        payment_waived_at = NOW(),
+        payment_waiver_reason = p_waiver_reason,
+        updated_at = NOW()
+    WHERE id = p_batch_id;
+    
+    -- Generate cards using the new function
+    PERFORM generate_batch_cards(p_batch_id);
+    
+    -- Log the waiver in audit table
+    INSERT INTO admin_audit_log (
+        admin_user_id,
+        target_user_id,
+        action_type,
+        reason,
+        old_values,
+        new_values,
+        action_details
+    ) VALUES (
+        auth.uid(),
+        v_batch_record.created_by,
+        'PAYMENT_WAIVER',
+        p_waiver_reason,
+        jsonb_build_object(
+            'payment_waived', false,
+            'cards_generated', false
+        ),
+        jsonb_build_object(
+            'payment_waived', true,
+            'payment_waived_by', auth.uid(),
+            'payment_waived_at', NOW(),
+            'payment_waiver_reason', p_waiver_reason,
+            'cards_generated', true
+        ),
+        jsonb_build_object(
+            'batch_id', p_batch_id,
+            'cards_count', v_batch_record.cards_count
+        )
+    );
+    
+    RETURN p_batch_id;
+END;
+$$;
+
+-- (Admin) Get all print requests for review
+CREATE OR REPLACE FUNCTION admin_get_all_print_requests(
+    p_status "PrintRequestStatus" DEFAULT NULL,
+    p_limit INTEGER DEFAULT 100
+)
+RETURNS TABLE (
+    id UUID,
+    batch_id UUID,
+    user_id UUID,
+    user_email TEXT,
+    user_public_name TEXT,
+    card_name TEXT,
+    batch_name TEXT,
+    cards_count INTEGER,
+    status "PrintRequestStatus",
+    shipping_address TEXT,
+    admin_notes TEXT,
+    requested_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view all print requests.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        pr.id,
+        pr.batch_id,
+        pr.user_id,
+        au.email as user_email,
+        up.public_name as user_public_name,
+        c.name as card_name,
+        cb.batch_name,
+        cb.cards_count,
+        pr.status,
+        pr.shipping_address,
+        pr.admin_notes,
+        pr.requested_at,
+        pr.updated_at
+    FROM print_requests pr
+    JOIN card_batches cb ON pr.batch_id = cb.id
+    JOIN cards c ON cb.card_id = c.id
+    LEFT JOIN auth.users au ON pr.user_id = au.id
+    LEFT JOIN user_profiles up ON pr.user_id = up.user_id
+    WHERE (p_status IS NULL OR pr.status = p_status)
+    ORDER BY pr.requested_at DESC
+    LIMIT p_limit;
+END;
+$$;
+
+-- (Admin) Update print request status
+CREATE OR REPLACE FUNCTION admin_update_print_request_status(
+    p_request_id UUID,
+    p_new_status "PrintRequestStatus",
+    p_admin_notes TEXT DEFAULT NULL
+)
+RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_request_record RECORD;
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can update print request status.';
+    END IF;
+
+    -- Get current request details
+    SELECT pr.*, c.name as card_name, cb.batch_name
+    INTO v_request_record
+    FROM print_requests pr
+    JOIN card_batches cb ON pr.batch_id = cb.id
+    JOIN cards c ON cb.card_id = c.id
+    WHERE pr.id = p_request_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Print request not found.';
+    END IF;
+
+    -- Update the print request
+    UPDATE print_requests
+    SET 
+        status = p_new_status,
+        admin_notes = CASE 
+            WHEN p_admin_notes IS NULL THEN admin_notes
+            WHEN admin_notes IS NULL OR admin_notes = '' THEN p_admin_notes
+            ELSE admin_notes || E'\n\n[' || NOW()::DATE || '] ' || p_admin_notes
+        END,
+        updated_at = NOW()
+    WHERE id = p_request_id;
+
+    -- Log the status change in audit table
+    INSERT INTO admin_audit_log (
+        admin_user_id,
+        target_user_id,
+        action_type,
+        reason,
+        old_values,
+        new_values,
+        action_details
+    ) VALUES (
+        auth.uid(),
+        v_request_record.user_id,
+        'PRINT_REQUEST_STATUS_UPDATE',
+        p_admin_notes,
+        jsonb_build_object(
+            'status', v_request_record.status
+        ),
+        jsonb_build_object(
+            'status', p_new_status,
+            'admin_notes', p_admin_notes
+        ),
+        jsonb_build_object(
+            'request_id', p_request_id,
+            'batch_id', v_request_record.batch_id,
+            'card_name', v_request_record.card_name,
+            'batch_name', v_request_record.batch_name
+        )
+    );
+    
+    RETURN FOUND;
+END;
+$$;
+
+-- (Admin) Get system statistics
+CREATE OR REPLACE FUNCTION admin_get_system_stats()
+RETURNS TABLE (
+    total_users BIGINT,
+    total_verified_users BIGINT,
+    total_cards BIGINT,
+    total_batches BIGINT,
+    total_issued_cards BIGINT,
+    total_activated_cards BIGINT,
+    pending_print_requests BIGINT,
+    total_revenue_cents BIGINT,
+    pending_verifications BIGINT
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view system statistics.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        (SELECT COUNT(*) FROM auth.users) as total_users,
+        (SELECT COUNT(*) FROM user_profiles WHERE verification_status = 'APPROVED') as total_verified_users,
+        (SELECT COUNT(*) FROM cards) as total_cards,
+        (SELECT COUNT(*) FROM card_batches) as total_batches,
+        (SELECT COUNT(*) FROM issue_cards) as total_issued_cards,
+        (SELECT COUNT(*) FROM issue_cards WHERE active = true) as total_activated_cards,
+        (SELECT COUNT(*) FROM print_requests WHERE status NOT IN ('COMPLETED', 'CANCELLED')) as pending_print_requests,
+        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded') as total_revenue_cents,
+        (SELECT COUNT(*) FROM user_profiles WHERE verification_status = 'PENDING_REVIEW') as pending_verifications;
+END;
+$$;
+
+-- (Admin) Get pending verification requests
+CREATE OR REPLACE FUNCTION admin_get_pending_verifications(p_limit INTEGER DEFAULT 50)
+RETURNS TABLE (
+    user_id UUID,
+    email TEXT,
+    public_name TEXT,
+    company_name TEXT,
+    full_name TEXT,
+    supporting_documents TEXT[],
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view pending verifications.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        up.user_id,
+        au.email,
+        up.public_name,
+        up.company_name,
+        up.full_name,
+        up.supporting_documents,
+        up.created_at,
+        up.updated_at
+    FROM user_profiles up
+    JOIN auth.users au ON up.user_id = au.id
+    WHERE up.verification_status = 'PENDING_REVIEW'
+    ORDER BY up.updated_at ASC
+    LIMIT p_limit;
+END;
+$$;
+
+-- Create or update admin feedback (helper function)
+CREATE OR REPLACE FUNCTION create_or_update_admin_feedback(
+    p_feedback_type TEXT,
+    p_target_user_id UUID,
+    p_related_entity_id UUID,
+    p_feedback_category TEXT,
+    p_feedback_text TEXT,
+    p_metadata JSONB DEFAULT NULL
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_feedback_id UUID;
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can create feedback entries.';
+    END IF;
+
+    INSERT INTO admin_feedback (
+        admin_user_id,
+        target_user_id,
+        related_entity_id,
+        feedback_type,
+        feedback_category,
+        feedback_text,
+        metadata
+    ) VALUES (
+        auth.uid(),
+        p_target_user_id,
+        p_related_entity_id,
+        p_feedback_type,
+        p_feedback_category,
+        p_feedback_text,
+        p_metadata
+    )
+    RETURNING id INTO v_feedback_id;
+    
+    RETURN v_feedback_id;
+END;
+$$; 
+
+-- =================================================================
+-- SERVER-SIDE PROCEDURES
+-- =================================================================
+
+-- File: 05_payment_management.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS create_batch_checkout_payment CASCADE;
+DROP FUNCTION IF EXISTS get_batch_for_checkout CASCADE;
+DROP FUNCTION IF EXISTS get_existing_batch_payment CASCADE;
+DROP FUNCTION IF EXISTS confirm_batch_payment_by_session CASCADE;
+
+-- =================================================================
+-- PAYMENT MANAGEMENT FUNCTIONS (SERVER-SIDE)
+-- Functions called by Edge Functions for Stripe Checkout processing
+-- =================================================================
+
+-- Create Stripe checkout session payment record
+CREATE OR REPLACE FUNCTION create_batch_checkout_payment(
+    p_batch_id UUID,
+    p_stripe_payment_intent_id TEXT,
+    p_stripe_checkout_session_id TEXT,
+    p_amount_cents INTEGER,
+    p_metadata JSONB DEFAULT '{}'::jsonb
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_batch_owner_id UUID;
+    v_batch_payment_amount INTEGER;
+    v_payment_id UUID;
+BEGIN
+    -- Verify batch ownership and get expected amount
+    SELECT cb.created_by, cb.payment_amount_cents 
+    INTO v_batch_owner_id, v_batch_payment_amount
+    FROM card_batches cb 
+    WHERE cb.id = p_batch_id;
+    
+    IF v_batch_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Batch not found.';
+    END IF;
+    
+    IF v_batch_owner_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to create payment for this batch.';
+    END IF;
+    
+    -- Verify amount matches expected
+    IF p_amount_cents != v_batch_payment_amount THEN
+        RAISE EXCEPTION 'Payment amount mismatch. Expected: %, Provided: %', v_batch_payment_amount, p_amount_cents;
+    END IF;
+    
+    -- Check if payment already exists for this batch
+    IF EXISTS (SELECT 1 FROM batch_payments WHERE batch_id = p_batch_id) THEN
+        RAISE EXCEPTION 'Payment already exists for this batch.';
+    END IF;
+    
+    -- Validate required checkout session ID
+    IF p_stripe_checkout_session_id IS NULL THEN
+        RAISE EXCEPTION 'Checkout session ID is required.';
+    END IF;
+    
+    -- Create payment record for checkout session
+    INSERT INTO batch_payments (
+        batch_id,
+        user_id,
+        stripe_payment_intent_id,
+        stripe_checkout_session_id,
+        amount_cents,
+        currency,
+        payment_status,
+        metadata
+    ) VALUES (
+        p_batch_id,
+        auth.uid(),
+        p_stripe_payment_intent_id, -- Can be null in test mode
+        p_stripe_checkout_session_id,
+        p_amount_cents,
+        'usd',
+        'pending',
+        p_metadata
+    ) RETURNING id INTO v_payment_id;
+    
+    RETURN v_payment_id;
+END;
+$$;
+
+
+-- Get batch information for checkout session
+CREATE OR REPLACE FUNCTION get_batch_for_checkout(p_batch_id UUID)
+RETURNS TABLE (
+    id UUID,
+    card_id UUID,
+    created_by UUID,
+    batch_name TEXT,
+    card_name TEXT,
+    card_description TEXT
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        cb.id,
+        cb.card_id,
+        cb.created_by,
+        cb.batch_name,
+        c.name as card_name,
+        c.description as card_description
+    FROM card_batches cb
+    JOIN cards c ON cb.card_id = c.id
+    WHERE cb.id = p_batch_id 
+    AND cb.created_by = auth.uid();
+END;
+$$;
+
+-- Check existing payment for batch
+CREATE OR REPLACE FUNCTION get_existing_batch_payment(p_batch_id UUID)
+RETURNS TABLE (
+    id UUID,
+    payment_status TEXT,
+    stripe_checkout_session_id TEXT,
+    amount_cents INTEGER,
+    created_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        bp.id,
+        bp.payment_status,
+        bp.stripe_checkout_session_id,
+        bp.amount_cents,
+        bp.created_at
+    FROM batch_payments bp
+    WHERE bp.batch_id = p_batch_id 
+    AND bp.user_id = auth.uid()
+    ORDER BY bp.created_at DESC
+    LIMIT 1;
+END;
+$$;
+
+-- Confirm batch payment by checkout session ID (alternative method)
+CREATE OR REPLACE FUNCTION confirm_batch_payment_by_session(
+    p_stripe_checkout_session_id TEXT,
+    p_payment_method TEXT DEFAULT NULL
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_payment_record RECORD;
+    v_batch_record RECORD;
+BEGIN
+    -- Get payment and batch information by checkout session ID
+    SELECT bp.*, cb.card_id, cb.cards_count 
+    INTO v_payment_record
+    FROM batch_payments bp
+    JOIN card_batches cb ON bp.batch_id = cb.id
+    WHERE bp.stripe_checkout_session_id = p_stripe_checkout_session_id
+    AND bp.user_id = auth.uid();
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Payment not found or not authorized.';
+    END IF;
+    
+    -- Check if already confirmed
+    IF v_payment_record.payment_status = 'succeeded' THEN
+        RAISE EXCEPTION 'Payment already confirmed.';
+    END IF;
+    
+    -- Update payment status
+    UPDATE batch_payments 
+    SET 
+        payment_status = 'succeeded',
+        payment_method = p_payment_method,
+        updated_at = NOW()
+    WHERE stripe_checkout_session_id = p_stripe_checkout_session_id;
+    
+    -- Update batch payment status
+    UPDATE card_batches 
+    SET 
+        payment_completed = TRUE,
+        payment_completed_at = NOW(),
+        updated_at = NOW()
+    WHERE id = v_payment_record.batch_id;
+    
+    -- Generate cards using the new function
+    PERFORM generate_batch_cards(v_payment_record.batch_id);
+    
+    RETURN v_payment_record.batch_id;
+END;
+$$;
+
+ 
+

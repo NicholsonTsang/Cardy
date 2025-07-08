@@ -61,8 +61,9 @@ Cardy is built with Vue 3 + TypeScript, using PrimeVue UI components, Pinia for 
 
 ### Backend Stack
 - **Supabase** (PostgreSQL database + Auth + Storage + Edge Functions)
-- **Stored procedures** in `sql/schemaStoreProc.sql` for business logic
+- **Stored procedures** in `sql/storeproc/` for ALL database operations
 - **RLS policies** for data security
+- **No direct table access** - all queries use `supabase.rpc()` calls
 - **Stripe** integration for payments (via Edge Functions)
 - **OpenAI Realtime API** integration for voice-based AI conversations
 - **Edge Functions** for AI token management and WebRTC proxy
@@ -101,7 +102,7 @@ src/
 
 sql/
 ├── schema.sql           # Database schema
-├── schemaStoreProc.sql  # Stored procedures
+├── storeproc/           # Modular stored procedures (01-11)
 ├── triggers.sql         # Database triggers
 └── policy.sql           # RLS policies
 ```
@@ -188,10 +189,10 @@ Cardy implements sophisticated voice-based AI conversations using OpenAI's Realt
 - `card_issuer` - Museums/institutions creating exhibition cards and issuing batches
 - `admin` - Platform operators managing verifications and print requests
 
-### Critical Stored Procedures
-- `create_card_batch()` - Issues new batch of souvenir cards
-- `process_stripe_payment()` - Handles institution payment processing
-- `activate_card()` - Activates cards for visitor access
+### Database Access Pattern
+- **ALL database operations use stored procedures** - no direct table access
+- **Stored procedures organized in modules** (01-11): auth, cards, content, batches, payments, print requests, public access, profiles, analytics, shipping, admin
+- **Key functions**: `issue_card_batch()`, `confirm_batch_payment()`, `get_user_cards()`, `activate_issued_card()`, `get_batch_payment_info()`
 
 ## Business Logic & Workflows
 
@@ -270,9 +271,11 @@ Cardy implements sophisticated voice-based AI conversations using OpenAI's Realt
 ## Error Handling Patterns
 
 ```javascript
-// Standard error handling in stores
+// Standard error handling in stores - ALL operations use RPC
 try {
-  const { data, error } = await supabase.from('table').select()
+  const { data, error } = await supabase.rpc('stored_procedure_name', { 
+    p_param: value 
+  })
   if (error) throw error
   return data
 } catch (err: any) {
@@ -318,8 +321,8 @@ try {
 3. **State management**: Don't duplicate store state in components
 4. **Error handling**: Always provide user feedback on errors
 5. **Mobile UX**: Test touch interactions on actual devices
-6. **Database**: Use stored procedures for complex business logic
-7. **Table styling**: Don't override global table theme - use `src/utils/tableConfig.js` for customizations
+6. **Database**: NEVER use `supabase.from()` - ALL operations must use `supabase.rpc()` with stored procedures
+7. **Table styling**: Don't override global table theme - use inline styling with consistent CSS classes
 8. **Table header consistency**: All tables use standard sizing (0.875rem headers) - avoid `p-datatable-sm` unless absolutely necessary
 
 ## Testing Strategy

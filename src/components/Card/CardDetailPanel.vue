@@ -55,14 +55,21 @@
                                 :key="selectedCard.id + '-content'" 
                             />
                             <!-- Issuance Tab -->
-                            <CardIssurance 
+                            <CardIssuanceCheckout 
                                 v-if="index === 2" 
                                 :cardId="selectedCard.id" 
                                 :key="selectedCard.id + '-issurance'" 
                             />
+                            <!-- QR & Access Tab -->
+                            <CardAccessQR 
+                                v-if="index === 3" 
+                                :cardId="selectedCard.id"
+                                :cardName="selectedCard.name"
+                                :key="selectedCard.id + '-access-qr'" 
+                            />
                             <!-- Preview Tab -->
                             <MobilePreview 
-                                v-if="index === 3" 
+                                v-if="index === 4" 
                                 :cardProp="selectedCard" 
                                 :key="`${selectedCard.id}-mobile-preview-${mobilePreviewRefreshKey}`"
                             />
@@ -83,7 +90,8 @@ import TabPanels from 'primevue/tabpanels';
 import TabPanel from 'primevue/tabpanel';
 import CardGeneral from '@/components/CardComponents/Card.vue';
 import CardContent from '@/components/CardContent/CardContent.vue';
-import CardIssurance from '@/components/CardIssurance.vue';
+import CardIssuanceCheckout from '@/components/CardIssuanceCheckout.vue';
+import CardAccessQR from '@/components/CardComponents/CardAccessQR.vue';
 import MobilePreview from '@/components/CardComponents/MobilePreview.vue';
 
 const props = defineProps({
@@ -115,6 +123,7 @@ const tabs = [
     { label: 'General', icon: 'pi pi-cog' },
     { label: 'Content', icon: 'pi pi-list' },
     { label: 'Card Issuance', icon: 'pi pi-credit-card' },
+    { label: 'QR & Access', icon: 'pi pi-qrcode' },
     { label: 'Mobile Preview', icon: 'pi pi-mobile' }
 ];
 
@@ -128,9 +137,9 @@ const emptyStateMessage = computed(() => {
         : 'Create your first card design by clicking the \'+\' button';
 });
 
-// Watch for tab changes and refresh MobilePreview when preview tab (index 3) is activated
+// Watch for tab changes and refresh MobilePreview when preview tab (index 4) is activated
 watch(() => props.activeTab, (newTab, oldTab) => {
-    if (newTab === '3') {
+    if (newTab === '4') {
         // Increment the refresh key to force MobilePreview component to re-mount
         mobilePreviewRefreshKey.value += 1;
     }

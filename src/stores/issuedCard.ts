@@ -5,7 +5,6 @@ import { supabase } from '@/lib/supabase';
 export interface IssuedCard {
   id: string; // Unique ID of the issued card itself
   card_id: string; // ID of the main card design it belongs to
-  activation_code: string;
   active: boolean;
   issue_at: string;
   active_at: string | null;
@@ -100,8 +99,8 @@ export interface RecentActivity {
 
 export interface BatchPayment {
   payment_id: string;
-  stripe_payment_intent_id: string;
-  stripe_client_secret: string;
+  stripe_checkout_session_id: string;
+  stripe_payment_intent_id: string | null;
   amount_cents: number;
   currency: string;
   payment_status: 'pending' | 'succeeded' | 'failed' | 'canceled';
@@ -177,40 +176,7 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     return data;
   };
 
-  // New payment-related functions for Stripe integration
-  const createBatchPaymentIntent = async (
-    batchId: string, 
-    stripePaymentIntentId: string, 
-    stripeClientSecret: string, 
-    amountCents: number
-  ) => {
-    const { data, error } = await supabase.rpc('create_batch_payment_intent', {
-      p_batch_id: batchId,
-      p_stripe_payment_intent_id: stripePaymentIntentId,
-      p_stripe_client_secret: stripeClientSecret,
-      p_amount_cents: amountCents
-    });
-    if (error) throw error;
-    return data;
-  };
-
-  const confirmBatchPayment = async (stripePaymentIntentId: string, paymentMethod?: string) => {
-    const { data, error } = await supabase.rpc('confirm_batch_payment', {
-      p_stripe_payment_intent_id: stripePaymentIntentId,
-      p_payment_method: paymentMethod
-    });
-    if (error) throw error;
-    return data;
-  };
-
-  const handleFailedBatchPayment = async (stripePaymentIntentId: string, failureReason?: string) => {
-    const { data, error } = await supabase.rpc('handle_failed_batch_payment', {
-      p_stripe_payment_intent_id: stripePaymentIntentId,
-      p_failure_reason: failureReason
-    });
-    if (error) throw error;
-    return data;
-  };
+  // Payment information function for current Stripe Checkout flow
 
   const getBatchPaymentInfo = async (batchId: string): Promise<BatchPayment | null> => {
     const { data, error } = await supabase.rpc('get_batch_payment_info', {
@@ -238,10 +204,9 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     return data;
   };
 
-  const activateCard = async (issuedCardId: string, activationCode: string) => {
+  const activateCard = async (issuedCardId: string) => {
     const { data, error } = await supabase.rpc('activate_issued_card', {
-      p_card_id: issuedCardId, // This RPC expects the issued_card.id
-      p_activation_code: activationCode
+      p_card_id: issuedCardId // This RPC expects the issued_card.id
     });
     if (error) throw error;
     return data;
@@ -393,9 +358,6 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     recentActivity,
     isLoadingUserData,
     loadUserData,
-    createBatchPaymentIntent,
-    confirmBatchPayment,
-    handleFailedBatchPayment,
     getBatchPaymentInfo,
     adminWaiveBatchPayment,
     generateBatchCards,

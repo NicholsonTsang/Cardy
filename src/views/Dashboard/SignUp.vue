@@ -16,7 +16,7 @@
                         </svg>
                     </div>
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">Create Your Account</h1>
-                    <p class="text-slate-600">Join Cardy CMS to start creating digital cards</p>
+                    <p class="text-slate-600">Join CardStudio CMS to start creating digital cards</p>
                     
                     <!-- Back to Landing Page -->
                     <div class="mt-4">

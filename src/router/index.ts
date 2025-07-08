@@ -89,9 +89,15 @@ const router = createRouter({
       component: () => import('@/views/Dashboard/SignUp.vue')
     },
     {
-      path: '/issuedcard/:issue_card_id/:activation_code',
+      path: '/c/:issue_card_id',
       name: 'publiccardview',
       component: () => import('@/views/MobileClient/PublicCardView.vue')
+    },
+    {
+      path: '/preview/:card_id',
+      name: 'cardpreview',
+      component: () => import('@/views/MobileClient/PublicCardView.vue'),
+      meta: { requiresAuth: true, isPreviewMode: true }
     },
     {
       path: '/',
@@ -117,16 +123,16 @@ const router = createRouter({
 // NAVIGATION GUARD
 // =================================================================
 
-const getUserRole = (authStore) => {
+const getUserRole = (authStore: any): string | undefined => {
   return authStore.session?.user?.user_metadata?.role;
 };
 
-const hasRequiredRole = (userRole, requiredRole) => {
+const hasRequiredRole = (userRole: string | undefined, requiredRole: string | undefined): boolean => {
   if (!requiredRole) return true; // No role required
   return userRole === requiredRole;
 };
 
-const getDefaultRouteForRole = (userRole) => {
+const getDefaultRouteForRole = (userRole: string | undefined): { name: string } => {
   if (userRole === 'admin') {
     return { name: 'admindashboard' };
   }
@@ -147,7 +153,7 @@ router.beforeEach(async (to, from, next) => {
 
   const isLoggedIn = !!authStore.session?.user;
   const userRole = getUserRole(authStore);
-  const requiredRole = to.meta.requiredRole;
+  const requiredRole = to.meta.requiredRole as string | undefined;
 
   if (to.matched.some(record => record.meta.requiresAuth)) {
     if (!isLoggedIn) {

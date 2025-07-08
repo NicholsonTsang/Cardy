@@ -192,7 +192,6 @@ CREATE TABLE issue_cards (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
     batch_id UUID NOT NULL REFERENCES card_batches(id) ON DELETE CASCADE,
-    activation_code TEXT UNIQUE DEFAULT encode(gen_random_bytes(16), 'hex'),
     active BOOLEAN DEFAULT false,
     issue_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     active_at TIMESTAMP WITH TIME ZONE,
@@ -203,7 +202,6 @@ CREATE TABLE issue_cards (
 
 CREATE INDEX IF NOT EXISTS idx_issue_cards_card_id ON issue_cards(card_id);
 CREATE INDEX IF NOT EXISTS idx_issue_cards_batch_id ON issue_cards(batch_id);
-CREATE INDEX IF NOT EXISTS idx_issue_cards_activation_code ON issue_cards(activation_code);
 CREATE INDEX IF NOT EXISTS idx_issue_cards_active ON issue_cards(active);
 
 -- Print requests table
@@ -294,18 +292,19 @@ CREATE UNIQUE INDEX idx_admin_feedback_current_unique
 ON admin_feedback_history(target_entity_type, target_entity_id, feedback_type) 
 WHERE is_current = TRUE;
 
--- Batch Payments table for tracking Stripe payment transactions
+-- Batch Payments table for tracking Stripe Checkout sessions
 CREATE TABLE batch_payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     batch_id UUID REFERENCES card_batches(id) ON DELETE CASCADE,
     user_id UUID NOT NULL, -- REFERENCES auth.users(id)
-    stripe_payment_intent_id TEXT UNIQUE NOT NULL,
+    stripe_checkout_session_id TEXT UNIQUE NOT NULL, -- Primary identifier for Stripe Checkout
+    stripe_payment_intent_id TEXT UNIQUE, -- May be null in test mode
     amount_cents INTEGER NOT NULL, -- $2 per card = 200 cents per card
     currency TEXT DEFAULT 'usd' NOT NULL,
     payment_status TEXT DEFAULT 'pending' NOT NULL, -- pending, succeeded, failed, canceled
     payment_method TEXT, -- card type from Stripe (e.g., 'visa', 'mastercard')
-    stripe_client_secret TEXT, -- For frontend payment confirmation
     failure_reason TEXT, -- Stripe failure reason if payment fails
+    metadata JSONB, -- Additional metadata for payment tracking
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -314,4 +313,5 @@ CREATE TABLE batch_payments (
 CREATE INDEX IF NOT EXISTS idx_batch_payments_batch_id ON batch_payments(batch_id);
 CREATE INDEX IF NOT EXISTS idx_batch_payments_user_id ON batch_payments(user_id);
 CREATE INDEX IF NOT EXISTS idx_batch_payments_stripe_intent ON batch_payments(stripe_payment_intent_id);
+CREATE INDEX IF NOT EXISTS idx_batch_payments_checkout_session ON batch_payments(stripe_checkout_session_id);
 CREATE INDEX IF NOT EXISTS idx_batch_payments_status ON batch_payments(payment_status);

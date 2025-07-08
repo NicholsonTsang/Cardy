@@ -1,237 +1,298 @@
-# Cardy - AI-Powered Digital Souvenir & Exhibition Platform
-
-Cardy is a comprehensive platform that transforms visitor experiences at museums, exhibitions, and cultural sites through interactive AI-powered digital souvenirs. The platform enables institutions to create beautiful physical souvenir cards with QR codes that link to rich multimedia content and natural voice conversations with AI guides.
-
-The platform features a complete **Landing Page** that showcases the product to potential customers, along with robust dashboards for institutions ("Card Issuers") to design cards, manage content, issue souvenir batches, and handle physical printing. The system includes a full-featured "Admin" panel for user verification, print request fulfillment, and system management.
-
-Built on a modern tech stack including Vue.js 3, PrimeVue, Tailwind CSS, Supabase backend with PostgreSQL, and **OpenAI Realtime API** for voice-based AI conversations.
-
-## Features
-
-### 🏛️ Public Landing Page
-- **Professional Marketing Site**: Comprehensive landing page showcasing Cardy's capabilities
-- **Interactive Demo**: Sample souvenir card with working QR code demonstration
-- **Multi-language AI Showcase**: Highlights voice conversation capabilities in 5 languages
-- **Use Case Examples**: Museums, tourist attractions, cultural heritage sites, theme parks
-- **Flexible Pricing Plans**: Full-service, self-service, and pilot program options
-- **Direct CTA Integration**: Seamless routing to signup and login portals
-
-### 🏛️ For Institutions (Card Issuers)
-- Create and manage digital souvenir cards for exhibits and attractions
-- Design interactive card templates with 2:3 aspect ratio for collectibles
-- Configure AI voice guides with custom prompts for specific exhibits
-- Issue souvenir cards in batches for visitors
-- Track visitor engagement and analytics
-- Request professional physical printing and shipping services
-
-### 👥 For Visitors
-- Scan QR codes on physical souvenir cards with any smartphone
-- Access rich multimedia content about exhibits, artifacts, and locations
-- Engage in natural voice conversations with AI guides in multiple languages
-- No app downloads or account creation required
-- Take home beautiful physical collectible souvenirs
-
-### 🤖 AI-Powered Features
-- **Real-time Voice Conversations**: Natural dialogue with OpenAI Realtime API
-- **Multi-language Support**: English, Cantonese, Mandarin, Spanish, French
-- **Context-Aware Responses**: AI understands specific exhibit and cultural content
-- **Low-latency Audio**: WebRTC streaming for responsive conversations
-- **Secure Token Management**: Ephemeral authentication via Supabase Edge Functions
-
-## Key Features & Workflows
-
-### 1. User Roles & Authentication
-The system supports two primary user roles with distinct capabilities:
-
--   **Card Issuer**: The primary user of the application. They can:
-    -   Sign up and manage their profile.
-    -   Undergo a verification process to gain full platform access.
-    -   Design and publish card templates.
-    -   Manage rich content associated with each card.
-    -   Issue cards in batches.
-    -   Manage payments for batch issuance.
-    -   Request physical printing of card batches.
-    -   Manage shipping addresses.
-
--   **Admin**: System administrators who oversee the platform. They can:
-    -   Review and approve/reject Card Issuer verification requests.
-    -   Manage all print requests from fulfillment to shipping.
-    -   View system-wide statistics and user activity.
-    -   Manage user roles and permissions.
-    -   Waive batch payment fees when necessary.
-
-### 2. Card Issuer Workflow
-
-The core workflow for a Card Issuer from creation to a physical product is as follows:
-
-```mermaid
-graph TD
-    A[Sign Up / Login] --> B{Design Card};
-    B --> C{Add Content};
-    C --> D{Issue New Batch};
-    D --> E{Complete Payment};
-    E --> F{Request Print};
-    F --> G[Admin Fulfills Request];
-```
-
-**Functional Description:**
-
-1.  **Design Card**: Issuers create a new card design, providing a name, description, and images.
-2.  **Add Content**: They add structured content items to the card, which can be viewed by the end-user. This includes an optional AI-powered conversational feature.
-3.  **Issue New Batch**: The issuer creates a batch of a specific quantity for their card. At this stage, a payment requirement is generated.
-4.  **Complete Payment**: The issuer must pay for the batch ($2.00 per card) via Stripe integration. The system generates a payment intent, and upon successful payment, the cards are officially "generated" in the database.
-5.  **Request Print**: Once a batch is paid for and cards are generated, the issuer can submit a print request, selecting a shipping address.
-6.  **Withdraw Request**: Issuers can withdraw a print request only if its status is `SUBMITTED`. Once it is `PROCESSING`, it cannot be withdrawn.
-
-### 3. Admin Workflow
-
-Admins manage the operational side of the platform.
-
-**Verification Management:**
--   Admins review pending user verification requests in the "Verifications" panel.
--   They can view submitted documents and either "Approve" or "Reject" the application, providing feedback.
-
-**Print Request Fulfillment:**
--   Admins see all paid and submitted print requests in the "Print Requests" panel.
--   They manage the status through the fulfillment pipeline: `SUBMITTED` -> `PROCESSING` -> `SHIPPED` -> `COMPLETED`.
--   They can add internal admin notes for tracking.
-
-### 4. End-User Experience: The Digital Card
-
-The ultimate goal of Cardy is to deliver a rich, interactive digital experience to the end-user who receives a physical card.
-
-```mermaid
-graph TD
-    A[User receives physical card] --> B{Scans QR Code};
-    B --> C[Phone's browser opens];
-    C --> D[View Digital Card Content];
-    D --> E{Explore Interactive Content};
-```
-<br/>
-
-1.  **Scan QR Code**: Each physical card features a unique QR code. The end-user scans this code with their mobile device.
-2.  **Access Digital Content**: The QR code directs the user's browser to a unique URL for that specific card, activating it upon the first scan.
-3.  **Explore**: The user is presented with a mobile-first, interactive view (`PublicCardView.vue`) where they can explore all the rich content, images, and AI-powered conversations that the Card Issuer has associated with the card design.
+# Cardy CMS - Digital Souvenir & Exhibition Platform
 
 <div align="center">
-  <img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=https://github.com/your-repo/Cardy" alt="Sample QR Code" />
-  <p><i>Sample QR code. In a real scenario, this would link to the unique issued card URL.</i></p>
+  <img src="https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?q=80&w=500" alt="Cardy CMS" width="600">
+  
+  **Transform museum visits into lasting digital experiences**
+  
+  [![Vue 3](https://img.shields.io/badge/Vue-3.5.13-4FC08D?logo=vue.js)](https://vuejs.org/)
+  [![PrimeVue](https://img.shields.io/badge/PrimeVue-4.3.3-6366F1)](https://primevue.org/)
+  [![Supabase](https://img.shields.io/badge/Supabase-PostgreSQL-3ECF8E?logo=supabase)](https://supabase.com/)
+  [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 </div>
 
-### 5. Database & Security Model
+## 🎯 Overview
 
--   The backend is powered by **Supabase** and **PostgreSQL**.
--   Business logic is encapsulated in **database stored procedures** (`schemaStoreProc.sql`). This ensures data integrity and a secure-by-default architecture.
--   **Row-Level Security (RLS)** is enabled on all tables (`policy.sql`). Policies are generally restrictive, forcing all data modifications to go through the defined stored procedures, which run with elevated privileges (`SECURITY DEFINER`). This prevents unauthorized direct table access.
+Cardy is a comprehensive **digital souvenir and exhibition platform** that creates interactive experiences for museums, tourist attractions, and cultural sites. The platform enables institutions to provide visitors with rich, AI-powered digital content accessible through QR codes on physical souvenir cards.
 
-### 6. Admin Feedback & Audit System
+### 🌟 Key Features
 
-The platform includes a comprehensive system for tracking administrative actions and managing feedback:
+- **🎨 Digital Souvenir Cards** - Create beautifully designed cards with 2:3 aspect ratio
+- **🤖 AI Voice Conversations** - Real-time multilingual AI curator using OpenAI Realtime API
+- **📱 Mobile-First Experience** - Optimized for instant QR code scanning and viewing
+- **💳 Batch Pricing Model** - Simple $2.00 per card pricing, no subscriptions
+- **🎯 Hierarchical Content** - Organize exhibits, artifacts, and collections
+- **🌍 Multi-Language Support** - English, Cantonese, Mandarin, Spanish, and French
+- **📊 Analytics & Insights** - Track visitor engagement and card performance
+- **🖨️ Physical Card Printing** - Professional printing with global shipping
 
-#### Admin Audit Log
-- **Purpose**: Maintains a detailed record of all administrative actions for accountability and tracking.
-- **Key Features**:
-  - Records who performed the action (admin) and who was affected (target user)
-  - Stores action types (e.g., 'ROLE_CHANGE', 'MANUAL_VERIFICATION')
-  - Preserves before/after states of changes
-  - Captures admin-provided reasons for actions
-  - Stores action-specific details in flexible JSONB format
+## 🏗️ Project Structure
 
-#### Admin Feedback History
-- **Purpose**: Provides versioned history of all administrative feedback and notes.
-- **Features**:
-  - Supports multiple feedback types:
-    - Verification feedback
-    - Print request notes
-    - Role change reasons
-    - General admin notes
-  - Maintains version history of all feedback
-  - Links versions through parent-child relationships
-  - Ensures only one current version per feedback thread
-  - Stores contextual information about triggering actions
+```
+cardy-cms/
+├── src/
+│   ├── components/           # Reusable Vue components
+│   │   ├── Card/            # Card management components
+│   │   ├── CardComponents/  # Card creation & display
+│   │   ├── CardContent/     # Content management
+│   │   └── Profile/         # User profile & verification
+│   ├── views/               # Page-level components
+│   │   ├── Dashboard/       # Admin & Card Issuer dashboards
+│   │   ├── MobileClient/    # Mobile QR viewing experience
+│   │   └── Public/          # Landing page
+│   ├── stores/              # Pinia state management
+│   ├── utils/               # Helper functions
+│   └── router/              # Vue Router configuration
+├── sql/
+│   ├── schema.sql           # Database schema
+│   ├── storeproc/           # Modular stored procedures
+│   │   ├── client-side/     # Frontend operations (11 modules)
+│   │   └── server-side/     # Payment processing
+│   ├── triggers.sql         # Database triggers
+│   └── policy.sql           # RLS policies
+└── supabase/
+    └── functions/           # Edge Functions
+        ├── get-openai-ephemeral-token/
+        ├── openai-realtime-proxy/
+        ├── create-checkout-session/
+        └── handle-checkout-success/
+```
 
-#### Integration Points
-The system automatically records feedback and audit trails for:
-- User verification reviews
-- Print request status updates
-- Role changes
-- Payment waivers
-- Manual verification actions
-
-#### Access Control
-- Only administrators can create and view audit logs
-- Feedback visibility is controlled based on context:
-  - Admins can view all feedback
-  - Users can view their own verification feedback
-  - All access is managed through secure stored procedures
-
-## Project Setup
-
-Follow these steps to set up and run the Cardy project locally.
+## 🚀 Quick Start
 
 ### Prerequisites
 
--   **Node.js**: v18 or later.
--   **pnpm**: Recommended package manager. If you don't have it, run `npm install -g pnpm`.
--   **Supabase Account**: You will need a Supabase project.
--   **Stripe Account**: For payment processing.
+- Node.js 18+ and npm
+- Supabase account
+- Stripe account (for payments)
+- OpenAI API access (for AI features)
 
-### 1. Clone the Repository
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/your-org/cardy-cms.git
+   cd cardy-cms
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**
+   ```bash
+   cp .env.example .env
+   ```
+
+   Configure the following in `.env`:
+   ```env
+   # Supabase
+   VITE_SUPABASE_URL=your_supabase_project_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   VITE_SUPABASE_USER_FILES_BUCKET=userfiles
+
+   # Stripe
+   VITE_STRIPE_PUBLISHABLE_KEY=pk_test_xxx
+   STRIPE_SECRET_KEY=sk_test_xxx  # For Edge Functions
+
+   # OpenAI (for Edge Functions)
+   OPENAI_API_KEY=sk-xxx
+
+   # Application
+   VITE_CARD_PRICE_CENTS=200
+   VITE_DEFAULT_CURRENCY=USD
+   VITE_APP_BASE_URL=http://localhost:5173
+   ```
+
+4. **Set up Supabase database**
+   ```bash
+   # Start local Supabase
+   supabase start
+
+   # Apply database schema
+   supabase db reset
+
+   # Deploy stored procedures
+   npm run deploy:db
+
+   # Generate TypeScript types
+   npm run generate:types
+   ```
+
+5. **Deploy Edge Functions**
+   ```bash
+   supabase functions deploy get-openai-ephemeral-token
+   supabase functions deploy openai-realtime-proxy
+   supabase functions deploy create-checkout-session
+   supabase functions deploy handle-checkout-success
+   ```
+
+6. **Start development server**
+   ```bash
+   npm run dev
+   ```
+
+   Visit `http://localhost:5173` to see the application.
+
+## 📋 Common Use Cases
+
+### 1. Museums & Art Galleries
+- **Digital Exhibition Cards**: Create interactive souvenirs for special exhibits
+- **AI Curator**: Visitors can ask questions about artifacts in their preferred language
+- **Collection Management**: Organize content hierarchically (exhibits → artifacts → details)
+
+### 2. Tourist Attractions
+- **Landmark Information**: Rich multimedia content about historical sites
+- **Guided Tours**: AI-powered voice guidance for self-paced exploration
+- **Souvenir Sales**: Physical cards as memorable keepsakes
+
+### 3. Cultural Heritage Sites
+- **Cultural Preservation**: Document and share cultural significance
+- **Educational Content**: Detailed explanations for students and researchers
+- **Multi-language Access**: Reach international visitors
+
+### 4. Exhibition Centers
+- **Trade Show Cards**: Interactive product demonstrations
+- **Event Souvenirs**: Memorable takeaways from conferences
+- **Lead Generation**: Track visitor engagement with exhibits
+
+## 🔄 Core Workflows
+
+### Card Issuer Workflow
+1. **Create Account** → Business verification by admin
+2. **Design Card** → Upload images, write descriptions (2:3 ratio)
+3. **Add Content** → Build hierarchical content structure
+4. **Configure AI** → Set up conversation prompts and languages
+5. **Issue Batch** → Generate QR codes, process payment ($2/card)
+6. **Print Cards** → Optional physical card production
+7. **Track Analytics** → Monitor visitor engagement
+
+### Visitor Workflow
+1. **Scan QR Code** → Use any smartphone camera
+2. **View Card** → Instant mobile-optimized experience
+3. **Explore Content** → Navigate through exhibits and artifacts
+4. **AI Conversations** → Voice chat about the content
+5. **Save & Share** → Keep digital souvenir for later
+
+### Administrator Workflow
+1. **User Management** → Verify businesses, manage accounts
+2. **Payment Oversight** → Monitor transactions, process refunds
+3. **Print Coordination** → Manage physical card production
+4. **Platform Analytics** → System-wide usage metrics
+
+## 🛠️ Technology Stack
+
+### Frontend
+- **Vue 3.5.13** - Progressive JavaScript framework
+- **PrimeVue 4.3.3** - Rich UI component library
+- **Pinia 3.0.1** - State management
+- **TypeScript 5.x** - Type safety
+- **Tailwind CSS 3.4** - Utility-first styling
+- **Vite 6.2** - Lightning-fast build tool
+
+### Backend
+- **Supabase** - Backend as a Service
+  - PostgreSQL 15 database
+  - Row Level Security (RLS)
+  - Edge Functions (Deno)
+  - Real-time subscriptions
+  - File storage
+- **Stripe** - Payment processing
+- **OpenAI Realtime API** - Voice conversations
+
+### Infrastructure
+- **Vercel/Netlify** - Frontend hosting
+- **Supabase Cloud** - Backend hosting
+- **Cloudflare CDN** - Global content delivery
+
+## 📚 Development
+
+### Available Scripts
 
 ```bash
-git clone <repository-url>
-cd Cardy
+# Development
+npm run dev              # Start dev server
+npm run build            # Build for production
+npm run preview          # Preview production build
+npm run type-check       # Run TypeScript checks
+
+# Database
+npm run deploy:db        # Deploy all stored procedures
+npm run generate:types   # Generate TypeScript types from DB
+
+# Testing
+npm run test            # Run unit tests
+npm run test:e2e        # Run end-to-end tests
 ```
 
-### 2. Install Dependencies
+### Code Style Guidelines
 
-```bash
-pnpm install
-```
+- **Components**: Keep under 400 lines, use composition API
+- **State Management**: Use Pinia stores, avoid component state duplication
+- **Database Access**: Always use stored procedures via `supabase.rpc()`
+- **Styling**: Use Tailwind utilities, maintain consistent design system
+- **Images**: Always maintain 2:3 aspect ratio for cards
+- **Error Handling**: Provide user-friendly error messages
 
-### 3. Supabase Setup
+### Database Operations
 
-1.  **Create a Supabase Project**: Go to [supabase.com](https://supabase.com) and create a new project.
-2.  **Database Setup**:
-    -   Navigate to the **SQL Editor** in your Supabase project dashboard.
-    -   Copy the entire contents of `sql/schema.sql` and run it. This creates the tables, enums, and indexes.
-    -   Copy the entire contents of `sql/schemaStoreProc.sql` and run it. This creates all the necessary functions and procedures.
-    -   Copy the entire contents of `sql/policy.sql` and run it. This applies the Row-Level Security policies.
-    -   (Optional) Run `sql/schemaDataInit.sql` to seed your database with initial data.
-3.  **Get Supabase Credentials**:
-    -   In your Supabase project, go to **Project Settings** > **API**.
-    -   You will need the **Project URL** and the `anon` **public** key.
+All database operations use stored procedures organized into modules:
 
-### 4. Environment Variables
+**Client-side modules:**
+1. `01_user_profile.sql` - Profile management
+2. `02_card_management.sql` - Card CRUD operations
+3. `03_content_management.sql` - Content items
+4. `04_batch_operations.sql` - Batch issuance
+5. `05_issued_cards.sql` - Individual card management
+6. `06_payment_tracking.sql` - Payment records
+7. `07_public_access.sql` - Public card viewing
+8. `08_print_operations.sql` - Print requests
+9. `09_admin_operations.sql` - Admin functions
+10. `10_analytics.sql` - Usage metrics
+11. `11_utility_functions.sql` - Helper functions
 
-Create a `.env` file in the root of the project and add your Supabase credentials:
+## 🔒 Security
 
-```
-VITE_SUPABASE_URL="YOUR_SUPABASE_PROJECT_URL"
-VITE_SUPABASE_ANON_KEY="YOUR_SUPABASE_ANON_KEY"
-```
+- **Row Level Security (RLS)**: Fine-grained access control
+- **Authentication**: Supabase Auth with email/password
+- **API Security**: Secure Edge Functions with auth checks
+- **Payment Security**: PCI-compliant Stripe integration
+- **File Upload**: Type and size validation
+- **Input Sanitization**: XSS prevention
 
-### 5. Running the Project
+## 🤝 Contributing
 
-Once the setup is complete, you can run the development server:
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-```bash
-pnpm run dev
-```
+### Commit Convention
+- `feat:` New features
+- `fix:` Bug fixes
+- `docs:` Documentation updates
+- `style:` Code style changes
+- `refactor:` Code refactoring
+- `test:` Test updates
+- `chore:` Build/config updates
 
-The application will be available at `http://localhost:5173` (or another port if 5173 is in use).
+## 📄 License
 
-### 6. Set an Admin User
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-By default, new users are assigned the `cardIssuer` role. To create an admin user, you need to manually update the user's role in the Supabase dashboard:
+## 🆘 Support
 
-1.  Sign up a new user in the application.
-2.  Go to **Authentication** in your Supabase project dashboard.
-3.  Find the new user and click to edit their details.
-4.  Under **User Metadata**, add or update the `role` property:
-    ```json
-    {
-      "role": "admin"
-    }
-    ```
-5.  Save the changes. The user will now have admin privileges upon their next login.
+- **Documentation**: Check our [docs](https://docs.cardy.com)
+- **Issues**: Report bugs on [GitHub Issues](https://github.com/your-org/cardy-cms/issues)
+- **Email**: support@cardy.com
+- **Discord**: Join our [community](https://discord.gg/cardy)
+
+---
+
+<div align="center">
+  Made with ❤️ by the Cardy Team
+  
+  [Website](https://cardy.com) • [Documentation](https://docs.cardy.com) • [Blog](https://blog.cardy.com)
+</div>

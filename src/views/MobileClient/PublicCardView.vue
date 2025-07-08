@@ -20,6 +20,12 @@
 
     <!-- Main Content -->
     <div v-else-if="cardData" class="content-wrapper">
+      <!-- Preview Mode Indicator -->
+      <div v-if="isPreviewMode" class="preview-indicator">
+        <i class="pi pi-eye"></i>
+        <span>Preview Mode</span>
+      </div>
+      
       <!-- Navigation Header -->
       <MobileHeader 
         v-if="!isCardView"
@@ -80,6 +86,7 @@ interface CardData {
   conversation_ai_enabled: boolean
   ai_prompt: string
   is_activated: boolean
+  is_preview?: boolean
 }
 
 interface ContentItem {
@@ -105,6 +112,9 @@ const contentItems = ref<ContentItem[]>([])
 const currentView = ref<ViewType>('card')
 const selectedContent = ref<ContentItem | null>(null)
 const navigationStack = ref<Array<{ view: ViewType; content: ContentItem | null }>>([])
+
+// Check if we're in preview mode
+const isPreviewMode = computed(() => route.meta.isPreviewMode === true)
 
 // Computed
 const isCardView = computed(() => currentView.value === 'card')
@@ -136,17 +146,33 @@ async function fetchCardData() {
     isLoading.value = true
     error.value = null
 
-    const issueCardId = route.params.issue_card_id as string
-    const activationCode = route.params.activation_code as string
+    let data, fetchError
 
-    const { data, error: fetchError } = await supabase.rpc('get_public_card_content', {
-      p_issue_card_id: issueCardId,
-      p_activation_code: activationCode
-    })
+    if (isPreviewMode.value) {
+      // Preview mode - use card ID and preview stored procedure
+      const cardId = route.params.card_id as string
+      
+      const result = await supabase.rpc('get_card_preview_content', {
+        p_card_id: cardId
+      })
+      
+      data = result.data
+      fetchError = result.error
+    } else {
+      // Normal mode - use issued card ID
+      const issueCardId = route.params.issue_card_id as string
+
+      const result = await supabase.rpc('get_public_card_content', {
+        p_issue_card_id: issueCardId
+      })
+      
+      data = result.data
+      fetchError = result.error
+    }
 
     if (fetchError) throw fetchError
     if (!data || data.length === 0) {
-      throw new Error('Card not found or invalid activation code')
+      throw new Error('Card not found or invalid card ID')
     }
 
     // Process card data
@@ -157,7 +183,8 @@ async function fetchCardData() {
       card_image_urls: firstRow.card_image_urls || [],
       conversation_ai_enabled: firstRow.card_conversation_ai_enabled,
       ai_prompt: firstRow.card_ai_prompt,
-      is_activated: firstRow.is_activated
+      is_activated: isPreviewMode.value ? true : firstRow.is_activated, // Always activated in preview mode
+      is_preview: isPreviewMode.value || firstRow.is_preview || false
     }
 
     // Process content items
@@ -221,11 +248,29 @@ onMounted(() => {
 <style scoped>
 /* Base Container */
 .mobile-card-container {
-  min-height: 100vh;
-  min-height: 100dvh;
+  
   background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
   position: relative;
   overflow: hidden;
+}
+
+/* Preview Mode Indicator */
+.preview-indicator {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(255, 255, 255, 0.9);
+  backdrop-filter: blur(10px);
+  color: #4338ca;
+  padding: 0.5rem 1rem;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 50;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 /* Loading State */

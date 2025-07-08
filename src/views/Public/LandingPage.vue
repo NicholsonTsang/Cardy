@@ -6,22 +6,17 @@
         <div class="flex justify-between items-center h-16">
           <div class="flex items-center">
             <div class="flex-shrink-0 flex items-center">
-              <div class="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <i class="pi pi-id-card text-white text-lg"></i>
-              </div>
-              <span class="ml-3 text-xl font-bold text-slate-900">Cardy</span>
+              <img 
+                src="/CardStudioLogo.png" 
+                alt="CardStudio" 
+                class="h-12 w-auto"
+              />
             </div>
           </div>
           <div class="flex items-center space-x-4">
             <Button 
               label="Sign In" 
-              text 
               @click="router.push('/login')"
-              class="text-slate-700 hover:text-blue-600"
-            />
-            <Button 
-              label="Start Free Pilot" 
-              @click="router.push('/signup')"
               class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 px-6"
             />
           </div>
@@ -31,89 +26,191 @@
 
     <!-- Hero Section -->
     <section class="relative overflow-hidden">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-32">
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <div class="space-y-8">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-center">
+          <div class="lg:col-span-7 space-y-6 lg:space-y-8 order-2 lg:order-1">
             <div class="space-y-4">
-              <h1 class="text-4xl sm:text-5xl lg:text-6xl font-bold text-slate-900 leading-tight">
+              <div class="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-lg mb-4">
+                <div class="flex items-center">
+                  <i class="pi pi-star-fill text-blue-500 text-lg mr-2"></i>
+                  <span class="text-blue-800 font-semibold text-sm">Try the live demo card → Scan the QR code!</span>
+                </div>
+              </div>
+              <h1 class="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold text-slate-900 leading-tight">
                 Elevate Your Visitor Experience with 
                 <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   AI-Powered Souvenirs
                 </span>
               </h1>
-              <p class="text-xl text-slate-600 leading-relaxed">
+              <p class="text-lg lg:text-xl text-slate-600 leading-relaxed">
                 Merge collectible card souvenirs with an interactive AI voice guide into one seamless journey. 
-                No apps, no hardware—visitors just scan, explore, and remember.
+                <span class="font-semibold text-blue-700">Try our demo card now</span> — No apps, no hardware—visitors just scan, explore, and remember.
               </p>
             </div>
             
-            <div class="flex flex-col sm:flex-row gap-4">
-              <Button 
-                label="Start Your Free Pilot" 
-                icon="pi pi-arrow-right"
-                iconPos="right"
-                @click="router.push('/signup')"
-                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 px-8 py-4 text-lg shadow-lg hover:shadow-xl transition-all"
-              />
-              <Button 
-                label="See How It Works" 
-                icon="pi pi-play"
-                outlined
-                @click="scrollToSection('how-it-works')"
-                class="border-2 border-slate-300 hover:border-blue-600 px-8 py-4 text-lg transition-all"
-              />
+            <!-- Primary CTA -->
+            <div class="bg-gradient-to-r from-blue-50 to-purple-50 border-l-4 border-blue-500 rounded-lg p-4 mb-6">
+              <div class="flex items-center justify-between">
+                <div>
+                  <h3 class="font-bold text-blue-900 text-lg flex items-center gap-2">
+                    <i class="pi pi-play-circle text-blue-600"></i>
+                    Try Live Demo
+                  </h3>
+                  <p class="text-blue-700 text-sm">Scan QR code → Experience AI guide → Create your own card</p>
+                </div>
+              </div>
+              <!-- CTA Button -->
+              <div class="mt-3">
+                <Button 
+                  label="Set Up Your First Card" 
+                  @click="handleOrganizerDemo"
+                  class="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 py-3 px-6 font-bold shadow-lg"
+                />
+              </div>
             </div>
 
+
             <!-- Value Propositions -->
-            <div class="pt-8">
+            <div class="pt-6">
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="flex items-center space-x-2 text-slate-600">
-                  <i class="pi pi-check-circle text-green-500 text-lg"></i>
-                  <span class="text-sm font-medium">No App Required</span>
+                <div class="text-center p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                  <i class="pi pi-mobile text-blue-500 text-2xl mb-2 block"></i>
+                  <p class="text-sm font-medium text-slate-700">No App Required</p>
                 </div>
-                <div class="flex items-center space-x-2 text-slate-600">
-                  <i class="pi pi-check-circle text-green-500 text-lg"></i>
-                  <span class="text-sm font-medium">AI Voice Guide</span>
+                <div class="text-center p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                  <i class="pi pi-microphone text-purple-500 text-2xl mb-2 block"></i>
+                  <p class="text-sm font-medium text-slate-700">AI Conversations</p>
                 </div>
-                <div class="flex items-center space-x-2 text-slate-600">
-                  <i class="pi pi-check-circle text-green-500 text-lg"></i>
-                  <span class="text-sm font-medium">5 Languages</span>
+                <div class="text-center p-4 bg-white rounded-xl shadow-sm border border-slate-200">
+                  <i class="pi pi-globe text-green-500 text-2xl mb-2 block"></i>
+                  <p class="text-sm font-medium text-slate-700">5 Languages</p>
                 </div>
               </div>
             </div>
           </div>
 
           <!-- Hero Visual with Sample Card -->
-          <div class="relative">
-            <div class="relative z-10 mx-auto max-w-sm">
+          <div class="lg:col-span-5 order-1 lg:order-2 relative flex justify-center lg:justify-end">
+            <div class="relative z-10 max-w-xs sm:max-w-sm">
               <!-- Sample Card -->
-              <div class="bg-white rounded-2xl shadow-2xl p-6 transform rotate-3 hover:rotate-0 transition-transform duration-500">
-                <div class="aspect-[2/3] bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl overflow-hidden relative mb-4">
+              <div class="bg-white rounded-2xl shadow-xl p-4 transform hover:scale-105 hover:shadow-2xl transition-all duration-300 relative border border-slate-200">
+                <div class="aspect-[2/3] bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl overflow-hidden relative">
                   <img 
-                    :src="heroImageUrl" 
+                    :src="demoCardImageUrl" 
                     alt="Museum Exhibition" 
                     class="w-full h-full object-cover"
                   />
                   <div class="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
                   <div class="absolute bottom-4 left-4 right-4 text-white">
-                    <h3 class="text-lg font-bold mb-1">Ancient Artifacts</h3>
-                    <p class="text-sm opacity-90">Interactive Museum Guide</p>
+                    <h3 class="text-lg font-bold mb-1">{{ demoCardTitle }}</h3>
+                    <p class="text-sm opacity-90">{{ demoCardSubtitle }}</p>
                   </div>
+                  
+                  <!-- Clean QR Code -->
+                  <div class="absolute" :class="qrPositionClasses">
+                    <!-- Simple QR Code Container -->
+                    <div class="bg-white border-2 border-white rounded-lg shadow-lg p-2 transform hover:scale-110 transition-transform duration-300" :style="qrContainerStyle">
+                      <div class="w-full h-full bg-white rounded flex items-center justify-center">
+                        <QrCode :value="sampleQrUrl" :size="qrCodeSize" />
+                      </div>
+                    </div>
+                  </div>
+                  
                 </div>
                 
-                <!-- QR Code -->
-                <div class="text-center">
-                  <div class="inline-block p-3 bg-white border-2 border-slate-200 rounded-lg">
-                    <QrCode :value="sampleQrUrl" :size="80" />
+                <p class="text-center text-xs text-slate-500 mt-4">{{ demoCardDescription }}</p>
+              </div>
+              
+              <!-- Simple scan instruction -->
+              <div class="mt-4 text-center space-y-3">
+                <div class="bg-blue-50 border border-blue-200 rounded-xl p-3">
+                  <div class="flex items-center justify-center gap-2 text-blue-700 font-semibold mb-1">
+                    <i class="pi pi-mobile text-lg"></i>
+                    <span>Scan to try demo</span>
                   </div>
-                  <p class="text-xs text-slate-500 mt-2">Scan to experience AI guide</p>
+                  <p class="text-blue-600 text-sm">Open camera app and scan the QR code</p>
+                </div>
+                
+                <!-- Mobile Direct Access Button -->
+                <div class="block sm:hidden">
+                  <div class="text-xs text-slate-500 mb-2">or</div>
+                  <Button 
+                    label="Open Demo Card" 
+                    icon="pi pi-external-link"
+                    @click="openDemoCard"
+                    class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 border-0"
+                  />
                 </div>
               </div>
             </div>
             
-            <!-- Background decoration -->
-            <div class="absolute -top-10 -right-10 w-72 h-72 bg-gradient-to-br from-blue-200 to-purple-200 rounded-full opacity-20 animate-pulse"></div>
-            <div class="absolute -bottom-10 -left-10 w-64 h-64 bg-gradient-to-br from-purple-200 to-pink-200 rounded-full opacity-20 animate-pulse" style="animation-delay: 1s;"></div>
+            <!-- Subtle background decoration -->
+            <div class="absolute -top-10 -right-10 w-64 h-64 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full opacity-30"></div>
+            <div class="absolute -bottom-10 -left-10 w-56 h-56 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full opacity-30"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Brand Hero Section -->
+    <section class="py-24 bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 relative overflow-hidden">
+      <!-- Subtle pattern background -->
+      <div class="absolute inset-0 opacity-30">
+        <div class="absolute top-20 left-20 w-32 h-32 bg-gradient-to-br from-blue-200 to-purple-200 rounded-2xl rotate-12 opacity-50"></div>
+        <div class="absolute bottom-20 right-20 w-24 h-24 bg-gradient-to-br from-purple-200 to-blue-200 rounded-xl -rotate-12 opacity-50"></div>
+        <div class="absolute top-1/2 left-1/3 w-16 h-16 bg-blue-100 rounded-lg rotate-45 opacity-40"></div>
+      </div>
+      
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        <div class="text-center">
+          <!-- Large, prominent logo display -->
+          <div class="flex justify-center mb-12">
+            <div class="relative">
+              <img 
+                src="/CardStudioLogo.png" 
+                alt="CardStudio" 
+                class="h-32 md:h-60 w-auto drop-shadow-2xl"
+              />
+              <!-- Subtle glow effect -->
+              <div class="absolute inset-0 bg-gradient-to-r from-blue-400/20 to-purple-400/20 rounded-lg blur-2xl -z-10 scale-110"></div>
+            </div>
+          </div>
+          
+          <div class="max-w-4xl mx-auto">
+            <h2 class="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
+              Revolutionizing Visitor Experiences
+            </h2>
+            <p class="text-xl md:text-2xl text-slate-600 mb-12 leading-relaxed">
+              CardStudio combines the charm of physical souvenirs with cutting-edge AI technology, 
+              creating unforgettable digital experiences for museums, attractions, and cultural sites worldwide.
+            </p>
+            
+            <!-- Feature highlights -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+              <div class="bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-white/50 shadow-lg">
+                <div class="w-12 h-12 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                  <i class="pi pi-qrcode text-white text-xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-slate-900 mb-2">Smart QR Integration</h3>
+                <p class="text-slate-600 text-sm">Seamless card-to-digital experience</p>
+              </div>
+              
+              <div class="bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-white/50 shadow-lg">
+                <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                  <i class="pi pi-microphone text-white text-xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-slate-900 mb-2">AI Voice Guide</h3>
+                <p class="text-slate-600 text-sm">Natural conversations in 5 languages</p>
+              </div>
+              
+              <div class="bg-white/70 backdrop-blur-sm rounded-2xl p-6 border border-white/50 shadow-lg">
+                <div class="w-12 h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center mb-4 mx-auto">
+                  <i class="pi pi-chart-line text-white text-xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-slate-900 mb-2">Rich Analytics</h3>
+                <p class="text-slate-600 text-sm">Deep insights into visitor engagement</p>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -134,7 +231,7 @@
             <h3 class="text-2xl font-bold text-slate-900">Our Vision</h3>
             <div class="prose prose-lg text-slate-600">
               <p>
-                At Cardy, we are transforming visits to museums, exhibitions, and cultural landmarks into 
+                At CardStudio, we are transforming visits to museums, exhibitions, and cultural landmarks into 
                 captivating journeys of discovery. We empower institutions to offer rich, AI-powered digital 
                 content through beautifully designed physical souvenir cards.
               </p>
@@ -245,7 +342,7 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-            Why Institutions Love Cardy
+            Why Institutions Love CardStudio
           </h2>
           <div class="w-24 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto"></div>
         </div>
@@ -306,7 +403,7 @@
             </div>
             <h3 class="text-xl font-bold text-slate-900 mb-4">Zero Hardware, Zero Hassle</h3>
             <p class="text-slate-600">
-              Cardy leverages the smartphones your visitors already carry. No need for expensive, high-maintenance 
+              CardStudio leverages the smartphones your visitors already carry. No need for expensive, high-maintenance 
               audio guide hardware or complex venue infrastructure.
             </p>
           </div>
@@ -334,7 +431,7 @@
             Transforming Every Visitor Experience
           </h2>
           <p class="text-xl text-slate-600 max-w-3xl mx-auto">
-            From world-class museums to local landmarks, Cardy's AI-powered digital souvenirs create memorable 
+            From world-class museums to local landmarks, CardStudio's AI-powered digital souvenirs create memorable 
             moments for any venue that welcomes visitors.
           </p>
           <div class="w-24 h-1 bg-gradient-to-r from-blue-600 to-purple-600 mx-auto mt-4"></div>
@@ -347,7 +444,7 @@
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
               <div class="h-48 bg-gradient-to-br from-blue-500 to-purple-600 relative overflow-hidden">
                 <img 
-:src="featureImage1Url" 
+                  :src="featureImage1Url" 
                   alt="Museums & Art Galleries" 
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
@@ -370,7 +467,7 @@
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
               <div class="h-48 bg-gradient-to-br from-green-500 to-blue-600 relative overflow-hidden">
                 <img 
-:src="featureImage2Url" 
+                  :src="featureImage2Url" 
                   alt="Tourist Attractions" 
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
@@ -393,7 +490,7 @@
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
               <div class="h-48 bg-gradient-to-br from-purple-500 to-pink-600 relative overflow-hidden">
                 <img 
-:src="featureImage3Url" 
+                  :src="featureImage3Url" 
                   alt="Cultural Heritage" 
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
@@ -419,7 +516,7 @@
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
               <div class="h-48 bg-gradient-to-br from-orange-500 to-red-600 relative overflow-hidden">
                 <img 
-:src="featureImage4Url" 
+                  :src="featureImage4Url" 
                   alt="Exhibition Centers" 
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
@@ -442,7 +539,7 @@
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
               <div class="h-48 bg-gradient-to-br from-pink-500 to-purple-600 relative overflow-hidden">
                 <img 
-:src="featureImage5Url" 
+                  :src="featureImage5Url" 
                   alt="Theme Parks" 
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
@@ -465,7 +562,7 @@
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
               <div class="h-48 bg-gradient-to-br from-indigo-500 to-blue-600 relative overflow-hidden">
                 <img 
-:src="featureImage6Url" 
+                  :src="featureImage6Url" 
                   alt="Events" 
                   class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
@@ -681,7 +778,7 @@
           Ready to Transform Your Visitor Experience?
         </h2>
         <p class="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
-          Join hundreds of leading institutions worldwide who trust Cardy to create meaningful, 
+          Join hundreds of leading institutions worldwide who trust CardStudio to create meaningful, 
           memorable experiences for their visitors.
         </p>
         <div class="flex flex-col sm:flex-row gap-4 justify-center">
@@ -710,10 +807,12 @@
           <!-- Brand -->
           <div class="space-y-4">
             <div class="flex items-center">
-              <div class="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <i class="pi pi-id-card text-white text-lg"></i>
-              </div>
-              <span class="ml-3 text-xl font-bold">Cardy</span>
+              <img 
+                src="/CardStudioLogo.png" 
+                alt="CardStudio" 
+                class="h-12 w-auto opacity-90 hover:opacity-100 transition-opacity"
+                style="filter: brightness(0) invert(1);"
+              />
             </div>
             <p class="text-slate-400 max-w-sm">
               Transforming visitor experiences through AI-powered digital souvenirs and interactive cultural engagement.
@@ -742,7 +841,7 @@
 
         <div class="border-t border-slate-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
           <p class="text-slate-400 text-sm">
-            © 2025 Cardy. All rights reserved.
+            © 2025 CardStudio. All rights reserved.
           </p>
           <div class="flex space-x-6 mt-4 md:mt-0">
             <a @click="scrollToSection('features')" class="text-slate-400 hover:text-white text-sm transition-colors cursor-pointer">Features</a>
@@ -763,7 +862,7 @@
     >
       <div class="space-y-6">
         <p class="text-slate-600">
-          Ready to learn more about how Cardy can transform your visitor experience? 
+          Ready to learn more about how CardStudio can transform your visitor experience? 
           Get in touch with our team today.
         </p>
         
@@ -812,35 +911,76 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import QrCode from 'qrcode.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useToast } from 'primevue/usetoast'
 
 const router = useRouter()
+const authStore = useAuthStore()
+const toast = useToast()
 
 // Sample QR code URL for demonstration
-const sampleQrUrl = ref(import.meta.env.VITE_SAMPLE_QR_URL || 'https://cardy.example.com/demo/ancient-artifacts')
+const sampleQrUrl = ref(import.meta.env.VITE_SAMPLE_QR_URL || `${window.location.origin}/c/demo-ancient-artifacts`)
 
 // Contact modal
 const showContactModal = ref(false)
 
 // Contact information from environment variables
-const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || 'support@cardy.com'
+const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || 'support@cardstudio.com'
 const contactWhatsApp = import.meta.env.VITE_CONTACT_WHATSAPP_URL || 'https://wa.me/852xxxxxx'
 const contactPhone = import.meta.env.VITE_CONTACT_PHONE || '+852 xxxxxx'
 const contactWhatsAppDisplay = import.meta.env.VITE_CONTACT_WHATSAPP_DISPLAY || contactPhone
 
-// Environment variables successfully integrated
+
+// Demo card configuration from environment variables
+const demoCardTitle = import.meta.env.VITE_DEMO_CARD_TITLE || 'Ancient Artifacts'
+const demoCardSubtitle = import.meta.env.VITE_DEMO_CARD_SUBTITLE || 'Interactive Museum Guide'
+const demoCardDescription = import.meta.env.VITE_DEMO_CARD_DESCRIPTION || 'Scan the QR code to experience our AI guide'
+
+// QR code configuration
+const qrCodeSize = parseInt(import.meta.env.VITE_QR_CODE_SIZE) || 56
+const qrCodePosition = import.meta.env.VITE_QR_CODE_POSITION || 'bottom-right' // bottom-left, bottom-right, top-left, top-right
+
+// Computed QR code position classes
+const qrPositionClasses = computed(() => {
+  const positions = {
+    'bottom-right': 'bottom-4 right-4',
+    'bottom-left': 'bottom-4 left-4',
+    'top-right': 'top-4 right-4',
+    'top-left': 'top-4 left-4'
+  }
+  return positions[qrCodePosition] || positions['bottom-right']
+})
+
+// Computed QR container styles
+const qrContainerStyle = computed(() => {
+  const containerSize = qrCodeSize + 8 // 4px padding on each side
+  return {
+    width: `${containerSize}px`,
+    height: `${containerSize}px`
+  }
+})
+
+// Computed animation ring styles
+const qrRingStyle = computed(() => {
+  const ringSize = qrCodeSize + 8
+  return {
+    width: `${ringSize}px`,
+    height: `${ringSize}px`
+  }
+})
 
 // Image URLs from environment variables
-const heroImageUrl = import.meta.env.VITE_HERO_IMAGE_URL || 'https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?w=400&h=600&fit=crop&crop=center'
+const demoCardImageUrl = import.meta.env.VITE_DEFAULT_CARD_IMAGE_URL || 'https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?w=400&h=600&fit=crop&crop=center'
 const featureImage1Url = import.meta.env.VITE_FEATURE_IMAGE_1_URL || 'https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?w=400&h=300&fit=crop'
-const featureImage2Url = import.meta.env.VITE_FEATURE_IMAGE_2_URL || 'https://images.unsplash.com/photo-1539650116574-75c0c6d73c6e?w=400&h=300&fit=crop'
+const featureImage2Url = import.meta.env.VITE_FEATURE_IMAGE_2_URL || 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop'
 const featureImage3Url = import.meta.env.VITE_FEATURE_IMAGE_3_URL || 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=300&fit=crop'
 const featureImage4Url = import.meta.env.VITE_FEATURE_IMAGE_4_URL || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=300&fit=crop'
-const featureImage5Url = import.meta.env.VITE_FEATURE_IMAGE_5_URL || 'https://images.unsplash.com/photo-1596444080749-6ac1ba12a236?w=400&h=300&fit=crop'
+const featureImage5Url = import.meta.env.VITE_FEATURE_IMAGE_5_URL || 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&fit=crop'
 const featureImage6Url = import.meta.env.VITE_FEATURE_IMAGE_6_URL || 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&h=300&fit=crop'
 
 // FAQ functionality
@@ -861,15 +1001,64 @@ const scrollToSection = (sectionId) => {
   }
 }
 
+const scrollToCard = () => {
+  // Scroll to demo card and add attention animation
+  const cardElement = document.querySelector('.card-shimmer')
+  if (cardElement) {
+    cardElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // Add temporary attention effect
+    cardElement.style.transform = 'scale(1.1)'
+    setTimeout(() => {
+      cardElement.style.transform = ''
+    }, 1000)
+  }
+}
+
+const openDemoCard = () => {
+  // Navigate to the exact same URL as the QR code
+  window.location.href = sampleQrUrl.value
+}
+
+const handleOrganizerDemo = async () => {
+  // Check if user is authenticated
+  if (!authStore.session?.user) {
+    // Show friendly signup prompt
+    toast.add({
+      severity: 'info',
+      summary: 'Get Started',
+      detail: 'Sign up to access the card issuer portal',
+      life: 5000
+    })
+    router.push('/signup')
+    return
+  }
+
+  // Check if user has card issuer role
+  const userRole = authStore.session.user.user_metadata?.role
+  if (userRole !== 'cardIssuer') {
+    toast.add({
+      severity: 'warn',
+      summary: 'Access Required',
+      detail: 'Please complete your organizer profile setup to create cards',
+      life: 5000
+    })
+    router.push('/signup')
+    return
+  }
+
+  // User is authenticated and has proper role, go to card issuer portal
+  router.push('/cms/mycards')
+}
+
 // FAQ data
 const faqs = ref([
   {
-    question: "How do we get started with Cardy?",
+    question: "How do we get started with CardStudio?",
     answer: "Instantly. Our self-service Card Issuer Portal lets you sign up and begin designing your first interactive card experience in minutes. No waiting, no setup fees."
   },
   {
     question: "Is there a long setup or deployment time?",
-    answer: "Zero. Cardy is a cloud-based platform, meaning there's no technical setup or IT integration needed. If you can use a modern web app, you can launch a Cardy experience."
+    answer: "Zero. CardStudio is a cloud-based platform, meaning there's no technical setup or IT integration needed. If you can use a modern web app, you can launch a CardStudio experience."
   },
   {
     question: "How does physical card printing work?",
@@ -885,7 +1074,7 @@ const faqs = ref([
   },
   {
     question: "How is this different from a normal audio guide?",
-    answer: "It's the difference between a monologue and a conversation. Instead of a static recording, Cardy provides a dynamic AI companion that answers your specific questions in real-time. Plus, you get a beautiful physical souvenir."
+    answer: "It's the difference between a monologue and a conversation. Instead of a static recording, CardStudio provides a dynamic AI companion that answers your specific questions in real-time. Plus, you get a beautiful physical souvenir."
   },
   {
     question: "Which languages does the AI support?",
@@ -899,15 +1088,6 @@ const faqs = ref([
 </script>
 
 <style scoped>
-/* Custom animations and transitions */
-@keyframes float {
-  0%, 100% { transform: translateY(0px) rotate(3deg); }
-  50% { transform: translateY(-10px) rotate(3deg); }
-}
-
-.group:hover .transform {
-  animation: float 3s ease-in-out infinite;
-}
 
 /* Smooth scroll behavior */
 html {
