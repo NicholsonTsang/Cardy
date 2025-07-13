@@ -1,11 +1,11 @@
--- Simple version: Drop all Cardy CMS functions
+-- Simple version: Drop all CardStudio CMS functions
 -- Add this at the beginning of your deployment to ensure clean state
 
 DO $$
 DECLARE
     r RECORD;
 BEGIN
-    -- Drop all functions that are likely from Cardy CMS
+    -- Drop all functions that are likely from CardStudio CMS
     FOR r IN 
         SELECT format('DROP FUNCTION IF EXISTS %I(%s) CASCADE', 
                      p.proname, 
@@ -61,5 +61,5 @@ BEGIN
         EXECUTE r.drop_cmd;
     END LOOP;
     
-    RAISE NOTICE 'All Cardy CMS functions dropped';
+    RAISE NOTICE 'All CardStudio CMS functions dropped';
 END $$;

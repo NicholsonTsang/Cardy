@@ -35,8 +35,11 @@ serve(async (req: Request) => {
     console.log('Instructions received:', instructions ? instructions.substring(0, 200) + '...' : 'None')
     console.log('Language received:', language)
     
+    // Get model from environment variable or fallback to default
+    const model = Deno.env.get('OPENAI_MODEL') || 'gpt-4o-realtime-preview-2025-06-03'
+    
     const sessionParams = {
-      model: "gpt-4o-realtime-preview-2025-06-03", // Latest stable model version
+      model: model,
       modalities: ["audio", "text"],
       voice: "alloy", // Default or from request
       input_audio_format: "pcm16",

@@ -5,7 +5,7 @@
                 <i class="pi pi-user text-2xl text-white"></i>
             </div>
             
-            <h2 class="text-2xl font-bold text-slate-900 mb-4">Welcome to Cardy</h2>
+            <h2 class="text-2xl font-bold text-slate-900 mb-4">Welcome to CardStudio</h2>
             <p class="text-slate-600 text-lg mb-8 max-w-md mx-auto">
                 Create your profile to get started with creating and sharing digital cards.
             </p>

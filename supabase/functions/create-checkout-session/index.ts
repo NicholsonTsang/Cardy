@@ -103,7 +103,7 @@ serve(async (req) => {
           price_data: {
             currency: 'usd',
             product_data: {
-              name: `Digital Cards - ${batch.card_name || 'Cardy Experience'}`,
+              name: `Digital Cards - ${batch.card_name || 'CardStudio Experience'}`,
               description: batch.card_description ? 
                 `${cardCount} cards for ${batch.card_description}` : 
                 `${cardCount} interactive digital souvenir cards`,

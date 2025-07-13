@@ -171,7 +171,7 @@ const theme = computed(() => {
 });
 
 const sidebarTitle = computed(() => {
-    return userRole.value === 'admin' ? 'Admin Panel' : 'Cardy CMS';
+    return userRole.value === 'admin' ? 'Admin Panel' : 'CardStudio CMS';
 });
 
 const userRoleDisplay = computed(() => {

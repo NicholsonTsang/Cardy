@@ -401,8 +401,9 @@ Begin the conversation by greeting the visitor and asking how you can help them 
 
     // Send SDP offer to OpenAI via Supabase proxy (instructions already sent with token)
     console.log('Sending SDP offer to OpenAI...')
+    const model = import.meta.env.VITE_OPENAI_MODEL || 'gpt-4o-realtime-preview-2025-06-03'
     const result = await sendOpenAIRealtimeRequest(
-      'gpt-4o-realtime-preview-2025-06-03',
+      model,
       offer.sdp!,
       ephemeralToken,
       instructions

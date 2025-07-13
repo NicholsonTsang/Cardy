@@ -1,6 +1,6 @@
 # Stored Procedures - Modular Organization
 
-This directory contains the stored procedures for the Cardy CMS system, organized into logical modules and separated by deployment location for better maintainability and development workflow.
+This directory contains the stored procedures for the CardStudio CMS system, organized into logical modules and separated by deployment location for better maintainability and development workflow.
 
 ## Overview
 

@@ -1,6 +1,6 @@
 /**
  * Predefined empty state configurations for common DataTable scenarios
- * Provides consistent messaging and actions across the Cardy application
+ * Provides consistent messaging and actions across the CardStudio application
  */
 
 export const emptyStateConfigs = {
