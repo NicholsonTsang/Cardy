@@ -200,26 +200,42 @@ export const useAdminFeedbackStore = defineStore('adminFeedback', () => {
   // Utility functions
   const getActionTypeLabel = (actionType: string): string => {
     const labels: Record<string, string> = {
+      'USER_REGISTRATION': 'User Registration',
       'ROLE_CHANGE': 'Role Change',
       'VERIFICATION_REVIEW': 'Verification Review',
       'MANUAL_VERIFICATION': 'Manual Verification',
-      'PRINT_REQUEST_UPDATE': 'Print Request Update',
-      'BATCH_PAYMENT_WAIVER': 'Batch Payment Waiver',
-      'SYSTEM_CONFIG': 'System Configuration',
-      'USER_MANAGEMENT': 'User Management'
+      'VERIFICATION_RESET': 'Verification Reset',
+      'CARD_CREATION': 'Card Creation',
+      'CARD_UPDATE': 'Card Update',
+      'CARD_DELETION': 'Card Deletion',
+      'BATCH_STATUS_CHANGE': 'Batch Status Change',
+      'CARD_GENERATION': 'Card Generation',
+      'PRINT_REQUEST_STATUS_UPDATE': 'Print Request Update',
+      'PRINT_REQUEST_WITHDRAWAL': 'Print Request Withdrawal',
+      'PAYMENT_WAIVER': 'Payment Waiver',
+      'PAYMENT_CREATION': 'Payment Creation',
+      'PAYMENT_CONFIRMATION': 'Payment Confirmation'
     }
     return labels[actionType] || actionType
   }
 
   const getActionTypeColor = (actionType: string): string => {
     const colors: Record<string, string> = {
+      'USER_REGISTRATION': 'bg-green-500',
       'ROLE_CHANGE': 'bg-yellow-500',
-      'VERIFICATION_REVIEW': 'bg-green-500',
-      'MANUAL_VERIFICATION': 'bg-blue-500',
-      'PRINT_REQUEST_UPDATE': 'bg-purple-500',
-      'BATCH_PAYMENT_WAIVER': 'bg-orange-500',
-      'SYSTEM_CONFIG': 'bg-red-500',
-      'USER_MANAGEMENT': 'bg-indigo-500'
+      'VERIFICATION_REVIEW': 'bg-blue-500',
+      'MANUAL_VERIFICATION': 'bg-blue-600',
+      'VERIFICATION_RESET': 'bg-blue-400',
+      'CARD_CREATION': 'bg-emerald-500',
+      'CARD_UPDATE': 'bg-emerald-600',
+      'CARD_DELETION': 'bg-red-500',
+      'BATCH_STATUS_CHANGE': 'bg-cyan-500',
+      'CARD_GENERATION': 'bg-cyan-600',
+      'PRINT_REQUEST_STATUS_UPDATE': 'bg-purple-500',
+      'PRINT_REQUEST_WITHDRAWAL': 'bg-purple-400',
+      'PAYMENT_WAIVER': 'bg-orange-500',
+      'PAYMENT_CREATION': 'bg-orange-600',
+      'PAYMENT_CONFIRMATION': 'bg-orange-700'
     }
     return colors[actionType] || 'bg-slate-500'
   }

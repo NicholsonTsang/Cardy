@@ -56,8 +56,8 @@ const props = defineProps({
 const emit = defineEmits(['select']);
 
 const displayImage = computed(() => {
-    return props.card.image_urls && props.card.image_urls.length > 0 
-        ? props.card.image_urls[0] 
+    return props.card.image_url 
+        ? props.card.image_url 
         : cardPlaceholder;
 });
 

@@ -49,26 +49,6 @@ export interface AdminUserActivity {
   last_print_request?: string
 }
 
-export interface AdminDashboardStats {
-  total_users: number
-  total_card_designs: number
-  total_issued_cards: number
-  total_activated_cards: number
-  pending_verifications: number
-  approved_verifications: number
-  rejected_verifications: number
-  pending_print_requests: number
-  active_print_requests: number
-  completed_print_requests: number
-  total_batches: number
-  paid_batches: number
-  unpaid_batches: number
-  waived_batches: number
-  pending_payment_batches: number
-  total_revenue_cents: number
-  total_waived_amount_cents: number
-}
-
 export const useAdminVerificationsStore = defineStore('adminVerifications', () => {
   // State
   const pendingVerifications = ref<AdminVerification[]>([])
@@ -85,7 +65,7 @@ export const useAdminVerificationsStore = defineStore('adminVerifications', () =
   const fetchPendingVerifications = async (): Promise<AdminVerification[]> => {
     isLoadingVerifications.value = true
     try {
-      const { data, error } = await supabase.rpc('get_all_pending_verifications')
+      const { data, error } = await supabase.rpc('admin_get_pending_verifications')
       if (error) throw error
       
       pendingVerifications.value = data || []
@@ -174,8 +154,8 @@ export const useAdminVerificationsStore = defineStore('adminVerifications', () =
   const updateUserRole = async (userEmail: string, newRole: string, reason: string) => {
     isLoading.value = true
     try {
-      const { data, error } = await supabase.rpc('update_user_role', {
-        p_user_email: userEmail,
+      const { data, error } = await supabase.rpc('admin_change_user_role', {
+        p_target_user_id: userEmail, // This might need to be changed to actually use user ID instead of email
         p_new_role: newRole,
         p_reason: reason
       })

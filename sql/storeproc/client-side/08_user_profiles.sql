@@ -124,19 +124,8 @@ BEGIN
         updated_at = NOW()
     WHERE user_id = p_target_user_id;
 
-    -- Create feedback history entry with full traceability
-    PERFORM create_or_update_admin_feedback(
-        'user_verification',
-        p_target_user_id,
-        p_target_user_id,
-        'verification_feedback',
-        p_admin_feedback,
-        jsonb_build_object(
-            'action', 'verification_review',
-            'new_status', p_new_status,
-            'timestamp', NOW()
-        )
-    );
+    -- Feedback is stored in admin_feedback column of user_profiles
+    -- and logged in admin_audit_log table below
 
     -- Log in audit table
     INSERT INTO admin_audit_log (
@@ -155,7 +144,15 @@ BEGIN
             'verification_status', p_new_status,
             'verified_at', CASE WHEN p_new_status = 'APPROVED' THEN NOW() ELSE NULL END
         ),
-        jsonb_build_object('review_verification', true)
+        jsonb_build_object(
+            'action', CASE 
+                WHEN p_new_status = 'APPROVED' THEN 'verification_approved'
+                WHEN p_new_status = 'REJECTED' THEN 'verification_rejected'
+                ELSE 'verification_reviewed'
+            END,
+            'review_type', p_new_status::TEXT,
+            'has_feedback', (p_admin_feedback IS NOT NULL AND LENGTH(TRIM(p_admin_feedback)) > 0)
+        )
     );
     
     RETURN FOUND;

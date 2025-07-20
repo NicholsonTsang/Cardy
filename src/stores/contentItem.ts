@@ -10,7 +10,7 @@ export interface ContentItem {
     parent_id: string | null;
     name: string;
     content: string;
-    image_urls: string[] | null;
+    image_url: string | null;
     ai_metadata: string;
     sort_order: number;
     created_at: string;
@@ -22,7 +22,7 @@ export interface ContentItemFormData {
     description?: string; // Map to content
     imageUrl?: string | null;
     imageFile?: File | null;
-    image_urls?: string[];
+    image_url?: string;
     aiMetadata?: string;
     // card_id and parent_id are passed as separate params to createContentItem
 }
@@ -85,16 +85,16 @@ export const useContentItemStore = defineStore('contentItem', () => {
       loading.value = true;
       error.value = null;
 
-      let finalImageUrls: string[] = itemData.image_urls || [];
+      let finalImageUrl: string | null = itemData.image_url || null;
       if (itemData.imageFile) {
         const uploadedUrl = await uploadContentItemImage(itemData.imageFile, cardId);
         if (uploadedUrl) {
-            finalImageUrls = [uploadedUrl];
+            finalImageUrl = uploadedUrl;
         } else {
             throw new Error('Image upload failed for content item.');
         }
       } else if (itemData.imageUrl) { // If imageUrl is provided directly (and no file)
-        finalImageUrls = [itemData.imageUrl];
+        finalImageUrl = itemData.imageUrl;
       }
       
       const { data, error: err } = await supabase
@@ -103,7 +103,7 @@ export const useContentItemStore = defineStore('contentItem', () => {
           p_parent_id: parentId,
           p_name: itemData.name,
           p_content: itemData.description || '',
-          p_image_urls: finalImageUrls,
+          p_image_url: finalImageUrl,
           p_ai_metadata: itemData.aiMetadata || '',
         });
       
@@ -124,16 +124,16 @@ export const useContentItemStore = defineStore('contentItem', () => {
       loading.value = true;
       error.value = null;
 
-      let finalImageUrls: string[] | null = itemData.image_urls || null;
+      let finalImageUrl: string | null = itemData.image_url || null;
        if (itemData.imageFile) {
         const uploadedUrl = await uploadContentItemImage(itemData.imageFile, cardId); // Pass cardId for path
         if (uploadedUrl) {
-            finalImageUrls = [uploadedUrl];
+            finalImageUrl = uploadedUrl;
         } else {
             throw new Error('Image upload failed during update.');
         }
       } else if (itemData.imageUrl) {
-        finalImageUrls = [itemData.imageUrl];
+        finalImageUrl = itemData.imageUrl;
       }
       
       const { data, error: err } = await supabase
@@ -141,7 +141,7 @@ export const useContentItemStore = defineStore('contentItem', () => {
           p_content_item_id: contentItemId,
           p_name: itemData.name,
           p_content: itemData.description || '',
-          p_image_urls: finalImageUrls, // Can be null to remove images
+          p_image_url: finalImageUrl, // Can be null to remove images
           p_ai_metadata: itemData.aiMetadata || '',
         });
       

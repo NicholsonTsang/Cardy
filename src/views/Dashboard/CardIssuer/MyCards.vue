@@ -1,56 +1,62 @@
 <template>
-    <div class="space-y-6">
-        <!-- Add Card Dialog -->
-        <MyDialog 
-            v-model="showAddCardDialog"
-            modal
-            header="Create New Card"
-            :confirmHandle="handleAddCard"
-            confirmLabel="Create Card"
-            confirmSeverity="success"
-            successMessage="Card created successfully!"
-            errorMessage="Failed to create card"
-            :showToasts="true"
-            @hide="onDialogHide"
-        >
-            <CardCreateEditView ref="cardCreateEditRef" modeProp="create" />
-        </MyDialog>
+    <PageWrapper title="My Cards" description="Manage your card designs, content, and issuance.">
+        <div class="space-y-6">
+            <!-- Add Card Dialog -->
+            <MyDialog 
+                v-model="showAddCardDialog"
+                modal
+                header="Create New Card"
+                :confirmHandle="handleAddCard"
+                confirmLabel="Create Card"
+                confirmClass="bg-blue-600 hover:bg-blue-700 text-white border-0"
+                successMessage="Card created successfully!"
+                errorMessage="Failed to create card"
+                :showToasts="true"
+                @hide="onDialogHide"
+            >
+                <CardCreateEditView ref="cardCreateEditRef" modeProp="create" />
+            </MyDialog>
 
-        <!-- Delete Confirmation Dialog -->
-        <ConfirmDialog group="deleteCardConfirmation"></ConfirmDialog>
+            <!-- Delete Confirmation Dialog -->
+            <ConfirmDialog group="deleteCardConfirmation"></ConfirmDialog>
 
-        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[calc(100vh-200px)]">
-            <!-- Card List Panel -->
-            <div class="lg:col-span-1">
-                <CardListPanel
-                    :cards="cards"
-                    :filteredCards="filteredCards"
-                    :selectedCardId="selectedCardId"
-                    v-model:searchQuery="search"
-                    v-model:selectedYear="selectedYear"
-                    v-model:selectedMonth="selectedMonth"
-                    :currentPage="currentPage"
-                    :itemsPerPage="itemsPerPage"
-                    @create-card="showAddCardDialog = true"
-                    @select-card="handleSelectCard"
-                    @clear-date-filters="clearDateFilters"
-                    @page-change="handlePageChange"
-                />
-            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[calc(100vh-200px)]">
+                <!-- Card List Panel -->
+                <div class="lg:col-span-1">
+                    <CardListPanel
+                        :cards="cards"
+                        @cards-imported="handleBulkImport"
+                        :filteredCards="filteredCards"
+                        :selectedCardId="selectedCardId"
+                        v-model:searchQuery="search"
+                        v-model:selectedYear="selectedYear"
+                        v-model:selectedMonth="selectedMonth"
+                        :currentPage="currentPage"
+                        :itemsPerPage="itemsPerPage"
+                        @create-card="showAddCardDialog = true"
+                        @select-card="handleSelectCard"
+                        @clear-date-filters="clearDateFilters"
+                        @page-change="handlePageChange"
+                    />
+                </div>
 
-            <!-- Card Detail Panel -->
-            <div class="lg:col-span-3">
-                <CardDetailPanel
-                    :selectedCard="selectedCardObject"
-                    :hasCards="cards.length > 0"
-                    v-model:activeTab="activeTabString"
-                    @update-card="handleCardUpdate"
-                    @cancel-edit="handleCardCancel"
-                    @delete-card="triggerDeleteConfirmation"
-                />
+                <!-- Card Detail Panel -->
+                <div class="lg:col-span-3">
+                    <CardDetailPanel
+                        :selectedCard="selectedCardObject"
+                        :hasCards="cards.length > 0"
+                        :loading="isLoading"
+                        :updateCardFn="handleCardUpdate"
+                        v-model:activeTab="activeTabString"
+                        @update-card="handleCardUpdate"
+                        @cancel-edit="handleCardCancel"
+                        @delete-card="triggerDeleteConfirmation"
+                        @card-imported="handleCardImported"
+                    />
+                </div>
             </div>
         </div>
-    </div>
+    </PageWrapper>
 </template>
 
 <script setup>
@@ -63,13 +69,15 @@ import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from "primevue/useconfirm";
 import { useToast } from "primevue/usetoast";
 import MyDialog from '@/components/MyDialog.vue';
+import PageWrapper from '@/components/Layout/PageWrapper.vue';
 import CardCreateEditView from '@/components/CardComponents/CardCreateEditView.vue';
 import CardListPanel from '@/components/Card/CardListPanel.vue';
 import CardDetailPanel from '@/components/Card/CardDetailPanel.vue';
+import Button from 'primevue/button';
 
 // Stores and composables
 const cardStore = useCardStore();
-const { cards } = storeToRefs(cardStore);
+const { cards, isLoading } = storeToRefs(cardStore);
 const { handleError, handleAsyncError } = useErrorHandler();
 const confirm = useConfirm();
 const toast = useToast();
@@ -202,12 +210,12 @@ const updateURL = (cardId = null, tab = 0) => {
 };
 
 const getTabName = (tabIndex) => {
-    const tabNames = ['general', 'content', 'issuance', 'preview'];
+    const tabNames = ['general', 'content', 'issuance', 'access', 'preview', 'import-export'];
     return tabNames[tabIndex] || 'general';
 };
 
 const getTabIndex = (tabName) => {
-    const tabNames = ['general', 'content', 'issuance', 'preview'];
+    const tabNames = ['general', 'content', 'issuance', 'access', 'preview', 'import-export'];
     const index = tabNames.indexOf(tabName);
     return index !== -1 ? index : 0;
 };
@@ -317,6 +325,35 @@ const triggerDeleteConfirmation = (cardId) => {
             });
         }
     });
+};
+
+// Import/Export handlers
+const handleBulkImport = async () => {
+    try {
+        await cardStore.fetchCards();
+        toast.add({
+            severity: 'success',
+            summary: 'Import Complete',
+            detail: 'Cards imported successfully. Refreshing list...',
+            life: 5000
+        });
+    } catch (error) {
+        handleError(error, 'refreshing cards after import');
+    }
+};
+
+const handleCardImported = async () => {
+    try {
+        await cardStore.fetchCards();
+        toast.add({
+            severity: 'success',
+            summary: 'Import Complete',
+            detail: 'Card data imported successfully.',
+            life: 3000
+        });
+    } catch (error) {
+        handleError(error, 'refreshing card after import');
+    }
 };
 
 // Lifecycle

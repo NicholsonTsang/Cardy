@@ -11,7 +11,7 @@ export interface Card {
     description: string;
     content_render_mode: string;
     qr_code_position: string;
-    image_urls: string[] | null;
+    image_url: string | null;
     conversation_ai_enabled: boolean;
     ai_prompt: string;
     created_at: string;
@@ -23,7 +23,7 @@ export interface CardFormData {
     name: string;
     description: string;
     imageFile?: File | null;
-    image_urls?: string[];
+    image_url?: string;
     conversation_ai_enabled: boolean;
     ai_prompt: string;
     qr_code_position: string;
@@ -74,7 +74,7 @@ export const useCardStore = defineStore('card', () => {
                 throw new Error('User not authenticated');
             }
             
-            let imageUrls: string[] = []; // Explicitly type imageUrls
+            let imageUrl: string | null = null; // Explicitly type imageUrl
             
             if (cardData.imageFile) {
                 const fileExt = cardData.imageFile.name.split('.').pop();
@@ -95,7 +95,7 @@ export const useCardStore = defineStore('card', () => {
                     .getPublicUrl(filePath);
                     
                 if (publicUrl) {
-                    imageUrls = [publicUrl];
+                    imageUrl = publicUrl;
                 }
                 console.log('Image URL:', publicUrl);
             }
@@ -104,7 +104,7 @@ export const useCardStore = defineStore('card', () => {
                 .rpc('create_card', {
                     p_name: cardData.name,
                     p_description: cardData.description,
-                    p_image_urls: imageUrls,
+                    p_image_url: imageUrl,
                     p_conversation_ai_enabled: cardData.conversation_ai_enabled,
                     p_ai_prompt: cardData.ai_prompt,
                     p_qr_code_position: cardData.qr_code_position
@@ -170,9 +170,9 @@ export const useCardStore = defineStore('card', () => {
                     .getPublicUrl(filePath);
                 
                 if (publicUrl) {
-                    updateData.image_urls = [publicUrl]; // Ensure image_urls is part of CardFormData
+                    updateData.image_url = publicUrl; // Ensure image_url is part of CardFormData
                 } else {
-                    updateData.image_urls = updateData.image_urls || []; // Keep existing or initialize
+                    updateData.image_url = updateData.image_url || undefined; // Keep existing or initialize
                 }
             }
             
@@ -180,7 +180,7 @@ export const useCardStore = defineStore('card', () => {
                 p_card_id: cardId,
                 p_name: updateData.name,
                 p_description: updateData.description,
-                p_image_urls: updateData.image_urls || null,
+                p_image_url: updateData.image_url || null,
                 p_conversation_ai_enabled: updateData.conversation_ai_enabled,
                 p_ai_prompt: updateData.ai_prompt,
                 p_qr_code_position: updateData.qr_code_position

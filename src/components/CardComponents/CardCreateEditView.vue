@@ -3,6 +3,7 @@
         <CardView 
             v-if="currentMode === 'view'" 
             :cardProp="cardProp" 
+            :updateCardFn="updateCardFn"
             @delete-requested="handleDeleteRequested"
             @update-card="handleUpdateCard"
         />
@@ -11,6 +12,7 @@
             ref="formRef"
             :cardProp="cardProp" 
             :isEditMode="currentMode === 'edit'"
+            :loading="loading"
             @save="handleSave"
             @cancel="handleCancel"
         />
@@ -31,6 +33,14 @@ const props = defineProps({
         type: String,
         default: 'view',
         validator: (value) => ['view', 'create', 'edit'].includes(value)
+    },
+    loading: {
+        type: Boolean,
+        default: false
+    },
+    updateCardFn: {
+        type: Function,
+        default: null
     }
 });
 

@@ -1,5 +1,5 @@
 <template>
-    <div class="container mx-auto px-4 py-6">
+    <PageWrapper title="Profile" description="Manage your account settings and verification status" :showHeader="false">
         <ConfirmDialog />
         
         <!-- Loading State -->
@@ -10,28 +10,29 @@
         <!-- No Profile - Create Basic Profile -->
         <div v-else-if="!store.hasBasicProfile && !store.isEditMode" class="max-w-2xl mx-auto">
             <WelcomeSection @start-profile="store.startEdit" />
-                    </div>
+        </div>
                     
         <!-- Edit Profile Form -->
         <div v-else-if="store.isEditMode" class="max-w-2xl mx-auto">
             <BasicProfileForm @save="handleSaveProfile" @cancel="store.cancelEdit" />
-                    </div>
+        </div>
                     
         <!-- Verification Form -->
         <div v-else-if="store.isVerificationMode" class="max-w-2xl mx-auto">
             <VerificationForm @submit="handleSubmitVerification" @cancel="store.cancelEdit" />
-                    </div>
+        </div>
                     
         <!-- Profile Display -->
         <div v-else class="max-w-4xl mx-auto">
             <ProfileDisplay />
         </div>
-    </div>
+    </PageWrapper>
 </template>
 
 <script setup>
 import { onMounted } from 'vue'
 import ConfirmDialog from 'primevue/confirmdialog'
+import PageWrapper from '@/components/Layout/PageWrapper.vue'
 import ProgressSpinner from 'primevue/progressspinner'
 import { useProfileStore } from '@/stores/profile'
 import WelcomeSection from '@/components/Profile/WelcomeSection.vue'

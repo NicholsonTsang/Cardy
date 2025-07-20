@@ -7,7 +7,7 @@ export interface PublicContentItem {
     content_item_parent_id: string | null;
     content_item_name: string;
     content_item_content: string;
-    content_item_image_urls: string[] | null;
+    content_item_image_url: string | null;
     content_item_ai_metadata: string;
     content_item_sort_order: number;
 }
@@ -15,7 +15,7 @@ export interface PublicContentItem {
 export interface PublicCardData {
     card_name: string;
     card_description: string;
-    card_image_urls: string[] | null;
+    card_image_url: string | null;
     card_conversation_ai_enabled: boolean;
     card_ai_prompt: string;
     content_items: PublicContentItem[];
@@ -26,14 +26,14 @@ export interface PublicCardData {
 interface RawRpcResponseItem {
     card_name: string;
     card_description: string;
-    card_image_urls: string[] | null;
+    card_image_url: string | null;
     card_conversation_ai_enabled: boolean;
     card_ai_prompt: string;
     content_item_id: string | null; // Can be null if card has no content
     content_item_parent_id: string | null;
     content_item_name: string | null;
     content_item_content: string | null;
-    content_item_image_urls: string[] | null;
+    content_item_image_url: string | null;
     content_item_ai_metadata: string | null;
     content_item_sort_order: number | null;
     is_activated: boolean;
@@ -66,7 +66,7 @@ export const usePublicCardStore = defineStore('publicCard', () => {
                     cardData.value = {
                         card_name: data[0].card_name,
                         card_description: data[0].card_description,
-                        card_image_urls: data[0].card_image_urls,
+                        card_image_url: data[0].card_image_url,
                         card_conversation_ai_enabled: data[0].card_conversation_ai_enabled,
                         card_ai_prompt: data[0].card_ai_prompt,
                         is_activated: data[0].is_activated,
@@ -86,7 +86,7 @@ export const usePublicCardStore = defineStore('publicCard', () => {
                     content_item_parent_id: item.content_item_parent_id,
                     content_item_name: item.content_item_name!,
                     content_item_content: item.content_item_content!,
-                    content_item_image_urls: item.content_item_image_urls,
+                    content_item_image_url: item.content_item_image_url,
                     content_item_ai_metadata: item.content_item_ai_metadata!,
                     content_item_sort_order: item.content_item_sort_order!,
                 }));
@@ -100,7 +100,7 @@ export const usePublicCardStore = defineStore('publicCard', () => {
             cardData.value = {
                 card_name: firstRecord.card_name,
                 card_description: firstRecord.card_description,
-                card_image_urls: firstRecord.card_image_urls,
+                card_image_url: firstRecord.card_image_url,
                 card_conversation_ai_enabled: firstRecord.card_conversation_ai_enabled,
                 card_ai_prompt: firstRecord.card_ai_prompt,
                 is_activated: firstRecord.is_activated,

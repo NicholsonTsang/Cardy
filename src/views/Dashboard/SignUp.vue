@@ -17,18 +17,6 @@
                     </div>
                     <h1 class="text-2xl font-bold text-slate-900 mb-2">Create Your Account</h1>
                     <p class="text-slate-600">Join CardStudio CMS to start creating digital cards</p>
-                    
-                    <!-- Back to Landing Page -->
-                    <div class="mt-4">
-                        <Button 
-                            @click="router.push('/')" 
-                            text 
-                            icon="pi pi-arrow-left" 
-                            label="Back to Home" 
-                            class="text-slate-600 hover:text-blue-600 transition-colors"
-                            size="small"
-                        />
-                    </div>
                 </div>
                 <!-- Form Section -->
                 <div class="px-8 pb-8">
@@ -143,7 +131,12 @@
                         <Button 
                             type="submit" 
                             label="Create Account" 
-                            class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 border-0 shadow-lg hover:shadow-xl transition-all duration-200" 
+                            severity="primary"
+                            class="w-full py-3 border-0 shadow-lg hover:shadow-xl transition-all duration-200" 
+                            :style="{
+                                background: 'linear-gradient(to right, #2563eb, #4f46e5)',
+                                borderColor: 'transparent'
+                            }"
                             :loading="isLoading"
                             :disabled="!agreeToTerms || !isFormValid"
                             :aria-label="isLoading ? 'Creating your account...' : 'Create your new account'"

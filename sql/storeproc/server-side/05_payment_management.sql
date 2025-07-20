@@ -66,6 +66,36 @@ BEGIN
         p_metadata
     ) RETURNING id INTO v_payment_id;
     
+    -- Log payment creation in audit table
+    INSERT INTO admin_audit_log (
+        admin_user_id,
+        target_user_id,
+        action_type,
+        reason,
+        new_values,
+        action_details
+    ) VALUES (
+        auth.uid(),
+        auth.uid(),
+        'PAYMENT_CREATION',
+        'Stripe checkout session payment created',
+        jsonb_build_object(
+            'payment_id', v_payment_id,
+            'payment_status', 'pending',
+            'amount_cents', p_amount_cents,
+            'currency', 'usd'
+        ),
+        jsonb_build_object(
+            'action', 'payment_session_created',
+            'stripe_checkout_session_id', p_stripe_checkout_session_id,
+            'stripe_payment_intent_id', p_stripe_payment_intent_id,
+            'batch_id', p_batch_id,
+            'amount_cents', p_amount_cents,
+            'currency', 'usd',
+            'metadata', p_metadata
+        )
+    );
+    
     RETURN v_payment_id;
 END;
 $$;
@@ -79,7 +109,8 @@ RETURNS TABLE (
     created_by UUID,
     batch_name TEXT,
     card_name TEXT,
-    card_description TEXT
+    card_description TEXT,
+    card_image_url TEXT
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     RETURN QUERY
@@ -89,7 +120,8 @@ BEGIN
         cb.created_by,
         cb.batch_name,
         c.name as card_name,
-        c.description as card_description
+        c.description as card_description,
+        c.image_url as card_image_url
     FROM card_batches cb
     JOIN cards c ON cb.card_id = c.id
     WHERE cb.id = p_batch_id 
@@ -166,6 +198,44 @@ BEGIN
     
     -- Generate cards using the new function
     PERFORM generate_batch_cards(v_payment_record.batch_id);
+    
+    -- Log payment confirmation in audit table
+    INSERT INTO admin_audit_log (
+        admin_user_id,
+        target_user_id,
+        action_type,
+        reason,
+        old_values,
+        new_values,
+        action_details
+    ) VALUES (
+        auth.uid(),
+        v_payment_record.user_id,
+        'PAYMENT_CONFIRMATION',
+        'Batch payment confirmed via Stripe checkout session',
+        jsonb_build_object(
+            'payment_status', v_payment_record.payment_status,
+            'payment_completed', false,
+            'cards_generated', false
+        ),
+        jsonb_build_object(
+            'payment_status', 'succeeded',
+            'payment_completed', true,
+            'payment_completed_at', NOW(),
+            'payment_method', p_payment_method,
+            'cards_generated', true
+        ),
+        jsonb_build_object(
+            'action', 'payment_confirmed',
+            'payment_method', p_payment_method,
+            'stripe_checkout_session_id', p_stripe_checkout_session_id,
+            'batch_id', v_payment_record.batch_id,
+            'amount_cents', v_payment_record.amount_cents,
+            'currency', v_payment_record.currency,
+            'cards_count', v_payment_record.cards_count,
+            'automated_card_generation', true
+        )
+    );
     
     RETURN v_payment_record.batch_id;
 END;

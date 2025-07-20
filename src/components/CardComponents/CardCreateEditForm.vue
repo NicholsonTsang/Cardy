@@ -13,9 +13,9 @@
             <Button 
                 label="Save Changes" 
                 icon="pi pi-save" 
-                severity="success"
-                class="px-4 py-2 shadow-lg hover:shadow-xl transition-shadow"
+                class="px-4 py-2 shadow-lg hover:shadow-xl transition-shadow bg-blue-600 hover:bg-blue-700 text-white border-0"
                 :disabled="!isFormValid"
+                :loading="loading"
                 @click="handleSave" 
             />
         </div>
@@ -199,6 +199,10 @@ const props = defineProps({
     isInDialog: {
         type: Boolean,
         default: false
+    },
+    loading: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -251,8 +255,8 @@ const initializeForm = () => {
         formData.conversation_ai_enabled = props.cardProp.conversation_ai_enabled || false;
         
         // Set preview image if available
-        if (props.cardProp.image_urls && props.cardProp.image_urls.length > 0) {
-            previewImage.value = props.cardProp.image_urls[0];
+        if (props.cardProp.image_url) {
+            previewImage.value = props.cardProp.image_url;
         } else {
             previewImage.value = null;
         }
@@ -307,9 +311,9 @@ const getPayload = () => {
         payload.imageFile = imageFile.value;
     }
     
-    // Add image_urls from props if available and no new image is being uploaded
-    if (!imageFile.value && props.cardProp && props.cardProp.image_urls) {
-        payload.image_urls = props.cardProp.image_urls;
+    // Add image_url from props if available and no new image is being uploaded
+    if (!imageFile.value && props.cardProp && props.cardProp.image_url) {
+        payload.image_url = props.cardProp.image_url;
     }
     
     return payload;
@@ -351,27 +355,12 @@ defineExpose({
 </script>
 
 <style scoped>
-/* Fixed height container with 2:3 aspect ratio (card standard) */
+/* Responsive container with 2:3 aspect ratio (card standard) */
 .card-artwork-container {
-    height: 360px; /* 240 * 1.5 = 360px for 2:3 ratio */
-    width: 240px;   /* Base width */
     aspect-ratio: 2/3;
+    width: 100%;
+    max-width: 240px; /* Constrain maximum width */
     margin: 0 auto;
-}
-
-/* Responsive adjustments for smaller screens */
-@media (max-width: 640px) {
-    .card-artwork-container {
-        height: 315px; /* 210 * 1.5 = 315px for 2:3 ratio */
-        width: 210px;
-    }
-}
-
-@media (max-width: 480px) {
-    .card-artwork-container {
-        height: 270px; /* 180 * 1.5 = 270px for 2:3 ratio */
-        width: 180px;
-    }
 }
 
 /* Component-specific styles */

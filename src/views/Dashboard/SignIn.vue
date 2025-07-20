@@ -17,18 +17,6 @@
                     </div>
                     <h1 id="signin-title" class="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h1>
                     <p class="text-slate-600" id="signin-description">Sign in to your CardStudio CMS account</p>
-                    
-                    <!-- Back to Landing Page -->
-                    <div class="mt-4">
-                        <Button 
-                            @click="router.push('/')" 
-                            text 
-                            icon="pi pi-arrow-left" 
-                            label="Back to Home" 
-                            class="text-slate-600 hover:text-blue-600 transition-colors"
-                            size="small"
-                        />
-                    </div>
                 </div>
 
                 <!-- Form Section -->
@@ -109,7 +97,12 @@
                         <Button 
                             type="submit" 
                             label="Sign In" 
-                            class="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 border-0 shadow-lg hover:shadow-xl transition-all duration-200" 
+                            severity="primary"
+                            class="w-full py-3 border-0 shadow-lg hover:shadow-xl transition-all duration-200" 
+                            :style="{
+                                background: 'linear-gradient(to right, #2563eb, #4f46e5)',
+                                borderColor: 'transparent'
+                            }"
                             :loading="isLoading" 
                         />
                     </form>

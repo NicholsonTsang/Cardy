@@ -16,7 +16,10 @@
       "WebFetch(domain:supabase.com)",
       "WebFetch(domain:docs.anthropic.com)",
       "Bash(touch:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "Bash(test:*)",
+      "Bash(node:*)",
+      "Bash(echo $0)"
     ],
     "deny": []
   }

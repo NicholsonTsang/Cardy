@@ -1,33 +1,29 @@
 <template>
-  <div class="space-y-6">
-    <!-- Page Header with Stats -->
-    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <div>
-          <h1 class="text-2xl font-bold text-slate-900">System History & Logs</h1>
-          <p class="text-slate-600 mt-1">Track and analyze all administrative actions and feedback</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <Button 
-            icon="pi pi-refresh" 
-            label="Refresh" 
-            severity="secondary"
-            outlined
-            @click="refreshData"
-            :loading="isLoading"
-          />
-          <Button 
-            icon="pi pi-file-export" 
-            label="Export CSV" 
-            severity="info"
-            @click="exportData"
-          />
-        </div>
-      </div>
+  <PageWrapper title="System History & Logs" description="Track and analyze all administrative actions and feedback">
+    <template #actions>
+      <Button 
+        icon="pi pi-refresh" 
+        label="Refresh" 
+        severity="secondary"
+        outlined
+        @click="refreshData"
+        :loading="isLoading"
+      />
+      <Button 
+        icon="pi pi-file-export" 
+        label="Export CSV" 
+        severity="secondary"
+        outlined
+        @click="exportData"
+      />
+    </template>
 
-      <!-- Quick Stats -->
+    <div class="space-y-6">
+    <!-- Statistics Cards -->
+    <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6">
+      <h3 class="text-lg font-semibold text-slate-900 mb-4">Quick Stats</h3>
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="bg-slate-50 rounded-lg p-4">
+        <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 hover:bg-slate-100 transition-colors duration-200">
           <div class="text-sm font-medium text-slate-600">Total Actions Today</div>
           <div class="text-2xl font-bold text-slate-900 mt-1">{{ stats.todayActions }}</div>
           <div class="text-xs text-slate-500 mt-1">
@@ -35,17 +31,17 @@
             {{ Math.abs(stats.actionsTrend) }}% from yesterday
           </div>
         </div>
-        <div class="bg-slate-50 rounded-lg p-4">
+        <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 hover:bg-slate-100 transition-colors duration-200">
           <div class="text-sm font-medium text-slate-600">Active Admins</div>
           <div class="text-2xl font-bold text-slate-900 mt-1">{{ stats.activeAdmins }}</div>
           <div class="text-xs text-slate-500 mt-1">Last 24 hours</div>
         </div>
-        <div class="bg-slate-50 rounded-lg p-4">
+        <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 hover:bg-slate-100 transition-colors duration-200">
           <div class="text-sm font-medium text-slate-600">Pending Reviews</div>
           <div class="text-2xl font-bold text-slate-900 mt-1">{{ stats.pendingReviews }}</div>
           <div class="text-xs text-slate-500 mt-1">Require attention</div>
         </div>
-        <div class="bg-slate-50 rounded-lg p-4">
+        <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 hover:bg-slate-100 transition-colors duration-200">
           <div class="text-sm font-medium text-slate-600">System Changes</div>
           <div class="text-2xl font-bold text-slate-900 mt-1">{{ stats.systemChanges }}</div>
           <div class="text-xs text-slate-500 mt-1">Last 7 days</div>
@@ -54,7 +50,7 @@
     </div>
 
     <!-- Main Content -->
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200">
+    <div class="bg-white rounded-xl shadow-soft border border-slate-200">
       <!-- Unified Search and Filters -->
       <div class="p-6 border-b border-slate-200">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -91,13 +87,14 @@
             <Button
               icon="pi pi-filter"
               label="More Filters"
+              severity="secondary"
               text
               @click="showAdvancedFilters = true"
             />
             <Button
               icon="pi pi-filter-slash"
+              severity="secondary"
               text
-              severity="danger"
               v-tooltip="'Clear All Filters'"
               @click="clearAllFilters"
             />
@@ -138,6 +135,7 @@
               <div class="flex items-center gap-2">
                 <Button
                   icon="pi pi-list"
+                  severity="secondary"
                   text
                   :class="{ 'text-primary': layout === 'list' }"
                   @click="layout = 'list'"
@@ -145,6 +143,7 @@
                 />
                 <Button
                   icon="pi pi-th-large"
+                  severity="secondary"
                   text
                   :class="{ 'text-primary': layout === 'grid' }"
                   @click="layout = 'grid'"
@@ -188,6 +187,7 @@
               <div class="flex-none">
                 <Button
                   icon="pi pi-ellipsis-v"
+                  severity="secondary"
                   text
                   @click.stop="showActivityMenu($event, slotProps.data)"
                 />
@@ -219,11 +219,37 @@
                     <span>{{ formatTimeAgo(slotProps.data.created_at) }}</span>
                     <Button
                       icon="pi pi-ellipsis-v"
+                      severity="secondary"
                       text
                       @click.stop="showActivityMenu($event, slotProps.data)"
                     />
                   </div>
                 </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- Empty State -->
+          <template #empty>
+            <div class="flex flex-col items-center justify-center py-16 px-6">
+              <div class="w-20 h-20 rounded-full bg-gradient-to-r from-slate-500 to-slate-600 flex items-center justify-center mb-6">
+                <i class="pi pi-clock text-white text-3xl"></i>
+              </div>
+              <h3 class="text-xl font-semibold text-slate-900 mb-2">No Activity Found</h3>
+              <p class="text-slate-600 text-center max-w-md mb-6">
+                {{ hasActiveFilters 
+                  ? 'No administrative activities match your current filters. Try adjusting your search criteria or clearing filters.' 
+                  : 'No administrative activities have been recorded yet. Activity logs will appear here once admins start performing actions.' 
+                }}
+              </p>
+              <div v-if="hasActiveFilters">
+                <Button
+                  icon="pi pi-filter-slash"
+                  label="Clear Filters"
+                  severity="secondary"
+                  outlined
+                  @click="clearAllFilters"
+                />
               </div>
             </div>
           </template>
@@ -274,8 +300,8 @@
         </div>
       </div>
       <template #footer>
-        <Button label="Apply Filters" @click="applyAdvancedFilters" />
-        <Button label="Reset" text @click="resetAdvancedFilters" />
+        <Button label="Apply Filters" severity="primary" @click="applyAdvancedFilters" />
+        <Button label="Reset" severity="secondary" text @click="resetAdvancedFilters" />
       </template>
     </Dialog>
 
@@ -308,7 +334,7 @@
         <!-- Content -->
         <div class="space-y-4">
           <!-- Common Fields -->
-          <div v-if="selectedItem.target_user_email" class="bg-slate-50 rounded-lg p-4">
+          <div v-if="selectedItem.target_user_email" class="bg-slate-50 rounded-lg p-4 border border-slate-200">
             <h4 class="text-sm font-medium text-slate-700 mb-1">Target User</h4>
             <div class="flex items-center gap-2">
               <i class="pi pi-user text-slate-400"></i>
@@ -321,13 +347,13 @@
             <div>
               <h4 class="text-sm font-medium text-slate-700 mb-2">Changes</h4>
               <div class="grid grid-cols-2 gap-4">
-                <div class="bg-red-50 rounded-lg p-4">
+                <div class="bg-red-50 rounded-lg p-4 border border-red-200">
                   <div class="text-xs font-medium text-red-800 mb-2">Previous Values</div>
                   <pre class="text-sm text-red-900 whitespace-pre-wrap">{{ formatJSON(selectedItem.old_values) }}</pre>
                 </div>
-                <div class="bg-green-50 rounded-lg p-4">
-                  <div class="text-xs font-medium text-green-800 mb-2">New Values</div>
-                  <pre class="text-sm text-green-900 whitespace-pre-wrap">{{ formatJSON(selectedItem.new_values) }}</pre>
+                <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+                  <div class="text-xs font-medium text-blue-800 mb-2">New Values</div>
+                  <pre class="text-sm text-blue-900 whitespace-pre-wrap">{{ formatJSON(selectedItem.new_values) }}</pre>
                 </div>
               </div>
             </div>
@@ -336,7 +362,7 @@
           <template v-else>
             <div>
               <h4 class="text-sm font-medium text-slate-700 mb-2">Feedback Content</h4>
-              <div class="bg-slate-50 rounded-lg p-4">
+              <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
                 <p class="whitespace-pre-wrap">{{ selectedItem.content || 'No content available' }}</p>
               </div>
             </div>
@@ -357,7 +383,7 @@
           <!-- Additional Context -->
           <div v-if="selectedItem.action_details || selectedItem.action_context">
             <h4 class="text-sm font-medium text-slate-700 mb-2">Additional Context</h4>
-            <div class="bg-slate-50 rounded-lg p-4">
+            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
               <pre class="text-sm text-slate-700 whitespace-pre-wrap">{{ formatJSON(selectedItem.action_details || selectedItem.action_context) }}</pre>
             </div>
           </div>
@@ -367,7 +393,8 @@
 
     <!-- Context Menu -->
     <ContextMenu ref="contextMenu" :model="contextMenuItems" />
-  </div>
+    </div>
+  </PageWrapper>
 </template>
 
 <script setup>
@@ -384,6 +411,7 @@ import InputText from 'primevue/inputtext'
 import Checkbox from 'primevue/checkbox'
 import Timeline from 'primevue/timeline'
 import ContextMenu from 'primevue/contextmenu'
+import PageWrapper from '@/components/Layout/PageWrapper.vue'
 
 const feedbackStore = useAdminFeedbackStore()
 const dashboardStore = useAdminDashboardStore()
@@ -728,7 +756,7 @@ const getActivityIconClass = (activity) => {
     const classes = {
       'ROLE_CHANGE': 'bg-yellow-500',
       'VERIFICATION_REVIEW': 'bg-blue-500',
-      'MANUAL_VERIFICATION': 'bg-green-500',
+      'MANUAL_VERIFICATION': 'bg-blue-500',
       'PRINT_REQUEST_UPDATE': 'bg-purple-500',
       'SYSTEM_CONFIG': 'bg-red-500',
       'BATCH_MANAGEMENT': 'bg-orange-500'
@@ -738,7 +766,7 @@ const getActivityIconClass = (activity) => {
   
   const classes = {
     'verification_feedback': 'bg-blue-500',
-    'print_notes': 'bg-green-500',
+    'print_notes': 'bg-blue-500',
     'role_change_reason': 'bg-yellow-500'
   }
   return `${baseClasses} ${classes[activity.feedback_type] || 'bg-slate-500'}`

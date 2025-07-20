@@ -1,29 +1,24 @@
 <template>
-    <div class="space-y-6">
-        <!-- Page Header -->
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div>
-                <h1 class="text-2xl font-bold text-slate-900">All Issued Cards</h1>
-                <p class="text-slate-600 mt-1">Overview and management of all your issued cards across all designs</p>
-            </div>
-            <div class="flex items-center gap-3">
-                <Button 
-                    icon="pi pi-refresh" 
-                    label="Refresh" 
-                    outlined
-                    @click="refreshData"
-                    :loading="isLoadingUserData"
-                />
-                <router-link to="/cms/mycards">
+    <PageWrapper title="All Issued Cards" description="Overview and management of all your issued cards across all designs">
+        <template #actions>
             <Button 
-                icon="pi pi-plus" 
-                        label="Issue New Cards" 
-                severity="primary" 
-                class="shadow-lg hover:shadow-xl transition-shadow"
+                icon="pi pi-refresh" 
+                label="Refresh" 
+                outlined
+                @click="refreshData"
+                :loading="isLoadingUserData"
             />
-                </router-link>
-            </div>
-        </div>
+            <router-link to="/cms/mycards">
+                <Button 
+                    icon="pi pi-plus" 
+                    label="Issue New Cards" 
+                    severity="primary" 
+                    class="shadow-lg hover:shadow-xl transition-shadow"
+                />
+            </router-link>
+        </template>
+        
+        <div class="space-y-6">
 
         <!-- Enhanced Stats Cards -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -58,9 +53,9 @@
                     <div>
                         <h3 class="text-sm font-medium text-slate-600 mb-2">Active Cards</h3>
                         <p class="text-3xl font-bold text-slate-900">{{ userStats.total_activated }}</p>
-                        <p class="text-sm text-green-600 mt-1">{{ userStats.activation_rate }}% activation rate</p>
+                        <p class="text-sm text-blue-600 mt-1">{{ userStats.activation_rate }}% activation rate</p>
                     </div>
-                    <div class="p-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+                    <div class="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
                         <i class="pi pi-check-circle text-white text-2xl"></i>
                     </div>
                 </div>
@@ -220,7 +215,7 @@
                                 <template #body="{ data }">
                                     <div class="flex items-center gap-3">
                                         <img 
-                                            :src="data.card_image_urls && data.card_image_urls.length > 0 ? data.card_image_urls[0] : cardPlaceholder"
+                                            :src="data.card_image_url || cardPlaceholder"
                                             :alt="data.card_name"
                                             class="w-8 h-12 object-cover rounded border border-slate-200"
                                         />
@@ -286,7 +281,7 @@
                                         />
                                         <Button 
                                             icon="pi pi-external-link" 
-                                            severity="success" 
+                                            severity="primary" 
                                             outlined
                                             size="small"
                                             @click="goToCardDesign(data.card_id)"
@@ -401,14 +396,14 @@
                                         <Tag 
                                             v-if="data.payment_completed" 
                                             value="Paid" 
-                                            severity="success" 
+                                            severity="primary" 
                                             icon="pi pi-check-circle"
                                             class="text-xs"
                                         />
                                         <Tag 
                                             v-else-if="data.payment_waived" 
                                             value="Fee Waived" 
-                                            severity="success" 
+                                            severity="primary" 
                                             icon="pi pi-gift"
                                             class="text-xs"
                                         />
@@ -516,7 +511,7 @@
                             <h4 class="text-sm font-medium text-slate-700 mb-2">Card Design</h4>
                             <div class="flex items-center gap-3">
                                 <img 
-                                    :src="selectedCardForDetails.card_image_urls && selectedCardForDetails.card_image_urls.length > 0 ? selectedCardForDetails.card_image_urls[0] : cardPlaceholder"
+                                    :src="selectedCardForDetails.card_image_url || cardPlaceholder"
                                     :alt="selectedCardForDetails.card_name"
                                     class="w-12 h-16 object-cover rounded border border-slate-200"
                                 />
@@ -581,13 +576,14 @@
                                 @click="copyToClipboard(getCardUrl(selectedCardForDetails))"
                                 title="Click to copy URL"
                             />
-                            <p v-if="copied" class="text-xs text-green-600 text-center mt-1">Copied to clipboard!</p>
+                            <p v-if="copied" class="text-xs text-blue-600 text-center mt-1">Copied to clipboard!</p>
                         </div>
                     </div>
                 </div>
             </div>
         </MyDialog>
-    </div>
+        </div>
+    </PageWrapper>
 </template>
 
 <script setup>
@@ -598,6 +594,7 @@ import { FilterMatchMode } from '@primevue/core/api'
 import QrcodeVue from 'qrcode.vue'
 import { useToast } from 'primevue/usetoast'
 import { formatAmount } from '@/utils/stripeCheckout'
+import PageWrapper from '@/components/Layout/PageWrapper.vue'
 
 // PrimeVue Components
 import Button from 'primevue/button'

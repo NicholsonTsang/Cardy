@@ -10,8 +10,8 @@
         <!-- Image -->
         <div class="card-image">
           <img 
-            v-if="item.content_item_image_urls && item.content_item_image_urls.length > 0"
-            :src="item.content_item_image_urls[0]" 
+            v-if="item.content_item_image_url"
+            :src="item.content_item_image_url" 
             :alt="item.content_item_name"
             class="image"
           />
@@ -53,7 +53,7 @@ interface ContentItem {
   content_item_parent_id: string | null
   content_item_name: string
   content_item_content: string
-  content_item_image_urls: string[]
+  content_item_image_url: string
   content_item_ai_metadata: string
   content_item_sort_order: number
 }

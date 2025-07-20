@@ -148,7 +148,7 @@
             header="Edit Card"
             :confirmHandle="handleSaveEdit"
             confirmLabel="Save Changes"
-            confirmSeverity="success"
+            confirmSeverity="primary"
             cancelLabel="Cancel"
             successMessage="Card updated successfully"
             errorMessage="Failed to update card"
@@ -178,6 +178,10 @@ const props = defineProps({
     cardProp: {
         type: Object,
         default: null
+    },
+    updateCardFn: {
+        type: Function,
+        default: null
     }
 });
 
@@ -188,8 +192,8 @@ const editFormRef = ref(null);
 const isLoading = ref(false);
 
 const displayImageForView = computed(() => {
-    if (props.cardProp && props.cardProp.image_urls && props.cardProp.image_urls.length > 0) {
-        return props.cardProp.image_urls[0];
+    if (props.cardProp && props.cardProp.image_url) {
+        return props.cardProp.image_url;
     }
     return null;
 });
@@ -213,17 +217,16 @@ const handleEdit = () => {
 
 const handleSaveEdit = async () => {
     if (editFormRef.value) {
-        isLoading.value = true;
-        try {
-            const payload = editFormRef.value.getPayload();
+        const payload = editFormRef.value.getPayload();
+        
+        if (props.updateCardFn) {
+            // Use the passed update function for proper async handling
+            await props.updateCardFn(payload);
+        } else {
+            // Fallback to emit (but this won't work properly with MyDialog)
             await emit('update-card', payload);
-            showEditDialog.value = false;
-        } catch (error) {
-            // Error will be handled by MyDialog's toast
-            throw error;
-        } finally {
-            isLoading.value = false;
         }
+        // Don't manually close dialog - MyDialog will close it automatically after success
     }
 };
 
@@ -270,27 +273,12 @@ const getQrCodePositionClass = (position) => {
 </script>
 
 <style scoped>
-/* Fixed height container with 2:3 aspect ratio (card standard) */
+/* Responsive container with 2:3 aspect ratio (card standard) */
 .card-artwork-container {
-    height: 360px; /* 240 * 1.5 = 360px for 2:3 ratio */
-    width: 240px;   /* Base width */
     aspect-ratio: 2/3;
+    width: 100%;
+    max-width: 240px; /* Constrain maximum width */
     margin: 0 auto;
-}
-
-/* Responsive adjustments for smaller screens */
-@media (max-width: 640px) {
-    .card-artwork-container {
-        height: 315px; /* 210 * 1.5 = 315px for 2:3 ratio */
-        width: 210px;
-    }
-}
-
-@media (max-width: 480px) {
-    .card-artwork-container {
-        height: 270px; /* 180 * 1.5 = 270px for 2:3 ratio */
-        width: 180px;
-    }
 }
 
 /* Component-specific styles */

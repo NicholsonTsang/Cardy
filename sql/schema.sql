@@ -25,9 +25,8 @@ END $$;
 DO $$ BEGIN
     CREATE TYPE "PrintRequestStatus" AS ENUM (
         'SUBMITTED',
-        'PAYMENT_PENDING',
         'PROCESSING',
-        'SHIPPED',
+        'SHIPPING',
         'COMPLETED',
         'CANCELLED'
     );
@@ -121,7 +120,7 @@ CREATE TABLE cards (
     description TEXT DEFAULT '' NOT NULL,
     content_render_mode "ContentRenderMode" DEFAULT 'SINGLE_SERIES_MULTI_ITEMS',
     qr_code_position "QRCodePosition" DEFAULT 'BR',
-    image_urls TEXT[],
+    image_url TEXT,
     conversation_ai_enabled BOOLEAN DEFAULT false,
     ai_prompt TEXT DEFAULT '' NOT NULL, -- Instructions for AI assistance when answering content item questions
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -138,7 +137,7 @@ CREATE TABLE content_items (
     parent_id UUID REFERENCES content_items(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     content TEXT DEFAULT '' NOT NULL, 
-    image_urls TEXT[],
+    image_url TEXT,
     ai_metadata TEXT DEFAULT '' NOT NULL,
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -211,6 +210,8 @@ CREATE TABLE print_requests (
     user_id UUID NOT NULL, -- REFERENCES auth.users(id)
     status "PrintRequestStatus" DEFAULT 'SUBMITTED' NOT NULL,
     shipping_address TEXT,
+    contact_email TEXT,
+    contact_whatsapp TEXT,
     admin_notes TEXT,
     requested_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()

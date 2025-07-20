@@ -1,28 +1,5 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-    <!-- Navigation Header -->
-    <nav class="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-50">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-16">
-          <div class="flex items-center">
-            <div class="flex-shrink-0 flex items-center">
-              <img 
-                src="/CardStudioLogo.png" 
-                alt="CardStudio" 
-                class="h-12 w-auto"
-              />
-            </div>
-          </div>
-          <div class="flex items-center space-x-4">
-            <Button 
-              label="Sign In" 
-              @click="router.push('/login')"
-              class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 px-6 py-2 font-semibold shadow-lg hover:shadow-xl transition-all"
-            />
-          </div>
-        </div>
-      </div>
-    </nav>
 
     <!-- Hero Section -->
     <section class="relative overflow-hidden bg-gradient-to-b from-white via-blue-50/20 to-purple-50/20">
@@ -52,7 +29,7 @@
           <!-- Core Benefits - Mobile Optimized -->
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-8 max-w-4xl mx-auto">
             <div class="flex items-center gap-3 bg-white/50 backdrop-blur-sm rounded-xl p-3 sm:p-4 shadow-sm">
-              <div class="w-10 sm:w-12 h-10 sm:h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
+              <div class="w-10 sm:w-12 h-10 sm:h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center shadow-lg flex-shrink-0">
                 <i class="pi pi-mobile text-white text-lg sm:text-xl"></i>
               </div>
               <div class="text-left min-w-0">
@@ -182,7 +159,7 @@
                       label="Try Now" 
                       icon="pi pi-external-link"
                       @click="openDemoCard"
-                      class="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 border-0 text-xs py-2"
+                      class="w-full bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 border-0 text-xs py-2"
                     />
                   </div>
                 </div>
@@ -392,8 +369,8 @@
 
           <!-- Feature 3 -->
           <div class="bg-white rounded-2xl p-8 shadow-sm hover:shadow-lg transition-all duration-300 border border-slate-100 group">
-            <div class="w-14 h-14 bg-gradient-to-br from-green-100 to-green-200 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
-              <i class="pi pi-mobile text-green-600 text-2xl"></i>
+            <div class="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+              <i class="pi pi-mobile text-blue-600 text-2xl"></i>
             </div>
             <h3 class="text-xl font-semibold text-slate-900 mb-3">Instant, No-App Access</h3>
             <p class="text-slate-600 leading-relaxed">
@@ -489,7 +466,7 @@
           <!-- Use Case 2 -->
           <div class="group cursor-pointer">
             <div class="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group-hover:-translate-y-1">
-              <div class="h-48 bg-gradient-to-br from-green-500 to-blue-600 relative overflow-hidden">
+              <div class="h-48 bg-gradient-to-br from-blue-500 to-blue-600 relative overflow-hidden">
                 <img 
                   :src="featureImage2Url" 
                   alt="Tourist Attractions" 
@@ -618,12 +595,12 @@
       
       <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div class="text-center mb-12 sm:mb-16 lg:mb-20">
-          <div class="inline-flex items-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full text-xs sm:text-sm font-semibold mb-6 sm:mb-8 shadow-lg">
+          <div class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 sm:px-6 py-2 sm:py-3 rounded-full text-xs sm:text-sm font-semibold mb-6 sm:mb-8 shadow-lg">
             <i class="pi pi-dollar"></i>
             <span>Transparent Pricing</span>
           </div>
           <h2 class="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-black mb-4 sm:mb-6 tracking-tight px-4">
-            <span class="bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">
+            <span class="bg-gradient-to-r from-blue-400 to-blue-500 bg-clip-text text-transparent">
               Simple Pricing
             </span>
             <br />
@@ -641,7 +618,7 @@
               
               <!-- Pricing Info -->
               <div class="text-center lg:text-left">
-                <div class="inline-flex items-center gap-2 bg-green-500/20 text-green-300 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6">
+                <div class="inline-flex items-center gap-2 bg-blue-500/20 text-blue-300 px-3 sm:px-4 py-2 rounded-full text-xs sm:text-sm font-medium mb-4 sm:mb-6">
                   <i class="pi pi-check-circle"></i>
                   Pay-per-card pricing
                 </div>
@@ -666,7 +643,7 @@
                     <span class="text-sm sm:text-base">No setup or platform fees</span>
                   </div>
                   <div class="flex items-center gap-3 justify-center lg:justify-start">
-                    <div class="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
                     <span class="text-sm sm:text-base">Pay only when you issue cards</span>
                   </div>
                 </div>
@@ -678,35 +655,35 @@
                 
                 <div class="grid grid-cols-1 gap-3 sm:gap-4">
                   <div class="flex items-center gap-3">
-                    <i class="pi pi-check text-green-400 text-lg"></i>
+                    <i class="pi pi-check text-blue-400 text-lg"></i>
                     <span class="text-slate-300 text-sm sm:text-base">AI voice conversations</span>
                   </div>
                   <div class="flex items-center gap-3">
-                    <i class="pi pi-check text-green-400 text-lg"></i>
+                    <i class="pi pi-check text-blue-400 text-lg"></i>
                     <span class="text-slate-300 text-sm sm:text-base">Multi-language support</span>
                   </div>
                   <div class="flex items-center gap-3">
-                    <i class="pi pi-check text-green-400 text-lg"></i>
+                    <i class="pi pi-check text-blue-400 text-lg"></i>
                     <span class="text-slate-300 text-sm sm:text-base">Design dashboard</span>
                   </div>
                   <div class="flex items-center gap-3">
-                    <i class="pi pi-check text-green-400 text-lg"></i>
+                    <i class="pi pi-check text-blue-400 text-lg"></i>
                     <span class="text-slate-300 text-sm sm:text-base">Real-time analytics</span>
                   </div>
                   <div class="flex items-center gap-3">
-                    <i class="pi pi-check text-green-400 text-lg"></i>
+                    <i class="pi pi-check text-blue-400 text-lg"></i>
                     <span class="text-slate-300 text-sm sm:text-base">QR code generation</span>
                   </div>
                   <div class="flex items-center gap-3">
-                    <i class="pi pi-check text-green-400 text-lg"></i>
+                    <i class="pi pi-check text-blue-400 text-lg"></i>
                     <span class="text-slate-300 text-sm sm:text-base">Print management</span>
                   </div>
                   <div class="flex items-center gap-3">
-                    <i class="pi pi-check text-green-400 text-lg"></i>
+                    <i class="pi pi-check text-blue-400 text-lg"></i>
                     <span class="text-slate-300 text-sm sm:text-base">Cloud hosting</span>
                   </div>
                   <div class="flex items-center gap-3">
-                    <i class="pi pi-check text-green-400 text-lg"></i>
+                    <i class="pi pi-check text-blue-400 text-lg"></i>
                     <span class="text-slate-300 text-sm sm:text-base">24/7 support</span>
                   </div>
                 </div>
@@ -758,8 +735,8 @@
             </div>
             
             <div class="flex flex-col items-center sm:col-span-2 lg:col-span-1">
-              <div class="w-14 sm:w-16 h-14 sm:h-16 bg-green-500/20 rounded-full flex items-center justify-center mb-3 sm:mb-4">
-                <i class="pi pi-bolt text-green-400 text-xl sm:text-2xl"></i>
+              <div class="w-14 sm:w-16 h-14 sm:h-16 bg-blue-500/20 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                <i class="pi pi-bolt text-blue-400 text-xl sm:text-2xl"></i>
               </div>
               <h4 class="text-base sm:text-lg font-semibold mb-1 sm:mb-2">Quick Setup</h4>
               <p class="text-slate-400 text-xs sm:text-sm">Launch your first card experience in minutes</p>
@@ -853,7 +830,7 @@
         <!-- Enterprise trust indicators -->
         <div class="flex flex-wrap justify-center gap-8 items-center text-sm text-white/80">
           <div class="flex items-center gap-2">
-            <i class="pi pi-shield-check text-green-300"></i>
+            <i class="pi pi-shield-check text-blue-300"></i>
             <span>Enterprise Security</span>
           </div>
           <div class="flex items-center gap-2">

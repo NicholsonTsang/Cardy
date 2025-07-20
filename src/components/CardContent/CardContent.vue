@@ -65,9 +65,9 @@
                                 <div v-else class="w-4 mr-3"></div>
                                 
                                 <!-- Thumbnail -->
-                                <div v-if="item.image_urls && item.image_urls.length > 0" class="mr-3 flex-shrink-0">
+                                <div v-if="item.image_url" class="mr-3 flex-shrink-0">
                                     <img 
-                                        :src="item.image_urls[0]" 
+                                        :src="item.image_url" 
                                         :alt="item.name"
                                         class="w-10 h-10 object-cover rounded-lg border border-slate-200"
                                     />
@@ -126,9 +126,9 @@
                                                    title="Drag to reorder"></i>
                                                 
                                                 <!-- Thumbnail -->
-                                                <div v-if="child.image_urls && child.image_urls.length > 0" class="mr-3 flex-shrink-0">
+                                                <div v-if="child.image_url" class="mr-3 flex-shrink-0">
                                                     <img 
-                                                        :src="child.image_urls[0]" 
+                                                        :src="child.image_url" 
                                                         :alt="child.name"
                                                         class="w-8 h-8 object-cover rounded-lg border border-slate-200"
                                                     />
@@ -224,7 +224,7 @@
             header="Add Content Item"
             :confirmHandle="handleAddContentItem"
             confirmLabel="Add Content"
-            confirmSeverity="success"
+            confirmClass="bg-blue-600 hover:bg-blue-700 text-white border-0"
             successMessage="Content item added successfully!"
             errorMessage="Failed to add content item"
             @hide="onAddDialogHide"
@@ -239,7 +239,7 @@
             header="Add Sub-item"
             :confirmHandle="handleAddSubItem"
             confirmLabel="Add Sub-item"
-            confirmSeverity="success"
+            confirmClass="bg-blue-600 hover:bg-blue-700 text-white border-0"
             successMessage="Sub-item added successfully!"
             errorMessage="Failed to add sub-item"
             @hide="onAddSubItemDialogHide"
@@ -254,7 +254,7 @@
             header="Edit Content Item"
             :confirmHandle="handleEditContentItem"
             confirmLabel="Update Content"
-            confirmSeverity="info"
+            confirmClass="bg-blue-600 hover:bg-blue-700 text-white border-0"
             successMessage="Content item updated successfully!"
             errorMessage="Failed to update content item"
             @hide="onEditDialogHide"

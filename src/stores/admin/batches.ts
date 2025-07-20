@@ -6,7 +6,7 @@ export interface AdminBatchRequiringAttention {
   id: string;
   card_id: string;
   card_name: string;
-  user_id: string;
+  created_by: string;
   user_email: string;
   batch_name: string;
   batch_number: number;
@@ -74,7 +74,7 @@ export const useAdminBatchesStore = defineStore('adminBatches', () => {
   }
 
   const getBatchesByUser = (userId: string) => {
-    return batchesRequiringAttention.value.filter(batch => batch.user_id === userId)
+    return batchesRequiringAttention.value.filter(batch => batch.created_by === userId)
   }
 
   const formatPaymentAmount = (cents: number): string => {

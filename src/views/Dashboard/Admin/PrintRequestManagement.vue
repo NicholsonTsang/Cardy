@@ -1,30 +1,27 @@
 <template>
-  <div class="space-y-6">
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-900">Print Request Management</h1>
-        <p class="text-slate-600 mt-1">Manage physical card printing for paid batches</p>
-      </div>
-      <div class="flex items-center gap-3">
-        <Button 
-          icon="pi pi-refresh" 
-          label="Refresh" 
-          outlined
-          @click="refreshData"
-          :loading="printRequestsStore.isLoadingPrintRequests"
-        />
-        <Button 
-          icon="pi pi-download" 
-          label="Export CSV" 
-          outlined
-          @click="exportToCsv"
-        />
-      </div>
-    </div>
+  <PageWrapper title="Print Request Management" description="Manage physical card printing for paid batches">
+    <template #actions>
+      <Button 
+        icon="pi pi-refresh" 
+        label="Refresh" 
+        severity="secondary"
+        outlined
+        @click="refreshData"
+        :loading="printRequestsStore.isLoadingPrintRequests"
+      />
+      <Button 
+        icon="pi pi-download" 
+        label="Export CSV" 
+        severity="secondary"
+        outlined
+        @click="exportToCsv"
+      />
+    </template>
+
+    <div class="space-y-6">
 
     <!-- Enhanced Filters and Search -->
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+    <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6">
       <h3 class="text-lg font-semibold text-slate-900 mb-4">Filters & Search</h3>
       <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
         <!-- Search -->
@@ -118,7 +115,7 @@
             <Tag 
               v-if="dateRange && dateRange.length === 2" 
               value="Date Range Applied" 
-              severity="success" 
+              severity="info" 
               class="text-xs"
             />
             <Tag 
@@ -133,6 +130,7 @@
           v-if="hasActiveFilters"
           label="Clear All Filters" 
           icon="pi pi-times"
+          severity="secondary"
           text
           @click="clearAllFilters"
           size="small"
@@ -142,7 +140,7 @@
 
     <!-- Statistics Cards with filtered counts -->
     <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-slate-600 mb-2">Submitted</h3>
@@ -155,7 +153,7 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-slate-600 mb-2">Processing</h3>
@@ -168,12 +166,12 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-sm font-medium text-slate-600 mb-2">Shipped</h3>
-            <p class="text-3xl font-bold text-indigo-600">{{ getFilteredStatusCount('SHIPPED') }}</p>
-            <p class="text-xs text-slate-500 mt-1">{{ getStatusCount('SHIPPED') }} total</p>
+            <h3 class="text-sm font-medium text-slate-600 mb-2">Shipping</h3>
+            <p class="text-3xl font-bold text-indigo-600">{{ getFilteredStatusCount('SHIPPING') }}</p>
+            <p class="text-xs text-slate-500 mt-1">{{ getStatusCount('SHIPPING') }} total</p>
           </div>
           <div class="p-3 bg-gradient-to-r from-indigo-500 to-blue-500 rounded-lg">
             <i class="pi pi-send text-white text-xl"></i>
@@ -181,20 +179,20 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-slate-600 mb-2">Completed</h3>
-            <p class="text-3xl font-bold text-green-600">{{ getFilteredStatusCount('COMPLETED') }}</p>
+            <p class="text-3xl font-bold text-blue-600">{{ getFilteredStatusCount('COMPLETED') }}</p>
             <p class="text-xs text-slate-500 mt-1">{{ getStatusCount('COMPLETED') }} total</p>
           </div>
-          <div class="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg">
+          <div class="p-3 bg-gradient-to-r from-blue-500 to-blue-600 rounded-lg">
             <i class="pi pi-check-circle text-white text-xl"></i>
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-slate-600 mb-2">Cancelled</h3>
@@ -209,7 +207,7 @@
     </div>
 
     <!-- Print Requests Table -->
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-xl shadow-soft border border-slate-200 overflow-hidden">
       <div class="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
         <div class="flex items-center justify-between">
           <h3 class="text-lg font-semibold text-slate-900">All Print Requests</h3>
@@ -296,6 +294,33 @@
             </template>
           </Column>
 
+          <Column header="Contact Info" style="min-width:180px">
+            <template #body="{ data }">
+              <div class="space-y-1">
+                <div v-if="data.contact_email" class="flex items-center gap-1 text-xs">
+                  <i class="pi pi-envelope text-slate-500"></i>
+                  <a :href="`mailto:${data.contact_email}`" 
+                     class="text-blue-600 hover:text-blue-800 truncate max-w-[120px]" 
+                     :title="data.contact_email">
+                    {{ data.contact_email }}
+                  </a>
+                </div>
+                <div v-if="data.contact_whatsapp" class="flex items-center gap-1 text-xs">
+                  <i class="pi pi-whatsapp text-green-500"></i>
+                  <a :href="`https://wa.me/${data.contact_whatsapp.replace('+', '')}`" 
+                     target="_blank"
+                     class="text-green-600 hover:text-green-800"
+                     :title="data.contact_whatsapp">
+                    {{ data.contact_whatsapp }}
+                  </a>
+                </div>
+                <span v-if="!data.contact_email && !data.contact_whatsapp" class="text-xs text-slate-400">
+                  No contact info
+                </span>
+              </div>
+            </template>
+          </Column>
+
           <Column field="requested_at" header="Requested" sortable>
             <template #body="{ data }">
               <span class="text-sm text-slate-600">{{ formatDate(data.requested_at) }}</span>
@@ -313,7 +338,7 @@
               <div class="flex gap-2">
                 <Button 
                   icon="pi pi-eye" 
-                  severity="info" 
+                  severity="secondary" 
                   outlined
                   size="small"
                   @click="openPrintRequestDetails(data)" 
@@ -330,7 +355,7 @@
                 <Button 
                   v-if="['SUBMITTED'].includes(data.status)"
                   icon="pi pi-arrow-right" 
-                  severity="success" 
+                  severity="primary" 
                   outlined
                   size="small"
                   @click="quickAdvanceStatus(data)" 
@@ -353,17 +378,17 @@
     >
       <div v-if="selectedPrintRequest" class="space-y-6">
         <!-- Request Information -->
-        <div class="bg-slate-50 rounded-lg p-6">
+        <div class="bg-slate-50 rounded-lg p-6 border border-slate-200">
           <h4 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <i class="pi pi-info-circle text-blue-600"></i>
             Request Information
           </h4>
-          <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-            <div class="flex items-center gap-2 text-green-800">
+          <div class="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-center gap-2 text-blue-800">
               <i class="pi pi-check-circle"></i>
               <span class="text-sm font-medium">Batch Payment Completed</span>
             </div>
-            <p class="text-xs text-green-700 mt-1">This print request is for a paid batch. Cards have been generated and are ready for printing.</p>
+            <p class="text-xs text-blue-700 mt-1">This print request is for a paid batch. Cards have been generated and are ready for printing.</p>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div class="space-y-3">
@@ -411,8 +436,37 @@
           </div>
         </div>
 
+        <!-- Contact Information -->
+        <div v-if="selectedPrintRequest.contact_email || selectedPrintRequest.contact_whatsapp" class="bg-purple-50 rounded-lg p-6 border border-purple-200">
+          <h4 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+            <i class="pi pi-phone text-purple-600"></i>
+            Contact Information
+          </h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div v-if="selectedPrintRequest.contact_email">
+              <label class="text-sm font-medium text-slate-700">Email Address</label>
+              <div class="bg-white rounded border border-purple-200 p-3 mt-1">
+                <a :href="`mailto:${selectedPrintRequest.contact_email}`" 
+                   class="text-purple-700 hover:text-purple-900 underline break-all">
+                  {{ selectedPrintRequest.contact_email }}
+                </a>
+              </div>
+            </div>
+            <div v-if="selectedPrintRequest.contact_whatsapp">
+              <label class="text-sm font-medium text-slate-700">WhatsApp Number</label>
+              <div class="bg-white rounded border border-purple-200 p-3 mt-1">
+                <a :href="`https://wa.me/${selectedPrintRequest.contact_whatsapp.replace('+', '')}`" 
+                   target="_blank"
+                   class="text-purple-700 hover:text-purple-900 underline">
+                  {{ selectedPrintRequest.contact_whatsapp }}
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Shipping Address -->
-        <div class="bg-blue-50 rounded-lg p-6">
+        <div class="bg-blue-50 rounded-lg p-6 border border-blue-200">
           <h4 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <i class="pi pi-map-marker text-blue-600"></i>
             Shipping Address
@@ -423,7 +477,7 @@
         </div>
 
         <!-- Admin Notes -->
-        <div v-if="selectedPrintRequest.admin_notes" class="bg-amber-50 rounded-lg p-6">
+        <div v-if="selectedPrintRequest.admin_notes" class="bg-amber-50 rounded-lg p-6 border border-amber-200">
           <h4 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <i class="pi pi-comment text-amber-600"></i>
             Admin Notes
@@ -453,7 +507,7 @@
     >
       <div v-if="selectedPrintRequest" class="space-y-6">
         <!-- Current Status -->
-        <div class="bg-slate-50 rounded-lg p-4">
+        <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
           <div class="flex items-center justify-between">
             <div>
               <h4 class="font-medium text-slate-900">{{ selectedPrintRequest.card_name }}</h4>
@@ -491,7 +545,7 @@
         </div>
 
         <!-- Tracking Information -->
-        <div v-if="newPrintStatus === 'SHIPPED'">
+        <div v-if="newPrintStatus === 'SHIPPING'">
           <label class="block text-sm font-medium text-slate-700 mb-2">Tracking Information</label>
           <InputText 
             v-model="trackingNumber" 
@@ -502,9 +556,10 @@
       </div>
     </MyDialog>
 
-    <!-- Quick Status Advance Confirmation -->
-    <ConfirmDialog group="quickAdvance"></ConfirmDialog>
-  </div>
+      <!-- Quick Status Advance Confirmation -->
+      <ConfirmDialog group="quickAdvance"></ConfirmDialog>
+    </div>
+  </PageWrapper>
 </template>
 
 <script setup>
@@ -528,6 +583,7 @@ import MyDialog from '@/components/MyDialog.vue'
 import Calendar from 'primevue/calendar'
 import EmptyState from '@/components/EmptyState.vue'
 import { getEmptyStateConfig, determineEmptyScenario } from '@/utils/emptyStateConfigs.js'
+import PageWrapper from '@/components/Layout/PageWrapper.vue'
 
 const printRequestsStore = useAdminPrintRequestsStore()
 const confirm = useConfirm()
@@ -568,7 +624,7 @@ const statusOptions = [
   { label: 'All Statuses', value: null },
   { label: 'Submitted', value: 'SUBMITTED' },
   { label: 'Processing', value: 'PROCESSING' },
-  { label: 'Shipped', value: 'SHIPPED' },
+  { label: 'Shipping', value: 'SHIPPING' },
   { label: 'Completed', value: 'COMPLETED' },
   { label: 'Cancelled', value: 'CANCELLED' }
 ]
@@ -594,7 +650,7 @@ const sortOptions = [
 const printStatusOptions = [
   { label: 'Submitted', value: 'SUBMITTED' },
   { label: 'Processing', value: 'PROCESSING' },
-  { label: 'Shipped', value: 'SHIPPED' },
+  { label: 'Shipping', value: 'SHIPPING' },
   { label: 'Completed', value: 'COMPLETED' },
   { label: 'Cancelled', value: 'CANCELLED' }
 ]
@@ -658,7 +714,7 @@ const getPrintRequestSeverity = (status) => {
   switch (status) {
     case 'SUBMITTED': return 'info'
     case 'PROCESSING': return 'primary'
-    case 'SHIPPED': return 'contrast'
+    case 'SHIPPING': return 'contrast'
     case 'COMPLETED': return 'success'
     case 'CANCELLED': return 'danger'
     default: return 'secondary'
@@ -698,7 +754,7 @@ const handlePrintRequestUpdate = async () => {
   let notes = printAdminNotes.value.trim()
   
   // Add tracking information to notes if provided
-  if (newPrintStatus.value === 'SHIPPED' && trackingNumber.value.trim()) {
+  if (newPrintStatus.value === 'SHIPPING' && trackingNumber.value.trim()) {
     const trackingNote = `\n\nTracking: ${trackingNumber.value.trim()}`
     notes = notes ? notes + trackingNote : trackingNote.trim()
   }
@@ -709,7 +765,7 @@ const handlePrintRequestUpdate = async () => {
     notes || undefined
   )
   
-  await printRequestsStore.fetchPrintRequests()
+  await refreshData()
   showManagementDialog.value = false
 }
 
@@ -724,7 +780,8 @@ const quickAdvanceStatus = (request) => {
     icon: 'pi pi-arrow-right',
     acceptLabel: 'Advance',
     rejectLabel: 'Cancel',
-    acceptClass: 'p-button-success',
+    acceptClass: 'p-button-success p-button-sm',
+    rejectClass: 'p-button-outlined p-button-sm',
     accept: async () => {
       try {
         await printRequestsStore.updatePrintRequestStatus(
@@ -764,7 +821,8 @@ const getNextStatus = (currentStatus) => {
 const exportToCsv = () => {
   const headers = [
     'Request ID', 'User Email', 'User Name', 'Card Name', 'Batch Name', 
-    'Cards Count', 'Status', 'Requested Date', 'Last Updated', 'Admin Notes'
+    'Cards Count', 'Status', 'Contact Email', 'Contact WhatsApp', 
+    'Requested Date', 'Last Updated', 'Admin Notes'
   ]
   
   const csvContent = [
@@ -777,6 +835,8 @@ const exportToCsv = () => {
       request.batch_name,
       request.cards_count,
       request.status,
+      request.contact_email || '',
+      request.contact_whatsapp || '',
       formatDate(request.requested_at),
       formatDate(request.updated_at),
       (request.admin_notes || '').replace(/,/g, ';')

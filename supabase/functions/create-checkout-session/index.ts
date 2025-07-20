@@ -104,10 +104,8 @@ serve(async (req) => {
             currency: 'usd',
             product_data: {
               name: `Digital Cards - ${batch.card_name || 'CardStudio Experience'}`,
-              description: batch.card_description ? 
-                `${cardCount} cards for ${batch.card_description}` : 
-                `${cardCount} interactive digital souvenir cards`,
-              images: ['https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80'],
+              description: `${cardCount} cards for ${batch.card_name}`,
+              images: [batch.card_image_url || 'https://images.unsplash.com/photo-1557683311-eac922347aa1?w=600&h=900&fit=crop'],
             },
             unit_amount: pricePerCard,
           },

@@ -3,8 +3,8 @@
     <!-- Background Image -->
     <div class="background-image">
       <img 
-        v-if="card.card_image_urls && card.card_image_urls.length > 0"
-        :src="card.card_image_urls[0]" 
+        v-if="card.card_image_url"
+        :src="card.card_image_url" 
         :alt="card.card_name"
         class="image"
       />
@@ -42,7 +42,7 @@ interface Props {
   card: {
     card_name: string
     card_description: string
-    card_image_urls: string[]
+    card_image_url: string
     conversation_ai_enabled: boolean
     ai_prompt: string
     is_activated: boolean

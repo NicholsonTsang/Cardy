@@ -15,7 +15,7 @@
             :severity="getPrintRequestStatusSeverity(activeRequest.status)"
             class="px-2 py-1 text-xs"
           />
-          <i v-if="activeRequest.status === 'SHIPPED'" 
+          <i v-if="activeRequest.status === 'SHIPPING'" 
              class="pi pi-truck text-blue-600 text-xs" 
              v-tooltip.top="'In transit'"></i>
         </div>
@@ -134,9 +134,8 @@ const isWithdrawn = (request) => {
 const getPrintRequestStatusSeverity = (status) => {
   switch (status) {
     case 'SUBMITTED': return 'info';
-    case 'PAYMENT_PENDING': return 'warning';
     case 'PROCESSING': return 'contrast';
-    case 'SHIPPED': return 'primary';
+    case 'SHIPPING': return 'primary';
     case 'COMPLETED': return 'success';
     case 'CANCELLED': return 'danger';
     default: return 'secondary';

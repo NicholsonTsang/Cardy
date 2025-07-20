@@ -26,6 +26,28 @@
                 />
             </IconField>
             
+            <!-- Bulk Import Button -->
+            <div class="mt-4">
+                <Button 
+                    label="Import Cards"
+                    icon="pi pi-upload"
+                    @click="showImportDialog = true"
+                    class="w-full bg-blue-600 hover:bg-blue-700 text-white border-0"
+                />
+            </div>
+            
+            <!-- Import Dialog -->
+            <Dialog 
+                v-model:visible="showImportDialog"
+                modal 
+                header="Import Cards"
+                :style="{ width: '90vw', maxWidth: '50rem' }"
+                :breakpoints="{ '1199px': '85vw', '768px': '95vw', '575px': '98vw' }"
+                class="import-dialog standardized-dialog"
+            >
+                <CardBulkImport @imported="handleImportComplete" />
+            </Dialog>
+            
             <!-- Date Filters -->
             <div class="mt-3 grid grid-cols-2 gap-2">
                 <Dropdown 
@@ -107,14 +129,16 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import Button from 'primevue/button';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
 import Dropdown from 'primevue/dropdown';
 import Paginator from 'primevue/paginator';
+import Dialog from 'primevue/dialog';
 import CardListItem from './CardListItem.vue';
+import CardBulkImport from './Import/CardBulkImport.vue';
 
 const props = defineProps({
     cards: {
@@ -158,8 +182,18 @@ const emit = defineEmits([
     'update:selectedYear',
     'update:selectedMonth',
     'clear-date-filters',
-    'page-change'
+    'page-change',
+    'cards-imported'
 ]);
+
+// Dialog state
+const showImportDialog = ref(false);
+
+// Handle import completion
+function handleImportComplete(results) {
+    showImportDialog.value = false;
+    emit('cards-imported', results);
+}
 
 // Computed properties
 const paginatedCards = computed(() => {
@@ -203,4 +237,10 @@ const monthOptions = computed(() => {
 
 <style scoped>
 /* Component uses global theme styles */
+
+
+/* Custom import dialog styles */
+:deep(.import-dialog .p-dialog-content) {
+  padding: 0;
+}
 </style>

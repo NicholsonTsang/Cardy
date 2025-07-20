@@ -1,31 +1,28 @@
 <template>
-  <div class="space-y-6">
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-900">User Management</h1>
-        <p class="text-slate-600 mt-1">Manage card issuers and their verification status</p>
-      </div>
-      <div class="flex items-center gap-3">
-        <Button 
-          icon="pi pi-refresh" 
-          label="Refresh" 
-          outlined
-          @click="refreshData"
-          :loading="verificationsStore.isLoadingVerifications"
-        />
-        <Button 
-          icon="pi pi-download" 
-          label="Export CSV" 
-          outlined
-          @click="exportUsers"
-        />
-      </div>
-    </div>
+  <PageWrapper title="User Management" description="Manage card issuers and their verification status">
+    <template #actions>
+      <Button 
+        icon="pi pi-refresh" 
+        label="Refresh" 
+        severity="secondary"
+        outlined
+        @click="refreshData"
+        :loading="verificationsStore.isLoading"
+      />
+      <Button 
+        icon="pi pi-download" 
+        label="Export CSV" 
+        severity="secondary"
+        outlined
+        @click="exportUsers"
+      />
+    </template>
+
+    <div class="space-y-6">
 
     <!-- Statistics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-slate-600 mb-2">Total Users</h3>
@@ -37,20 +34,20 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-slate-600 mb-2">Verified Users</h3>
             <p class="text-3xl font-bold text-slate-900">{{ userStats.verified_users }}</p>
-            <p class="text-sm text-green-600 mt-1">{{ verificationRate }}% verified</p>
+            <p class="text-sm text-blue-600 mt-1">{{ verificationRate }}% verified</p>
           </div>
-          <div class="p-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+          <div class="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
             <i class="pi pi-shield text-white text-2xl"></i>
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-slate-600 mb-2">Pending Reviews</h3>
@@ -62,7 +59,7 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-slate-600 mb-2">Active This Month</h3>
@@ -76,7 +73,7 @@
     </div>
 
     <!-- Filters and Search -->
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+    <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6">
       <h3 class="text-lg font-semibold text-slate-900 mb-4">Filters & Search</h3>
       <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div class="md:col-span-2">
@@ -154,7 +151,7 @@
             <Tag 
               v-if="registrationDateRange && registrationDateRange.length === 2" 
               value="Date Range Applied" 
-              severity="success" 
+              severity="primary" 
               class="text-xs"
             />
           </div>
@@ -163,6 +160,7 @@
           v-if="hasActiveFilters"
           label="Clear All Filters" 
           icon="pi pi-times"
+          severity="secondary"
           text
           @click="clearFilters"
           size="small"
@@ -171,10 +169,10 @@
     </div>
 
     <!-- Users Table -->
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-xl shadow-soft border border-slate-200 overflow-hidden">
       <DataTable 
         :value="paginatedUsers"
-        :loading="verificationsStore.isLoadingVerifications"
+        :loading="verificationsStore.isLoading"
         class="border-0"
         stripedRows
         responsiveLayout="scroll"
@@ -252,6 +250,7 @@
             <div class="flex items-center gap-2">
               <Button 
                 icon="pi pi-eye"
+                severity="secondary"
                 size="small"
                 outlined
                 @click="viewUserDetails(data)"
@@ -270,7 +269,7 @@
                 icon="pi pi-shield"
                 size="small"
                 outlined
-                severity="success"
+                severity="primary"
                 @click="manualVerifyUser(data)"
                 v-tooltip="'Manual Verification'"
                 v-if="data.verification_status === 'NOT_SUBMITTED'"
@@ -329,7 +328,7 @@
     >
       <div v-if="selectedUser" class="space-y-6">
         <!-- User Information -->
-        <div class="bg-slate-50 rounded-lg p-6">
+        <div class="bg-slate-50 rounded-lg p-6 border border-slate-200">
           <h4 class="font-medium text-slate-900 mb-4 flex items-center gap-2">
             <i class="pi pi-user text-blue-600"></i>
             User Information
@@ -369,9 +368,9 @@
         </div>
 
         <!-- Verification Information -->
-        <div v-if="selectedUser.verification_status !== 'NOT_SUBMITTED'" class="bg-slate-50 rounded-lg p-6">
+        <div v-if="selectedUser.verification_status !== 'NOT_SUBMITTED'" class="bg-slate-50 rounded-lg p-6 border border-slate-200">
           <h4 class="font-medium text-slate-900 mb-4 flex items-center gap-2">
-            <i class="pi pi-shield text-green-600"></i>
+            <i class="pi pi-shield text-blue-600"></i>
             Verification Information
           </h4>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -401,8 +400,9 @@
                 <Button 
                   label="Edit Notes" 
                   icon="pi pi-pencil"
+                  severity="secondary"
                   size="small"
-                  text
+                  outlined
                   @click="editVerificationNotes(selectedUser)"
                 />
               </div>
@@ -420,8 +420,9 @@
                 <Button 
                   label="View" 
                   icon="pi pi-external-link"
+                  severity="secondary"
                   size="small"
-                  text
+                  outlined
                   @click="viewDocument(doc)"
                 />
               </div>
@@ -442,13 +443,13 @@
             label="Manual Verification" 
             icon="pi pi-shield"
             size="small"
-            severity="success"
+            severity="primary"
             @click="manualVerifyUser(selectedUser)"
           />
         </div>
 
         <!-- Activity Summary -->
-        <div class="bg-slate-50 rounded-lg p-6">
+        <div class="bg-slate-50 rounded-lg p-6 border border-slate-200">
           <h4 class="font-medium text-slate-900 mb-4 flex items-center gap-2">
             <i class="pi pi-chart-bar text-purple-600"></i>
             Activity Summary
@@ -599,17 +600,18 @@
       </div>
     </MyDialog>
 
-    <!-- Confirmation Dialogs -->
-    <ConfirmDialog group="resetVerification"></ConfirmDialog>
-  </div>
+      <!-- Confirmation Dialogs -->
+      <ConfirmDialog group="resetVerification"></ConfirmDialog>
+    </div>
+  </PageWrapper>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useAdminVerificationsStore, useAdminFeedbackStore } from '@/stores/admin'
+import { useAdminVerificationsStore } from '@/stores/admin/verifications'
+import { useAdminFeedbackStore } from '@/stores/admin/feedback'
 import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
-import { FilterMatchMode } from '@primevue/core/api'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -624,6 +626,7 @@ import ConfirmDialog from 'primevue/confirmdialog'
 import MyDialog from '@/components/MyDialog.vue'
 import Calendar from 'primevue/calendar'
 import Paginator from 'primevue/paginator'
+import PageWrapper from '@/components/Layout/PageWrapper.vue'
 
 const verificationsStore = useAdminVerificationsStore()
 const feedbackStore = useAdminFeedbackStore()
@@ -832,7 +835,7 @@ const closeUserDetailsDialog = () => {
 const manageVerification = (user) => {
   // Navigate to verification management with specific user
   verificationsStore.setSelectedVerificationUser(user)
-  window.open(`/admin/verifications?user=${user.user_id}`, '_blank')
+  window.open(`/cms/verifications?user=${user.user_id}`, '_blank')
 }
 
 const manageUserRole = (user) => {
@@ -884,7 +887,8 @@ const confirmResetVerification = (user) => {
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: 'Reset',
     rejectLabel: 'Cancel',
-    acceptClass: 'p-button-danger',
+    acceptClass: 'p-button-danger p-button-sm',
+    rejectClass: 'p-button-outlined p-button-sm',
     accept: () => resetUserVerification(user)
   })
 }
@@ -975,7 +979,7 @@ const getUserInitials = (name) => {
 
 const getUserAvatarClass = (name) => {
   const colors = [
-    'bg-blue-500', 'bg-green-500', 'bg-purple-500', 'bg-pink-500',
+    'bg-blue-500', 'bg-sky-500', 'bg-purple-500', 'bg-pink-500',
     'bg-indigo-500', 'bg-yellow-500', 'bg-red-500', 'bg-teal-500'
   ]
   const hash = (name || '').split('').reduce((a, b) => a + b.charCodeAt(0), 0)

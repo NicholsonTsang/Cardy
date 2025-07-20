@@ -11,7 +11,7 @@ RETURNS TABLE (
     parent_id UUID,
     name TEXT,
     content TEXT,
-    image_urls TEXT[],
+    image_url TEXT,
     ai_metadata TEXT,
     sort_order INTEGER,
     created_at TIMESTAMPTZ,
@@ -25,7 +25,7 @@ BEGIN
         ci.parent_id,
         ci.name, 
         ci.content, 
-        ci.image_urls, 
+        ci.image_url, 
         ci.ai_metadata,
         ci.sort_order,
         ci.created_at,
@@ -49,7 +49,7 @@ RETURNS TABLE (
     parent_id UUID,
     name TEXT,
     content TEXT,
-    image_urls TEXT[],
+    image_url TEXT,
     ai_metadata TEXT,
     sort_order INTEGER,
     created_at TIMESTAMPTZ,
@@ -63,7 +63,7 @@ BEGIN
         ci.parent_id,
         ci.name, 
         ci.content, 
-        ci.image_urls, 
+        ci.image_url, 
         ci.ai_metadata,
         ci.sort_order,
         ci.created_at,
@@ -80,7 +80,7 @@ CREATE OR REPLACE FUNCTION create_content_item(
     p_name TEXT,
     p_parent_id UUID DEFAULT NULL,
     p_content TEXT DEFAULT '',
-    p_image_urls TEXT[] DEFAULT ARRAY[]::TEXT[],
+    p_image_url TEXT DEFAULT NULL,
     p_ai_metadata TEXT DEFAULT ''
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -122,7 +122,7 @@ BEGIN
         parent_id,
         name,
         content,
-        image_urls,
+        image_url,
         ai_metadata,
         sort_order
     ) VALUES (
@@ -130,7 +130,7 @@ BEGIN
         p_parent_id,
         p_name,
         p_content,
-        p_image_urls,
+        p_image_url,
         p_ai_metadata,
         v_next_sort_order
     )
@@ -145,7 +145,7 @@ CREATE OR REPLACE FUNCTION update_content_item(
     p_content_item_id UUID,
     p_name TEXT DEFAULT NULL,
     p_content TEXT DEFAULT NULL,
-    p_image_urls TEXT[] DEFAULT NULL,
+    p_image_url TEXT DEFAULT NULL,
     p_ai_metadata TEXT DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -166,7 +166,7 @@ BEGIN
     SET 
         name = COALESCE(p_name, name),
         content = COALESCE(p_content, content),
-        image_urls = COALESCE(p_image_urls, image_urls),
+        image_url = COALESCE(p_image_url, image_url),
         ai_metadata = COALESCE(p_ai_metadata, ai_metadata),
         updated_at = now()
     WHERE id = p_content_item_id;

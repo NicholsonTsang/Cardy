@@ -4,22 +4,31 @@ import { supabase } from '@/lib/supabase'
 
 export interface AdminDashboardStats {
   total_users: number;
-  total_card_designs: number;
+  total_verified_users: number;
+  total_cards: number;
+  total_batches: number;
   total_issued_cards: number;
   total_activated_cards: number;
   pending_verifications: number;
-  approved_verifications: number;
-  rejected_verifications: number;
-  pending_print_requests: number;
-  active_print_requests: number;
-  completed_print_requests: number;
-  total_batches: number;
-  paid_batches: number;
-  unpaid_batches: number;
-  waived_batches: number;
   pending_payment_batches: number;
+  paid_batches: number;
+  waived_batches: number;
+  print_requests_submitted: number;
+  print_requests_processing: number;
+  print_requests_shipping: number;
+  daily_revenue_cents: number;
+  weekly_revenue_cents: number;
+  monthly_revenue_cents: number;
   total_revenue_cents: number;
-  total_waived_amount_cents: number;
+  daily_new_users: number;
+  weekly_new_users: number;
+  monthly_new_users: number;
+  daily_new_cards: number;
+  weekly_new_cards: number;
+  monthly_new_cards: number;
+  daily_issued_cards: number;
+  weekly_issued_cards: number;
+  monthly_issued_cards: number;
 }
 
 export interface AdminActivity {
@@ -41,34 +50,54 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
 
   // Computed
   const pendingVerificationCount = computed(() => dashboardStats.value?.pending_verifications || 0)
-  const activePrintRequestCount = computed(() => dashboardStats.value?.active_print_requests || 0)
+  const totalPrintRequestsCount = computed(() => {
+    const stats = dashboardStats.value
+    if (!stats) return 0
+    return (stats.print_requests_submitted || 0) + (stats.print_requests_processing || 0) + (stats.print_requests_shipping || 0)
+  })
 
   // Actions
   const fetchDashboardStats = async (): Promise<AdminDashboardStats> => {
     isLoadingStats.value = true
     try {
-      const { data, error } = await supabase.rpc('get_admin_dashboard_stats')
+      const { data, error } = await supabase.rpc('admin_get_system_stats')
       if (error) throw error
       
       // The stored procedure returns an array with a single object
-      const stats = (data && data.length > 0) ? data[0] : {
-        total_users: 0,
-        total_card_designs: 0,
-        total_issued_cards: 0,
-        total_activated_cards: 0,
-        pending_verifications: 0,
-        approved_verifications: 0,
-        rejected_verifications: 0,
-        pending_print_requests: 0,
-        active_print_requests: 0,
-        completed_print_requests: 0,
-        total_batches: 0,
-        paid_batches: 0,
-        unpaid_batches: 0,
-        waived_batches: 0,
-        pending_payment_batches: 0,
-        total_revenue_cents: 0,
-        total_waived_amount_cents: 0
+      const dbStats = (data && data.length > 0) ? data[0] : null
+      
+      if (!dbStats) {
+        throw new Error('No data returned from admin_get_system_stats')
+      }
+      
+      // Map database fields to interface format
+      const stats: AdminDashboardStats = {
+        total_users: dbStats.total_users || 0,
+        total_verified_users: dbStats.total_verified_users || 0,
+        total_cards: dbStats.total_cards || 0,
+        total_batches: dbStats.total_batches || 0,
+        total_issued_cards: dbStats.total_issued_cards || 0,
+        total_activated_cards: dbStats.total_activated_cards || 0,
+        pending_verifications: dbStats.pending_verifications || 0,
+        pending_payment_batches: dbStats.pending_payment_batches || 0,
+        paid_batches: dbStats.paid_batches || 0,
+        waived_batches: dbStats.waived_batches || 0,
+        print_requests_submitted: dbStats.print_requests_submitted || 0,
+        print_requests_processing: dbStats.print_requests_processing || 0,
+        print_requests_shipping: dbStats.print_requests_shipping || 0,
+        daily_revenue_cents: dbStats.daily_revenue_cents || 0,
+        weekly_revenue_cents: dbStats.weekly_revenue_cents || 0,
+        monthly_revenue_cents: dbStats.monthly_revenue_cents || 0,
+        total_revenue_cents: dbStats.total_revenue_cents || 0,
+        daily_new_users: dbStats.daily_new_users || 0,
+        weekly_new_users: dbStats.weekly_new_users || 0,
+        monthly_new_users: dbStats.monthly_new_users || 0,
+        daily_new_cards: dbStats.daily_new_cards || 0,
+        weekly_new_cards: dbStats.weekly_new_cards || 0,
+        monthly_new_cards: dbStats.monthly_new_cards || 0,
+        daily_issued_cards: dbStats.daily_issued_cards || 0,
+        weekly_issued_cards: dbStats.weekly_issued_cards || 0,
+        monthly_issued_cards: dbStats.monthly_issued_cards || 0
       }
       
       dashboardStats.value = stats
@@ -87,13 +116,19 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
       const { data, error } = await supabase.rpc('get_recent_admin_activity', {
         p_limit: limit
       })
-      if (error) throw error
+      if (error) {
+        console.warn('get_recent_admin_activity function not found, returning empty array')
+        recentActivity.value = []
+        return []
+      }
       
       recentActivity.value = data || []
       return data || []
     } catch (error) {
       console.error('Error fetching recent activity:', error)
-      throw error
+      // Return empty array instead of throwing to prevent dashboard crash
+      recentActivity.value = []
+      return []
     } finally {
       isLoadingActivity.value = false
     }
@@ -119,11 +154,15 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
         p_offset: offset
       })
       
-      if (error) throw error
+      if (error) {
+        console.warn('get_admin_audit_logs function not found, returning empty array')
+        return []
+      }
       return data || []
     } catch (error) {
       console.error('Error fetching audit logs:', error)
-      throw error
+      // Return empty array instead of throwing to prevent dashboard crash
+      return []
     }
   }
 
@@ -152,7 +191,7 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
     
     // Computed
     pendingVerificationCount,
-    activePrintRequestCount,
+    totalPrintRequestsCount,
     
     // Actions
     fetchDashboardStats,

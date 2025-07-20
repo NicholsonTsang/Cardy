@@ -42,9 +42,8 @@ export interface CardBatch {
 
 export const enum PrintRequestStatus {
   SUBMITTED = 'SUBMITTED',
-  PAYMENT_PENDING = 'PAYMENT_PENDING',
   PROCESSING = 'PROCESSING',
-  SHIPPED = 'SHIPPED',
+  SHIPPING = 'SHIPPING',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
 }
@@ -55,6 +54,8 @@ export interface PrintRequest {
   user_id: string;
   status: PrintRequestStatus;
   shipping_address: string | null;
+  contact_email: string | null;
+  contact_whatsapp: string | null;
   admin_notes: string | null;
   payment_details: string | null;
   requested_at: string;
@@ -70,7 +71,7 @@ export interface IssuanceStats {
 
 export interface UserIssuedCard extends IssuedCard {
   card_name: string;
-  card_image_urls: string[] | null;
+  card_image_url: string | null;
 }
 
 export interface UserCardBatch extends CardBatch {
@@ -229,11 +230,19 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     return data as PrintRequest[];
   };
 
-  const requestPrintForBatch = async (batchId: string, shippingAddress: string) => {
+  const requestPrintForBatch = async (
+    batchId: string, 
+    shippingAddress: string, 
+    contactEmail?: string, 
+    contactWhatsapp?: string
+  ) => {
     const { data, error } = await supabase.rpc('request_card_printing', {
       p_batch_id: batchId,
-      p_shipping_address: shippingAddress
+      p_shipping_address: shippingAddress,
+      p_contact_email: contactEmail || null,
+      p_contact_whatsapp: contactWhatsapp || null
     });
+    
     if (error) throw error;
     await fetchPrintRequestsForBatch(batchId);
     return data;

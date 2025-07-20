@@ -30,12 +30,12 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = newSession?.user ?? null
     loading.value = false // Ensure loading is false after any auth state change
 
+    console.log('Auth state change:', event, newSession?.user)
+
     if (event === 'SIGNED_OUT') {
       router.push('/login')
-    } else if (event === 'SIGNED_IN' && newSession?.user) {
-      // Redirection logic is now more robustly handled in router.beforeEach
-      // and within specific auth functions like signInWithEmail.
     }
+    // Remove automatic redirect - let router guard handle it
   })
 
   async function signUpWithEmail(email_value: string, password_value: string) {
@@ -50,11 +50,30 @@ export const useAuthStore = defineStore('auth', () => {
       toast.add({ severity: 'error', summary: 'Sign Up Failed', detail: error.message, group: 'br', life: 3000 })
       throw error
     }
-    if (data.user && !data.user.email_confirmed_at) {
-        toast.add({ severity: 'success', summary: 'Sign Up Successful', detail: 'Please check your email to verify your account.', group: 'br', life: 5000 })
-    } else if (data.user && data.user.email_confirmed_at) {
+    
+    // Check if user was created successfully
+    if (data.user) {
+      // Fallback: Ensure user has cardIssuer role if trigger didn't work
+      if (data.user.email_confirmed_at) {
+        // User is already confirmed, check if they have a role
+        const hasRole = data.user.user_metadata?.role
+        if (!hasRole) {
+          console.warn('New user created without role, trigger may not be working')
+          // Try to set the role manually (this might not work due to RLS)
+          try {
+            await supabase.auth.updateUser({
+              data: { role: 'cardIssuer' }
+            })
+            console.log('Manually set role to cardIssuer for new user')
+          } catch (roleError) {
+            console.error('Failed to set role manually:', roleError)
+          }
+        }
         toast.add({ severity: 'success', summary: 'Sign Up Successful', detail: 'Your account is already verified. Redirecting...', group: 'br', life: 3000 })
         router.push('/cms/mycards')
+      } else {
+        toast.add({ severity: 'success', summary: 'Sign Up Successful', detail: 'Please check your email to verify your account.', group: 'br', life: 5000 })
+      }
     }
     return data
   }
@@ -72,9 +91,9 @@ export const useAuthStore = defineStore('auth', () => {
       throw error
     }
     if (data.user && data.user.email_confirmed_at) {
-      // No toast needed here, router will redirect. Or a success toast if preferred.
-      // toast.add({ severity: 'success', summary: 'Sign In Successful', detail: 'Redirecting...', group: 'br', life: 3000 })
-      router.push('/cms/mycards')
+      // Force session refresh to get updated user metadata
+      await refreshSession()
+      toast.add({ severity: 'success', summary: 'Sign In Successful', detail: 'Welcome back!', group: 'br', life: 3000 })
     } else if (data.user && !data.user.email_confirmed_at) {
       toast.add({ severity: 'warn', summary: 'Email Not Verified', detail: 'Login successful, but your email is not verified. Please check your email.', group: 'br', life: 5000 })
       // User will be redirected to /login by the router guard if they try to access /cms
@@ -113,12 +132,44 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   const isLoggedIn = () => {
-    return !!user.value && !!session.value
+    return !!session.value?.user
   }
 
   const isEmailVerified = () => {
-    console.log('isEmailVerified', user.value?.email_confirmed_at)
-    return !!user.value?.email_confirmed_at
+    console.log('isEmailVerified', session.value?.user?.email_confirmed_at)
+    return !!session.value?.user?.email_confirmed_at
+  }
+
+  async function refreshSession() {
+    console.log('Refreshing session to get updated user metadata...')
+    const { data, error } = await supabase.auth.refreshSession()
+    if (error) {
+      console.error('Error refreshing session:', error)
+      throw error
+    }
+    session.value = data.session
+    user.value = data.session?.user ?? null
+    console.log('Session refreshed, new user metadata:', data.session?.user?.user_metadata)
+    return data.session
+  }
+
+  async function getUserRoleFromDatabase() {
+    if (!session.value?.user?.id) return null
+    
+    try {
+      const { data, error } = await supabase.rpc('get_user_role', { 
+        user_id: session.value.user.id 
+      })
+      if (error) {
+        console.error('Error getting user role from database:', error)
+        return null
+      }
+      console.log('User role from database:', data)
+      return data
+    } catch (err) {
+      console.error('Error calling get_user_role:', err)
+      return null
+    }
   }
 
   // Call initialize when the store is created
@@ -134,6 +185,8 @@ export const useAuthStore = defineStore('auth', () => {
     signOut,
     isLoggedIn,
     isEmailVerified,
-    initialize
+    initialize,
+    refreshSession,
+    getUserRoleFromDatabase
   }
 }) 

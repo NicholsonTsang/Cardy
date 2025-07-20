@@ -18,7 +18,7 @@
                     </h3>
                     <div class="aspect-video max-w-md mx-auto border border-slate-300 rounded-xl p-4 bg-white">
                         <img 
-                            :src="contentItem?.imageUrl || contentItem?.image_urls?.[0] || cardPlaceholder" 
+                            :src="contentItem?.imageUrl || contentItem?.image_url || cardPlaceholder" 
                             alt="Content Item Image"
                             class="object-cover h-full w-full rounded-lg shadow-md" 
                         />

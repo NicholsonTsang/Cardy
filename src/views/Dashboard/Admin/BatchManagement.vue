@@ -1,75 +1,71 @@
 <template>
-  <div class="space-y-6">
-    <!-- Header -->
-    <div class="flex justify-between items-center">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-900">Batch Payment Management</h1>
-        <p class="text-sm text-slate-600 mt-1">Manage card batch payments and fee waivers</p>
-      </div>
-      <div class="flex gap-3">
-        <Button 
-          icon="pi pi-refresh" 
-          label="Refresh" 
-          @click="refreshData"
-          :loading="batchesStore.isLoadingBatches"
-          severity="secondary"
-        />
-      </div>
-    </div>
+  <PageWrapper title="Batch Payment Management" description="Manage card batch payments and fee waivers">
+    <template #actions>
+      <Button 
+        icon="pi pi-refresh" 
+        label="Refresh" 
+        @click="refreshData"
+        :loading="batchesStore.isLoadingBatches"
+        severity="secondary"
+        outlined
+      />
+    </template>
+
+    <div class="space-y-6">
 
     <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-      <div class="bg-white rounded-lg border border-slate-200 p-4">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-slate-600">Pending Payment</p>
-            <p class="text-2xl font-bold text-orange-600">{{ dashboardStore.dashboardStats?.pending_payment_batches || 0 }}</p>
+            <h3 class="text-sm font-medium text-slate-600 mb-2">Pending Payment</h3>
+            <p class="text-3xl font-bold text-orange-600">{{ dashboardStore.dashboardStats?.pending_payment_batches || 0 }}</p>
           </div>
-          <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
-            <i class="pi pi-clock text-orange-600"></i>
+          <div class="p-4 bg-gradient-to-r from-orange-500 to-amber-500 rounded-xl">
+            <i class="pi pi-clock text-white text-2xl"></i>
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-lg border border-slate-200 p-4">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-slate-600">Paid Batches</p>
-            <p class="text-2xl font-bold text-green-600">{{ dashboardStore.dashboardStats?.paid_batches || 0 }}</p>
+            <h3 class="text-sm font-medium text-slate-600 mb-2">Paid Batches</h3>
+            <p class="text-3xl font-bold text-blue-600">{{ dashboardStore.dashboardStats?.paid_batches || 0 }}</p>
           </div>
-          <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-            <i class="pi pi-check text-green-600"></i>
+          <div class="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
+            <i class="pi pi-check text-white text-2xl"></i>
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-lg border border-slate-200 p-4">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-slate-600">Waived Batches</p>
-            <p class="text-2xl font-bold text-blue-600">{{ dashboardStore.dashboardStats?.waived_batches || 0 }}</p>
+            <h3 class="text-sm font-medium text-slate-600 mb-2">Waived Batches</h3>
+            <p class="text-3xl font-bold text-blue-600">{{ dashboardStore.dashboardStats?.waived_batches || 0 }}</p>
           </div>
-          <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
-            <i class="pi pi-gift text-blue-600"></i>
+          <div class="p-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
+            <i class="pi pi-gift text-white text-2xl"></i>
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-lg border border-slate-200 p-4">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium text-slate-600">Total Revenue</p>
-            <p class="text-2xl font-bold text-slate-900">${{ formatCurrency(dashboardStore.dashboardStats?.total_revenue_cents || 0) }}</p>
+            <h3 class="text-sm font-medium text-slate-600 mb-2">Total Revenue</h3>
+            <p class="text-3xl font-bold text-slate-900">${{ formatCurrency(dashboardStore.dashboardStats?.total_revenue_cents || 0) }}</p>
           </div>
-          <div class="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
-            <i class="pi pi-dollar text-slate-600"></i>
+          <div class="p-4 bg-gradient-to-r from-slate-500 to-slate-600 rounded-xl">
+            <i class="pi pi-dollar text-white text-2xl"></i>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Batches Requiring Attention -->
-    <div class="bg-white rounded-lg border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-xl shadow-soft border border-slate-200 overflow-hidden">
       <div class="px-6 py-4 border-b border-slate-200">
         <h2 class="text-lg font-semibold text-slate-900">Batches Requiring Payment</h2>
         <p class="text-sm text-slate-600 mt-1">Unpaid batches that may need fee waiver</p>
@@ -107,7 +103,7 @@
           <template #body="{ data }">
             <div>
               <p class="font-medium text-slate-900">{{ data.user_email }}</p>
-              <p class="text-sm text-slate-600">{{ data.user_id }}</p>
+              <p class="text-sm text-slate-600">{{ data.created_by }}</p>
             </div>
           </template>
         </Column>
@@ -155,14 +151,14 @@
                 label="Waive Fee"
                 @click="openWaiverDialog(data)"
                 size="small"
-                severity="success"
+                severity="primary"
                 outlined
               />
               <Button 
                 icon="pi pi-eye" 
                 @click="viewBatchDetails(data)"
                 size="small"
-                severity="info"
+                severity="secondary"
                 outlined
               />
             </div>
@@ -171,7 +167,7 @@
 
         <template #empty>
           <div class="text-center py-8">
-            <i class="pi pi-check-circle text-4xl text-green-500 mb-4"></i>
+            <i class="pi pi-check-circle text-4xl text-blue-500 mb-4"></i>
             <p class="text-lg font-medium text-slate-900 mb-2">All Caught Up!</p>
             <p class="text-slate-600">No batches require payment attention at this time.</p>
           </div>
@@ -185,7 +181,7 @@
       header="Waive Batch Payment Fee"
       :confirmHandle="handleWaivePayment"
       confirmLabel="Waive Payment"
-      confirmSeverity="success"
+      confirmSeverity="primary"
       cancelLabel="Cancel"
       successMessage="Payment fee waived successfully"
       errorMessage="Failed to waive payment fee"
@@ -194,7 +190,7 @@
     >
       <div class="space-y-6" v-if="selectedBatch">
         <!-- Batch Details -->
-        <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+        <div class="bg-slate-50 rounded-lg p-6 border border-slate-200">
           <h4 class="font-semibold text-slate-900 mb-3">Batch Details</h4>
           <div class="grid grid-cols-2 gap-4 text-sm">
             <div>
@@ -257,7 +253,8 @@
         </div>
       </div>
     </MyDialog>
-  </div>
+    </div>
+  </PageWrapper>
 </template>
 
 <script setup>
@@ -275,6 +272,7 @@ import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import Textarea from 'primevue/textarea';
 import MyDialog from '@/components/MyDialog.vue';
+import PageWrapper from '@/components/Layout/PageWrapper.vue';
 
 const toast = useToast();
 const batchesStore = useAdminBatchesStore();

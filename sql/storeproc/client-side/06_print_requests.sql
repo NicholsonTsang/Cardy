@@ -4,7 +4,12 @@
 -- =================================================================
 
 -- Request card printing for a batch
-CREATE OR REPLACE FUNCTION request_card_printing(p_batch_id UUID, p_shipping_address TEXT)
+CREATE OR REPLACE FUNCTION request_card_printing(
+    p_batch_id UUID, 
+    p_shipping_address TEXT,
+    p_contact_email TEXT DEFAULT NULL,
+    p_contact_whatsapp TEXT DEFAULT NULL
+)
 RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_print_request_id UUID;
@@ -13,6 +18,7 @@ DECLARE
     v_payment_completed BOOLEAN;
     v_payment_waived BOOLEAN;
     v_cards_generated BOOLEAN;
+    v_user_email TEXT;
 BEGIN
     -- Check if the user owns the card associated with the batch and get payment status
     SELECT c.user_id, cb.is_disabled, cb.payment_completed, cb.payment_waived, cb.cards_generated
@@ -51,15 +57,24 @@ BEGIN
         RAISE EXCEPTION 'An active print request already exists for this batch.';
     END IF;
 
+    -- Get user email for fallback if no contact email provided
+    SELECT email INTO v_user_email 
+    FROM auth.users 
+    WHERE id = auth.uid();
+
     INSERT INTO print_requests (
         batch_id,
         user_id,
         shipping_address,
+        contact_email,
+        contact_whatsapp,
         status
     ) VALUES (
         p_batch_id,
         auth.uid(),
         p_shipping_address,
+        COALESCE(p_contact_email, v_user_email),
+        p_contact_whatsapp,
         'SUBMITTED'
     )
     RETURNING id INTO v_print_request_id;
@@ -148,6 +163,8 @@ RETURNS TABLE (
     user_id UUID,
     status TEXT, -- "PrintRequestStatus"
     shipping_address TEXT,
+    contact_email TEXT,
+    contact_whatsapp TEXT,
     admin_notes TEXT,
     requested_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
@@ -176,6 +193,8 @@ BEGIN
         pr.user_id,
         pr.status::TEXT, -- Cast ENUM to TEXT for broader client compatibility if needed
         pr.shipping_address,
+        pr.contact_email,
+        pr.contact_whatsapp,
         pr.admin_notes,
         pr.requested_at,
         pr.updated_at

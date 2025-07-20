@@ -1,24 +1,20 @@
 <template>
-  <div class="space-y-6">
-    <!-- Page Header -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-      <div>
-        <h1 class="text-2xl font-bold text-slate-900">Verification Management</h1>
-        <p class="text-slate-600 mt-1">Review and manage user verification submissions</p>
-      </div>
-      <div class="flex items-center gap-3">
-        <Button 
-          icon="pi pi-refresh" 
-          label="Refresh" 
-          outlined
-          @click="refreshData"
-          :loading="verificationsStore.isLoadingVerifications"
-        />
-      </div>
-    </div>
+  <PageWrapper title="Verification Management" description="Review and manage user verification submissions">
+    <template #actions>
+      <Button 
+        icon="pi pi-refresh" 
+        label="Refresh" 
+        severity="secondary"
+        outlined
+        @click="refreshData"
+        :loading="verificationsStore.isLoadingVerifications"
+      />
+    </template>
+    
+    <div class="space-y-6">
 
     <!-- Enhanced Filters and Search -->
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+    <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6">
       <h3 class="text-lg font-semibold text-slate-900 mb-4">Filters & Search</h3>
       <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
         <!-- Search -->
@@ -112,7 +108,7 @@
             <Tag 
               v-if="dateRange && dateRange.length === 2" 
               value="Date Range Applied" 
-              severity="success" 
+              severity="info" 
               class="text-xs"
             />
             <Tag 
@@ -127,6 +123,7 @@
           v-if="hasActiveFilters"
           label="Clear All Filters" 
           icon="pi pi-times"
+          severity="secondary"
           text
           @click="clearAllFilters"
           size="small"
@@ -136,7 +133,7 @@
 
     <!-- Statistics Cards -->
     <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-slate-600 mb-2">Pending Review</h3>
@@ -149,20 +146,20 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-slate-600 mb-2">Approved</h3>
-            <p class="text-3xl font-bold text-green-600">{{ getFilteredStatusCount('APPROVED') }}</p>
+            <p class="text-3xl font-bold text-blue-600">{{ getFilteredStatusCount('APPROVED') }}</p>
             <p class="text-xs text-slate-500 mt-1">{{ stats.approved_verifications || 0 }} total</p>
           </div>
-          <div class="p-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl">
+          <div class="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
             <i class="pi pi-check-circle text-white text-2xl"></i>
           </div>
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-slate-600 mb-2">Rejected</h3>
@@ -175,7 +172,7 @@
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+      <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
         <div class="flex items-center justify-between">
           <div>
             <h3 class="text-sm font-medium text-slate-600 mb-2">Avg. Review Time</h3>
@@ -190,7 +187,7 @@
     </div>
 
     <!-- Verification Table -->
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-xl shadow-soft border border-slate-200 overflow-hidden">
       <div class="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
         <div class="flex items-center justify-between">
           <h3 class="text-lg font-semibold text-slate-900">All Verifications</h3>
@@ -299,7 +296,7 @@
               <div class="flex gap-2">
                 <Button 
                   icon="pi pi-eye" 
-                  severity="info" 
+                  severity="secondary" 
                   outlined
                   size="small"
                   @click="openVerificationReview(data)" 
@@ -308,7 +305,7 @@
                 <Button 
                   v-if="data.verification_status === 'PENDING_REVIEW'"
                   icon="pi pi-check" 
-                  severity="success" 
+                  severity="primary" 
                   outlined
                   size="small"
                   @click="quickApprove(data)" 
@@ -336,7 +333,7 @@
       header="Review Verification"
       :confirmHandle="handleVerificationReview"
       :confirmLabel="reviewAction === 'APPROVED' ? 'Approve Verification' : 'Reject Verification'"
-      :confirmSeverity="reviewAction === 'APPROVED' ? 'success' : 'danger'"
+      :confirmSeverity="reviewAction === 'APPROVED' ? 'primary' : 'danger'"
       successMessage="Verification reviewed successfully"
       errorMessage="Failed to review verification"
       @hide="closeVerificationDialog"
@@ -344,7 +341,7 @@
     >
       <div v-if="selectedVerification" class="space-y-6">
         <!-- User Information -->
-        <div class="bg-slate-50 rounded-lg p-6">
+        <div class="bg-slate-50 rounded-lg p-6 border border-slate-200">
           <h4 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <i class="pi pi-user text-blue-600"></i>
             User Information
@@ -404,7 +401,7 @@
         </div>
 
         <!-- Supporting Documents -->
-        <div v-if="selectedVerification.supporting_documents?.length" class="bg-blue-50 rounded-lg p-6">
+        <div v-if="selectedVerification.supporting_documents?.length" class="bg-blue-50 rounded-lg p-6 border border-blue-200">
           <h4 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <i class="pi pi-file text-blue-600"></i>
             Supporting Documents ({{ selectedVerification.supporting_documents.length }})
@@ -427,6 +424,7 @@
               <Button 
                 label="View" 
                 icon="pi pi-external-link"
+                severity="secondary"
                 size="small"
                 outlined
                 @click="viewDocument(doc)"
@@ -436,7 +434,7 @@
         </div>
 
         <!-- Previous Admin Feedback -->
-        <div v-if="selectedVerification.admin_feedback" class="bg-amber-50 rounded-lg p-6">
+        <div v-if="selectedVerification.admin_feedback" class="bg-amber-50 rounded-lg p-6 border border-amber-200">
           <h4 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <i class="pi pi-comment text-amber-600"></i>
             Previous Admin Feedback
@@ -447,21 +445,21 @@
         </div>
 
         <!-- Review Decision -->
-        <div class="bg-slate-50 rounded-lg p-6">
+        <div class="bg-slate-50 rounded-lg p-6 border border-slate-200">
           <h4 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <i class="pi pi-gavel text-red-600"></i>
             Admin Review Decision
           </h4>
           
-          <div class="flex gap-4 mb-6">
+          <div class="flex gap-3 mb-6">
             <Button 
               label="Approve Verification" 
               icon="pi pi-check"
-              severity="success"
+              severity="primary"
               size="large"
               :outlined="reviewAction !== 'APPROVED'"
               @click="reviewAction = 'APPROVED'"
-              class="flex-1"
+              class="flex-1 py-3 px-6 font-semibold"
             />
             <Button 
               label="Reject Verification" 
@@ -470,7 +468,7 @@
               size="large"
               :outlined="reviewAction !== 'REJECTED'"
               @click="reviewAction = 'REJECTED'"
-              class="flex-1"
+              class="flex-1 py-3 px-6 font-semibold"
             />
           </div>
           
@@ -480,9 +478,11 @@
               <span v-if="reviewAction === 'REJECTED'" class="text-red-600">*</span>
             </label>
             <Textarea 
+              ref="feedbackTextarea"
               v-model="reviewFeedback" 
               rows="6"
               class="w-full"
+              :class="{ 'border-red-500 focus:border-red-500': reviewAction === 'REJECTED' && !reviewFeedback.trim() }"
               :placeholder="reviewAction === 'APPROVED' 
                 ? 'Optional: Add notes about the approval. This will be visible to the user.' 
                 : 'Required: Explain why this verification was rejected. Be specific about what needs to be corrected.'"
@@ -498,13 +498,15 @@
     <!-- Quick Action Confirmation Dialogs -->
     <ConfirmDialog group="quickApprove"></ConfirmDialog>
     <ConfirmDialog group="quickReject"></ConfirmDialog>
-  </div>
+    </div>
+  </PageWrapper>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAdminVerificationsStore, useAdminFeedbackStore, useAdminDashboardStore } from '@/stores/admin'
+import PageWrapper from '@/components/Layout/PageWrapper.vue'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import DataView from 'primevue/dataview'
@@ -540,6 +542,7 @@ const selectedVerification = ref(null)
 const selectedStatus = ref(null)
 const reviewAction = ref('APPROVED')
 const reviewFeedback = ref('')
+const feedbackTextarea = ref(null)
 
 // Enhanced filtering data
 const searchQuery = ref('')
@@ -796,9 +799,27 @@ const closeVerificationDialog = () => {
 }
 
 const handleVerificationReview = async () => {
-  if (!selectedVerification.value) return Promise.reject('No verification selected')
+  if (!selectedVerification.value) {
+    toast.add({ 
+      severity: 'warn', 
+      summary: 'No Selection', 
+      detail: 'Please select a verification to review', 
+      life: 3000 
+    })
+    return Promise.reject('No verification selected')
+  }
   
   if (reviewAction.value === 'REJECTED' && !reviewFeedback.value.trim()) {
+    toast.add({ 
+      severity: 'warn', 
+      summary: 'Feedback Required', 
+      detail: 'Please provide feedback when rejecting a verification', 
+      life: 5000 
+    })
+    // Focus the feedback textarea for better UX
+    if (feedbackTextarea.value && feedbackTextarea.value.$el) {
+      feedbackTextarea.value.$el.querySelector('textarea')?.focus()
+    }
     return Promise.reject('Feedback is required when rejecting a verification')
   }
 
@@ -812,6 +833,12 @@ const handleVerificationReview = async () => {
     await refreshData()
     return Promise.resolve()
   } catch (error) {
+    toast.add({ 
+      severity: 'error', 
+      summary: 'Review Failed', 
+      detail: error.message || 'Failed to review verification', 
+      life: 5000 
+    })
     return Promise.reject(error.message || 'Failed to review verification')
   }
 }
@@ -824,7 +851,8 @@ const quickApprove = (verification) => {
     icon: 'pi pi-check-circle',
     acceptLabel: 'Approve',
     rejectLabel: 'Cancel',
-    acceptClass: 'p-button-success',
+    acceptClass: 'p-button-success p-button-sm',
+    rejectClass: 'p-button-outlined p-button-sm',
     accept: async () => {
       try {
         await verificationsStore.reviewVerification(
@@ -859,7 +887,8 @@ const quickReject = (verification) => {
     icon: 'pi pi-exclamation-triangle',
     acceptLabel: 'Open Detailed Review',
     rejectLabel: 'Cancel',
-    acceptClass: 'p-button-warning',
+    acceptClass: 'p-button-warning p-button-sm',
+    rejectClass: 'p-button-outlined p-button-sm',
     accept: () => {
       openVerificationReview(verification)
       reviewAction.value = 'REJECTED'

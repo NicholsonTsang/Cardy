@@ -186,7 +186,7 @@ watch(() => props.contentItem, (newVal) => {
             id: newVal.id,
             name: newVal.name || '',
             description: newVal.description || newVal.content || '',
-            imageUrl: newVal.imageUrl || (newVal.image_urls && newVal.image_urls.length > 0 ? newVal.image_urls[0] : null),
+            imageUrl: newVal.imageUrl || newVal.image_url || null,
             aiMetadata: newVal.aiMetadata || newVal.ai_metadata || ''
         };
         originalData.value = { ...formData.value };

@@ -6,7 +6,7 @@
     :modal="props.modal"
     :style="props.style"
     :draggable="false"
-    class="custom-dialog w-full mx-4 md:w-4/5 lg:w-3/4 xl:w-2/3 2xl:w-1/2"
+    class="custom-dialog w-full mx-4 md:w-4/5 lg:w-3/4 xl:w-2/3 2xl:w-1/2 standardized-dialog"
     @hide="onInternalDialogHide"
     :maximizable="true"
     :closable="true"
@@ -31,7 +31,8 @@
           v-if="props.showConfirm"
           :label="props.confirmLabel" 
           icon="pi pi-check" 
-          :severity="props.confirmSeverity"
+          :severity="props.confirmClass ? undefined : props.confirmSeverity"
+          :class="props.confirmClass || ''"
           :loading="loading" 
           @click="handleConfirm" 
         />
@@ -75,6 +76,10 @@ const props = defineProps({
   confirmSeverity: {
     type: String,
     default: 'primary'
+  },
+  confirmClass: {
+    type: String,
+    default: ''
   },
   cancelLabel: {
     type: String,
@@ -177,5 +182,54 @@ const handleCancel = () => {
 <style scoped>
 .dialog-content {
   @apply py-4;
+}
+
+/* Ensure proper button sizing in dialog footer */
+:deep(.p-dialog-footer .p-button) {
+  min-width: 5rem;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  padding: 0.75rem 1.25rem;
+}
+
+/* Ensure proper header button sizing */
+:deep(.p-dialog-header-icon) {
+  width: 3rem;
+  height: 3rem;
+  border-radius: var(--border-radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-slate-600);
+  background-color: transparent;
+  transition: all 0.2s ease-in-out;
+  border: 1px solid transparent;
+}
+
+:deep(.p-dialog-header-icon:hover) {
+  color: var(--color-slate-900);
+  background-color: var(--color-slate-200);
+  border-color: var(--color-slate-300);
+}
+
+:deep(.p-dialog-header-icon i) {
+  font-size: var(--font-size-xl);
+}
+
+/* Mobile adjustments */
+@media (max-width: 768px) {
+  :deep(.p-dialog-header-icon) {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+  
+  :deep(.p-dialog-header-icon i) {
+    font-size: var(--font-size-lg);
+  }
+  
+  :deep(.p-dialog-footer .p-button) {
+    padding: 0.625rem 1rem;
+    font-size: var(--font-size-sm);
+  }
 }
 </style>

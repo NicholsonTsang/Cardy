@@ -24,8 +24,32 @@
                         <h2 class="text-xl font-semibold text-slate-900">{{ selectedCard.name }}</h2>
                         <p class="text-slate-600 mt-1">Manage your card design, content, and issuance.</p>
                     </div>
+                    <div>
+                        <Button 
+                            label="Export" 
+                            icon="pi pi-download" 
+                            @click="showExportDialog = true"
+                            class="export-button bg-blue-600 hover:bg-blue-700 text-white border-0"
+                        />
+                    </div>
                 </div>
             </div>
+
+            <!-- Export Dialog -->
+            <Dialog 
+                v-model:visible="showExportDialog"
+                modal 
+                header="Export Card Data"
+                :style="{ width: '40rem' }"
+                :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
+                class="export-dialog standardized-dialog"
+            >
+                <CardExport 
+                    :card="selectedCard"
+                    @exported="handleExportComplete"
+                    @cancel="handleExportCancel"
+                />
+            </Dialog>
 
             <!-- Tabs -->
             <Tabs :value="activeTab" @update:value="$emit('update:activeTab', $event)" class="flex-1 flex flex-col">
@@ -43,6 +67,8 @@
                             <CardGeneral 
                                 v-if="index === 0"
                                 :cardProp="selectedCard"
+                                :loading="loading"
+                                :updateCardFn="updateCardFn"
                                 @update-card="$emit('update-card', $event)"
                                 @cancel-edit="$emit('cancel-edit')"
                                 @delete-card-requested="$emit('delete-card', $event)"
@@ -88,11 +114,14 @@ import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
 import TabPanels from 'primevue/tabpanels';
 import TabPanel from 'primevue/tabpanel';
+import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
 import CardGeneral from '@/components/CardComponents/Card.vue';
 import CardContent from '@/components/CardContent/CardContent.vue';
 import CardIssuanceCheckout from '@/components/CardIssuanceCheckout.vue';
 import CardAccessQR from '@/components/CardComponents/CardAccessQR.vue';
 import MobilePreview from '@/components/CardComponents/MobilePreview.vue';
+import CardExport from '@/components/Card/Export/CardExport.vue';
 
 const props = defineProps({
     selectedCard: {
@@ -106,6 +135,14 @@ const props = defineProps({
     hasCards: {
         type: Boolean,
         default: false
+    },
+    loading: {
+        type: Boolean,
+        default: false
+    },
+    updateCardFn: {
+        type: Function,
+        default: null
     }
 });
 
@@ -113,11 +150,30 @@ const emit = defineEmits([
     'update:activeTab',
     'update-card',
     'cancel-edit',
-    'delete-card'
+    'delete-card',
+    'card-imported'
 ]);
+
+// Handle card import event
+function handleCardImported() {
+    emit('card-imported');
+}
+
+// Handle export completion
+function handleExportComplete() {
+    showExportDialog.value = false;
+}
+
+// Handle export cancellation
+function handleExportCancel() {
+    showExportDialog.value = false;
+}
 
 // Counter to force MobilePreview refresh when tab is clicked
 const mobilePreviewRefreshKey = ref(0);
+
+// Export dialog state
+const showExportDialog = ref(false);
 
 const tabs = [
     { label: 'General', icon: 'pi pi-cog' },
@@ -147,5 +203,8 @@ watch(() => props.activeTab, (newTab, oldTab) => {
 </script>
 
 <style scoped>
-/* Component uses global theme styles */
+/* Custom export dialog styles */
+:deep(.export-dialog .p-dialog-content) {
+  padding: 0;
+}
 </style>

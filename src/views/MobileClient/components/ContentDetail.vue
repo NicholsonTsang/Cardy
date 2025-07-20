@@ -5,8 +5,8 @@
       <!-- Hero Image -->
       <div class="hero-image">
         <img 
-          v-if="content.content_item_image_urls && content.content_item_image_urls.length > 0"
-          :src="content.content_item_image_urls[0]" 
+          v-if="content.content_item_image_url"
+          :src="content.content_item_image_url" 
           :alt="content.content_item_name"
           class="image"
         />
@@ -45,8 +45,8 @@
           <!-- Thumbnail -->
           <div class="sub-item-image">
             <img 
-              v-if="subItem.content_item_image_urls && subItem.content_item_image_urls.length > 0"
-              :src="subItem.content_item_image_urls[0]" 
+              v-if="subItem.content_item_image_url"
+              :src="subItem.content_item_image_url" 
               :alt="subItem.content_item_name"
               class="thumbnail"
             />
@@ -85,7 +85,7 @@ interface ContentItem {
   content_item_parent_id: string | null
   content_item_name: string
   content_item_content: string
-  content_item_image_urls: string[]
+  content_item_image_url: string
   content_item_ai_metadata: string
   content_item_sort_order: number
 }
@@ -93,7 +93,7 @@ interface ContentItem {
 interface CardData {
   card_name: string
   card_description: string
-  card_image_urls: string[]
+  card_image_url: string
   conversation_ai_enabled: boolean
   ai_prompt: string
   is_activated: boolean

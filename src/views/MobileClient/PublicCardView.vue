@@ -82,7 +82,7 @@ import ContentDetail from './components/ContentDetail.vue'
 interface CardData {
   card_name: string
   card_description: string
-  card_image_urls: string[]
+  card_image_url: string
   conversation_ai_enabled: boolean
   ai_prompt: string
   is_activated: boolean
@@ -94,7 +94,7 @@ interface ContentItem {
   content_item_parent_id: string | null
   content_item_name: string
   content_item_content: string
-  content_item_image_urls: string[]
+  content_item_image_url: string
   content_item_ai_metadata: string
   content_item_sort_order: number
 }
@@ -180,7 +180,7 @@ async function fetchCardData() {
     cardData.value = {
       card_name: firstRow.card_name,
       card_description: firstRow.card_description,
-      card_image_urls: firstRow.card_image_urls || [],
+      card_image_url: firstRow.card_image_url,
       conversation_ai_enabled: firstRow.card_conversation_ai_enabled,
       ai_prompt: firstRow.card_ai_prompt,
       is_activated: isPreviewMode.value ? true : firstRow.is_activated, // Always activated in preview mode
@@ -195,7 +195,7 @@ async function fetchCardData() {
         content_item_parent_id: item.content_item_parent_id,
         content_item_name: item.content_item_name,
         content_item_content: item.content_item_content,
-        content_item_image_urls: item.content_item_image_urls || [],
+        content_item_image_url: item.content_item_image_url,
         content_item_ai_metadata: item.content_item_ai_metadata,
         content_item_sort_order: item.content_item_sort_order || 0
       }))

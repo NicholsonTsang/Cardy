@@ -14,6 +14,8 @@ export interface AdminPrintRequest {
   user_public_name: string;
   status: string;
   shipping_address: string;
+  contact_email?: string;
+  contact_whatsapp?: string;
   admin_notes: string;
   requested_at: string;
   updated_at: string;
@@ -42,8 +44,12 @@ export const useAdminPrintRequestsStore = defineStore('adminPrintRequests', () =
       const { data, error } = await supabase.rpc('get_all_print_requests', {
         p_status: status || null
       })
-      if (error) throw error
+      if (error) {
+        console.error('RPC Error:', error)
+        throw error
+      }
       
+      console.log('Fetched print requests:', data)
       printRequests.value = data || []
       return data || []
     } catch (error) {
@@ -60,7 +66,7 @@ export const useAdminPrintRequestsStore = defineStore('adminPrintRequests', () =
     adminNotes?: string
   ): Promise<boolean> => {
     try {
-      const { data, error } = await supabase.rpc('update_print_request_status', {
+      const { data, error } = await supabase.rpc('admin_update_print_request_status', {
         p_request_id: requestId,
         p_new_status: status,
         p_admin_notes: adminNotes || null

@@ -2,6 +2,8 @@
     <CardCreateEditView
         :cardProp="card"
         modeProp="view"
+        :loading="loading"
+        :updateCardFn="updateCardFn"
         @create-card="handleCreateCard"
         @update-card="handleUpdateCard"
         @cancel-edit="handleCancelEdit"
@@ -16,6 +18,14 @@ const props = defineProps({
     card: {
         type: Object,
         default: () => null // Allow null if no card is selected/available
+    },
+    loading: {
+        type: Boolean,
+        default: false
+    },
+    updateCardFn: {
+        type: Function,
+        default: null
     }
 });
 
