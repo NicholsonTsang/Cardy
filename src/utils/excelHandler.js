@@ -115,14 +115,14 @@ async function createCardSheet(workbook, cardData, options) {
   const titleCell = worksheet.getCell('A1');
   titleCell.value = `${EXCEL_CONFIG.ICONS.CARD} CardStudio - Card Export Data`;
   styleTitle(titleCell);
-  worksheet.mergeCells('A1:G1');
+  worksheet.mergeCells('A1:F1');
   worksheet.getRow(1).height = 30;
   
   // Row 2: Clear user instructions
   const instructionCell = worksheet.getCell('A2');
   instructionCell.value = `${EXCEL_CONFIG.ICONS.INSTRUCTIONS} Fill in your card details below. Required fields marked with *. Use dropdowns for validation.`;
   styleInstructions(instructionCell);
-  worksheet.mergeCells('A2:G2');
+  worksheet.mergeCells('A2:F2');
   worksheet.getRow(2).height = 25;
   
   // Row 3: Headers with icons (same as template)
@@ -144,7 +144,6 @@ async function createCardSheet(workbook, cardData, options) {
     'Brief description of card purpose',
     'AI instructions (e.g., "You are a helpful guide...")',
     'Select true/false from dropdown',
-    'Choose layout from dropdown menu',
     'Select QR position: TL/TR/BL/BR',
     'Paste image or leave blank'
   ];
@@ -184,7 +183,7 @@ async function createCardSheet(workbook, cardData, options) {
   
   // Embed card image with proper sizing
   if (cardData.image_url) {
-    await embedImages(workbook, worksheet, [cardData.image_url], EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW, 7);
+    await embedImages(workbook, worksheet, [cardData.image_url], EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW, 6);
   }
   
   // Professional column widths (same as template)
@@ -193,7 +192,6 @@ async function createCardSheet(workbook, cardData, options) {
     { width: 40 }, // Description
     { width: 45 }, // AI Prompt
     { width: 15 }, // AI Enabled
-    { width: 28 }, // Render Mode
     { width: 15 }, // QR Position
     { width: 25 }  // Card Image
   ];
@@ -202,9 +200,8 @@ async function createCardSheet(workbook, cardData, options) {
   dataRow.getCell(1).note = 'This will be the main title displayed on your card';
   dataRow.getCell(3).note = 'Define how AI should behave when helping visitors';
   dataRow.getCell(4).note = 'Enable voice conversations with visitors';
-  dataRow.getCell(5).note = 'Controls how content items are organized';
-  dataRow.getCell(6).note = 'Where QR code appears on physical card';
-  dataRow.getCell(7).note = 'Right-click and paste image, or drag and drop';
+  dataRow.getCell(5).note = 'Where QR code appears on physical card';
+  dataRow.getCell(6).note = 'Right-click and paste image, or drag and drop';
   
   // Freeze headers
   worksheet.views = [{ state: 'frozen', ySplit: EXCEL_CONFIG.CARD_SHEET.DESCRIPTIONS_ROW }];
@@ -354,14 +351,14 @@ async function createTemplateCardSheet(workbook) {
   const titleCell = worksheet.getCell('A1');
   titleCell.value = `${EXCEL_CONFIG.ICONS.CARD} CardStudio - Card Import Template`;
   styleTitle(titleCell);
-  worksheet.mergeCells('A1:G1');
+  worksheet.mergeCells('A1:F1');
   worksheet.getRow(1).height = 30;
   
   // Row 2: Clear user instructions
   const instructionCell = worksheet.getCell('A2');
   instructionCell.value = `${EXCEL_CONFIG.ICONS.INSTRUCTIONS} Fill in your card details below. Required fields marked with *. Use dropdowns for validation.`;
   styleInstructions(instructionCell);
-  worksheet.mergeCells('A2:G2');
+  worksheet.mergeCells('A2:F2');
   worksheet.getRow(2).height = 25;
   
   // Row 3: Headers with icons
@@ -383,7 +380,6 @@ async function createTemplateCardSheet(workbook) {
     'Brief description of card purpose',
     'AI instructions (e.g., "You are a helpful guide...")',
     'Select true/false from dropdown',
-    'Choose layout from dropdown menu',
     'Select QR position: TL/TR/BL/BR',
     'Paste image or leave blank'
   ];
@@ -398,7 +394,6 @@ async function createTemplateCardSheet(workbook) {
     '', // Description
     '', // AI Prompt
     '', // AI Enabled
-    '', // Render Mode
     '', // QR Position
     ''  // Card Image
   ];
@@ -423,9 +418,8 @@ async function createTemplateCardSheet(workbook) {
   dataRow.getCell(1).note = 'This will be the main title displayed on your card';
   dataRow.getCell(3).note = 'Define how AI should behave when helping visitors';
   dataRow.getCell(4).note = 'Enable voice conversations with visitors';
-  dataRow.getCell(5).note = 'Controls how content items are organized';
-  dataRow.getCell(6).note = 'Where QR code appears on physical card';
-  dataRow.getCell(7).note = 'Right-click and paste image, or drag and drop';
+  dataRow.getCell(5).note = 'Where QR code appears on physical card';
+  dataRow.getCell(6).note = 'Right-click and paste image, or drag and drop';
   
   dataRow.height = 35; // Larger row for better readability
   
@@ -435,7 +429,6 @@ async function createTemplateCardSheet(workbook) {
     { width: 40 }, // Description
     { width: 45 }, // AI Prompt
     { width: 15 }, // AI Enabled
-    { width: 28 }, // Render Mode
     { width: 15 }, // QR Position
     { width: 25 }  // Card Image
   ];
@@ -591,6 +584,17 @@ async function parseCardSheet(worksheet, result) {
         // Convert boolean fields
         if (dbField === 'conversation_ai_enabled') {
           cardData[dbField] = ['true', 'yes', '1', true].includes(processedValue.toString().toLowerCase());
+        } else if (dbField === 'qr_code_position') {
+          // Validate QR code position
+          const validPositions = ['TL', 'TR', 'BL', 'BR'];
+          const upperValue = processedValue.toString().toUpperCase();
+          if (validPositions.includes(upperValue)) {
+            cardData[dbField] = upperValue;
+          } else {
+            console.warn(`Invalid QR position '${processedValue}', defaulting to 'BR'`);
+            cardData[dbField] = 'BR';
+            result.warnings.push(`Invalid QR Position '${processedValue}' - using default 'BR' (Bottom Right). Valid options: TL, TR, BL, BR`);
+          }
         } else {
           cardData[dbField] = processedValue;
         }

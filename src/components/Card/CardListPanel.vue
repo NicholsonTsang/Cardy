@@ -26,12 +26,24 @@
                 />
             </IconField>
             
-            <!-- Bulk Import Button -->
-            <div class="mt-4">
+            <!-- Import & Example Buttons -->
+            <div class="mt-4 space-y-2">
+                <div class="relative">
+                    <Button 
+                        label="Try Example"
+                        icon="pi pi-star"
+                        @click="openExampleImport"
+                        class="w-full bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white border-0 font-semibold shadow-sm"
+                    />
+                    <!-- NEW Badge -->
+                    <div class="absolute -top-1 -right-1 bg-yellow-400 text-yellow-900 text-xs px-1.5 py-0.5 rounded-full font-bold text-[10px] leading-tight">
+                        NEW
+                    </div>
+                </div>
                 <Button 
                     label="Import Cards"
                     icon="pi pi-upload"
-                    @click="showImportDialog = true"
+                    @click="openRegularImport"
                     class="w-full bg-blue-600 hover:bg-blue-700 text-white border-0"
                 />
             </div>
@@ -40,12 +52,12 @@
             <Dialog 
                 v-model:visible="showImportDialog"
                 modal 
-                header="Import Cards"
+                :header="importDialogTitle"
                 :style="{ width: '90vw', maxWidth: '50rem' }"
                 :breakpoints="{ '1199px': '85vw', '768px': '95vw', '575px': '98vw' }"
                 class="import-dialog standardized-dialog"
             >
-                <CardBulkImport @imported="handleImportComplete" />
+                <CardBulkImport :mode="importMode" @imported="handleImportComplete" />
             </Dialog>
             
             <!-- Date Filters -->
@@ -83,13 +95,25 @@
             />
         </div>
 
-        <!-- Empty State -->
-        <div v-if="cards.length === 0 && !searchQuery" class="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+        <!-- Optimized Empty State -->
+        <div v-if="cards.length === 0 && !searchQuery" class="flex-1 flex flex-col justify-center p-4 text-center min-h-[400px]">
+            <!-- Compact Header -->
+            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="pi pi-id-card text-2xl text-slate-400"></i>
             </div>
-            <h3 class="text-lg font-medium text-slate-900 mb-2">No Cards Yet</h3>
-            <p class="text-slate-500 mb-4">Click the '+' button above to create one.</p>
+            <h3 class="text-xl font-semibold text-slate-900 mb-2">No Cards Yet</h3>
+            <p class="text-slate-500 mb-8">Start by creating your first card design</p>
+            
+            <!-- Primary Action -->
+            <div class="mb-6">
+                <Button 
+                    label="Create New Card"
+                    icon="pi pi-plus"
+                    @click="$emit('create-card')"
+                    class="bg-blue-600 hover:bg-blue-700 text-white border-0 px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+                />
+            </div>
+            
         </div>
 
         <!-- No Search Results -->
@@ -188,6 +212,23 @@ const emit = defineEmits([
 
 // Dialog state
 const showImportDialog = ref(false);
+const importMode = ref('regular'); // 'regular' or 'example'
+
+// Computed dialog title
+const importDialogTitle = computed(() => {
+    return importMode.value === 'example' ? 'Try Example Import' : 'Import Cards';
+});
+
+// Handle opening different import modes
+function openExampleImport() {
+    importMode.value = 'example';
+    showImportDialog.value = true;
+}
+
+function openRegularImport() {
+    importMode.value = 'regular';
+    showImportDialog.value = true;
+}
 
 // Handle import completion
 function handleImportComplete(results) {

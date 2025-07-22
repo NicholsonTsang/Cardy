@@ -17,34 +17,78 @@
       </div>
     </div>
 
-    <!-- Quick Actions -->
-    <div class="quick-actions">
-      <div class="action-grid">
-        <div class="action-item template-action">
-          <Button 
-            label="Download Template"
-            icon="pi pi-download"
-            @click="downloadTemplate"
-            class="template-button bg-blue-600 hover:bg-blue-700 text-white border-0"
-          />
-          <span class="action-desc">Excel template with formulas and examples</span>
+    <!-- Example Mode Content -->
+    <div v-if="props.mode === 'example'" class="example-mode-content">
+      <!-- Try Example Section -->
+      <div class="try-example-section">
+        <div class="example-header">
+          <div class="example-badge">
+            <i class="pi pi-star"></i>
+            <span>Learn with Example</span>
+          </div>
+          <h3 class="example-title">Try Our Pre-Built Museum Card</h3>
+          <p class="example-description">
+            Load a complete example card with AI prompts, content hierarchy, and embedded images. Perfect for learning how CardStudio works!
+          </p>
         </div>
         
-        <div class="action-item import-action">
+        <div class="example-action">
           <Button 
-            label="Choose Excel File"
-            icon="pi pi-file-excel"
-            @click="triggerFileInput"
+            label="Load Example Card"
+            icon="pi pi-play"
+            @click="loadExampleFile"
             :disabled="importing"
-            class="import-button bg-blue-600 hover:bg-blue-700 text-white border-0"
+            class="example-button bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white border-0 font-semibold shadow-lg hover:shadow-xl transition-all"
           />
-          <span class="action-desc">Upload .xlsx file with embedded images</span>
+          <div class="example-features">
+            <div class="feature-item">
+              <i class="pi pi-check-circle text-emerald-600"></i>
+              <span>Museum artifacts & exhibits</span>
+            </div>
+            <div class="feature-item">
+              <i class="pi pi-check-circle text-emerald-600"></i>
+              <span>AI conversation prompts</span>
+            </div>
+            <div class="feature-item">
+              <i class="pi pi-check-circle text-emerald-600"></i>
+              <span>Professional images included</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- File Upload Area -->
-    <div class="upload-zone" :class="{ 'dragover': isDragover, 'has-file': selectedFile }">
+    <!-- Regular Import Mode Content -->
+    <div v-else class="regular-import-content">
+      <!-- Quick Actions -->
+      <div class="quick-actions">
+        <div class="action-grid">
+          <div class="action-item template-action">
+            <Button 
+              label="Download Template"
+              icon="pi pi-download"
+              @click="downloadTemplate"
+              class="template-button bg-blue-600 hover:bg-blue-700 text-white border-0"
+            />
+            <span class="action-desc">Excel template with formulas and examples</span>
+          </div>
+          
+          <div class="action-item import-action">
+            <Button 
+              label="Choose Excel File"
+              icon="pi pi-file-excel"
+              @click="triggerFileInput"
+              :disabled="importing"
+              class="import-button bg-blue-600 hover:bg-blue-700 text-white border-0"
+            />
+            <span class="action-desc">Upload .xlsx file with embedded images</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- File Upload Area - Only for regular import mode -->
+    <div v-if="props.mode === 'regular'" class="upload-zone" :class="{ 'dragover': isDragover, 'has-file': selectedFile }">
       <input 
         ref="fileInput"
         type="file"
@@ -400,6 +444,14 @@ import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import { Transition } from 'vue'
 
+const props = defineProps({
+  mode: {
+    type: String,
+    default: 'regular', // 'regular' or 'example'
+    validator: value => ['regular', 'example'].includes(value)
+  }
+})
+
 const emit = defineEmits(['imported'])
 const toast = useToast()
 
@@ -475,6 +527,45 @@ const organizedContentItems = computed(() => {
 })
 
 // Methods
+async function loadExampleFile() {
+  try {
+    // Show loading state
+    importStatus.value = 'Loading example file...'
+    
+    // Fetch the example file from the public folder
+    const response = await fetch('/document/ImportFileExample.xlsx')
+    if (!response.ok) {
+      throw new Error(`Failed to load example file: ${response.status}`)
+    }
+    
+    // Convert response to blob and then to File object
+    const blob = await response.blob()
+    const file = new File([blob], 'ImportFileExample.xlsx', {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    })
+    
+    // Process the example file same as user uploads
+    await processFile(file)
+    
+    // Show success message with educational context
+    toast.add({
+      severity: 'info',
+      summary: 'Example Loaded',
+      detail: 'Review the preview below to understand the import structure, then click "Confirm Import" to try it!',
+      life: 6000
+    })
+    
+  } catch (error) {
+    console.error('Example file loading error:', error)
+    toast.add({
+      severity: 'error',
+      summary: 'Example Load Failed', 
+      detail: 'Could not load the example file. Please try downloading and uploading the template manually.',
+      life: 5000
+    })
+  }
+}
+
 async function downloadTemplate() {
   try {
     const buffer = await generateImportTemplate()
@@ -721,12 +812,21 @@ async function importDataToDatabase(importData) {
         }
       }
 
+      // Validate and sanitize QR code position
+      const validQrPositions = ['TL', 'TR', 'BL', 'BR'];
+      let qrPosition = importData.cardData.qr_code_position || 'BR';
+      if (!validQrPositions.includes(qrPosition)) {
+        console.warn(`Invalid QR position '${qrPosition}', defaulting to 'BR'`);
+        qrPosition = 'BR';
+        results.warnings++;
+      }
+
       const { data, error } = await supabase.rpc('create_card', {
         p_name: importData.cardData.name,
         p_description: importData.cardData.description,
         p_ai_prompt: importData.cardData.ai_prompt,
         p_conversation_ai_enabled: importData.cardData.conversation_ai_enabled,
-        p_qr_code_position: importData.cardData.qr_code_position,
+        p_qr_code_position: qrPosition,
         p_image_url: cardImageUrl
       })
       
@@ -963,6 +1063,65 @@ function getChildImageUrl(child, parentIndex, childIndex) {
 
 .import-description {
   @apply text-slate-600 text-sm leading-relaxed;
+}
+
+/* Mode-specific content containers */
+.example-mode-content {
+  @apply space-y-6;
+}
+
+.regular-import-content {
+  @apply space-y-6;
+}
+
+/* Try Example Section Styles */
+.try-example-section {
+  @apply bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 border-2 border-emerald-200 rounded-xl p-6 space-y-4 relative overflow-hidden;
+}
+
+.try-example-section::before {
+  content: '';
+  @apply absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500;
+}
+
+.example-header {
+  @apply text-center space-y-3;
+}
+
+.example-badge {
+  @apply inline-flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg;
+}
+
+.example-badge i {
+  @apply text-yellow-300;
+}
+
+.example-title {
+  @apply text-2xl font-bold text-slate-900;
+}
+
+.example-description {
+  @apply text-slate-600 max-w-md mx-auto leading-relaxed;
+}
+
+.example-action {
+  @apply text-center space-y-4;
+}
+
+.example-button {
+  @apply px-8 py-4 text-lg font-bold rounded-xl shadow-xl transform hover:scale-105;
+}
+
+.example-features {
+  @apply flex flex-col sm:flex-row gap-3 justify-center items-center text-sm;
+}
+
+.feature-item {
+  @apply flex items-center gap-2 bg-white/70 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/50 shadow-sm;
+}
+
+.feature-item span {
+  @apply text-slate-700 font-medium;
 }
 
 .quick-actions {
@@ -1257,6 +1416,31 @@ function getChildImageUrl(child, parentIndex, childIndex) {
   
   .import-description {
     @apply text-xs;
+  }
+  
+  /* Mobile responsive styles for Try Example section */
+  .try-example-section {
+    @apply p-4 space-y-3;
+  }
+  
+  .example-title {
+    @apply text-xl;
+  }
+  
+  .example-description {
+    @apply text-sm;
+  }
+  
+  .example-button {
+    @apply px-6 py-3 text-base;
+  }
+  
+  .example-features {
+    @apply flex-col gap-2;
+  }
+  
+  .feature-item {
+    @apply px-2 py-1 text-xs;
   }
 }
 

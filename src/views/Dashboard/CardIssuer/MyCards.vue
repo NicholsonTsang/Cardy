@@ -308,9 +308,26 @@ const triggerDeleteConfirmation = (cardId) => {
 };
 
 // Import/Export handlers
-const handleBulkImport = async () => {
+const handleBulkImport = async (importResults) => {
     try {
+        const cardsBefore = cards.value.length;
         await cardStore.fetchCards();
+        
+        // Auto-select the newly imported card if one was created
+        if (importResults?.success && cards.value.length > cardsBefore) {
+            // Get the most recently created card (likely the imported one)
+            const sortedCards = [...cards.value].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            if (sortedCards.length > 0) {
+                selectedCardId.value = sortedCards[0].id;
+                // Show helpful toast to guide user
+                toast.add({
+                    severity: 'success',
+                    summary: 'Import Complete!',
+                    detail: 'Your example card has been imported and selected. Explore the different tabs to see the structure.',
+                    life: 6000
+                });
+            }
+        }
         // Success feedback provided by updated card list
     } catch (error) {
         handleError(error, 'refreshing cards after import');
