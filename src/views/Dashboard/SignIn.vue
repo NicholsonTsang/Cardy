@@ -143,9 +143,9 @@ import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import InputText from 'primevue/inputtext';
 import Message from 'primevue/message';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth.js';
-import { useRouter } from 'vue-router';
+import { useRouter, useRoute } from 'vue-router';
 
 const email = ref('');
 const password = ref('');
@@ -153,6 +153,7 @@ const rememberMe = ref(false);
 
 const authStore = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 
 const isLoading = ref(false);
 const errorMessage = ref('');
@@ -206,6 +207,26 @@ async function handleGoogleSignIn() {
 function goToSignUp() {
     router.push('/signup');
 }
+
+// Handle OAuth callback
+onMounted(async () => {
+    const oauthSuccess = route.query.oauth;
+    if (oauthSuccess === 'success' && authStore.isLoggedIn() && authStore.isEmailVerified()) {
+        // User has successfully signed in via OAuth, redirect to their default page
+        await authStore.refreshSession();
+        
+        // Get user role and redirect
+        const user = authStore.session?.user;
+        const role = user?.app_metadata?.role || user?.user_metadata?.role || user?.raw_user_meta_data?.role;
+        const userRole = role === 'card_issuer' ? 'cardIssuer' : role;
+        
+        if (userRole === 'admin') {
+            router.push({ name: 'admindashboard' });
+        } else {
+            router.push({ name: 'mycards' });
+        }
+    }
+});
 </script>
 
 <style scoped>

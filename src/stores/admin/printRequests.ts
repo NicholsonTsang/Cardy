@@ -38,11 +38,19 @@ export const useAdminPrintRequestsStore = defineStore('adminPrintRequests', () =
   )
 
   // Actions
-  const fetchAllPrintRequests = async (status?: string): Promise<AdminPrintRequest[]> => {
+  const fetchAllPrintRequests = async (
+    status?: string,
+    searchQuery?: string,
+    limit = 100,
+    offset = 0
+  ): Promise<AdminPrintRequest[]> => {
     isLoadingPrintRequests.value = true
     try {
       const { data, error } = await supabase.rpc('get_all_print_requests', {
-        p_status: status || null
+        p_status: status || null,
+        p_search_query: searchQuery || null,
+        p_limit: limit,
+        p_offset: offset
       })
       if (error) {
         console.error('RPC Error:', error)

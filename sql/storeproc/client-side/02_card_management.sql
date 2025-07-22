@@ -41,8 +41,7 @@ CREATE OR REPLACE FUNCTION create_card(
     p_image_url TEXT DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
     p_ai_prompt TEXT DEFAULT '',
-    p_qr_code_position TEXT DEFAULT 'BR',
-    p_content_render_mode TEXT DEFAULT 'SINGLE_SERIES_MULTI_ITEMS'
+    p_qr_code_position TEXT DEFAULT 'BR'
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -55,8 +54,7 @@ BEGIN
         image_url,
         conversation_ai_enabled,
         ai_prompt,
-        qr_code_position,
-        content_render_mode
+        qr_code_position
     ) VALUES (
         auth.uid(),
         p_name,
@@ -64,8 +62,7 @@ BEGIN
         p_image_url,
         p_conversation_ai_enabled,
         p_ai_prompt,
-        p_qr_code_position::"QRCodePosition",
-        p_content_render_mode::"ContentRenderMode"
+        p_qr_code_position::"QRCodePosition"
     )
     RETURNING id INTO v_card_id;
     
@@ -77,20 +74,19 @@ BEGIN
     -- Log card creation in audit table
     INSERT INTO admin_audit_log (
         admin_user_id,
+        admin_email,
         target_user_id,
+        target_user_email,
         action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
+        description,
+        details
     ) VALUES (
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         'CARD_CREATION',
-        'User created new card design',
-        jsonb_build_object(
-            'card_exists', false
-        ),
+        'User created new card design: ' || p_name,
         jsonb_build_object(
             'card_id', v_card_id,
             'name', p_name,
@@ -99,18 +95,9 @@ BEGIN
             'conversation_ai_enabled', p_conversation_ai_enabled,
             'ai_prompt', p_ai_prompt,
             'qr_code_position', p_qr_code_position,
-            'content_render_mode', p_content_render_mode,
-            'created_at', NOW()
-        ),
-        jsonb_build_object(
-            'action', 'card_created',
-            'card_id', v_card_id,
-            'card_name', p_name,
             'is_admin_action', (caller_role = 'admin'),
             'has_ai_features', p_conversation_ai_enabled,
             'has_custom_image', (p_image_url IS NOT NULL),
-            'content_mode', p_content_render_mode,
-            'qr_position', p_qr_code_position,
             'security_impact', 'low',
             'business_impact', 'medium'
         )
@@ -127,7 +114,6 @@ RETURNS TABLE (
     user_id UUID,
     name TEXT,
     description TEXT,
-    content_render_mode TEXT,
     qr_code_position TEXT,
     image_url TEXT,
     conversation_ai_enabled BOOLEAN,
@@ -142,7 +128,6 @@ BEGIN
         c.user_id,
         c.name, 
         c.description, 
-        c.content_render_mode::TEXT,
         c.qr_code_position::TEXT,
         c.image_url, 
         c.conversation_ai_enabled,
@@ -246,44 +231,40 @@ BEGIN
     -- Log card update in audit table
     INSERT INTO admin_audit_log (
         admin_user_id,
+        admin_email,
         target_user_id,
+        target_user_email,
         action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
+        description,
+        details
     ) VALUES (
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         v_old_record.user_id,
+        (SELECT email FROM auth.users WHERE id = v_old_record.user_id),
         'CARD_UPDATE',
-        'User updated card design',
-        jsonb_build_object(
-            'card_id', v_old_record.id,
-            'name', v_old_record.name,
-            'description', v_old_record.description,
-            'image_url', v_old_record.image_url,
-            'conversation_ai_enabled', v_old_record.conversation_ai_enabled,
-            'ai_prompt', v_old_record.ai_prompt,
-            'qr_code_position', v_old_record.qr_code_position,
-            'updated_at', v_old_record.updated_at
-        ),
+        'User updated card design: ' || COALESCE(p_name, v_old_record.name),
         jsonb_build_object(
             'card_id', p_card_id,
-            'name', COALESCE(p_name, v_old_record.name),
-            'description', COALESCE(p_description, v_old_record.description),
-            'image_url', COALESCE(p_image_url, v_old_record.image_url),
-            'conversation_ai_enabled', COALESCE(p_conversation_ai_enabled, v_old_record.conversation_ai_enabled),
-            'ai_prompt', COALESCE(p_ai_prompt, v_old_record.ai_prompt),
-            'qr_code_position', COALESCE(p_qr_code_position, v_old_record.qr_code_position::TEXT),
-            'updated_at', NOW()
-        ),
-        jsonb_build_object(
-            'action', 'card_updated',
-            'card_id', p_card_id,
-            'card_name', COALESCE(p_name, v_old_record.name),
-            'is_admin_action', (caller_role = 'admin'),
+            'old_values', jsonb_build_object(
+                'name', v_old_record.name,
+                'description', v_old_record.description,
+                'image_url', v_old_record.image_url,
+                'conversation_ai_enabled', v_old_record.conversation_ai_enabled,
+                'ai_prompt', v_old_record.ai_prompt,
+                'qr_code_position', v_old_record.qr_code_position
+            ),
+            'new_values', jsonb_build_object(
+                'name', COALESCE(p_name, v_old_record.name),
+                'description', COALESCE(p_description, v_old_record.description),
+                'image_url', COALESCE(p_image_url, v_old_record.image_url),
+                'conversation_ai_enabled', COALESCE(p_conversation_ai_enabled, v_old_record.conversation_ai_enabled),
+                'ai_prompt', COALESCE(p_ai_prompt, v_old_record.ai_prompt),
+                'qr_code_position', COALESCE(p_qr_code_position, v_old_record.qr_code_position::TEXT)
+            ),
             'changes_made', v_changes_made,
             'fields_changed', ARRAY(SELECT jsonb_object_keys(v_changes_made)),
+            'is_admin_action', (caller_role = 'admin'),
             'ai_features_changed', (
                 (p_conversation_ai_enabled IS NOT NULL AND p_conversation_ai_enabled != v_old_record.conversation_ai_enabled) OR
                 (p_ai_prompt IS NOT NULL AND p_ai_prompt != v_old_record.ai_prompt)
@@ -319,7 +300,6 @@ BEGIN
         c.conversation_ai_enabled,
         c.ai_prompt,
         c.qr_code_position,
-        c.content_render_mode,
         c.user_id,
         c.created_at,
         c.updated_at
@@ -352,39 +332,32 @@ BEGIN
     -- Log card deletion in audit table (CRITICAL for compliance)
     INSERT INTO admin_audit_log (
         admin_user_id,
+        admin_email,
         target_user_id,
+        target_user_email,
         action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
+        description,
+        details
     ) VALUES (
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         v_card_record.user_id,
+        (SELECT email FROM auth.users WHERE id = v_card_record.user_id),
         'CARD_DELETION',
-        'User deleted card design',
+        'User deleted card design: ' || v_card_record.name,
         jsonb_build_object(
             'card_id', v_card_record.id,
-            'name', v_card_record.name,
-            'description', v_card_record.description,
-            'image_url', v_card_record.image_url,
-            'conversation_ai_enabled', v_card_record.conversation_ai_enabled,
-            'ai_prompt', v_card_record.ai_prompt,
-            'qr_code_position', v_card_record.qr_code_position,
-            'content_render_mode', v_card_record.content_render_mode,
-            'created_at', v_card_record.created_at,
-            'updated_at', v_card_record.updated_at,
-            'associated_batches', v_batches_count,
-            'issued_cards_affected', v_issued_cards_count
-        ),
-        jsonb_build_object(
-            'deleted_at', NOW(),
-            'card_exists', false
-        ),
-        jsonb_build_object(
-            'action', 'card_deleted',
-            'card_id', p_card_id,
             'card_name', v_card_record.name,
+            'deleted_card_data', jsonb_build_object(
+                'name', v_card_record.name,
+                'description', v_card_record.description,
+                'image_url', v_card_record.image_url,
+                'conversation_ai_enabled', v_card_record.conversation_ai_enabled,
+                'ai_prompt', v_card_record.ai_prompt,
+                'qr_code_position', v_card_record.qr_code_position,
+                'created_at', v_card_record.created_at,
+                'updated_at', v_card_record.updated_at
+            ),
             'is_admin_action', (caller_role = 'admin'),
             'data_impact', CASE 
                 WHEN v_issued_cards_count > 0 THEN 'high'
@@ -394,7 +367,8 @@ BEGIN
             'batches_affected', v_batches_count,
             'issued_cards_affected', v_issued_cards_count,
             'had_ai_features', v_card_record.conversation_ai_enabled,
-            'security_impact', 'medium'
+            'security_impact', 'medium',
+            'deleted_at', NOW()
         )
     );
     

@@ -237,35 +237,32 @@ BEGIN
         
         INSERT INTO admin_audit_log (
             admin_user_id,
+            admin_email,
             target_user_id,
+            target_user_email,
             action_type,
-            reason,
-            old_values,
-            new_values,
-            action_details
+            description,
+            details
         ) VALUES (
             auth.uid(),
+            (SELECT email FROM auth.users WHERE id = auth.uid()),
             v_user_id,
+            (SELECT email FROM auth.users WHERE id = v_user_id),
             'BATCH_STATUS_CHANGE',
             CASE 
-                WHEN p_disable_status THEN 'Batch disabled by user'
-                ELSE 'Batch enabled by user'
+                WHEN p_disable_status THEN 'Batch disabled by user: ' || batch_name
+                ELSE 'Batch enabled by user: ' || batch_name
             END,
             jsonb_build_object(
-                'is_disabled', NOT p_disable_status
-            ),
-            jsonb_build_object(
-                'is_disabled', p_disable_status,
-                'updated_at', NOW()
-            ),
-            jsonb_build_object(
+                'batch_id', p_batch_id,
+                'card_id', v_card_id,
+                'batch_name', batch_name,
                 'action', CASE 
                     WHEN p_disable_status THEN 'batch_disabled'
                     ELSE 'batch_enabled'
                 END,
-                'batch_id', p_batch_id,
-                'card_id', v_card_id,
-                'batch_name', batch_name,
+                'old_status', jsonb_build_object('is_disabled', NOT p_disable_status),
+                'new_status', jsonb_build_object('is_disabled', p_disable_status),
                 'is_admin_action', is_admin_action,
                 'status_change', CASE 
                     WHEN p_disable_status THEN 'enabled_to_disabled'
@@ -429,42 +426,41 @@ BEGIN
         
         INSERT INTO admin_audit_log (
             admin_user_id,
+            admin_email,
             target_user_id,
+            target_user_email,
             action_type,
-            reason,
-            old_values,
-            new_values,
-            action_details
+            description,
+            details
         ) VALUES (
             auth.uid(),
+            (SELECT email FROM auth.users WHERE id = auth.uid()),
             v_batch_record.card_owner,
+            (SELECT email FROM auth.users WHERE id = v_batch_record.card_owner),
             'CARD_GENERATION',
             CASE 
-                WHEN is_admin_action THEN 'Admin generated cards for batch'
-                WHEN v_batch_record.payment_waived THEN 'Cards generated after payment waiver'
-                ELSE 'Cards generated after payment confirmation'
+                WHEN is_admin_action THEN 'Admin generated cards for batch: ' || v_batch_record.batch_name
+                WHEN v_batch_record.payment_waived THEN 'Cards generated after payment waiver: ' || v_batch_record.batch_name
+                ELSE 'Cards generated after payment confirmation: ' || v_batch_record.batch_name
             END,
             jsonb_build_object(
-                'cards_generated', false,
-                'cards_count', 0
-            ),
-            jsonb_build_object(
-                'cards_generated', true,
-                'cards_generated_at', NOW(),
-                'cards_count', v_batch_record.cards_count
-            ),
-            jsonb_build_object(
-                'action', 'cards_generated',
                 'batch_id', p_batch_id,
                 'card_id', v_batch_record.card_id,
+                'batch_name', v_batch_record.batch_name,
                 'cards_count', v_batch_record.cards_count,
+                'action', 'cards_generated',
+                'old_status', jsonb_build_object('cards_generated', false, 'cards_count', 0),
+                'new_status', jsonb_build_object(
+                    'cards_generated', true,
+                    'cards_generated_at', NOW(),
+                    'cards_count', v_batch_record.cards_count
+                ),
                 'is_admin_action', is_admin_action,
                 'payment_method', CASE 
                     WHEN v_batch_record.payment_waived THEN 'waived'
                     WHEN v_batch_record.payment_completed THEN 'stripe'
                     ELSE 'unknown'
-                END,
-                'batch_name', v_batch_record.batch_name
+                END
             )
         );
     END;

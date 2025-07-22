@@ -1,29 +1,19 @@
--- Create enum type for content render modes
-DO $$ BEGIN
-    CREATE TYPE "ContentRenderMode" AS ENUM (
-        'SINGLE_SERIES_MULTI_ITEMS',
-        'MULTI_SERIES_NO_ITEMS',
-        'MULTI_SERIES_MULTI_ITEMS'
-    );
-EXCEPTION
-    WHEN duplicate_object THEN null;
-END $$;
+-- ContentRenderMode enum removed - not used in frontend
 
--- Create enum type for QR Code Position
 DO $$ BEGIN
-    CREATE TYPE "QRCodePosition" AS ENUM (
+    CREATE TYPE public."QRCodePosition" AS ENUM (
         'TL', -- Top Left
         'TR', -- Top Right
         'BL', -- Bottom Left
         'BR'  -- Bottom Right
     );
 EXCEPTION
-    WHEN duplicate_object THEN null;
+    WHEN duplicate_object THEN NULL;
+    WHEN insufficient_privilege THEN NULL;
 END $$;
 
--- Create enum type for Print Request Status
 DO $$ BEGIN
-    CREATE TYPE "PrintRequestStatus" AS ENUM (
+    CREATE TYPE public."PrintRequestStatus" AS ENUM (
         'SUBMITTED',
         'PROCESSING',
         'SHIPPING',
@@ -31,33 +21,38 @@ DO $$ BEGIN
         'CANCELLED'
     );
 EXCEPTION
-    WHEN duplicate_object THEN null;
+    WHEN duplicate_object THEN NULL;
+    WHEN insufficient_privilege THEN NULL;
 END $$;
 
--- Create enum type for Profile Status
 DO $$ BEGIN
-    CREATE TYPE "ProfileStatus" AS ENUM (
+    CREATE TYPE public."ProfileStatus" AS ENUM (
         'NOT_SUBMITTED',
         'PENDING_REVIEW',
         'APPROVED',
         'REJECTED'
     );
 EXCEPTION
-    WHEN duplicate_object THEN null;
+    WHEN duplicate_object THEN NULL;
+    WHEN insufficient_privilege THEN NULL;
 END $$;
 
--- Create enum type for UserRole
 DO $$ BEGIN
-    CREATE TYPE "UserRole" AS ENUM (
+    CREATE TYPE public."UserRole" AS ENUM (
         'user',
         'cardIssuer',
         'admin'
     );
 EXCEPTION
-    WHEN duplicate_object THEN null;
+    WHEN duplicate_object THEN NULL;
+    WHEN insufficient_privilege THEN NULL;
 END $$;
 
+-- Simple audit system - no complex enums, just practical logging
+
 -- Drop tables if they exist
+DROP TABLE IF EXISTS print_request_feedbacks CASCADE;
+DROP TABLE IF EXISTS verification_feedbacks CASCADE;
 DROP TABLE IF EXISTS print_requests CASCADE;
 DROP TABLE IF EXISTS issue_cards CASCADE;
 DROP TABLE IF EXISTS card_batches CASCADE;
@@ -67,7 +62,6 @@ DROP TABLE IF EXISTS user_profiles CASCADE;
 DROP TABLE IF EXISTS admin_audit_log CASCADE;
 DROP TABLE IF EXISTS admin_feedback_history CASCADE;
 DROP TABLE IF EXISTS batch_payments CASCADE;
-DROP TABLE IF EXISTS shipping_addresses CASCADE;
 
 -- User Profiles table
 CREATE TABLE user_profiles (
@@ -79,38 +73,11 @@ CREATE TABLE user_profiles (
     full_name TEXT, -- Legal name for verification (only required during verification)
     verification_status "ProfileStatus" DEFAULT 'NOT_SUBMITTED' NOT NULL,
     supporting_documents TEXT[],
-    admin_feedback TEXT,
     verified_at TIMESTAMP WITH TIME ZONE, -- When verification was completed
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Shipping Addresses table
-CREATE TABLE shipping_addresses (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    label TEXT NOT NULL, -- e.g., "Home", "Office", "Warehouse"
-    recipient_name TEXT NOT NULL,
-    address_line1 TEXT NOT NULL,
-    address_line2 TEXT,
-    city TEXT NOT NULL,
-    state_province TEXT NOT NULL,
-    postal_code TEXT NOT NULL,
-    country TEXT NOT NULL,
-    phone TEXT,
-    is_default BOOLEAN DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Ensure only one default address per user
-CREATE UNIQUE INDEX idx_shipping_addresses_default_per_user 
-ON shipping_addresses(user_id) 
-WHERE is_default = true;
-
--- Add indexes for efficient querying
-CREATE INDEX IF NOT EXISTS idx_shipping_addresses_user_id ON shipping_addresses(user_id);
-CREATE INDEX IF NOT EXISTS idx_shipping_addresses_is_default ON shipping_addresses(is_default);
 
 -- Cards table
 CREATE TABLE cards (
@@ -118,7 +85,6 @@ CREATE TABLE cards (
     user_id UUID NOT NULL, -- REFERENCES auth.users(id) if you have auth schema users table
     name TEXT NOT NULL,
     description TEXT DEFAULT '' NOT NULL,
-    content_render_mode "ContentRenderMode" DEFAULT 'SINGLE_SERIES_MULTI_ITEMS',
     qr_code_position "QRCodePosition" DEFAULT 'BR',
     image_url TEXT,
     conversation_ai_enabled BOOLEAN DEFAULT false,
@@ -212,7 +178,6 @@ CREATE TABLE print_requests (
     shipping_address TEXT,
     contact_email TEXT,
     contact_whatsapp TEXT,
-    admin_notes TEXT,
     requested_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -244,54 +209,63 @@ CREATE TRIGGER update_user_profiles_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION update_updated_at();
 
--- Admin Audit Log table for tracking administrative actions
+-- =================================================================
+-- SIMPLIFIED AUDIT SYSTEM
+-- Simple admin action logging and feedback
+-- =================================================================
+
+-- Simple admin audit log - just track what admins do
 CREATE TABLE admin_audit_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    admin_user_id UUID NOT NULL, -- REFERENCES auth.users(id) - who performed the action
-    target_user_id UUID, -- REFERENCES auth.users(id) - who was affected (nullable for system-wide actions)
-    action_type TEXT NOT NULL, -- e.g., 'ROLE_CHANGE', 'MANUAL_VERIFICATION', 'RESET_VERIFICATION', 'STATUS_UPDATE'
-    action_details JSONB, -- Flexible field for action-specific data
-    reason TEXT NOT NULL, -- The reason provided by the admin
-    old_values JSONB, -- Previous state (for changes)
-    new_values JSONB, -- New state (for changes)
+    admin_user_id UUID NOT NULL,
+    admin_email VARCHAR(255),
+    target_user_id UUID,
+    target_user_email VARCHAR(255),
+    action_type VARCHAR(50) NOT NULL, -- Simple text field
+    description TEXT NOT NULL, -- What happened
+    details JSONB, -- Any additional data
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Indexes for efficient querying
-CREATE INDEX IF NOT EXISTS idx_admin_audit_admin_user ON admin_audit_log(admin_user_id);
-CREATE INDEX IF NOT EXISTS idx_admin_audit_target_user ON admin_audit_log(target_user_id);
-CREATE INDEX IF NOT EXISTS idx_admin_audit_action_type ON admin_audit_log(action_type);
-CREATE INDEX IF NOT EXISTS idx_admin_audit_created_at ON admin_audit_log(created_at);
-
--- Admin Feedback History table for tracking all admin feedback/notes with full editability
-CREATE TABLE admin_feedback_history (
+-- Verification feedbacks table (best practice: separate tables for different entities)
+CREATE TABLE verification_feedbacks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    admin_user_id UUID NOT NULL, -- REFERENCES auth.users(id) - who created/edited the feedback
-    target_user_id UUID, -- REFERENCES auth.users(id) - who this feedback is about (for verification feedback)
-    target_entity_type TEXT NOT NULL, -- 'user_verification', 'print_request', 'role_change', 'general_admin_action'
-    target_entity_id UUID, -- ID of the specific entity (print_request.id, verification target user, etc.)
-    feedback_type TEXT NOT NULL, -- 'verification_feedback', 'print_notes', 'role_change_reason', 'admin_notes'
-    content TEXT NOT NULL, -- The actual feedback/notes content
-    is_current BOOLEAN DEFAULT TRUE, -- Whether this is the current version
-    version_number INTEGER DEFAULT 1, -- Version number for this feedback thread
-    parent_feedback_id UUID REFERENCES admin_feedback_history(id), -- Links to previous version if edited
-    action_context JSONB, -- Additional context (status changes, etc.)
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    user_id UUID NOT NULL REFERENCES user_profiles(user_id) ON DELETE CASCADE,
+    admin_user_id UUID NOT NULL, -- REFERENCES auth.users(id)
+    admin_email VARCHAR(255), -- Denormalized for performance
+    message TEXT NOT NULL,
+    is_internal BOOLEAN DEFAULT FALSE, -- Internal notes vs user-visible feedback
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Indexes for efficient querying
-CREATE INDEX IF NOT EXISTS idx_admin_feedback_admin_user ON admin_feedback_history(admin_user_id);
-CREATE INDEX IF NOT EXISTS idx_admin_feedback_target_user ON admin_feedback_history(target_user_id);
-CREATE INDEX IF NOT EXISTS idx_admin_feedback_target_entity ON admin_feedback_history(target_entity_type, target_entity_id);
-CREATE INDEX IF NOT EXISTS idx_admin_feedback_current ON admin_feedback_history(is_current);
-CREATE INDEX IF NOT EXISTS idx_admin_feedback_type ON admin_feedback_history(feedback_type);
-CREATE INDEX IF NOT EXISTS idx_admin_feedback_created ON admin_feedback_history(created_at);
+-- Print request feedbacks table
+CREATE TABLE print_request_feedbacks (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    print_request_id UUID NOT NULL REFERENCES print_requests(id) ON DELETE CASCADE,
+    admin_user_id UUID NOT NULL, -- REFERENCES auth.users(id)
+    admin_email VARCHAR(255), -- Denormalized for performance
+    message TEXT NOT NULL,
+    is_internal BOOLEAN DEFAULT FALSE, -- Internal notes vs user-visible feedback
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
--- Constraint to ensure only one current version per feedback thread
-CREATE UNIQUE INDEX idx_admin_feedback_current_unique 
-ON admin_feedback_history(target_entity_type, target_entity_id, feedback_type) 
-WHERE is_current = TRUE;
+-- Simple indexes for audit system
+CREATE INDEX IF NOT EXISTS idx_audit_admin_user ON admin_audit_log(admin_user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_action_type ON admin_audit_log(action_type);
+CREATE INDEX IF NOT EXISTS idx_audit_created_at ON admin_audit_log(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_audit_target_user ON admin_audit_log(target_user_id);
+
+-- Indexes for verification feedbacks
+CREATE INDEX IF NOT EXISTS idx_verification_feedbacks_user ON verification_feedbacks(user_id);
+CREATE INDEX IF NOT EXISTS idx_verification_feedbacks_admin ON verification_feedbacks(admin_user_id);
+CREATE INDEX IF NOT EXISTS idx_verification_feedbacks_created ON verification_feedbacks(created_at DESC);
+
+-- Indexes for print request feedbacks
+CREATE INDEX IF NOT EXISTS idx_print_feedbacks_request ON print_request_feedbacks(print_request_id);
+CREATE INDEX IF NOT EXISTS idx_print_feedbacks_admin ON print_request_feedbacks(admin_user_id);
+CREATE INDEX IF NOT EXISTS idx_print_feedbacks_created ON print_request_feedbacks(created_at DESC);
+
+-- No triggers or views needed - emails handled directly in stored procedures
 
 -- Batch Payments table for tracking Stripe Checkout sessions
 CREATE TABLE batch_payments (

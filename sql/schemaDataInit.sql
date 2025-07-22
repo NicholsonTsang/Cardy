@@ -34,13 +34,12 @@ DECLARE
     c2_item3_child3_id UUID := gen_random_uuid();
 BEGIN
 -- Card 1
-INSERT INTO cards (id, user_id, name, description, content_render_mode, qr_code_position, image_url, conversation_ai_enabled, ai_prompt)
+INSERT INTO cards (id, user_id, name, description, qr_code_position, image_url, conversation_ai_enabled, ai_prompt)
 VALUES (
     card1_id,
     target_user_id,
     'Treasures of the Ancient World',
     'Explore the wonders of ancient civilizations through this exclusive digital souvenir card. Delve into the mysteries of the past as you journey across continents and centuries, discovering the stories behind legendary artifacts, lost cities, and the people who shaped history. This card offers a curated selection of the world''s most fascinating treasures, from the golden tombs of Egypt to the intricate pottery of the Han Dynasty. Each section provides immersive multimedia content, expert insights, and interactive AI-guided conversations to bring the ancient world to life. Whether you are a history enthusiast or a curious traveler, this card is your gateway to a deeper understanding of humanity''s shared heritage.',
-    'SINGLE_SERIES_MULTI_ITEMS',
     'BR',
     'https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80',
     true,
@@ -99,13 +98,12 @@ INSERT INTO content_items (id, card_id, parent_id, name, content, image_url, ai_
  'https://images.unsplash.com/photo-1502086223501-7ea6ecd79368?auto=format&fit=crop&w=600&q=80',
  'han dynasty, silk road, paper, chinese art, innovation', 3);
 -- Card 2
-INSERT INTO cards (id, user_id, name, description, content_render_mode, qr_code_position, image_url, conversation_ai_enabled, ai_prompt)
+INSERT INTO cards (id, user_id, name, description, qr_code_position, image_url, conversation_ai_enabled, ai_prompt)
 VALUES (
     card2_id,
     target_user_id,
     'Wonders of the Natural World',
     'Embark on a breathtaking journey through the planet''s most extraordinary natural wonders. This digital souvenir card invites you to explore the awe-inspiring beauty and diversity of Earth, from towering mountains and lush rainforests to the mysterious depths of the oceans. Each section offers immersive multimedia experiences, scientific insights, and interactive AI-guided conversations that reveal the secrets of our natural world. Whether you are a nature lover, an adventurer, or a curious learner, this card provides a window into the forces that have shaped our environment and the remarkable life it sustains.',
-    'SINGLE_SERIES_MULTI_ITEMS',
     'BR',
     'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=600&q=80',
     true,

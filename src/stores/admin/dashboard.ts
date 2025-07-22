@@ -16,6 +16,12 @@ export interface AdminDashboardStats {
   print_requests_submitted: number;
   print_requests_processing: number;
   print_requests_shipping: number;
+  // New audit-related metrics
+  total_audit_entries: number;
+  critical_actions_today: number;
+  high_severity_actions_week: number;
+  unique_admin_users_month: number;
+  // Existing revenue metrics
   daily_revenue_cents: number;
   weekly_revenue_cents: number;
   monthly_revenue_cents: number;
@@ -29,6 +35,8 @@ export interface AdminDashboardStats {
   daily_issued_cards: number;
   weekly_issued_cards: number;
   monthly_issued_cards: number;
+  recent_feedback_count: number;
+  total_feedback_count: number;
 }
 
 export interface AdminActivity {
@@ -60,14 +68,14 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
   const fetchDashboardStats = async (): Promise<AdminDashboardStats> => {
     isLoadingStats.value = true
     try {
-      const { data, error } = await supabase.rpc('admin_get_system_stats')
+      const { data, error } = await supabase.rpc('admin_get_system_stats_enhanced')
       if (error) throw error
       
       // The stored procedure returns an array with a single object
       const dbStats = (data && data.length > 0) ? data[0] : null
       
       if (!dbStats) {
-        throw new Error('No data returned from admin_get_system_stats')
+        throw new Error('No data returned from admin_get_system_stats_enhanced')
       }
       
       // Map database fields to interface format
@@ -85,6 +93,14 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
         print_requests_submitted: dbStats.print_requests_submitted || 0,
         print_requests_processing: dbStats.print_requests_processing || 0,
         print_requests_shipping: dbStats.print_requests_shipping || 0,
+        // New audit metrics
+        total_audit_entries: dbStats.total_audit_entries || 0,
+        critical_actions_today: dbStats.payment_waivers_today || 0,
+        high_severity_actions_week: dbStats.role_changes_week || 0,
+        unique_admin_users_month: dbStats.unique_admin_users_month || 0,
+        recent_feedback_count: dbStats.recent_feedback_count || 0,
+        total_feedback_count: dbStats.total_feedback_count || 0,
+        // Existing revenue metrics
         daily_revenue_cents: dbStats.daily_revenue_cents || 0,
         weekly_revenue_cents: dbStats.weekly_revenue_cents || 0,
         monthly_revenue_cents: dbStats.monthly_revenue_cents || 0,

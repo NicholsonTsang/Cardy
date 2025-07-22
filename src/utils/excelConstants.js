@@ -20,7 +20,7 @@ export const EXCEL_CONFIG = {
     DATA_START_ROW: 5
   },
   COLUMNS: {
-    CARD: ['Name', 'Description', 'AI Prompt', 'AI Enabled', 'Render Mode', 'QR Position', 'Card Image'],
+    CARD: ['Name', 'Description', 'AI Prompt', 'AI Enabled', 'QR Position', 'Card Image'],
     CONTENT: ['Name', 'Content', 'AI Metadata', 'Sort Order', 'Layer', 'Parent Reference', 'Image']
   },
   COLORS: {
@@ -154,17 +154,6 @@ export function addDataValidation(cell, type, options = {}) {
         showErrorMessage: true,
         errorTitle: 'Invalid Value',
         error: 'Please select either true or false'
-      };
-      break;
-    
-    case 'renderMode':
-      cell.dataValidation = {
-        type: 'list',
-        allowBlank: false,
-        formulae: ['"SINGLE_SERIES_MULTI_ITEMS,MULTI_SERIES_NO_ITEMS,MULTI_SERIES_MULTI_ITEMS"'],
-        showErrorMessage: true,
-        errorTitle: 'Invalid Render Mode',
-        error: 'Please select a valid render mode from the dropdown'
       };
       break;
     

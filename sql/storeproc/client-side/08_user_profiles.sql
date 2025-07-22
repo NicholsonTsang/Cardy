@@ -13,7 +13,6 @@ RETURNS TABLE (
     full_name TEXT,
     verification_status "ProfileStatus",
     supporting_documents TEXT[],
-    admin_feedback TEXT,
     verified_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
@@ -29,7 +28,6 @@ BEGIN
         up.full_name,
         up.verification_status,
         up.supporting_documents,
-        up.admin_feedback,
         up.verified_at,
         up.created_at,
         up.updated_at
@@ -78,7 +76,6 @@ BEGIN
         full_name = p_full_name,
         supporting_documents = p_supporting_documents,
         verification_status = 'PENDING_REVIEW',
-        admin_feedback = NULL, -- Clear previous feedback
         updated_at = NOW()
     WHERE user_id = v_user_id;
     
@@ -119,37 +116,43 @@ BEGIN
     UPDATE public.user_profiles
     SET 
         verification_status = p_new_status,
-        admin_feedback = p_admin_feedback,
         verified_at = CASE WHEN p_new_status = 'APPROVED' THEN NOW() ELSE NULL END,
         updated_at = NOW()
     WHERE user_id = p_target_user_id;
 
-    -- Feedback is stored in admin_feedback column of user_profiles
-    -- and logged in admin_audit_log table below
+    -- Create feedback entry if admin provided feedback
+    IF p_admin_feedback IS NOT NULL AND LENGTH(TRIM(p_admin_feedback)) > 0 THEN
+        DECLARE
+            v_admin_email VARCHAR(255);
+        BEGIN
+            SELECT email INTO v_admin_email FROM auth.users WHERE id = auth.uid();
+            
+            INSERT INTO verification_feedbacks (
+                user_id,
+                admin_user_id,
+                admin_email,
+                message
+            ) VALUES (
+                p_target_user_id,
+                auth.uid(),
+                v_admin_email,
+                p_admin_feedback
+            );
+        END;
+    END IF;
 
-    -- Log in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        target_user_id,
-        action_type,
-        reason,
-        new_values,
-        action_details
-    ) VALUES (
+    -- Log using the centralized audit function (emails handled automatically)
+    PERFORM log_admin_action(
         auth.uid(),
-        p_target_user_id,
         'VERIFICATION_REVIEW',
-        p_admin_feedback,
+        CASE 
+            WHEN p_new_status = 'APPROVED' THEN 'Verification approved'
+            WHEN p_new_status = 'REJECTED' THEN 'Verification rejected'
+            ELSE 'Verification reviewed'
+        END || CASE WHEN p_admin_feedback IS NOT NULL THEN ': ' || p_admin_feedback ELSE '' END,
+        p_target_user_id,
         jsonb_build_object(
             'verification_status', p_new_status,
-            'verified_at', CASE WHEN p_new_status = 'APPROVED' THEN NOW() ELSE NULL END
-        ),
-        jsonb_build_object(
-            'action', CASE 
-                WHEN p_new_status = 'APPROVED' THEN 'verification_approved'
-                WHEN p_new_status = 'REJECTED' THEN 'verification_rejected'
-                ELSE 'verification_reviewed'
-            END,
             'review_type', p_new_status::TEXT,
             'has_feedback', (p_admin_feedback IS NOT NULL AND LENGTH(TRIM(p_admin_feedback)) > 0)
         )
@@ -183,7 +186,6 @@ BEGIN
         verification_status = 'NOT_SUBMITTED',
         full_name = NULL,
         supporting_documents = NULL,
-        admin_feedback = NULL,
         verified_at = NULL,
         updated_at = NOW()
     WHERE user_id = v_user_id;

@@ -2,39 +2,130 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { supabase } from '@/lib/supabase'
 
+// Simplified feedback interface with foreign key relationships
 export interface AdminFeedback {
   id: string;
   admin_user_id: string;
   admin_email: string;
-  content: string;
-  version_number: number;
-  action_context: any;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface AdminAuditLog {
-  id: string;
-  admin_user_id: string;
-  admin_email: string;
-  target_user_id: string;
-  target_user_email: string;
-  action_type: string;
-  reason: string;
-  old_values: any;
-  new_values: any;
-  action_details: any;
+  verification_user_id?: string;
+  print_request_id?: string;
+  message: string;
   created_at: string;
 }
 
 export const useAdminFeedbackStore = defineStore('adminFeedback', () => {
   // State
   const feedbackHistory = ref<AdminFeedback[]>([])
-  const auditLogs = ref<AdminAuditLog[]>([])
-  const isLoadingFeedback = ref(false)
-  const isLoadingAudit = ref(false)
+  const isLoading = ref(false)
+  const error = ref<string | null>(null)
 
-  // Feedback Management Actions
+  // Actions
+  const createFeedback = async (
+    targetUserId: string,
+    entityType: 'verification' | 'print_request',
+    entityId: string,
+    message: string
+  ): Promise<string> => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { data, error: createError } = await supabase.rpc('create_admin_feedback', {
+        p_target_user_id: targetUserId,
+        p_entity_type: entityType,
+        p_entity_id: entityId,
+        p_message: message
+      })
+
+      if (createError) throw createError
+
+      return data
+    } catch (err: any) {
+      console.error('Error creating feedback:', err)
+      error.value = err.message || 'Failed to create feedback'
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const getFeedbackHistory = async (
+    entityType: 'verification' | 'print_request',
+    entityId: string
+  ): Promise<AdminFeedback[]> => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { data, error: fetchError } = await supabase.rpc('get_admin_feedback_history', {
+        p_entity_type: entityType,
+        p_entity_id: entityId
+      })
+
+      if (fetchError) throw fetchError
+
+      feedbackHistory.value = data || []
+      return data || []
+    } catch (err: any) {
+      console.error('Error fetching feedback history:', err)
+      error.value = err.message || 'Failed to fetch feedback history'
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const clearFeedbackHistory = () => {
+    feedbackHistory.value = []
+    error.value = null
+  }
+
+  // New simplified functions for direct foreign key relationships
+  const getVerificationFeedbacks = async (userId: string): Promise<AdminFeedback[]> => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { data, error: fetchError } = await supabase.rpc('get_verification_feedbacks', {
+        p_user_id: userId
+      })
+
+      if (fetchError) throw fetchError
+
+      feedbackHistory.value = data || []
+      return data || []
+    } catch (err: any) {
+      console.error('Error fetching verification feedbacks:', err)
+      error.value = err.message || 'Failed to fetch verification feedbacks'
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  const getPrintRequestFeedbacks = async (requestId: string): Promise<AdminFeedback[]> => {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const { data, error: fetchError } = await supabase.rpc('get_print_request_feedbacks', {
+        p_request_id: requestId
+      })
+
+      if (fetchError) throw fetchError
+
+      feedbackHistory.value = data || []
+      return data || []
+    } catch (err: any) {
+      console.error('Error fetching print request feedbacks:', err)
+      error.value = err.message || 'Failed to fetch print request feedbacks'
+      return []
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  // Backward compatibility functions (for existing code)
   const createOrUpdateFeedback = async (
     targetEntityType: string,
     targetEntityId: string,
@@ -43,223 +134,27 @@ export const useAdminFeedbackStore = defineStore('adminFeedback', () => {
     content: string,
     actionContext?: any
   ) => {
-    try {
-      const { data, error } = await supabase.rpc('create_or_update_admin_feedback', {
-        p_target_entity_type: targetEntityType,
-        p_target_entity_id: targetEntityId,
-        p_target_user_id: targetUserId,
-        p_feedback_type: feedbackType,
-        p_content: content,
-        p_action_context: actionContext || null
-      })
-      
-      if (error) throw error
-      return data
-    } catch (error) {
-      console.error('Error creating/updating feedback:', error)
-      throw error
-    }
-  }
-
-  const getCurrentFeedback = async (
-    targetEntityType: string,
-    targetEntityId: string,
-    feedbackType: string
-  ) => {
-    try {
-      const { data, error } = await supabase.rpc('get_current_admin_feedback', {
-        p_target_entity_type: targetEntityType,
-        p_target_entity_id: targetEntityId,
-        p_feedback_type: feedbackType
-      })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching current feedback:', error)
-      throw error
-    }
-  }
-
-  const getFeedbackHistory = async (
-    targetEntityType: string,
-    targetEntityId: string,
-    feedbackType: string
-  ) => {
-    isLoadingFeedback.value = true
-    try {
-      const { data, error } = await supabase.rpc('get_admin_feedback_history', {
-        p_target_entity_type: targetEntityType,
-        p_target_entity_id: targetEntityId,
-        p_feedback_type: feedbackType
-      })
-      
-      if (error) throw error
-      
-      feedbackHistory.value = data || []
-      return data || []
-    } catch (error) {
-      console.error('Error fetching feedback history:', error)
-      throw error
-    } finally {
-      isLoadingFeedback.value = false
-    }
-  }
-
-  const getUserFeedbackSummary = async (userId: string) => {
-    try {
-      const { data, error } = await supabase.rpc('get_user_feedback_summary', {
-        p_target_user_id: userId
-      })
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching user feedback summary:', error)
-      throw error
-    }
-  }
-
-  // Audit Logs Management
-  const getAdminAuditLogs = async ({
-    action_type = null,
-    admin_user_id = null,
-    target_user_id = null,
-    start_date = null,
-    end_date = null,
-    limit = 50,
-    offset = 0
-  } = {}) => {
-    isLoadingAudit.value = true
-    try {
-      const { data, error } = await supabase.rpc('get_admin_audit_logs', {
-        p_action_type: action_type,
-        p_admin_user_id: admin_user_id || null,
-        p_target_user_id: target_user_id || null,
-        p_start_date: start_date,
-        p_end_date: end_date,
-        p_limit: limit,
-        p_offset: offset
-      })
-      
-      if (error) throw error
-      
-      auditLogs.value = data || []
-      return data || []
-    } catch (error) {
-      console.error('Error fetching audit logs:', error)
-      throw error
-    } finally {
-      isLoadingAudit.value = false
-    }
-  }
-
-  const getAdminAuditLogsCount = async ({
-    action_type = null,
-    admin_user_id = null,
-    target_user_id = null,
-    start_date = null,
-    end_date = null
-  } = {}) => {
-    try {
-      const { data, error } = await supabase.rpc('get_admin_audit_logs_count', {
-        p_action_type: action_type,
-        p_admin_user_id: admin_user_id || null,
-        p_target_user_id: target_user_id || null,
-        p_start_date: start_date,
-        p_end_date: end_date
-      })
-      
-      if (error) throw error
-      return data || 0
-    } catch (error) {
-      console.error('Error fetching audit logs count:', error)
-      throw error
-    }
-  }
-
-  const getAdminFeedbackHistory = async ({
-    target_entity_type = null,
-    target_entity_id = null,
-    feedback_type = null
-  } = {}) => {
-    try {
-      const { data, error } = await supabase.rpc('get_admin_feedback_history', {
-        p_target_entity_type: target_entity_type,
-        p_target_entity_id: target_entity_id,
-        p_feedback_type: feedback_type
-      })
-      
-      if (error) throw error
-      return data || []
-    } catch (error) {
-      console.error('Error fetching feedback history:', error)
-      throw error
-    }
-  }
-
-  // Utility functions
-  const getActionTypeLabel = (actionType: string): string => {
-    const labels: Record<string, string> = {
-      'USER_REGISTRATION': 'User Registration',
-      'ROLE_CHANGE': 'Role Change',
-      'VERIFICATION_REVIEW': 'Verification Review',
-      'MANUAL_VERIFICATION': 'Manual Verification',
-      'VERIFICATION_RESET': 'Verification Reset',
-      'CARD_CREATION': 'Card Creation',
-      'CARD_UPDATE': 'Card Update',
-      'CARD_DELETION': 'Card Deletion',
-      'BATCH_STATUS_CHANGE': 'Batch Status Change',
-      'CARD_GENERATION': 'Card Generation',
-      'PRINT_REQUEST_STATUS_UPDATE': 'Print Request Update',
-      'PRINT_REQUEST_WITHDRAWAL': 'Print Request Withdrawal',
-      'PAYMENT_WAIVER': 'Payment Waiver',
-      'PAYMENT_CREATION': 'Payment Creation',
-      'PAYMENT_CONFIRMATION': 'Payment Confirmation'
-    }
-    return labels[actionType] || actionType
-  }
-
-  const getActionTypeColor = (actionType: string): string => {
-    const colors: Record<string, string> = {
-      'USER_REGISTRATION': 'bg-green-500',
-      'ROLE_CHANGE': 'bg-yellow-500',
-      'VERIFICATION_REVIEW': 'bg-blue-500',
-      'MANUAL_VERIFICATION': 'bg-blue-600',
-      'VERIFICATION_RESET': 'bg-blue-400',
-      'CARD_CREATION': 'bg-emerald-500',
-      'CARD_UPDATE': 'bg-emerald-600',
-      'CARD_DELETION': 'bg-red-500',
-      'BATCH_STATUS_CHANGE': 'bg-cyan-500',
-      'CARD_GENERATION': 'bg-cyan-600',
-      'PRINT_REQUEST_STATUS_UPDATE': 'bg-purple-500',
-      'PRINT_REQUEST_WITHDRAWAL': 'bg-purple-400',
-      'PAYMENT_WAIVER': 'bg-orange-500',
-      'PAYMENT_CREATION': 'bg-orange-600',
-      'PAYMENT_CONFIRMATION': 'bg-orange-700'
-    }
-    return colors[actionType] || 'bg-slate-500'
+    // Map to new simplified system
+    const entityType = targetEntityType === 'user_profile' ? 'verification' : 'print_request'
+    return createFeedback(targetUserId, entityType as any, targetEntityId, content)
   }
 
   return {
     // State
     feedbackHistory,
-    auditLogs,
-    isLoadingFeedback,
-    isLoadingAudit,
-    
-    // Feedback Actions
-    createOrUpdateFeedback,
-    getCurrentFeedback,
+    isLoading,
+    error,
+
+    // New simplified actions
+    createFeedback,
     getFeedbackHistory,
-    getUserFeedbackSummary,
-    
-    // Audit Actions
-    getAdminAuditLogs,
-    getAdminAuditLogsCount,
-    getAdminFeedbackHistory,
-    
-    // Utilities
-    getActionTypeLabel,
-    getActionTypeColor
+    clearFeedbackHistory,
+
+    // Direct foreign key relationship functions
+    getVerificationFeedbacks,
+    getPrintRequestFeedbacks,
+
+    // Backward compatibility
+    createOrUpdateFeedback
   }
-}) 
+})

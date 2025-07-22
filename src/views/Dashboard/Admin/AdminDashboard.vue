@@ -13,6 +13,71 @@
     </template>
     
     <div class="space-y-8">
+      <!-- Quick Actions Section -->
+      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h2 class="text-xl font-bold text-slate-900">Quick Actions</h2>
+        </div>
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <router-link :to="{ name: 'adminverifications' }" class="block">
+            <div class="bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-4 hover:from-orange-100 hover:to-orange-200 transition-colors">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
+                  <i class="pi pi-shield text-white text-sm"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-orange-800">Review Verifications</p>
+                  <p class="text-xs text-orange-600">{{ stats.pending_verifications }} pending</p>
+                </div>
+              </div>
+            </div>
+          </router-link>
+          
+          <router-link :to="{ name: 'adminprintrequests' }" class="block">
+            <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 hover:from-blue-100 hover:to-blue-200 transition-colors">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
+                  <i class="pi pi-print text-white text-sm"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-blue-800">Manage Print Requests</p>
+                  <p class="text-xs text-blue-600">{{ stats.print_requests_submitted }} submitted</p>
+                </div>
+              </div>
+            </div>
+          </router-link>
+          
+          <router-link :to="{ name: 'adminbatches' }" class="block">
+            <div class="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-4 hover:from-purple-100 hover:to-purple-200 transition-colors">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-purple-500 flex items-center justify-center">
+                  <i class="pi pi-box text-white text-sm"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-purple-800">Manage Batches</p>
+                  <p class="text-xs text-purple-600">View all batches</p>
+                </div>
+              </div>
+            </div>
+          </router-link>
+          
+          <router-link :to="{ name: 'adminhistorylogs' }" class="block">
+            <div class="bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 rounded-xl p-4 hover:from-slate-100 hover:to-slate-200 transition-colors">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-slate-500 flex items-center justify-center">
+                  <i class="pi pi-history text-white text-sm"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-medium text-slate-800">View History Logs</p>
+                  <p class="text-xs text-slate-600">All admin actions</p>
+                </div>
+              </div>
+            </div>
+          </router-link>
+        </div>
+      </div>
+
       <!-- User Management Section -->
       <div>
         <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
@@ -392,139 +457,6 @@
           </template>
         </div>
       </div>
-
-      <!-- Recent Activity -->
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold text-slate-900">Recent Activity</h2>
-          <Button 
-            icon="pi pi-refresh" 
-            text 
-            @click="refreshData" 
-            :loading="isLoadingActivity" 
-            class="text-blue-600 hover:bg-blue-50"
-          />
-        </div>
-
-        <!-- Activity Filters -->
-        <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Dropdown
-            v-model="activityFilters.type"
-            :options="activityTypes"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Filter by type"
-            class="w-full"
-            @change="onFilterChange"
-          />
-          <Calendar
-            v-model="activityFilters.startDate"
-            placeholder="Start date"
-            :showTime="true"
-            :maxDate="activityFilters.endDate || new Date()"
-            class="w-full"
-            @date-select="onFilterChange"
-          />
-          <Calendar
-            v-model="activityFilters.endDate"
-            placeholder="End date"
-            :showTime="true"
-            :minDate="activityFilters.startDate"
-            :maxDate="new Date()"
-            class="w-full"
-            @date-select="onFilterChange"
-          />
-          <Button
-            label="Clear Filters"
-            text
-            @click="() => {
-              activityFilters.type = null;
-              activityFilters.startDate = null;
-              activityFilters.endDate = null;
-              onFilterChange();
-            }"
-            class="text-slate-600 hover:bg-slate-50"
-          />
-        </div>
-
-        <!-- Activity List -->
-        <template v-if="isLoadingActivity">
-          <div v-for="i in activityPagination.limit" :key="i" class="animate-pulse mb-4">
-            <div class="h-12 bg-slate-100 rounded"></div>
-          </div>
-        </template>
-        <template v-else>
-          <div class="divide-y divide-slate-200">
-            <div v-if="!recentActivity.length" class="p-4 text-center text-slate-500">
-              No activities found
-            </div>
-            <div v-for="activity in recentActivity" :key="activity.id" class="py-3">
-              <div class="flex items-start gap-3">
-                <div class="flex-shrink-0">
-                  <div :class="[
-                    'w-8 h-8 rounded-full flex items-center justify-center',
-                    activity.action_type === 'VERIFICATION_UPDATE' ? 'bg-blue-100 text-blue-600' :
-                    activity.action_type === 'PRINT_REQUEST_UPDATE' ? 'bg-blue-100 text-blue-600' :
-                    activity.action_type === 'BATCH_PAYMENT_UPDATE' ? 'bg-yellow-100 text-yellow-600' :
-                    activity.action_type === 'CARD_ACTIVATION' ? 'bg-purple-100 text-purple-600' :
-                    activity.action_type === 'ROLE_CHANGE' ? 'bg-red-100 text-red-600' :
-                    'bg-slate-100 text-slate-600'
-                  ]">
-                    <i :class="[
-                      'text-sm',
-                      activity.action_type === 'VERIFICATION_UPDATE' ? 'pi pi-shield' :
-                      activity.action_type === 'PRINT_REQUEST_UPDATE' ? 'pi pi-print' :
-                      activity.action_type === 'BATCH_PAYMENT_UPDATE' ? 'pi pi-credit-card' :
-                      activity.action_type === 'CARD_ACTIVATION' ? 'pi pi-check-circle' :
-                      activity.action_type === 'ROLE_CHANGE' ? 'pi pi-users' :
-                      'pi pi-history'
-                    ]"></i>
-                  </div>
-                </div>
-                <div class="flex-1 min-w-0">
-                  <p class="text-sm text-slate-900">{{ activity.reason }}</p>
-                  <div class="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                    <span>By {{ activity.admin_email }}</span>
-                    <span v-if="activity.target_user_email">• For {{ activity.target_user_email }}</span>
-                    <span>•</span>
-                    <time :datetime="activity.created_at">
-                      {{ formatDate(activity.created_at) }}
-                    </time>
-                  </div>
-                  <div v-if="activity.action_details || activity.old_values || activity.new_values" class="mt-2 text-xs">
-                    <div v-if="activity.action_details" class="text-slate-600">
-                      <div v-for="(value, key) in activity.action_details" :key="key">
-                        <span class="font-medium">{{ key }}:</span> {{ value }}
-                      </div>
-                    </div>
-                    <div v-if="activity.old_values && activity.new_values" class="mt-1 text-slate-500">
-                      <div v-for="(newVal, key) in activity.new_values" :key="key" v-show="activity.old_values[key] !== newVal">
-                        <span class="font-medium">{{ key }}:</span>
-                        <span class="line-through mr-1">{{ activity.old_values[key] }}</span>
-                        <span>→ {{ newVal }}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Pagination -->
-          <div class="mt-4 flex justify-center">
-            <Paginator
-              v-model:first="paginationFirst"
-              :rows="activityPagination.limit"
-              :totalRecords="activityPagination.total"
-              :rowsPerPageOptions="[10, 20, 50]"
-              @rowsChange="(e) => {
-                activityPagination.limit = e.rows;
-                loadActivity();
-              }"
-            />
-          </div>
-        </template>
-      </div>
     </div>
   </PageWrapper>
 </template>
@@ -537,9 +469,6 @@ import PageWrapper from '@/components/Layout/PageWrapper.vue'
 import { supabase } from '@/lib/supabase'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
-import Dropdown from 'primevue/dropdown'
-import Calendar from 'primevue/calendar'
-import Paginator from 'primevue/paginator'
 
 const dashboardStore = useAdminDashboardStore()
 const feedbackStore = useAdminFeedbackStore()
@@ -584,116 +513,19 @@ const verificationRate = computed(() => {
 const isLoading = computed(() => dashboardStore.isLoading)
 const isLoadingStats = computed(() => dashboardStore.isLoadingStats)
 
-// Activity filters and pagination
-const activityFilters = ref({
-  type: null, // null means all types
-  startDate: null,
-  endDate: null,
-  adminUserId: null,
-  targetUserId: null
-})
-
-const activityPagination = ref({
-  page: 1,
-  limit: 10,
-  total: 0
-})
-
-const activityTypes = [
-  { label: 'All Activities', value: null },
-  { label: 'User Registration', value: 'USER_REGISTRATION' },
-  { label: 'Verification Reviews', value: 'VERIFICATION_REVIEW' },
-  { label: 'Manual Verifications', value: 'MANUAL_VERIFICATION' },
-  { label: 'Verification Resets', value: 'VERIFICATION_RESET' },
-  { label: 'Role Changes', value: 'ROLE_CHANGE' },
-  { label: 'Card Management', value: 'CARD_CREATION,CARD_UPDATE,CARD_DELETION' },
-  { label: 'Batch Management', value: 'BATCH_STATUS_CHANGE,CARD_GENERATION' },
-  { label: 'Print Requests', value: 'PRINT_REQUEST_STATUS_UPDATE,PRINT_REQUEST_WITHDRAWAL' },
-  { label: 'Payment Management', value: 'PAYMENT_WAIVER,PAYMENT_CREATION,PAYMENT_CONFIRMATION' }
-]
-
-const recentActivity = ref([])
-const isLoadingActivity = ref(false)
+// Remove activity-related state since Recent Activity is now in History Logs page
 
 // Function to format revenue
 const formatRevenue = (cents) => {
   return `$${((cents || 0) / 100).toFixed(2)}`
 }
 
-// Add computed property for pagination first value
-const paginationFirst = computed({
-  get: () => (activityPagination.value.page - 1) * activityPagination.value.limit,
-  set: (value) => {
-    activityPagination.value.page = Math.floor(value / activityPagination.value.limit) + 1
-    loadActivity()
-  }
-})
-
-// Load activity with filters and pagination using feedback store
-const loadActivity = async () => {
-  isLoadingActivity.value = true
-  try {
-    const data = await feedbackStore.getAdminAuditLogs({
-      action_type: activityFilters.value.type,
-      admin_user_id: activityFilters.value.adminUserId,
-      target_user_id: activityFilters.value.targetUserId,
-      start_date: activityFilters.value.startDate,
-      end_date: activityFilters.value.endDate,
-      limit: activityPagination.value.limit,
-      offset: (activityPagination.value.page - 1) * activityPagination.value.limit
-    })
-
-    recentActivity.value = data || []
-
-    // Get total count using feedback store
-    const count = await feedbackStore.getAdminAuditLogsCount({
-      action_type: activityFilters.value.type,
-      admin_user_id: activityFilters.value.adminUserId,
-      target_user_id: activityFilters.value.targetUserId,
-      start_date: activityFilters.value.startDate,
-      end_date: activityFilters.value.endDate
-    })
-
-    activityPagination.value.total = count || 0
-
-  } catch (error) {
-    console.error('Error loading activity:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load activity data',
-      life: 5000
-    })
-  } finally {
-    isLoadingActivity.value = false
-  }
-}
-
-// Handle filter changes
-const onFilterChange = () => {
-  activityPagination.value.page = 1 // Reset to first page
-  loadActivity()
-}
-
-// Format date for display
-const formatDate = (date) => {
-  return new Date(date).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
+// Remove activity loading functions since Recent Activity is now in History Logs page
 
 // Update the loadDashboardData function to use dashboard store
 const loadDashboardData = async () => {
   try {
-    // Use dashboard store to load dashboard data
-    await Promise.all([
-      dashboardStore.fetchDashboardStats(),
-      loadActivity()
-    ])
+    await dashboardStore.fetchDashboardStats()
   } catch (error) {
     console.error('Error loading dashboard data:', error)
     toast.add({
@@ -736,14 +568,19 @@ function getActivityColor(activity) {
 
 function getActivityIcon(activity) {
   const icons = {
-    'ROLE_CHANGE': 'pi-users',
-    'VERIFICATION_REVIEW': 'pi-check-circle',
-    'MANUAL_VERIFICATION': 'pi-shield',
+    'USER_REGISTRATION': 'pi-user-plus',
+    'CARD_CREATION': 'pi-plus-circle',
+    'CARD_UPDATE': 'pi-pencil',
+    'CARD_DELETION': 'pi-trash',
+    'BATCH_STATUS_CHANGE': 'pi-refresh',
+    'CARD_GENERATION': 'pi-cog',
+    'VERIFICATION_REVIEW': 'pi-shield',
     'PRINT_REQUEST_UPDATE': 'pi-print',
-    'SYSTEM_CONFIG': 'pi-cog',
-    'BATCH_MANAGEMENT': 'pi-credit-card'
+    'PRINT_REQUEST_WITHDRAWAL': 'pi-times-circle',
+    'PAYMENT_WAIVER': 'pi-credit-card',
+    'ROLE_CHANGE': 'pi-users'
   }
-  return icons[activity.action_type] || 'pi-info-circle'
+  return icons[activity.action_type] || 'pi-history'
 }
 
 function formatTimeAgo(date) {

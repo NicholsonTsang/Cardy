@@ -26,8 +26,7 @@ The monolithic `schemaStoreProc.sql` file has been broken down into 11 focused m
 6. `07_public_access.sql` - Public card access and mobile QR scanning
 7. `08_user_profiles.sql` - User profile and verification management
 8. `09_user_analytics.sql` - User-level analytics and reporting
-9. `10_shipping_addresses.sql` - Shipping address management
-10. `11_admin_functions.sql` - Admin-only operations and system management
+9. `11_admin_functions.sql` - Admin-only operations and system management
 
 ### Server-Side Modules (in server-side/ folder)
 - `05_payment_management.sql` - Stripe payment processing (Edge Functions)
@@ -103,7 +102,6 @@ The monolithic `schemaStoreProc.sql` file has been broken down into 11 focused m
 
 ### Print Requests (06_print_requests.sql)
 - `request_card_printing()` - Submit print request
-- `request_card_printing_with_address()` - Print with saved address
 - `get_print_requests_for_batch()` - List print requests
 - `withdraw_print_request()` - Cancel print request
 
@@ -125,13 +123,6 @@ The monolithic `schemaStoreProc.sql` file has been broken down into 11 focused m
 - `get_user_all_card_batches()` - All batches across designs
 - `get_user_recent_activity()` - Recent activity feed
 
-### Shipping Addresses (10_shipping_addresses.sql)
-- `get_user_shipping_addresses()` - List saved addresses
-- `create_shipping_address()` - Add new address
-- `update_shipping_address()` - Modify address
-- `delete_shipping_address()` - Remove address
-- `set_default_shipping_address()` - Set default address
-- `format_shipping_address()` - Format for display/printing
 
 ### Admin Functions (11_admin_functions.sql)
 - `admin_waive_batch_payment()` - Waive payment and generate cards

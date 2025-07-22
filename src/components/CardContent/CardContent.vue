@@ -533,8 +533,7 @@ const deleteContentItem = async (itemId) => {
         
         // Reload content items
         await loadContentItems();
-        
-        toast.add({ severity: 'success', summary: 'Deleted', detail: 'Content item deleted successfully', life: 3000 });
+        // Success feedback provided by visual removal from list
     } catch (error) {
         console.error('Error deleting content item:', error);
         toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete content item', life: 3000 });

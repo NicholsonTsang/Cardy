@@ -11,7 +11,6 @@ export interface AdminVerification {
   full_name: string;
   verification_status: string;
   supporting_documents: string[];
-  admin_feedback: string;
   verified_at: string;
   created_at: string;
   updated_at: string;
@@ -27,7 +26,6 @@ export interface AdminUser {
   full_name?: string
   verification_status: 'NOT_SUBMITTED' | 'PENDING_REVIEW' | 'APPROVED' | 'REJECTED'
   supporting_documents?: string[]
-  admin_feedback?: string
   verified_at?: string
   created_at: string
   updated_at?: string
@@ -78,11 +76,23 @@ export const useAdminVerificationsStore = defineStore('adminVerifications', () =
     }
   }
 
-  const fetchAllVerifications = async (status?: string): Promise<AdminVerification[]> => {
+  const fetchAllVerifications = async (
+    status?: string,
+    searchQuery?: string,
+    startDate?: Date,
+    endDate?: Date,
+    limit = 100,
+    offset = 0
+  ): Promise<AdminVerification[]> => {
     isLoadingVerifications.value = true
     try {
       const { data, error } = await supabase.rpc('get_all_verifications', {
-        p_status: status || null
+        p_status: status || null,
+        p_search_query: searchQuery || null,
+        p_start_date: startDate?.toISOString() || null,
+        p_end_date: endDate?.toISOString() || null,
+        p_limit: limit,
+        p_offset: offset
       })
       if (error) throw error
       
@@ -151,11 +161,11 @@ export const useAdminVerificationsStore = defineStore('adminVerifications', () =
     }
   }
 
-  const updateUserRole = async (userEmail: string, newRole: string, reason: string) => {
+  const updateUserRole = async (userId: string, newRole: string, reason: string) => {
     isLoading.value = true
     try {
       const { data, error } = await supabase.rpc('admin_change_user_role', {
-        p_target_user_id: userEmail, // This might need to be changed to actually use user ID instead of email
+        p_target_user_id: userId,
         p_new_role: newRole,
         p_reason: reason
       })
@@ -191,17 +201,13 @@ export const useAdminVerificationsStore = defineStore('adminVerifications', () =
 
   const manualVerification = async (
     userId: string,
-    status: 'APPROVED' | 'REJECTED' | 'NOT_SUBMITTED',
-    adminFeedback: string,
-    fullName?: string
+    reason: string
   ) => {
     isLoading.value = true
     try {
       const { data, error } = await supabase.rpc('admin_manual_verification', {
-        p_target_user_id: userId,
-        p_new_status: status,
-        p_admin_feedback: adminFeedback,
-        p_full_name: fullName || null
+        p_user_id: userId,
+        p_reason: reason
       })
       
       if (error) throw error

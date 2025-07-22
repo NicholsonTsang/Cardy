@@ -9,7 +9,6 @@ export interface Card {
     user_id: string;
     name: string;
     description: string;
-    content_render_mode: string;
     qr_code_position: string;
     image_url: string | null;
     conversation_ai_enabled: boolean;
@@ -66,6 +65,18 @@ export const useCardStore = defineStore('card', () => {
     const addCard = async (cardData: CardFormData) => {
         isLoading.value = true;
         error.value = null;
+        
+        // Validate required fields
+        if (!cardData.name?.trim()) {
+            const errorMsg = 'Card name is required';
+            error.value = errorMsg;
+            throw new Error(errorMsg);
+        }
+        if (!cardData.description?.trim()) {
+            const errorMsg = 'Card description is required';
+            error.value = errorMsg;
+            throw new Error(errorMsg);
+        }
         
         try {
             const { data: { user } } = await supabase.auth.getUser(); // Destructure user directly

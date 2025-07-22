@@ -121,6 +121,7 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     total_batches: 0
   });
   const isLoading = ref(false);
+  const error = ref<string | null>(null);
   const printRequestsForBatch = ref<Record<string, PrintRequest[]>>({});
 
   // User-level data (across all cards)
@@ -140,32 +141,62 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
   const isLoadingUserData = ref(false);
 
   const fetchIssuedCards = async (cardId: string): Promise<IssuedCard[]> => {
-    const { data, error } = await supabase.rpc('get_issued_cards_with_batch', {
-      p_card_id: cardId
-    });
-    if (error) throw error;
-    issuedCards.value = data || [];
-    return data as IssuedCard[];
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const { data, error } = await supabase.rpc('get_issued_cards_with_batch', {
+        p_card_id: cardId
+      });
+      if (error) throw error;
+      issuedCards.value = data || [];
+      return data as IssuedCard[];
+    } catch (err: any) {
+      console.error('Error fetching issued cards:', err);
+      error.value = err.message || 'An unknown error occurred';
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   const fetchCardBatches = async (cardId: string): Promise<CardBatch[]> => {
-    const { data, error } = await supabase.rpc('get_card_batches', {
-      p_card_id: cardId
-    });
-    if (error) throw error;
-    batches.value = data || [];
-    return data as CardBatch[];
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const { data, error } = await supabase.rpc('get_card_batches', {
+        p_card_id: cardId
+      });
+      if (error) throw error;
+      batches.value = data || [];
+      return data as CardBatch[];
+    } catch (err: any) {
+      console.error('Error fetching card batches:', err);
+      error.value = err.message || 'An unknown error occurred';
+      throw err;
+    } finally {
+      isLoading.value = false;
+    }
   };
 
   const fetchIssuanceStats = async (cardId: string): Promise<IssuanceStats[]> => {
-    const { data, error } = await supabase.rpc('get_card_issuance_stats', {
-      p_card_id: cardId
-    });
-    if (error) throw error;
-    if (data && data.length > 0) {
-      stats.value = data[0];
+    isLoading.value = true;
+    error.value = null;
+    try {
+      const { data, error } = await supabase.rpc('get_card_issuance_stats', {
+        p_card_id: cardId
+      });
+      if (error) throw error;
+      if (data && data.length > 0) {
+        stats.value = data[0];
+      }
+      return data as IssuanceStats[];
+    } catch (err: any) {
+      console.error('Error fetching issuance stats:', err);
+      error.value = err.message || 'An unknown error occurred';
+      throw err;
+    } finally {
+      isLoading.value = false;
     }
-    return data as IssuanceStats[];
   };
 
   const issueBatch = async (cardId: string, quantity: number) => {
@@ -350,6 +381,7 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     batches,
     stats,
     isLoading,
+    error,
     printRequestsForBatch,
     fetchIssuedCards,
     fetchCardBatches,

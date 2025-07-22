@@ -2,6 +2,15 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 
+export interface AdminBatch {
+  id: string;
+  batch_number: number;
+  user_email: string;
+  payment_status: 'PENDING' | 'PAID' | 'WAIVED' | 'FREE';
+  cards_count: number;
+  created_at: string;
+}
+
 export interface AdminBatchRequiringAttention {
   id: string;
   card_id: string;
@@ -22,8 +31,10 @@ export interface AdminBatchRequiringAttention {
 
 export const useAdminBatchesStore = defineStore('adminBatches', () => {
   // State
+  const allBatches = ref<AdminBatch[]>([])
   const batchesRequiringAttention = ref<AdminBatchRequiringAttention[]>([])
   const isLoadingBatches = ref(false)
+  const isLoadingAllBatches = ref(false)
 
   // Computed
   const pendingPaymentBatchCount = computed(() => batchesRequiringAttention.value.length)
@@ -35,6 +46,32 @@ export const useAdminBatchesStore = defineStore('adminBatches', () => {
   })
 
   // Actions
+  const fetchAllBatches = async (
+    emailSearch?: string, 
+    paymentStatus?: 'PENDING' | 'PAID' | 'WAIVED' | 'FREE',
+    limit = 100,
+    offset = 0
+  ): Promise<AdminBatch[]> => {
+    isLoadingAllBatches.value = true
+    try {
+      const { data, error } = await supabase.rpc('get_admin_all_batches', {
+        p_email_search: emailSearch || null,
+        p_payment_status: paymentStatus || null,
+        p_limit: limit,
+        p_offset: offset
+      })
+      if (error) throw error
+      
+      allBatches.value = data || []
+      return data || []
+    } catch (error) {
+      console.error('Error fetching all batches:', error)
+      throw error
+    } finally {
+      isLoadingAllBatches.value = false
+    }
+  }
+
   const fetchBatchesRequiringAttention = async (): Promise<AdminBatchRequiringAttention[]> => {
     isLoadingBatches.value = true
     try {
@@ -83,14 +120,17 @@ export const useAdminBatchesStore = defineStore('adminBatches', () => {
 
   return {
     // State
+    allBatches,
     batchesRequiringAttention,
     isLoadingBatches,
+    isLoadingAllBatches,
     
     // Computed
     pendingPaymentBatchCount,
     totalPendingRevenue,
     
     // Actions
+    fetchAllBatches,
     fetchBatchesRequiringAttention,
     waiveBatchPayment,
     getBatchById,

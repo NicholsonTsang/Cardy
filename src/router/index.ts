@@ -79,7 +79,7 @@ const router = createRouter({
         {
           path: 'admin/history',
           name: 'adminhistorylogs',
-          component: () => import('@/views/Dashboard/Admin/AdminHistoryLogs.vue'),
+          component: () => import('@/views/Dashboard/Admin/HistoryLogs.vue'),
           meta: { requiredRole: 'admin' }
         },
       ]
@@ -251,13 +251,7 @@ router.beforeEach(async (to, from, next) => {
       // If logged in, redirect from login/signup to their dashboard
       // But only if we have a valid role to prevent infinite redirects
       if (userRole) {
-        toast.add({
-          severity: 'info',
-          summary: 'Already Logged In',
-          detail: 'You are already logged in. Redirecting to your dashboard.',
-          group: 'br',
-          life: 3000
-        });
+        // Silently redirect already logged-in users to their dashboard
         next(getDefaultRouteForRole(userRole));
       } else {
         // If no role found, allow access to login page to prevent infinite redirect

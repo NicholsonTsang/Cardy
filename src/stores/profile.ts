@@ -20,7 +20,6 @@ export interface UserProfile {
     full_name: string | null;
     verification_status: ProfileStatus;
     supporting_documents: string[] | null;
-    admin_feedback: string | null;
     verified_at: string | null;
     created_at: string;
     updated_at: string;
@@ -38,35 +37,6 @@ export interface VerificationForm {
     isEdit?: boolean;
 }
 
-export interface ShippingAddress {
-    id: string;
-    user_id: string;
-    label: string;
-    recipient_name: string;
-    address_line1: string;
-    address_line2?: string;
-    city: string;
-    state_province: string;
-    postal_code: string;
-    country: string;
-    phone?: string;
-    is_default: boolean;
-    created_at: string;
-    updated_at: string;
-}
-
-export interface ShippingAddressForm {
-    label: string;
-    recipient_name: string;
-    address_line1: string;
-    address_line2?: string;
-    city: string;
-    state_province: string;
-    postal_code: string;
-    country: string;
-    phone?: string;
-    is_default: boolean;
-}
 
 export const useProfileStore = defineStore('profile', () => {
     const toast = useToast();
@@ -77,11 +47,6 @@ export const useProfileStore = defineStore('profile', () => {
     const isEditMode = ref(false);
     const isVerificationMode = ref(false);
     
-    // Shipping addresses state
-    const shippingAddresses = ref<ShippingAddress[]>([]);
-    const loadingAddresses = ref(false);
-    const isAddressEditMode = ref(false);
-    const editingAddressId = ref<string | null>(null);
     
     // Computed properties
     const hasBasicProfile = computed(() => {
@@ -116,23 +81,6 @@ export const useProfileStore = defineStore('profile', () => {
                 (profile.value.supporting_documents && profile.value.supporting_documents.length > 0))
     })
 
-    // Shipping address computed properties
-    const defaultAddress = computed(() => {
-        return shippingAddresses.value.find(addr => addr.is_default) || null;
-    });
-
-    const hasAddresses = computed(() => {
-        return shippingAddresses.value.length > 0;
-    });
-
-    const sortedAddresses = computed(() => {
-        return [...shippingAddresses.value].sort((a, b) => {
-            // Default address first, then by creation date (newest first)
-            if (a.is_default && !b.is_default) return -1;
-            if (!a.is_default && b.is_default) return 1;
-            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
-        });
-    });
 
     // ACTIONS
 
@@ -182,13 +130,7 @@ export const useProfileStore = defineStore('profile', () => {
 
             await fetchProfile(); // Refresh profile data
             isEditMode.value = false;
-
-            toast.add({
-                severity: 'success',
-                summary: 'Success',
-                detail: 'Profile saved successfully',
-                life: 3000
-            });
+            // Success feedback provided by exiting edit mode and updated display
 
             return data;
         } catch (error: any) {
@@ -347,10 +289,6 @@ export const useProfileStore = defineStore('profile', () => {
         loading,
         isEditMode,
         isVerificationMode,
-        shippingAddresses,
-        loadingAddresses,
-        isAddressEditMode,
-        editingAddressId,
         // Computed
         hasBasicProfile,
         isVerified,
@@ -359,9 +297,6 @@ export const useProfileStore = defineStore('profile', () => {
         verificationRejected,
         canEditVerification,
         hasVerificationData,
-        defaultAddress,
-        hasAddresses,
-        sortedAddresses,
         // Actions
         fetchProfile,
         saveBasicProfile,

@@ -272,12 +272,7 @@ const copyURL = async (issueCardId) => {
   try {
     const url = getCardURL(issueCardId)
     await navigator.clipboard.writeText(url)
-    toast.add({
-      severity: 'success',
-      summary: 'Copied!',
-      detail: 'URL copied to clipboard',
-      life: 3000
-    })
+    // Copy success - no toast needed for micro-interaction
   } catch (err) {
     toast.add({
       severity: 'error',

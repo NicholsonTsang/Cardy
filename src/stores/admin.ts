@@ -9,6 +9,7 @@ import { useAdminVerificationsStore } from '@/stores/admin/verifications'
 import { useAdminPrintRequestsStore } from '@/stores/admin/printRequests'
 import { useAdminBatchesStore } from '@/stores/admin/batches'
 import { useAdminFeedbackStore } from '@/stores/admin/feedback'
+import { useAuditLogStore } from '@/stores/admin/auditLog'
 
 // Re-export individual stores for direct import
 export { useAdminDashboardStore } from '@/stores/admin/dashboard'
@@ -38,9 +39,12 @@ export type {
 } from '@/stores/admin/batches'
 
 export type { 
-  AdminFeedback,
-  AdminAuditLog
+  AdminFeedback
 } from '@/stores/admin/feedback'
+
+export type {
+  AuditLogEntry as AdminAuditLog
+} from '@/stores/admin/auditLog'
 
 // Legacy admin store that delegates to the new modular stores
 export const useAdminStore = defineStore('admin', () => {
@@ -50,6 +54,7 @@ export const useAdminStore = defineStore('admin', () => {
   const printRequestsStore = useAdminPrintRequestsStore()
   const batchesStore = useAdminBatchesStore()
   const feedbackStore = useAdminFeedbackStore()
+  const auditLogStore = useAuditLogStore()
 
   // Computed properties that aggregate data from different stores
   const dashboardStats = computed(() => dashboardStore.dashboardStats)
@@ -94,13 +99,10 @@ export const useAdminStore = defineStore('admin', () => {
   const fetchBatchesRequiringAttention = batchesStore.fetchBatchesRequiringAttention
   const waiveBatchPayment = batchesStore.waiveBatchPayment
 
-  const getAdminAuditLogs = feedbackStore.getAdminAuditLogs
-  const getAdminAuditLogsCount = feedbackStore.getAdminAuditLogsCount
-  const getAdminFeedbackHistory = feedbackStore.getAdminFeedbackHistory
-  const createOrUpdateFeedback = feedbackStore.createOrUpdateFeedback
-  const getCurrentFeedback = feedbackStore.getCurrentFeedback
+  const fetchAuditLogs = auditLogStore.fetchAuditLogs
+  const fetchAuditLogsCount = auditLogStore.fetchAuditLogsCount
   const getFeedbackHistory = feedbackStore.getFeedbackHistory
-  const getUserFeedbackSummary = feedbackStore.getUserFeedbackSummary
+  const createOrUpdateFeedback = feedbackStore.createOrUpdateFeedback
 
   return {
     // Computed state
@@ -145,12 +147,9 @@ export const useAdminStore = defineStore('admin', () => {
     waiveBatchPayment,
 
     // Feedback and audit methods
-    getAdminAuditLogs,
-    getAdminAuditLogsCount,
-    getAdminFeedbackHistory,
-    createOrUpdateFeedback,
-    getCurrentFeedback,
+    fetchAuditLogs,
+    fetchAuditLogsCount,
     getFeedbackHistory,
-    getUserFeedbackSummary
+    createOrUpdateFeedback
   }
 }) 

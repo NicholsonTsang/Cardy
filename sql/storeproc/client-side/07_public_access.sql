@@ -88,40 +88,6 @@ BEGIN
 END;
 $$;
 
--- Get a sample issued card for mobile preview (card issuer only)
-CREATE OR REPLACE FUNCTION get_sample_issued_card_for_preview(p_card_id UUID)
-RETURNS TABLE (
-    issue_card_id UUID
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID;
-BEGIN
-    -- Check if the user owns the card
-    SELECT user_id INTO v_user_id FROM cards WHERE id = p_card_id;
-    
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Card not found.';
-    END IF;
-    
-    IF v_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to preview this card.';
-    END IF;
-    
-    -- Get the first available issued card for this card design
-    -- Prefer active cards, but fall back to inactive ones if needed
-    RETURN QUERY
-    SELECT 
-        ic.id as issue_card_id
-    FROM issue_cards ic
-    JOIN card_batches cb ON ic.batch_id = cb.id
-    WHERE ic.card_id = p_card_id 
-    AND cb.is_disabled = FALSE -- Only from enabled batches
-    ORDER BY 
-        ic.active DESC, -- Active cards first
-        ic.issue_at DESC -- Most recent first
-    LIMIT 1;
-END;
-$$;
 
 -- Get card preview URL without requiring issued cards (for card owners)
 CREATE OR REPLACE FUNCTION get_card_preview_access(p_card_id UUID)

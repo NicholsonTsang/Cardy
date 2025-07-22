@@ -392,19 +392,16 @@
               <p class="text-sm text-slate-900">{{ selectedUser.full_name }}</p>
             </div>
           </div>
-          <div v-if="selectedUser.admin_feedback" class="mt-4">
-            <label class="text-sm font-medium text-slate-700">Admin Feedback</label>
-            <div class="mt-1 p-3 bg-white rounded border">
-              <p class="text-sm text-slate-900 whitespace-pre-wrap">{{ selectedUser.admin_feedback }}</p>
-              <div class="mt-2 pt-2 border-t border-slate-200">
-                <Button 
-                  label="Edit Notes" 
-                  icon="pi pi-pencil"
-                  severity="secondary"
-                  size="small"
-                  outlined
-                  @click="editVerificationNotes(selectedUser)"
-                />
+          <div v-if="userFeedbacks.length > 0" class="mt-4">
+            <label class="text-sm font-medium text-slate-700">Admin Feedback History ({{ userFeedbacks.length }})</label>
+            <div class="mt-1 space-y-2">
+              <div 
+                v-for="feedback in userFeedbacks" 
+                :key="feedback.id"
+                class="p-3 bg-white rounded border"
+              >
+                <div class="text-xs text-slate-500 mb-1">{{ feedback.admin_email }} • {{ formatDate(feedback.created_at) }}</div>
+                <p class="text-sm text-slate-900 whitespace-pre-wrap">{{ feedback.message }}</p>
               </div>
             </div>
           </div>
@@ -653,6 +650,7 @@ const roleChangeReason = ref('')
 const manualVerificationStatus = ref('')
 const manualVerificationFullName = ref('')
 const manualVerificationNotes = ref('')
+const userFeedbacks = ref([])
 
 // Computed
 const userStats = computed(() => {
@@ -822,13 +820,24 @@ const exportUsers = () => {
 }
 
 // User management methods
+const loadUserFeedbacks = async (userId) => {
+  try {
+    userFeedbacks.value = await feedbackStore.getVerificationFeedbacks(userId)
+  } catch (error) {
+    console.error('Error loading user feedbacks:', error)
+    userFeedbacks.value = []
+  }
+}
+
 const viewUserDetails = (user) => {
   selectedUser.value = user
+  loadUserFeedbacks(user.user_id)
   showUserDetailsDialog.value = true
 }
 
 const closeUserDetailsDialog = () => {
   selectedUser.value = null
+  userFeedbacks.value = []
   showUserDetailsDialog.value = false
 }
 
@@ -867,7 +876,7 @@ const handleRoleUpdate = async () => {
 
   try {
     await verificationsStore.updateUserRole(
-      selectedUser.value.user_email,
+      selectedUser.value.user_id,
       newUserRole.value,
       roleChangeReason.value.trim()
     )
@@ -925,9 +934,7 @@ const handleManualVerification = async () => {
   try {
     await verificationsStore.manualVerification(
       selectedUser.value.user_id,
-      manualVerificationStatus.value,
-      manualVerificationNotes.value.trim(),
-      manualVerificationFullName.value || undefined
+      manualVerificationNotes.value.trim()
     )
     
     await refreshData()
@@ -949,7 +956,7 @@ const editVerificationNotes = (user) => {
   selectedUser.value = user
   manualVerificationStatus.value = user.verification_status
   manualVerificationFullName.value = user.full_name || ''
-  manualVerificationNotes.value = user.admin_feedback || ''
+  manualVerificationNotes.value = ''
   showManualVerificationDialog.value = true
 }
 

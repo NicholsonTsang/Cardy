@@ -151,35 +151,6 @@ CREATE POLICY "Admin only profile deletions"
 ON user_profiles FOR DELETE
 USING (auth.jwt()->>'role' = 'admin');
 
--- =================================================================
--- SHIPPING_ADDRESSES TABLE POLICIES
--- =================================================================
-ALTER TABLE shipping_addresses ENABLE ROW LEVEL SECURITY;
-
--- SELECT: Users can read their own addresses, admins can read all
-DROP POLICY IF EXISTS "Allow shipping address reads" ON shipping_addresses;
-CREATE POLICY "Allow shipping address reads"
-ON shipping_addresses FOR SELECT
-USING (auth.uid() = user_id OR auth.jwt()->>'role' = 'admin');
-
--- INSERT: Users can create their own addresses only
-DROP POLICY IF EXISTS "Allow shipping address creation" ON shipping_addresses;
-CREATE POLICY "Allow shipping address creation"
-ON shipping_addresses FOR INSERT
-WITH CHECK (auth.uid() = user_id);
-
--- UPDATE: Users can update their own addresses, admins can update all
-DROP POLICY IF EXISTS "Allow shipping address updates" ON shipping_addresses;
-CREATE POLICY "Allow shipping address updates"
-ON shipping_addresses FOR UPDATE
-USING (auth.uid() = user_id OR auth.jwt()->>'role' = 'admin')
-WITH CHECK (auth.uid() = user_id OR auth.jwt()->>'role' = 'admin');
-
--- DELETE: Users can delete their own addresses, admins can delete all
-DROP POLICY IF EXISTS "Allow shipping address deletions" ON shipping_addresses;
-CREATE POLICY "Allow shipping address deletions"
-ON shipping_addresses FOR DELETE
-USING (auth.uid() = user_id OR auth.jwt()->>'role' = 'admin');
 
 -- =================================================================
 -- CLEANUP OLD POLICIES

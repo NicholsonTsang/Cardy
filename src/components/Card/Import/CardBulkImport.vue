@@ -727,7 +727,6 @@ async function importDataToDatabase(importData) {
         p_ai_prompt: importData.cardData.ai_prompt,
         p_conversation_ai_enabled: importData.cardData.conversation_ai_enabled,
         p_qr_code_position: importData.cardData.qr_code_position,
-        p_content_render_mode: importData.cardData.content_render_mode,
         p_image_url: cardImageUrl
       })
       

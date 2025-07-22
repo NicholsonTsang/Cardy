@@ -250,12 +250,7 @@ const handleAddCard = async () => {
     await handleAsyncError(async () => {
         await cardStore.addCard(payload);
         await cardStore.fetchCards();
-        toast.add({ 
-            severity: 'success', 
-            summary: 'Success', 
-            detail: `Card "${payload.name}" created successfully.`,
-            life: 3000 
-        });
+        // Success feedback provided by UI update and dialog close
     }, 'creating card');
 };
 
@@ -271,12 +266,7 @@ const handleCardUpdate = async (payload) => {
     await handleAsyncError(async () => {
         await cardStore.updateCard(selectedCardObject.value.id, payload);
         await cardStore.fetchCards();
-        toast.add({ 
-            severity: 'success', 
-            summary: 'Updated', 
-            detail: `Card "${payload.name}" updated successfully.`,
-            life: 3000 
-        });
+        // Success feedback provided by UI update and dialog close
     }, 'updating card');
 };
 
@@ -302,13 +292,8 @@ const triggerDeleteConfirmation = (cardId) => {
         accept: async () => {
             await handleAsyncError(async () => {
                 await cardStore.deleteCard(cardId);
-                toast.add({ 
-                    severity: 'success', 
-                    summary: 'Deleted', 
-                    detail: `Card "${cardToDelete.name}" deleted successfully.`,
-                    life: 3000 
-                });
                 await cardStore.fetchCards();
+                // Success feedback provided by visual removal from list
                 
                 if (selectedCardId.value === cardId) {
                     selectedCardId.value = null;
@@ -317,12 +302,7 @@ const triggerDeleteConfirmation = (cardId) => {
             }, 'deleting card');
         },
         reject: () => {
-            toast.add({ 
-                severity: 'info', 
-                summary: 'Cancelled', 
-                detail: 'Deletion cancelled.',
-                life: 3000 
-            });
+            // No toast needed - user actively cancelled
         }
     });
 };
@@ -331,12 +311,7 @@ const triggerDeleteConfirmation = (cardId) => {
 const handleBulkImport = async () => {
     try {
         await cardStore.fetchCards();
-        toast.add({
-            severity: 'success',
-            summary: 'Import Complete',
-            detail: 'Cards imported successfully. Refreshing list...',
-            life: 5000
-        });
+        // Success feedback provided by updated card list
     } catch (error) {
         handleError(error, 'refreshing cards after import');
     }
@@ -345,12 +320,7 @@ const handleBulkImport = async () => {
 const handleCardImported = async () => {
     try {
         await cardStore.fetchCards();
-        toast.add({
-            severity: 'success',
-            summary: 'Import Complete',
-            detail: 'Card data imported successfully.',
-            life: 3000
-        });
+        // Success feedback provided by updated card list
     } catch (error) {
         handleError(error, 'refreshing card after import');
     }

@@ -120,10 +120,6 @@
                             <div class="flex-1">
                                 <h3 class="font-semibold text-red-900">Verification Rejected</h3>
                                 <p class="text-red-700 text-sm">Your verification needs attention</p>
-                                <div v-if="store.profile?.admin_feedback" class="mt-2 bg-red-100 rounded p-2">
-                                    <p class="text-red-800 text-sm font-medium">Feedback:</p>
-                                    <p class="text-red-700 text-sm">{{ store.profile.admin_feedback }}</p>
-                                </div>
                             </div>
                         </div>
 

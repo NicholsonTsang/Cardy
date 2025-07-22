@@ -70,7 +70,11 @@ export const useAuthStore = defineStore('auth', () => {
           }
         }
         toast.add({ severity: 'success', summary: 'Sign Up Successful', detail: 'Your account is already verified. Redirecting...', group: 'br', life: 3000 })
-        router.push('/cms/mycards')
+        
+        // Force session refresh to get updated user metadata
+        await refreshSession()
+        // Redirect to appropriate default page based on user role
+        redirectToDefaultPage()
       } else {
         toast.add({ severity: 'success', summary: 'Sign Up Successful', detail: 'Please check your email to verify your account.', group: 'br', life: 5000 })
       }
@@ -94,6 +98,9 @@ export const useAuthStore = defineStore('auth', () => {
       // Force session refresh to get updated user metadata
       await refreshSession()
       toast.add({ severity: 'success', summary: 'Sign In Successful', detail: 'Welcome back!', group: 'br', life: 3000 })
+      
+      // Redirect to appropriate default page based on user role
+      redirectToDefaultPage()
     } else if (data.user && !data.user.email_confirmed_at) {
       toast.add({ severity: 'warn', summary: 'Email Not Verified', detail: 'Login successful, but your email is not verified. Please check your email.', group: 'br', life: 5000 })
       // User will be redirected to /login by the router guard if they try to access /cms
@@ -106,7 +113,7 @@ export const useAuthStore = defineStore('auth', () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/cms/mycards` // Or a specific callback page
+        redirectTo: `${window.location.origin}/login?oauth=success` // Redirect back to login with success flag
       }
     })
     loading.value = false // Will be set again by onAuthStateChange
@@ -169,6 +176,39 @@ export const useAuthStore = defineStore('auth', () => {
     } catch (err) {
       console.error('Error calling get_user_role:', err)
       return null
+    }
+  }
+
+  function getUserRole(): string | undefined {
+    const user = session.value?.user
+    if (!user) return undefined
+    
+    // Check both app_metadata and user_metadata for role
+    let role = user.app_metadata?.role || user.user_metadata?.role
+    
+    // Handle both cardIssuer and card_issuer formats for backward compatibility
+    if (role === 'card_issuer') return 'cardIssuer'
+    
+    // If no role is found and user is logged in, assume cardIssuer (default role)
+    if (!role && user) {
+      console.warn('No role found for logged in user, defaulting to cardIssuer')
+      return 'cardIssuer'
+    }
+    
+    return role
+  }
+
+  function redirectToDefaultPage() {
+    const userRole = getUserRole()
+    console.log('Redirecting user with role:', userRole)
+    
+    if (userRole === 'admin') {
+      router.push({ name: 'admindashboard' })
+    } else if (userRole === 'cardIssuer') {
+      router.push({ name: 'mycards' })
+    } else {
+      // Default fallback to mycards for most users
+      router.push({ name: 'mycards' })
     }
   }
 

@@ -69,29 +69,28 @@ BEGIN
     -- Log payment creation in audit table
     INSERT INTO admin_audit_log (
         admin_user_id,
+        admin_email,
         target_user_id,
+        target_user_email,
         action_type,
-        reason,
-        new_values,
-        action_details
+        description,
+        details
     ) VALUES (
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         'PAYMENT_CREATION',
         'Stripe checkout session payment created',
         jsonb_build_object(
             'payment_id', v_payment_id,
             'payment_status', 'pending',
             'amount_cents', p_amount_cents,
-            'currency', 'usd'
-        ),
-        jsonb_build_object(
+            'currency', 'usd',
             'action', 'payment_session_created',
             'stripe_checkout_session_id', p_stripe_checkout_session_id,
             'stripe_payment_intent_id', p_stripe_payment_intent_id,
             'batch_id', p_batch_id,
-            'amount_cents', p_amount_cents,
-            'currency', 'usd',
             'metadata', p_metadata
         )
     );
@@ -202,30 +201,32 @@ BEGIN
     -- Log payment confirmation in audit table
     INSERT INTO admin_audit_log (
         admin_user_id,
+        admin_email,
         target_user_id,
+        target_user_email,
         action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
+        description,
+        details
     ) VALUES (
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         v_payment_record.user_id,
+        (SELECT email FROM auth.users WHERE id = v_payment_record.user_id),
         'PAYMENT_CONFIRMATION',
         'Batch payment confirmed via Stripe checkout session',
         jsonb_build_object(
-            'payment_status', v_payment_record.payment_status,
-            'payment_completed', false,
-            'cards_generated', false
-        ),
-        jsonb_build_object(
-            'payment_status', 'succeeded',
-            'payment_completed', true,
-            'payment_completed_at', NOW(),
-            'payment_method', p_payment_method,
-            'cards_generated', true
-        ),
-        jsonb_build_object(
+            'old_status', jsonb_build_object(
+                'payment_status', v_payment_record.payment_status,
+                'payment_completed', false,
+                'cards_generated', false
+            ),
+            'new_status', jsonb_build_object(
+                'payment_status', 'succeeded',
+                'payment_completed', true,
+                'payment_completed_at', NOW(),
+                'payment_method', p_payment_method,
+                'cards_generated', true
+            ),
             'action', 'payment_confirmed',
             'payment_method', p_payment_method,
             'stripe_checkout_session_id', p_stripe_checkout_session_id,

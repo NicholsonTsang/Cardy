@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Sun Jul 20 20:01:04 HKT 2025
+-- Generated: Tue Jul 22 21:37:02 HKT 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -96,49 +96,32 @@ BEGIN
   SET raw_user_meta_data = raw_user_meta_data || jsonb_build_object('role', default_role)
   WHERE id = NEW.id;
   
-  -- Log new user registration in audit table (CRITICAL for security tracking)
+  -- Log new user registration in simplified audit table (self-registration)
   INSERT INTO admin_audit_log (
     admin_user_id,
+    admin_email,
     target_user_id,
+    target_user_email,
     action_type,
-    reason,
-    old_values,
-    new_values,
-    action_details
+    description,
+    details
   ) VALUES (
     NEW.id, -- Self-registration
+    NEW.email, -- Admin email = user email for self-registration
     NEW.id,
+    NEW.email, -- Target email = user email
     'USER_REGISTRATION',
-    'New user account created',
+    'New user account created: ' || NEW.email,
     jsonb_build_object(
-      'user_exists', false
-    ),
-    jsonb_build_object(
-      'user_id', NEW.id,
       'email', NEW.email,
       'role', default_role,
-      'email_confirmed_at', NEW.email_confirmed_at,
-      'created_at', NEW.created_at,
-      'is_anonymous', NEW.is_anonymous,
-      'provider', COALESCE(NEW.app_metadata->>'provider', 'email')
-    ),
-    jsonb_build_object(
-      'action', 'user_registered',
       'registration_method', CASE 
         WHEN NEW.is_anonymous THEN 'anonymous'
         WHEN NEW.app_metadata->>'provider' = 'google' THEN 'google_oauth'
         WHEN NEW.app_metadata->>'provider' = 'github' THEN 'github_oauth'
         ELSE 'email_password'
       END,
-      'default_role_assigned', default_role,
-      'email_domain', SPLIT_PART(NEW.email, '@', 2),
-      'requires_email_confirmation', CASE 
-        WHEN NEW.email_confirmed_at IS NULL THEN true
-        ELSE false
-      END,
-      'security_impact', 'medium',
-      'auto_assigned_role', true,
-      'account_type', 'standard'
+      'email_domain', SPLIT_PART(NEW.email, '@', 2)
     )
   );
   
@@ -216,8 +199,7 @@ CREATE OR REPLACE FUNCTION create_card(
     p_image_url TEXT DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
     p_ai_prompt TEXT DEFAULT '',
-    p_qr_code_position TEXT DEFAULT 'BR',
-    p_content_render_mode TEXT DEFAULT 'SINGLE_SERIES_MULTI_ITEMS'
+    p_qr_code_position TEXT DEFAULT 'BR'
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -230,8 +212,7 @@ BEGIN
         image_url,
         conversation_ai_enabled,
         ai_prompt,
-        qr_code_position,
-        content_render_mode
+        qr_code_position
     ) VALUES (
         auth.uid(),
         p_name,
@@ -239,8 +220,7 @@ BEGIN
         p_image_url,
         p_conversation_ai_enabled,
         p_ai_prompt,
-        p_qr_code_position::"QRCodePosition",
-        p_content_render_mode::"ContentRenderMode"
+        p_qr_code_position::"QRCodePosition"
     )
     RETURNING id INTO v_card_id;
     
@@ -252,20 +232,19 @@ BEGIN
     -- Log card creation in audit table
     INSERT INTO admin_audit_log (
         admin_user_id,
+        admin_email,
         target_user_id,
+        target_user_email,
         action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
+        description,
+        details
     ) VALUES (
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         'CARD_CREATION',
-        'User created new card design',
-        jsonb_build_object(
-            'card_exists', false
-        ),
+        'User created new card design: ' || p_name,
         jsonb_build_object(
             'card_id', v_card_id,
             'name', p_name,
@@ -274,18 +253,9 @@ BEGIN
             'conversation_ai_enabled', p_conversation_ai_enabled,
             'ai_prompt', p_ai_prompt,
             'qr_code_position', p_qr_code_position,
-            'content_render_mode', p_content_render_mode,
-            'created_at', NOW()
-        ),
-        jsonb_build_object(
-            'action', 'card_created',
-            'card_id', v_card_id,
-            'card_name', p_name,
             'is_admin_action', (caller_role = 'admin'),
             'has_ai_features', p_conversation_ai_enabled,
             'has_custom_image', (p_image_url IS NOT NULL),
-            'content_mode', p_content_render_mode,
-            'qr_position', p_qr_code_position,
             'security_impact', 'low',
             'business_impact', 'medium'
         )
@@ -302,7 +272,6 @@ RETURNS TABLE (
     user_id UUID,
     name TEXT,
     description TEXT,
-    content_render_mode TEXT,
     qr_code_position TEXT,
     image_url TEXT,
     conversation_ai_enabled BOOLEAN,
@@ -317,7 +286,6 @@ BEGIN
         c.user_id,
         c.name, 
         c.description, 
-        c.content_render_mode::TEXT,
         c.qr_code_position::TEXT,
         c.image_url, 
         c.conversation_ai_enabled,
@@ -421,44 +389,40 @@ BEGIN
     -- Log card update in audit table
     INSERT INTO admin_audit_log (
         admin_user_id,
+        admin_email,
         target_user_id,
+        target_user_email,
         action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
+        description,
+        details
     ) VALUES (
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         v_old_record.user_id,
+        (SELECT email FROM auth.users WHERE id = v_old_record.user_id),
         'CARD_UPDATE',
-        'User updated card design',
-        jsonb_build_object(
-            'card_id', v_old_record.id,
-            'name', v_old_record.name,
-            'description', v_old_record.description,
-            'image_url', v_old_record.image_url,
-            'conversation_ai_enabled', v_old_record.conversation_ai_enabled,
-            'ai_prompt', v_old_record.ai_prompt,
-            'qr_code_position', v_old_record.qr_code_position,
-            'updated_at', v_old_record.updated_at
-        ),
+        'User updated card design: ' || COALESCE(p_name, v_old_record.name),
         jsonb_build_object(
             'card_id', p_card_id,
-            'name', COALESCE(p_name, v_old_record.name),
-            'description', COALESCE(p_description, v_old_record.description),
-            'image_url', COALESCE(p_image_url, v_old_record.image_url),
-            'conversation_ai_enabled', COALESCE(p_conversation_ai_enabled, v_old_record.conversation_ai_enabled),
-            'ai_prompt', COALESCE(p_ai_prompt, v_old_record.ai_prompt),
-            'qr_code_position', COALESCE(p_qr_code_position, v_old_record.qr_code_position::TEXT),
-            'updated_at', NOW()
-        ),
-        jsonb_build_object(
-            'action', 'card_updated',
-            'card_id', p_card_id,
-            'card_name', COALESCE(p_name, v_old_record.name),
-            'is_admin_action', (caller_role = 'admin'),
+            'old_values', jsonb_build_object(
+                'name', v_old_record.name,
+                'description', v_old_record.description,
+                'image_url', v_old_record.image_url,
+                'conversation_ai_enabled', v_old_record.conversation_ai_enabled,
+                'ai_prompt', v_old_record.ai_prompt,
+                'qr_code_position', v_old_record.qr_code_position
+            ),
+            'new_values', jsonb_build_object(
+                'name', COALESCE(p_name, v_old_record.name),
+                'description', COALESCE(p_description, v_old_record.description),
+                'image_url', COALESCE(p_image_url, v_old_record.image_url),
+                'conversation_ai_enabled', COALESCE(p_conversation_ai_enabled, v_old_record.conversation_ai_enabled),
+                'ai_prompt', COALESCE(p_ai_prompt, v_old_record.ai_prompt),
+                'qr_code_position', COALESCE(p_qr_code_position, v_old_record.qr_code_position::TEXT)
+            ),
             'changes_made', v_changes_made,
             'fields_changed', ARRAY(SELECT jsonb_object_keys(v_changes_made)),
+            'is_admin_action', (caller_role = 'admin'),
             'ai_features_changed', (
                 (p_conversation_ai_enabled IS NOT NULL AND p_conversation_ai_enabled != v_old_record.conversation_ai_enabled) OR
                 (p_ai_prompt IS NOT NULL AND p_ai_prompt != v_old_record.ai_prompt)
@@ -494,7 +458,6 @@ BEGIN
         c.conversation_ai_enabled,
         c.ai_prompt,
         c.qr_code_position,
-        c.content_render_mode,
         c.user_id,
         c.created_at,
         c.updated_at
@@ -527,39 +490,32 @@ BEGIN
     -- Log card deletion in audit table (CRITICAL for compliance)
     INSERT INTO admin_audit_log (
         admin_user_id,
+        admin_email,
         target_user_id,
+        target_user_email,
         action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
+        description,
+        details
     ) VALUES (
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         v_card_record.user_id,
+        (SELECT email FROM auth.users WHERE id = v_card_record.user_id),
         'CARD_DELETION',
-        'User deleted card design',
+        'User deleted card design: ' || v_card_record.name,
         jsonb_build_object(
             'card_id', v_card_record.id,
-            'name', v_card_record.name,
-            'description', v_card_record.description,
-            'image_url', v_card_record.image_url,
-            'conversation_ai_enabled', v_card_record.conversation_ai_enabled,
-            'ai_prompt', v_card_record.ai_prompt,
-            'qr_code_position', v_card_record.qr_code_position,
-            'content_render_mode', v_card_record.content_render_mode,
-            'created_at', v_card_record.created_at,
-            'updated_at', v_card_record.updated_at,
-            'associated_batches', v_batches_count,
-            'issued_cards_affected', v_issued_cards_count
-        ),
-        jsonb_build_object(
-            'deleted_at', NOW(),
-            'card_exists', false
-        ),
-        jsonb_build_object(
-            'action', 'card_deleted',
-            'card_id', p_card_id,
             'card_name', v_card_record.name,
+            'deleted_card_data', jsonb_build_object(
+                'name', v_card_record.name,
+                'description', v_card_record.description,
+                'image_url', v_card_record.image_url,
+                'conversation_ai_enabled', v_card_record.conversation_ai_enabled,
+                'ai_prompt', v_card_record.ai_prompt,
+                'qr_code_position', v_card_record.qr_code_position,
+                'created_at', v_card_record.created_at,
+                'updated_at', v_card_record.updated_at
+            ),
             'is_admin_action', (caller_role = 'admin'),
             'data_impact', CASE 
                 WHEN v_issued_cards_count > 0 THEN 'high'
@@ -569,7 +525,8 @@ BEGIN
             'batches_affected', v_batches_count,
             'issued_cards_affected', v_issued_cards_count,
             'had_ai_features', v_card_record.conversation_ai_enabled,
-            'security_impact', 'medium'
+            'security_impact', 'medium',
+            'deleted_at', NOW()
         )
     );
     
@@ -1093,35 +1050,32 @@ BEGIN
         
         INSERT INTO admin_audit_log (
             admin_user_id,
+            admin_email,
             target_user_id,
+            target_user_email,
             action_type,
-            reason,
-            old_values,
-            new_values,
-            action_details
+            description,
+            details
         ) VALUES (
             auth.uid(),
+            (SELECT email FROM auth.users WHERE id = auth.uid()),
             v_user_id,
+            (SELECT email FROM auth.users WHERE id = v_user_id),
             'BATCH_STATUS_CHANGE',
             CASE 
-                WHEN p_disable_status THEN 'Batch disabled by user'
-                ELSE 'Batch enabled by user'
+                WHEN p_disable_status THEN 'Batch disabled by user: ' || batch_name
+                ELSE 'Batch enabled by user: ' || batch_name
             END,
             jsonb_build_object(
-                'is_disabled', NOT p_disable_status
-            ),
-            jsonb_build_object(
-                'is_disabled', p_disable_status,
-                'updated_at', NOW()
-            ),
-            jsonb_build_object(
+                'batch_id', p_batch_id,
+                'card_id', v_card_id,
+                'batch_name', batch_name,
                 'action', CASE 
                     WHEN p_disable_status THEN 'batch_disabled'
                     ELSE 'batch_enabled'
                 END,
-                'batch_id', p_batch_id,
-                'card_id', v_card_id,
-                'batch_name', batch_name,
+                'old_status', jsonb_build_object('is_disabled', NOT p_disable_status),
+                'new_status', jsonb_build_object('is_disabled', p_disable_status),
                 'is_admin_action', is_admin_action,
                 'status_change', CASE 
                     WHEN p_disable_status THEN 'enabled_to_disabled'
@@ -1285,42 +1239,41 @@ BEGIN
         
         INSERT INTO admin_audit_log (
             admin_user_id,
+            admin_email,
             target_user_id,
+            target_user_email,
             action_type,
-            reason,
-            old_values,
-            new_values,
-            action_details
+            description,
+            details
         ) VALUES (
             auth.uid(),
+            (SELECT email FROM auth.users WHERE id = auth.uid()),
             v_batch_record.card_owner,
+            (SELECT email FROM auth.users WHERE id = v_batch_record.card_owner),
             'CARD_GENERATION',
             CASE 
-                WHEN is_admin_action THEN 'Admin generated cards for batch'
-                WHEN v_batch_record.payment_waived THEN 'Cards generated after payment waiver'
-                ELSE 'Cards generated after payment confirmation'
+                WHEN is_admin_action THEN 'Admin generated cards for batch: ' || v_batch_record.batch_name
+                WHEN v_batch_record.payment_waived THEN 'Cards generated after payment waiver: ' || v_batch_record.batch_name
+                ELSE 'Cards generated after payment confirmation: ' || v_batch_record.batch_name
             END,
             jsonb_build_object(
-                'cards_generated', false,
-                'cards_count', 0
-            ),
-            jsonb_build_object(
-                'cards_generated', true,
-                'cards_generated_at', NOW(),
-                'cards_count', v_batch_record.cards_count
-            ),
-            jsonb_build_object(
-                'action', 'cards_generated',
                 'batch_id', p_batch_id,
                 'card_id', v_batch_record.card_id,
+                'batch_name', v_batch_record.batch_name,
                 'cards_count', v_batch_record.cards_count,
+                'action', 'cards_generated',
+                'old_status', jsonb_build_object('cards_generated', false, 'cards_count', 0),
+                'new_status', jsonb_build_object(
+                    'cards_generated', true,
+                    'cards_generated_at', NOW(),
+                    'cards_count', v_batch_record.cards_count
+                ),
                 'is_admin_action', is_admin_action,
                 'payment_method', CASE 
                     WHEN v_batch_record.payment_waived THEN 'waived'
                     WHEN v_batch_record.payment_completed THEN 'stripe'
                     ELSE 'unknown'
-                END,
-                'batch_name', v_batch_record.batch_name
+                END
             )
         );
     END;
@@ -1388,7 +1341,6 @@ $$;
 -- File: 06_print_requests.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS request_card_printing CASCADE;
-DROP FUNCTION IF EXISTS request_card_printing_with_address CASCADE;
 DROP FUNCTION IF EXISTS get_print_requests_for_batch CASCADE;
 DROP FUNCTION IF EXISTS withdraw_print_request CASCADE;
 
@@ -1477,77 +1429,6 @@ BEGIN
 END;
 $$;
 
--- Request card printing for a batch with shipping address ID
-CREATE OR REPLACE FUNCTION request_card_printing_with_address(
-    p_batch_id UUID, 
-    p_shipping_address_id UUID
-)
-RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_print_request_id UUID;
-    v_user_id UUID;
-    v_batch_is_disabled BOOLEAN;
-    v_payment_completed BOOLEAN;
-    v_payment_waived BOOLEAN;
-    v_cards_generated BOOLEAN;
-    v_formatted_address TEXT;
-BEGIN
-    -- Check if the user owns the card associated with the batch and get payment status
-    SELECT c.user_id, cb.is_disabled, cb.payment_completed, cb.payment_waived, cb.cards_generated
-    INTO v_user_id, v_batch_is_disabled, v_payment_completed, v_payment_waived, v_cards_generated
-    FROM card_batches cb
-    JOIN cards c ON cb.card_id = c.id
-    WHERE cb.id = p_batch_id;
-
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Batch not found.';
-    END IF;
-
-    IF v_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to request printing for this batch.';
-    END IF;
-
-    IF v_batch_is_disabled THEN
-        RAISE EXCEPTION 'Cannot request printing for a disabled batch.';
-    END IF;
-
-    -- NEW: Validate payment status
-    IF NOT v_payment_completed AND NOT v_payment_waived THEN
-        RAISE EXCEPTION 'Payment must be completed or waived before requesting card printing.';
-    END IF;
-
-    -- NEW: Validate cards are generated
-    IF NOT v_cards_generated THEN
-        RAISE EXCEPTION 'Cards must be generated before requesting printing. Please contact support if payment was completed but cards are not generated.';
-    END IF;
-
-    -- Check if there is already an active print request for this batch
-    IF EXISTS (
-        SELECT 1 FROM print_requests pr
-        WHERE pr.batch_id = p_batch_id AND pr.status NOT IN ('COMPLETED', 'CANCELLED')
-    ) THEN
-        RAISE EXCEPTION 'An active print request already exists for this batch.';
-    END IF;
-
-    -- Get formatted address
-    SELECT format_shipping_address(p_shipping_address_id) INTO v_formatted_address;
-
-    INSERT INTO print_requests (
-        batch_id,
-        user_id,
-        shipping_address,
-        status
-    ) VALUES (
-        p_batch_id,
-        auth.uid(),
-        v_formatted_address,
-        'SUBMITTED'
-    )
-    RETURNING id INTO v_print_request_id;
-
-    RETURN v_print_request_id;
-END;
-$$;
 
 -- Get print requests for a batch
 CREATE OR REPLACE FUNCTION get_print_requests_for_batch(p_batch_id UUID)
@@ -1559,7 +1440,6 @@ RETURNS TABLE (
     shipping_address TEXT,
     contact_email TEXT,
     contact_whatsapp TEXT,
-    admin_notes TEXT,
     requested_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -1589,7 +1469,6 @@ BEGIN
         pr.shipping_address,
         pr.contact_email,
         pr.contact_whatsapp,
-        pr.admin_notes,
         pr.requested_at,
         pr.updated_at
     FROM print_requests pr
@@ -1637,42 +1516,34 @@ BEGIN
     UPDATE print_requests
     SET 
         status = 'CANCELLED',
-        admin_notes = CASE 
-            WHEN admin_notes IS NULL OR admin_notes = '' THEN 
-                'Withdrawn by card issuer' || COALESCE(': ' || p_withdrawal_reason, '')
-            ELSE 
-                admin_notes || E'\n\n[WITHDRAWN] ' || COALESCE(p_withdrawal_reason, 'Withdrawn by card issuer')
-        END,
         updated_at = NOW()
     WHERE id = p_request_id;
 
     -- Log the withdrawal in audit table for admin visibility
     INSERT INTO admin_audit_log (
         admin_user_id,
+        admin_email,
         target_user_id,
+        target_user_email,
         action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
+        description,
+        details
     ) VALUES (
         auth.uid(), -- The card issuer is performing this action
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         auth.uid(), -- They are the target user as well
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         'PRINT_REQUEST_WITHDRAWAL',
-        COALESCE(p_withdrawal_reason, 'Print request withdrawn by card issuer'),
-        jsonb_build_object(
-            'status', 'SUBMITTED'
-        ),
-        jsonb_build_object(
-            'status', 'CANCELLED',
-            'withdrawal_reason', p_withdrawal_reason
-        ),
+        'Print request withdrawn by card issuer for ' || v_card_name || ' - ' || v_batch_name || COALESCE(': ' || p_withdrawal_reason, ''),
         jsonb_build_object(
             'request_id', p_request_id,
             'batch_id', v_batch_id,
             'card_name', v_card_name,
             'batch_name', v_batch_name,
-            'self_withdrawal', true
+            'old_status', 'SUBMITTED',
+            'new_status', 'CANCELLED',
+            'self_withdrawal', true,
+            'withdrawal_reason', p_withdrawal_reason
         )
     );
     
@@ -1683,7 +1554,6 @@ $$;
 -- File: 07_public_access.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS get_public_card_content CASCADE;
-DROP FUNCTION IF EXISTS get_sample_issued_card_for_preview CASCADE;
 DROP FUNCTION IF EXISTS get_card_preview_access CASCADE;
 DROP FUNCTION IF EXISTS get_card_preview_content CASCADE;
 
@@ -1777,40 +1647,6 @@ BEGIN
 END;
 $$;
 
--- Get a sample issued card for mobile preview (card issuer only)
-CREATE OR REPLACE FUNCTION get_sample_issued_card_for_preview(p_card_id UUID)
-RETURNS TABLE (
-    issue_card_id UUID
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID;
-BEGIN
-    -- Check if the user owns the card
-    SELECT user_id INTO v_user_id FROM cards WHERE id = p_card_id;
-    
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Card not found.';
-    END IF;
-    
-    IF v_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to preview this card.';
-    END IF;
-    
-    -- Get the first available issued card for this card design
-    -- Prefer active cards, but fall back to inactive ones if needed
-    RETURN QUERY
-    SELECT 
-        ic.id as issue_card_id
-    FROM issue_cards ic
-    JOIN card_batches cb ON ic.batch_id = cb.id
-    WHERE ic.card_id = p_card_id 
-    AND cb.is_disabled = FALSE -- Only from enabled batches
-    ORDER BY 
-        ic.active DESC, -- Active cards first
-        ic.issue_at DESC -- Most recent first
-    LIMIT 1;
-END;
-$$;
 
 -- Get card preview URL without requiring issued cards (for card owners)
 CREATE OR REPLACE FUNCTION get_card_preview_access(p_card_id UUID)
@@ -1930,7 +1766,6 @@ RETURNS TABLE (
     full_name TEXT,
     verification_status "ProfileStatus",
     supporting_documents TEXT[],
-    admin_feedback TEXT,
     verified_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
@@ -1946,7 +1781,6 @@ BEGIN
         up.full_name,
         up.verification_status,
         up.supporting_documents,
-        up.admin_feedback,
         up.verified_at,
         up.created_at,
         up.updated_at
@@ -1995,7 +1829,6 @@ BEGIN
         full_name = p_full_name,
         supporting_documents = p_supporting_documents,
         verification_status = 'PENDING_REVIEW',
-        admin_feedback = NULL, -- Clear previous feedback
         updated_at = NOW()
     WHERE user_id = v_user_id;
     
@@ -2036,37 +1869,43 @@ BEGIN
     UPDATE public.user_profiles
     SET 
         verification_status = p_new_status,
-        admin_feedback = p_admin_feedback,
         verified_at = CASE WHEN p_new_status = 'APPROVED' THEN NOW() ELSE NULL END,
         updated_at = NOW()
     WHERE user_id = p_target_user_id;
 
-    -- Feedback is stored in admin_feedback column of user_profiles
-    -- and logged in admin_audit_log table below
+    -- Create feedback entry if admin provided feedback
+    IF p_admin_feedback IS NOT NULL AND LENGTH(TRIM(p_admin_feedback)) > 0 THEN
+        DECLARE
+            v_admin_email VARCHAR(255);
+        BEGIN
+            SELECT email INTO v_admin_email FROM auth.users WHERE id = auth.uid();
+            
+            INSERT INTO verification_feedbacks (
+                user_id,
+                admin_user_id,
+                admin_email,
+                message
+            ) VALUES (
+                p_target_user_id,
+                auth.uid(),
+                v_admin_email,
+                p_admin_feedback
+            );
+        END;
+    END IF;
 
-    -- Log in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        target_user_id,
-        action_type,
-        reason,
-        new_values,
-        action_details
-    ) VALUES (
+    -- Log using the centralized audit function (emails handled automatically)
+    PERFORM log_admin_action(
         auth.uid(),
-        p_target_user_id,
         'VERIFICATION_REVIEW',
-        p_admin_feedback,
+        CASE 
+            WHEN p_new_status = 'APPROVED' THEN 'Verification approved'
+            WHEN p_new_status = 'REJECTED' THEN 'Verification rejected'
+            ELSE 'Verification reviewed'
+        END || CASE WHEN p_admin_feedback IS NOT NULL THEN ': ' || p_admin_feedback ELSE '' END,
+        p_target_user_id,
         jsonb_build_object(
             'verification_status', p_new_status,
-            'verified_at', CASE WHEN p_new_status = 'APPROVED' THEN NOW() ELSE NULL END
-        ),
-        jsonb_build_object(
-            'action', CASE 
-                WHEN p_new_status = 'APPROVED' THEN 'verification_approved'
-                WHEN p_new_status = 'REJECTED' THEN 'verification_rejected'
-                ELSE 'verification_reviewed'
-            END,
             'review_type', p_new_status::TEXT,
             'has_feedback', (p_admin_feedback IS NOT NULL AND LENGTH(TRIM(p_admin_feedback)) > 0)
         )
@@ -2100,7 +1939,6 @@ BEGIN
         verification_status = 'NOT_SUBMITTED',
         full_name = NULL,
         supporting_documents = NULL,
-        admin_feedback = NULL,
         verified_at = NULL,
         updated_at = NOW()
     WHERE user_id = v_user_id;
@@ -2314,313 +2152,28 @@ BEGIN
 END;
 $$; 
 
--- File: 10_shipping_addresses.sql
--- -----------------------------------------------------------------
-DROP FUNCTION IF EXISTS get_user_shipping_addresses CASCADE;
-DROP FUNCTION IF EXISTS create_shipping_address CASCADE;
-DROP FUNCTION IF EXISTS update_shipping_address CASCADE;
-DROP FUNCTION IF EXISTS delete_shipping_address CASCADE;
-DROP FUNCTION IF EXISTS set_default_shipping_address CASCADE;
-DROP FUNCTION IF EXISTS format_shipping_address CASCADE;
-
--- =================================================================
--- SHIPPING ADDRESS FUNCTIONS
--- Functions for managing user shipping addresses
--- =================================================================
-
--- Get all shipping addresses for the current user
-CREATE OR REPLACE FUNCTION get_user_shipping_addresses()
-RETURNS TABLE (
-    id UUID,
-    label TEXT,
-    recipient_name TEXT,
-    address_line_1 TEXT,
-    address_line_2 TEXT,
-    city TEXT,
-    state_province TEXT,
-    postal_code TEXT,
-    country TEXT,
-    phone TEXT,
-    is_default BOOLEAN,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        sa.id,
-        sa.label,
-        sa.recipient_name,
-        sa.address_line_1,
-        sa.address_line_2,
-        sa.city,
-        sa.state_province,
-        sa.postal_code,
-        sa.country,
-        sa.phone,
-        sa.is_default,
-        sa.created_at,
-        sa.updated_at
-    FROM shipping_addresses sa
-    WHERE sa.user_id = auth.uid()
-    ORDER BY sa.is_default DESC, sa.created_at DESC;
-END;
-$$;
-
--- Create a new shipping address
-CREATE OR REPLACE FUNCTION create_shipping_address(
-    p_label TEXT,
-    p_recipient_name TEXT,
-    p_address_line_1 TEXT,
-    p_city TEXT,
-    p_postal_code TEXT,
-    p_country TEXT,
-    p_address_line_2 TEXT DEFAULT NULL,
-    p_state_province TEXT DEFAULT NULL,
-    p_phone TEXT DEFAULT NULL,
-    p_is_default BOOLEAN DEFAULT FALSE
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_address_id UUID;
-BEGIN
-    -- If this is being set as default, unset all other defaults first
-    IF p_is_default THEN
-        UPDATE shipping_addresses 
-        SET is_default = FALSE, updated_at = NOW()
-        WHERE user_id = auth.uid();
-    END IF;
-    
-    INSERT INTO shipping_addresses (
-        user_id,
-        label,
-        recipient_name,
-        address_line_1,
-        address_line_2,
-        city,
-        state_province,
-        postal_code,
-        country,
-        phone,
-        is_default
-    ) VALUES (
-        auth.uid(),
-        p_label,
-        p_recipient_name,
-        p_address_line_1,
-        p_address_line_2,
-        p_city,
-        p_state_province,
-        p_postal_code,
-        p_country,
-        p_phone,
-        p_is_default
-    )
-    RETURNING id INTO v_address_id;
-    
-    RETURN v_address_id;
-END;
-$$;
-
--- Update a shipping address
-CREATE OR REPLACE FUNCTION update_shipping_address(
-    p_address_id UUID,
-    p_label TEXT,
-    p_recipient_name TEXT,
-    p_address_line_1 TEXT,
-    p_city TEXT,
-    p_postal_code TEXT,
-    p_country TEXT,
-    p_address_line_2 TEXT DEFAULT NULL,
-    p_state_province TEXT DEFAULT NULL,
-    p_phone TEXT DEFAULT NULL,
-    p_is_default BOOLEAN DEFAULT FALSE
-) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID;
-BEGIN
-    -- Check if the user owns this address
-    SELECT user_id INTO v_user_id FROM shipping_addresses WHERE id = p_address_id;
-    
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Shipping address not found';
-    END IF;
-    
-    IF v_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to update this shipping address';
-    END IF;
-    
-    -- If this is being set as default, unset all other defaults first
-    IF p_is_default THEN
-        UPDATE shipping_addresses 
-        SET is_default = FALSE, updated_at = NOW()
-        WHERE user_id = auth.uid() AND id != p_address_id;
-    END IF;
-    
-    UPDATE shipping_addresses
-    SET 
-        label = p_label,
-        recipient_name = p_recipient_name,
-        address_line_1 = p_address_line_1,
-        address_line_2 = p_address_line_2,
-        city = p_city,
-        state_province = p_state_province,
-        postal_code = p_postal_code,
-        country = p_country,
-        phone = p_phone,
-        is_default = p_is_default,
-        updated_at = NOW()
-    WHERE id = p_address_id;
-    
-    RETURN FOUND;
-END;
-$$;
-
--- Delete a shipping address
-CREATE OR REPLACE FUNCTION delete_shipping_address(p_address_id UUID)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID;
-    v_is_default BOOLEAN;
-    v_remaining_count INTEGER;
-BEGIN
-    -- Check if the user owns this address and get its default status
-    SELECT user_id, is_default INTO v_user_id, v_is_default 
-    FROM shipping_addresses 
-    WHERE id = p_address_id;
-    
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Shipping address not found';
-    END IF;
-    
-    IF v_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to delete this shipping address';
-    END IF;
-    
-    -- Delete the address
-    DELETE FROM shipping_addresses WHERE id = p_address_id;
-    
-    -- If we deleted the default address, set another one as default
-    IF v_is_default THEN
-        -- Count remaining addresses
-        SELECT COUNT(*) INTO v_remaining_count
-        FROM shipping_addresses
-        WHERE user_id = auth.uid();
-        
-        -- If there are remaining addresses, set the most recent one as default
-        IF v_remaining_count > 0 THEN
-            UPDATE shipping_addresses
-            SET is_default = TRUE, updated_at = NOW()
-            WHERE user_id = auth.uid()
-            AND id = (
-                SELECT id FROM shipping_addresses 
-                WHERE user_id = auth.uid() 
-                ORDER BY created_at DESC 
-                LIMIT 1
-            );
-        END IF;
-    END IF;
-    
-    RETURN FOUND;
-END;
-$$;
-
--- Set a shipping address as default
-CREATE OR REPLACE FUNCTION set_default_shipping_address(p_address_id UUID)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID;
-BEGIN
-    -- Check if the user owns this address
-    SELECT user_id INTO v_user_id FROM shipping_addresses WHERE id = p_address_id;
-    
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Shipping address not found';
-    END IF;
-    
-    IF v_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to modify this shipping address';
-    END IF;
-    
-    -- Unset all other defaults first
-    UPDATE shipping_addresses 
-    SET is_default = FALSE, updated_at = NOW()
-    WHERE user_id = auth.uid();
-    
-    -- Set this address as default
-    UPDATE shipping_addresses
-    SET is_default = TRUE, updated_at = NOW()
-    WHERE id = p_address_id;
-    
-    RETURN FOUND;
-END;
-$$;
-
--- Format shipping address for display/printing
-CREATE OR REPLACE FUNCTION format_shipping_address(p_address_id UUID)
-RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_address RECORD;
-    v_formatted_address TEXT;
-BEGIN
-    -- Get the address details
-    SELECT * INTO v_address
-    FROM shipping_addresses
-    WHERE id = p_address_id;
-    
-    IF NOT FOUND THEN
-        RETURN NULL;
-    END IF;
-    
-    -- Format the address
-    v_formatted_address := v_address.recipient_name || E'\n' ||
-                          v_address.address_line_1;
-    
-    -- Add second address line if present
-    IF v_address.address_line_2 IS NOT NULL AND v_address.address_line_2 != '' THEN
-        v_formatted_address := v_formatted_address || E'\n' || v_address.address_line_2;
-    END IF;
-    
-    -- Add city, state/province, postal code
-    v_formatted_address := v_formatted_address || E'\n' || v_address.city;
-    
-    IF v_address.state_province IS NOT NULL AND v_address.state_province != '' THEN
-        v_formatted_address := v_formatted_address || ', ' || v_address.state_province;
-    END IF;
-    
-    v_formatted_address := v_formatted_address || ' ' || v_address.postal_code;
-    
-    -- Add country
-    v_formatted_address := v_formatted_address || E'\n' || v_address.country;
-    
-    -- Add phone if present
-    IF v_address.phone IS NOT NULL AND v_address.phone != '' THEN
-        v_formatted_address := v_formatted_address || E'\nPhone: ' || v_address.phone;
-    END IF;
-    
-    RETURN v_formatted_address;
-END;
-$$; 
-
 -- File: 11_admin_functions.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS admin_waive_batch_payment CASCADE;
+DROP FUNCTION IF EXISTS log_admin_action CASCADE;
+DROP FUNCTION IF EXISTS get_admin_audit_logs CASCADE;
+DROP FUNCTION IF EXISTS create_admin_feedback CASCADE;
+DROP FUNCTION IF EXISTS get_admin_feedback_history CASCADE;
+DROP FUNCTION IF EXISTS admin_get_system_stats_enhanced CASCADE;
 DROP FUNCTION IF EXISTS admin_get_all_print_requests CASCADE;
 DROP FUNCTION IF EXISTS admin_update_print_request_status CASCADE;
-DROP FUNCTION IF EXISTS admin_get_system_stats CASCADE;
 DROP FUNCTION IF EXISTS admin_get_pending_verifications CASCADE;
-DROP FUNCTION IF EXISTS create_or_update_admin_feedback CASCADE;
-DROP FUNCTION IF EXISTS get_admin_audit_logs CASCADE;
 DROP FUNCTION IF EXISTS get_recent_admin_activity CASCADE;
 DROP FUNCTION IF EXISTS get_admin_audit_logs_count CASCADE;
 DROP FUNCTION IF EXISTS get_all_verifications CASCADE;
 DROP FUNCTION IF EXISTS get_verification_by_id CASCADE;
 DROP FUNCTION IF EXISTS get_all_users_with_details CASCADE;
 DROP FUNCTION IF EXISTS get_admin_batches_requiring_attention CASCADE;
+DROP FUNCTION IF EXISTS get_admin_all_batches CASCADE;
 DROP FUNCTION IF EXISTS get_all_print_requests CASCADE;
 DROP FUNCTION IF EXISTS admin_change_user_role CASCADE;
-DROP FUNCTION IF EXISTS get_admin_feedback_history CASCADE;
-DROP FUNCTION IF EXISTS get_current_admin_feedback CASCADE;
-DROP FUNCTION IF EXISTS get_user_feedback_summary CASCADE;
+DROP FUNCTION IF EXISTS get_verification_feedbacks CASCADE;
+DROP FUNCTION IF EXISTS get_print_request_feedbacks CASCADE;
 DROP FUNCTION IF EXISTS reset_user_verification CASCADE;
 DROP FUNCTION IF EXISTS admin_manual_verification CASCADE;
 DROP FUNCTION IF EXISTS get_user_activity_summary CASCADE;
@@ -2679,34 +2232,17 @@ BEGIN
     -- Generate cards using the new function
     PERFORM generate_batch_cards(p_batch_id);
     
-    -- Log the waiver in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        target_user_id,
-        action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
-    ) VALUES (
+    -- Log the waiver
+    PERFORM log_admin_action(
         auth.uid(),
-        v_batch_record.created_by,
         'PAYMENT_WAIVER',
-        p_waiver_reason,
-        jsonb_build_object(
-            'payment_waived', false,
-            'cards_generated', false
-        ),
-        jsonb_build_object(
-            'payment_waived', true,
-            'payment_waived_by', auth.uid(),
-            'payment_waived_at', NOW(),
-            'payment_waiver_reason', p_waiver_reason,
-            'cards_generated', true
-        ),
+        'Payment waived for batch ' || v_batch_record.batch_name || ' (' || v_batch_record.cards_count || ' cards): ' || p_waiver_reason,
+        v_batch_record.created_by,
         jsonb_build_object(
             'batch_id', p_batch_id,
-            'cards_count', v_batch_record.cards_count
+            'batch_name', v_batch_record.batch_name,
+            'cards_count', v_batch_record.cards_count,
+            'waived_amount_cents', v_batch_record.cards_count * 200
         )
     );
     
@@ -2714,10 +2250,333 @@ BEGIN
 END;
 $$;
 
+-- =================================================================
+-- SIMPLIFIED AUDIT SYSTEM FUNCTIONS
+-- =================================================================
+
+-- Simple audit logging function with direct email lookup
+CREATE OR REPLACE FUNCTION log_admin_action(
+    p_admin_user_id UUID,
+    p_action_type VARCHAR(50),
+    p_description TEXT,
+    p_target_user_id UUID DEFAULT NULL,
+    p_details JSONB DEFAULT NULL
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_admin_email VARCHAR(255);
+    v_target_email VARCHAR(255);
+    v_audit_id UUID;
+BEGIN
+    -- Get admin email
+    SELECT email INTO v_admin_email FROM auth.users WHERE id = p_admin_user_id;
+    
+    -- Get target user email if target user is specified
+    IF p_target_user_id IS NOT NULL THEN
+        SELECT email INTO v_target_email FROM auth.users WHERE id = p_target_user_id;
+    END IF;
+    
+    INSERT INTO admin_audit_log (
+        admin_user_id,
+        admin_email,
+        target_user_id,
+        target_user_email,
+        action_type,
+        description,
+        details
+    ) VALUES (
+        p_admin_user_id,
+        v_admin_email,
+        p_target_user_id,
+        v_target_email,
+        p_action_type,
+        p_description,
+        p_details
+    )
+    RETURNING id INTO v_audit_id;
+    
+    RETURN v_audit_id;
+END;
+$$;
+
+-- Simple audit log retrieval function
+CREATE OR REPLACE FUNCTION get_admin_audit_logs(
+    p_action_type TEXT DEFAULT NULL,
+    p_admin_user_id UUID DEFAULT NULL,
+    p_target_user_id UUID DEFAULT NULL,
+    p_start_date TIMESTAMPTZ DEFAULT NULL,
+    p_end_date TIMESTAMPTZ DEFAULT NULL,
+    p_limit INTEGER DEFAULT 50,
+    p_offset INTEGER DEFAULT 0
+)
+RETURNS TABLE (
+    id UUID,
+    admin_user_id UUID,
+    admin_email VARCHAR(255),
+    target_user_id UUID,
+    target_user_email VARCHAR(255),
+    action_type VARCHAR(50),
+    description TEXT,
+    details JSONB,
+    created_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+    v_action_types TEXT[];
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view audit logs.';
+    END IF;
+
+    -- Handle comma-separated action types for compatibility
+    IF p_action_type IS NOT NULL THEN
+        IF p_action_type LIKE '%,%' THEN
+            v_action_types := string_to_array(p_action_type, ',');
+        ELSE
+            v_action_types := ARRAY[p_action_type];
+        END IF;
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        aal.id,
+        aal.admin_user_id,
+        aal.admin_email,
+        aal.target_user_id,
+        aal.target_user_email,
+        aal.action_type,
+        aal.description,
+        aal.details,
+        aal.created_at
+    FROM admin_audit_log aal
+    WHERE 
+        (v_action_types IS NULL OR aal.action_type = ANY(v_action_types))
+        AND (p_admin_user_id IS NULL OR aal.admin_user_id = p_admin_user_id)
+        AND (p_target_user_id IS NULL OR aal.target_user_id = p_target_user_id)
+        AND (p_start_date IS NULL OR aal.created_at >= p_start_date)
+        AND (p_end_date IS NULL OR aal.created_at <= p_end_date)
+    ORDER BY aal.created_at DESC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$;
+
+-- Simple feedback creation for verification and print requests
+CREATE OR REPLACE FUNCTION create_admin_feedback(
+    p_target_user_id UUID,
+    p_entity_type VARCHAR(20), -- 'verification' or 'print_request'
+    p_entity_id UUID,
+    p_message TEXT
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_feedback_id UUID;
+    v_admin_email VARCHAR(255);
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can create feedback entries.';
+    END IF;
+
+    -- Validate entity type
+    IF p_entity_type NOT IN ('verification', 'print_request') THEN
+        RAISE EXCEPTION 'Invalid entity type. Must be verification or print_request.';
+    END IF;
+
+    -- Get admin email
+    SELECT email INTO v_admin_email FROM auth.users WHERE id = auth.uid();
+
+    -- Insert into appropriate feedback table
+    IF p_entity_type = 'verification' THEN
+        INSERT INTO verification_feedbacks (
+            user_id,
+            admin_user_id,
+            admin_email,
+            message
+        ) VALUES (
+            p_entity_id, -- For verification, entity_id is the user_id
+            auth.uid(),
+            v_admin_email,
+            p_message
+        )
+        RETURNING id INTO v_feedback_id;
+    ELSE -- print_request
+        INSERT INTO print_request_feedbacks (
+            print_request_id,
+            admin_user_id,
+            admin_email,
+            message
+        ) VALUES (
+            p_entity_id,
+            auth.uid(),
+            v_admin_email,
+            p_message
+        )
+        RETURNING id INTO v_feedback_id;
+    END IF;
+    
+    RETURN v_feedback_id;
+END;
+$$;
+
+-- Get feedback history for verification or print request
+CREATE OR REPLACE FUNCTION get_admin_feedback_history(
+    p_entity_type VARCHAR(20),
+    p_entity_id UUID
+) RETURNS TABLE (
+    id UUID,
+    admin_user_id UUID,
+    admin_email VARCHAR(255),
+    message TEXT,
+    created_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view feedback history.';
+    END IF;
+
+    IF p_entity_type = 'verification' THEN
+        RETURN QUERY
+        SELECT 
+            vf.id,
+            vf.admin_user_id,
+            vf.admin_email,
+            vf.message,
+            vf.created_at
+        FROM verification_feedbacks vf
+        WHERE vf.user_id = p_entity_id
+        ORDER BY vf.created_at ASC; -- Chronological order for conversation flow
+    ELSIF p_entity_type = 'print_request' THEN
+        RETURN QUERY
+        SELECT 
+            pf.id,
+            pf.admin_user_id,
+            pf.admin_email,
+            pf.message,
+            pf.created_at
+        FROM print_request_feedbacks pf
+        WHERE pf.print_request_id = p_entity_id
+        ORDER BY pf.created_at ASC; -- Chronological order for conversation flow
+    ELSE
+        RAISE EXCEPTION 'Invalid entity type. Must be verification or print_request.';
+    END IF;
+END;
+$$;
+
+-- Enhanced system statistics function
+CREATE OR REPLACE FUNCTION admin_get_system_stats_enhanced()
+RETURNS TABLE (
+    total_users BIGINT,
+    total_verified_users BIGINT,
+    total_cards BIGINT,
+    total_batches BIGINT,
+    total_issued_cards BIGINT,
+    total_activated_cards BIGINT,
+    pending_verifications BIGINT,
+    pending_payment_batches BIGINT,
+    paid_batches BIGINT,
+    waived_batches BIGINT,
+    print_requests_submitted BIGINT,
+    print_requests_processing BIGINT,
+    print_requests_shipping BIGINT,
+    daily_revenue_cents BIGINT,
+    weekly_revenue_cents BIGINT,
+    monthly_revenue_cents BIGINT,
+    total_revenue_cents BIGINT,
+    daily_new_users BIGINT,
+    weekly_new_users BIGINT,
+    monthly_new_users BIGINT,
+    daily_new_cards BIGINT,
+    weekly_new_cards BIGINT,
+    monthly_new_cards BIGINT,
+    daily_issued_cards BIGINT,
+    weekly_issued_cards BIGINT,
+    monthly_issued_cards BIGINT,
+    -- NEW AUDIT METRICS
+    total_audit_entries BIGINT,
+    critical_actions_today BIGINT,
+    high_severity_actions_week BIGINT,
+    unique_admin_users_month BIGINT,
+    recent_feedback_count BIGINT,
+    total_feedback_count BIGINT
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view system statistics.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        -- Existing metrics
+        (SELECT COUNT(*) FROM auth.users) as total_users,
+        (SELECT COUNT(*) FROM user_profiles WHERE verification_status = 'APPROVED') as total_verified_users,
+        (SELECT COUNT(*) FROM cards) as total_cards,
+        (SELECT COUNT(*) FROM card_batches) as total_batches,
+        (SELECT COUNT(*) FROM issue_cards) as total_issued_cards,
+        (SELECT COUNT(*) FROM issue_cards WHERE active = true) as total_activated_cards,
+        (SELECT COUNT(*) FROM user_profiles WHERE verification_status = 'PENDING_REVIEW') as pending_verifications,
+        (SELECT COUNT(*) FROM card_batches WHERE payment_required = true AND payment_completed = false AND payment_waived = false) as pending_payment_batches,
+        (SELECT COUNT(*) FROM card_batches WHERE payment_completed = true) as paid_batches,
+        (SELECT COUNT(*) FROM card_batches WHERE payment_waived = true) as waived_batches,
+        (SELECT COUNT(*) FROM print_requests WHERE status = 'SUBMITTED') as print_requests_submitted,
+        (SELECT COUNT(*) FROM print_requests WHERE status = 'PROCESSING') as print_requests_processing,
+        (SELECT COUNT(*) FROM print_requests WHERE status = 'SHIPPING') as print_requests_shipping,
+        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded' AND created_at >= CURRENT_DATE) as daily_revenue_cents,
+        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_revenue_cents,
+        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_revenue_cents,
+        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded') as total_revenue_cents,
+        (SELECT COUNT(*) FROM auth.users WHERE created_at >= CURRENT_DATE) as daily_new_users,
+        (SELECT COUNT(*) FROM auth.users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_new_users,
+        (SELECT COUNT(*) FROM auth.users WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_new_users,
+        (SELECT COUNT(*) FROM cards WHERE created_at >= CURRENT_DATE) as daily_new_cards,
+        (SELECT COUNT(*) FROM cards WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_new_cards,
+        (SELECT COUNT(*) FROM cards WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_new_cards,
+        (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE) as daily_issued_cards,
+        (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_issued_cards,
+        (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_issued_cards,
+        -- SIMPLIFIED AUDIT METRICS
+        (SELECT COUNT(*) FROM admin_audit_log) as total_audit_entries,
+        (SELECT COUNT(*) FROM admin_audit_log WHERE action_type = 'PAYMENT_WAIVER' AND created_at >= CURRENT_DATE) as payment_waivers_today,
+        (SELECT COUNT(*) FROM admin_audit_log WHERE action_type = 'ROLE_CHANGE' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as role_changes_week,
+        (SELECT COUNT(DISTINCT admin_user_id) FROM admin_audit_log WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as unique_admin_users_month,
+        (SELECT COUNT(*) FROM verification_feedbacks WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') + 
+         (SELECT COUNT(*) FROM print_request_feedbacks WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as recent_feedback_count,
+        (SELECT COUNT(*) FROM verification_feedbacks) + (SELECT COUNT(*) FROM print_request_feedbacks) as total_feedback_count;
+END;
+$$;
+
+-- =================================================================
+-- UPDATED EXISTING FUNCTIONS
+-- =================================================================
+
 -- (Admin) Get all print requests for review
 CREATE OR REPLACE FUNCTION admin_get_all_print_requests(
     p_status "PrintRequestStatus" DEFAULT NULL,
-    p_limit INTEGER DEFAULT 100
+    p_search_query TEXT DEFAULT NULL,
+    p_limit INTEGER DEFAULT 100,
+    p_offset INTEGER DEFAULT 0
 )
 RETURNS TABLE (
     request_id UUID,
@@ -2732,7 +2591,6 @@ RETURNS TABLE (
     shipping_address TEXT,
     contact_email TEXT,
     contact_whatsapp TEXT,
-    admin_notes TEXT,
     requested_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -2762,7 +2620,6 @@ BEGIN
         pr.shipping_address AS shipping_address,
         pr.contact_email AS contact_email,
         pr.contact_whatsapp AS contact_whatsapp,
-        pr.admin_notes AS admin_notes,
         pr.requested_at AS requested_at,
         pr.updated_at AS updated_at
     FROM print_requests pr
@@ -2770,9 +2627,17 @@ BEGIN
     JOIN cards c ON cb.card_id = c.id
     LEFT JOIN auth.users au ON pr.user_id = au.id
     LEFT JOIN user_profiles up ON pr.user_id = up.user_id
-    WHERE (p_status IS NULL OR pr.status = p_status)
+    WHERE 
+        (p_status IS NULL OR pr.status = p_status)
+        AND (p_search_query IS NULL OR (
+            au.email ILIKE '%' || p_search_query || '%' OR
+            up.public_name ILIKE '%' || p_search_query || '%' OR
+            c.name ILIKE '%' || p_search_query || '%' OR
+            cb.batch_name ILIKE '%' || p_search_query || '%' OR
+            pr.shipping_address ILIKE '%' || p_search_query || '%'
+        ))
     ORDER BY pr.requested_at DESC
-    LIMIT p_limit;
+    LIMIT p_limit OFFSET p_offset;
 END;
 $$;
 
@@ -2808,42 +2673,44 @@ BEGIN
         RAISE EXCEPTION 'Print request not found.';
     END IF;
 
-    -- Update the print request
+    -- Update the print request (no more admin_notes field)
     UPDATE print_requests
     SET 
         status = p_new_status,
-        admin_notes = CASE 
-            WHEN p_admin_notes IS NULL THEN admin_notes
-            WHEN admin_notes IS NULL OR admin_notes = '' THEN p_admin_notes
-            ELSE admin_notes || E'\n\n[' || NOW()::DATE || '] ' || p_admin_notes
-        END,
         updated_at = NOW()
     WHERE id = p_request_id;
 
-    -- Log the status change in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        target_user_id,
-        action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
-    ) VALUES (
+    -- Create feedback entry if admin provided notes
+    IF p_admin_notes IS NOT NULL AND LENGTH(TRIM(p_admin_notes)) > 0 THEN
+        DECLARE
+            v_admin_email VARCHAR(255);
+        BEGIN
+            SELECT email INTO v_admin_email FROM auth.users WHERE id = auth.uid();
+            
+            INSERT INTO print_request_feedbacks (
+                print_request_id,
+                admin_user_id,
+                admin_email,
+                message
+            ) VALUES (
+                p_request_id,
+                auth.uid(),
+                v_admin_email,
+                p_admin_notes
+            );
+        END;
+    END IF;
+
+    -- Log the status change
+    PERFORM log_admin_action(
         auth.uid(),
+        'PRINT_REQUEST_UPDATE',
+        'Print request status changed from ' || v_request_record.status || ' to ' || p_new_status || ' for ' || v_request_record.card_name,
         v_request_record.user_id,
-        'PRINT_REQUEST_STATUS_UPDATE',
-        COALESCE(p_admin_notes, 'Print request status updated to ' || p_new_status),
-        jsonb_build_object(
-            'status', v_request_record.status
-        ),
-        jsonb_build_object(
-            'status', p_new_status,
-            'admin_notes', p_admin_notes
-        ),
         jsonb_build_object(
             'request_id', p_request_id,
-            'batch_id', v_request_record.batch_id,
+            'old_status', v_request_record.status,
+            'new_status', p_new_status,
             'card_name', v_request_record.card_name,
             'batch_name', v_request_record.batch_name
         )
@@ -2853,78 +2720,6 @@ BEGIN
 END;
 $$;
 
--- (Admin) Get system statistics
-CREATE OR REPLACE FUNCTION admin_get_system_stats()
-RETURNS TABLE (
-    total_users BIGINT,
-    total_verified_users BIGINT,
-    total_cards BIGINT,
-    total_batches BIGINT,
-    total_issued_cards BIGINT,
-    total_activated_cards BIGINT,
-    pending_verifications BIGINT,
-    pending_payment_batches BIGINT,
-    paid_batches BIGINT,
-    waived_batches BIGINT,
-    print_requests_submitted BIGINT,
-    print_requests_processing BIGINT,
-    print_requests_shipping BIGINT,
-    daily_revenue_cents BIGINT,
-    weekly_revenue_cents BIGINT,
-    monthly_revenue_cents BIGINT,
-    total_revenue_cents BIGINT,
-    daily_new_users BIGINT,
-    weekly_new_users BIGINT,
-    monthly_new_users BIGINT,
-    daily_new_cards BIGINT,
-    weekly_new_cards BIGINT,
-    monthly_new_cards BIGINT,
-    daily_issued_cards BIGINT,
-    weekly_issued_cards BIGINT,
-    monthly_issued_cards BIGINT
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view system statistics.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        (SELECT COUNT(*) FROM auth.users) as total_users,
-        (SELECT COUNT(*) FROM user_profiles WHERE verification_status = 'APPROVED') as total_verified_users,
-        (SELECT COUNT(*) FROM cards) as total_cards,
-        (SELECT COUNT(*) FROM card_batches) as total_batches,
-        (SELECT COUNT(*) FROM issue_cards) as total_issued_cards,
-        (SELECT COUNT(*) FROM issue_cards WHERE active = true) as total_activated_cards,
-        (SELECT COUNT(*) FROM user_profiles WHERE verification_status = 'PENDING_REVIEW') as pending_verifications,
-        (SELECT COUNT(*) FROM card_batches WHERE payment_required = true AND payment_completed = false AND payment_waived = false) as pending_payment_batches,
-        (SELECT COUNT(*) FROM card_batches WHERE payment_completed = true) as paid_batches,
-        (SELECT COUNT(*) FROM card_batches WHERE payment_waived = true) as waived_batches,
-        (SELECT COUNT(*) FROM print_requests WHERE status = 'SUBMITTED') as print_requests_submitted,
-        (SELECT COUNT(*) FROM print_requests WHERE status = 'PROCESSING') as print_requests_processing,
-        (SELECT COUNT(*) FROM print_requests WHERE status = 'SHIPPING') as print_requests_shipping,
-        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded' AND created_at >= CURRENT_DATE) as daily_revenue_cents,
-        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_revenue_cents,
-        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_revenue_cents,
-        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded') as total_revenue_cents,
-        (SELECT COUNT(*) FROM auth.users WHERE created_at >= CURRENT_DATE) as daily_new_users,
-        (SELECT COUNT(*) FROM auth.users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_new_users,
-        (SELECT COUNT(*) FROM auth.users WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_new_users,
-        (SELECT COUNT(*) FROM cards WHERE created_at >= CURRENT_DATE) as daily_new_cards,
-        (SELECT COUNT(*) FROM cards WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_new_cards,
-        (SELECT COUNT(*) FROM cards WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_new_cards,
-        (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE) as daily_issued_cards,
-        (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_issued_cards,
-        (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_issued_cards;
-END;
-$$;
 
 -- (Admin) Get pending verification requests
 CREATE OR REPLACE FUNCTION admin_get_pending_verifications(p_limit INTEGER DEFAULT 50)
@@ -2968,121 +2763,7 @@ BEGIN
 END;
 $$;
 
--- Create or update admin feedback (helper function)
-CREATE OR REPLACE FUNCTION create_or_update_admin_feedback(
-    p_feedback_type TEXT,
-    p_target_user_id UUID,
-    p_related_entity_id UUID,
-    p_feedback_category TEXT,
-    p_feedback_text TEXT,
-    p_metadata JSONB DEFAULT NULL
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_feedback_id UUID;
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE id = auth.uid();
 
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can create feedback entries.';
-    END IF;
-
-    INSERT INTO admin_feedback_history (
-        admin_user_id,
-        target_user_id,
-        target_entity_id,
-        target_entity_type,
-        feedback_type,
-        content,
-        action_context,
-        is_current,
-        version_number
-    ) VALUES (
-        auth.uid(),
-        p_target_user_id,
-        p_related_entity_id,
-        p_feedback_type,
-        p_feedback_category,
-        p_feedback_text,
-        p_metadata,
-        true,
-        1
-    )
-    RETURNING id INTO v_feedback_id;
-    
-    RETURN v_feedback_id;
-END;
-$$;
-
--- (Admin) Get admin audit logs
-CREATE OR REPLACE FUNCTION get_admin_audit_logs(
-    p_action_type TEXT DEFAULT NULL,
-    p_admin_user_id UUID DEFAULT NULL,
-    p_target_user_id UUID DEFAULT NULL,
-    p_start_date TIMESTAMPTZ DEFAULT NULL,
-    p_end_date TIMESTAMPTZ DEFAULT NULL,
-    p_limit INTEGER DEFAULT 50,
-    p_offset INTEGER DEFAULT 0
-)
-RETURNS TABLE (
-    id UUID,
-    admin_user_id UUID,
-    admin_email VARCHAR(255),
-    target_user_id UUID,
-    target_email VARCHAR(255),
-    action_type TEXT,
-    action_details JSONB,
-    reason TEXT,
-    old_values JSONB,
-    new_values JSONB,
-    created_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view audit logs.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        aal.id,
-        aal.admin_user_id,
-        au_admin.email,
-        aal.target_user_id,
-        au_target.email,
-        aal.action_type,
-        aal.action_details,
-        aal.reason,
-        aal.old_values,
-        aal.new_values,
-        aal.created_at
-    FROM admin_audit_log aal
-    LEFT JOIN auth.users au_admin ON aal.admin_user_id = au_admin.id
-    LEFT JOIN auth.users au_target ON aal.target_user_id = au_target.id
-    WHERE 
-        (p_action_type IS NULL OR 
-         (CASE 
-            WHEN p_action_type LIKE '%,%' THEN aal.action_type = ANY(string_to_array(p_action_type, ','))
-            ELSE aal.action_type = p_action_type
-         END))
-        AND (p_admin_user_id IS NULL OR aal.admin_user_id = p_admin_user_id)
-        AND (p_target_user_id IS NULL OR aal.target_user_id = p_target_user_id)
-        AND (p_start_date IS NULL OR aal.created_at >= p_start_date)
-        AND (p_end_date IS NULL OR aal.created_at <= p_end_date)
-    ORDER BY aal.created_at DESC
-    LIMIT p_limit
-    OFFSET p_offset;
-END;
-$$;
 
 -- (Admin) Get recent admin activity
 CREATE OR REPLACE FUNCTION get_recent_admin_activity(
@@ -3112,18 +2793,11 @@ BEGIN
     SELECT 
         aal.action_type AS activity_type,
         aal.created_at AS activity_date,
-        au.email AS user_email,
+        aal.target_user_email AS user_email,
         up.public_name AS user_public_name,
-        CASE 
-            WHEN aal.action_type = 'PAYMENT_WAIVER' THEN 'Payment waived for batch'
-            WHEN aal.action_type = 'PRINT_REQUEST_STATUS_UPDATE' THEN 'Print request status updated'
-            WHEN aal.action_type = 'ROLE_CHANGE' THEN 'User role changed'
-            WHEN aal.action_type = 'VERIFICATION_STATUS_UPDATE' THEN 'Verification status updated'
-            ELSE aal.action_type
-        END AS description,
-        aal.action_details AS details
+        aal.description AS description,
+        aal.details AS details
     FROM admin_audit_log aal
-    LEFT JOIN auth.users au ON aal.target_user_id = au.id
     LEFT JOIN user_profiles up ON aal.target_user_id = up.user_id
     ORDER BY aal.created_at DESC
     LIMIT p_limit;
@@ -3142,6 +2816,7 @@ RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     caller_role TEXT;
     v_count INTEGER;
+    v_action_types TEXT[];
 BEGIN
     -- Check if caller is admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
@@ -3152,13 +2827,18 @@ BEGIN
         RAISE EXCEPTION 'Only admins can view audit logs.';
     END IF;
 
+    -- Convert comma-separated string to array for compatibility
+    IF p_action_type IS NOT NULL THEN
+        IF p_action_type LIKE '%,%' THEN
+            v_action_types := string_to_array(p_action_type, ',');
+        ELSE
+            v_action_types := ARRAY[p_action_type];
+        END IF;
+    END IF;
+
     SELECT COUNT(*)::INTEGER INTO v_count
     FROM admin_audit_log aal
-    WHERE (p_action_type IS NULL OR 
-           (CASE 
-              WHEN p_action_type LIKE '%,%' THEN aal.action_type = ANY(string_to_array(p_action_type, ','))
-              ELSE aal.action_type = p_action_type
-           END))
+    WHERE (v_action_types IS NULL OR aal.action_type = ANY(v_action_types))
     AND (p_admin_user_id IS NULL OR aal.admin_user_id = p_admin_user_id)
     AND (p_target_user_id IS NULL OR aal.target_user_id = p_target_user_id)
     AND (p_start_date IS NULL OR aal.created_at >= p_start_date)
@@ -3168,8 +2848,15 @@ BEGIN
 END;
 $$;
 
--- (Admin) Get all verifications with optional status filter
-CREATE OR REPLACE FUNCTION get_all_verifications(p_status "ProfileStatus" DEFAULT NULL)
+-- (Admin) Get all verifications with comprehensive filtering
+CREATE OR REPLACE FUNCTION get_all_verifications(
+    p_status "ProfileStatus" DEFAULT NULL,
+    p_search_query TEXT DEFAULT NULL,
+    p_start_date TIMESTAMPTZ DEFAULT NULL,
+    p_end_date TIMESTAMPTZ DEFAULT NULL,
+    p_limit INTEGER DEFAULT 100,
+    p_offset INTEGER DEFAULT 0
+)
 RETURNS TABLE (
     user_id UUID,
     user_email VARCHAR(255),
@@ -3179,7 +2866,6 @@ RETURNS TABLE (
     full_name TEXT,
     verification_status "ProfileStatus",
     supporting_documents TEXT[],
-    admin_feedback TEXT,
     verified_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
@@ -3206,15 +2892,24 @@ BEGIN
         up.full_name,
         up.verification_status,
         up.supporting_documents,
-        up.admin_feedback,
         up.verified_at,
         up.created_at,
         up.updated_at
     FROM public.user_profiles up
     JOIN auth.users au ON up.user_id = au.id
-    WHERE (p_status IS NULL OR up.verification_status = p_status)
-    AND up.verification_status != 'NOT_SUBMITTED' -- Only show submitted verifications
-    ORDER BY up.updated_at DESC;
+    WHERE 
+        (p_status IS NULL OR up.verification_status = p_status)
+        AND (p_search_query IS NULL OR (
+            au.email ILIKE '%' || p_search_query || '%' OR
+            up.public_name ILIKE '%' || p_search_query || '%' OR
+            up.company_name ILIKE '%' || p_search_query || '%' OR
+            up.full_name ILIKE '%' || p_search_query || '%'
+        ))
+        AND (p_start_date IS NULL OR up.updated_at >= p_start_date)
+        AND (p_end_date IS NULL OR up.updated_at <= p_end_date)
+        AND up.verification_status != 'NOT_SUBMITTED' -- Only show submitted verifications
+    ORDER BY up.updated_at DESC
+    LIMIT p_limit OFFSET p_offset;
 END;
 $$;
 
@@ -3229,7 +2924,6 @@ RETURNS TABLE (
     full_name TEXT,
     verification_status "ProfileStatus",
     supporting_documents TEXT[],
-    admin_feedback TEXT,
     verified_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
@@ -3256,7 +2950,6 @@ BEGIN
         up.full_name,
         up.verification_status,
         up.supporting_documents,
-        up.admin_feedback,
         up.verified_at,
         up.created_at,
         up.updated_at
@@ -3279,7 +2972,6 @@ RETURNS TABLE (
     full_name TEXT,
     verification_status "ProfileStatus",
     supporting_documents TEXT[],
-    admin_feedback TEXT,
     verified_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
@@ -3311,7 +3003,6 @@ BEGIN
         COALESCE(up.full_name, '') AS full_name,
         COALESCE(up.verification_status, 'NOT_SUBMITTED') AS verification_status,
         COALESCE(up.supporting_documents, ARRAY[]::TEXT[]) AS supporting_documents,
-        COALESCE(up.admin_feedback, '') AS admin_feedback,
         up.verified_at,
         COALESCE(up.created_at, au.created_at) AS created_at,
         up.updated_at,
@@ -3351,7 +3042,7 @@ RETURNS TABLE (
     batch_number INTEGER,
     cards_count INTEGER,
     created_by UUID,
-    creator_email VARCHAR(255),
+    user_email VARCHAR(255),
     payment_required BOOLEAN,
     payment_completed BOOLEAN,
     payment_amount_cents INTEGER,
@@ -3405,9 +3096,67 @@ BEGIN
 END;
 $$;
 
+-- (Admin) Get all batches with filtering
+CREATE OR REPLACE FUNCTION get_admin_all_batches(
+    p_email_search TEXT DEFAULT NULL,
+    p_payment_status TEXT DEFAULT NULL,
+    p_limit INTEGER DEFAULT 100,
+    p_offset INTEGER DEFAULT 0
+)
+RETURNS TABLE (
+    id UUID,
+    batch_number INTEGER,
+    user_email VARCHAR(255),
+    payment_status TEXT,
+    cards_count INTEGER,
+    created_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    -- Check if caller is admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view all batches.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        cb.id,
+        cb.batch_number,
+        au.email AS user_email,
+        CASE 
+            WHEN cb.payment_waived = true THEN 'WAIVED'
+            WHEN cb.payment_completed = true THEN 'PAID'
+            WHEN cb.payment_required = true THEN 'PENDING'
+            ELSE 'FREE'
+        END AS payment_status,
+        cb.cards_count,
+        cb.created_at
+    FROM public.card_batches cb
+    JOIN auth.users au ON cb.created_by = au.id
+    WHERE 
+        (p_email_search IS NULL OR au.email ILIKE '%' || p_email_search || '%')
+        AND
+        (p_payment_status IS NULL OR 
+         (p_payment_status = 'WAIVED' AND cb.payment_waived = true) OR
+         (p_payment_status = 'PAID' AND cb.payment_completed = true AND cb.payment_waived = false) OR
+         (p_payment_status = 'PENDING' AND cb.payment_required = true AND cb.payment_completed = false AND cb.payment_waived = false) OR
+         (p_payment_status = 'FREE' AND cb.payment_required = false))
+    ORDER BY cb.created_at DESC
+    LIMIT p_limit OFFSET p_offset;
+END;
+$$;
+
 -- Alias function for backward compatibility
 CREATE OR REPLACE FUNCTION get_all_print_requests(
-    p_status "PrintRequestStatus" DEFAULT NULL
+    p_status "PrintRequestStatus" DEFAULT NULL,
+    p_search_query TEXT DEFAULT NULL,
+    p_limit INTEGER DEFAULT 100,
+    p_offset INTEGER DEFAULT 0
 )
 RETURNS TABLE (
     id UUID,
@@ -3422,12 +3171,11 @@ RETURNS TABLE (
     shipping_address TEXT,
     contact_email TEXT,
     contact_whatsapp TEXT,
-    admin_notes TEXT,
     requested_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
-    -- This function simply calls the admin version with a default limit.
+    -- This function simply calls the admin version with search support.
     -- This provides a consistent, simplified interface for clients.
     RETURN QUERY
     SELECT
@@ -3443,10 +3191,9 @@ BEGIN
         apr.shipping_address,
         apr.contact_email,
         apr.contact_whatsapp,
-        apr.admin_notes,
         apr.requested_at,
         apr.updated_at
-    FROM admin_get_all_print_requests(p_status, 100) apr;
+    FROM admin_get_all_print_requests(p_status, p_search_query, p_limit, p_offset) apr;
 END;
 $$;
 
@@ -3506,45 +3253,18 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_target_user_id;
 
-    -- Log role change in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        target_user_id,
-        action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
-    ) VALUES (
+    -- Log role change
+    PERFORM log_admin_action(
         auth.uid(),
-        p_target_user_id,
         'ROLE_CHANGE',
-        p_reason,
+        'User role changed from ' || current_role || ' to ' || p_new_role || ' for ' || target_user_email || ': ' || p_reason,
+        p_target_user_id,
         jsonb_build_object(
-            'role', current_role
-        ),
-        jsonb_build_object(
-            'role', p_new_role,
-            'changed_at', NOW()
-        ),
-        jsonb_build_object(
-            'action', 'role_changed',
+            'target_email', target_user_email,
             'from_role', current_role,
             'to_role', p_new_role,
-            'target_email', target_user_email,
-            'is_promotion', CASE 
-                WHEN current_role = 'card_issuer' AND p_new_role = 'admin' THEN true
-                ELSE false
-            END,
-            'is_demotion', CASE 
-                WHEN current_role = 'admin' AND p_new_role = 'card_issuer' THEN true
-                ELSE false
-            END,
-            'security_impact', CASE 
-                WHEN p_new_role = 'admin' THEN 'high'
-                WHEN current_role = 'admin' THEN 'high'
-                ELSE 'medium'
-            END
+            'is_admin_promotion', (p_new_role = 'admin'),
+            'is_admin_demotion', (current_role = 'admin' AND p_new_role != 'admin')
         )
     );
     
@@ -3552,154 +3272,75 @@ BEGIN
 END;
 $$;
 
--- (Admin) Get admin feedback history
-CREATE OR REPLACE FUNCTION get_admin_feedback_history(
-    p_target_entity_type TEXT DEFAULT NULL,
-    p_target_entity_id UUID DEFAULT NULL,
-    p_feedback_type TEXT DEFAULT NULL
+-- (Admin) Get feedbacks for a verification user
+CREATE OR REPLACE FUNCTION get_verification_feedbacks(
+    p_user_id UUID
 )
 RETURNS TABLE (
     id UUID,
     admin_user_id UUID,
-    admin_email TEXT,
-    target_entity_type TEXT,
-    target_entity_id UUID,
-    feedback_type TEXT,
-    content TEXT,
-    is_current BOOLEAN,
-    version_number INTEGER,
-    action_context JSONB,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
+    admin_email VARCHAR(255),
+    message TEXT,
+    created_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     caller_role TEXT;
 BEGIN
-    -- Check if caller is admin
+    -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE auth.users.id = auth.uid();
+    WHERE id = auth.uid();
 
     IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view feedback history.';
+        RAISE EXCEPTION 'Only admins can view verification feedbacks.';
     END IF;
 
     RETURN QUERY
     SELECT 
-        afh.id AS id,
-        afh.admin_user_id AS admin_user_id,
-        au.email::text AS admin_email,
-        afh.target_entity_type AS target_entity_type,
-        afh.target_entity_id AS target_entity_id,
-        afh.feedback_type AS feedback_type,
-        afh.content AS content,
-        afh.is_current AS is_current,
-        afh.version_number AS version_number,
-        afh.action_context AS action_context,
-        afh.created_at AS created_at,
-        afh.updated_at AS updated_at
-    FROM admin_feedback_history afh
-    LEFT JOIN auth.users au ON afh.admin_user_id = au.id
-    WHERE 
-        (p_target_entity_type IS NULL OR afh.target_entity_type = p_target_entity_type)
-        AND (p_target_entity_id IS NULL OR afh.target_entity_id = p_target_entity_id)
-        AND (p_feedback_type IS NULL OR afh.feedback_type = p_feedback_type)
-    ORDER BY afh.created_at DESC;
+        vf.id,
+        vf.admin_user_id,
+        vf.admin_email,
+        vf.message,
+        vf.created_at
+    FROM verification_feedbacks vf
+    WHERE vf.user_id = p_user_id
+    ORDER BY vf.created_at ASC;
 END;
 $$;
 
--- (Admin) Get current admin feedback
-CREATE OR REPLACE FUNCTION get_current_admin_feedback(
-    p_target_entity_type TEXT,
-    p_target_entity_id UUID,
-    p_feedback_type TEXT
+-- (Admin) Get feedbacks for a print request
+CREATE OR REPLACE FUNCTION get_print_request_feedbacks(
+    p_request_id UUID
 )
 RETURNS TABLE (
     id UUID,
     admin_user_id UUID,
-    admin_email TEXT,
-    target_entity_type TEXT,
-    target_entity_id UUID,
-    feedback_type TEXT,
-    content TEXT,
-    is_current BOOLEAN,
-    version_number INTEGER,
-    action_context JSONB,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
+    admin_email VARCHAR(255),
+    message TEXT,
+    created_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     caller_role TEXT;
 BEGIN
-    -- Check if caller is admin
+    -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE auth.users.id = auth.uid();
+    WHERE id = auth.uid();
 
     IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view current feedback.';
+        RAISE EXCEPTION 'Only admins can view print request feedbacks.';
     END IF;
 
     RETURN QUERY
     SELECT 
-        afh.id AS id,
-        afh.admin_user_id AS admin_user_id,
-        au.email::text AS admin_email,
-        afh.target_entity_type AS target_entity_type,
-        afh.target_entity_id AS target_entity_id,
-        afh.feedback_type AS feedback_type,
-        afh.content AS content,
-        afh.is_current AS is_current,
-        afh.version_number AS version_number,
-        afh.action_context AS action_context,
-        afh.created_at AS created_at,
-        afh.updated_at AS updated_at
-    FROM admin_feedback_history afh
-    LEFT JOIN auth.users au ON afh.admin_user_id = au.id
-    WHERE 
-        afh.target_entity_type = p_target_entity_type
-        AND afh.target_entity_id = p_target_entity_id
-        AND afh.feedback_type = p_feedback_type
-        AND afh.is_current = true
-    ORDER BY afh.created_at DESC;
-END;
-$$;
-
--- (Admin) Get user feedback summary
-CREATE OR REPLACE FUNCTION get_user_feedback_summary(
-    p_target_user_id UUID
-)
-RETURNS TABLE (
-    feedback_type TEXT,
-    feedback_count INTEGER,
-    latest_feedback TEXT,
-    latest_feedback_date TIMESTAMPTZ,
-    admin_email TEXT
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if caller is admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view user feedback summary.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        afh.feedback_type AS feedback_type,
-        COUNT(*)::INTEGER AS feedback_count,
-        (ARRAY_AGG(afh.content ORDER BY afh.created_at DESC))[1] AS latest_feedback,
-        MAX(afh.created_at) AS latest_feedback_date,
-        (ARRAY_AGG(au.email ORDER BY afh.created_at DESC))[1]::text AS admin_email
-    FROM admin_feedback_history afh
-    LEFT JOIN auth.users au ON afh.admin_user_id = au.id
-    WHERE afh.target_user_id = p_target_user_id
-    GROUP BY afh.feedback_type
-    ORDER BY latest_feedback_date DESC;
+        pf.id,
+        pf.admin_user_id,
+        pf.admin_email,
+        pf.message,
+        pf.created_at
+    FROM print_request_feedbacks pf
+    WHERE pf.print_request_id = p_request_id
+    ORDER BY pf.created_at ASC;
 END;
 $$;
 
@@ -3735,36 +3376,17 @@ BEGIN
     SET 
         verification_status = 'NOT_SUBMITTED',
         supporting_documents = NULL,
-        admin_feedback = NULL,
         verified_at = NULL,
         updated_at = NOW()
     WHERE user_id = p_user_id;
 
-    -- Log the verification reset in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        target_user_id,
-        action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
-    ) VALUES (
+    -- Log the verification reset
+    PERFORM log_admin_action(
         auth.uid(),
-        p_user_id,
         'VERIFICATION_RESET',
-        'Verification status reset by admin',
+        'Verification status reset for user ' || v_user_email,
+        p_user_id,
         jsonb_build_object(
-            'verification_status', 'PENDING_REVIEW'
-        ),
-        jsonb_build_object(
-            'verification_status', 'NOT_SUBMITTED',
-            'supporting_documents', NULL,
-            'admin_feedback', NULL,
-            'verified_at', NULL
-        ),
-        jsonb_build_object(
-            'action', 'verification_reset',
             'target_email', v_user_email,
             'reset_reason', 'admin_initiated'
         )
@@ -3809,50 +3431,52 @@ BEGIN
     INSERT INTO user_profiles (
         user_id,
         verification_status,
-        admin_feedback,
         verified_at,
         created_at,
         updated_at
     ) VALUES (
         p_user_id,
         'APPROVED',
-        p_reason,
         NOW(),
         NOW(),
         NOW()
     )
     ON CONFLICT (user_id) DO UPDATE SET
         verification_status = 'APPROVED',
-        admin_feedback = p_reason,
         verified_at = NOW(),
         updated_at = NOW();
+    
+    -- Create feedback entry if admin provided reason
+    IF p_reason IS NOT NULL AND LENGTH(TRIM(p_reason)) > 0 THEN
+        DECLARE
+            v_admin_email VARCHAR(255);
+        BEGIN
+            SELECT email INTO v_admin_email FROM auth.users WHERE id = auth.uid();
+            
+            INSERT INTO verification_feedbacks (
+                user_id,
+                admin_user_id,
+                admin_email,
+                message
+            ) VALUES (
+                p_user_id,
+                auth.uid(),
+                v_admin_email,
+                p_reason
+            );
+        END;
+    END IF;
 
-    -- Log the manual verification in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        target_user_id,
-        action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
-    ) VALUES (
+    -- Log the manual verification
+    PERFORM log_admin_action(
         auth.uid(),
-        p_user_id,
         'MANUAL_VERIFICATION',
-        p_reason,
+        'Manual verification approved for user ' || v_user_email || ': ' || p_reason,
+        p_user_id,
         jsonb_build_object(
-            'verification_status', COALESCE(v_current_status, 'NOT_SUBMITTED')
-        ),
-        jsonb_build_object(
-            'verification_status', 'APPROVED',
-            'admin_feedback', p_reason,
-            'verified_at', NOW()
-        ),
-        jsonb_build_object(
-            'action', 'manual_verification_approved',
             'target_email', v_user_email,
-            'approval_method', 'admin_override'
+            'approval_method', 'admin_override',
+            'previous_status', COALESCE(v_current_status, 'NOT_SUBMITTED')
         )
     );
     
@@ -4003,29 +3627,28 @@ BEGIN
     -- Log payment creation in audit table
     INSERT INTO admin_audit_log (
         admin_user_id,
+        admin_email,
         target_user_id,
+        target_user_email,
         action_type,
-        reason,
-        new_values,
-        action_details
+        description,
+        details
     ) VALUES (
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         'PAYMENT_CREATION',
         'Stripe checkout session payment created',
         jsonb_build_object(
             'payment_id', v_payment_id,
             'payment_status', 'pending',
             'amount_cents', p_amount_cents,
-            'currency', 'usd'
-        ),
-        jsonb_build_object(
+            'currency', 'usd',
             'action', 'payment_session_created',
             'stripe_checkout_session_id', p_stripe_checkout_session_id,
             'stripe_payment_intent_id', p_stripe_payment_intent_id,
             'batch_id', p_batch_id,
-            'amount_cents', p_amount_cents,
-            'currency', 'usd',
             'metadata', p_metadata
         )
     );
@@ -4136,30 +3759,32 @@ BEGIN
     -- Log payment confirmation in audit table
     INSERT INTO admin_audit_log (
         admin_user_id,
+        admin_email,
         target_user_id,
+        target_user_email,
         action_type,
-        reason,
-        old_values,
-        new_values,
-        action_details
+        description,
+        details
     ) VALUES (
         auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
         v_payment_record.user_id,
+        (SELECT email FROM auth.users WHERE id = v_payment_record.user_id),
         'PAYMENT_CONFIRMATION',
         'Batch payment confirmed via Stripe checkout session',
         jsonb_build_object(
-            'payment_status', v_payment_record.payment_status,
-            'payment_completed', false,
-            'cards_generated', false
-        ),
-        jsonb_build_object(
-            'payment_status', 'succeeded',
-            'payment_completed', true,
-            'payment_completed_at', NOW(),
-            'payment_method', p_payment_method,
-            'cards_generated', true
-        ),
-        jsonb_build_object(
+            'old_status', jsonb_build_object(
+                'payment_status', v_payment_record.payment_status,
+                'payment_completed', false,
+                'cards_generated', false
+            ),
+            'new_status', jsonb_build_object(
+                'payment_status', 'succeeded',
+                'payment_completed', true,
+                'payment_completed_at', NOW(),
+                'payment_method', p_payment_method,
+                'cards_generated', true
+            ),
             'action', 'payment_confirmed',
             'payment_method', p_payment_method,
             'stripe_checkout_session_id', p_stripe_checkout_session_id,

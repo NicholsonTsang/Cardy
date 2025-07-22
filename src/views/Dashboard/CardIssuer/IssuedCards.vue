@@ -807,7 +807,7 @@ const copyToClipboard = async (text) => {
     await navigator.clipboard.writeText(text)
     copied.value = true
     setTimeout(() => { copied.value = false }, 2000)
-    toast.add({ severity: 'success', summary: 'Copied', detail: 'Activation URL copied to clipboard', life: 2000 })
+    // Visual feedback provided by the 'copied' state and UI change
   } catch (err) {
     console.error('Failed to copy: ', err)
     toast.add({ severity: 'error', summary: 'Copy Failed', detail: 'Could not copy URL', life: 2000 })
@@ -835,12 +835,7 @@ const getActivityColor = (activityType) => {
 const refreshData = async () => {
   try {
     await store.loadUserData()
-    toast.add({ 
-      severity: 'success', 
-      summary: 'Refreshed', 
-      detail: 'Data updated successfully', 
-      life: 2000 
-    })
+    // Remove success toast - refresh operations should be silent when successful
   } catch (error) {
     console.error('Error refreshing data:', error)
     toast.add({ 

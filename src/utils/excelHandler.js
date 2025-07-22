@@ -160,7 +160,6 @@ async function createCardSheet(workbook, cardData, options) {
     cardData.description || '',
     cardData.ai_prompt || '',
     cardData.conversation_ai_enabled,
-    cardData.content_render_mode || 'SINGLE_SERIES_MULTI_ITEMS',
     cardData.qr_code_position || 'BR',
     '' // Placeholder for image
   ];
@@ -575,7 +574,6 @@ async function parseCardSheet(worksheet, result) {
         'Description': 'description',
         'AI Prompt': 'ai_prompt',
         'AI Enabled': 'conversation_ai_enabled',
-        'Render Mode': 'content_render_mode',
         'QR Position': 'qr_code_position'
       };
       

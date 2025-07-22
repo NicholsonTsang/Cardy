@@ -36,12 +36,12 @@ if (!USER_FILES_BUCKET) {
 
 export const useContentItemStore = defineStore('contentItem', () => {
   const contentItems = ref<ContentItem[]>([]);
-  const loading = ref(false);
+  const isLoading = ref(false);
   const error = ref<string | null>(null);
 
   const getContentItems = async (cardId: string): Promise<ContentItem[]> => {
     try {
-      loading.value = true;
+      isLoading.value = true;
       error.value = null;
       
       const { data, error: err } = await supabase
@@ -56,13 +56,13 @@ export const useContentItemStore = defineStore('contentItem', () => {
       error.value = err.message || 'An unknown error occurred';
       return [];
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
   const getContentItemById = async (contentItemId: string): Promise<ContentItem | null> => {
     try {
-      loading.value = true;
+      isLoading.value = true;
       error.value = null;
       
       const { data, error: err } = await supabase
@@ -76,13 +76,13 @@ export const useContentItemStore = defineStore('contentItem', () => {
       error.value = err.message || 'An unknown error occurred';
       return null;
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
   const createContentItem = async (cardId: string, itemData: ContentItemFormData, parentId: string | null = null): Promise<string | null> => {
     try {
-      loading.value = true;
+      isLoading.value = true;
       error.value = null;
 
       let finalImageUrl: string | null = itemData.image_url || null;
@@ -100,8 +100,8 @@ export const useContentItemStore = defineStore('contentItem', () => {
       const { data, error: err } = await supabase
         .rpc('create_content_item', {
           p_card_id: cardId,
-          p_parent_id: parentId,
           p_name: itemData.name,
+          p_parent_id: parentId,
           p_content: itemData.description || '',
           p_image_url: finalImageUrl,
           p_ai_metadata: itemData.aiMetadata || '',
@@ -115,13 +115,13 @@ export const useContentItemStore = defineStore('contentItem', () => {
       error.value = err.message || 'An unknown error occurred';
       return null;
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
   const updateContentItem = async (contentItemId: string, itemData: ContentItemFormData, cardId: string): Promise<boolean> => {
     try {
-      loading.value = true;
+      isLoading.value = true;
       error.value = null;
 
       let finalImageUrl: string | null = itemData.image_url || null;
@@ -157,13 +157,13 @@ export const useContentItemStore = defineStore('contentItem', () => {
       error.value = err.message || 'An unknown error occurred';
       return false;
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
   const deleteContentItem = async (contentItemId: string, cardId: string): Promise<boolean> => {
     try {
-      loading.value = true;
+      isLoading.value = true;
       error.value = null;
       
       const { data, error: err } = await supabase
@@ -177,14 +177,14 @@ export const useContentItemStore = defineStore('contentItem', () => {
       error.value = err.message || 'An unknown error occurred';
       return false;
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
   // cardId is passed to construct user-specific path
   const uploadContentItemImage = async (file: File, cardIdForPath: string): Promise<string | null> => {
     try {
-      loading.value = true;
+      isLoading.value = true;
       error.value = null;
       
       const { data: { user } } = await supabase.auth.getUser();
@@ -213,13 +213,13 @@ export const useContentItemStore = defineStore('contentItem', () => {
       error.value = err.message || 'An unknown error occurred';
       return null;
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
   const updateContentItemOrder = async (contentItemId: string, newSortOrder: number): Promise<boolean> => {
     try {
-      loading.value = true;
+      isLoading.value = true;
       error.value = null;
       
       const { data, error: err } = await supabase
@@ -235,13 +235,13 @@ export const useContentItemStore = defineStore('contentItem', () => {
       error.value = err.message || 'An unknown error occurred';
       return false;
     } finally {
-      loading.value = false;
+      isLoading.value = false;
     }
   };
 
   return {
     contentItems,
-    loading,
+    isLoading,
     error,
     getContentItems,
     getContentItemById,
