@@ -190,25 +190,28 @@
         <MyDialog
             v-model="showCropDialog"
             header="Crop Image"
-            :confirmHandle="null"
-            :showConfirm="false"
-            :showCancel="false"
-            style="width: 90vw; max-width: 900px;"
+            :style="{ width: '90vw', maxWidth: '900px' }"
+            :closable="false"
+            :showConfirm="true"
+            :showCancel="true"
+            confirmLabel="Apply"
+            cancelLabel="Cancel"
+            :confirmHandle="handleCropConfirm"
+            @cancel="handleCropCancelled"
         >
             <ImageCropper
                 v-if="imageToCrop"
                 :imageSrc="imageToCrop"
                 :aspectRatio="getCardAspectRatioNumber()"
                 :aspectRatioDisplay="getCardAspectRatioDisplay()"
-                @crop-applied="handleCropApplied"
-                @crop-cancelled="handleCropCancelled"
+                ref="imageCropperRef"
             />
         </MyDialog>
     </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch, computed } from 'vue';
+import { ref, reactive, onMounted, watch, computed, nextTick } from 'vue';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
@@ -263,6 +266,7 @@ const imageFile = ref(null);
 const showCropDialog = ref(false);
 const imageToCrop = ref(null);
 const originalImageFile = ref(null);
+const imageCropperRef = ref(null);
 
 // Markdown editor configuration
 const markdownToolbars = ref([
@@ -401,30 +405,38 @@ const processImageDirectly = async (file) => {
     reader.readAsDataURL(file);
 };
 
-const handleCropApplied = async (croppedData) => {
-    try {
-        console.log('Received cropped data:', {
-            hasFile: !!croppedData.file,
-            fileSize: croppedData.file?.size,
-            hasDataURL: !!croppedData.dataURL,
-            dataURLLength: croppedData.dataURL?.length
-        });
-        
-        // Use the cropped file
-        imageFile.value = croppedData.file;
-        previewImage.value = croppedData.dataURL;
-        
-        console.log('Updated preview image:', previewImage.value ? 'Set to dataURL' : 'Still null');
-        
-        // Close crop dialog
-        showCropDialog.value = false;
-        
-        // Clean up
-        imageToCrop.value = null;
-        originalImageFile.value = null;
-    } catch (error) {
-        console.error("Failed to apply crop:", error);
+const handleCropConfirm = async () => {
+    // Wait for the component to be mounted
+    await nextTick();
+    
+    if (imageCropperRef.value && typeof imageCropperRef.value.getCroppedImage === 'function') {
+        const cropResult = imageCropperRef.value.getCroppedImage();
+        if (cropResult) {
+            // Convert to File
+            const arr = cropResult.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            const file = new File([u8arr], 'cropped-image.jpg', { type: mime });
+            
+            // Use the cropped file
+            imageFile.value = file;
+            previewImage.value = cropResult;
+        }
+    } else {
+        console.error('ImageCropper ref not available or getCroppedImage method not found');
     }
+    
+    // Close crop dialog
+    showCropDialog.value = false;
+    
+    // Clean up
+    imageToCrop.value = null;
+    originalImageFile.value = null;
 };
 
 const handleCropCancelled = () => {

@@ -221,7 +221,7 @@ onMounted(async () => {
         const userRole = role === 'card_issuer' ? 'cardIssuer' : role;
         
         if (userRole === 'admin') {
-            router.push({ name: 'admindashboard' });
+            router.push({ name: 'admin-dashboard' });
         } else {
             router.push({ name: 'mycards' });
         }

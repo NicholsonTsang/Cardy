@@ -16,7 +16,7 @@
                         <i class="pi pi-image text-blue-600"></i>
                         {{ contentItem?.parent_id ? 'Sub-item' : 'Content' }} Image
                     </h3>
-                    <div class="content-image-container max-w-md mx-auto border border-slate-300 rounded-xl p-4 bg-black">
+                    <div class="content-image-container max-w-md mx-auto border border-slate-300 rounded-xl bg-white">
                         <img 
                             :src="contentItem?.imageUrl || contentItem?.image_url || cardPlaceholder" 
                             alt="Content Item Image"
@@ -102,6 +102,6 @@ onMounted(() => {
 .content-image-container {
     aspect-ratio: var(--content-aspect-ratio, 4/3);
     width: 100%;
-    background-color: black;
+    background-color: white;
 }
 </style> 

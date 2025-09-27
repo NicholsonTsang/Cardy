@@ -123,7 +123,8 @@ onMounted(() => {
   position: relative;
   aspect-ratio: var(--content-aspect-ratio, 4/3);
   overflow: hidden;
-  background-color: black;
+  background-color: white;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .image {

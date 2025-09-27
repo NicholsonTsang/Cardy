@@ -11,13 +11,10 @@ const router = createRouter({
       component: AppLayout,
       meta: { requiresAuth: true },
       children: [
-        // Default redirect based on user role
+        // Default redirect - will be handled by navigation guard
         {
           path: '',
-          redirect: (to) => {
-            // This will be handled by the router guard
-            return '/cms/mycards'
-          }
+          redirect: { name: 'mycards' }
         },
         // Card Issuer Routes
         {
@@ -41,44 +38,38 @@ const router = createRouter({
         
         // Admin Routes (now using the same DashboardLayout)
         {
-          path: 'dashboard',
-          name: 'admindashboard',
-          component: () => import('@/views/Dashboard/Admin/AdminDashboard.vue'),
-          meta: { requiredRole: 'admin' }
-        },
-        {
           path: 'verifications',
-          name: 'adminverifications',
+          name: 'admin-verifications',
           component: () => import('@/views/Dashboard/Admin/VerificationManagement.vue'),
           meta: { requiredRole: 'admin' }
         },
         {
           path: 'print-requests',
-          name: 'adminprintrequests',
+          name: 'admin-print-requests',
           component: () => import('@/views/Dashboard/Admin/PrintRequestManagement.vue'),
           meta: { requiredRole: 'admin' }
         },
         {
           path: 'users',
-          name: 'adminusers',
+          name: 'admin-users',
           component: () => import('@/views/Dashboard/Admin/UserManagement.vue'),
           meta: { requiredRole: 'admin' }
         },
         {
           path: 'batches',
-          name: 'adminbatches',
+          name: 'admin-batches',
           component: () => import('@/views/Dashboard/Admin/BatchManagement.vue'),
           meta: { requiredRole: 'admin' }
         },
         {
           path: 'admin',
-          name: 'admin',
+          name: 'admin-dashboard',
           component: () => import('@/views/Dashboard/Admin/AdminDashboard.vue'),
           meta: { requiredRole: 'admin' }
         },
         {
           path: 'admin/history',
-          name: 'adminhistorylogs',
+          name: 'admin-history-logs',
           component: () => import('@/views/Dashboard/Admin/HistoryLogs.vue'),
           meta: { requiredRole: 'admin' }
         },
@@ -86,22 +77,22 @@ const router = createRouter({
     },
     {
       path: '/login',
-      name: 'login',
       component: AppLayout,
       children: [
         {
           path: '',
+          name: 'login',
           component: () => import('@/views/Dashboard/SignIn.vue')
         }
       ]
     },
     {
       path: '/signup',
-      name: 'signup',
       component: AppLayout,
       children: [
         {
           path: '',
+          name: 'signup',
           component: () => import('@/views/Dashboard/SignUp.vue')
         }
       ]
@@ -119,11 +110,11 @@ const router = createRouter({
     },
     {
       path: '/',
-      name: 'landing',
       component: AppLayout,
       children: [
         {
           path: '',
+          name: 'landing',
           component: () => import('@/views/Public/LandingPage.vue')
         }
       ]
@@ -151,16 +142,8 @@ const getUserRole = (authStore: any): string | undefined => {
   // Check both app_metadata and user_metadata for role
   // user_metadata comes from raw_user_meta_data in the database  
   const user = authStore.session?.user;
-  console.log('getUserRole - user object:', user);
-  console.log('getUserRole - app_metadata:', user?.app_metadata);
-  console.log('getUserRole - user_metadata:', user?.user_metadata);
   
   let role = user?.app_metadata?.role || user?.user_metadata?.role || user?.raw_user_meta_data?.role;
-  console.log('getUserRole - detected role from session:', role);
-  console.log('getUserRole - raw_user_meta_data:', user?.raw_user_meta_data);
-  
-  // REMOVED: Hard-coded admin email override that was causing incorrect role assignment
-  // Now properly uses database role from raw_user_meta_data
   
   // Handle both cardIssuer and card_issuer formats for backward compatibility
   if (role === 'card_issuer') return 'cardIssuer';
@@ -180,9 +163,8 @@ const hasRequiredRole = (userRole: string | undefined, requiredRole: string | un
 };
 
 const getDefaultRouteForRole = (userRole: string | undefined): { name: string } => {
-  console.log('getDefaultRouteForRole - userRole:', userRole);
   if (userRole === 'admin') {
-    return { name: 'admindashboard' };
+    return { name: 'admin-dashboard' };
   }
   if (userRole === 'cardIssuer') {
     return { name: 'mycards' };
@@ -203,15 +185,6 @@ router.beforeEach(async (to, from, next) => {
   const isLoggedIn = !!authStore.session?.user;
   const userRole = getUserRole(authStore);
   const requiredRole = to.meta.requiredRole as string | undefined;
-
-  // Debug logging
-  console.log('Router guard:', { 
-    to: to.name, 
-    from: from.name, 
-    isLoggedIn, 
-    userRole, 
-    requiredRole 
-  });
 
   // Check if route requires authentication
   if (to.matched.some(record => record.meta.requiresAuth)) {
@@ -255,7 +228,6 @@ router.beforeEach(async (to, from, next) => {
         next(getDefaultRouteForRole(userRole));
       } else {
         // If no role found, allow access to login page to prevent infinite redirect
-        console.warn('User is logged in but no role found, allowing access to login page');
         next();
       }
     } else {

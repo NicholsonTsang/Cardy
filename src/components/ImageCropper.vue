@@ -1,13 +1,10 @@
 <template>
-    <div class="linkedin-cropper">
-        <!-- Header -->
-        <div class="cropper-header">
-            <h3 class="cropper-title">Crop your image</h3>
-            <div class="aspect-ratio-info">{{ aspectRatioDisplay }} aspect ratio</div>
-        </div>
+    <div class="image-cropper">
+        <!-- Aspect Ratio Info -->
+        <div class="aspect-ratio-info">{{ aspectRatioDisplay }} aspect ratio</div>
 
-        <!-- Crop Container -->
-        <div ref="cropContainerRef" class="crop-container" :style="containerStyle">
+        <!-- Square Crop Container -->
+        <div ref="cropContainerRef" class="crop-container">
             <!-- Image -->
             <img 
                 ref="imageRef"
@@ -49,6 +46,7 @@
                         :max="maxZoom"
                         :step="0.01"
                         class="zoom-slider"
+                        @input="handleZoomChange"
                     />
                 </div>
                 <button @click="zoomIn" class="zoom-button">
@@ -59,29 +57,11 @@
                 Drag to reposition • {{ Math.round(zoom * 100) }}% zoom
             </div>
         </div>
-
-        <!-- Action Buttons -->
-        <div class="cropper-actions">
-            <Button 
-                label="Cancel" 
-                severity="secondary" 
-                outlined
-                @click="handleCancel"
-                class="action-button"
-            />
-            <Button 
-                label="Apply" 
-                severity="primary"
-                @click="handleApply"
-                class="action-button"
-            />
-        </div>
     </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue';
-import Button from 'primevue/button';
 
 const props = defineProps({
     imageSrc: {
@@ -112,7 +92,7 @@ const dragStart = ref({ x: 0, y: 0 });
 
 // Image and container dimensions
 const imageNaturalSize = ref({ width: 0, height: 0 });
-const containerDimensions = ref({ width: 500, height: 400 });
+const containerSize = ref(400); // Square container
 const cropFrameDimensions = ref({ width: 200, height: 200 });
 
 // Zoom constraints
@@ -120,13 +100,6 @@ const minZoom = ref(1);
 const maxZoom = ref(3);
 
 // Computed properties
-const containerStyle = computed(() => {
-    return {
-        width: `${containerDimensions.value.width}px`,
-        height: `${containerDimensions.value.height}px`
-    };
-});
-
 const imageTransform = computed(() => {
     return {
         transform: `translate(${imagePosition.value.x}px, ${imagePosition.value.y}px) scale(${zoom.value})`,
@@ -137,8 +110,8 @@ const imageTransform = computed(() => {
 const cropFrameStyles = computed(() => {
     const frameWidth = cropFrameDimensions.value.width;
     const frameHeight = cropFrameDimensions.value.height;
-    const containerWidth = containerDimensions.value.width;
-    const containerHeight = containerDimensions.value.height;
+    const containerWidth = containerSize.value;
+    const containerHeight = containerSize.value;
     
     return {
         width: `${frameWidth}px`,
@@ -151,8 +124,8 @@ const cropFrameStyles = computed(() => {
 const overlayStyles = computed(() => {
     const frameWidth = cropFrameDimensions.value.width;
     const frameHeight = cropFrameDimensions.value.height;
-    const containerWidth = containerDimensions.value.width;
-    const containerHeight = containerDimensions.value.height;
+    const containerWidth = containerSize.value;
+    const containerHeight = containerSize.value;
     
     const frameLeft = (containerWidth - frameWidth) / 2;
     const frameTop = (containerHeight - frameHeight) / 2;
@@ -187,44 +160,33 @@ const overlayStyles = computed(() => {
 
 // Functions
 const calculateOptimalSize = () => {
-    if (!imageRef.value || !imageNaturalSize.value.width) return;
+    if (!imageRef.value || !imageNaturalSize.value.width) {
+        return;
+    }
     
     const naturalWidth = imageNaturalSize.value.width;
     const naturalHeight = imageNaturalSize.value.height;
     const imageAspectRatio = naturalWidth / naturalHeight;
     
-    // LinkedIn-style: Container adapts to image but within reasonable bounds
-    const maxWidth = 600;
-    const maxHeight = 500;
-    const minWidth = 400;
-    const minHeight = 300;
-    
-    let containerWidth, containerHeight;
-    
-    // Calculate container size that shows full image
-    if (imageAspectRatio > maxWidth / maxHeight) {
-        // Wide image - constrain by width
-        containerWidth = Math.min(maxWidth, Math.max(minWidth, naturalWidth * 0.8));
-        containerHeight = containerWidth / imageAspectRatio;
-    } else {
-        // Tall image - constrain by height  
-        containerHeight = Math.min(maxHeight, Math.max(minHeight, naturalHeight * 0.8));
-        containerWidth = containerHeight * imageAspectRatio;
+    // Validate aspect ratio prop
+    if (typeof props.aspectRatio !== 'number' || props.aspectRatio <= 0) {
+        console.error('Invalid aspect ratio:', props.aspectRatio);
+        return;
     }
     
-    // Ensure minimum sizes
-    containerWidth = Math.max(containerWidth, minWidth);
-    containerHeight = Math.max(containerHeight, minHeight);
+    // Calculate crop frame size based on aspect ratio
+    const padding = 60;
+    const maxFrameSize = containerSize.value - padding;
     
-    containerDimensions.value = { width: containerWidth, height: containerHeight };
+    let frameWidth, frameHeight;
     
-    // Calculate crop frame size
-    const padding = 40;
-    let frameWidth = Math.min(containerWidth - padding, 300);
-    let frameHeight = frameWidth / props.aspectRatio;
-    
-    if (frameHeight > containerHeight - padding) {
-        frameHeight = containerHeight - padding;
+    if (props.aspectRatio >= 1) {
+        // Landscape or square
+        frameWidth = Math.min(maxFrameSize, 300);
+        frameHeight = frameWidth / props.aspectRatio;
+    } else {
+        // Portrait
+        frameHeight = Math.min(maxFrameSize, 300);
         frameWidth = frameHeight * props.aspectRatio;
     }
     
@@ -241,6 +203,7 @@ const calculateOptimalSize = () => {
     );
     
     minZoom.value = Math.max(0.5, scaleToFillFrame);
+    maxZoom.value = Math.max(3, minZoom.value * 2);
     zoom.value = Math.max(1, minZoom.value);
     
     // Center image
@@ -262,23 +225,60 @@ const startDrag = (event) => {
     
     document.addEventListener('mousemove', handleDrag);
     document.addEventListener('mouseup', stopDrag);
-    document.addEventListener('touchmove', handleDrag);
+    document.addEventListener('touchmove', handleDrag, { passive: false });
     document.addEventListener('touchend', stopDrag);
     
     event.preventDefault();
+    event.stopPropagation();
 };
 
 const handleDrag = (event) => {
     if (!isDragging.value) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
     
     const clientX = event.clientX || (event.touches?.[0]?.clientX);
     const clientY = event.clientY || (event.touches?.[0]?.clientY);
     
     if (!clientX || !clientY) return;
     
+    // Calculate new position
+    const newX = clientX - dragStart.value.x;
+    const newY = clientY - dragStart.value.y;
+    
+    // Apply constraints to keep image within reasonable bounds
+    const containerWidth = containerSize.value;
+    const containerHeight = containerSize.value;
+    const frameWidth = cropFrameDimensions.value.width;
+    const frameHeight = cropFrameDimensions.value.height;
+    
+    // Calculate image bounds with zoom applied
+    const naturalWidth = imageNaturalSize.value.width;
+    const naturalHeight = imageNaturalSize.value.height;
+    const imageAspectRatio = naturalWidth / naturalHeight;
+    
+    let displayedImageWidth, displayedImageHeight;
+    if (imageAspectRatio > 1) {
+        displayedImageWidth = containerWidth;
+        displayedImageHeight = containerWidth / imageAspectRatio;
+    } else {
+        displayedImageHeight = containerHeight;
+        displayedImageWidth = containerHeight * imageAspectRatio;
+    }
+    
+    const scaledDisplayWidth = displayedImageWidth * zoom.value;
+    const scaledDisplayHeight = displayedImageHeight * zoom.value;
+    
+    // Calculate bounds to keep crop frame filled
+    const minX = (containerWidth - scaledDisplayWidth) / 2 - (containerWidth - frameWidth) / 2;
+    const maxX = (containerWidth - scaledDisplayWidth) / 2 + (containerWidth - frameWidth) / 2;
+    const minY = (containerHeight - scaledDisplayHeight) / 2 - (containerHeight - frameHeight) / 2;
+    const maxY = (containerHeight - scaledDisplayHeight) / 2 + (containerHeight - frameHeight) / 2;
+    
     imagePosition.value = {
-        x: clientX - dragStart.value.x,
-        y: clientY - dragStart.value.y
+        x: Math.max(minX, Math.min(maxX, newX)),
+        y: Math.max(minY, Math.min(maxY, newY))
     };
 };
 
@@ -299,6 +299,11 @@ const zoomOut = () => {
     zoom.value = Math.max(minZoom.value, zoom.value - 0.1);
 };
 
+const handleZoomChange = (event) => {
+    const newZoom = parseFloat(event.target.value);
+    zoom.value = Math.max(minZoom.value, Math.min(maxZoom.value, newZoom));
+};
+
 // Crop processing
 const getCroppedImage = () => {
     if (!imageRef.value) return null;
@@ -309,24 +314,22 @@ const getCroppedImage = () => {
     // Get crop frame position and size
     const frameWidth = cropFrameDimensions.value.width;
     const frameHeight = cropFrameDimensions.value.height;
-    const containerWidth = containerDimensions.value.width;
-    const containerHeight = containerDimensions.value.height;
+    const containerWidth = containerSize.value;
+    const containerHeight = containerSize.value;
     
     const frameLeft = (containerWidth - frameWidth) / 2;
     const frameTop = (containerHeight - frameHeight) / 2;
     
     // Get the actual displayed image dimensions (with object-fit: contain)
-    const imageElement = imageRef.value;
     const naturalWidth = imageNaturalSize.value.width;
     const naturalHeight = imageNaturalSize.value.height;
     const imageAspectRatio = naturalWidth / naturalHeight;
-    const containerAspectRatio = containerWidth / containerHeight;
     
     // Calculate how object-fit: contain displays the image
     let displayedImageWidth, displayedImageHeight;
     let imageDisplayLeft, imageDisplayTop;
     
-    if (imageAspectRatio > containerAspectRatio) {
+    if (imageAspectRatio > 1) {
         // Image is wider - fits by width
         displayedImageWidth = containerWidth;
         displayedImageHeight = containerWidth / imageAspectRatio;
@@ -403,8 +406,6 @@ const getCroppedImage = () => {
 const handleApply = () => {
     const croppedDataURL = getCroppedImage();
     if (croppedDataURL) {
-        console.log('Crop applied successfully, dataURL length:', croppedDataURL.length);
-        
         // Convert to File
         const arr = croppedDataURL.split(',');
         const mime = arr[0].match(/:(.*?);/)[1];
@@ -415,8 +416,6 @@ const handleApply = () => {
             u8arr[n] = bstr.charCodeAt(n);
         }
         const file = new File([u8arr], 'cropped-image.jpg', { type: mime });
-        
-        console.log('Emitting crop-applied with file size:', file.size, 'bytes');
         
         emit('crop-applied', {
             file: file,
@@ -446,56 +445,55 @@ const initializeImage = () => {
         calculateOptimalSize();
     };
     
-    if (img.complete) {
+    if (img.complete && img.naturalWidth > 0) {
         handleLoad();
     } else {
         img.onload = handleLoad;
+        img.onerror = () => {
+            console.error('Image failed to load');
+        };
     }
 };
 
 // Lifecycle
 onMounted(() => {
+    console.log('ImageCropper mounted, getCroppedImage available:', typeof getCroppedImage);
     nextTick(() => {
         initializeImage();
     });
+});
+
+// Expose methods to parent component
+defineExpose({
+    getCroppedImage
 });
 </script>
 
 <style scoped>
 /* Main container */
-.linkedin-cropper {
-    max-width: 700px;
+.image-cropper {
+    max-width: 500px;
     margin: 0 auto;
 }
 
-/* Header */
-.cropper-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-}
-
-.cropper-title {
-    font-size: 20px;
-    font-weight: 600;
-    color: #1f2937;
-    margin: 0;
-}
-
+/* Aspect Ratio Info */
 .aspect-ratio-info {
     font-size: 14px;
     color: #6b7280;
+    text-align: center;
+    margin-bottom: 16px;
 }
 
-/* Crop container */
+/* Square crop container */
 .crop-container {
     position: relative;
+    width: 400px;
+    height: 400px;
     margin: 0 auto 24px;
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid #e5e7eb;
-    background: #f9fafb;
+    background: #ffffff;
 }
 
 /* Image */
@@ -507,6 +505,9 @@ onMounted(() => {
     cursor: grab;
     user-select: none;
     transition: transform 0.1s ease;
+    position: relative;
+    z-index: 1;
+    pointer-events: auto;
 }
 
 .crop-image:active {
@@ -521,6 +522,7 @@ onMounted(() => {
     width: 100%;
     height: 100%;
     pointer-events: none;
+    z-index: 2;
 }
 
 .overlay-top,
@@ -626,14 +628,4 @@ onMounted(() => {
     color: #6b7280;
 }
 
-/* Actions */
-.cropper-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 12px;
-}
-
-.action-button {
-    padding: 8px 24px;
-}
 </style>

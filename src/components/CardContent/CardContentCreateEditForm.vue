@@ -9,9 +9,9 @@
                         {{ itemTypeLabel }} Image
                     </h3>
                     <div class="w-full">
-                        <div class="content-image-container max-w-md mx-auto border-2 border-dashed border-slate-300 rounded-xl p-4 relative mb-4 transition-all duration-200 hover:border-blue-400 hover:bg-blue-50/50"
+                        <div class="content-image-container max-w-md mx-auto border-2 border-dashed border-slate-300 rounded-xl relative mb-4 transition-all duration-200 hover:border-blue-400 hover:bg-blue-50/50"
                             :class="{ 
-                                'border-solid border-blue-400 bg-black': previewImage,
+                                'border-solid border-blue-400 bg-white': previewImage,
                                 'bg-slate-50': !previewImage 
                             }">
                             <img 
@@ -110,16 +110,41 @@
             </div>
         </div>
     </div>
+
+    <!-- Image Cropping Dialog -->
+    <MyDialog 
+        v-model="showCropDialog"
+        modal
+        :header="`Crop ${itemTypeLabel} Image`"
+        :style="{ width: '90vw', maxWidth: '800px' }"
+        :closable="false"
+        :showConfirm="true"
+        :showCancel="true"
+        confirmLabel="Apply"
+        cancelLabel="Cancel"
+        :confirmHandle="handleCropConfirm"
+        @cancel="handleCropCancelled"
+    >
+        <ImageCropper
+            v-if="showCropDialog && cropImageSrc"
+            :imageSrc="cropImageSrc"
+            :aspectRatio="getContentAspectRatioNumber()"
+            :aspectRatioDisplay="getContentAspectRatioDisplay()"
+            ref="imageCropperRef"
+        />
+    </MyDialog>
 </template>
 
 <script setup>
-import { ref, watch, computed, onMounted, defineProps, defineEmits, defineExpose } from 'vue';
+import { ref, watch, computed, onMounted, nextTick, defineProps, defineEmits, defineExpose } from 'vue';
 import FileUpload from 'primevue/fileupload';
 import Button from 'primevue/button';
 import Textarea from 'primevue/textarea';
 import InputText from 'primevue/inputtext';
+import MyDialog from '@/components/MyDialog.vue';
+import ImageCropper from '@/components/ImageCropper.vue';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
-import { getContentAspectRatio, getContentAspectRatioDisplay } from '@/utils/cardConfig';
+import { getContentAspectRatio, getContentAspectRatioDisplay, getContentAspectRatioNumber } from '@/utils/cardConfig';
 
 const props = defineProps({
     contentItem: {
@@ -181,6 +206,11 @@ const previewImage = ref(null);
 const imageFile = ref(null);
 const originalData = ref(null);
 
+// Cropping state
+const showCropDialog = ref(false);
+const cropImageSrc = ref(null);
+const imageCropperRef = ref(null);
+
 // Initialize form data when contentItem changes
 watch(() => props.contentItem, (newVal) => {
     if (newVal && typeof newVal === 'object') {
@@ -199,12 +229,11 @@ watch(() => props.contentItem, (newVal) => {
 const handleImageUpload = (event) => {
     const file = event.files[0];
     if (file) {
-        imageFile.value = file;
-        
-        // Create a preview URL
+        // Create a preview URL for cropping
         const reader = new FileReader();
         reader.onload = (e) => {
-            previewImage.value = e.target.result;
+            cropImageSrc.value = e.target.result;
+            showCropDialog.value = true;
         };
         reader.readAsDataURL(file);
     }
@@ -252,6 +281,56 @@ const resetForm = () => {
     previewImage.value = null;
     imageFile.value = null;
     originalData.value = null;
+    showCropDialog.value = false;
+    cropImageSrc.value = null;
+};
+
+// Cropping event handlers
+const handleCropConfirm = async () => {
+    // Wait for the component to be mounted and add a small delay
+    await nextTick();
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    console.log('handleCropConfirm called');
+    console.log('imageCropperRef.value:', imageCropperRef.value);
+    console.log('Available methods:', imageCropperRef.value ? Object.getOwnPropertyNames(imageCropperRef.value) : 'No ref');
+    
+    if (imageCropperRef.value && typeof imageCropperRef.value.getCroppedImage === 'function') {
+        console.log('Calling getCroppedImage...');
+        const cropResult = imageCropperRef.value.getCroppedImage();
+        console.log('Crop result:', cropResult ? 'Success' : 'Failed');
+        
+        if (cropResult) {
+            // Convert to File
+            const arr = cropResult.split(',');
+            const mime = arr[0].match(/:(.*?);/)[1];
+            const bstr = atob(arr[1]);
+            let n = bstr.length;
+            const u8arr = new Uint8Array(n);
+            while (n--) {
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            const file = new File([u8arr], 'cropped-image.jpg', { type: mime });
+            
+            // Update the image file and preview
+            imageFile.value = file;
+            previewImage.value = cropResult;
+        }
+    } else {
+        console.error('ImageCropper ref not available or getCroppedImage method not found');
+        console.error('Ref available:', !!imageCropperRef.value);
+        console.error('Method available:', imageCropperRef.value ? typeof imageCropperRef.value.getCroppedImage : 'N/A');
+    }
+    
+    // Close the cropping dialog
+    showCropDialog.value = false;
+    cropImageSrc.value = null;
+};
+
+const handleCropCancelled = () => {
+    // Close the cropping dialog without updating the image
+    showCropDialog.value = false;
+    cropImageSrc.value = null;
 };
 
 // Set up CSS custom property for content aspect ratio
@@ -272,7 +351,7 @@ defineExpose({
 .content-image-container {
     aspect-ratio: var(--content-aspect-ratio, 4/3);
     width: 100%;
-    background-color: black;
+    background-color: white;
 }
 
 /* Standardized component sizing to match other dialogs and forms */

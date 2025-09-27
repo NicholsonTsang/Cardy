@@ -20,7 +20,7 @@
         </div>
         
         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <router-link :to="{ name: 'adminverifications' }" class="block">
+          <router-link :to="{ name: 'admin-verifications' }" class="block">
             <div class="bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-4 hover:from-orange-100 hover:to-orange-200 transition-colors">
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
@@ -34,7 +34,7 @@
             </div>
           </router-link>
           
-          <router-link :to="{ name: 'adminprintrequests' }" class="block">
+          <router-link :to="{ name: 'admin-print-requests' }" class="block">
             <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 hover:from-blue-100 hover:to-blue-200 transition-colors">
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
@@ -48,7 +48,7 @@
             </div>
           </router-link>
           
-          <router-link :to="{ name: 'adminbatches' }" class="block">
+          <router-link :to="{ name: 'admin-batches' }" class="block">
             <div class="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-4 hover:from-purple-100 hover:to-purple-200 transition-colors">
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-lg bg-purple-500 flex items-center justify-center">
@@ -62,7 +62,7 @@
             </div>
           </router-link>
           
-          <router-link :to="{ name: 'adminhistorylogs' }" class="block">
+          <router-link :to="{ name: 'admin-history-logs' }" class="block">
             <div class="bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 rounded-xl p-4 hover:from-slate-100 hover:to-slate-200 transition-colors">
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-lg bg-slate-500 flex items-center justify-center">
@@ -135,7 +135,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <router-link :to="{ name: 'adminverifications' }" class="inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors">
+                <router-link :to="{ name: 'admin-verifications' }" class="inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors">
                   Review
                   <i class="pi pi-arrow-right ml-1 text-xs"></i>
                 </router-link>
@@ -218,7 +218,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <router-link :to="{ name: 'adminprintrequests' }" class="inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors">
+                <router-link :to="{ name: 'admin-print-requests' }" class="inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors">
                   Process
                   <i class="pi pi-arrow-right ml-1 text-xs"></i>
                 </router-link>
@@ -237,7 +237,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <router-link :to="{ name: 'adminprintrequests' }" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
+                <router-link :to="{ name: 'admin-print-requests' }" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
                   Track
                   <i class="pi pi-arrow-right ml-1 text-xs"></i>
                 </router-link>
@@ -256,7 +256,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <router-link :to="{ name: 'adminprintrequests' }" class="inline-flex items-center text-xs font-medium text-green-600 hover:text-green-700 transition-colors">
+                <router-link :to="{ name: 'admin-print-requests' }" class="inline-flex items-center text-xs font-medium text-green-600 hover:text-green-700 transition-colors">
                   Monitor
                   <i class="pi pi-arrow-right ml-1 text-xs"></i>
                 </router-link>
@@ -552,12 +552,12 @@ onUnmounted(() => {
 
 function reviewVerification(request) {
   // This would now use the verifications store if needed
-  router.push({ name: 'adminverifications' })
+  router.push({ name: 'admin-verifications' })
 }
 
 function handleBatch(batch) {
   router.push({ 
-    name: 'adminbatches',
+    name: 'admin-batches',
     query: { batch: batch.id }
   })
 }

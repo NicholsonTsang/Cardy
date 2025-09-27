@@ -203,7 +203,7 @@ export const useAuthStore = defineStore('auth', () => {
     console.log('Redirecting user with role:', userRole)
     
     if (userRole === 'admin') {
-      router.push({ name: 'admindashboard' })
+      router.push({ name: 'admin-dashboard' })
     } else if (userRole === 'cardIssuer') {
       router.push({ name: 'mycards' })
     } else {
