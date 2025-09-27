@@ -31,6 +31,8 @@ BEGIN
     END IF;
     
     -- Check if payment can be waived
+    -- Note: In payment-first flow, all batches are created with payment_completed = TRUE
+    -- This function is mainly for legacy batches or special admin-created batches
     IF v_batch_record.payment_completed = TRUE THEN
         RAISE EXCEPTION 'Cannot waive payment for a batch that has already been paid.';
     END IF;

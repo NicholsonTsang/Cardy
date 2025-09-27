@@ -142,18 +142,9 @@
           <Column header="Actions" style="width:180px">
             <template #body="{ data }">
               <div class="flex items-center gap-1">
-                <!-- Primary Action: Payment or Print -->
+                <!-- Primary Action: Print (no payment retry needed in payment-first flow) -->
                 <Button 
-                  v-if="data.payment_status === 'pending'"
-                  label="Pay Now" 
-                  size="small"
-                  @click="handlePayment(data)"
-                  :loading="data.id === processingBatchId"
-                  class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 border-0 font-medium"
-                />
-                
-                <Button 
-                  v-else-if="data.payment_status === 'completed' && data.cards_generated && !data.has_print_request"
+                  v-if="data.payment_status === 'completed' && data.cards_generated && !data.has_print_request"
                   label="Print" 
                   icon="pi pi-print"
                   size="small"
@@ -213,6 +204,18 @@
     >
       <div class="space-y-6">
         <div>
+          <label class="block text-sm font-medium text-slate-700 mb-2">Batch Name</label>
+          <InputText 
+            v-model="newBatch.name"
+            placeholder="Enter batch name (optional)"
+            class="w-full"
+          />
+          <small class="text-slate-500 mt-1">
+            Leave empty to auto-generate (e.g., "batch-1", "batch-2")
+          </small>
+        </div>
+
+        <div>
           <label class="block text-sm font-medium text-slate-700 mb-2">Number of Cards</label>
           <InputNumber 
             v-model="newBatch.cardCount"
@@ -254,9 +257,9 @@
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h4 class="font-medium text-blue-900 mb-2">What happens next?</h4>
           <ul class="text-sm text-blue-800 space-y-1">
-            <li>• Batch will be created automatically (name: "batch-{{ stats.total_batches + 1 }}")</li>
             <li>• You'll be redirected to Stripe Checkout for secure payment</li>
-            <li>• Cards will be generated automatically after successful payment</li>
+            <li>• Batch will be created automatically after successful payment</li>
+            <li>• Cards will be generated and ready for distribution</li>
             <li>• You can then distribute QR codes to your visitors</li>
           </ul>
         </div>
@@ -270,7 +273,7 @@
             @click="showCreateBatchDialog = false"
           />
           <Button 
-            label="Issue & Pay" 
+            label="Pay & Issue" 
             @click="createBatch"
             :loading="creatingBatch"
             :disabled="!newBatch.cardCount || !currentCard"
@@ -437,20 +440,7 @@
           </div>
         </div>
 
-        <!-- Action Required for Pending Payment -->
-        <div v-if="selectedBatch.payment_status === 'pending'" class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 class="font-medium text-blue-900 mb-3 flex items-center gap-2">
-            <i class="pi pi-exclamation-triangle text-blue-600"></i>
-            Action Required
-          </h4>
-          <p class="text-sm text-blue-800 mb-3">Complete payment to generate your digital cards.</p>
-          <Button 
-            label="Complete Payment" 
-            icon="pi pi-credit-card"
-            @click="handlePaymentFromDetails()"
-            class="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 border-0"
-          />
-        </div>
+        <!-- No pending payment sections needed in payment-first flow -->
       </div>
 
       <template #footer>
@@ -831,7 +821,7 @@ import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
 import { supabase } from '@/lib/supabase'
-import { createCheckoutSession, handleCheckoutSuccess, getBatchPaymentStatus } from '@/utils/stripeCheckout.js'
+import { createCheckoutSession, handleCheckoutSuccess } from '@/utils/stripeCheckout.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -885,6 +875,7 @@ const printRequestForm = ref({
 
 // New batch form
 const newBatch = ref({
+  name: '',
   cardCount: 50
 })
 
@@ -935,9 +926,8 @@ const loadBatches = async () => {
 
           return {
             ...batch,
-            payment_status: batch.payment_completed ? 'completed' : 
-                           batch.payment_waived ? 'waived' : 
-                           batch.payment_required ? 'pending' : 'not_required',
+            // Payment-first flow: all batches are created after payment, so they should be completed or waived
+            payment_status: batch.payment_waived ? 'waived' : 'completed',
             total_amount: batch.payment_amount_cents || (batch.cards_count * 200),
             print_request_status: latestPrintRequest?.status || null,
             print_request_id: latestPrintRequest?.id || null,
@@ -947,9 +937,8 @@ const loadBatches = async () => {
           console.warn('Error loading print status for batch:', batch.id, printError)
           return {
             ...batch,
-            payment_status: batch.payment_completed ? 'completed' : 
-                           batch.payment_waived ? 'waived' : 
-                           batch.payment_required ? 'pending' : 'not_required',
+            // Payment-first flow: all batches are created after payment, so they should be completed or waived
+            payment_status: batch.payment_waived ? 'waived' : 'completed',
             total_amount: batch.payment_amount_cents || (batch.cards_count * 200),
             print_request_status: null,
             print_request_id: null,
@@ -1056,39 +1045,32 @@ const createBatch = async () => {
   try {
     creatingBatch.value = true
 
-    // Create batch using stored procedure
-    const { data: batchId, error: batchError } = await supabase.rpc('issue_card_batch', {
-      p_card_id: props.cardId,
-      p_quantity: newBatch.value.cardCount
-    })
-
-    if (batchError) throw batchError
-
-    // Create a batch object for payment processing
-    const batch = {
-      id: batchId,
-      batch_name: newBatch.value.name,
-      cards_count: newBatch.value.cardCount
-    }
+    // Payment-first flow: Edge Functions handle batch creation after payment success
 
     // Close dialog
     showCreateBatchDialog.value = false
     
-    // Reset form
+    // Prepare form data BEFORE resetting
+    const formData = {
+      name: newBatch.value.name,
+      cardCount: newBatch.value.cardCount
+    }
+
+    // Initiate payment without creating batch first
+    await handlePayment(formData)
+    
+    // Reset form AFTER payment initiation
     newBatch.value = {
       name: '',
       cardCount: 50
     }
 
-    // Initiate payment
-    await handlePayment(batch)
-
   } catch (error) {
-    console.error('Error creating batch:', error)
+    console.error('Error initiating payment:', error)
     toast.add({
       severity: 'error',
       summary: 'Error',
-      detail: error.message || 'Failed to create batch',
+      detail: error.message || 'Failed to initiate payment',
       life: 5000
     })
   } finally {
@@ -1096,13 +1078,16 @@ const createBatch = async () => {
   }
 }
 
-const handlePayment = async (batch) => {
+const handlePayment = async (formData) => {
   try {
-    processingBatchId.value = batch.id
+    processingBatchId.value = 'processing'
 
-    // Create checkout session and redirect to Stripe
-    await createCheckoutSession(batch.cards_count, batch.id, {
-      batch_name: batch.batch_name
+    // Payment-first flow: Create checkout session for new batch
+    // Batch will be created only after successful payment
+    await createCheckoutSession(formData.cardCount, 'pending-batch', {
+      batch_name: formData.name,
+      card_id: props.cardId,
+      is_pending_batch: true // Flag to indicate batch creation is pending
     })
 
   } catch (error) {
@@ -1149,10 +1134,7 @@ const viewBatchDetails = async (batch) => {
   }
 }
 
-const handlePaymentFromDetails = () => {
-  showBatchDetailsDialog.value = false
-  handlePayment(selectedBatch.value)
-}
+// handlePaymentFromDetails removed - not needed in payment-first flow
 
 const downloadBatchCodes = async (batch) => {
   try {
@@ -1526,7 +1508,7 @@ const getPrintStatusDescription = (status) => {
 // Batch progress helpers
 
 const getBatchProgressText = (batch) => {
-  if (batch.payment_status === 'pending') return 'Payment needed'
+  // In payment-first flow, no batches should have pending payment status
   if (!batch.cards_generated) return 'Generating cards...'
   if (!batch.has_print_request) return 'Ready for print'
   return `Print: ${getPrintStatusLabel(batch.print_request_status)}`
@@ -1543,7 +1525,7 @@ const handlePageLoad = async () => {
     toast.add({
       severity: 'warn',
       summary: 'Payment Canceled',
-      detail: 'Payment was canceled. You can retry payment anytime.',
+      detail: 'Payment was canceled. You can create a new batch anytime.',
       life: 5000
     })
     // Clean URL
@@ -1551,16 +1533,28 @@ const handlePageLoad = async () => {
     return
   }
 
-  if (sessionId && batchId) {
+  if (sessionId) {
     try {
-      // Process successful payment
-      await handleCheckoutSuccess(sessionId)
+      // Process successful payment - Edge Function handles batch creation
+      const result = await handleCheckoutSuccess(sessionId)
+      console.log('Payment processed successfully:', result)
       
-      // Load batch data to store for success actions
+      // Load updated data to show the new batch
       await loadData()
-      const batch = batches.value.find(b => b.id === batchId)
+      
+      // Find the batch that was created
+      let batch = null
+      if (result && result.batchId) {
+        batch = batches.value.find(b => b.id === result.batchId)
+      } else {
+        // Find most recent batch for this card as fallback
+        const cardBatches = batches.value.filter(b => b.card_id === props.cardId)
+        batch = cardBatches.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
+      }
+      
       if (batch) {
         successfulBatch.value = batch
+        console.log('Found successful batch:', batch.batch_name)
       }
       
       // Show success message
@@ -1574,7 +1568,7 @@ const handlePageLoad = async () => {
       toast.add({
         severity: 'error',
         summary: 'Payment Processing Error',
-        detail: 'Payment was successful but there was an issue processing it. Please contact support.',
+        detail: error.message || 'Payment was successful but there was an issue processing it. Please contact support.',
         life: 10000
       })
     }

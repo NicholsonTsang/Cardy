@@ -199,24 +199,8 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     }
   };
 
-  const issueBatch = async (cardId: string, quantity: number) => {
-    const { data, error } = await supabase.rpc('issue_card_batch', {
-      p_card_id: cardId,
-      p_quantity: quantity
-    });
-    if (error) throw error;
-    return data;
-  };
 
-  // Payment information function for current Stripe Checkout flow
-
-  const getBatchPaymentInfo = async (batchId: string): Promise<BatchPayment | null> => {
-    const { data, error } = await supabase.rpc('get_batch_payment_info', {
-      p_batch_id: batchId
-    });
-    if (error) throw error;
-    return data && data.length > 0 ? data[0] : null;
-  };
+  // Payment information is now handled by Edge Functions in the payment-first flow
 
   const toggleBatchDisabledStatus = async (batchId: string, disableStatus: boolean, cardDesignId?: string) => {
     const { data, error } = await supabase.rpc('toggle_card_batch_disabled_status', {
@@ -386,7 +370,6 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     fetchIssuedCards,
     fetchCardBatches,
     fetchIssuanceStats,
-    issueBatch,
     toggleBatchDisabledStatus,
     activateCard,
     deleteIssuedCard,
@@ -399,7 +382,6 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     recentActivity,
     isLoadingUserData,
     loadUserData,
-    getBatchPaymentInfo,
     adminWaiveBatchPayment,
     generateBatchCards,
     withdrawPrintRequest

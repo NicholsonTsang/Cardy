@@ -74,23 +74,52 @@ serve(async (req) => {
       )
     }
 
-    // Get batch and card information for checkout session
-    const { data: batchData, error: batchError } = await supabaseClient
-      .rpc('get_batch_for_checkout', {
-        p_batch_id: batchId
-      })
+    // Handle payment-first flow vs existing batches
+    let batch = null
+    
+    if (metadata.is_pending_batch) {
+      // Payment-first flow: batch doesn't exist yet, get card info directly
+      const { data: cardData, error: cardError } = await supabaseClient
+        .rpc('get_card_by_id', {
+          p_card_id: metadata.card_id
+        })
 
-    if (batchError || !batchData || batchData.length === 0) {
-      return new Response(
-        JSON.stringify({ error: 'Batch not found or unauthorized' }),
-        {
-          status: 404,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
+      if (cardError || !cardData) {
+        return new Response(
+          JSON.stringify({ error: 'Card not found or unauthorized' }),
+          {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      // Extract card data from nested structure if needed
+      const card = cardData["0"] || cardData
+      batch = {
+        card_name: card.name || 'CardStudio Experience',
+        card_image_url: card.image_url,
+        batch_name: metadata.batch_name || `Batch-${Date.now()}`
+      }
+    } else {
+      // Existing batch: get batch info
+      const { data: batchData, error: batchError } = await supabaseClient
+        .rpc('get_batch_for_checkout', {
+          p_batch_id: batchId
+        })
+
+      if (batchError || !batchData || batchData.length === 0) {
+        return new Response(
+          JSON.stringify({ error: 'Batch not found or unauthorized' }),
+          {
+            status: 404,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      batch = batchData[0]
     }
-
-    const batch = batchData[0]
 
     // Construct the checkout session
     const baseUrl = req.headers.get('origin') || 'http://localhost:5173'
@@ -112,8 +141,8 @@ serve(async (req) => {
           quantity: cardCount,
         },
       ],
-      success_url: `${baseUrl}/cms/mycards?session_id={CHECKOUT_SESSION_ID}&batch_id=${batchId}`,
-      cancel_url: `${baseUrl}/cms/mycards?canceled=true&batch_id=${batchId}`,
+      success_url: `${baseUrl}/cms/mycards?session_id={CHECKOUT_SESSION_ID}${metadata.is_pending_batch ? '' : `&batch_id=${batchId}`}`,
+      cancel_url: `${baseUrl}/cms/mycards?canceled=true${metadata.is_pending_batch ? '' : `&batch_id=${batchId}`}`,
       metadata: {
         batch_id: batchId,
         user_id: user.id,
@@ -131,58 +160,61 @@ serve(async (req) => {
       },
     })
 
-    // Check if payment already exists for this batch
-    const { data: existingPaymentData, error: checkError } = await supabaseClient
-      .rpc('get_existing_batch_payment', {
-        p_batch_id: batchId
-      })
+    // Check if payment already exists for this batch (only for existing batches)
+    let existingPayment = null
+    if (!metadata.is_pending_batch) {
+      const { data: existingPaymentData, error: checkError } = await supabaseClient
+        .rpc('get_existing_batch_payment', {
+          p_batch_id: batchId
+        })
 
-    if (checkError) {
-      console.error('Error checking existing payment:', checkError)
-      return new Response(
-        JSON.stringify({ error: 'Failed to check payment status' }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    const existingPayment = existingPaymentData && existingPaymentData.length > 0 ? existingPaymentData[0] : null
-
-    // If payment already exists and is completed, return error
-    if (existingPayment && existingPayment.payment_status === 'succeeded') {
-      return new Response(
-        JSON.stringify({ error: 'Payment already completed for this batch' }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      )
-    }
-
-    // If payment exists but is pending, try to retrieve the existing session
-    if (existingPayment && existingPayment.payment_status === 'pending') {
-      try {
-        const existingSession = await stripe.checkout.sessions.retrieve(
-          existingPayment.stripe_checkout_session_id
+      if (checkError) {
+        console.error('Error checking existing payment:', checkError)
+        return new Response(
+          JSON.stringify({ error: 'Failed to check payment status' }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
         )
-        
-        // If session is still valid and not expired, return it
-        if (existingSession.status === 'open' && existingSession.url) {
-          return new Response(
-            JSON.stringify({
-              sessionId: existingSession.id,
-              url: existingSession.url,
-            }),
-            {
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            }
+      }
+
+      existingPayment = existingPaymentData && existingPaymentData.length > 0 ? existingPaymentData[0] : null
+
+      // If payment already exists and is completed, return error
+      if (existingPayment && existingPayment.payment_status === 'succeeded') {
+        return new Response(
+          JSON.stringify({ error: 'Payment already completed for this batch' }),
+          {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      // If payment exists but is pending, try to retrieve the existing session
+      if (existingPayment && existingPayment.payment_status === 'pending') {
+        try {
+          const existingSession = await stripe.checkout.sessions.retrieve(
+            existingPayment.stripe_checkout_session_id
           )
+          
+          // If session is still valid and not expired, return it
+          if (existingSession.status === 'open' && existingSession.url) {
+            return new Response(
+              JSON.stringify({
+                sessionId: existingSession.id,
+                url: existingSession.url,
+              }),
+              {
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+              }
+            )
+          }
+        } catch (sessionError) {
+          console.error('Error retrieving existing session:', sessionError)
+          // Continue to create new session if existing one is invalid
         }
-      } catch (sessionError) {
-        console.error('Error retrieving existing session:', sessionError)
-        // Continue to create new session if existing one is invalid
       }
     }
 
@@ -190,32 +222,84 @@ serve(async (req) => {
     // Note: payment_intent may be null in test mode, use session ID as fallback
     const paymentIntentId = checkoutSession.payment_intent as string || checkoutSession.id
     
-    const { error: insertError } = await supabaseClient.rpc('create_batch_checkout_payment', {
-      p_batch_id: batchId,
-      p_stripe_payment_intent_id: paymentIntentId,
-      p_stripe_checkout_session_id: checkoutSession.id,
-      p_amount_cents: totalAmount,
-      p_metadata: {
-        card_count: cardCount,
-        batch_name: batch.batch_name,
-        checkout_session: true,
-        stripe_mode: 'test',
-        ...metadata,
-      }
-    })
+    // Create payment record based on flow type
+    if (metadata.is_pending_batch) {
+      // Payment-first flow: create pending batch payment record
+      console.log('Creating pending batch payment with params:', {
+        p_card_id: metadata.card_id,
+        p_stripe_payment_intent_id: paymentIntentId,
+        p_stripe_checkout_session_id: checkoutSession.id,
+        p_amount_cents: totalAmount,
+        p_cards_count: cardCount,
+        p_batch_name: metadata.batch_name,
+        batch_name_type: typeof metadata.batch_name,
+        batch_name_value: metadata.batch_name
+      })
+      
+      const { error: insertError } = await supabaseClient.rpc('create_pending_batch_payment', {
+        p_amount_cents: totalAmount,
+        p_batch_name: metadata.batch_name,
+        p_card_id: metadata.card_id,
+        p_cards_count: cardCount,
+        p_metadata: {
+          checkout_session: true,
+          stripe_mode: 'test',
+          ...metadata,
+        },
+        p_stripe_checkout_session_id: checkoutSession.id,
+        p_stripe_payment_intent_id: paymentIntentId
+      })
 
-    if (insertError) {
-      console.error('Error creating payment record:', insertError)
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to create payment record',
-          details: insertError.message 
-        }),
-        {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      if (insertError) {
+        console.error('Error creating pending payment record:', insertError)
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to create pending payment record',
+            details: insertError.message 
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      console.log('Created pending batch payment record:', {
+        sessionId: checkoutSession.id,
+        paymentIntentId,
+        cardId: metadata.card_id,
+        cardCount,
+        batchName: metadata.batch_name
+      })
+    } else {
+      // Existing batch: create regular batch payment record
+      const { error: insertError } = await supabaseClient.rpc('create_batch_checkout_payment', {
+        p_batch_id: batchId,
+        p_stripe_payment_intent_id: paymentIntentId,
+        p_stripe_checkout_session_id: checkoutSession.id,
+        p_amount_cents: totalAmount,
+        p_metadata: {
+          card_count: cardCount,
+          batch_name: batch.batch_name,
+          checkout_session: true,
+          stripe_mode: 'test',
+          ...metadata,
         }
-      )
+      })
+
+      if (insertError) {
+        console.error('Error creating payment record:', insertError)
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to create payment record',
+            details: insertError.message 
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
     }
 
     return new Response(

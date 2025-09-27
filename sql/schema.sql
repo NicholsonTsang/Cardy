@@ -268,9 +268,11 @@ CREATE INDEX IF NOT EXISTS idx_print_feedbacks_created ON print_request_feedback
 -- No triggers or views needed - emails handled directly in stored procedures
 
 -- Batch Payments table for tracking Stripe Checkout sessions
+-- Supports both existing batch payments and pending batch payments (payment-first flow)
 CREATE TABLE batch_payments (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    batch_id UUID REFERENCES card_batches(id) ON DELETE CASCADE,
+    batch_id UUID REFERENCES card_batches(id) ON DELETE CASCADE, -- NULL for pending batch payments
+    card_id UUID REFERENCES cards(id) ON DELETE CASCADE, -- Required for pending payments
     user_id UUID NOT NULL, -- REFERENCES auth.users(id)
     stripe_checkout_session_id TEXT UNIQUE NOT NULL, -- Primary identifier for Stripe Checkout
     stripe_payment_intent_id TEXT UNIQUE, -- May be null in test mode
@@ -279,14 +281,26 @@ CREATE TABLE batch_payments (
     payment_status TEXT DEFAULT 'pending' NOT NULL, -- pending, succeeded, failed, canceled
     payment_method TEXT, -- card type from Stripe (e.g., 'visa', 'mastercard')
     failure_reason TEXT, -- Stripe failure reason if payment fails
+    -- Fields for pending batch payments (when batch_id is NULL)
+    batch_name TEXT, -- Intended batch name for pending payments
+    cards_count INTEGER, -- Number of cards for pending payments
     metadata JSONB, -- Additional metadata for payment tracking
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    -- Ensure either batch exists OR pending batch info is provided
+    CONSTRAINT batch_payments_batch_or_pending_check 
+    CHECK (
+        (batch_id IS NOT NULL) OR 
+        (card_id IS NOT NULL AND batch_name IS NOT NULL AND cards_count IS NOT NULL)
+    )
 );
 
 -- Indexes for efficient querying
 CREATE INDEX IF NOT EXISTS idx_batch_payments_batch_id ON batch_payments(batch_id);
 CREATE INDEX IF NOT EXISTS idx_batch_payments_user_id ON batch_payments(user_id);
+CREATE INDEX IF NOT EXISTS idx_batch_payments_card_id ON batch_payments(card_id);
 CREATE INDEX IF NOT EXISTS idx_batch_payments_stripe_intent ON batch_payments(stripe_payment_intent_id);
 CREATE INDEX IF NOT EXISTS idx_batch_payments_checkout_session ON batch_payments(stripe_checkout_session_id);
 CREATE INDEX IF NOT EXISTS idx_batch_payments_status ON batch_payments(payment_status);
+-- Index for pending payments (where batch_id is null)
+CREATE INDEX IF NOT EXISTS idx_batch_payments_pending ON batch_payments(card_id, user_id) WHERE batch_id IS NULL;

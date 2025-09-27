@@ -49,3 +49,42 @@ BEGIN
     WHERE bp.batch_id = p_batch_id;
 END;
 $$;
+
+-- Get pending batch payment information by session ID (Used by frontend for payment-first flow)
+CREATE OR REPLACE FUNCTION get_pending_batch_payment_info(p_session_id TEXT)
+RETURNS TABLE (
+    payment_id UUID,
+    card_id UUID,
+    stripe_checkout_session_id TEXT,
+    stripe_payment_intent_id TEXT,
+    amount_cents INTEGER,
+    currency TEXT,
+    payment_status TEXT,
+    payment_method TEXT,
+    batch_name TEXT,
+    cards_count INTEGER,
+    failure_reason TEXT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        bp.id as payment_id,
+        bp.card_id,
+        bp.stripe_checkout_session_id,
+        bp.stripe_payment_intent_id,
+        bp.amount_cents,
+        bp.currency,
+        bp.payment_status,
+        bp.payment_method,
+        bp.batch_name,
+        bp.cards_count,
+        bp.failure_reason,
+        bp.created_at,
+        bp.updated_at
+    FROM batch_payments bp
+    WHERE bp.stripe_checkout_session_id = p_session_id
+    AND bp.user_id = auth.uid();
+END;
+$$;

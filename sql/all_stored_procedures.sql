@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Tue Jul 22 21:37:02 HKT 2025
+-- Generated: Sat Sep 27 14:30:37 HKT 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -1285,6 +1285,7 @@ $$;
 -- File: 05_payment_management_client.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS get_batch_payment_info CASCADE;
+DROP FUNCTION IF EXISTS get_pending_batch_payment_info CASCADE;
 
 -- =================================================================
 -- PAYMENT MANAGEMENT FUNCTIONS (CLIENT-SIDE)
@@ -1335,6 +1336,45 @@ BEGIN
         bp.updated_at
     FROM batch_payments bp
     WHERE bp.batch_id = p_batch_id;
+END;
+$$;
+
+-- Get pending batch payment information by session ID (Used by frontend for payment-first flow)
+CREATE OR REPLACE FUNCTION get_pending_batch_payment_info(p_session_id TEXT)
+RETURNS TABLE (
+    payment_id UUID,
+    card_id UUID,
+    stripe_checkout_session_id TEXT,
+    stripe_payment_intent_id TEXT,
+    amount_cents INTEGER,
+    currency TEXT,
+    payment_status TEXT,
+    payment_method TEXT,
+    batch_name TEXT,
+    cards_count INTEGER,
+    failure_reason TEXT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        bp.id as payment_id,
+        bp.card_id,
+        bp.stripe_checkout_session_id,
+        bp.stripe_payment_intent_id,
+        bp.amount_cents,
+        bp.currency,
+        bp.payment_status,
+        bp.payment_method,
+        bp.batch_name,
+        bp.cards_count,
+        bp.failure_reason,
+        bp.created_at,
+        bp.updated_at
+    FROM batch_payments bp
+    WHERE bp.stripe_checkout_session_id = p_session_id
+    AND bp.user_id = auth.uid();
 END;
 $$;
 
@@ -2211,6 +2251,8 @@ BEGIN
     END IF;
     
     -- Check if payment can be waived
+    -- Note: In payment-first flow, all batches are created with payment_completed = TRUE
+    -- This function is mainly for legacy batches or special admin-created batches
     IF v_batch_record.payment_completed = TRUE THEN
         RAISE EXCEPTION 'Cannot waive payment for a batch that has already been paid.';
     END IF;
@@ -3555,6 +3597,8 @@ DROP FUNCTION IF EXISTS create_batch_checkout_payment CASCADE;
 DROP FUNCTION IF EXISTS get_batch_for_checkout CASCADE;
 DROP FUNCTION IF EXISTS get_existing_batch_payment CASCADE;
 DROP FUNCTION IF EXISTS confirm_batch_payment_by_session CASCADE;
+DROP FUNCTION IF EXISTS create_pending_batch_payment CASCADE;
+DROP FUNCTION IF EXISTS confirm_pending_batch_payment CASCADE;
 
 -- =================================================================
 -- PAYMENT MANAGEMENT FUNCTIONS (SERVER-SIDE)
@@ -3797,6 +3841,223 @@ BEGIN
     );
     
     RETURN v_payment_record.batch_id;
+END;
+$$;
+
+-- =================================================================
+-- PENDING BATCH PAYMENT FUNCTIONS (PAYMENT-FIRST FLOW)
+-- Functions for handling payments before batch creation
+-- =================================================================
+
+-- Create payment record for pending batch (payment-first flow)
+-- Parameters ordered to match Supabase's expected alphabetical order
+CREATE OR REPLACE FUNCTION create_pending_batch_payment(
+    p_amount_cents INTEGER,
+    p_batch_name TEXT,
+    p_card_id UUID,
+    p_cards_count INTEGER,
+    p_metadata JSONB,
+    p_stripe_checkout_session_id TEXT,
+    p_stripe_payment_intent_id TEXT
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_card_owner_id UUID;
+    v_payment_id UUID;
+    v_expected_amount INTEGER;
+    v_batch_name TEXT;
+    v_next_batch_number INTEGER;
+BEGIN
+    -- Verify card ownership
+    SELECT user_id INTO v_card_owner_id
+    FROM cards 
+    WHERE id = p_card_id;
+    
+    IF v_card_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Card not found.';
+    END IF;
+    
+    IF v_card_owner_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to create payment for this card.';
+    END IF;
+    
+    -- Calculate expected amount ($2 per card = 200 cents per card)
+    v_expected_amount := p_cards_count * 200;
+    
+    -- Verify amount matches expected
+    IF p_amount_cents != v_expected_amount THEN
+        RAISE EXCEPTION 'Payment amount mismatch. Expected: %, Provided: %', v_expected_amount, p_amount_cents;
+    END IF;
+    
+    -- Validate required checkout session ID
+    IF p_stripe_checkout_session_id IS NULL THEN
+        RAISE EXCEPTION 'Checkout session ID is required.';
+    END IF;
+    
+    -- Check if payment already exists for this session
+    IF EXISTS (SELECT 1 FROM batch_payments WHERE stripe_checkout_session_id = p_stripe_checkout_session_id) THEN
+        RAISE EXCEPTION 'Payment already exists for this checkout session.';
+    END IF;
+    
+    -- Generate batch name if not provided
+    IF p_batch_name IS NULL OR TRIM(p_batch_name) = '' THEN
+        SELECT get_next_batch_number(p_card_id) INTO v_next_batch_number;
+        v_batch_name := 'batch-' || v_next_batch_number;
+    ELSE
+        v_batch_name := p_batch_name;
+    END IF;
+    
+    -- Create pending payment record
+    INSERT INTO batch_payments (
+        batch_id,        -- NULL for pending batch
+        card_id,
+        user_id,
+        stripe_checkout_session_id,
+        stripe_payment_intent_id,
+        amount_cents,
+        currency,
+        payment_status,
+        batch_name,
+        cards_count,
+        metadata,
+        created_at,
+        updated_at
+    ) VALUES (
+        NULL,            -- No batch exists yet
+        p_card_id,
+        auth.uid(),
+        p_stripe_checkout_session_id,
+        p_stripe_payment_intent_id,
+        p_amount_cents,
+        'usd',
+        'pending',
+        v_batch_name,
+        p_cards_count,
+        p_metadata,
+        NOW(),
+        NOW()
+    )
+    RETURNING id INTO v_payment_id;
+    
+    RETURN v_payment_id;
+END;
+$$;
+
+-- Confirm pending batch payment and create batch (payment-first flow)
+CREATE OR REPLACE FUNCTION confirm_pending_batch_payment(
+    p_stripe_checkout_session_id TEXT,
+    p_payment_method TEXT DEFAULT NULL
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_payment_record RECORD;
+    v_batch_id UUID;
+    v_batch_number INTEGER;
+    v_generated_batch_name TEXT;
+BEGIN
+    -- Get pending payment record
+    SELECT * INTO v_payment_record
+    FROM batch_payments 
+    WHERE stripe_checkout_session_id = p_stripe_checkout_session_id
+    AND user_id = auth.uid()
+    AND batch_id IS NULL;  -- Must be pending payment
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Pending payment not found or not authorized.';
+    END IF;
+    
+    -- Check if already confirmed
+    IF v_payment_record.payment_status = 'succeeded' THEN
+        RAISE EXCEPTION 'Payment already confirmed.';
+    END IF;
+    
+    -- Get next batch number for this card
+    SELECT get_next_batch_number(v_payment_record.card_id) INTO v_batch_number;
+    v_generated_batch_name := 'batch-' || v_batch_number;
+    
+    -- Create the batch now that payment is confirmed
+    INSERT INTO card_batches (
+        card_id,
+        batch_name,
+        batch_number,
+        cards_count,
+        created_by,
+        payment_required,
+        payment_completed,
+        payment_amount_cents,
+        payment_completed_at,
+        payment_waived,
+        cards_generated
+    ) VALUES (
+        v_payment_record.card_id,
+        v_generated_batch_name,
+        v_batch_number,
+        v_payment_record.cards_count,
+        auth.uid(),
+        TRUE,
+        TRUE,  -- Payment already confirmed
+        v_payment_record.amount_cents,
+        NOW(),
+        FALSE,
+        FALSE  -- Cards not generated yet
+    )
+    RETURNING id INTO v_batch_id;
+    
+    -- Update payment record to link to the new batch
+    UPDATE batch_payments 
+    SET 
+        batch_id = v_batch_id,
+        payment_status = 'succeeded',
+        payment_method = p_payment_method,
+        updated_at = NOW()
+    WHERE stripe_checkout_session_id = p_stripe_checkout_session_id;
+    
+    -- Generate cards for the new batch
+    PERFORM generate_batch_cards(v_batch_id);
+    
+    -- Log payment confirmation in audit table
+    INSERT INTO admin_audit_log (
+        admin_user_id,
+        admin_email,
+        target_user_id,
+        target_user_email,
+        action_type,
+        description,
+        details
+    ) VALUES (
+        auth.uid(),
+        (SELECT email FROM auth.users WHERE id = auth.uid()),
+        v_payment_record.user_id,
+        (SELECT email FROM auth.users WHERE id = v_payment_record.user_id),
+        'PENDING_BATCH_PAYMENT_CONFIRMATION',
+        'Pending batch payment confirmed and batch created: ' || v_generated_batch_name,
+        jsonb_build_object(
+            'old_status', jsonb_build_object(
+                'payment_status', v_payment_record.payment_status,
+                'batch_exists', false,
+                'cards_generated', false
+            ),
+            'new_status', jsonb_build_object(
+                'payment_status', 'succeeded',
+                'batch_created', true,
+                'batch_id', v_batch_id,
+                'batch_name', v_generated_batch_name,
+                'payment_completed_at', NOW(),
+                'payment_method', p_payment_method,
+                'cards_generated', true
+            ),
+            'action', 'pending_payment_confirmed_batch_created',
+            'payment_method', p_payment_method,
+            'stripe_checkout_session_id', p_stripe_checkout_session_id,
+            'batch_id', v_batch_id,
+            'card_id', v_payment_record.card_id,
+            'amount_cents', v_payment_record.amount_cents,
+            'currency', v_payment_record.currency,
+            'cards_count', v_payment_record.cards_count,
+            'automated_batch_creation', true,
+            'automated_card_generation', true
+        )
+    );
+    
+    RETURN v_batch_id;
 END;
 $$;
 

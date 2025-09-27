@@ -76,12 +76,24 @@ serve(async (req) => {
     // Verify the session belongs to this user
     const batchId = session.metadata?.batch_id
     const sessionUserId = session.metadata?.user_id
+    const isPendingBatch = session.metadata?.is_pending_batch === 'true'
 
-    if (!batchId || sessionUserId !== user.id) {
+    if (sessionUserId !== user.id) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized session access' }),
         {
           status: 403,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // For pending batches, we don't expect a real batch_id yet
+    if (!isPendingBatch && !batchId) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid session metadata' }),
+        {
+          status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       )
@@ -101,27 +113,66 @@ serve(async (req) => {
       )
     }
 
-    // Use stored procedure to confirm payment and generate cards by session ID
-    const { data: confirmedBatchId, error: confirmError } = await supabaseClient.rpc(
-      'confirm_batch_payment_by_session',
-      {
-        p_stripe_checkout_session_id: sessionId,
-        p_payment_method: 'card'
-      }
-    )
+    let confirmedBatchId = batchId
 
-    if (confirmError) {
-      console.error('Error confirming payment:', confirmError)
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to confirm payment',
-          details: confirmError.message 
-        }),
+    if (isPendingBatch) {
+      // Payment-first flow: confirm pending payment and create batch
+      console.log('Confirming pending batch payment:', {
+        sessionId,
+        cardId: session.metadata?.card_id,
+        cardCount: session.metadata?.card_count,
+        batchName: session.metadata?.batch_name
+      })
+      
+      const { data: newBatchId, error: confirmError } = await supabaseClient.rpc(
+        'confirm_pending_batch_payment',
         {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          p_stripe_checkout_session_id: sessionId,
+          p_payment_method: 'card'
         }
       )
+
+      if (confirmError) {
+        console.error('Error confirming pending batch payment:', confirmError)
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to confirm pending batch payment',
+            details: confirmError.message 
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      confirmedBatchId = newBatchId
+      console.log('Pending batch payment confirmed, batch created:', newBatchId)
+    } else {
+      // Existing batch: confirm payment for existing batch
+      const { data: batchIdResult, error: confirmError } = await supabaseClient.rpc(
+        'confirm_batch_payment_by_session',
+        {
+          p_stripe_checkout_session_id: sessionId,
+          p_payment_method: 'card'
+        }
+      )
+
+      if (confirmError) {
+        console.error('Error confirming payment:', confirmError)
+        return new Response(
+          JSON.stringify({ 
+            error: 'Failed to confirm payment',
+            details: confirmError.message 
+          }),
+          {
+            status: 500,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      confirmedBatchId = batchIdResult || batchId
     }
 
     return new Response(

@@ -110,28 +110,6 @@ export const handleCheckoutSuccess = async (sessionId) => {
   }
 }
 
-/**
- * Get payment status for a batch
- * @param {string} batchId - UUID of the batch
- * @returns {Promise<Object>} - Payment status information
- */
-export const getBatchPaymentStatus = async (batchId) => {
-  try {
-    const { data, error } = await supabase.rpc('get_batch_payment_info', {
-      p_batch_id: batchId
-    })
-
-    if (error) {
-      console.error('Error fetching payment status:', error)
-      throw error
-    }
-
-    return data?.[0] || null
-  } catch (error) {
-    console.error('Payment status fetch error:', error)
-    throw error
-  }
-}
 
 /**
  * Calculate payment amount for given card count
