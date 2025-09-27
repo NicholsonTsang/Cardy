@@ -1,7 +1,7 @@
 <template>
-  <div class="space-y-6">
-    <!-- Statistics Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="space-y-6">
+      <!-- Statistics Cards -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
         <div class="flex items-center justify-between">
           <div>
@@ -229,14 +229,21 @@
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-2">Card Design</label>
           <div v-if="currentCard" class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg bg-slate-50">
-            <img 
-              :src="currentCard.image_url || cardPlaceholder" 
-              :alt="currentCard.title"
-              class="w-12 h-16 object-cover rounded border border-slate-200"
-            />
-            <div>
-              <div class="font-medium text-slate-900">{{ currentCard.title }}</div>
-              <div class="text-sm text-slate-600">{{ currentCard.description }}</div>
+            <div class="relative w-12 h-16 flex-shrink-0">
+              <img 
+                :src="currentCard.image_url || cardPlaceholder" 
+                :alt="currentCard.title || 'Card design'"
+                class="w-full h-full object-cover rounded border border-slate-200"
+                @error="handleImageError"
+                @load="handleImageLoad"
+              />
+              <div v-if="!currentCard.image_url" class="absolute inset-0 flex items-center justify-center bg-slate-100 rounded text-slate-400 text-xs">
+                <i class="pi pi-image"></i>
+              </div>
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="font-medium text-slate-900 truncate">{{ currentCard.title || currentCard.name || 'Untitled Card' }}</div>
+              <div class="text-sm text-slate-600 line-clamp-2">{{ currentCard.description || 'No description available' }}</div>
             </div>
           </div>
           <div v-else class="p-3 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
@@ -1005,12 +1012,24 @@ const loadCurrentCard = async () => {
 
     if (error) throw error
     
+    console.log('Card data received:', data); // Debug log
+    
+    // Handle nested data structure - the actual card data is in data["0"]
+    let cardData = data;
+    if (data && typeof data === 'object' && data["0"]) {
+      cardData = data["0"];
+      console.log('Using nested card data:', cardData);
+    }
+    
     // Transform data to match expected structure
     currentCard.value = {
-      ...data,
-      title: data.name, // Map name to title for compatibility
-      image_url: data.image_url || null // Use image if available
+      ...cardData,
+      title: cardData.name || cardData.title || 'Untitled Card', // Map name to title for compatibility
+      image_url: cardData.image_url || null, // Use image if available
+      description: cardData.description || ''
     }
+    
+    console.log('Transformed currentCard:', currentCard.value); // Debug log
 
   } catch (error) {
     console.error('Error loading current card:', error)
@@ -1021,6 +1040,16 @@ const loadCurrentCard = async () => {
       life: 5000
     })
   }
+}
+
+// Image handling functions
+const handleImageError = (event) => {
+  console.log('Image failed to load, using placeholder:', event.target.src);
+  event.target.src = cardPlaceholder;
+}
+
+const handleImageLoad = (event) => {
+  console.log('Image loaded successfully:', event.target.src);
 }
 
 const createBatch = async () => {
@@ -1563,6 +1592,15 @@ onMounted(async () => {
 /* Custom styles for better UX */
 .p-datatable {
   border-radius: 0;
+}
+
+/* Line clamp utility for description text */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .p-datatable .p-datatable-thead > tr > th {

@@ -15,4 +15,9 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url))
     },
   },
+  define: {
+    // Make environment variables available at build time
+    __CARD_ASPECT_RATIO_WIDTH__: JSON.stringify(process.env.VITE_CARD_ASPECT_RATIO_WIDTH || '2'),
+    __CARD_ASPECT_RATIO_HEIGHT__: JSON.stringify(process.env.VITE_CARD_ASPECT_RATIO_HEIGHT || '3'),
+  }
 })

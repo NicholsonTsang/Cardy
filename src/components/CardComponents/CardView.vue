@@ -79,7 +79,10 @@
 
                                 <div v-if="cardProp.description">
                                     <h4 class="text-sm font-medium text-slate-700 mb-2">Description</h4>
-                                    <p class="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">{{ cardProp.description }}</p>
+                                    <div 
+                                        class="text-sm text-slate-600 leading-relaxed prose prose-sm max-w-none prose-slate"
+                                        v-html="renderMarkdown(cardProp.description)"
+                                    ></div>
                                 </div>
                             </div>
                         </div>
@@ -167,12 +170,14 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import MyDialog from '@/components/MyDialog.vue';
 import CardCreateEditForm from './CardCreateEditForm.vue';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
+import { getCardAspectRatio } from '@/utils/cardConfig';
+import { marked } from 'marked';
 
 const props = defineProps({
     cardProp: {
@@ -270,12 +275,32 @@ const getQrCodePositionClass = (position) => {
     };
     return classes[position] || 'bottom-2 right-2'; // Default to bottom-right
 };
+
+// Render markdown to HTML
+const renderMarkdown = (markdown) => {
+    if (!markdown) return '';
+    
+    // Configure marked for security and styling
+    marked.setOptions({
+        breaks: true,
+        gfm: true,
+        sanitize: false // We trust our own content, but you might want to sanitize in production
+    });
+    
+    return marked(markdown);
+};
+
+// Set up CSS custom property for aspect ratio
+onMounted(() => {
+    const aspectRatio = getCardAspectRatio();
+    document.documentElement.style.setProperty('--card-aspect-ratio', aspectRatio);
+});
 </script>
 
 <style scoped>
-/* Responsive container with 2:3 aspect ratio (card standard) */
+/* Responsive container with configurable aspect ratio */
 .card-artwork-container {
-    aspect-ratio: 2/3;
+    aspect-ratio: var(--card-aspect-ratio, 2/3);
     width: 100%;
     max-width: 240px; /* Constrain maximum width */
     margin: 0 auto;
@@ -288,5 +313,97 @@ const getQrCodePositionClass = (position) => {
 
 .card-artwork-container:hover img {
     transform: scale(1.02);
+}
+
+/* Markdown prose styling */
+.prose {
+    color: #64748b;
+    max-width: none;
+}
+
+.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+    color: #334155;
+    font-weight: 600;
+    margin-top: 0.75em;
+    margin-bottom: 0.5em;
+}
+
+.prose h1 { font-size: 1.25em; }
+.prose h2 { font-size: 1.125em; }
+.prose h3 { font-size: 1em; }
+.prose h4, .prose h5, .prose h6 { font-size: 0.875em; }
+
+.prose p {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+}
+
+.prose strong {
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.prose em {
+    font-style: italic;
+}
+
+.prose ul, .prose ol {
+    margin-top: 0.5em;
+    margin-bottom: 0.5em;
+    padding-left: 1.25em;
+}
+
+.prose ul {
+    list-style-type: disc;
+}
+
+.prose ol {
+    list-style-type: decimal;
+}
+
+.prose li {
+    margin-top: 0.25em;
+    margin-bottom: 0.25em;
+}
+
+.prose blockquote {
+    border-left: 3px solid #cbd5e1;
+    padding-left: 1em;
+    margin: 0.75em 0;
+    font-style: italic;
+    color: #64748b;
+}
+
+.prose code {
+    background-color: #f1f5f9;
+    padding: 0.125em 0.25em;
+    border-radius: 0.25rem;
+    font-size: 0.875em;
+    color: #dc2626;
+    font-family: ui-monospace, SFMono-Regular, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+.prose pre {
+    background-color: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    padding: 1em;
+    overflow-x: auto;
+    margin: 0.75em 0;
+}
+
+.prose pre code {
+    background-color: transparent;
+    padding: 0;
+    color: #334155;
+}
+
+.prose a {
+    color: #3b82f6;
+    text-decoration: underline;
+}
+
+.prose a:hover {
+    color: #1d4ed8;
 }
 </style>

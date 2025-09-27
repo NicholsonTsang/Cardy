@@ -46,6 +46,10 @@
                                 <i class="pi pi-image text-3xl mb-3 opacity-50"></i>
                                 <span class="text-sm font-medium">Upload artwork</span>
                                 <span class="text-xs text-slate-400 mt-1">Drag & drop or click to browse</span>
+                                <span class="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                                    <i class="pi pi-crop text-xs"></i>
+                                    Auto-crop available for {{ getCardAspectRatioDisplay() }} ratio
+                                </span>
                             </div>
                             
                             <!-- Mock QR Code Overlay -->
@@ -104,15 +108,22 @@
                             </div>
 
                             <div>
-                                <label for="cardDescription" class="block text-sm font-medium text-slate-700 mb-2">Card Description</label>
-                                <Textarea 
-                                    id="cardDescription" 
-                                    v-model="formData.description" 
-                                    rows="3" 
-                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none"
-                                    placeholder="Describe your card's purpose and content..."
-                                    autoResize
-                                />
+                                <label for="cardDescription" class="block text-sm font-medium text-slate-700 mb-2">
+                                    Card Description 
+                                    <span class="text-xs text-slate-500 font-normal">(Markdown supported)</span>
+                                </label>
+                                <div class="border border-slate-300 rounded-lg overflow-hidden">
+                                    <MdEditor 
+                                        v-model="formData.description"
+                                        :toolbars="markdownToolbars"
+                                        :preview="true"
+                                        :htmlPreview="true"
+                                        :codeTheme="'atom'"
+                                        :previewTheme="'default'"
+                                        placeholder="Describe your card's purpose and content using Markdown..."
+                                        :style="{ minHeight: '200px' }"
+                                    />
+                                </div>
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -174,6 +185,25 @@
                 </div>
             </div>
         </div>
+
+        <!-- Image Crop Dialog -->
+        <MyDialog
+            v-model="showCropDialog"
+            header="Crop Image"
+            :confirmHandle="null"
+            :showConfirm="false"
+            :showCancel="false"
+            style="width: 90vw; max-width: 900px;"
+        >
+            <ImageCropper
+                v-if="imageToCrop"
+                :imageSrc="imageToCrop"
+                :aspectRatio="getCardAspectRatioNumber()"
+                :aspectRatioDisplay="getCardAspectRatioDisplay()"
+                @crop-applied="handleCropApplied"
+                @crop-cancelled="handleCropCancelled"
+            />
+        </MyDialog>
     </div>
 </template>
 
@@ -186,6 +216,17 @@ import Dropdown from 'primevue/dropdown';
 import ToggleSwitch from 'primevue/toggleswitch';
 import FileUpload from 'primevue/fileupload';
 import { processImage } from '@/utils/imageUtils.js';
+import { 
+    getCardAspectRatio, 
+    getCardAspectRatioNumber, 
+    getCardAspectRatioDisplay, 
+    imageNeedsCropping, 
+    getImageDimensions 
+} from '@/utils/cardConfig';
+import ImageCropper from '@/components/ImageCropper.vue';
+import MyDialog from '@/components/MyDialog.vue';
+import { MdEditor } from 'md-editor-v3';
+import 'md-editor-v3/lib/style.css';
 
 const props = defineProps({
     cardProp: {
@@ -219,6 +260,39 @@ const formData = reactive({
 
 const previewImage = ref(null);
 const imageFile = ref(null);
+const showCropDialog = ref(false);
+const imageToCrop = ref(null);
+const originalImageFile = ref(null);
+
+// Markdown editor configuration
+const markdownToolbars = ref([
+    'bold',
+    'underline',
+    'italic',
+    '-',
+    'title',
+    'strikeThrough',
+    'sub',
+    'sup',
+    'quote',
+    'unorderedList',
+    'orderedList',
+    '-',
+    'codeRow',
+    'code',
+    'link',
+    'table',
+    '-',
+    'revoke',
+    'next',
+    'save',
+    '=',
+    'pageFullscreen',
+    'fullscreen',
+    'preview',
+    'htmlPreview',
+    'catalog'
+]);
 
 const qrCodePositions = ref([
     { name: 'Top Left', code: 'TL' },
@@ -236,6 +310,10 @@ const isFormValid = computed(() => {
 // Initialize form data from props
 onMounted(() => {
     initializeForm();
+    
+    // Set up CSS custom property for aspect ratio
+    const aspectRatio = getCardAspectRatio();
+    document.documentElement.style.setProperty('--card-aspect-ratio', aspectRatio);
 });
 
 // Watch for changes in cardProp to update form
@@ -277,6 +355,11 @@ const resetForm = () => {
     formData.conversation_ai_enabled = false;
     previewImage.value = null;
     imageFile.value = null;
+    
+    // Clean up crop-related variables
+    showCropDialog.value = false;
+    imageToCrop.value = null;
+    originalImageFile.value = null;
 };
 
 const handleImageUpload = async (event) => {
@@ -284,18 +367,71 @@ const handleImageUpload = async (event) => {
     if (!file) return;
 
     try {
-        // Store the file object for later upload
-        imageFile.value = file;
-
-        // Create a preview URL
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            previewImage.value = e.target.result;
-        };
-        reader.readAsDataURL(file);
+        // Get image dimensions to check if cropping is needed
+        const dimensions = await getImageDimensions(file);
+        const needsCropping = imageNeedsCropping(dimensions.width, dimensions.height);
+        
+        if (needsCropping) {
+            // Store original file and show crop dialog
+            originalImageFile.value = file;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                imageToCrop.value = e.target.result;
+                showCropDialog.value = true;
+            };
+            reader.readAsDataURL(file);
+        } else {
+            // Image aspect ratio is correct, use directly
+            await processImageDirectly(file);
+        }
     } catch (error) {
         console.error("Failed to process image:", error);
     }
+};
+
+const processImageDirectly = async (file) => {
+    // Store the file object for later upload
+    imageFile.value = file;
+
+    // Create a preview URL
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        previewImage.value = e.target.result;
+    };
+    reader.readAsDataURL(file);
+};
+
+const handleCropApplied = async (croppedData) => {
+    try {
+        console.log('Received cropped data:', {
+            hasFile: !!croppedData.file,
+            fileSize: croppedData.file?.size,
+            hasDataURL: !!croppedData.dataURL,
+            dataURLLength: croppedData.dataURL?.length
+        });
+        
+        // Use the cropped file
+        imageFile.value = croppedData.file;
+        previewImage.value = croppedData.dataURL;
+        
+        console.log('Updated preview image:', previewImage.value ? 'Set to dataURL' : 'Still null');
+        
+        // Close crop dialog
+        showCropDialog.value = false;
+        
+        // Clean up
+        imageToCrop.value = null;
+        originalImageFile.value = null;
+    } catch (error) {
+        console.error("Failed to apply crop:", error);
+    }
+};
+
+const handleCropCancelled = () => {
+    // Close crop dialog and clean up
+    showCropDialog.value = false;
+    imageToCrop.value = null;
+    originalImageFile.value = null;
 };
 
 const getPayload = () => {
@@ -355,9 +491,9 @@ defineExpose({
 </script>
 
 <style scoped>
-/* Responsive container with 2:3 aspect ratio (card standard) */
+/* Responsive container with configurable aspect ratio */
 .card-artwork-container {
-    aspect-ratio: 2/3;
+    aspect-ratio: var(--card-aspect-ratio, 2/3);
     width: 100%;
     max-width: 240px; /* Constrain maximum width */
     margin: 0 auto;
