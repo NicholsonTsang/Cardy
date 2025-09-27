@@ -121,7 +121,7 @@
                                         :codeTheme="'atom'"
                                         :previewTheme="'default'"
                                         placeholder="Describe your card's purpose and content using Markdown..."
-                                        :style="{ minHeight: '200px' }"
+                                        :style="{ height: '200px' }"
                                     />
                                 </div>
                             </div>
