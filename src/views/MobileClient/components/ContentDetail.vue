@@ -78,7 +78,9 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
 import MobileAIAssistant from './MobileAIAssistant.vue'
+import { getContentAspectRatio } from '@/utils/cardConfig'
 
 interface ContentItem {
   content_item_id: string
@@ -113,6 +115,12 @@ const emit = defineEmits<{
 function handleSelect(item: ContentItem) {
   emit('select', item)
 }
+
+// Set up CSS custom property for content aspect ratio
+onMounted(() => {
+  const aspectRatio = getContentAspectRatio()
+  document.documentElement.style.setProperty('--content-aspect-ratio', aspectRatio)
+})
 </script>
 
 <style scoped>
@@ -129,15 +137,16 @@ function handleSelect(item: ContentItem) {
 
 /* Hero Image */
 .hero-image {
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--content-aspect-ratio, 4/3);
   overflow: hidden;
   margin-bottom: 1.5rem;
+  background-color: black;
 }
 
 .image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .image-placeholder {
@@ -231,12 +240,13 @@ function handleSelect(item: ContentItem) {
   flex-shrink: 0;
   border-radius: 0.5rem;
   overflow: hidden;
+  background-color: black;
 }
 
 .thumbnail {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .thumbnail-placeholder {

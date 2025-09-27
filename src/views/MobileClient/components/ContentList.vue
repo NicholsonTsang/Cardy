@@ -47,6 +47,8 @@
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import { getContentAspectRatio } from '@/utils/cardConfig'
 
 interface ContentItem {
   content_item_id: string
@@ -79,6 +81,12 @@ function getSubItemsCount(item: ContentItem): number {
 function handleSelect(item: ContentItem) {
   emit('select', item)
 }
+
+// Set up CSS custom property for content aspect ratio
+onMounted(() => {
+  const aspectRatio = getContentAspectRatio()
+  document.documentElement.style.setProperty('--content-aspect-ratio', aspectRatio)
+})
 </script>
 
 <style scoped>
@@ -113,14 +121,15 @@ function handleSelect(item: ContentItem) {
 /* Card Image */
 .card-image {
   position: relative;
-  aspect-ratio: 16 / 9;
+  aspect-ratio: var(--content-aspect-ratio, 4/3);
   overflow: hidden;
+  background-color: black;
 }
 
 .image {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
 }
 
 .image-placeholder {

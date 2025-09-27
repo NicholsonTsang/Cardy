@@ -16,11 +16,11 @@
                         <i class="pi pi-image text-blue-600"></i>
                         {{ contentItem?.parent_id ? 'Sub-item' : 'Content' }} Image
                     </h3>
-                    <div class="aspect-video max-w-md mx-auto border border-slate-300 rounded-xl p-4 bg-white">
+                    <div class="content-image-container max-w-md mx-auto border border-slate-300 rounded-xl p-4 bg-black">
                         <img 
                             :src="contentItem?.imageUrl || contentItem?.image_url || cardPlaceholder" 
                             alt="Content Item Image"
-                            class="object-cover h-full w-full rounded-lg shadow-md" 
+                            class="object-contain h-full w-full rounded-lg shadow-md" 
                         />
                     </div>
                 </div>
@@ -76,8 +76,10 @@
 </template>
 
 <script setup>
+import { onMounted } from 'vue';
 import Button from 'primevue/button';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
+import { getContentAspectRatio } from '@/utils/cardConfig';
 
 defineProps({
     contentItem: {
@@ -87,10 +89,19 @@ defineProps({
 });
 
 defineEmits(['edit']);
+
+// Set up CSS custom property for content aspect ratio
+onMounted(() => {
+    const aspectRatio = getContentAspectRatio();
+    document.documentElement.style.setProperty('--content-aspect-ratio', aspectRatio);
+});
 </script>
 
 <style scoped>
-.aspect-square {
-    aspect-ratio: 1 / 1;
+/* Content image container with configurable aspect ratio */
+.content-image-container {
+    aspect-ratio: var(--content-aspect-ratio, 4/3);
+    width: 100%;
+    background-color: black;
 }
 </style> 

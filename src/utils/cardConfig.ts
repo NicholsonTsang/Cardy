@@ -1,5 +1,5 @@
 /**
- * Card configuration utilities
+ * Card and Content configuration utilities
  */
 
 /**
@@ -67,4 +67,47 @@ export const getImageDimensions = (file: File): Promise<{width: number, height: 
     img.onerror = reject;
     img.src = URL.createObjectURL(file);
   });
+};
+
+// =================================================================
+// CONTENT ITEM CONFIGURATION
+// Content items use a different aspect ratio (4:3 horizontal by default)
+// =================================================================
+
+/**
+ * Get the content item aspect ratio from environment variables
+ * @returns {string} The aspect ratio in CSS format (e.g., "4/3")
+ */
+export const getContentAspectRatio = (): string => {
+  const width = import.meta.env.VITE_CONTENT_ASPECT_RATIO_WIDTH || '4';
+  const height = import.meta.env.VITE_CONTENT_ASPECT_RATIO_HEIGHT || '3';
+  return `${width}/${height}`;
+};
+
+/**
+ * Get the content item aspect ratio as CSS custom property value
+ * @returns {string} The aspect ratio for use in CSS custom properties
+ */
+export const getContentAspectRatioValue = (): string => {
+  return getContentAspectRatio();
+};
+
+/**
+ * Get the content item aspect ratio as a numeric value
+ * @returns {number} The aspect ratio as a decimal number
+ */
+export const getContentAspectRatioNumber = (): number => {
+  const width = parseFloat(import.meta.env.VITE_CONTENT_ASPECT_RATIO_WIDTH || '4');
+  const height = parseFloat(import.meta.env.VITE_CONTENT_ASPECT_RATIO_HEIGHT || '3');
+  return width / height;
+};
+
+/**
+ * Get the content item aspect ratio display string
+ * @returns {string} The aspect ratio in display format (e.g., "4:3")
+ */
+export const getContentAspectRatioDisplay = (): string => {
+  const width = import.meta.env.VITE_CONTENT_ASPECT_RATIO_WIDTH || '4';
+  const height = import.meta.env.VITE_CONTENT_ASPECT_RATIO_HEIGHT || '3';
+  return `${width}:${height}`;
 };

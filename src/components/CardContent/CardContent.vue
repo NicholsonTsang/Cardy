@@ -23,11 +23,11 @@
                     </div>
                     <h3 class="text-lg font-medium text-slate-900 mb-2">No Content Items</h3>
                     <p class="text-slate-500 mb-4">Create your first content item to get started</p>
-                    <Button 
+                    <!-- <Button 
                         icon="pi pi-plus" 
                         label="Add Content" 
                         @click="showAddSerieDialog = true"
-                    />
+                    /> -->
                 </div>
 
                 <!-- Content Items -->
@@ -601,13 +601,14 @@ watch(() => props.cardId, async (newCardId) => {
     transform: scale(1.02);
 }
 
-/* Override PrimeVue button font sizes */
+/* Standardized button sizing to match other dialogs */
 :deep(.p-button) {
-    font-size: 0.75rem;
+    font-size: var(--font-size-sm);
+    font-weight: 500;
 }
 
 :deep(.p-button-small) {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
+    font-size: var(--font-size-sm);
+    padding: 0.5rem 0.75rem;
 }
 </style>

@@ -9,15 +9,16 @@
                         {{ itemTypeLabel }} Image
                     </h3>
                     <div class="w-full">
-                        <div class="aspect-video max-w-md mx-auto border-2 border-dashed border-slate-300 rounded-xl p-4 relative mb-4 transition-all duration-200 hover:border-blue-400 hover:bg-blue-50/50"
+                        <div class="content-image-container max-w-md mx-auto border-2 border-dashed border-slate-300 rounded-xl p-4 relative mb-4 transition-all duration-200 hover:border-blue-400 hover:bg-blue-50/50"
                             :class="{ 
-                                'border-solid border-blue-400 bg-blue-50/30': previewImage,
+                                'border-solid border-blue-400 bg-black': previewImage,
                                 'bg-slate-50': !previewImage 
                             }">
                             <img 
-                                :src="previewImage || cardPlaceholder" 
+                                :src="previewImage" 
+                                v-if="previewImage"
                                 :alt="`${itemTypeLabel} Preview`"
-                                class="object-cover h-full w-full rounded-lg shadow-md" 
+                                class="object-contain h-full w-full rounded-lg shadow-md" 
                             />
                             <div v-if="!previewImage"
                                 class="absolute inset-0 flex items-center justify-center text-slate-500 text-center p-4">
@@ -43,7 +44,7 @@
                         />
                         <p class="text-xs text-slate-500 mt-2 flex items-center gap-1">
                             <i class="pi pi-info-circle"></i>
-                            Max: 5MB
+                            Max: 5MB • Recommended ratio: {{ getContentAspectRatioDisplay() }}
                         </p>
                     </div>
                 </div>
@@ -63,11 +64,11 @@
                                 <label class="block text-sm font-medium text-slate-700 mb-2">Name *</label>
                                 <InputText 
                                     v-model="formData.name" 
-                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors" 
+                                    class="w-full" 
                                     :placeholder="`Enter ${itemTypeLabel.toLowerCase()} name`"
-                                    :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': !formData.name.trim() }"
+                                    :class="{ 'p-invalid': !formData.name.trim() }"
                                 />
-                                <p v-if="!formData.name.trim()" class="text-sm text-red-600 mt-1">Name is required</p>
+                                <small v-if="!formData.name.trim()" class="p-error">Name is required</small>
                             </div>
 
                             <div>
@@ -75,7 +76,7 @@
                                 <Textarea 
                                     v-model="formData.description" 
                                     rows="3" 
-                                    class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none" 
+                                    class="w-full" 
                                     :placeholder="getDescriptionPlaceholder()"
                                     autoResize
                                 />
@@ -86,14 +87,14 @@
                     <!-- AI Metadata Section (shown only if card has AI enabled) -->
                     <div v-if="cardAiEnabled" class="border-t border-slate-200 pt-6">
                         <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
-                            <label class="block text-sm font-medium text-amber-900 mb-2 flex items-center gap-2">
+                            <label class="flex items-center gap-2 text-sm font-medium text-amber-900 mb-2">
                                 <i class="pi pi-database"></i>
                                 AI Metadata
                             </label>
                             <Textarea 
                                 v-model="formData.aiMetadata" 
                                 rows="4" 
-                                class="w-full px-4 py-3 border border-amber-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 transition-colors resize-none bg-white" 
+                                class="w-full" 
                                 :placeholder="getAiMetadataPlaceholder()"
                                 autoResize
                             />
@@ -112,12 +113,13 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, defineProps, defineEmits, defineExpose } from 'vue';
+import { ref, watch, computed, onMounted, defineProps, defineEmits, defineExpose } from 'vue';
 import FileUpload from 'primevue/fileupload';
 import Button from 'primevue/button';
 import Textarea from 'primevue/textarea';
 import InputText from 'primevue/inputtext';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
+import { getContentAspectRatio, getContentAspectRatioDisplay } from '@/utils/cardConfig';
 
 const props = defineProps({
     contentItem: {
@@ -252,6 +254,12 @@ const resetForm = () => {
     originalData.value = null;
 };
 
+// Set up CSS custom property for content aspect ratio
+onMounted(() => {
+    const aspectRatio = getContentAspectRatio();
+    document.documentElement.style.setProperty('--content-aspect-ratio', aspectRatio);
+});
+
 // Expose methods to parent component
 defineExpose({
     getFormData,
@@ -260,23 +268,29 @@ defineExpose({
 </script>
 
 <style scoped>
-.aspect-video {
-    aspect-ratio: 16 / 9;
+/* Content image container with configurable aspect ratio */
+.content-image-container {
+    aspect-ratio: var(--content-aspect-ratio, 4/3);
+    width: 100%;
+    background-color: black;
 }
 
-/* Override PrimeVue component font sizes */
-:deep(.p-inputtext) {
-    font-size: 0.75rem;
-    line-height: 1.2;
+/* Standardized component sizing to match other dialogs and forms */
+/* :deep(.p-inputtext) {
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    padding: 0.75rem 1rem;
 }
 
 :deep(.p-textarea) {
-    font-size: 0.75rem;
-    line-height: 1.2;
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    padding: 0.75rem 1rem;
 }
 
 :deep(.p-fileupload-basic .p-button) {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
-}
+    font-size: var(--font-size-sm);
+    font-weight: 500;
+    padding: 0.75rem 1.25rem;
+} */
 </style> 

@@ -19,5 +19,8 @@ export default defineConfig({
     // Make environment variables available at build time
     __CARD_ASPECT_RATIO_WIDTH__: JSON.stringify(process.env.VITE_CARD_ASPECT_RATIO_WIDTH || '2'),
     __CARD_ASPECT_RATIO_HEIGHT__: JSON.stringify(process.env.VITE_CARD_ASPECT_RATIO_HEIGHT || '3'),
+    // Content item aspect ratio (4:3 horizontal by default)
+    __CONTENT_ASPECT_RATIO_WIDTH__: JSON.stringify(process.env.VITE_CONTENT_ASPECT_RATIO_WIDTH || '4'),
+    __CONTENT_ASPECT_RATIO_HEIGHT__: JSON.stringify(process.env.VITE_CONTENT_ASPECT_RATIO_HEIGHT || '3'),
   }
 })
