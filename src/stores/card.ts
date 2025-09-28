@@ -23,6 +23,7 @@ export interface CardFormData {
     description: string;
     imageFile?: File | null;
     image_url?: string;
+    cropParameters?: any; // JSON object containing crop parameters for dynamic image cropping
     conversation_ai_enabled: boolean;
     ai_prompt: string;
     qr_code_position: string;
@@ -116,6 +117,7 @@ export const useCardStore = defineStore('card', () => {
                     p_name: cardData.name,
                     p_description: cardData.description,
                     p_image_url: imageUrl,
+                    p_crop_parameters: cardData.cropParameters || null,
                     p_conversation_ai_enabled: cardData.conversation_ai_enabled,
                     p_ai_prompt: cardData.ai_prompt,
                     p_qr_code_position: cardData.qr_code_position
@@ -192,6 +194,7 @@ export const useCardStore = defineStore('card', () => {
                 p_name: updateData.name,
                 p_description: updateData.description,
                 p_image_url: updateData.image_url || null,
+                p_crop_parameters: updateData.cropParameters || null,
                 p_conversation_ai_enabled: updateData.conversation_ai_enabled,
                 p_ai_prompt: updateData.ai_prompt,
                 p_qr_code_position: updateData.qr_code_position

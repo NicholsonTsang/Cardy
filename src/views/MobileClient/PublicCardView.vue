@@ -83,6 +83,7 @@ interface CardData {
   card_name: string
   card_description: string
   card_image_url: string
+  crop_parameters?: any
   conversation_ai_enabled: boolean
   ai_prompt: string
   is_activated: boolean
@@ -97,6 +98,7 @@ interface ContentItem {
   content_item_image_url: string
   content_item_ai_metadata: string
   content_item_sort_order: number
+  crop_parameters?: any
 }
 
 type ViewType = 'card' | 'content-list' | 'content-detail'
@@ -181,6 +183,7 @@ async function fetchCardData() {
       card_name: firstRow.card_name,
       card_description: firstRow.card_description,
       card_image_url: firstRow.card_image_url,
+      crop_parameters: firstRow.card_crop_parameters,
       conversation_ai_enabled: firstRow.card_conversation_ai_enabled,
       ai_prompt: firstRow.card_ai_prompt,
       is_activated: isPreviewMode.value ? true : firstRow.is_activated, // Always activated in preview mode
@@ -197,7 +200,8 @@ async function fetchCardData() {
         content_item_content: item.content_item_content,
         content_item_image_url: item.content_item_image_url,
         content_item_ai_metadata: item.content_item_ai_metadata,
-        content_item_sort_order: item.content_item_sort_order || 0
+        content_item_sort_order: item.content_item_sort_order || 0,
+        crop_parameters: item.crop_parameters
       }))
       .sort((a: ContentItem, b: ContentItem) => a.content_item_sort_order - b.content_item_sort_order)
 

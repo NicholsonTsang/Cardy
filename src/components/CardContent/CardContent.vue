@@ -66,11 +66,15 @@
                                 
                                 <!-- Thumbnail -->
                                 <div v-if="item.image_url" class="mr-3 flex-shrink-0">
-                                    <img 
-                                        :src="item.image_url" 
-                                        :alt="item.name"
-                                        class="w-10 h-10 object-cover rounded-lg border border-slate-200"
-                                    />
+                                    <div class="content-thumbnail-container">
+                                        <CroppedImageDisplay
+                                            :imageSrc="item.image_url"
+                                            :cropParameters="item.crop_parameters"
+                                            :alt="item.name"
+                                            imageClass="w-full h-full object-cover rounded-lg border border-slate-200"
+                                            :previewSize="80"
+                                        />
+                                    </div>
                                 </div>
                                 <div v-else class="w-10 h-10 bg-slate-100 rounded-lg border border-slate-200 mr-3 flex items-center justify-center">
                                     <i class="pi pi-image text-slate-400"></i>
@@ -277,6 +281,8 @@ import draggable from 'vuedraggable';
 import MyDialog from '../MyDialog.vue';
 import CardContentView from './CardContentView.vue';
 import CardContentCreateEditForm from './CardContentCreateEditForm.vue';
+import CroppedImageDisplay from '@/components/CroppedImageDisplay.vue';
+import { getContentAspectRatio } from '@/utils/cardConfig';
 import { useContentItemStore } from '@/stores/contentItem';
 import { useToast } from 'primevue/usetoast';
 
@@ -327,6 +333,10 @@ const currentSelectedItemData = computed(() => {
 
 // Load content items when component mounts
 onMounted(async () => {
+    // Set up CSS custom property for content aspect ratio
+    const aspectRatio = getContentAspectRatio();
+    document.documentElement.style.setProperty('--content-aspect-ratio', aspectRatio);
+    
     // Content items will be loaded by the cardId watcher
 });
 
@@ -610,5 +620,16 @@ watch(() => props.cardId, async (newCardId) => {
 :deep(.p-button-small) {
     font-size: var(--font-size-sm);
     padding: 0.5rem 0.75rem;
+}
+
+/* Content thumbnail with proper aspect ratio */
+.content-thumbnail-container {
+    width: 40px;
+    height: 40px;
+    aspect-ratio: var(--content-aspect-ratio, 4/3);
+    width: auto;
+    max-width: 40px;
+    max-height: 40px;
+    overflow: hidden;
 }
 </style>

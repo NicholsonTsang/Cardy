@@ -11,6 +11,7 @@ export interface ContentItem {
     name: string;
     content: string;
     image_url: string | null;
+    crop_parameters?: any; // JSON object containing crop parameters for dynamic image cropping
     ai_metadata: string;
     sort_order: number;
     created_at: string;
@@ -23,6 +24,7 @@ export interface ContentItemFormData {
     imageUrl?: string | null;
     imageFile?: File | null;
     image_url?: string;
+    cropParameters?: any; // JSON object containing crop parameters for dynamic image cropping
     aiMetadata?: string;
     // card_id and parent_id are passed as separate params to createContentItem
 }
@@ -104,6 +106,7 @@ export const useContentItemStore = defineStore('contentItem', () => {
           p_parent_id: parentId,
           p_content: itemData.description || '',
           p_image_url: finalImageUrl,
+          p_crop_parameters: itemData.cropParameters || null,
           p_ai_metadata: itemData.aiMetadata || '',
         });
       
@@ -142,6 +145,7 @@ export const useContentItemStore = defineStore('contentItem', () => {
           p_name: itemData.name,
           p_content: itemData.description || '',
           p_image_url: finalImageUrl, // Can be null to remove images
+          p_crop_parameters: itemData.cropParameters || null,
           p_ai_metadata: itemData.aiMetadata || '',
         });
       

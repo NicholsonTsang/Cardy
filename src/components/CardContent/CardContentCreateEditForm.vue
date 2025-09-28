@@ -4,48 +4,107 @@
             <!-- Image Section -->
             <div class="w-full">
                 <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-                    <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                    <h3 class="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
                         <i class="pi pi-image text-blue-600"></i>
                         {{ itemTypeLabel }} Image
                     </h3>
-                    <div class="w-full">
-                        <div class="content-image-container max-w-md mx-auto border-2 border-dashed border-slate-300 rounded-xl relative mb-4 transition-all duration-200 hover:border-blue-400 hover:bg-blue-50/50"
-                            :class="{ 
-                                'border-solid border-blue-400 bg-white': previewImage,
-                                'bg-slate-50': !previewImage 
-                            }">
-                            <img 
-                                :src="previewImage" 
-                                v-if="previewImage"
-                                :alt="`${itemTypeLabel} Preview`"
-                                class="object-contain h-full w-full rounded-lg shadow-md" 
-                            />
-                            <div v-if="!previewImage"
-                                class="absolute inset-0 flex items-center justify-center text-slate-500 text-center p-4">
-                                <div>
-                                    <i class="pi pi-image text-3xl mb-3 opacity-50"></i>
-                                    <span class="text-sm font-medium">Upload image</span>
-                                    <span class="text-xs text-slate-400 mt-1 block">Drag & drop or click</span>
+                    
+                    <!-- Unified Simplified Single Column Layout -->
+                    <div class="space-y-4">
+                        <!-- Image Requirements Info -->
+                        <div class="p-3 bg-blue-100 rounded-lg">
+                            <p class="text-xs text-blue-800 flex items-start gap-2">
+                                <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
+                                <span><strong>Image Requirements:</strong> Upload JPG or PNG files up to 5MB. Recommended aspect ratio: {{ getContentAspectRatioDisplay() }} for optimal display. You can crop and adjust your image after uploading.</span>
+                            </p>
+                        </div>
+                        
+                        <!-- Combined Upload/Preview Area -->
+                        <div 
+                            v-if="!previewImage"
+                            class="upload-drop-zone-content"
+                            @dragover.prevent="handleDragOver"
+                            @dragleave.prevent="handleDragLeave"
+                            @drop.prevent="handleDrop"
+                            :class="{ 'drag-active': isDragActive }"
+                        >
+                            <div class="upload-content">
+                                <div class="upload-icon-container">
+                                    <i class="pi pi-image upload-icon"></i>
                                 </div>
+                                <h4 class="upload-title">Add {{ parentId ? 'sub-item' : 'content' }} image</h4>
+                                <p class="upload-subtitle">Drag and drop or click to upload</p>
+                                
+                                <!-- Hidden File Input -->
+                                <input 
+                                    ref="fileInputRef"
+                                    type="file" 
+                                    accept="image/*"
+                                    @change="handleFileSelect"
+                                    class="hidden"
+                                />
+                                
+                                <Button 
+                                    label="Upload image"
+                                    icon="pi pi-upload"
+                                    @click="triggerFileInput"
+                                    class="upload-trigger-button"
+                                    severity="info"
+                                    size="small"
+                                />
                             </div>
                         </div>
-                        <FileUpload 
-                            mode="basic" 
-                            name="imageUpload" 
-                            accept="image/*" 
-                            :maxFileSize="5000000"
-                            chooseLabel="Upload Image" 
-                            chooseIcon="pi pi-upload" 
-                            @select="handleImageUpload" 
-                            :auto="false"
-                            customUpload 
-                            class="w-full" 
-                            severity="info"
-                        />
-                        <p class="text-xs text-slate-500 mt-2 flex items-center gap-1">
-                            <i class="pi pi-info-circle"></i>
-                            Max: 5MB • Recommended ratio: {{ getContentAspectRatioDisplay() }}
-                        </p>
+                        
+                        <!-- Image Preview with Actions -->
+                        <div v-else class="space-y-4">
+                            <div class="content-image-container-compact border-2 border-solid border-blue-400 bg-white rounded-xl relative">
+                                <img 
+                                    :src="previewImage" 
+                                    :alt="`${itemTypeLabel} Preview`"
+                                    class="object-contain h-full w-full rounded-lg shadow-md" 
+                                />
+                            </div>
+                            
+                            <div class="image-actions-content">
+                                <Button 
+                                    label="Change image"
+                                    icon="pi pi-image"
+                                    @click="triggerFileInput"
+                                    severity="secondary"
+                                    outlined
+                                    size="small"
+                                    class="action-button-content"
+                                />
+                                <Button 
+                                    label="Edit crop"
+                                    icon="pi pi-crop"
+                                    @click="handleReCrop"
+                                    severity="info"
+                                    outlined
+                                    size="small"
+                                    class="action-button-content"
+                                />
+                                <Button 
+                                    v-if="formData.cropParameters"
+                                    label="Remove crop"
+                                    icon="pi pi-times"
+                                    @click="handleResetCrop"
+                                    severity="help"
+                                    text
+                                    size="small"
+                                    class="action-button-content"
+                                />
+                            </div>
+                            
+                            <!-- Hidden File Input for Change Photo -->
+                            <input 
+                                ref="fileInputRef"
+                                type="file" 
+                                accept="image/*"
+                                @change="handleFileSelect"
+                                class="hidden"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -130,6 +189,7 @@
             :imageSrc="cropImageSrc"
             :aspectRatio="getContentAspectRatioNumber()"
             :aspectRatioDisplay="getContentAspectRatioDisplay()"
+            :cropParameters="cropParameters"
             ref="imageCropperRef"
         />
     </MyDialog>
@@ -137,14 +197,14 @@
 
 <script setup>
 import { ref, watch, computed, onMounted, nextTick, defineProps, defineEmits, defineExpose } from 'vue';
-import FileUpload from 'primevue/fileupload';
 import Button from 'primevue/button';
 import Textarea from 'primevue/textarea';
 import InputText from 'primevue/inputtext';
 import MyDialog from '@/components/MyDialog.vue';
 import ImageCropper from '@/components/ImageCropper.vue';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
-import { getContentAspectRatio, getContentAspectRatioDisplay, getContentAspectRatioNumber } from '@/utils/cardConfig';
+import { getContentAspectRatioNumber } from '@/utils/cardConfig';
+import { generateCropPreview } from '@/utils/cropUtils';
 
 const props = defineProps({
     contentItem: {
@@ -169,7 +229,7 @@ const props = defineProps({
     }
 });
 
-const emit = defineEmits(['save', 'cancel']);
+const emit = defineEmits(['cancel']);
 
 // Determine the item type label based on whether it has a parent
 const itemTypeLabel = computed(() => {
@@ -199,7 +259,8 @@ const formData = ref({
     name: '',
     description: '',
     imageUrl: null,
-    aiMetadata: ''
+    aiMetadata: '',
+    cropParameters: null
 });
 
 const previewImage = ref(null);
@@ -210,6 +271,11 @@ const originalData = ref(null);
 const showCropDialog = ref(false);
 const cropImageSrc = ref(null);
 const imageCropperRef = ref(null);
+const cropParameters = ref(null);
+
+// LinkedIn-style upload variables
+const isDragActive = ref(false);
+const fileInputRef = ref(null);
 
 // Initialize form data when contentItem changes
 watch(() => props.contentItem, (newVal) => {
@@ -219,16 +285,38 @@ watch(() => props.contentItem, (newVal) => {
             name: newVal.name || '',
             description: newVal.description || newVal.content || '',
             imageUrl: newVal.imageUrl || newVal.image_url || null,
-            aiMetadata: newVal.aiMetadata || newVal.ai_metadata || ''
+            aiMetadata: newVal.aiMetadata || newVal.ai_metadata || '',
+            cropParameters: newVal.cropParameters || newVal.crop_parameters || null
         };
         originalData.value = { ...formData.value };
-        previewImage.value = formData.value.imageUrl;
+        
+        // Set crop parameters if they exist
+        if (formData.value.cropParameters) {
+            cropParameters.value = formData.value.cropParameters;
+        }
+        
+        // Generate preview if we have crop parameters
+        if (formData.value.imageUrl && formData.value.cropParameters) {
+            generateCropPreview(formData.value.imageUrl, formData.value.cropParameters, 300)
+                .then(preview => {
+                    previewImage.value = preview;
+                })
+                .catch(error => {
+                    console.error('Error generating crop preview:', error);
+                    previewImage.value = formData.value.imageUrl;
+                });
+        } else {
+            previewImage.value = formData.value.imageUrl;
+        }
     }
 }, { immediate: true });
 
 const handleImageUpload = (event) => {
     const file = event.files[0];
     if (file) {
+        // Store the original image file
+        imageFile.value = file;
+        
         // Create a preview URL for cropping
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -239,15 +327,82 @@ const handleImageUpload = (event) => {
     }
 };
 
-const handleSave = () => {
-    if (!formData.value.name.trim()) {
+// Re-crop existing image
+const handleReCrop = () => {
+    if (previewImage.value || formData.value.imageUrl) {
+        const imageSrc = previewImage.value || formData.value.imageUrl;
+        cropImageSrc.value = imageSrc;
+        // Set the existing crop parameters for the cropper
+        cropParameters.value = formData.value.cropParameters || null;
+        showCropDialog.value = true;
+    }
+};
+
+// Reset crop parameters and use original image
+const handleResetCrop = () => {
+    cropParameters.value = null;
+    formData.value.cropParameters = null;
+    
+    // Regenerate preview with original image
+    if (imageFile.value || formData.value.imageUrl) {
+        const originalImageSrc = imageFile.value ? URL.createObjectURL(imageFile.value) : formData.value.imageUrl;
+        previewImage.value = originalImageSrc;
+    }
+};
+
+// LinkedIn-style upload functions
+const triggerFileInput = () => {
+    fileInputRef.value?.click();
+};
+
+const handleFileSelect = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        processImageFile(file);
+    }
+};
+
+const handleDragOver = (event) => {
+    event.preventDefault();
+    isDragActive.value = true;
+};
+
+const handleDragLeave = (event) => {
+    event.preventDefault();
+    isDragActive.value = false;
+};
+
+const handleDrop = (event) => {
+    event.preventDefault();
+    isDragActive.value = false;
+    
+    const files = event.dataTransfer.files;
+    if (files.length > 0) {
+        const file = files[0];
+        if (file.type.startsWith('image/')) {
+            processImageFile(file);
+        }
+    }
+};
+
+// Process image file (LinkedIn flow: immediate cropping)
+const processImageFile = (file) => {
+    // Validate file size (5MB)
+    if (file.size > 5000000) {
+        console.error('File size exceeds 5MB limit');
         return;
     }
     
-    emit('save', {
-        formData: formData.value,
-        imageFile: imageFile.value
-    });
+    // Store the file
+    imageFile.value = file;
+    
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file);
+    
+    // LinkedIn-style: Immediately open crop dialog after upload
+    cropImageSrc.value = previewUrl;
+    cropParameters.value = null; // Start fresh
+    showCropDialog.value = true;
 };
 
 const handleCancel = () => {
@@ -264,9 +419,13 @@ const handleCancel = () => {
 };
 
 const getFormData = () => {
+    // Ensure crop parameters are included in form data
+    formData.value.cropParameters = cropParameters.value;
+    
     return {
         formData: formData.value,
-        imageFile: imageFile.value
+        imageFile: imageFile.value,
+        cropParameters: cropParameters.value
     };
 };
 
@@ -276,13 +435,15 @@ const resetForm = () => {
         name: '',
         description: '',
         imageUrl: null,
-        aiMetadata: ''
+        aiMetadata: '',
+        cropParameters: null
     };
     previewImage.value = null;
     imageFile.value = null;
     originalData.value = null;
     showCropDialog.value = false;
     cropImageSrc.value = null;
+    cropParameters.value = null;
 };
 
 // Cropping event handlers
@@ -291,35 +452,30 @@ const handleCropConfirm = async () => {
     await nextTick();
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    console.log('handleCropConfirm called');
-    console.log('imageCropperRef.value:', imageCropperRef.value);
-    console.log('Available methods:', imageCropperRef.value ? Object.getOwnPropertyNames(imageCropperRef.value) : 'No ref');
-    
-    if (imageCropperRef.value && typeof imageCropperRef.value.getCroppedImage === 'function') {
-        console.log('Calling getCroppedImage...');
-        const cropResult = imageCropperRef.value.getCroppedImage();
-        console.log('Crop result:', cropResult ? 'Success' : 'Failed');
+    if (imageCropperRef.value && typeof imageCropperRef.value.getCropParameters === 'function') {
+        // Get crop parameters instead of generating cropped image
+        const cropParams = imageCropperRef.value.getCropParameters();
         
-        if (cropResult) {
-            // Convert to File
-            const arr = cropResult.split(',');
-            const mime = arr[0].match(/:(.*?);/)[1];
-            const bstr = atob(arr[1]);
-            let n = bstr.length;
-            const u8arr = new Uint8Array(n);
-            while (n--) {
-                u8arr[n] = bstr.charCodeAt(n);
-            }
-            const file = new File([u8arr], 'cropped-image.jpg', { type: mime });
+        if (cropParams) {
+            // Store the crop parameters
+            cropParameters.value = cropParams;
             
-            // Update the image file and preview
-            imageFile.value = file;
-            previewImage.value = cropResult;
+            // Generate a preview for display
+            try {
+                const preview = await generateCropPreview(cropImageSrc.value, cropParams, 300);
+                if (preview) {
+                    previewImage.value = preview;
+                } else {
+                    console.warn('Failed to generate crop preview, using original image');
+                    previewImage.value = cropImageSrc.value;
+                }
+            } catch (error) {
+                console.error('Error generating crop preview:', error);
+                previewImage.value = cropImageSrc.value;
+            }
         }
     } else {
-        console.error('ImageCropper ref not available or getCroppedImage method not found');
-        console.error('Ref available:', !!imageCropperRef.value);
-        console.error('Method available:', imageCropperRef.value ? typeof imageCropperRef.value.getCroppedImage : 'N/A');
+        console.error('ImageCropper ref not available or getCropParameters method not found');
     }
     
     // Close the cropping dialog
@@ -354,22 +510,103 @@ defineExpose({
     background-color: white;
 }
 
-/* Standardized component sizing to match other dialogs and forms */
-/* :deep(.p-inputtext) {
-    font-size: var(--font-size-sm);
-    line-height: 1.5;
-    padding: 0.75rem 1rem;
+/* Compact container for sub-items */
+.content-image-container-compact {
+    aspect-ratio: var(--content-aspect-ratio, 4/3);
+    width: 100%;
+    max-width: 300px;
+    margin: 0 auto;
+    background-color: white;
 }
 
-:deep(.p-textarea) {
-    font-size: var(--font-size-sm);
-    line-height: 1.5;
-    padding: 0.75rem 1rem;
+/* LinkedIn-Style Upload Drop Zone for Content */
+.upload-drop-zone-content {
+    border: 2px dashed #cbd5e1;
+    border-radius: 8px;
+    padding: 24px 16px;
+    text-align: center;
+    background: #fefefe;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
 }
 
-:deep(.p-fileupload-basic .p-button) {
-    font-size: var(--font-size-sm);
+.upload-drop-zone-content:hover {
+    border-color: #3b82f6;
+    background: #f8faff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.upload-drop-zone-content.drag-active {
+    border-color: #2563eb;
+    background: #eff6ff;
+    transform: scale(1.01);
+    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.2);
+}
+
+.upload-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.upload-icon-container {
+    width: 48px;
+    height: 48px;
+    background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+}
+
+.upload-icon {
+    font-size: 20px;
+    color: #0277bd;
+}
+
+.upload-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0;
+}
+
+.upload-subtitle {
+    font-size: 12px;
+    color: #64748b;
+    margin: 0;
+}
+
+.upload-trigger-button {
+    margin-top: 4px;
+    padding: 6px 12px;
     font-weight: 500;
-    padding: 0.75rem 1.25rem;
-} */
+}
+
+
+/* LinkedIn-Style Action Buttons for Content */
+.image-actions-content {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.action-button-content {
+    font-weight: 500;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    min-width: 80px;
+}
+
+.action-button-content:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
 </style> 

@@ -87,6 +87,7 @@ CREATE TABLE cards (
     description TEXT DEFAULT '' NOT NULL,
     qr_code_position "QRCodePosition" DEFAULT 'BR',
     image_url TEXT,
+    crop_parameters JSONB, -- JSON object containing crop parameters for dynamic image cropping (position, zoom, dimensions, etc.)
     conversation_ai_enabled BOOLEAN DEFAULT false,
     ai_prompt TEXT DEFAULT '' NOT NULL, -- Instructions for AI assistance when answering content item questions
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -96,6 +97,9 @@ CREATE TABLE cards (
 -- Add index on user_id for faster user-specific queries
 CREATE INDEX IF NOT EXISTS idx_cards_user_id ON cards(user_id);
 
+-- Add GIN index for crop_parameters JSONB column for efficient querying
+CREATE INDEX IF NOT EXISTS idx_cards_crop_parameters ON cards USING GIN (crop_parameters);
+
 -- Content items table
 CREATE TABLE content_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -104,6 +108,7 @@ CREATE TABLE content_items (
     name TEXT NOT NULL,
     content TEXT DEFAULT '' NOT NULL, 
     image_url TEXT,
+    crop_parameters JSONB, -- JSON object containing crop parameters for dynamic image cropping (position, zoom, dimensions, etc.)
     ai_metadata TEXT DEFAULT '' NOT NULL,
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -114,6 +119,9 @@ CREATE TABLE content_items (
 CREATE INDEX IF NOT EXISTS idx_content_items_card_id ON content_items(card_id);
 CREATE INDEX IF NOT EXISTS idx_content_items_parent_id ON content_items(parent_id);
 CREATE INDEX IF NOT EXISTS idx_content_items_sort_order ON content_items(card_id, parent_id, sort_order);
+
+-- Add GIN index for crop_parameters JSONB column for efficient querying
+CREATE INDEX IF NOT EXISTS idx_content_items_crop_parameters ON content_items USING GIN (crop_parameters);
 
 -- Card batches table
 CREATE TABLE card_batches (

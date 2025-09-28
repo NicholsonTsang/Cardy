@@ -12,6 +12,7 @@ RETURNS TABLE (
     name TEXT,
     content TEXT,
     image_url TEXT,
+    crop_parameters JSONB,
     ai_metadata TEXT,
     sort_order INTEGER,
     created_at TIMESTAMPTZ,
@@ -26,6 +27,7 @@ BEGIN
         ci.name, 
         ci.content, 
         ci.image_url, 
+        ci.crop_parameters,
         ci.ai_metadata,
         ci.sort_order,
         ci.created_at,
@@ -50,6 +52,7 @@ RETURNS TABLE (
     name TEXT,
     content TEXT,
     image_url TEXT,
+    crop_parameters JSONB,
     ai_metadata TEXT,
     sort_order INTEGER,
     created_at TIMESTAMPTZ,
@@ -64,6 +67,7 @@ BEGIN
         ci.name, 
         ci.content, 
         ci.image_url, 
+        ci.crop_parameters,
         ci.ai_metadata,
         ci.sort_order,
         ci.created_at,
@@ -81,6 +85,7 @@ CREATE OR REPLACE FUNCTION create_content_item(
     p_parent_id UUID DEFAULT NULL,
     p_content TEXT DEFAULT '',
     p_image_url TEXT DEFAULT NULL,
+    p_crop_parameters JSONB DEFAULT NULL,
     p_ai_metadata TEXT DEFAULT ''
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -123,6 +128,7 @@ BEGIN
         name,
         content,
         image_url,
+        crop_parameters,
         ai_metadata,
         sort_order
     ) VALUES (
@@ -131,6 +137,7 @@ BEGIN
         p_name,
         p_content,
         p_image_url,
+        p_crop_parameters,
         p_ai_metadata,
         v_next_sort_order
     )
@@ -146,6 +153,7 @@ CREATE OR REPLACE FUNCTION update_content_item(
     p_name TEXT DEFAULT NULL,
     p_content TEXT DEFAULT NULL,
     p_image_url TEXT DEFAULT NULL,
+    p_crop_parameters JSONB DEFAULT NULL,
     p_ai_metadata TEXT DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -167,6 +175,7 @@ BEGIN
         name = COALESCE(p_name, name),
         content = COALESCE(p_content, content),
         image_url = COALESCE(p_image_url, image_url),
+        crop_parameters = COALESCE(p_crop_parameters, crop_parameters),
         ai_metadata = COALESCE(p_ai_metadata, ai_metadata),
         updated_at = now()
     WHERE id = p_content_item_id;

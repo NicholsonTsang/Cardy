@@ -10,6 +10,7 @@ RETURNS TABLE (
     name TEXT,
     description TEXT,
     image_url TEXT,
+    crop_parameters JSONB,
     conversation_ai_enabled BOOLEAN,
     ai_prompt TEXT,
     qr_code_position TEXT,
@@ -23,6 +24,7 @@ BEGIN
         c.name, 
         c.description, 
         c.image_url, 
+        c.crop_parameters,
         c.conversation_ai_enabled,
         c.ai_prompt,
         c.qr_code_position::TEXT,
@@ -39,6 +41,7 @@ CREATE OR REPLACE FUNCTION create_card(
     p_name TEXT,
     p_description TEXT,
     p_image_url TEXT DEFAULT NULL,
+    p_crop_parameters JSONB DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
     p_ai_prompt TEXT DEFAULT '',
     p_qr_code_position TEXT DEFAULT 'BR'
@@ -52,6 +55,7 @@ BEGIN
         name,
         description,
         image_url,
+        crop_parameters,
         conversation_ai_enabled,
         ai_prompt,
         qr_code_position
@@ -60,6 +64,7 @@ BEGIN
         p_name,
         p_description,
         p_image_url,
+        p_crop_parameters,
         p_conversation_ai_enabled,
         p_ai_prompt,
         p_qr_code_position::"QRCodePosition"
@@ -146,6 +151,7 @@ CREATE OR REPLACE FUNCTION update_card(
     p_name TEXT DEFAULT NULL,
     p_description TEXT DEFAULT NULL,
     p_image_url TEXT DEFAULT NULL,
+    p_crop_parameters JSONB DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT NULL,
     p_ai_prompt TEXT DEFAULT NULL,
     p_qr_code_position TEXT DEFAULT NULL
@@ -162,6 +168,7 @@ BEGIN
         name,
         description,
         image_url,
+        crop_parameters,
         conversation_ai_enabled,
         ai_prompt,
         qr_code_position,
@@ -191,6 +198,11 @@ BEGIN
         has_changes := TRUE;
     END IF;
     
+    IF p_crop_parameters IS NOT NULL AND p_crop_parameters != v_old_record.crop_parameters THEN
+        v_changes_made := v_changes_made || jsonb_build_object('crop_parameters', jsonb_build_object('from', v_old_record.crop_parameters, 'to', p_crop_parameters));
+        has_changes := TRUE;
+    END IF;
+    
     IF p_conversation_ai_enabled IS NOT NULL AND p_conversation_ai_enabled != v_old_record.conversation_ai_enabled THEN
         v_changes_made := v_changes_made || jsonb_build_object('conversation_ai_enabled', jsonb_build_object('from', v_old_record.conversation_ai_enabled, 'to', p_conversation_ai_enabled));
         has_changes := TRUE;
@@ -217,6 +229,7 @@ BEGIN
         name = COALESCE(p_name, name),
         description = COALESCE(p_description, description),
         image_url = COALESCE(p_image_url, image_url),
+        crop_parameters = COALESCE(p_crop_parameters, crop_parameters),
         conversation_ai_enabled = COALESCE(p_conversation_ai_enabled, conversation_ai_enabled),
         ai_prompt = COALESCE(p_ai_prompt, ai_prompt),
         qr_code_position = COALESCE(p_qr_code_position::"QRCodePosition", qr_code_position),

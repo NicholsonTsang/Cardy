@@ -75,6 +75,10 @@ const props = defineProps({
     aspectRatioDisplay: {
         type: String,
         default: '2:3'
+    },
+    cropParameters: {
+        type: Object,
+        default: null
     }
 });
 
@@ -92,7 +96,7 @@ const dragStart = ref({ x: 0, y: 0 });
 
 // Image and container dimensions
 const imageNaturalSize = ref({ width: 0, height: 0 });
-const containerSize = ref(400); // Square container
+const containerSize = ref(300); // Square container
 const cropFrameDimensions = ref({ width: 200, height: 200 });
 
 // Zoom constraints
@@ -182,17 +186,17 @@ const calculateOptimalSize = () => {
     
     if (props.aspectRatio >= 1) {
         // Landscape or square
-        frameWidth = Math.min(maxFrameSize, 300);
+        frameWidth = Math.min(maxFrameSize, 220);
         frameHeight = frameWidth / props.aspectRatio;
     } else {
         // Portrait
-        frameHeight = Math.min(maxFrameSize, 300);
+        frameHeight = Math.min(maxFrameSize, 220);
         frameWidth = frameHeight * props.aspectRatio;
     }
     
     // Ensure minimum frame size
-    frameWidth = Math.max(frameWidth, 150);
-    frameHeight = Math.max(frameHeight, 150 / props.aspectRatio);
+    frameWidth = Math.max(frameWidth, 120);
+    frameHeight = Math.max(frameHeight, 120 / props.aspectRatio);
     
     cropFrameDimensions.value = { width: frameWidth, height: frameHeight };
     
@@ -210,48 +214,13 @@ const calculateOptimalSize = () => {
     imagePosition.value = { x: 0, y: 0 };
 };
 
-// Drag functionality
-const startDrag = (event) => {
-    isDragging.value = true;
-    const clientX = event.clientX || (event.touches?.[0]?.clientX);
-    const clientY = event.clientY || (event.touches?.[0]?.clientY);
-    
-    if (!clientX || !clientY) return;
-    
-    dragStart.value = {
-        x: clientX - imagePosition.value.x,
-        y: clientY - imagePosition.value.y
-    };
-    
-    document.addEventListener('mousemove', handleDrag);
-    document.addEventListener('mouseup', stopDrag);
-    document.addEventListener('touchmove', handleDrag, { passive: false });
-    document.addEventListener('touchend', stopDrag);
-    
-    event.preventDefault();
-    event.stopPropagation();
-};
+// Pre-calculated drag bounds for performance
+const dragBounds = ref({ minX: 0, maxX: 0, minY: 0, maxY: 0 });
 
-const handleDrag = (event) => {
-    if (!isDragging.value) return;
-    
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const clientX = event.clientX || (event.touches?.[0]?.clientX);
-    const clientY = event.clientY || (event.touches?.[0]?.clientY);
-    
-    if (!clientX || !clientY) return;
-    
-    // Calculate new position
-    const newX = clientX - dragStart.value.x;
-    const newY = clientY - dragStart.value.y;
-    
-    // Apply constraints to keep image within reasonable bounds
+// Calculate drag bounds - allow free movement for flexible cropping
+const calculateDragBounds = () => {
     const containerWidth = containerSize.value;
     const containerHeight = containerSize.value;
-    const frameWidth = cropFrameDimensions.value.width;
-    const frameHeight = cropFrameDimensions.value.height;
     
     // Calculate image bounds with zoom applied
     const naturalWidth = imageNaturalSize.value.width;
@@ -270,20 +239,83 @@ const handleDrag = (event) => {
     const scaledDisplayWidth = displayedImageWidth * zoom.value;
     const scaledDisplayHeight = displayedImageHeight * zoom.value;
     
-    // Calculate bounds to keep crop frame filled
-    const minX = (containerWidth - scaledDisplayWidth) / 2 - (containerWidth - frameWidth) / 2;
-    const maxX = (containerWidth - scaledDisplayWidth) / 2 + (containerWidth - frameWidth) / 2;
-    const minY = (containerHeight - scaledDisplayHeight) / 2 - (containerHeight - frameHeight) / 2;
-    const maxY = (containerHeight - scaledDisplayHeight) / 2 + (containerHeight - frameHeight) / 2;
-    
-    imagePosition.value = {
-        x: Math.max(minX, Math.min(maxX, newX)),
-        y: Math.max(minY, Math.min(maxY, newY))
+    // Allow free movement - image can be positioned anywhere in the container
+    // This allows cropping empty areas and partial image areas
+    const padding = Math.max(scaledDisplayWidth, scaledDisplayHeight);
+    dragBounds.value = {
+        minX: -padding,
+        maxX: containerWidth + padding,
+        minY: -padding,
+        maxY: containerHeight + padding
     };
+};
+
+// Drag functionality
+const startDrag = (event) => {
+    isDragging.value = true;
+    const clientX = event.clientX || (event.touches?.[0]?.clientX);
+    const clientY = event.clientY || (event.touches?.[0]?.clientY);
+    
+    if (!clientX || !clientY) return;
+    
+    dragStart.value = {
+        x: clientX - imagePosition.value.x,
+        y: clientY - imagePosition.value.y
+    };
+    
+    // Pre-calculate bounds for smoother dragging
+    calculateDragBounds();
+    
+    document.addEventListener('mousemove', handleDrag, { passive: false });
+    document.addEventListener('mouseup', stopDrag);
+    document.addEventListener('touchmove', handleDrag, { passive: false });
+    document.addEventListener('touchend', stopDrag);
+    
+    event.preventDefault();
+    event.stopPropagation();
+};
+
+// Throttle drag updates for better performance
+let dragAnimationFrame = null;
+
+const handleDrag = (event) => {
+    if (!isDragging.value) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Cancel previous animation frame to throttle updates
+    if (dragAnimationFrame) {
+        cancelAnimationFrame(dragAnimationFrame);
+    }
+    
+    dragAnimationFrame = requestAnimationFrame(() => {
+        const clientX = event.clientX || (event.touches?.[0]?.clientX);
+        const clientY = event.clientY || (event.touches?.[0]?.clientY);
+        
+        if (!clientX || !clientY) return;
+        
+        // Calculate new position
+        const newX = clientX - dragStart.value.x;
+        const newY = clientY - dragStart.value.y;
+        
+        // Apply pre-calculated constraints
+        imagePosition.value = {
+            x: Math.max(dragBounds.value.minX, Math.min(dragBounds.value.maxX, newX)),
+            y: Math.max(dragBounds.value.minY, Math.min(dragBounds.value.maxY, newY))
+        };
+    });
 };
 
 const stopDrag = () => {
     isDragging.value = false;
+    
+    // Cancel any pending animation frame
+    if (dragAnimationFrame) {
+        cancelAnimationFrame(dragAnimationFrame);
+        dragAnimationFrame = null;
+    }
+    
     document.removeEventListener('mousemove', handleDrag);
     document.removeEventListener('mouseup', stopDrag);
     document.removeEventListener('touchmove', handleDrag);
@@ -293,15 +325,18 @@ const stopDrag = () => {
 // Zoom functionality
 const zoomIn = () => {
     zoom.value = Math.min(maxZoom.value, zoom.value + 0.1);
+    calculateDragBounds(); // Recalculate bounds when zoom changes
 };
 
 const zoomOut = () => {
     zoom.value = Math.max(minZoom.value, zoom.value - 0.1);
+    calculateDragBounds(); // Recalculate bounds when zoom changes
 };
 
 const handleZoomChange = (event) => {
     const newZoom = parseFloat(event.target.value);
     zoom.value = Math.max(minZoom.value, Math.min(maxZoom.value, newZoom));
+    calculateDragBounds(); // Recalculate bounds when zoom changes
 };
 
 // Crop processing
@@ -443,6 +478,13 @@ const initializeImage = () => {
         };
         
         calculateOptimalSize();
+        
+        // Apply existing crop parameters if available
+        if (props.cropParameters) {
+            nextTick(() => {
+                applyCropParameters(props.cropParameters);
+            });
+        }
     };
     
     if (img.complete && img.naturalWidth > 0) {
@@ -457,15 +499,158 @@ const initializeImage = () => {
 
 // Lifecycle
 onMounted(() => {
-    console.log('ImageCropper mounted, getCroppedImage available:', typeof getCroppedImage);
     nextTick(() => {
         initializeImage();
     });
 });
 
+// Get crop parameters instead of generating cropped image
+const getCropParameters = () => {
+    if (!imageRef.value || !imageNaturalSize.value.width) {
+        return null;
+    }
+    
+    const naturalWidth = imageNaturalSize.value.width;
+    const naturalHeight = imageNaturalSize.value.height;
+    const imageAspectRatio = naturalWidth / naturalHeight;
+    
+    // Calculate the displayed image dimensions (with object-fit: contain)
+    let displayedImageWidth, displayedImageHeight;
+    let imageDisplayLeft, imageDisplayTop;
+    
+    if (imageAspectRatio > 1) {
+        // Image is wider - fits by width
+        displayedImageWidth = containerSize.value;
+        displayedImageHeight = containerSize.value / imageAspectRatio;
+        imageDisplayLeft = 0;
+        imageDisplayTop = (containerSize.value - displayedImageHeight) / 2;
+    } else {
+        // Image is taller - fits by height
+        displayedImageHeight = containerSize.value;
+        displayedImageWidth = containerSize.value * imageAspectRatio;
+        imageDisplayLeft = (containerSize.value - displayedImageWidth) / 2;
+        imageDisplayTop = 0;
+    }
+    
+    // Apply zoom and position to the displayed image
+    const scaledDisplayWidth = displayedImageWidth * zoom.value;
+    const scaledDisplayHeight = displayedImageHeight * zoom.value;
+    
+    const finalImageLeft = imageDisplayLeft + (displayedImageWidth - scaledDisplayWidth) / 2 + imagePosition.value.x;
+    const finalImageTop = imageDisplayTop + (displayedImageHeight - scaledDisplayHeight) / 2 + imagePosition.value.y;
+    
+    // Calculate crop frame position
+    const frameWidth = cropFrameDimensions.value.width;
+    const frameHeight = cropFrameDimensions.value.height;
+    const frameLeft = (containerSize.value - frameWidth) / 2;
+    const frameTop = (containerSize.value - frameHeight) / 2;
+    
+    // Calculate crop coordinates relative to the scaled displayed image
+    const cropLeft = frameLeft - finalImageLeft;
+    const cropTop = frameTop - finalImageTop;
+    
+    // Convert back to natural image coordinates
+    // Prevent division by zero
+    if (scaledDisplayWidth <= 0) {
+        console.error('Invalid scaled display width:', scaledDisplayWidth);
+        return null;
+    }
+    
+    const scaleToNatural = naturalWidth / scaledDisplayWidth;
+    
+    // Allow negative coordinates for cropping background areas
+    // Don't clamp to image bounds - allow capturing empty space
+    const sourceX = cropLeft * scaleToNatural;
+    const sourceY = cropTop * scaleToNatural;
+    const sourceWidth = frameWidth * scaleToNatural;
+    const sourceHeight = frameHeight * scaleToNatural;
+    
+    return {
+        // Original image info
+        naturalWidth,
+        naturalHeight,
+        imageAspectRatio,
+        
+        // Crop frame info
+        frameWidth,
+        frameHeight,
+        frameLeft,
+        frameTop,
+        
+        // Image display info
+        displayedImageWidth,
+        displayedImageHeight,
+        imageDisplayLeft,
+        imageDisplayTop,
+        finalImageLeft,
+        finalImageTop,
+        
+        // Transform info
+        zoom: zoom.value,
+        position: { ...imagePosition.value },
+        
+        // Crop coordinates in natural image space
+        sourceX,
+        sourceY,
+        sourceWidth,
+        sourceHeight,
+        
+        // Target aspect ratio
+        targetAspectRatio: props.aspectRatio,
+        
+        // Container info
+        containerSize: containerSize.value
+    };
+};
+
+// Apply crop parameters (for editing existing crops)
+const applyCropParameters = (cropParams) => {
+    if (!cropParams) return;
+    
+    // Validate crop parameters
+    if (!cropParams.targetAspectRatio || cropParams.targetAspectRatio <= 0) {
+        console.error('Invalid target aspect ratio:', cropParams.targetAspectRatio);
+        return;
+    }
+    
+    // Set the zoom and position
+    zoom.value = Math.max(0.1, Math.min(10, cropParams.zoom || 1));
+    imagePosition.value = { 
+        x: cropParams.position?.x || 0, 
+        y: cropParams.position?.y || 0 
+    };
+    
+    // Recalculate crop frame dimensions based on target aspect ratio
+    const padding = 60;
+    const maxFrameSize = containerSize.value - padding;
+    
+    let frameWidth, frameHeight;
+    
+    if (cropParams.targetAspectRatio >= 1) {
+        // Landscape or square
+        frameWidth = Math.min(maxFrameSize, 300);
+        frameHeight = frameWidth / cropParams.targetAspectRatio;
+    } else {
+        // Portrait
+        frameHeight = Math.min(maxFrameSize, 300);
+        frameWidth = frameHeight * cropParams.targetAspectRatio;
+    }
+    
+    // Ensure minimum frame size
+    frameWidth = Math.max(frameWidth, 150);
+    frameHeight = Math.max(frameHeight, 150 / cropParams.targetAspectRatio);
+    
+    cropFrameDimensions.value = { width: frameWidth, height: frameHeight };
+    
+    // Recalculate drag bounds for the new crop parameters
+    calculateDragBounds();
+};
+
 // Expose methods to parent component
 defineExpose({
-    getCroppedImage
+    getCroppedImage,
+    getCropParameters,
+    applyCropParameters
 });
 </script>
 
@@ -487,13 +672,24 @@ defineExpose({
 /* Square crop container */
 .crop-container {
     position: relative;
-    width: 400px;
-    height: 400px;
+    width: 300px;
+    height: 300px;
     margin: 0 auto 24px;
     border-radius: 8px;
     overflow: hidden;
     border: 1px solid #e5e7eb;
-    background: #ffffff;
+    /* Distinctive pattern background to differentiate from photos */
+    background: 
+        linear-gradient(45deg, #f0f0f0 25%, transparent 25%),
+        linear-gradient(-45deg, #f0f0f0 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #e0e0e0 75%),
+        linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
+    background-size: 20px 20px;
+    background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+    background-color: #f8f9fa;
+    /* Performance optimizations */
+    contain: layout style paint;
+    will-change: transform;
 }
 
 /* Image */
@@ -508,6 +704,10 @@ defineExpose({
     position: relative;
     z-index: 1;
     pointer-events: auto;
+    /* Performance optimizations */
+    will-change: transform;
+    transform: translateZ(0); /* Force GPU acceleration */
+    backface-visibility: hidden;
 }
 
 .crop-image:active {

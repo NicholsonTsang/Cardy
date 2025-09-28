@@ -2,11 +2,13 @@
   <div class="card-overview">
     <!-- Background Image -->
     <div class="background-image">
-      <img 
+      <CroppedImageDisplay
         v-if="card.card_image_url"
-        :src="card.card_image_url" 
+        :imageSrc="card.card_image_url"
+        :cropParameters="card.crop_parameters"
         :alt="card.card_name"
-        class="image"
+        imageClass="image"
+        :previewSize="600"
       />
       <div class="gradient-overlay" />
     </div>
@@ -38,11 +40,14 @@
 </template>
 
 <script setup lang="ts">
+import CroppedImageDisplay from '@/components/CroppedImageDisplay.vue'
+
 interface Props {
   card: {
     card_name: string
     card_description: string
     card_image_url: string
+    crop_parameters?: any
     conversation_ai_enabled: boolean
     ai_prompt: string
     is_activated: boolean

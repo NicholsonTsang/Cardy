@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Sat Sep 27 14:30:37 HKT 2025
+-- Generated: Sun Sep 28 13:21:41 CST 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -168,6 +168,7 @@ RETURNS TABLE (
     name TEXT,
     description TEXT,
     image_url TEXT,
+    crop_parameters JSONB,
     conversation_ai_enabled BOOLEAN,
     ai_prompt TEXT,
     qr_code_position TEXT,
@@ -181,6 +182,7 @@ BEGIN
         c.name, 
         c.description, 
         c.image_url, 
+        c.crop_parameters,
         c.conversation_ai_enabled,
         c.ai_prompt,
         c.qr_code_position::TEXT,
@@ -197,6 +199,7 @@ CREATE OR REPLACE FUNCTION create_card(
     p_name TEXT,
     p_description TEXT,
     p_image_url TEXT DEFAULT NULL,
+    p_crop_parameters JSONB DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
     p_ai_prompt TEXT DEFAULT '',
     p_qr_code_position TEXT DEFAULT 'BR'
@@ -210,6 +213,7 @@ BEGIN
         name,
         description,
         image_url,
+        crop_parameters,
         conversation_ai_enabled,
         ai_prompt,
         qr_code_position
@@ -218,6 +222,7 @@ BEGIN
         p_name,
         p_description,
         p_image_url,
+        p_crop_parameters,
         p_conversation_ai_enabled,
         p_ai_prompt,
         p_qr_code_position::"QRCodePosition"
@@ -304,6 +309,7 @@ CREATE OR REPLACE FUNCTION update_card(
     p_name TEXT DEFAULT NULL,
     p_description TEXT DEFAULT NULL,
     p_image_url TEXT DEFAULT NULL,
+    p_crop_parameters JSONB DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT NULL,
     p_ai_prompt TEXT DEFAULT NULL,
     p_qr_code_position TEXT DEFAULT NULL
@@ -320,6 +326,7 @@ BEGIN
         name,
         description,
         image_url,
+        crop_parameters,
         conversation_ai_enabled,
         ai_prompt,
         qr_code_position,
@@ -349,6 +356,11 @@ BEGIN
         has_changes := TRUE;
     END IF;
     
+    IF p_crop_parameters IS NOT NULL AND p_crop_parameters != v_old_record.crop_parameters THEN
+        v_changes_made := v_changes_made || jsonb_build_object('crop_parameters', jsonb_build_object('from', v_old_record.crop_parameters, 'to', p_crop_parameters));
+        has_changes := TRUE;
+    END IF;
+    
     IF p_conversation_ai_enabled IS NOT NULL AND p_conversation_ai_enabled != v_old_record.conversation_ai_enabled THEN
         v_changes_made := v_changes_made || jsonb_build_object('conversation_ai_enabled', jsonb_build_object('from', v_old_record.conversation_ai_enabled, 'to', p_conversation_ai_enabled));
         has_changes := TRUE;
@@ -375,6 +387,7 @@ BEGIN
         name = COALESCE(p_name, name),
         description = COALESCE(p_description, description),
         image_url = COALESCE(p_image_url, image_url),
+        crop_parameters = COALESCE(p_crop_parameters, crop_parameters),
         conversation_ai_enabled = COALESCE(p_conversation_ai_enabled, conversation_ai_enabled),
         ai_prompt = COALESCE(p_ai_prompt, ai_prompt),
         qr_code_position = COALESCE(p_qr_code_position::"QRCodePosition", qr_code_position),
@@ -557,6 +570,7 @@ RETURNS TABLE (
     name TEXT,
     content TEXT,
     image_url TEXT,
+    crop_parameters JSONB,
     ai_metadata TEXT,
     sort_order INTEGER,
     created_at TIMESTAMPTZ,
@@ -571,6 +585,7 @@ BEGIN
         ci.name, 
         ci.content, 
         ci.image_url, 
+        ci.crop_parameters,
         ci.ai_metadata,
         ci.sort_order,
         ci.created_at,
@@ -595,6 +610,7 @@ RETURNS TABLE (
     name TEXT,
     content TEXT,
     image_url TEXT,
+    crop_parameters JSONB,
     ai_metadata TEXT,
     sort_order INTEGER,
     created_at TIMESTAMPTZ,
@@ -609,6 +625,7 @@ BEGIN
         ci.name, 
         ci.content, 
         ci.image_url, 
+        ci.crop_parameters,
         ci.ai_metadata,
         ci.sort_order,
         ci.created_at,
@@ -626,6 +643,7 @@ CREATE OR REPLACE FUNCTION create_content_item(
     p_parent_id UUID DEFAULT NULL,
     p_content TEXT DEFAULT '',
     p_image_url TEXT DEFAULT NULL,
+    p_crop_parameters JSONB DEFAULT NULL,
     p_ai_metadata TEXT DEFAULT ''
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -668,6 +686,7 @@ BEGIN
         name,
         content,
         image_url,
+        crop_parameters,
         ai_metadata,
         sort_order
     ) VALUES (
@@ -676,6 +695,7 @@ BEGIN
         p_name,
         p_content,
         p_image_url,
+        p_crop_parameters,
         p_ai_metadata,
         v_next_sort_order
     )
@@ -691,6 +711,7 @@ CREATE OR REPLACE FUNCTION update_content_item(
     p_name TEXT DEFAULT NULL,
     p_content TEXT DEFAULT NULL,
     p_image_url TEXT DEFAULT NULL,
+    p_crop_parameters JSONB DEFAULT NULL,
     p_ai_metadata TEXT DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -712,6 +733,7 @@ BEGIN
         name = COALESCE(p_name, name),
         content = COALESCE(p_content, content),
         image_url = COALESCE(p_image_url, image_url),
+        crop_parameters = COALESCE(p_crop_parameters, crop_parameters),
         ai_metadata = COALESCE(p_ai_metadata, ai_metadata),
         updated_at = now()
     WHERE id = p_content_item_id;
@@ -1608,6 +1630,7 @@ RETURNS TABLE (
     card_name TEXT,
     card_description TEXT,
     card_image_url TEXT,
+    card_crop_parameters JSONB,
     card_conversation_ai_enabled BOOLEAN,
     card_ai_prompt TEXT,
     content_item_id UUID,
@@ -1617,6 +1640,7 @@ RETURNS TABLE (
     content_item_image_url TEXT,
     content_item_ai_metadata TEXT,
     content_item_sort_order INTEGER,
+    crop_parameters JSONB,
     is_activated BOOLEAN
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -1666,6 +1690,7 @@ BEGIN
         c.name AS card_name,
         c.description AS card_description,
         c.image_url AS card_image_url,
+        c.crop_parameters AS card_crop_parameters,
         c.conversation_ai_enabled AS card_conversation_ai_enabled,
         c.ai_prompt AS card_ai_prompt,
         ci.id AS content_item_id,
@@ -1675,6 +1700,7 @@ BEGIN
         ci.image_url AS content_item_image_url,
         ci.ai_metadata AS content_item_ai_metadata,
         ci.sort_order AS content_item_sort_order,
+        ci.crop_parameters,
         v_is_card_active AS is_activated -- Return the current/newly activated status
     FROM cards c
     LEFT JOIN content_items ci ON c.id = ci.card_id
@@ -1722,6 +1748,7 @@ RETURNS TABLE (
     card_name TEXT,
     card_description TEXT,
     card_image_url TEXT,
+    card_crop_parameters JSONB,
     card_conversation_ai_enabled BOOLEAN,
     card_ai_prompt TEXT,
     content_item_id UUID,
@@ -1731,6 +1758,7 @@ RETURNS TABLE (
     content_item_image_url TEXT,
     content_item_ai_metadata TEXT,
     content_item_sort_order INTEGER,
+    crop_parameters JSONB,
     is_preview BOOLEAN
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -1762,6 +1790,7 @@ BEGIN
         c.name AS card_name,
         c.description AS card_description,
         c.image_url AS card_image_url,
+        c.crop_parameters AS card_crop_parameters,
         c.conversation_ai_enabled AS card_conversation_ai_enabled,
         c.ai_prompt AS card_ai_prompt,
         ci.id AS content_item_id,
@@ -1771,6 +1800,7 @@ BEGIN
         ci.image_url AS content_item_image_url,
         ci.ai_metadata AS content_item_ai_metadata,
         ci.sort_order AS content_item_sort_order,
+        ci.crop_parameters,
         TRUE AS is_preview -- Indicate this is preview mode
     FROM cards c
     LEFT JOIN content_items ci ON c.id = ci.card_id

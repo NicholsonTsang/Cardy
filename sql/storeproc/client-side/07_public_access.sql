@@ -9,6 +9,7 @@ RETURNS TABLE (
     card_name TEXT,
     card_description TEXT,
     card_image_url TEXT,
+    card_crop_parameters JSONB,
     card_conversation_ai_enabled BOOLEAN,
     card_ai_prompt TEXT,
     content_item_id UUID,
@@ -18,6 +19,7 @@ RETURNS TABLE (
     content_item_image_url TEXT,
     content_item_ai_metadata TEXT,
     content_item_sort_order INTEGER,
+    crop_parameters JSONB,
     is_activated BOOLEAN
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -67,6 +69,7 @@ BEGIN
         c.name AS card_name,
         c.description AS card_description,
         c.image_url AS card_image_url,
+        c.crop_parameters AS card_crop_parameters,
         c.conversation_ai_enabled AS card_conversation_ai_enabled,
         c.ai_prompt AS card_ai_prompt,
         ci.id AS content_item_id,
@@ -76,6 +79,7 @@ BEGIN
         ci.image_url AS content_item_image_url,
         ci.ai_metadata AS content_item_ai_metadata,
         ci.sort_order AS content_item_sort_order,
+        ci.crop_parameters,
         v_is_card_active AS is_activated -- Return the current/newly activated status
     FROM cards c
     LEFT JOIN content_items ci ON c.id = ci.card_id
@@ -123,6 +127,7 @@ RETURNS TABLE (
     card_name TEXT,
     card_description TEXT,
     card_image_url TEXT,
+    card_crop_parameters JSONB,
     card_conversation_ai_enabled BOOLEAN,
     card_ai_prompt TEXT,
     content_item_id UUID,
@@ -132,6 +137,7 @@ RETURNS TABLE (
     content_item_image_url TEXT,
     content_item_ai_metadata TEXT,
     content_item_sort_order INTEGER,
+    crop_parameters JSONB,
     is_preview BOOLEAN
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -163,6 +169,7 @@ BEGIN
         c.name AS card_name,
         c.description AS card_description,
         c.image_url AS card_image_url,
+        c.crop_parameters AS card_crop_parameters,
         c.conversation_ai_enabled AS card_conversation_ai_enabled,
         c.ai_prompt AS card_ai_prompt,
         ci.id AS content_item_id,
@@ -172,6 +179,7 @@ BEGIN
         ci.image_url AS content_item_image_url,
         ci.ai_metadata AS content_item_ai_metadata,
         ci.sort_order AS content_item_sort_order,
+        ci.crop_parameters,
         TRUE AS is_preview -- Indicate this is preview mode
     FROM cards c
     LEFT JOIN content_items ci ON c.id = ci.card_id
