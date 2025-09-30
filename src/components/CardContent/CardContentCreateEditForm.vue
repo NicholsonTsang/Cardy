@@ -1,41 +1,133 @@
 <template>
     <div class="space-y-6">
-        <div class="flex flex-col gap-6">
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <!-- Image Section -->
-            <div class="w-full">
+            <div class="xl:col-span-1">
                 <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
                     <h3 class="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
                         <i class="pi pi-image text-blue-600"></i>
                         {{ itemTypeLabel }} Image
                     </h3>
                     
-                    <!-- Unified Simplified Single Column Layout -->
-                    <div class="space-y-4">
-                        <!-- Image Requirements Info -->
-                        <div class="p-3 bg-blue-100 rounded-lg">
-                            <p class="text-xs text-blue-800 flex items-start gap-2">
-                                <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
-                                <span><strong>Image Requirements:</strong> Upload JPG or PNG files up to 5MB. Recommended aspect ratio: {{ getContentAspectRatioDisplay() }} for optimal display. You can crop and adjust your image after uploading.</span>
-                            </p>
+                    <!-- Single-Column Layout -->
+                    <div class="space-y-6">
+                        <!-- Image Preview Section -->
+                        <div>
+                            <div
+                                class="content-image-container border-2 border-dashed border-slate-300 rounded-xl p-4 transition-all duration-200 hover:border-blue-400 hover:bg-blue-50/50"
+                                :class="{ 
+                                    'border-solid border-blue-400 bg-blue-50/30': previewImage,
+                                    'bg-slate-50': !previewImage 
+                                }"
+                            >
+                                <div class="relative w-full h-full">
+                                    <img
+                                        v-if="previewImage"
+                                        :src="previewImage"
+                                        :alt="`${itemTypeLabel} Preview`"
+                                        class="object-contain h-full w-full rounded-lg shadow-md" 
+                                    />
+                                    <div v-else class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 text-center">
+                                        <i class="pi pi-image text-3xl mb-3 opacity-50"></i>
+                                        <span class="text-sm font-medium">Upload {{ itemTypeLabel.toLowerCase() }} image</span>
+                                        <span class="text-xs text-slate-400 mt-1">Drag & drop or click to browse</span>
+                                        <span class="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                                            <i class="pi pi-crop text-xs"></i>
+                                            Auto-crop available for {{ getContentAspectRatioDisplay() }} ratio
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                         
-                        <!-- Combined Upload/Preview Area -->
-                        <div 
-                            v-if="!previewImage"
-                            class="upload-drop-zone-content"
-                            @dragover.prevent="handleDragOver"
-                            @dragleave.prevent="handleDragLeave"
-                            @drop.prevent="handleDrop"
-                            :class="{ 'drag-active': isDragActive }"
-                        >
-                            <div class="upload-content">
-                                <div class="upload-icon-container">
-                                    <i class="pi pi-image upload-icon"></i>
-                                </div>
-                                <h4 class="upload-title">Add {{ parentId ? 'sub-item' : 'content' }} image</h4>
-                                <p class="upload-subtitle">Drag and drop or click to upload</p>
+                        <!-- Requirements, Actions Section -->
+                        <div class="space-y-4">
+                            <!-- Image Requirements Info -->
+                            <div class="p-3 bg-blue-100 rounded-lg">
+                                <p class="text-xs text-blue-800 flex items-start gap-2">
+                                    <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
+                                    <span><strong>Image Requirements:</strong> Upload JPG or PNG files up to 5MB. Recommended aspect ratio: {{ getContentAspectRatioDisplay() }} for optimal display. You can crop and adjust your image after uploading.</span>
+                                </p>
+                            </div>
+                        
+                            <!-- Combined Upload/Preview Area -->
+                            <div 
+                                v-if="!previewImage"
+                                class="upload-drop-zone-content"
+                                @dragover.prevent="handleDragOver"
+                                @dragleave.prevent="handleDragLeave"
+                                @drop.prevent="handleDrop"
+                                :class="{ 'drag-active': isDragActive }"
+                            >
+                                <div class="upload-content">
+                                    <div class="upload-icon-container">
+                                        <i class="pi pi-image upload-icon"></i>
+                                    </div>
+                                    <h4 class="upload-title">Add {{ parentId ? 'sub-item' : 'content' }} image</h4>
+                                    <p class="upload-subtitle">Drag and drop or click to upload</p>
                                 
-                                <!-- Hidden File Input -->
+                                    <!-- Hidden File Input -->
+                                    <input 
+                                        ref="fileInputRef"
+                                        type="file" 
+                                        accept="image/*"
+                                        @change="handleFileSelect"
+                                        class="hidden"
+                                    />
+                                    
+                                    <Button 
+                                        label="Upload image"
+                                        icon="pi pi-upload"
+                                        @click="triggerFileInput"
+                                        class="upload-trigger-button"
+                                        severity="info"
+                                        size="small"
+                                    />
+                                </div>
+                            </div>
+                            
+                            <!-- Image Preview with Actions -->
+                            <div v-else class="space-y-4">
+                                <div class="content-image-container-compact border-2 border-solid border-blue-400 bg-white rounded-xl relative">
+                                    <img 
+                                        :src="previewImage" 
+                                        :alt="`${itemTypeLabel} Preview`"
+                                        class="object-contain h-full w-full rounded-lg shadow-md" 
+                                    />
+                                </div>
+                                
+                                <div class="image-actions-content">
+                                    <Button 
+                                        label="Change image"
+                                        icon="pi pi-image"
+                                        @click="triggerFileInput"
+                                        severity="secondary"
+                                        outlined
+                                        size="small"
+                                        class="action-button-content"
+                                    />
+                                    <Button 
+                                        label="Edit crop"
+                                        icon="pi pi-crop"
+                                        @click="handleReCrop"
+                                        severity="info"
+                                        outlined
+                                        size="small"
+                                        class="action-button-content"
+                                    />
+                                    <Button 
+                                        v-if="formData.cropParameters"
+                                        label="Remove crop"
+                                        icon="pi pi-times"
+                                        @click="handleResetCrop"
+                                        severity="help"
+                                        text
+                                        size="small"
+                                        class="action-button-content"
+                                    />
+                                </div>
+                                
+                                <!-- Hidden File Input for Change Photo -->
                                 <input 
                                     ref="fileInputRef"
                                     type="file" 
@@ -43,74 +135,14 @@
                                     @change="handleFileSelect"
                                     class="hidden"
                                 />
-                                
-                                <Button 
-                                    label="Upload image"
-                                    icon="pi pi-upload"
-                                    @click="triggerFileInput"
-                                    class="upload-trigger-button"
-                                    severity="info"
-                                    size="small"
-                                />
                             </div>
-                        </div>
-                        
-                        <!-- Image Preview with Actions -->
-                        <div v-else class="space-y-4">
-                            <div class="content-image-container-compact border-2 border-solid border-blue-400 bg-white rounded-xl relative">
-                                <img 
-                                    :src="previewImage" 
-                                    :alt="`${itemTypeLabel} Preview`"
-                                    class="object-contain h-full w-full rounded-lg shadow-md" 
-                                />
-                            </div>
-                            
-                            <div class="image-actions-content">
-                                <Button 
-                                    label="Change image"
-                                    icon="pi pi-image"
-                                    @click="triggerFileInput"
-                                    severity="secondary"
-                                    outlined
-                                    size="small"
-                                    class="action-button-content"
-                                />
-                                <Button 
-                                    label="Edit crop"
-                                    icon="pi pi-crop"
-                                    @click="handleReCrop"
-                                    severity="info"
-                                    outlined
-                                    size="small"
-                                    class="action-button-content"
-                                />
-                                <Button 
-                                    v-if="formData.cropParameters"
-                                    label="Remove crop"
-                                    icon="pi pi-times"
-                                    @click="handleResetCrop"
-                                    severity="help"
-                                    text
-                                    size="small"
-                                    class="action-button-content"
-                                />
-                            </div>
-                            
-                            <!-- Hidden File Input for Change Photo -->
-                            <input 
-                                ref="fileInputRef"
-                                type="file" 
-                                accept="image/*"
-                                @change="handleFileSelect"
-                                class="hidden"
-                            />
                         </div>
                     </div>
                 </div>
             </div>
-
+            
             <!-- Form Fields Section -->
-            <div class="w-full">
+            <div class="xl:col-span-2">
                 <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 space-y-6">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
@@ -203,7 +235,7 @@ import InputText from 'primevue/inputtext';
 import MyDialog from '@/components/MyDialog.vue';
 import ImageCropper from '@/components/ImageCropper.vue';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
-import { getContentAspectRatioNumber } from '@/utils/cardConfig';
+import { getContentAspectRatioNumber, getContentAspectRatioDisplay, getContentAspectRatio } from '@/utils/cardConfig';
 import { generateCropPreview } from '@/utils/cropUtils';
 
 const props = defineProps({
@@ -226,6 +258,10 @@ const props = defineProps({
     cardAiEnabled: {
         type: Boolean,
         default: false
+    },
+    cardId: {
+        type: String,
+        required: true
     }
 });
 

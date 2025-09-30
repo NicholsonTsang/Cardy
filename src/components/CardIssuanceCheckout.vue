@@ -204,18 +204,6 @@
     >
       <div class="space-y-6">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">Batch Name</label>
-          <InputText 
-            v-model="newBatch.name"
-            placeholder="Enter batch name (optional)"
-            class="w-full"
-          />
-          <small class="text-slate-500 mt-1">
-            Leave empty to auto-generate (e.g., "batch-1", "batch-2")
-          </small>
-        </div>
-
-        <div>
           <label class="block text-sm font-medium text-slate-700 mb-2">Number of Cards</label>
           <InputNumber 
             v-model="newBatch.cardCount"
@@ -875,7 +863,6 @@ const printRequestForm = ref({
 
 // New batch form
 const newBatch = ref({
-  name: '',
   cardCount: 50
 })
 
@@ -1052,7 +1039,6 @@ const createBatch = async () => {
     
     // Prepare form data BEFORE resetting
     const formData = {
-      name: newBatch.value.name,
       cardCount: newBatch.value.cardCount
     }
 
@@ -1061,7 +1047,6 @@ const createBatch = async () => {
     
     // Reset form AFTER payment initiation
     newBatch.value = {
-      name: '',
       cardCount: 50
     }
 
@@ -1085,7 +1070,6 @@ const handlePayment = async (formData) => {
     // Payment-first flow: Create checkout session for new batch
     // Batch will be created only after successful payment
     await createCheckoutSession(formData.cardCount, 'pending-batch', {
-      batch_name: formData.name,
       card_id: props.cardId,
       is_pending_batch: true // Flag to indicate batch creation is pending
     })

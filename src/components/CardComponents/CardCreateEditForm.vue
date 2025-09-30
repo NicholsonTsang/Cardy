@@ -29,10 +29,10 @@
                         Card Artwork
                     </h3>
                     
-                    <!-- Two-Column Layout: Preview Left, Info/Actions Right -->
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                        <!-- Left Column: Image Preview -->
-                        <div class="order-2 lg:order-1">
+                    <!-- Single-Column Layout -->
+                    <div class="space-y-6">
+                        <!-- Image Preview Section -->
+                        <div>
                             <div
                                 class="card-artwork-container border-2 border-dashed border-slate-300 rounded-xl p-4 transition-all duration-200 hover:border-blue-400 hover:bg-blue-50/50"
                                 :class="{ 
@@ -72,8 +72,8 @@
                             </div>
                         </div>
                         
-                        <!-- Right Column: Requirements, Actions & QR Position -->
-                        <div class="order-1 lg:order-2 space-y-4">
+                        <!-- Requirements, Actions & QR Position Section -->
+                        <div class="space-y-4">
                             <!-- Image Requirements Info -->
                             <div class="p-3 bg-blue-100 rounded-lg">
                                 <p class="text-xs text-blue-800 flex items-start gap-2">

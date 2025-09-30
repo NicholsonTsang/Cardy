@@ -17,12 +17,7 @@
         <i class="pi pi-qrcode text-3xl text-slate-400"></i>
       </div>
       <h4 class="text-lg font-medium text-slate-900 mb-2">No Card Batches Found</h4>
-      <p class="text-slate-600 mb-4">Create and issue card batches first to generate QR codes</p>
-      <Button 
-        label="Go to Card Issuance" 
-        @click="$emit('switch-to-tab', 2)"
-        class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0"
-      />
+      <p class="text-slate-600">Create and issue card batches first to generate QR codes</p>
     </div>
 
     <!-- QR Code Generator -->
@@ -177,7 +172,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['switch-to-tab'])
+const emit = defineEmits([])
 
 const toast = useToast()
 
