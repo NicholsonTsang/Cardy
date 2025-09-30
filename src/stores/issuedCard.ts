@@ -56,6 +56,7 @@ export interface PrintRequest {
   shipping_address: string | null;
   contact_email: string | null;
   contact_whatsapp: string | null;
+  cards_count: number;
   admin_notes: string | null;
   payment_details: string | null;
   requested_at: string;

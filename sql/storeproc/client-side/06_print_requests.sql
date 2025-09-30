@@ -94,6 +94,7 @@ RETURNS TABLE (
     shipping_address TEXT,
     contact_email TEXT,
     contact_whatsapp TEXT,
+    cards_count INTEGER,
     requested_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -123,9 +124,11 @@ BEGIN
         pr.shipping_address,
         pr.contact_email,
         pr.contact_whatsapp,
+        cb.cards_count,
         pr.requested_at,
         pr.updated_at
     FROM print_requests pr
+    JOIN card_batches cb ON pr.batch_id = cb.id
     WHERE pr.batch_id = p_batch_id
     ORDER BY pr.requested_at DESC;
 END;

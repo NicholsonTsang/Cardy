@@ -640,7 +640,9 @@
             </div>
             <div>
               <label class="text-sm font-medium text-slate-700">Cards Count</label>
-              <p class="text-sm text-slate-900 mt-1">{{ selectedPrintRequestData.cards_count }} cards</p>
+              <p class="text-sm text-slate-900 mt-1">
+                {{ selectedPrintRequestData.cards_count || selectedPrintRequestData.batch_info?.cards_count || 'N/A' }} cards
+              </p>
             </div>
             <div>
               <label class="text-sm font-medium text-slate-700">Request ID</label>
@@ -1244,10 +1246,15 @@ const viewPrintRequestDialog = async (batch) => {
     
     if (printRequests && printRequests.length > 0) {
       const latestRequest = printRequests.sort((a, b) => new Date(b.requested_at) - new Date(a.requested_at))[0]
+      console.log('Latest print request data:', latestRequest)
+      console.log('Cards count from DB:', latestRequest.cards_count)
       selectedPrintRequestData.value = {
         ...latestRequest,
-        batch_info: batch
+        batch_info: batch,
+        // Fallback to batch.cards_count if not provided by DB
+        cards_count: latestRequest.cards_count || batch.cards_count
       }
+      console.log('Selected print request data:', selectedPrintRequestData.value)
       showPrintStatusDialog.value = true
     } else {
       toast.add({
