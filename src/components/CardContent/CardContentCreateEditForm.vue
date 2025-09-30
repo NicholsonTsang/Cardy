@@ -11,35 +11,6 @@
                     
                     <!-- Single-Column Layout -->
                     <div class="space-y-6">
-                        <!-- Image Preview Section -->
-                        <div>
-                            <div
-                                class="content-image-container border-2 border-dashed border-slate-300 rounded-xl p-4 transition-all duration-200 hover:border-blue-400 hover:bg-blue-50/50"
-                                :class="{ 
-                                    'border-solid border-blue-400 bg-blue-50/30': previewImage,
-                                    'bg-slate-50': !previewImage 
-                                }"
-                            >
-                                <div class="relative w-full h-full">
-                                    <img
-                                        v-if="previewImage"
-                                        :src="previewImage"
-                                        :alt="`${itemTypeLabel} Preview`"
-                                        class="object-contain h-full w-full rounded-lg shadow-md" 
-                                    />
-                                    <div v-else class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 text-center">
-                                        <i class="pi pi-image text-3xl mb-3 opacity-50"></i>
-                                        <span class="text-sm font-medium">Upload {{ itemTypeLabel.toLowerCase() }} image</span>
-                                        <span class="text-xs text-slate-400 mt-1">Drag & drop or click to browse</span>
-                                        <span class="text-xs text-slate-400 mt-2 flex items-center gap-1">
-                                            <i class="pi pi-crop text-xs"></i>
-                                            Auto-crop available for {{ getContentAspectRatioDisplay() }} ratio
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
                         <!-- Requirements, Actions Section -->
                         <div class="space-y-4">
                             <!-- Image Requirements Info -->
