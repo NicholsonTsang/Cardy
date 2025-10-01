@@ -10,6 +10,7 @@
           :src="content.content_item_image_url"
           :alt="content.content_item_name"
           class="image"
+          crossorigin="anonymous"
         />
         <div v-else class="image-placeholder">
           <i class="pi pi-image" />
@@ -51,6 +52,7 @@
               :src="subItem.content_item_image_url"
               :alt="subItem.content_item_name"
               class="thumbnail"
+              crossorigin="anonymous"
             />
             <div v-else class="thumbnail-placeholder">
               <i class="pi pi-file" />
@@ -128,8 +130,7 @@ onMounted(() => {
 
 <style scoped>
 .content-detail {
-  padding-top: 5rem;
-  padding-bottom: 2rem;
+  padding: 5rem 1rem 2rem;
   min-height: 100vh;
 }
 

@@ -15,6 +15,7 @@
             :src="item.content_item_image_url"
             :alt="item.content_item_name"
             class="image"
+            crossorigin="anonymous"
           />
           <div v-else class="image-placeholder">
             <i class="pi pi-image" />

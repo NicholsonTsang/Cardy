@@ -8,6 +8,7 @@
         :src="card.card_image_url"
         :alt="card.card_name"
         class="image"
+        crossorigin="anonymous"
       />
       <div class="gradient-overlay" />
     </div>
@@ -25,7 +26,7 @@
         <!-- Activation Status -->
         <div class="status-badge" :class="card.is_activated ? 'active' : 'pending'">
           <i class="pi" :class="card.is_activated ? 'pi-check-circle' : 'pi-clock'" />
-          <span>{{ card.is_activated ? 'Card Activated' : 'Just Activated' }}</span>
+          <span>{{ card.is_activated ? 'Card Activated' : 'Pending Activation' }}</span>
         </div>
       </div>
 

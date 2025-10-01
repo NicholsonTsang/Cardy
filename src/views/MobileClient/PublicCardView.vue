@@ -20,12 +20,6 @@
 
     <!-- Main Content -->
     <div v-else-if="cardData" class="content-wrapper">
-      <!-- Preview Mode Indicator -->
-      <div v-if="isPreviewMode" class="preview-indicator">
-        <i class="pi pi-eye"></i>
-        <span>Preview Mode</span>
-      </div>
-      
       <!-- Navigation Header -->
       <MobileHeader 
         v-if="!isCardView"
@@ -256,25 +250,6 @@ onMounted(() => {
   background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
   position: relative;
   overflow: hidden;
-}
-
-/* Preview Mode Indicator */
-.preview-indicator {
-  position: fixed;
-  top: 1rem;
-  right: 1rem;
-  background: rgba(255, 255, 255, 0.9);
-  backdrop-filter: blur(10px);
-  color: #4338ca;
-  padding: 0.5rem 1rem;
-  border-radius: 1rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  z-index: 50;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 }
 
 /* Loading State */
