@@ -1,45 +1,67 @@
 <template>
   <div class="card-overview">
-    <!-- Background Image -->
-    <div class="background-image">
-      <!-- Display the already-cropped image_url directly from API -->
-      <img
-        v-if="card.card_image_url"
-        :src="card.card_image_url"
-        :alt="card.card_name"
-        class="image"
-        crossorigin="anonymous"
-      />
-      <div class="gradient-overlay" />
+    <!-- Hero Section with Card -->
+    <div class="hero-section">
+      <!-- Card Spotlight -->
+      <div class="card-spotlight">
+        <div class="spotlight-glow"></div>
+        <div class="card-wrapper">
+          <div class="card-frame">
+            <img
+              v-if="card.card_image_url"
+              :src="card.card_image_url"
+              :alt="card.card_name"
+              class="card-image"
+              crossorigin="anonymous"
+            />
+            <div v-else class="card-placeholder">
+              <i class="pi pi-image" />
+            </div>
+          </div>
+          
+          <!-- Status Indicator -->
+          <div class="status-indicator" :class="card.is_activated ? 'active' : 'pending'">
+            <div class="status-dot"></div>
+            <span>{{ card.is_activated ? 'Active' : 'Activating' }}</span>
+          </div>
+        </div>
+      </div>
     </div>
     
-    <!-- Content -->
-    <div class="content">
-      <div class="card-info">
+    <!-- Info Panel -->
+    <div class="info-panel">
+      <div class="panel-inner">
+        <!-- Card Title -->
         <h1 class="card-title">{{ card.card_name }}</h1>
         
-        <!-- Scrollable Description -->
-        <div class="description-container">
+        <!-- Description -->
+        <div class="description-wrapper">
           <p class="card-description">{{ card.card_description }}</p>
         </div>
         
-        <!-- Activation Status -->
-        <div class="status-badge" :class="card.is_activated ? 'active' : 'pending'">
-          <i class="pi" :class="card.is_activated ? 'pi-check-circle' : 'pi-clock'" />
-          <span>{{ card.is_activated ? 'Card Activated' : 'Pending Activation' }}</span>
+        <!-- Action Button -->
+        <button @click="handleExplore" class="action-button">
+          <span class="button-label">
+            <i class="pi pi-compass" />
+            Explore Content
+          </span>
+          <div class="button-bg"></div>
+        </button>
+        
+        <!-- AI Indicator -->
+        <div v-if="card.conversation_ai_enabled" class="ai-indicator">
+          <i class="pi pi-microphone" />
+          <span>AI Voice Guide Available</span>
         </div>
       </div>
-
-      <!-- Explore Button -->
-      <button @click="handleExplore" class="explore-button">
-        <i class="pi pi-compass" />
-        <span>Explore Content</span>
-      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
+import { onMounted } from 'vue'
+import { getCardAspectRatio } from '@/utils/cardConfig'
+
 interface Props {
   card: {
     card_name: string
@@ -60,159 +82,390 @@ const emit = defineEmits<{
 function handleExplore() {
   emit('explore')
 }
+
+// Set up CSS custom property for card aspect ratio
+onMounted(() => {
+  const aspectRatio = getCardAspectRatio()
+  document.documentElement.style.setProperty('--card-aspect-ratio', aspectRatio)
+})
 </script>
 
 <style scoped>
+/* Base Container */
 .card-overview {
-  position: relative;
-  height: 100vh;
-  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-}
-
-/* Background */
-.background-image {
-  position: absolute;
-  inset: 0;
+  background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 50%, #312e81 100%);
+  position: relative;
   overflow: hidden;
+  isolation: isolate;
 }
 
-.image {
+/* Hero Section */
+.hero-section {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem 1rem;
+  position: relative;
+  min-height: 0;
+}
+
+/* Card Spotlight */
+.card-spotlight {
+  position: relative;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  max-width: 380px;
+  animation: fadeIn 0.6s ease-out;
 }
 
-.gradient-overlay {
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.spotlight-glow {
+  position: absolute;
+  inset: -40%;
+  background: radial-gradient(
+    circle at center,
+    rgba(59, 130, 246, 0.15) 0%,
+    rgba(139, 92, 246, 0.1) 30%,
+    transparent 70%
+  );
+  filter: blur(40px);
+  animation: pulse 4s ease-in-out infinite;
+  z-index: 0;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+.card-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+/* Card Frame */
+.card-frame {
+  aspect-ratio: var(--card-aspect-ratio, 2/3);
+  width: 100%;
+  border-radius: 1.25rem;
+  overflow: hidden;
+  background: white;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 30px 60px -15px rgba(0, 0, 0, 0.5),
+    0 20px 40px -10px rgba(59, 130, 246, 0.2);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  z-index: 1;
+}
+
+.card-frame::before {
+  content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(
-    to bottom,
-    transparent 0%,
-    rgba(0, 0, 0, 0.3) 50%,
-    rgba(0, 0, 0, 0.8) 100%
+    135deg,
+    rgba(255, 255, 255, 0.1) 0%,
+    transparent 50%,
+    rgba(255, 255, 255, 0.05) 100%
   );
+  pointer-events: none;
+  z-index: 2;
 }
 
-/* Content */
-.content {
+.card-frame:active {
+  transform: scale(0.98);
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 20px 40px -10px rgba(0, 0, 0, 0.4),
+    0 10px 20px -5px rgba(59, 130, 246, 0.2);
+}
+
+.card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: white;
   position: relative;
-  z-index: 10;
-  flex: 1;
+  z-index: 1;
+}
+
+.card-placeholder {
+  width: 100%;
+  height: 100%;
   display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 1.5rem;
-  padding-bottom: 2rem;
-}
-
-.card-info {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-.card-title {
-  font-size: 1.75rem;
-  font-weight: bold;
-  color: white;
-  margin: 0;
-  margin-bottom: 1rem;
-  line-height: 1.2;
-}
-
-/* Scrollable Description */
-.description-container {
-  max-height: 10rem;
-  overflow-y: auto;
-  margin-bottom: 1rem;
-  padding: 0 0.5rem;
-}
-
-.card-description {
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.9);
-  line-height: 1.6;
-  margin: 0;
-  word-break: break-word;
-  overflow-wrap: break-word;
-}
-
-/* Custom Scrollbar */
-.description-container::-webkit-scrollbar {
-  width: 4px;
-}
-
-.description-container::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-}
-
-.description-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.3);
-  border-radius: 2px;
-}
-
-/* Status Badge */
-.status-badge {
-  display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
+  justify-content: center;
+  background: linear-gradient(135deg, #e0e7ff, #ddd6fe);
+  color: rgba(99, 102, 241, 0.3);
+  font-size: 4rem;
+}
+
+/* Status Indicator */
+.status-indicator {
+  position: absolute;
+  top: -0.625rem;
+  right: -0.625rem;
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
   padding: 0.5rem 1rem;
   border-radius: 9999px;
   font-size: 0.75rem;
-  font-weight: 500;
-  border: 1px solid;
-}
-
-.status-badge.active {
-  background: rgba(34, 197, 94, 0.2);
-  border-color: rgba(34, 197, 94, 0.3);
-  color: #86efac;
-}
-
-.status-badge.pending {
-  background: rgba(251, 191, 36, 0.2);
-  border-color: rgba(251, 191, 36, 0.3);
-  color: #fde047;
-}
-
-/* Explore Button */
-.explore-button {
-  width: 100%;
-  padding: 1rem;
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 0.75rem;
-  color: white;
-  font-size: 1rem;
   font-weight: 600;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  animation: slideIn 0.5s ease-out 0.3s both;
+  z-index: 10;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.status-indicator.active {
+  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.status-indicator.pending {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.status-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: currentColor;
+  animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* Info Panel */
+.info-panel {
+  flex-shrink: 0;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 58, 138, 0.95) 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 1.5rem 1rem 2rem;
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+  animation: slideUp 0.5s ease-out 0.2s both;
+  z-index: 2;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.panel-inner {
+  max-width: 600px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+/* Card Title */
+.card-title {
+  font-size: 1.625rem;
+  font-weight: 800;
+  color: white;
+  margin: 0;
+  line-height: 1.25;
+  text-align: center;
+  letter-spacing: -0.01em;
+}
+
+/* Description */
+.description-wrapper {
+  max-height: 5.5rem;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.card-description {
+  font-size: 0.9375rem;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.6;
+  margin: 0;
+  text-align: center;
+  word-break: break-word;
+}
+
+/* Custom Scrollbar */
+.description-wrapper::-webkit-scrollbar {
+  width: 3px;
+}
+
+.description-wrapper::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 2px;
+}
+
+.description-wrapper::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+  border-radius: 2px;
+}
+
+/* Action Button */
+.action-button {
+  position: relative;
+  width: 100%;
+  padding: 1.125rem;
+  border: none;
+  border-radius: 1rem;
+  color: white;
+  font-size: 1.0625rem;
+  font-weight: 700;
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.button-label {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: all 0.2s;
 }
 
-.explore-button:active {
+.button-bg {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  transition: transform 0.3s ease;
+}
+
+.action-button:active {
   transform: scale(0.98);
-  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.action-button:active .button-bg {
+  transform: scale(1.05);
+}
+
+/* AI Indicator */
+.ai-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 0.75rem;
+  color: #93c5fd;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+.ai-indicator i {
+  color: #60a5fa;
+  font-size: 0.875rem;
 }
 
 /* Responsive */
 @media (min-width: 640px) {
+  .hero-section {
+    padding: 3rem 2rem;
+  }
+  
+  .card-spotlight {
+    max-width: 420px;
+  }
+  
   .card-title {
-    font-size: 2rem;
+    font-size: 1.875rem;
   }
   
   .card-description {
     font-size: 1rem;
   }
   
-  .description-container {
-    max-height: 12rem;
+  .description-wrapper {
+    max-height: 7rem;
+  }
+  
+  .info-panel {
+    padding: 2rem 2rem 2.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .card-spotlight {
+    max-width: 480px;
+  }
+}
+
+/* Accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .card-spotlight,
+  .info-panel,
+  .status-indicator {
+    animation: none;
+  }
+  
+  .spotlight-glow {
+    animation: none;
+    opacity: 0.5;
+  }
+  
+  .status-dot {
+    animation: none;
   }
 }
 </style>

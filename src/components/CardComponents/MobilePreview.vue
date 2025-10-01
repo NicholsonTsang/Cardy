@@ -36,70 +36,37 @@
             </div>
 
 
-            <!-- Mobile Frame with Iframe -->
-            <div v-else class="p-6">
-                <div class="mx-auto iphone-container">
-                    <!-- iPhone 17 Device Frame -->
-                    <div class="relative bg-slate-900 rounded-[3rem] p-1 shadow-2xl iphone-frame">
-                        <!-- Dynamic Island -->
-                        <div class="absolute top-2 left-1/2 transform -translate-x-1/2 w-28 h-7 bg-black rounded-2xl z-10"></div>
+            <!-- Mobile Preview -->
+            <div v-else class="preview-wrapper">
+                <VueDevice 
+                    device="iphone-14-pro" 
+                    color="black"
+                    :showHome="false"
+                    :showBtns="true"
+                    class="device-simulator"
+                >
+                    <div class="device-content">
+                        <iframe
+                            :src="previewUrl"
+                            :key="previewUrl"
+                            @load="handleIframeLoad"
+                            @error="handleIframeError"
+                            sandbox="allow-scripts allow-same-origin allow-popups"
+                            frameborder="0"
+                            class="mobile-iframe"
+                        ></iframe>
                         
-                        <!-- Screen -->
-                        <div class="bg-white rounded-[2.5rem] overflow-hidden relative iphone-screen">
-                            <!-- Status Bar -->
-                            <div class="bg-white px-8 py-3 flex justify-between items-center text-sm font-medium text-slate-900">
-                                <span>9:41</span>
-                                <div class="flex items-center gap-1">
-                                    <div class="flex gap-1">
-                                        <div class="w-1 h-1 bg-slate-900 rounded-full"></div>
-                                        <div class="w-1 h-1 bg-slate-900 rounded-full"></div>
-                                        <div class="w-1 h-1 bg-slate-400 rounded-full"></div>
-                                    </div>
-                                    <i class="pi pi-wifi text-slate-900 ml-1"></i>
-                                    <div class="w-6 h-3 border border-slate-900 rounded-sm relative ml-1">
-                                        <div class="w-4 h-1.5 bg-green-500 rounded-sm absolute top-0.5 left-0.5"></div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Iframe Container -->
-                            <div class="relative iphone-content">
-                                <iframe
-                                    :src="previewUrl"
-                                    class="w-full h-full border-0"
-                                    :key="previewUrl"
-                                    @load="handleIframeLoad"
-                                    @error="handleIframeError"
-                                    sandbox="allow-scripts allow-same-origin"
-                                    loading="lazy"
-                                ></iframe>
-                                
-                                <!-- Iframe Loading Overlay -->
-                                <div v-if="iframeLoading" class="absolute inset-0 bg-white flex items-center justify-center">
-                                    <ProgressSpinner strokeWidth="3" animationDuration=".8s" class="w-6 h-6 text-blue-600"/>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Home Indicator -->
-                        <div class="absolute bottom-2 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-white rounded-full opacity-60"></div>
-                    </div>
-                    
-                    <!-- Preview Info -->
-                    <div class="mt-4 text-center">
-                        <p class="text-xs text-slate-500">iPhone 17 Pro Simulation</p>
-                        <p class="text-xs text-slate-500">Live preview of your mobile card experience</p>
-                        <div v-if="sampleCard" class="mt-2 text-xs text-slate-400">
-                            <span v-if="sampleCard.preview_mode" 
-                                  class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
-                                <i class="pi pi-eye text-xs"></i>
-                                Preview Mode
-                            </span>
-                            <span v-else>
-                                Using sample card: {{ sampleCard.issue_card_id.substring(0, 8) }}...
-                            </span>
+                        <!-- Loading -->
+                        <div v-if="iframeLoading" class="mobile-loading">
+                            <ProgressSpinner strokeWidth="3" animationDuration=".8s" class="w-10 h-10 text-blue-600"/>
+                            <p class="loading-text">Loading mobile preview...</p>
                         </div>
                     </div>
+                </VueDevice>
+                
+                <!-- Preview Info -->
+                <div class="preview-info">
+                    <p class="info-text">Live preview of your mobile card experience</p>
                 </div>
             </div>
         </div>
@@ -111,6 +78,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { supabase } from '@/lib/supabase';
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
+import { VueDevice } from 'vue-devices';
 
 const props = defineProps({
     cardProp: {
@@ -193,79 +161,99 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Ensure iframe scales properly */
-iframe {
-    transform-origin: top left;
+/* Wrapper */
+.preview-wrapper {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
-/* iPhone 17 Dimensions and Styling */
-.iphone-container {
-    max-width: 320px; /* Slightly increased iPhone 17 Pro width scale */
-}
-
-.iphone-frame {
+/* Device Simulator Container */
+.device-simulator {
+    max-width: 380px;
     width: 100%;
-    /* iPhone 17 Pro aspect ratio: 19.5:9 (approximately 2.17:1) */
-    aspect-ratio: 9 / 19.5;
-    max-width: 320px;
-    max-height: 693px; /* Increased proportionally: 320 * (19.5/9) ≈ 693 */
     margin: 0 auto;
 }
 
-.iphone-screen {
+/* Device Content Wrapper */
+.device-content {
+    position: relative;
     width: 100%;
     height: 100%;
-    /* Account for the frame padding */
+    background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 50%, #312e81 100%);
+    overflow: hidden;
+    border-radius: inherit;
 }
 
-.iphone-content {
-    /* Subtract status bar height from total */
-    height: calc(100% - 3.5rem);
-    min-height: 600px; /* Increased proportionally */
+/* Iframe */
+.mobile-iframe {
+    position: absolute;
+    top: 44px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: calc(100% - 44px);
+    border: none;
+    background: transparent;
+    border-radius: 0 0 inherit inherit;
+    overflow: hidden;
 }
 
-/* Responsive adjustments for iPhone 17 */
+/* Loading State */
+.mobile-loading {
+    position: absolute;
+    top: 44px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1rem;
+    z-index: 10;
+}
+
+.loading-text {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #64748b;
+}
+
+/* Preview Info */
+.preview-info {
+    margin-top: 1.5rem;
+    text-align: center;
+}
+
+.info-text {
+    font-size: 0.8125rem;
+    color: #64748b;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+    .device-simulator {
+        max-width: 340px;
+    }
+}
+
 @media (max-width: 480px) {
-    .iphone-container {
-        max-width: 280px;
+    .preview-wrapper {
+        padding: 1rem;
     }
     
-    .iphone-frame {
-        max-width: 280px;
-        max-height: 607px;
-    }
-    
-    .iphone-content {
-        min-height: 520px;
+    .device-simulator {
+        max-width: 300px;
     }
 }
 
 @media (max-width: 360px) {
-    .iphone-container {
-        max-width: 240px;
+    .device-simulator {
+        max-width: 280px;
     }
-    
-    .iphone-frame {
-        max-width: 240px;
-        max-height: 520px;
-    }
-    
-    .iphone-content {
-        min-height: 450px;
-    }
-}
-
-/* Custom scrollbar for mobile frame */
-.mobile-frame::-webkit-scrollbar {
-    width: 2px;
-}
-
-.mobile-frame::-webkit-scrollbar-track {
-    background: #f1f5f9;
-}
-
-.mobile-frame::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 1px;
 }
 </style> 

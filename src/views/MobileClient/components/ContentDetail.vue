@@ -143,7 +143,7 @@ onMounted(() => {
 .hero-image {
   aspect-ratio: var(--content-aspect-ratio, 4/3);
   overflow: hidden;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
   background-color: white;
   position: relative;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
@@ -168,14 +168,12 @@ onMounted(() => {
 
 /* Content Info */
 .content-info {
-  padding: 0 1.5rem;
   background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1rem;
-  padding: 1.5rem;
-  margin: 0 1rem;
+  padding: 1rem;
 }
 
 .content-title {
@@ -203,7 +201,7 @@ onMounted(() => {
 
 /* Sub Items */
 .sub-items {
-  padding: 0 1rem;
+  margin-top: 2rem;
 }
 
 .sub-items-title {
