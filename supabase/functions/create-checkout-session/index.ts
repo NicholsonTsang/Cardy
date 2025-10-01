@@ -134,15 +134,15 @@ serve(async (req) => {
     }
 
     // Construct the checkout session
-    // Priority: Frontend params > Environment variable > Origin header > Localhost fallback
+    // Priority: Frontend params > Environment variable > Origin header + path > Localhost fallback
     const successBaseUrl = (successUrl && isValidUrl(successUrl) ? successUrl : null)
       || Deno.env.get('STRIPE_SUCCESS_URL')
-      || req.headers.get('origin')
+      || `${req.headers.get('origin')}/cms/mycards`
       || 'http://localhost:5173/cms/mycards'
       
     const cancelBaseUrl = (cancelUrl && isValidUrl(cancelUrl) ? cancelUrl : null)
       || Deno.env.get('STRIPE_CANCEL_URL')
-      || req.headers.get('origin')
+      || `${req.headers.get('origin')}/cms/mycards`
       || 'http://localhost:5173/cms/mycards'
     
     const checkoutSession = await stripe.checkout.sessions.create({
