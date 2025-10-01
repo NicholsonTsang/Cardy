@@ -42,11 +42,17 @@ export const createCheckoutSession = async (cardCount, batchId, metadata = {}) =
       throw new Error('Stripe is not configured. Please add VITE_STRIPE_PUBLISHABLE_KEY to your .env file')
     }
 
+    // Get return URLs from environment variables
+    const successUrl = import.meta.env.VITE_STRIPE_SUCCESS_URL
+    const cancelUrl = import.meta.env.VITE_STRIPE_CANCEL_URL
+
     // Create checkout session via Edge Function
     const { data, error } = await supabase.functions.invoke('create-checkout-session', {
       body: {
         cardCount,
         batchId,
+        successUrl,
+        cancelUrl,
         metadata
       }
     })

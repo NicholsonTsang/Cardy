@@ -46,7 +46,7 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { cardCount, batchId, metadata = {} } = await req.json()
+    const { cardCount, batchId, successUrl, cancelUrl, metadata = {} } = await req.json()
 
     // Validate input
     if (!cardCount || !batchId || cardCount <= 0) {
@@ -121,8 +121,29 @@ serve(async (req) => {
       batch = batchData[0]
     }
 
+    // Basic URL validation helper
+    const isValidUrl = (url: string): boolean => {
+      try {
+        const urlObj = new URL(url)
+        // Allow http for localhost, https for everything else
+        const isLocalhost = urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1'
+        return (urlObj.protocol === 'https:') || (isLocalhost && urlObj.protocol === 'http:')
+      } catch {
+        return false
+      }
+    }
+
     // Construct the checkout session
-    const baseUrl = req.headers.get('origin') || 'http://localhost:5173'
+    // Priority: Frontend params > Environment variable > Origin header > Localhost fallback
+    const successBaseUrl = (successUrl && isValidUrl(successUrl) ? successUrl : null)
+      || Deno.env.get('STRIPE_SUCCESS_URL')
+      || req.headers.get('origin')
+      || 'http://localhost:5173/cms/mycards'
+      
+    const cancelBaseUrl = (cancelUrl && isValidUrl(cancelUrl) ? cancelUrl : null)
+      || Deno.env.get('STRIPE_CANCEL_URL')
+      || req.headers.get('origin')
+      || 'http://localhost:5173/cms/mycards'
     
     const checkoutSession = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
@@ -141,8 +162,12 @@ serve(async (req) => {
           quantity: cardCount,
         },
       ],
-      success_url: `${baseUrl}/cms/mycards?session_id={CHECKOUT_SESSION_ID}${metadata.is_pending_batch ? '' : `&batch_id=${batchId}`}`,
-      cancel_url: `${baseUrl}/cms/mycards?canceled=true${metadata.is_pending_batch ? '' : `&batch_id=${batchId}`}`,
+      success_url: successBaseUrl.includes('?')
+        ? `${successBaseUrl}&session_id={CHECKOUT_SESSION_ID}${metadata.is_pending_batch ? '' : `&batch_id=${batchId}`}`
+        : `${successBaseUrl}?session_id={CHECKOUT_SESSION_ID}${metadata.is_pending_batch ? '' : `&batch_id=${batchId}`}`,
+      cancel_url: cancelBaseUrl.includes('?')
+        ? `${cancelBaseUrl}&canceled=true${metadata.is_pending_batch ? '' : `&batch_id=${batchId}`}`
+        : `${cancelBaseUrl}?canceled=true${metadata.is_pending_batch ? '' : `&batch_id=${batchId}`}`,
       metadata: {
         batch_id: batchId,
         user_id: user.id,
