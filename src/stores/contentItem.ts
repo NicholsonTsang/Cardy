@@ -10,8 +10,9 @@ export interface ContentItem {
     parent_id: string | null;
     name: string;
     content: string;
-    image_url: string | null;
-    crop_parameters?: any; // JSON object containing crop parameters for dynamic image cropping
+    image_url: string | null; // Cropped/processed image for display
+    original_image_url: string | null; // Original uploaded image (raw, uncropped)
+    crop_parameters?: any; // JSON object containing crop parameters
     ai_metadata: string;
     sort_order: number;
     created_at: string;
@@ -22,8 +23,10 @@ export interface ContentItemFormData {
     name: string;
     description?: string; // Map to content
     imageUrl?: string | null;
-    imageFile?: File | null;
-    image_url?: string;
+    imageFile?: File | null; // New uploaded file (raw)
+    croppedImageFile?: File | null; // Cropped version of the image
+    image_url?: string; // Cropped image URL
+    original_image_url?: string; // Original image URL
     cropParameters?: any; // JSON object containing crop parameters for dynamic image cropping
     aiMetadata?: string;
     // card_id and parent_id are passed as separate params to createContentItem
@@ -87,16 +90,29 @@ export const useContentItemStore = defineStore('contentItem', () => {
       isLoading.value = true;
       error.value = null;
 
-      let finalImageUrl: string | null = itemData.image_url || null;
+      let originalImageUrl: string | null = null;
+      let croppedImageUrl: string | null = itemData.image_url || null;
+      
+      // Upload original image if provided
       if (itemData.imageFile) {
-        const uploadedUrl = await uploadContentItemImage(itemData.imageFile, cardId);
+        const uploadedUrl = await uploadContentItemImage(itemData.imageFile, cardId, 'original');
         if (uploadedUrl) {
-            finalImageUrl = uploadedUrl;
+            originalImageUrl = uploadedUrl;
         } else {
-            throw new Error('Image upload failed for content item.');
+            throw new Error('Original image upload failed for content item.');
+        }
+      }
+      
+      // Upload cropped image if provided
+      if (itemData.croppedImageFile) {
+        const uploadedUrl = await uploadContentItemImage(itemData.croppedImageFile, cardId, 'cropped');
+        if (uploadedUrl) {
+            croppedImageUrl = uploadedUrl;
+        } else {
+            throw new Error('Cropped image upload failed for content item.');
         }
       } else if (itemData.imageUrl) { // If imageUrl is provided directly (and no file)
-        finalImageUrl = itemData.imageUrl;
+        croppedImageUrl = itemData.imageUrl;
       }
       
       const { data, error: err } = await supabase
@@ -105,7 +121,8 @@ export const useContentItemStore = defineStore('contentItem', () => {
           p_name: itemData.name,
           p_parent_id: parentId,
           p_content: itemData.description || '',
-          p_image_url: finalImageUrl,
+          p_image_url: croppedImageUrl,
+          p_original_image_url: originalImageUrl,
           p_crop_parameters: itemData.cropParameters || null,
           p_ai_metadata: itemData.aiMetadata || '',
         });
@@ -127,16 +144,29 @@ export const useContentItemStore = defineStore('contentItem', () => {
       isLoading.value = true;
       error.value = null;
 
-      let finalImageUrl: string | null = itemData.image_url || null;
-       if (itemData.imageFile) {
-        const uploadedUrl = await uploadContentItemImage(itemData.imageFile, cardId); // Pass cardId for path
+      let originalImageUrl: string | undefined = itemData.original_image_url || undefined;
+      let croppedImageUrl: string | undefined = itemData.image_url || undefined;
+      
+      // Upload new original image if provided
+      if (itemData.imageFile) {
+        const uploadedUrl = await uploadContentItemImage(itemData.imageFile, cardId, 'original');
         if (uploadedUrl) {
-            finalImageUrl = uploadedUrl;
+            originalImageUrl = uploadedUrl;
         } else {
-            throw new Error('Image upload failed during update.');
+            throw new Error('Original image upload failed during update.');
+        }
+      }
+      
+      // Upload new cropped image if provided
+      if (itemData.croppedImageFile) {
+        const uploadedUrl = await uploadContentItemImage(itemData.croppedImageFile, cardId, 'cropped');
+        if (uploadedUrl) {
+            croppedImageUrl = uploadedUrl;
+        } else {
+            throw new Error('Cropped image upload failed during update.');
         }
       } else if (itemData.imageUrl) {
-        finalImageUrl = itemData.imageUrl;
+        croppedImageUrl = itemData.imageUrl;
       }
       
       const { data, error: err } = await supabase
@@ -144,7 +174,8 @@ export const useContentItemStore = defineStore('contentItem', () => {
           p_content_item_id: contentItemId,
           p_name: itemData.name,
           p_content: itemData.description || '',
-          p_image_url: finalImageUrl, // Can be null to remove images
+          p_image_url: croppedImageUrl || null,
+          p_original_image_url: originalImageUrl || null,
           p_crop_parameters: itemData.cropParameters || null,
           p_ai_metadata: itemData.aiMetadata || '',
         });
@@ -186,7 +217,8 @@ export const useContentItemStore = defineStore('contentItem', () => {
   };
 
   // cardId is passed to construct user-specific path
-  const uploadContentItemImage = async (file: File, cardIdForPath: string): Promise<string | null> => {
+  // imageType: 'original' or 'cropped' to differentiate file naming
+  const uploadContentItemImage = async (file: File, cardIdForPath: string, imageType: 'original' | 'cropped' = 'cropped'): Promise<string | null> => {
     try {
       isLoading.value = true;
       error.value = null;
@@ -197,7 +229,7 @@ export const useContentItemStore = defineStore('contentItem', () => {
       }
 
       const fileExt = file.name.split('.').pop();
-      const fileName = `${uuidv4()}.${fileExt}`;
+      const fileName = `${uuidv4()}_${imageType}.${fileExt}`;
       // Path structure: user_id/card_id/content-item-images/fileName.ext
       const filePath = `${user.id}/${cardIdForPath}/content-item-images/${fileName}`;
       

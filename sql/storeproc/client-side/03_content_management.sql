@@ -12,6 +12,7 @@ RETURNS TABLE (
     name TEXT,
     content TEXT,
     image_url TEXT,
+    original_image_url TEXT,
     crop_parameters JSONB,
     ai_metadata TEXT,
     sort_order INTEGER,
@@ -27,6 +28,7 @@ BEGIN
         ci.name, 
         ci.content, 
         ci.image_url, 
+        ci.original_image_url,
         ci.crop_parameters,
         ci.ai_metadata,
         ci.sort_order,
@@ -52,6 +54,7 @@ RETURNS TABLE (
     name TEXT,
     content TEXT,
     image_url TEXT,
+    original_image_url TEXT,
     crop_parameters JSONB,
     ai_metadata TEXT,
     sort_order INTEGER,
@@ -67,6 +70,7 @@ BEGIN
         ci.name, 
         ci.content, 
         ci.image_url, 
+        ci.original_image_url,
         ci.crop_parameters,
         ci.ai_metadata,
         ci.sort_order,
@@ -85,6 +89,7 @@ CREATE OR REPLACE FUNCTION create_content_item(
     p_parent_id UUID DEFAULT NULL,
     p_content TEXT DEFAULT '',
     p_image_url TEXT DEFAULT NULL,
+    p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
     p_ai_metadata TEXT DEFAULT ''
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -128,6 +133,7 @@ BEGIN
         name,
         content,
         image_url,
+        original_image_url,
         crop_parameters,
         ai_metadata,
         sort_order
@@ -137,6 +143,7 @@ BEGIN
         p_name,
         p_content,
         p_image_url,
+        p_original_image_url,
         p_crop_parameters,
         p_ai_metadata,
         v_next_sort_order
@@ -153,6 +160,7 @@ CREATE OR REPLACE FUNCTION update_content_item(
     p_name TEXT DEFAULT NULL,
     p_content TEXT DEFAULT NULL,
     p_image_url TEXT DEFAULT NULL,
+    p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
     p_ai_metadata TEXT DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -175,6 +183,7 @@ BEGIN
         name = COALESCE(p_name, name),
         content = COALESCE(p_content, content),
         image_url = COALESCE(p_image_url, image_url),
+        original_image_url = COALESCE(p_original_image_url, original_image_url),
         crop_parameters = COALESCE(p_crop_parameters, crop_parameters),
         ai_metadata = COALESCE(p_ai_metadata, ai_metadata),
         updated_at = now()

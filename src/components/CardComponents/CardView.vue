@@ -36,13 +36,12 @@
                                 Card Artwork
                             </h3>
                             <div class="card-artwork-container relative">
-                                <CroppedImageDisplay
+                                <!-- Display the already-cropped image_url directly, no need to re-apply crop parameters -->
+                                <img
                                     v-if="displayImageForView"
-                                    :imageSrc="displayImageForView"
-                                    :cropParameters="cardProp.crop_parameters"
+                                    :src="displayImageForView"
                                     alt="Card Artwork"
-                                    imageClass="w-full h-full object-cover rounded-lg border border-slate-200 shadow-md"
-                                    :previewSize="400"
+                                    class="w-full h-full object-cover rounded-lg border border-slate-200 shadow-md"
                                 />
                                 <img
                                     v-else
@@ -184,7 +183,6 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import MyDialog from '@/components/MyDialog.vue';
 import CardCreateEditForm from './CardCreateEditForm.vue';
-import CroppedImageDisplay from '@/components/CroppedImageDisplay.vue';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
 import { getCardAspectRatio } from '@/utils/cardConfig';
 import { marked } from 'marked';

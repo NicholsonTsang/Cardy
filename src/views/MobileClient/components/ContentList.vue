@@ -9,13 +9,12 @@
       >
         <!-- Image -->
         <div class="card-image">
-          <CroppedImageDisplay
+          <!-- Display the already-cropped image_url directly from API -->
+          <img
             v-if="item.content_item_image_url"
-            :imageSrc="item.content_item_image_url"
-            :cropParameters="item.crop_parameters"
+            :src="item.content_item_image_url"
             :alt="item.content_item_name"
-            imageClass="image"
-            :previewSize="200"
+            class="image"
           />
           <div v-else class="image-placeholder">
             <i class="pi pi-image" />
@@ -50,7 +49,6 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import CroppedImageDisplay from '@/components/CroppedImageDisplay.vue'
 import { getContentAspectRatio } from '@/utils/cardConfig'
 
 interface ContentItem {

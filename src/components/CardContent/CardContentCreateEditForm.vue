@@ -86,16 +86,6 @@
                                         size="small"
                                         class="action-button-content"
                                     />
-                                    <Button 
-                                        v-if="formData.cropParameters"
-                                        label="Remove crop"
-                                        icon="pi pi-times"
-                                        @click="handleResetCrop"
-                                        severity="help"
-                                        text
-                                        size="small"
-                                        class="action-button-content"
-                                    />
                                 </div>
                                 
                                 <!-- Hidden File Input for Change Photo -->
@@ -266,12 +256,14 @@ const formData = ref({
     name: '',
     description: '',
     imageUrl: null,
+    originalImageUrl: null,
     aiMetadata: '',
     cropParameters: null
 });
 
 const previewImage = ref(null);
-const imageFile = ref(null);
+const imageFile = ref(null); // Original uploaded file (raw)
+const croppedImageFile = ref(null); // Cropped image file
 const originalData = ref(null);
 
 // Cropping state
@@ -292,6 +284,7 @@ watch(() => props.contentItem, (newVal) => {
             name: newVal.name || '',
             description: newVal.description || newVal.content || '',
             imageUrl: newVal.imageUrl || newVal.image_url || null,
+            originalImageUrl: newVal.originalImageUrl || newVal.original_image_url || null,
             aiMetadata: newVal.aiMetadata || newVal.ai_metadata || '',
             cropParameters: newVal.cropParameters || newVal.crop_parameters || null
         };
@@ -302,19 +295,9 @@ watch(() => props.contentItem, (newVal) => {
             cropParameters.value = formData.value.cropParameters;
         }
         
-        // Generate preview if we have crop parameters
-        if (formData.value.imageUrl && formData.value.cropParameters) {
-            generateCropPreview(formData.value.imageUrl, formData.value.cropParameters, 300)
-                .then(preview => {
-                    previewImage.value = preview;
-                })
-                .catch(error => {
-                    console.error('Error generating crop preview:', error);
-                    previewImage.value = formData.value.imageUrl;
-                });
-        } else {
-            previewImage.value = formData.value.imageUrl;
-        }
+        // For edit mode: Simply display the already-cropped imageUrl
+        // The imageUrl is the final cropped result, no need to re-generate preview
+        previewImage.value = formData.value.imageUrl;
     }
 }, { immediate: true });
 
@@ -336,24 +319,19 @@ const handleImageUpload = (event) => {
 
 // Re-crop existing image
 const handleReCrop = () => {
-    if (previewImage.value || formData.value.imageUrl) {
-        const imageSrc = previewImage.value || formData.value.imageUrl;
+    // Priority: imageFile (new upload) > originalImageUrl (saved) > imageUrl (fallback for old data)
+    const originalImage = imageFile.value || formData.value.originalImageUrl || formData.value.imageUrl;
+    
+    if (originalImage) {
+        // Use the original image file or URL
+        const imageSrc = imageFile.value ? URL.createObjectURL(imageFile.value) : originalImage;
         cropImageSrc.value = imageSrc;
-        // Set the existing crop parameters for the cropper
+        
+        // Set the existing crop parameters to restore previous crop state
         cropParameters.value = formData.value.cropParameters || null;
         showCropDialog.value = true;
-    }
-};
-
-// Reset crop parameters and use original image
-const handleResetCrop = () => {
-    cropParameters.value = null;
-    formData.value.cropParameters = null;
-    
-    // Regenerate preview with original image
-    if (imageFile.value || formData.value.imageUrl) {
-        const originalImageSrc = imageFile.value ? URL.createObjectURL(imageFile.value) : formData.value.imageUrl;
-        previewImage.value = originalImageSrc;
+    } else {
+        console.warn('No original image available for re-cropping');
     }
 };
 
@@ -431,7 +409,8 @@ const getFormData = () => {
     
     return {
         formData: formData.value,
-        imageFile: imageFile.value,
+        imageFile: imageFile.value, // Original uploaded file
+        croppedImageFile: croppedImageFile.value, // Cropped image file
         cropParameters: cropParameters.value
     };
 };
@@ -442,11 +421,13 @@ const resetForm = () => {
         name: '',
         description: '',
         imageUrl: null,
+        originalImageUrl: null,
         aiMetadata: '',
         cropParameters: null
     };
     previewImage.value = null;
     imageFile.value = null;
+    croppedImageFile.value = null;
     originalData.value = null;
     showCropDialog.value = false;
     cropImageSrc.value = null;
@@ -455,34 +436,42 @@ const resetForm = () => {
 
 // Cropping event handlers
 const handleCropConfirm = async () => {
-    // Wait for the component to be mounted and add a small delay
+    // Wait for the component to be mounted
     await nextTick();
-    await new Promise(resolve => setTimeout(resolve, 100));
     
-    if (imageCropperRef.value && typeof imageCropperRef.value.getCropParameters === 'function') {
-        // Get crop parameters instead of generating cropped image
-        const cropParams = imageCropperRef.value.getCropParameters();
-        
-        if (cropParams) {
-            // Store the crop parameters
-            cropParameters.value = cropParams;
+    if (imageCropperRef.value) {
+        try {
+            // Get both crop parameters AND cropped image
+            const cropParams = imageCropperRef.value.getCropParameters();
+            const croppedDataURL = imageCropperRef.value.getCroppedImage();
             
-            // Generate a preview for display
-            try {
-                const preview = await generateCropPreview(cropImageSrc.value, cropParams, 300);
-                if (preview) {
-                    previewImage.value = preview;
-                } else {
-                    console.warn('Failed to generate crop preview, using original image');
-                    previewImage.value = cropImageSrc.value;
+            if (cropParams && croppedDataURL) {
+                // Store the crop parameters
+                cropParameters.value = cropParams;
+                
+                // Convert cropped dataURL to File
+                const arr = croppedDataURL.split(',');
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
                 }
-            } catch (error) {
-                console.error('Error generating crop preview:', error);
-                previewImage.value = cropImageSrc.value;
+                croppedImageFile.value = new File([u8arr], 'cropped-image.jpg', { type: mime });
+                
+                // Use cropped image for preview
+                previewImage.value = croppedDataURL;
+                
+                console.log('Crop applied - parameters and cropped file saved');
+            } else {
+                console.error('Failed to get crop parameters or cropped image');
             }
+        } catch (error) {
+            console.error('Error generating crop:', error);
         }
     } else {
-        console.error('ImageCropper ref not available or getCropParameters method not found');
+        console.error('ImageCropper ref not available');
     }
     
     // Close the cropping dialog

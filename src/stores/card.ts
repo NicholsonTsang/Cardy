@@ -10,19 +10,22 @@ export interface Card {
     name: string;
     description: string;
     qr_code_position: string;
-    image_url: string | null;
+    image_url: string | null; // Cropped/processed image for display
+    original_image_url: string | null; // Original uploaded image (raw, uncropped)
+    crop_parameters?: any; // JSON object containing crop parameters
     conversation_ai_enabled: boolean;
     ai_prompt: string;
     created_at: string;
     updated_at: string;
-    // Add other fields from get_user_cards if necessary
 }
 
 export interface CardFormData {
     name: string;
     description: string;
-    imageFile?: File | null;
-    image_url?: string;
+    imageFile?: File | null; // New uploaded file (raw)
+    croppedImageFile?: File | null; // Cropped version of the image
+    image_url?: string; // Cropped image URL
+    original_image_url?: string; // Original image URL
     cropParameters?: any; // JSON object containing crop parameters for dynamic image cropping
     conversation_ai_enabled: boolean;
     ai_prompt: string;
@@ -80,43 +83,69 @@ export const useCardStore = defineStore('card', () => {
         }
         
         try {
-            const { data: { user } } = await supabase.auth.getUser(); // Destructure user directly
+            const { data: { user } } = await supabase.auth.getUser();
             
-            if (!user || !user.id) { // Check user and user.id
+            if (!user || !user.id) {
                 throw new Error('User not authenticated');
             }
             
-            let imageUrl: string | null = null; // Explicitly type imageUrl
+            let originalImageUrl: string | null = null;
+            let croppedImageUrl: string | null = null;
             
+            // Upload original image if provided
             if (cardData.imageFile) {
                 const fileExt = cardData.imageFile.name.split('.').pop();
-                const fileName = `${uuidv4()}.${fileExt}`;
-                // Updated filePath to include user.id
-                const filePath = `${user.id}/card-images/${fileName}`;
+                const originalFileName = `${uuidv4()}_original.${fileExt}`;
+                const originalFilePath = `${user.id}/card-images/${originalFileName}`;
                 
-                console.log('Uploading image to:', filePath);
+                console.log('Uploading original image to:', originalFilePath);
                 const { error: uploadError } = await supabase.storage
                     .from(USER_FILES_BUCKET)
-                    .upload(filePath, cardData.imageFile);
+                    .upload(originalFilePath, cardData.imageFile);
                     
                 if (uploadError) throw uploadError;
-                console.log('Image uploaded successfully');
+                console.log('Original image uploaded successfully');
 
                 const { data: { publicUrl } } = supabase.storage
                     .from(USER_FILES_BUCKET)
-                    .getPublicUrl(filePath);
+                    .getPublicUrl(originalFilePath);
                     
                 if (publicUrl) {
-                    imageUrl = publicUrl;
+                    originalImageUrl = publicUrl;
                 }
-                console.log('Image URL:', publicUrl);
+                console.log('Original image URL:', publicUrl);
+            }
+            
+            // Upload cropped image if provided
+            if (cardData.croppedImageFile) {
+                const fileExt = cardData.croppedImageFile.name.split('.').pop();
+                const croppedFileName = `${uuidv4()}_cropped.${fileExt}`;
+                const croppedFilePath = `${user.id}/card-images/${croppedFileName}`;
+                
+                console.log('Uploading cropped image to:', croppedFilePath);
+                const { error: uploadError } = await supabase.storage
+                    .from(USER_FILES_BUCKET)
+                    .upload(croppedFilePath, cardData.croppedImageFile);
+                    
+                if (uploadError) throw uploadError;
+                console.log('Cropped image uploaded successfully');
+
+                const { data: { publicUrl } } = supabase.storage
+                    .from(USER_FILES_BUCKET)
+                    .getPublicUrl(croppedFilePath);
+                    
+                if (publicUrl) {
+                    croppedImageUrl = publicUrl;
+                }
+                console.log('Cropped image URL:', publicUrl);
             }
             
             const { data, error: createError } = await supabase
                 .rpc('create_card', {
                     p_name: cardData.name,
                     p_description: cardData.description,
-                    p_image_url: imageUrl,
+                    p_image_url: croppedImageUrl,
+                    p_original_image_url: originalImageUrl,
                     p_crop_parameters: cardData.cropParameters || null,
                     p_conversation_ai_enabled: cardData.conversation_ai_enabled,
                     p_ai_prompt: cardData.ai_prompt,
@@ -125,7 +154,7 @@ export const useCardStore = defineStore('card', () => {
                 
             if (createError) throw createError;
             
-            return data; // Assuming data is the new card ID or object
+            return data;
         } catch (err: any) {
             console.error('Error adding card:', err);
             error.value = err.message || 'An unknown error occurred';
@@ -162,30 +191,53 @@ export const useCardStore = defineStore('card', () => {
         error.value = null;
         
         try {
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user || !user.id) { 
+                throw new Error('User not authenticated for image upload');
+            }
+            
+            let originalImageUrl: string | undefined = updateData.original_image_url;
+            let croppedImageUrl: string | undefined = updateData.image_url;
+            
+            // Upload new original image if provided
             if (updateData.imageFile) {
-                const { data: { user } } = await supabase.auth.getUser();
-                 if (!user || !user.id) { 
-                    throw new Error('User not authenticated for image upload');
-                }
                 const fileExt = updateData.imageFile.name.split('.').pop();
-                const fileName = `${uuidv4()}.${fileExt}`;
-                 // Updated filePath to include user.id
-                const filePath = `${user.id}/card-images/${fileName}`;
+                const originalFileName = `${uuidv4()}_original.${fileExt}`;
+                const originalFilePath = `${user.id}/card-images/${originalFileName}`;
                 
                 const { error: uploadError } = await supabase.storage
                     .from(USER_FILES_BUCKET)
-                    .upload(filePath, updateData.imageFile);
+                    .upload(originalFilePath, updateData.imageFile);
                     
                 if (uploadError) throw uploadError;
                 
                 const { data: { publicUrl } } = supabase.storage
                     .from(USER_FILES_BUCKET)
-                    .getPublicUrl(filePath);
+                    .getPublicUrl(originalFilePath);
                 
                 if (publicUrl) {
-                    updateData.image_url = publicUrl; // Ensure image_url is part of CardFormData
-                } else {
-                    updateData.image_url = updateData.image_url || undefined; // Keep existing or initialize
+                    originalImageUrl = publicUrl;
+                }
+            }
+            
+            // Upload new cropped image if provided
+            if (updateData.croppedImageFile) {
+                const fileExt = updateData.croppedImageFile.name.split('.').pop();
+                const croppedFileName = `${uuidv4()}_cropped.${fileExt}`;
+                const croppedFilePath = `${user.id}/card-images/${croppedFileName}`;
+                
+                const { error: uploadError } = await supabase.storage
+                    .from(USER_FILES_BUCKET)
+                    .upload(croppedFilePath, updateData.croppedImageFile);
+                    
+                if (uploadError) throw uploadError;
+                
+                const { data: { publicUrl } } = supabase.storage
+                    .from(USER_FILES_BUCKET)
+                    .getPublicUrl(croppedFilePath);
+                
+                if (publicUrl) {
+                    croppedImageUrl = publicUrl;
                 }
             }
             
@@ -193,7 +245,8 @@ export const useCardStore = defineStore('card', () => {
                 p_card_id: cardId,
                 p_name: updateData.name,
                 p_description: updateData.description,
-                p_image_url: updateData.image_url || null,
+                p_image_url: croppedImageUrl || null,
+                p_original_image_url: originalImageUrl || null,
                 p_crop_parameters: updateData.cropParameters || null,
                 p_conversation_ai_enabled: updateData.conversation_ai_enabled,
                 p_ai_prompt: updateData.ai_prompt,

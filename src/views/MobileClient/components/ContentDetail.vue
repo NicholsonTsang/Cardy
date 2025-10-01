@@ -4,13 +4,12 @@
     <div class="main-content">
       <!-- Hero Image -->
       <div class="hero-image">
-        <CroppedImageDisplay
+        <!-- Display the already-cropped image_url directly from API -->
+        <img
           v-if="content.content_item_image_url"
-          :imageSrc="content.content_item_image_url"
-          :cropParameters="content.crop_parameters"
+          :src="content.content_item_image_url"
           :alt="content.content_item_name"
-          imageClass="image"
-          :previewSize="400"
+          class="image"
         />
         <div v-else class="image-placeholder">
           <i class="pi pi-image" />
@@ -46,13 +45,12 @@
         >
           <!-- Thumbnail -->
           <div class="sub-item-image">
-            <CroppedImageDisplay
+            <!-- Display the already-cropped image_url directly from API -->
+            <img
               v-if="subItem.content_item_image_url"
-              :imageSrc="subItem.content_item_image_url"
-              :cropParameters="subItem.crop_parameters"
+              :src="subItem.content_item_image_url"
               :alt="subItem.content_item_name"
-              imageClass="thumbnail"
-              :previewSize="120"
+              class="thumbnail"
             />
             <div v-else class="thumbnail-placeholder">
               <i class="pi pi-file" />
@@ -84,7 +82,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import MobileAIAssistant from './MobileAIAssistant.vue'
-import CroppedImageDisplay from '@/components/CroppedImageDisplay.vue'
 import { getContentAspectRatio } from '@/utils/cardConfig'
 
 interface ContentItem {

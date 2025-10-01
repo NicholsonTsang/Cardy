@@ -31,36 +31,22 @@
                     
                     <!-- Single-Column Layout -->
                     <div class="space-y-6">
-                        <!-- Image Preview Section -->
-                        <div>
+                        <!-- Image Preview Section (Only when image exists) -->
+                        <div v-if="previewImage">
                             <div
-                                class="card-artwork-container border-2 border-dashed border-slate-300 rounded-xl p-4 transition-all duration-200 hover:border-blue-400 hover:bg-blue-50/50"
-                                :class="{ 
-                                    'border-solid border-blue-400 bg-blue-50/30': previewImage,
-                                    'bg-slate-50': !previewImage 
-                                }"
+                                class="card-artwork-container border-2 border-solid border-blue-400 bg-blue-50/30 rounded-xl transition-all duration-200"
                             >
                                 <!-- Image with QR Overlay Container -->
                                 <div class="relative w-full h-full">
                                     <img
-                                        v-if="previewImage"
                                         :src="previewImage"
                                         alt="Card Artwork Preview"
-                                        class="object-cover h-full w-full rounded-lg shadow-md" 
+                                        class="object-contain h-full w-full rounded-lg shadow-md" 
                                     />
-                                    <div v-else class="absolute inset-0 flex flex-col items-center justify-center text-slate-500 text-center">
-                                        <i class="pi pi-image text-3xl mb-3 opacity-50"></i>
-                                        <span class="text-sm font-medium">Upload artwork</span>
-                                        <span class="text-xs text-slate-400 mt-1">Drag & drop or click to browse</span>
-                                        <span class="text-xs text-slate-400 mt-2 flex items-center gap-1">
-                                            <i class="pi pi-crop text-xs"></i>
-                                            Auto-crop available for {{ getCardAspectRatioDisplay() }} ratio
-                                        </span>
-                                    </div>
                                     
                                     <!-- Mock QR Code Overlay -->
                                     <div 
-                                        v-if="formData.qr_code_position && previewImage"
+                                        v-if="formData.qr_code_position"
                                         class="absolute w-12 h-12 bg-white border-2 border-slate-300 rounded-lg shadow-lg flex items-center justify-center transition-all duration-300"
                                         :class="getQrCodePositionClass(formData.qr_code_position)"
                                     >
@@ -72,19 +58,19 @@
                             </div>
                         </div>
                         
-                        <!-- Requirements, Actions & QR Position Section -->
+                        <!-- Upload/Actions Section -->
                         <div class="space-y-4">
                             <!-- Image Requirements Info -->
-                            <div class="p-3 bg-blue-100 rounded-lg">
+                            <div v-if="!previewImage" class="p-3 bg-blue-100 rounded-lg">
                                 <p class="text-xs text-blue-800 flex items-start gap-2">
                                     <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
                                     <span><strong>Image Requirements:</strong> Upload JPG or PNG files up to 5MB. For best results, use images with a 2:3 aspect ratio (e.g., 800×1200px). You can crop and adjust your image after uploading.</span>
                                 </p>
                             </div>
                             
-                            <!-- Upload Interface -->
+                            <!-- Upload Interface or Action Buttons -->
                             <div>
-                                <!-- Upload Drop Zone (LinkedIn Style) -->
+                                <!-- Upload Drop Zone (LinkedIn Style) - Only when no image -->
                                 <div 
                                     v-if="!previewImage"
                                     class="upload-drop-zone"
@@ -119,7 +105,7 @@
                                     </div>
                                 </div>
                                 
-                                <!-- Action Buttons (when image exists) -->
+                                <!-- Action Buttons - Only when image exists -->
                                 <div v-else class="image-actions-only">
                                     <div class="image-actions">
                                         <Button 
@@ -137,16 +123,6 @@
                                             @click="handleReCrop"
                                             severity="info"
                                             outlined
-                                            size="small"
-                                            class="action-button"
-                                        />
-                                        <Button 
-                                            v-if="formData.cropParameters"
-                                            label="Remove crop"
-                                            icon="pi pi-times"
-                                            @click="handleResetCrop"
-                                            severity="help"
-                                            text
                                             size="small"
                                             class="action-button"
                                         />
@@ -357,10 +333,10 @@ const formData = reactive({
 });
 
 const previewImage = ref(null);
-const imageFile = ref(null);
+const imageFile = ref(null); // Original uploaded file (raw)
+const croppedImageFile = ref(null); // Cropped image file
 const showCropDialog = ref(false);
 const imageToCrop = ref(null);
-const originalImageFile = ref(null);
 const imageCropperRef = ref(null);
 const cropParameters = ref(null);
 
@@ -442,23 +418,12 @@ const initializeForm = () => {
             cropParameters.value = formData.cropParameters;
         }
         
-        // Generate preview if we have crop parameters
-        if (props.cardProp.image_url && formData.cropParameters) {
-            generateCropPreview(props.cardProp.image_url, formData.cropParameters, 300)
-                .then(preview => {
-                    previewImage.value = preview;
-                })
-                .catch(error => {
-                    console.error('Error generating crop preview:', error);
-                    previewImage.value = props.cardProp.image_url;
-                });
+        // For edit mode: Simply display the already-cropped image_url
+        // The image_url is the final cropped result, no need to re-generate preview
+        if (props.cardProp.image_url) {
+            previewImage.value = props.cardProp.image_url;
         } else {
-            // Set preview image if available
-            if (props.cardProp.image_url) {
-                previewImage.value = props.cardProp.image_url;
-            } else {
-                previewImage.value = null;
-            }
+            previewImage.value = null;
         }
         
         // Reset imageFile when initializing from existing card
@@ -478,11 +443,11 @@ const resetForm = () => {
     formData.cropParameters = null;
     previewImage.value = null;
     imageFile.value = null;
+    croppedImageFile.value = null;
     
     // Clean up crop-related variables
     showCropDialog.value = false;
     imageToCrop.value = null;
-    originalImageFile.value = null;
     cropParameters.value = null;
 };
 
@@ -500,7 +465,7 @@ const handleImageUpload = async (event) => {
         
         if (needsCropping) {
             // Store original file and show crop dialog
-            originalImageFile.value = file;
+            imageFile.value = file;
             const reader = new FileReader();
             reader.onload = (e) => {
                 imageToCrop.value = e.target.result;
@@ -532,31 +497,40 @@ const handleCropConfirm = async () => {
     // Wait for the component to be mounted
     await nextTick();
     
-    if (imageCropperRef.value && typeof imageCropperRef.value.getCropParameters === 'function') {
-        // Get crop parameters instead of generating cropped image
-        const cropParams = imageCropperRef.value.getCropParameters();
-        
-        if (cropParams) {
-            // Store the crop parameters
-            cropParameters.value = cropParams;
-            formData.cropParameters = cropParams;
+    if (imageCropperRef.value) {
+        try {
+            // Get both crop parameters AND cropped image
+            const cropParams = imageCropperRef.value.getCropParameters();
+            const croppedDataURL = imageCropperRef.value.getCroppedImage();
             
-            // Generate a preview for display
-            try {
-                const preview = await generateCropPreview(imageToCrop.value, cropParams, 300);
-                if (preview) {
-                    previewImage.value = preview;
-                } else {
-                    console.warn('Failed to generate crop preview, using original image');
-                    previewImage.value = imageToCrop.value;
+            if (cropParams && croppedDataURL) {
+                // Store the crop parameters
+                cropParameters.value = cropParams;
+                formData.cropParameters = cropParams;
+                
+                // Convert cropped dataURL to File
+                const arr = croppedDataURL.split(',');
+                const mime = arr[0].match(/:(.*?);/)[1];
+                const bstr = atob(arr[1]);
+                let n = bstr.length;
+                const u8arr = new Uint8Array(n);
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n);
                 }
-            } catch (error) {
-                console.error('Error generating crop preview:', error);
-                previewImage.value = imageToCrop.value;
+                croppedImageFile.value = new File([u8arr], 'cropped-image.jpg', { type: mime });
+                
+                // Use cropped image for preview
+                previewImage.value = croppedDataURL;
+                
+                console.log('Crop applied - parameters and cropped file saved');
+            } else {
+                console.error('Failed to get crop parameters or cropped image');
             }
+        } catch (error) {
+            console.error('Error generating crop:', error);
         }
     } else {
-        console.error('ImageCropper ref not available or getCropParameters method not found');
+        console.error('ImageCropper ref not available');
     }
     
     // Close crop dialog
@@ -564,43 +538,36 @@ const handleCropConfirm = async () => {
     
     // Clean up
     imageToCrop.value = null;
-    originalImageFile.value = null;
 };
 
 const handleCropCancelled = () => {
     // Close crop dialog and clean up
     showCropDialog.value = false;
     imageToCrop.value = null;
-    originalImageFile.value = null;
+    imageFile.value = null;
+    croppedImageFile.value = null;
 };
 
 // Re-crop existing image
 const handleReCrop = () => {
-    if (imageFile.value || props.cardProp?.image_url) {
+    // Priority: imageFile (new upload) > original_image_url (saved) > image_url (fallback for old data)
+    const originalImage = imageFile.value || props.cardProp?.original_image_url || props.cardProp?.image_url;
+    
+    if (originalImage) {
         // Use the original image file or URL
-        const imageSrc = imageFile.value ? URL.createObjectURL(imageFile.value) : props.cardProp.image_url;
+        const imageSrc = imageFile.value ? URL.createObjectURL(imageFile.value) : originalImage;
         imageToCrop.value = imageSrc;
         
-        // Set existing crop parameters if they exist, otherwise start fresh
-        if (formData.cropParameters) {
-            cropParameters.value = formData.cropParameters;
+        // Set existing crop parameters to restore previous crop state
+        if (formData.cropParameters || props.cardProp?.crop_parameters) {
+            cropParameters.value = formData.cropParameters || props.cardProp.crop_parameters;
         } else {
             cropParameters.value = null; // Start with fresh crop
         }
         
         showCropDialog.value = true;
-    }
-};
-
-// Reset crop parameters and use original image
-const handleResetCrop = () => {
-    cropParameters.value = null;
-    formData.cropParameters = null;
-    
-    // Regenerate preview with original image
-    if (imageFile.value || props.cardProp?.image_url) {
-        const originalImageSrc = imageFile.value ? URL.createObjectURL(imageFile.value) : props.cardProp.image_url;
-        previewImage.value = originalImageSrc;
+    } else {
+        console.warn('No original image available for re-cropping');
     }
 };
 
@@ -650,7 +617,6 @@ const processImageFile = (file) => {
     
     // Store the file
     imageFile.value = file;
-    originalImageFile.value = file;
     
     // Create preview URL
     const previewUrl = URL.createObjectURL(file);
@@ -670,14 +636,24 @@ const getPayload = () => {
         payload.qr_code_position = 'BR'; // Default to Bottom Right if invalid
     }
     
-    // Only add imageFile if it exists
+    // Add original image file if it exists
     if (imageFile.value) {
         payload.imageFile = imageFile.value;
     }
     
-    // Add image_url from props if available and no new image is being uploaded
-    if (!imageFile.value && props.cardProp && props.cardProp.image_url) {
-        payload.image_url = props.cardProp.image_url;
+    // Add cropped image file if it exists
+    if (croppedImageFile.value) {
+        payload.croppedImageFile = croppedImageFile.value;
+    }
+    
+    // Add image URLs from props if available and no new image is being uploaded
+    if (!imageFile.value && props.cardProp) {
+        if (props.cardProp.image_url) {
+            payload.image_url = props.cardProp.image_url;
+        }
+        if (props.cardProp.original_image_url) {
+            payload.original_image_url = props.cardProp.original_image_url;
+        }
     }
     
     // Add crop parameters if they exist
@@ -728,7 +704,7 @@ defineExpose({
 .card-artwork-container {
     aspect-ratio: var(--card-aspect-ratio, 2/3);
     width: 100%;
-    max-width: 240px; /* Constrain maximum width */
+    max-width: 300px; /* Increased from 240px for better preview */
     margin: 0 auto;
     position: relative;
     transition: all 0.3s ease;
@@ -736,12 +712,12 @@ defineExpose({
 
 /* Component-specific styles */
 .card-artwork-container img {
-    object-fit: cover;
+    /* object-fit is set in the template (object-contain) */
     transition: all 0.2s ease-in-out;
 }
 
 .card-artwork-container:hover img {
-    transform: scale(1.02);
+    transform: scale(1.01); /* Reduced from 1.02 for subtler effect */
 }
 
 .qr-position-tl { top: 8px; left: 8px; }

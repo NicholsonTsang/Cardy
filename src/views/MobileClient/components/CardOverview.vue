@@ -2,13 +2,12 @@
   <div class="card-overview">
     <!-- Background Image -->
     <div class="background-image">
-      <CroppedImageDisplay
+      <!-- Display the already-cropped image_url directly from API -->
+      <img
         v-if="card.card_image_url"
-        :imageSrc="card.card_image_url"
-        :cropParameters="card.crop_parameters"
+        :src="card.card_image_url"
         :alt="card.card_name"
-        imageClass="image"
-        :previewSize="600"
+        class="image"
       />
       <div class="gradient-overlay" />
     </div>
@@ -40,8 +39,6 @@
 </template>
 
 <script setup lang="ts">
-import CroppedImageDisplay from '@/components/CroppedImageDisplay.vue'
-
 interface Props {
   card: {
     card_name: string

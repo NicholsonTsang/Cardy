@@ -410,25 +410,44 @@ const getCroppedImage = () => {
     canvas.width = canvasWidth;
     canvas.height = canvasHeight;
     
-    // Clamp source coordinates to image bounds
-    const clampedSourceX = Math.max(0, Math.min(sourceX, naturalWidth));
-    const clampedSourceY = Math.max(0, Math.min(sourceY, naturalHeight));
-    const clampedSourceWidth = Math.min(sourceWidth, naturalWidth - clampedSourceX);
-    const clampedSourceHeight = Math.min(sourceHeight, naturalHeight - clampedSourceY);
+    // Handle out-of-boundary cropping correctly
+    // Calculate the actual source rectangle (clamped to image bounds)
+    const actualSourceX = Math.max(0, sourceX);
+    const actualSourceY = Math.max(0, sourceY);
+    const actualSourceRight = Math.min(sourceX + sourceWidth, naturalWidth);
+    const actualSourceBottom = Math.min(sourceY + sourceHeight, naturalHeight);
+    const actualSourceWidth = Math.max(0, actualSourceRight - actualSourceX);
+    const actualSourceHeight = Math.max(0, actualSourceBottom - actualSourceY);
+    
+    // Calculate where this maps to in the destination canvas
+    // If sourceX/Y is negative, the image starts partway into the crop frame
+    const destOffsetX = Math.max(0, -sourceX) / sourceWidth;
+    const destOffsetY = Math.max(0, -sourceY) / sourceHeight;
+    const destScaleX = actualSourceWidth / sourceWidth;
+    const destScaleY = actualSourceHeight / sourceHeight;
+    
+    const destX = destOffsetX * canvasWidth;
+    const destY = destOffsetY * canvasHeight;
+    const destWidth = destScaleX * canvasWidth;
+    const destHeight = destScaleY * canvasHeight;
     
     // Draw cropped image
     try {
+        // Fill with white background first
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(0, 0, canvasWidth, canvasHeight);
         
-        ctx.drawImage(
-            imageRef.value,
-            clampedSourceX,
-            clampedSourceY,
-            clampedSourceWidth,
-            clampedSourceHeight,
-            0, 0, canvasWidth, canvasHeight
-        );
+        // Only draw the image if there's an intersection with actual image
+        if (actualSourceWidth > 0 && actualSourceHeight > 0) {
+            ctx.drawImage(
+                imageRef.value,
+                actualSourceX,
+                actualSourceY,
+                actualSourceWidth,
+                actualSourceHeight,
+                destX, destY, destWidth, destHeight
+            );
+        }
         
         return canvas.toDataURL('image/jpeg', 0.9);
     } catch (error) {

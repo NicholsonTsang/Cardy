@@ -86,7 +86,8 @@ CREATE TABLE cards (
     name TEXT NOT NULL,
     description TEXT DEFAULT '' NOT NULL,
     qr_code_position "QRCodePosition" DEFAULT 'BR',
-    image_url TEXT,
+    image_url TEXT, -- Cropped/processed image for display
+    original_image_url TEXT, -- Original uploaded image (raw, uncropped)
     crop_parameters JSONB, -- JSON object containing crop parameters for dynamic image cropping (position, zoom, dimensions, etc.)
     conversation_ai_enabled BOOLEAN DEFAULT false,
     ai_prompt TEXT DEFAULT '' NOT NULL, -- Instructions for AI assistance when answering content item questions
@@ -107,7 +108,8 @@ CREATE TABLE content_items (
     parent_id UUID REFERENCES content_items(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     content TEXT DEFAULT '' NOT NULL, 
-    image_url TEXT,
+    image_url TEXT, -- Cropped/processed image for display
+    original_image_url TEXT, -- Original uploaded image (raw, uncropped)
     crop_parameters JSONB, -- JSON object containing crop parameters for dynamic image cropping (position, zoom, dimensions, etc.)
     ai_metadata TEXT DEFAULT '' NOT NULL,
     sort_order INTEGER DEFAULT 0,

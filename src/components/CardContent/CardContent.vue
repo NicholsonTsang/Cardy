@@ -399,18 +399,18 @@ const handleAddContentItem = async () => {
     if (cardContentCreateFormRef.value) {
         try {
             // Get the form data from the form component
-            const { formData, imageFile } = cardContentCreateFormRef.value.getFormData();
+            const { formData, imageFile, croppedImageFile } = cardContentCreateFormRef.value.getFormData();
             
-            // Upload image if there's one
+            // Prepare final form data with both image files
             let finalFormData = { ...formData };
             if (imageFile) {
-                const imageUrl = await contentItemStore.uploadContentItemImage(imageFile);
-                if (imageUrl) {
-                    finalFormData.imageUrl = imageUrl;
-                }
+                finalFormData.imageFile = imageFile;
+            }
+            if (croppedImageFile) {
+                finalFormData.croppedImageFile = croppedImageFile;
             }
             
-            // Create the content item
+            // Create the content item (store will handle image uploads)
             const result = await contentItemStore.createContentItem(props.cardId, finalFormData);
             
             if (result) {
@@ -437,18 +437,18 @@ const handleAddSubItem = async () => {
     if (cardContentSubItemCreateFormRef.value && parentItemId.value) {
         try {
             // Get the form data from the form component
-            const { formData, imageFile } = cardContentSubItemCreateFormRef.value.getFormData();
+            const { formData, imageFile, croppedImageFile } = cardContentSubItemCreateFormRef.value.getFormData();
             
-            // Upload image if there's one
+            // Prepare final form data with both image files
             let finalFormData = { ...formData };
             if (imageFile) {
-                const imageUrl = await contentItemStore.uploadContentItemImage(imageFile);
-                if (imageUrl) {
-                    finalFormData.imageUrl = imageUrl;
-                }
+                finalFormData.imageFile = imageFile;
+            }
+            if (croppedImageFile) {
+                finalFormData.croppedImageFile = croppedImageFile;
             }
             
-            // Create the sub-item
+            // Create the sub-item (store will handle image uploads)
             const result = await contentItemStore.createContentItem(props.cardId, finalFormData, parentItemId.value);
             
             if (result) {
@@ -478,18 +478,18 @@ const handleEditContentItem = async () => {
     if (cardContentEditFormRef.value && editingContentItem.value) {
         try {
             // Get the form data from the form component
-            const { formData, imageFile } = cardContentEditFormRef.value.getFormData();
+            const { formData, imageFile, croppedImageFile } = cardContentEditFormRef.value.getFormData();
             
-            // Upload image if there's a new one
+            // Prepare final form data with both image files
             let finalFormData = { ...formData };
             if (imageFile) {
-                const imageUrl = await contentItemStore.uploadContentItemImage(imageFile);
-                if (imageUrl) {
-                    finalFormData.imageUrl = imageUrl;
-                }
+                finalFormData.imageFile = imageFile;
+            }
+            if (croppedImageFile) {
+                finalFormData.croppedImageFile = croppedImageFile;
             }
             
-            // Update the content item
+            // Update the content item (store will handle image uploads)
             const result = await contentItemStore.updateContentItem(
                 editingContentItem.value.id,
                 finalFormData,

@@ -17,13 +17,12 @@
                         {{ contentItem?.parent_id ? 'Sub-item' : 'Content' }} Image
                     </h3>
                     <div class="content-image-container max-w-md mx-auto border border-slate-300 rounded-xl bg-white">
-                        <CroppedImageDisplay
+                        <!-- Display the already-cropped image_url directly, no need to re-apply crop parameters -->
+                        <img 
                             v-if="contentItem?.imageUrl || contentItem?.image_url"
-                            :imageSrc="contentItem?.imageUrl || contentItem?.image_url"
-                            :cropParameters="contentItem?.crop_parameters"
+                            :src="contentItem?.imageUrl || contentItem?.image_url"
                             alt="Content Item Image"
-                            imageClass="object-contain h-full w-full rounded-lg shadow-md"
-                            :previewSize="400"
+                            class="object-contain h-full w-full rounded-lg shadow-md" 
                         />
                         <img 
                             v-else
@@ -87,7 +86,6 @@
 <script setup>
 import { onMounted } from 'vue';
 import Button from 'primevue/button';
-import CroppedImageDisplay from '@/components/CroppedImageDisplay.vue';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
 import { getContentAspectRatio } from '@/utils/cardConfig';
 

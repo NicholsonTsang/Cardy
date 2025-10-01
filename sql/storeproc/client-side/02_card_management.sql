@@ -10,6 +10,7 @@ RETURNS TABLE (
     name TEXT,
     description TEXT,
     image_url TEXT,
+    original_image_url TEXT,
     crop_parameters JSONB,
     conversation_ai_enabled BOOLEAN,
     ai_prompt TEXT,
@@ -24,6 +25,7 @@ BEGIN
         c.name, 
         c.description, 
         c.image_url, 
+        c.original_image_url,
         c.crop_parameters,
         c.conversation_ai_enabled,
         c.ai_prompt,
@@ -41,6 +43,7 @@ CREATE OR REPLACE FUNCTION create_card(
     p_name TEXT,
     p_description TEXT,
     p_image_url TEXT DEFAULT NULL,
+    p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
     p_ai_prompt TEXT DEFAULT '',
@@ -55,6 +58,7 @@ BEGIN
         name,
         description,
         image_url,
+        original_image_url,
         crop_parameters,
         conversation_ai_enabled,
         ai_prompt,
@@ -64,6 +68,7 @@ BEGIN
         p_name,
         p_description,
         p_image_url,
+        p_original_image_url,
         p_crop_parameters,
         p_conversation_ai_enabled,
         p_ai_prompt,
@@ -151,6 +156,7 @@ CREATE OR REPLACE FUNCTION update_card(
     p_name TEXT DEFAULT NULL,
     p_description TEXT DEFAULT NULL,
     p_image_url TEXT DEFAULT NULL,
+    p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT NULL,
     p_ai_prompt TEXT DEFAULT NULL,
@@ -168,6 +174,7 @@ BEGIN
         name,
         description,
         image_url,
+        original_image_url,
         crop_parameters,
         conversation_ai_enabled,
         ai_prompt,
@@ -195,6 +202,11 @@ BEGIN
     
     IF p_image_url IS NOT NULL AND p_image_url != v_old_record.image_url THEN
         v_changes_made := v_changes_made || jsonb_build_object('image_url', jsonb_build_object('from', v_old_record.image_url, 'to', p_image_url));
+        has_changes := TRUE;
+    END IF;
+    
+    IF p_original_image_url IS NOT NULL AND p_original_image_url != v_old_record.original_image_url THEN
+        v_changes_made := v_changes_made || jsonb_build_object('original_image_url', jsonb_build_object('from', v_old_record.original_image_url, 'to', p_original_image_url));
         has_changes := TRUE;
     END IF;
     
@@ -229,6 +241,7 @@ BEGIN
         name = COALESCE(p_name, name),
         description = COALESCE(p_description, description),
         image_url = COALESCE(p_image_url, image_url),
+        original_image_url = COALESCE(p_original_image_url, original_image_url),
         crop_parameters = COALESCE(p_crop_parameters, crop_parameters),
         conversation_ai_enabled = COALESCE(p_conversation_ai_enabled, conversation_ai_enabled),
         ai_prompt = COALESCE(p_ai_prompt, ai_prompt),
