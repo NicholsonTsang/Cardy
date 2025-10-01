@@ -15,6 +15,7 @@
                 @mousedown="startDrag"
                 @touchstart="startDrag"
                 draggable="false"
+                crossorigin="anonymous"
             />
             
             <!-- Crop Overlay -->

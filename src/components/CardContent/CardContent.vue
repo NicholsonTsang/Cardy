@@ -30,6 +30,21 @@
                     /> -->
                 </div>
 
+                <!-- Drag Hint (dismissible, shown when items exist) -->
+                <div v-if="contentItems.length > 0 && !dragHintDismissed" class="flex items-start gap-2.5 px-3 py-2.5 mb-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
+                    <i class="pi pi-info-circle text-blue-600 mt-0.5 flex-shrink-0"></i>
+                    <span class="leading-relaxed flex-1">
+                        Tip: Drag items by their handle to reorder
+                    </span>
+                    <button 
+                        @click="dragHintDismissed = true"
+                        class="flex-shrink-0 text-blue-600 hover:text-blue-800 transition-colors"
+                        title="Dismiss"
+                    >
+                        <i class="pi pi-times text-xs"></i>
+                    </button>
+                </div>
+
                 <!-- Content Items -->
                 <draggable 
                     v-model="contentItems" 
@@ -40,64 +55,81 @@
                 >
                     <template #item="{ element: item, index }">
                         <div class="group">
-                            <!-- Parent Content Item -->
+                            <!-- Parent Content Item Card -->
                             <div 
-                                class="p-4 cursor-pointer hover:bg-slate-50 flex items-center rounded-lg border border-slate-200 transition-all duration-200 hover:shadow-md hover:border-blue-300"
+                                class="relative rounded-lg border border-slate-200 transition-all duration-200 overflow-hidden bg-white hover:shadow-md hover:border-blue-300"
                                 :class="{ 
-                                    'bg-blue-50 border-blue-300 shadow-md': selectedContentItem === item.id,
-                                    'bg-white': selectedContentItem !== item.id
-                                }"
-                                @click="() => {
-                                    selectedContentItem = item.id;
-                                    expandContentItems[index] = !expandContentItems[index];
+                                    'border-l-4 border-l-blue-500 shadow-md': selectedContentItem === item.id,
+                                    'hover:bg-slate-50': selectedContentItem !== item.id
                                 }"
                             >
-                                <!-- Drag Handle -->
-                                <i class="pi pi-bars text-slate-400 mr-3 cursor-move parent-drag-handle hover:text-slate-600 transition-colors" 
-                                   title="Drag to reorder"></i>
-                                
-                                <!-- Expand/Collapse Icon -->
-                                <i 
-                                    :class="expandContentItems[index] ? 'pi pi-angle-down' : 'pi pi-angle-right'"
-                                    class="mr-3 text-slate-600 transition-transform" 
-                                    v-if="item.children && item.children.length > 0"
-                                ></i>
-                                <div v-else class="w-4 mr-3"></div>
-                                
-                                <!-- Thumbnail -->
-                                <div v-if="item.image_url" class="mr-3 flex-shrink-0">
-                                    <div class="content-thumbnail-container">
-                                        <CroppedImageDisplay
-                                            :imageSrc="item.image_url"
-                                            :cropParameters="item.crop_parameters"
-                                            :alt="item.name"
-                                            imageClass="w-full h-full object-cover rounded-lg border border-slate-200"
-                                            :previewSize="80"
-                                        />
+                                <!-- Main Content Item -->
+                                <div class="flex items-start gap-3 p-3">
+                                    <!-- Left: Drag Handle -->
+                                    <div 
+                                        class="flex-shrink-0 flex items-center justify-center w-6 h-6 mt-1 rounded hover:bg-slate-100 cursor-move parent-drag-handle transition-all group/drag"
+                                        title="Drag to reorder"
+                                        @click.stop
+                                    >
+                                        <i class="pi pi-bars text-slate-400 text-xs group-hover/drag:text-slate-600 transition-colors"></i>
                                     </div>
-                                </div>
-                                <div v-else class="w-10 h-10 bg-slate-100 rounded-lg border border-slate-200 mr-3 flex items-center justify-center">
-                                    <i class="pi pi-image text-slate-400"></i>
-                                </div>
-                                
-                                <!-- Content Info -->
-                                <div class="flex-1 min-w-0">
-                                    <div class="font-medium text-slate-900 truncate group-hover:text-blue-600 transition-colors">{{ item.name }}</div>
-                                    <div class="text-sm text-slate-500 flex items-center gap-2 mt-1">
-                                        <span v-if="item.children && item.children.length > 0">
-                                            {{ item.children.length }} sub-item{{ item.children.length !== 1 ? 's' : '' }}
-                                        </span>
-                                        <span v-else class="text-slate-400">No sub-items</span>
+                                    
+                                    <!-- Center: Thumbnail + Content -->
+                                    <div 
+                                        class="flex-1 flex items-start gap-3 cursor-pointer min-w-0"
+                                        @click="() => {
+                                            selectedContentItem = item.id;
+                                            expandContentItems[index] = !expandContentItems[index];
+                                        }"
+                                    >
+                                        <!-- Thumbnail -->
+                                        <div v-if="item.image_url" class="flex-shrink-0">
+                                            <div class="w-16 rounded-lg overflow-hidden border border-slate-200" style="aspect-ratio: 4/3">
+                                                <img
+                                                    :src="item.image_url"
+                                                    :alt="item.name"
+                                                    class="w-full h-full object-cover"
+                                                />
+                                            </div>
+                                        </div>
+                                        <div v-else class="w-16 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center flex-shrink-0" style="aspect-ratio: 4/3">
+                                            <i class="pi pi-image text-slate-400"></i>
+                                        </div>
+                                        
+                                        <!-- Content Info -->
+                                        <div class="flex-1 min-w-0 pt-0.5">
+                                            <div class="font-medium text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                                                {{ item.name }}
+                                            </div>
+                                            <div v-if="item.children && item.children.length > 0" class="text-xs text-slate-500 mt-1">
+                                                {{ item.children.length }} sub-item{{ item.children.length !== 1 ? 's' : '' }}
+                                            </div>
+                                        </div>
                                     </div>
+                                    
+                                    <!-- Right: Expand/Collapse -->
+                                    <button
+                                        v-if="item.children && item.children.length > 0"
+                                        class="flex-shrink-0 w-6 h-6 mt-1 flex items-center justify-center rounded hover:bg-slate-100 transition-colors"
+                                        @click.stop="expandContentItems[index] = !expandContentItems[index]"
+                                        :title="expandContentItems[index] ? 'Collapse' : 'Expand'"
+                                    >
+                                        <i 
+                                            :class="expandContentItems[index] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
+                                            class="text-slate-500 text-xs transition-transform"
+                                        ></i>
+                                    </button>
                                 </div>
                                 
-                                <!-- Action Buttons -->
-                                <div class="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                <!-- Add Sub-item Button -->
+                                <div class="px-3 pb-3 border-t border-slate-100">
                                     <Button 
                                         icon="pi pi-plus" 
+                                        label="Add Sub-item"
                                         severity="secondary" 
-                                        title="Add Sub-item"
-                                        class="w-8 h-8 p-0"
+                                        outlined
+                                        size="small"
+                                        class="w-full mt-2 text-xs"
                                         @click.stop="() => {
                                             showAddItemDialog = true;
                                             parentItemId = item.id;
@@ -118,46 +150,50 @@
                                     >
                                         <template #item="{ element: child, index: childIndex }">
                                             <div 
-                                                class="group p-3 cursor-pointer hover:bg-slate-50 flex items-center rounded-lg border border-slate-200 transition-all duration-200 hover:shadow-sm hover:border-blue-300"
+                                                class="group relative rounded-lg border border-slate-200 bg-white transition-all duration-200 hover:shadow-sm hover:border-blue-300"
                                                 :class="{ 
-                                                    'bg-blue-50 border-blue-300 shadow-sm': selectedContentItem === child.id,
-                                                    'bg-white': selectedContentItem !== child.id
+                                                    'border-l-4 border-l-blue-500 shadow-sm': selectedContentItem === child.id
                                                 }"
-                                                @click="selectedContentItem = child.id"
                                             >
-                                                <!-- Drag Handle -->
-                                                <i class="pi pi-bars text-slate-400 mr-3 cursor-move child-drag-handle hover:text-slate-600 transition-colors"
-                                                   title="Drag to reorder"></i>
-                                                
-                                                <!-- Thumbnail -->
-                                                <div v-if="child.image_url" class="mr-3 flex-shrink-0">
-                                                    <img 
-                                                        :src="child.image_url" 
-                                                        :alt="child.name"
-                                                        class="w-8 h-8 object-cover rounded-lg border border-slate-200"
-                                                    />
-                                                </div>
-                                                <div v-else class="w-8 h-8 bg-slate-100 rounded-lg border border-slate-200 mr-3 flex items-center justify-center">
-                                                    <i class="pi pi-image text-slate-400 text-sm"></i>
-                                                </div>
-                                                
-                                                <!-- Sub-item Info -->
-                                                <div class="flex-1 min-w-0">
-                                                    <div class="font-medium text-slate-800 truncate group-hover:text-blue-600 transition-colors">{{ child.name }}</div>
-                                                    <div class="text-sm text-slate-500 flex items-center gap-2 mt-1">
-                                                        <span>Sub-item {{ childIndex + 1 }}</span>
+                                                <div class="flex items-center gap-2.5 p-2.5">
+                                                    <!-- Drag Handle -->
+                                                    <div 
+                                                        class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move child-drag-handle transition-all group/drag"
+                                                        title="Drag to reorder"
+                                                        @click.stop
+                                                    >
+                                                        <i class="pi pi-bars text-slate-400 text-[10px] group-hover/drag:text-slate-600 transition-colors"></i>
                                                     </div>
-                                                </div>
-                                                
-                                                <!-- Action Buttons -->
-                                                <div class="flex gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button 
-                                                        icon="pi pi-trash" 
-                                                        severity="danger" 
-                                                        title="Delete"
-                                                        class="w-7 h-7 p-0"
-                                                        @click.stop="() => confirmDeleteContentItem(child.id, child.name, 'sub-item')" 
-                                                    />
+                                                    
+                                                    <!-- Thumbnail -->
+                                                    <div 
+                                                        class="flex-shrink-0 cursor-pointer"
+                                                        @click="selectedContentItem = child.id"
+                                                    >
+                                                        <div v-if="child.image_url" class="w-12 rounded-md overflow-hidden border border-slate-200" style="aspect-ratio: 4/3">
+                                                            <img 
+                                                                :src="child.image_url" 
+                                                                :alt="child.name"
+                                                                class="w-full h-full object-cover"
+                                                            />
+                                                        </div>
+                                                        <div v-else class="w-12 bg-slate-100 rounded-md border border-slate-200 flex items-center justify-center" style="aspect-ratio: 4/3">
+                                                            <i class="pi pi-image text-slate-400 text-xs"></i>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <!-- Sub-item Info -->
+                                                    <div 
+                                                        class="flex-1 min-w-0 cursor-pointer"
+                                                        @click="selectedContentItem = child.id"
+                                                    >
+                                                        <div class="font-medium text-sm text-slate-800 truncate group-hover:text-blue-600 transition-colors">
+                                                            {{ child.name }}
+                                                        </div>
+                                                        <div class="text-xs text-slate-500 mt-0.5">
+                                                            Sub-item {{ childIndex + 1 }}
+                                                        </div>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </template>
@@ -309,6 +345,7 @@ const expandContentItems = ref([]);
 const contentItems = ref([]);
 const parentItemId = ref(null);
 const editingContentItem = ref(null);
+const dragHintDismissed = ref(false);
 
 const cardContentCreateFormRef = ref(null);
 const cardContentSubItemCreateFormRef = ref(null);
