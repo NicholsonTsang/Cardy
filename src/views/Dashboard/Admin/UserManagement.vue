@@ -115,63 +115,75 @@
           :rowsPerPageOptions="[10, 20, 50, 100]"
           currentPageReportTemplate="Showing {first} to {last} of {totalRecords} users"
           class="users-table"
+          responsiveLayout="scroll"
+          :scrollable="true"
+          scrollHeight="flex"
         >
-          <Column field="user_email" header="Email" sortable style="min-width: 250px">
+          <Column field="user_email" header="Email" sortable :style="{ width: '280px', minWidth: '250px' }" frozen>
             <template #body="{ data }">
               <div class="flex items-center gap-2">
-                <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-medium">
+                <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
                   {{ data.user_email.charAt(0).toUpperCase() }}
                 </div>
-                <span class="font-medium text-slate-900">{{ data.user_email }}</span>
+                <span class="font-medium text-slate-900 truncate">{{ data.user_email }}</span>
               </div>
             </template>
           </Column>
 
-          <Column field="role" header="Role" sortable style="min-width: 120px">
+          <Column field="role" header="Role" sortable :style="{ width: '140px', minWidth: '140px' }">
             <template #body="{ data }">
               <Tag 
                 :value="getRoleLabel(data.role)"
                 :severity="getRoleSeverity(data.role)"
+                class="whitespace-nowrap"
               />
             </template>
           </Column>
 
-          <Column field="cards_count" header="Cards" sortable style="min-width: 100px">
+          <Column field="cards_count" header="Cards" sortable :style="{ width: '100px', minWidth: '100px' }" class="text-center">
             <template #body="{ data }">
-              <span class="text-slate-900 font-medium">{{ data.cards_count || 0 }}</span>
+              <div class="text-center">
+                <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                  {{ data.cards_count || 0 }}
+                </span>
+              </div>
             </template>
           </Column>
 
-          <Column field="issued_cards_count" header="Issued Cards" sortable style="min-width: 130px">
+          <Column field="issued_cards_count" header="Issued" sortable :style="{ width: '100px', minWidth: '100px' }" class="text-center">
             <template #body="{ data }">
-              <span class="text-slate-900 font-medium">{{ data.issued_cards_count || 0 }}</span>
+              <div class="text-center">
+                <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                  {{ data.issued_cards_count || 0 }}
+                </span>
+              </div>
             </template>
           </Column>
 
-          <Column field="created_at" header="Registered" sortable style="min-width: 150px">
+          <Column field="created_at" header="Registered" sortable :style="{ width: '140px', minWidth: '140px' }">
             <template #body="{ data }">
-              <span class="text-slate-600 text-sm">{{ formatDate(data.created_at) }}</span>
+              <span class="text-slate-600 text-xs whitespace-nowrap">{{ formatDate(data.created_at) }}</span>
             </template>
           </Column>
 
-          <Column field="last_sign_in_at" header="Last Sign In" sortable style="min-width: 150px">
+          <Column field="last_sign_in_at" header="Last Sign In" sortable :style="{ width: '140px', minWidth: '140px' }">
             <template #body="{ data }">
-              <span class="text-slate-600 text-sm">
+              <span class="text-slate-600 text-xs whitespace-nowrap">
                 {{ data.last_sign_in_at ? formatDate(data.last_sign_in_at) : 'Never' }}
               </span>
             </template>
           </Column>
 
-          <Column header="Actions" style="min-width: 100px">
+          <Column header="Actions" :style="{ width: '100px', minWidth: '100px' }" frozen alignFrozen="right" class="text-center">
             <template #body="{ data }">
-              <div class="flex items-center gap-2">
+              <div class="flex items-center justify-center gap-2">
                 <Button 
                   icon="pi pi-cog"
                   size="small"
                   outlined
                   severity="secondary"
                   @click="manageUserRole(data)"
-                  v-tooltip="'Manage Role'"
+                  v-tooltip.top="'Manage Role'"
                 />
               </div>
             </template>
@@ -185,7 +197,7 @@
       v-model:visible="showRoleDialog"
       modal
       header="Manage User Role"
-      :style="{ width: '500px' }"
+      :style="{ width: '90vw', maxWidth: '500px' }"
       @hide="closeRoleDialog"
     >
       <div v-if="selectedUser" class="space-y-4">
@@ -474,14 +486,49 @@ onMounted(() => {
   color: #475569;
   font-weight: 600;
   font-size: 0.875rem;
-  padding: 1rem;
+  padding: 0.75rem 1rem;
+  white-space: nowrap;
 }
 
 :deep(.users-table .p-datatable-tbody > tr > td) {
-  padding: 1rem;
+  padding: 0.75rem 1rem;
+  vertical-align: middle;
 }
 
 :deep(.users-table .p-datatable-tbody > tr:hover) {
   background-color: #f8fafc;
+}
+
+/* Frozen columns styling */
+:deep(.users-table .p-frozen-column) {
+  background-color: white;
+  z-index: 1;
+}
+
+:deep(.users-table .p-datatable-thead .p-frozen-column) {
+  background-color: #f8fafc;
+}
+
+/* Scrollable table wrapper */
+:deep(.users-table .p-datatable-wrapper) {
+  overflow-x: auto;
+}
+
+/* Responsive adjustments for smaller screens */
+@media (max-width: 768px) {
+  :deep(.users-table .p-datatable-thead > tr > th) {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+  
+  :deep(.users-table .p-datatable-tbody > tr > td) {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+/* Table container max height */
+:deep(.users-table .p-datatable-scrollable-body) {
+  max-height: calc(100vh - 400px);
+  min-height: 400px;
 }
 </style>
