@@ -1,5 +1,7 @@
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
+// Use Deno's built-in serve
 import { corsHeaders } from '../_shared/cors.ts'
+
+const serve = Deno.serve
 
 serve(async (req) => {
   // Handle CORS preflight requests

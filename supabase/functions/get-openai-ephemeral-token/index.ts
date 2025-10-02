@@ -1,6 +1,7 @@
-import { serve } from 'https://deno.land/std@0.177.0/http/server.ts'
-// Import from the correct relative path
+// Use Deno's built-in serve
 import { corsHeaders } from '../_shared/cors.ts'
+
+const serve = Deno.serve
 
 console.log('Create Ephemeral Key function booting up...')
 
