@@ -21,6 +21,7 @@ export interface AuditLogFilters {
   target_user_id: string | null;
   start_date: Date | null;
   end_date: Date | null;
+  search_query: string | null;
 }
 
 // Action types matching stored procedures
@@ -56,7 +57,10 @@ export const useAuditLogStore = defineStore('auditLog', () => {
         p_limit: limit,
         p_offset: offset,
         p_user_id: filters.admin_user_id || filters.target_user_id || null,
-        p_user_role: null // Get all roles
+        p_user_role: null, // Get all roles
+        p_search_query: filters.search_query || filters.action_type || null, // Support both search patterns
+        p_start_date: filters.start_date?.toISOString() || null,
+        p_end_date: filters.end_date?.toISOString() || null
       })
 
       if (fetchError) throw fetchError
@@ -74,26 +78,8 @@ export const useAuditLogStore = defineStore('auditLog', () => {
         created_at: log.created_at
       }))
 
-      // Apply client-side filtering if needed
-      let filteredData = transformedData
-      if (filters.action_type) {
-        filteredData = filteredData.filter((log: any) => 
-          log.description.toLowerCase().includes(filters.action_type!.toLowerCase())
-        )
-      }
-      if (filters.start_date) {
-        filteredData = filteredData.filter((log: any) => 
-          new Date(log.created_at) >= filters.start_date!
-        )
-      }
-      if (filters.end_date) {
-        filteredData = filteredData.filter((log: any) => 
-          new Date(log.created_at) <= filters.end_date!
-        )
-      }
-
-      auditLogs.value = filteredData
-      return filteredData
+      auditLogs.value = transformedData
+      return transformedData
     } catch (err: any) {
       console.error('Error fetching audit logs:', err)
       error.value = err.message || 'Failed to fetch audit logs'

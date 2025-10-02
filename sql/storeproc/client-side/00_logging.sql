@@ -45,7 +45,10 @@ CREATE OR REPLACE FUNCTION get_operations_log(
     p_limit INTEGER DEFAULT 100,
     p_offset INTEGER DEFAULT 0,
     p_user_id UUID DEFAULT NULL,
-    p_user_role "UserRole" DEFAULT NULL
+    p_user_role "UserRole" DEFAULT NULL,
+    p_search_query TEXT DEFAULT NULL,
+    p_start_date TIMESTAMPTZ DEFAULT NULL,
+    p_end_date TIMESTAMPTZ DEFAULT NULL
 )
 RETURNS TABLE (
     id UUID,
@@ -80,6 +83,11 @@ BEGIN
     WHERE 
         (p_user_id IS NULL OR ol.user_id = p_user_id)
         AND (p_user_role IS NULL OR ol.user_role = p_user_role)
+        AND (p_search_query IS NULL OR 
+             ol.operation ILIKE '%' || p_search_query || '%' OR
+             au.email ILIKE '%' || p_search_query || '%')
+        AND (p_start_date IS NULL OR ol.created_at >= p_start_date)
+        AND (p_end_date IS NULL OR ol.created_at <= p_end_date)
     ORDER BY ol.created_at DESC
     LIMIT p_limit OFFSET p_offset;
 END;

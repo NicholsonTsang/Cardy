@@ -33,44 +33,64 @@
         </div>
 
         <!-- Activity Filters -->
-        <div class="mb-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Dropdown
-            v-model="activityFilters.type"
-            :options="activityTypes"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Filter by type"
-            class="w-full"
-            @change="onFilterChange"
-          />
-          <Calendar
-            v-model="activityFilters.startDate"
-            placeholder="Start date"
-            :showTime="true"
-            :maxDate="activityFilters.endDate || new Date()"
-            class="w-full"
-            @date-select="onFilterChange"
-          />
-          <Calendar
-            v-model="activityFilters.endDate"
-            placeholder="End date"
-            :showTime="true"
-            :minDate="activityFilters.startDate"
-            :maxDate="new Date()"
-            class="w-full"
-            @date-select="onFilterChange"
-          />
-          <Button
-            label="Clear Filters"
-            text
-            @click="() => {
-              activityFilters.type = null;
-              activityFilters.startDate = null;
-              activityFilters.endDate = null;
-              onFilterChange();
-            }"
-            class="text-slate-600 hover:bg-slate-50"
-          />
+        <div class="mb-6 space-y-4">
+          <!-- Search Bar -->
+          <div class="flex gap-2">
+            <IconField iconPosition="left" class="flex-1">
+              <InputIcon>
+                <i class="pi pi-search" />
+              </InputIcon>
+              <InputText
+                v-model="activityFilters.searchQuery"
+                placeholder="Search by email or operation (e.g., user@example.com or 'Created card')"
+                class="w-full"
+                @keyup.enter="onFilterChange"
+              />
+            </IconField>
+            <Button
+              label="Search"
+              icon="pi pi-search"
+              @click="onFilterChange"
+              :loading="isLoadingActivity"
+            />
+          </div>
+
+          <!-- Other Filters -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Dropdown
+              v-model="activityFilters.type"
+              :options="activityTypes"
+              optionLabel="label"
+              optionValue="value"
+              placeholder="Filter by type"
+              class="w-full"
+              @change="onFilterChange"
+            />
+            <Calendar
+              v-model="activityFilters.startDate"
+              placeholder="Start date"
+              :showTime="true"
+              :maxDate="activityFilters.endDate || new Date()"
+              class="w-full"
+              @date-select="onFilterChange"
+            />
+            <Calendar
+              v-model="activityFilters.endDate"
+              placeholder="End date"
+              :showTime="true"
+              :minDate="activityFilters.startDate"
+              :maxDate="new Date()"
+              class="w-full"
+              @date-select="onFilterChange"
+            />
+            <Button
+              label="Clear Filters"
+              icon="pi pi-times"
+              text
+              @click="clearFilters"
+              class="text-slate-600 hover:bg-slate-50"
+            />
+          </div>
         </div>
 
         <!-- Activity List -->
@@ -178,12 +198,16 @@ import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
 import Calendar from 'primevue/calendar'
 import Paginator from 'primevue/paginator'
+import InputText from 'primevue/inputtext'
+import IconField from 'primevue/iconfield'
+import InputIcon from 'primevue/inputicon'
 
 const toast = useToast()
 const auditLogStore = useAuditLogStore()
 
 // Activity filters and pagination
 const activityFilters = ref({
+  searchQuery: '', // Search by email or operation text
   type: null, // null means all types
   startDate: null,
   endDate: null,
@@ -229,6 +253,7 @@ const loadActivity = async () => {
   isLoadingActivity.value = true
   try {
     const data = await auditLogStore.fetchAuditLogs({
+      search_query: activityFilters.value.searchQuery || null,
       action_type: activityFilters.value.type,
       admin_user_id: activityFilters.value.adminUserId,
       target_user_id: activityFilters.value.targetUserId,
@@ -240,6 +265,7 @@ const loadActivity = async () => {
 
     // Get total count
     const count = await auditLogStore.fetchAuditLogsCount({
+      search_query: activityFilters.value.searchQuery || null,
       action_type: activityFilters.value.type,
       admin_user_id: activityFilters.value.adminUserId,
       target_user_id: activityFilters.value.targetUserId,
@@ -284,11 +310,21 @@ const refreshData = async () => {
   await loadActivity()
 }
 
+// Clear all filters
+const clearFilters = () => {
+  activityFilters.value.searchQuery = ''
+  activityFilters.value.type = null
+  activityFilters.value.startDate = null
+  activityFilters.value.endDate = null
+  onFilterChange()
+}
+
 // Export data functionality
 const exportData = async () => {
   try {
     // Get all activity data without pagination
     const allData = await auditLogStore.fetchAuditLogs({
+      search_query: activityFilters.value.searchQuery || null,
       action_type: activityFilters.value.type,
       admin_user_id: activityFilters.value.adminUserId,
       target_user_id: activityFilters.value.targetUserId,

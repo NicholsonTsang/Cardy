@@ -27,6 +27,9 @@ export interface OperationsLogStats {
 export interface OperationsLogFilters {
   user_id: string | null
   user_role: 'admin' | 'cardIssuer' | 'user' | null
+  search_query: string | null
+  start_date: Date | null
+  end_date: Date | null
 }
 
 export const useOperationsLogStore = defineStore('operationsLog', () => {
@@ -50,7 +53,10 @@ export const useOperationsLogStore = defineStore('operationsLog', () => {
         p_limit: limit,
         p_offset: offset,
         p_user_id: filters.user_id || null,
-        p_user_role: filters.user_role || null
+        p_user_role: filters.user_role || null,
+        p_search_query: filters.search_query || null,
+        p_start_date: filters.start_date?.toISOString() || null,
+        p_end_date: filters.end_date?.toISOString() || null
       })
 
       if (fetchError) throw fetchError
