@@ -66,78 +66,78 @@
 
       <!-- User Management Section -->
       <div>
-        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-          <i class="pi pi-users text-blue-600"></i>
-          User Management
+        <h2 class="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 flex items-center gap-2">
+          <i class="pi pi-users text-blue-600 text-sm sm:text-base"></i>
+          <span class="truncate">User Management</span>
         </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
           <template v-if="isLoadingStats">
-            <div v-for="i in 6" :key="i" class="bg-white rounded-xl shadow-lg p-4 border border-slate-200 animate-pulse">
-              <div class="h-20"></div>
+            <div v-for="i in 6" :key="i" class="bg-white rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 border border-slate-200 animate-pulse">
+              <div class="h-16 sm:h-20"></div>
             </div>
           </template>
           <template v-else>
             <!-- Total Users -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
+            <div class="bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
+              <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Total Users</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.total_users }}</h3>
+                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">Total Users</p>
+                  <h3 class="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate">{{ stats.total_users }}</h3>
                 </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-users text-white text-sm"></i>
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md sm:shadow-lg flex-shrink-0">
+                  <i class="pi pi-users text-white text-xs sm:text-sm"></i>
                 </div>
               </div>
-              <div class="mt-2">
-                <span class="text-xs text-slate-500">All registered</span>
+              <div class="mt-1.5 sm:mt-2">
+                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">All registered</span>
               </div>
             </div>
 
             <!-- Daily New Users -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
+            <div class="bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
+              <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Daily New Users</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.daily_new_users }}</h3>
+                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">Daily New</p>
+                  <h3 class="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate">{{ stats.daily_new_users }}</h3>
                 </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-user-plus text-white text-sm"></i>
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-md sm:shadow-lg flex-shrink-0">
+                  <i class="pi pi-user-plus text-white text-xs sm:text-sm"></i>
                 </div>
               </div>
-              <div class="mt-2">
-                <span class="text-xs text-slate-500">Today</span>
+              <div class="mt-1.5 sm:mt-2">
+                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">Today</span>
               </div>
             </div>
 
             <!-- Weekly New Users -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
+            <div class="bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
+              <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Weekly New Users</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.weekly_new_users }}</h3>
+                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">Weekly New</p>
+                  <h3 class="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate">{{ stats.weekly_new_users }}</h3>
                 </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-calendar-plus text-white text-sm"></i>
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center shadow-md sm:shadow-lg flex-shrink-0">
+                  <i class="pi pi-calendar-plus text-white text-xs sm:text-sm"></i>
                 </div>
               </div>
-              <div class="mt-2">
-                <span class="text-xs text-slate-500">Last 7 days</span>
+              <div class="mt-1.5 sm:mt-2">
+                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">Last 7 days</span>
               </div>
             </div>
 
             <!-- Monthly New Users -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
+            <div class="bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
+              <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Monthly New Users</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.monthly_new_users }}</h3>
+                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">Monthly New</p>
+                  <h3 class="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate">{{ stats.monthly_new_users }}</h3>
                 </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-user-edit text-white text-sm"></i>
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-md sm:shadow-lg flex-shrink-0">
+                  <i class="pi pi-user-edit text-white text-xs sm:text-sm"></i>
                 </div>
               </div>
-              <div class="mt-2">
-                <span class="text-xs text-slate-500">Last 30 days</span>
+              <div class="mt-1.5 sm:mt-2">
+                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">Last 30 days</span>
               </div>
             </div>
           </template>

@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Thu Oct  2 16:22:07 CST 2025
+-- Generated: Fri Oct  3 02:02:32 CST 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -59,7 +59,20 @@ BEGIN
             'admin_get_all_users', 'admin_update_print_request_status',
             'admin_get_all_print_requests', 'admin_add_print_notes',
             'admin_get_batch_details', 'admin_get_all_batches',
-            'admin_disable_batch', 'admin_generate_cards_for_batch'
+            'admin_disable_batch', 'admin_generate_cards_for_batch',
+            'admin_get_user_by_email', 'admin_get_user_cards', 'admin_get_card_content',
+            'admin_get_card_batches', 'admin_get_batch_issued_cards',
+            
+            -- Logging functions
+            'log_operation', 'get_operations_log', 'get_operations_log_stats',
+            
+            -- Auth and utility functions
+            'handle_new_user', 'get_card_content_items', 'get_content_item_by_id',
+            'get_public_card_preview_content', 'create_batch_checkout_payment',
+            'confirm_batch_payment_by_session', 'create_pending_batch_payment',
+            'confirm_pending_batch_payment', 'get_card_preview_content',
+            'admin_get_system_stats_enhanced', 'admin_change_user_role',
+            'admin_manual_verification'
         )
     LOOP
         EXECUTE r.drop_cmd;
@@ -961,7 +974,14 @@ RETURNS TABLE (
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_caller_role TEXT;
 BEGIN
+    -- Get caller's role
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
     RETURN QUERY
     SELECT 
         cb.id,
@@ -986,7 +1006,9 @@ BEGIN
     FROM card_batches cb
     LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
     JOIN cards c ON cb.card_id = c.id
-    WHERE cb.card_id = p_card_id AND c.user_id = auth.uid()
+    -- Allow access if user owns the card OR if user is admin
+    WHERE cb.card_id = p_card_id 
+      AND (c.user_id = auth.uid() OR v_caller_role = 'admin')
     GROUP BY cb.id, cb.card_id, cb.batch_name, cb.batch_number, cb.cards_count, cb.is_disabled, 
              cb.payment_required, cb.payment_completed, cb.payment_amount_cents, cb.payment_completed_at, 
              cb.payment_waived, cb.payment_waived_by, cb.payment_waived_at, cb.payment_waiver_reason,
@@ -1009,7 +1031,14 @@ RETURNS TABLE (
     batch_number INTEGER,
     batch_is_disabled BOOLEAN
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_caller_role TEXT;
 BEGIN
+    -- Get caller's role
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
     RETURN QUERY
     SELECT 
         ic.id,
@@ -1025,7 +1054,9 @@ BEGIN
     FROM issue_cards ic
     JOIN card_batches cb ON ic.batch_id = cb.id
     JOIN cards c ON ic.card_id = c.id
-    WHERE ic.card_id = p_card_id AND c.user_id = auth.uid()
+    -- Allow access if user owns the card OR if user is admin
+    WHERE ic.card_id = p_card_id 
+      AND (c.user_id = auth.uid() OR v_caller_role = 'admin')
     ORDER BY ic.issue_at DESC;
 END;
 $$;
@@ -1634,15 +1665,22 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_user_id UUID;
+    v_caller_role TEXT;
 BEGIN
-    -- Check if the user owns the card
+    -- Get caller's role
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
+    -- Check if the card exists
     SELECT user_id INTO v_user_id FROM cards WHERE id = p_card_id;
     
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Card not found.';
     END IF;
     
-    IF v_user_id != auth.uid() THEN
+    -- Allow access if user owns the card OR if user is admin
+    IF v_user_id != auth.uid() AND v_caller_role != 'admin' THEN
         RAISE EXCEPTION 'Not authorized to preview this card.';
     END IF;
     
@@ -1654,7 +1692,7 @@ BEGIN
 END;
 $$;
 
--- Get card content for preview mode (card owner only)
+-- Get card content for preview mode (card owner or admin)
 CREATE OR REPLACE FUNCTION get_card_preview_content(p_card_id UUID)
 RETURNS TABLE (
     card_name TEXT,
@@ -1676,8 +1714,9 @@ RETURNS TABLE (
 DECLARE
     v_user_id UUID;
     v_caller_id UUID;
+    v_caller_role TEXT;
 BEGIN
-    -- Get the caller's user ID
+    -- Get the caller's user ID and role
     v_caller_id := auth.uid();
     
     -- Verify the user is authenticated
@@ -1685,14 +1724,20 @@ BEGIN
         RAISE EXCEPTION 'Authentication required for card preview.';
     END IF;
     
-    -- Check if the user owns the card
+    -- Get caller's role
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = v_caller_id;
+    
+    -- Check if the card exists
     SELECT user_id INTO v_user_id FROM cards WHERE id = p_card_id;
     
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Card not found.';
     END IF;
     
-    IF v_user_id != v_caller_id THEN
+    -- Allow access if user owns the card OR if user is admin
+    IF v_user_id != v_caller_id AND v_caller_role != 'admin' THEN
         RAISE EXCEPTION 'Not authorized to preview this card.';
     END IF;
     
@@ -1953,6 +1998,11 @@ DROP FUNCTION IF EXISTS admin_manual_verification CASCADE;
 DROP FUNCTION IF EXISTS get_user_activity_summary CASCADE;
 DROP FUNCTION IF EXISTS admin_get_all_users CASCADE;
 DROP FUNCTION IF EXISTS admin_update_user_role CASCADE;
+DROP FUNCTION IF EXISTS admin_get_user_by_email CASCADE;
+DROP FUNCTION IF EXISTS admin_get_user_cards CASCADE;
+DROP FUNCTION IF EXISTS admin_get_card_content CASCADE;
+DROP FUNCTION IF EXISTS admin_get_card_batches CASCADE;
+DROP FUNCTION IF EXISTS admin_get_batch_issued_cards CASCADE;
 
 -- =================================================================
 -- ADMIN FUNCTIONS
@@ -1971,7 +2021,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can waive batch payments.';
@@ -2037,7 +2087,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can create feedback entries.';
@@ -2049,7 +2099,7 @@ BEGIN
     END IF;
 
     -- Get admin email
-    SELECT email INTO v_admin_email FROM auth.users WHERE id = auth.uid();
+    SELECT email INTO v_admin_email FROM auth.users WHERE auth.users.id = auth.uid();
 
     -- Insert into appropriate feedback table
     IF p_entity_type = 'verification' THEN
@@ -2101,7 +2151,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can view feedback history.';
@@ -2174,7 +2224,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can view system statistics.';
@@ -2252,7 +2302,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can view all print requests.';
@@ -2305,7 +2355,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can update print request status.';
@@ -2335,7 +2385,7 @@ BEGIN
         DECLARE
             v_admin_email VARCHAR(255);
         BEGIN
-            SELECT email INTO v_admin_email FROM auth.users WHERE id = auth.uid();
+            SELECT email INTO v_admin_email FROM auth.users WHERE auth.users.id = auth.uid();
             
             INSERT INTO print_request_feedbacks (
                 print_request_id,
@@ -2377,7 +2427,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can view pending verifications.';
@@ -2773,7 +2823,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can change user roles.';
@@ -2849,7 +2899,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can view verification feedbacks.';
@@ -2885,7 +2935,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can view print request feedbacks.';
@@ -2916,7 +2966,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can reset user verification.';
@@ -2970,7 +3020,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can manually verify users.';
@@ -3011,7 +3061,7 @@ BEGIN
         DECLARE
             v_admin_email VARCHAR(255);
         BEGIN
-            SELECT email INTO v_admin_email FROM auth.users WHERE id = auth.uid();
+            SELECT email INTO v_admin_email FROM auth.users WHERE auth.users.id = auth.uid();
             
             INSERT INTO verification_feedbacks (
                 user_id,
@@ -3064,7 +3114,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can view user activity summary.';
@@ -3128,7 +3178,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can view all users.';
@@ -3169,7 +3219,7 @@ BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
     FROM auth.users
-    WHERE id = auth.uid();
+    WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can update user roles.';
@@ -3204,6 +3254,230 @@ BEGIN
     PERFORM log_operation('Changed user role from ' || COALESCE(v_old_role, 'none') || ' to ' || p_new_role || ' for user: ' || v_user_email);
 
     RETURN TRUE;
+END;
+$$;
+
+-- =================================================================
+-- ADMIN USER CARD VIEWING FUNCTIONS
+-- Functions for admins to view user cards (read-only)
+-- =================================================================
+
+-- Get user ID by email
+CREATE OR REPLACE FUNCTION admin_get_user_by_email(p_email TEXT)
+RETURNS TABLE (
+    user_id UUID,
+    email TEXT,
+    role TEXT,
+    created_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_caller_role TEXT;
+BEGIN
+    -- Check if caller is admin
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
+    IF v_caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Admin access required';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        au.id AS user_id,
+        au.email::TEXT,
+        COALESCE(au.raw_user_meta_data->>'role', 'user')::TEXT AS role,
+        au.created_at
+    FROM auth.users au
+    WHERE LOWER(au.email) = LOWER(p_email);
+END;
+$$;
+
+-- Get all cards for a specific user (admin view)
+CREATE OR REPLACE FUNCTION admin_get_user_cards(p_user_id UUID)
+RETURNS TABLE (
+    id UUID,
+    name TEXT,
+    description TEXT,
+    image_url TEXT,
+    original_image_url TEXT,
+    crop_parameters JSONB,
+    conversation_ai_enabled BOOLEAN,
+    ai_prompt TEXT,
+    qr_code_position TEXT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ,
+    user_email TEXT
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_caller_role TEXT;
+BEGIN
+    -- Check if caller is admin
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
+    IF v_caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Admin access required';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        c.id, 
+        c.name, 
+        c.description, 
+        c.image_url, 
+        c.original_image_url,
+        c.crop_parameters,
+        c.conversation_ai_enabled,
+        c.ai_prompt,
+        c.qr_code_position::TEXT,
+        c.created_at,
+        c.updated_at,
+        au.email::TEXT AS user_email
+    FROM cards c
+    JOIN auth.users au ON c.user_id = au.id
+    WHERE c.user_id = p_user_id
+    ORDER BY c.created_at DESC;
+END;
+$$;
+
+-- Get card content items for admin viewing
+CREATE OR REPLACE FUNCTION admin_get_card_content(p_card_id UUID)
+RETURNS TABLE (
+    id UUID,
+    card_id UUID,
+    parent_id UUID,
+    name TEXT,
+    content TEXT,
+    image_url TEXT,
+    original_image_url TEXT,
+    crop_parameters JSONB,
+    ai_metadata TEXT,
+    sort_order INTEGER,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_caller_role TEXT;
+BEGIN
+    -- Check if caller is admin
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
+    IF v_caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Admin access required';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        ci.id, 
+        ci.card_id,
+        ci.parent_id,
+        ci.name, 
+        ci.content, 
+        ci.image_url, 
+        ci.original_image_url,
+        ci.crop_parameters,
+        ci.ai_metadata,
+        ci.sort_order,
+        ci.created_at,
+        ci.updated_at
+    FROM content_items ci
+    WHERE ci.card_id = p_card_id
+    ORDER BY 
+        CASE WHEN ci.parent_id IS NULL THEN ci.sort_order ELSE 999999 END,
+        ci.parent_id NULLS FIRST,
+        ci.sort_order ASC,
+        ci.created_at ASC;
+END;
+$$;
+
+-- Get card batches for admin viewing
+CREATE OR REPLACE FUNCTION admin_get_card_batches(p_card_id UUID)
+RETURNS TABLE (
+    id UUID,
+    card_id UUID,
+    batch_name TEXT,
+    batch_number INTEGER,
+    payment_status TEXT,
+    is_disabled BOOLEAN,
+    cards_count BIGINT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_caller_role TEXT;
+BEGIN
+    -- Check if caller is admin
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
+    IF v_caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Admin access required';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        cb.id,
+        cb.card_id,
+        cb.batch_name,
+        cb.batch_number,
+        CASE
+            WHEN cb.payment_waived THEN 'WAIVED'
+            WHEN cb.payment_completed THEN 'PAID'
+            WHEN cb.payment_required THEN 'PENDING'
+            ELSE 'PENDING'
+        END AS payment_status,
+        cb.is_disabled,
+        COUNT(ic.id) AS cards_count,
+        cb.created_at,
+        cb.updated_at
+    FROM card_batches cb
+    LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
+    WHERE cb.card_id = p_card_id
+    GROUP BY cb.id, cb.card_id, cb.batch_name, cb.batch_number, 
+             cb.payment_waived, cb.payment_completed, cb.payment_required, 
+             cb.is_disabled, cb.created_at, cb.updated_at
+    ORDER BY cb.created_at DESC;
+END;
+$$;
+
+-- Get issued cards for a batch (admin view)
+CREATE OR REPLACE FUNCTION admin_get_batch_issued_cards(p_batch_id UUID)
+RETURNS TABLE (
+    id UUID,
+    batch_id UUID,
+    card_id UUID,
+    active BOOLEAN,
+    issue_at TIMESTAMPTZ,
+    active_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_caller_role TEXT;
+BEGIN
+    -- Check if caller is admin
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
+    IF v_caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Admin access required';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        ic.id,
+        ic.batch_id,
+        ic.card_id,
+        ic.active,
+        ic.issue_at,
+        ic.active_at
+    FROM issue_cards ic
+    WHERE ic.batch_id = p_batch_id
+    ORDER BY ic.issue_at DESC;
 END;
 $$;
 

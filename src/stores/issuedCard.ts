@@ -42,8 +42,9 @@ export interface CardBatch {
 
 export const enum PrintRequestStatus {
   SUBMITTED = 'SUBMITTED',
+  PAYMENT_PENDING = 'PAYMENT_PENDING',
   PROCESSING = 'PROCESSING',
-  SHIPPING = 'SHIPPING',
+  SHIPPED = 'SHIPPED',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
 }

@@ -55,7 +55,20 @@ BEGIN
             'admin_get_all_users', 'admin_update_print_request_status',
             'admin_get_all_print_requests', 'admin_add_print_notes',
             'admin_get_batch_details', 'admin_get_all_batches',
-            'admin_disable_batch', 'admin_generate_cards_for_batch'
+            'admin_disable_batch', 'admin_generate_cards_for_batch',
+            'admin_get_user_by_email', 'admin_get_user_cards', 'admin_get_card_content',
+            'admin_get_card_batches', 'admin_get_batch_issued_cards',
+            
+            -- Logging functions
+            'log_operation', 'get_operations_log', 'get_operations_log_stats',
+            
+            -- Auth and utility functions
+            'handle_new_user', 'get_card_content_items', 'get_content_item_by_id',
+            'get_public_card_preview_content', 'create_batch_checkout_payment',
+            'confirm_batch_payment_by_session', 'create_pending_batch_payment',
+            'confirm_pending_batch_payment', 'get_card_preview_content',
+            'admin_get_system_stats_enhanced', 'admin_change_user_role',
+            'admin_manual_verification'
         )
     LOOP
         EXECUTE r.drop_cmd;

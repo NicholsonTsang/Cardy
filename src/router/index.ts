@@ -61,6 +61,12 @@ const router = createRouter({
           component: () => import('@/views/Dashboard/Admin/HistoryLogs.vue'),
           meta: { requiredRole: 'admin' }
         },
+        {
+          path: 'admin/user-cards',
+          name: 'admin-user-cards',
+          component: () => import('@/views/Dashboard/Admin/UserCardsView.vue'),
+          meta: { requiredRole: 'admin' }
+        },
       ]
     },
     {

@@ -279,7 +279,8 @@ const selectedRequest = ref(null)
 const statusOptions = [
   { label: 'All Statuses', value: null },
   { label: 'Submitted', value: 'SUBMITTED' },
-  { label: 'In Production', value: 'IN_PRODUCTION' },
+  { label: 'Payment Pending', value: 'PAYMENT_PENDING' },
+  { label: 'Processing', value: 'PROCESSING' },
   { label: 'Shipped', value: 'SHIPPED' },
   { label: 'Completed', value: 'COMPLETED' },
   { label: 'Cancelled', value: 'CANCELLED' }
@@ -287,7 +288,8 @@ const statusOptions = [
 
 const statusUpdateOptions = [
   { label: 'Submitted', value: 'SUBMITTED' },
-  { label: 'In Production', value: 'IN_PRODUCTION' },
+  { label: 'Payment Pending', value: 'PAYMENT_PENDING' },
+  { label: 'Processing', value: 'PROCESSING' },
   { label: 'Shipped', value: 'SHIPPED' },
   { label: 'Completed', value: 'COMPLETED' },
   { label: 'Cancelled', value: 'CANCELLED' }
@@ -365,9 +367,10 @@ const getPrintStatusSeverity = (status) => {
   switch (status) {
     case 'COMPLETED': return 'success'
     case 'CANCELLED': return 'danger'
-    case 'IN_PRODUCTION': return 'info'
+    case 'PROCESSING': return 'info'
     case 'SHIPPED': return 'warning'
     case 'SUBMITTED': return 'secondary'
+    case 'PAYMENT_PENDING': return 'contrast'
     default: return 'secondary'
   }
 }

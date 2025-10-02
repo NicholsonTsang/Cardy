@@ -696,16 +696,16 @@
                 <span class="text-xs font-medium text-slate-700 mt-2 text-center">Processing</span>
               </div>
               
-              <!-- Step 3: SHIPPING -->
+              <!-- Step 3: SHIPPED -->
               <div class="flex flex-col items-center z-20">
                 <div 
                   class="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-medium transition-all duration-300"
-                  :class="getPrintStepStatusClass('SHIPPING', selectedPrintRequestData.status)"
+                  :class="getPrintStepStatusClass('SHIPPED', selectedPrintRequestData.status)"
                 >
-                  <i v-if="isPrintStepCompleted('SHIPPING', selectedPrintRequestData.status)" class="pi pi-check text-xs"></i>
+                  <i v-if="isPrintStepCompleted('SHIPPED', selectedPrintRequestData.status)" class="pi pi-check text-xs"></i>
                   <span v-else>3</span>
                 </div>
-                <span class="text-xs font-medium text-slate-700 mt-2 text-center">Shipping</span>
+                <span class="text-xs font-medium text-slate-700 mt-2 text-center">Shipped</span>
               </div>
               
               <!-- Step 4: COMPLETED -->
@@ -1421,8 +1421,9 @@ const formatDate = (dateString) => {
 const getPrintStatusLabel = (status) => {
   const labels = {
     SUBMITTED: 'Submitted',
+    PAYMENT_PENDING: 'Payment Pending',
     PROCESSING: 'Processing', 
-    SHIPPING: 'Shipping',
+    SHIPPED: 'Shipped',
     COMPLETED: 'Delivered',
     CANCELLED: 'Cancelled'
   }
@@ -1431,18 +1432,19 @@ const getPrintStatusLabel = (status) => {
 
 const getPrintStatusSeverity = (status) => {
   const severities = {
-    SUBMITTED: 'info',        // Blue
-    PROCESSING: 'warning',    // Orange/Yellow
-    SHIPPING: 'primary',       // Purple/Blue
-    COMPLETED: 'success',     // Green
-    CANCELLED: 'danger'       // Red
+    SUBMITTED: 'info',           // Blue
+    PAYMENT_PENDING: 'contrast', // Dark
+    PROCESSING: 'warning',       // Orange/Yellow
+    SHIPPED: 'primary',          // Purple/Blue
+    COMPLETED: 'success',        // Green
+    CANCELLED: 'danger'          // Red
   }
   return severities[status] || 'secondary'
 }
 
 // Print request progress bar helpers
 const isPrintStepCompleted = (stepStatus, currentStatus) => {
-  const statusOrder = ['SUBMITTED', 'PROCESSING', 'SHIPPING', 'COMPLETED']
+  const statusOrder = ['SUBMITTED', 'PAYMENT_PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED']
   const stepIndex = statusOrder.indexOf(stepStatus)
   const currentIndex = statusOrder.indexOf(currentStatus)
   
@@ -1470,7 +1472,7 @@ const getPrintStepStatusClass = (stepStatus, currentStatus) => {
 }
 
 const getPrintProgressWidth = (currentStatus) => {
-  const statusOrder = ['SUBMITTED', 'PROCESSING', 'SHIPPING', 'COMPLETED']
+  const statusOrder = ['SUBMITTED', 'PAYMENT_PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED']
   const currentIndex = statusOrder.indexOf(currentStatus)
   
   if (currentStatus === 'CANCELLED') {
@@ -1479,8 +1481,8 @@ const getPrintProgressWidth = (currentStatus) => {
   
   if (currentIndex === -1) return '0%'
   
-  // Calculate progress based on 4 steps
-  const totalSteps = 4
+  // Calculate progress based on 5 steps
+  const totalSteps = 5
   const percentage = (currentIndex / (totalSteps - 1)) * 100
   return `${Math.min(100, Math.max(0, percentage))}%`
 }
@@ -1488,8 +1490,9 @@ const getPrintProgressWidth = (currentStatus) => {
 const getPrintStatusDescription = (status) => {
   const descriptions = {
     SUBMITTED: 'Your print request has been received and is being reviewed.',
+    PAYMENT_PENDING: 'Awaiting payment confirmation for print request.',
     PROCESSING: 'Your cards are being printed and prepared for shipping.',
-    SHIPPING: 'Your cards are currently shipping and are on their way to you.',
+    SHIPPED: 'Your cards have been shipped and are on their way to you.',
     COMPLETED: 'Your cards have been delivered successfully.',
     CANCELLED: 'This print request has been cancelled.'
   }

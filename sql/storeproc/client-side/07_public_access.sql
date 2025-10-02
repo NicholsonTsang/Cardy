@@ -106,15 +106,22 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_user_id UUID;
+    v_caller_role TEXT;
 BEGIN
-    -- Check if the user owns the card
+    -- Get caller's role
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
+    -- Check if the card exists
     SELECT user_id INTO v_user_id FROM cards WHERE id = p_card_id;
     
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Card not found.';
     END IF;
     
-    IF v_user_id != auth.uid() THEN
+    -- Allow access if user owns the card OR if user is admin
+    IF v_user_id != auth.uid() AND v_caller_role != 'admin' THEN
         RAISE EXCEPTION 'Not authorized to preview this card.';
     END IF;
     
@@ -126,7 +133,7 @@ BEGIN
 END;
 $$;
 
--- Get card content for preview mode (card owner only)
+-- Get card content for preview mode (card owner or admin)
 CREATE OR REPLACE FUNCTION get_card_preview_content(p_card_id UUID)
 RETURNS TABLE (
     card_name TEXT,
@@ -148,8 +155,9 @@ RETURNS TABLE (
 DECLARE
     v_user_id UUID;
     v_caller_id UUID;
+    v_caller_role TEXT;
 BEGIN
-    -- Get the caller's user ID
+    -- Get the caller's user ID and role
     v_caller_id := auth.uid();
     
     -- Verify the user is authenticated
@@ -157,14 +165,20 @@ BEGIN
         RAISE EXCEPTION 'Authentication required for card preview.';
     END IF;
     
-    -- Check if the user owns the card
+    -- Get caller's role
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = v_caller_id;
+    
+    -- Check if the card exists
     SELECT user_id INTO v_user_id FROM cards WHERE id = p_card_id;
     
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Card not found.';
     END IF;
     
-    IF v_user_id != v_caller_id THEN
+    -- Allow access if user owns the card OR if user is admin
+    IF v_user_id != v_caller_id AND v_caller_role != 'admin' THEN
         RAISE EXCEPTION 'Not authorized to preview this card.';
     END IF;
     

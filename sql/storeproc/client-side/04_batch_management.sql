@@ -119,7 +119,14 @@ RETURNS TABLE (
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_caller_role TEXT;
 BEGIN
+    -- Get caller's role
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
     RETURN QUERY
     SELECT 
         cb.id,
@@ -144,7 +151,9 @@ BEGIN
     FROM card_batches cb
     LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
     JOIN cards c ON cb.card_id = c.id
-    WHERE cb.card_id = p_card_id AND c.user_id = auth.uid()
+    -- Allow access if user owns the card OR if user is admin
+    WHERE cb.card_id = p_card_id 
+      AND (c.user_id = auth.uid() OR v_caller_role = 'admin')
     GROUP BY cb.id, cb.card_id, cb.batch_name, cb.batch_number, cb.cards_count, cb.is_disabled, 
              cb.payment_required, cb.payment_completed, cb.payment_amount_cents, cb.payment_completed_at, 
              cb.payment_waived, cb.payment_waived_by, cb.payment_waived_at, cb.payment_waiver_reason,
@@ -167,7 +176,14 @@ RETURNS TABLE (
     batch_number INTEGER,
     batch_is_disabled BOOLEAN
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_caller_role TEXT;
 BEGIN
+    -- Get caller's role
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
     RETURN QUERY
     SELECT 
         ic.id,
@@ -183,7 +199,9 @@ BEGIN
     FROM issue_cards ic
     JOIN card_batches cb ON ic.batch_id = cb.id
     JOIN cards c ON ic.card_id = c.id
-    WHERE ic.card_id = p_card_id AND c.user_id = auth.uid()
+    -- Allow access if user owns the card OR if user is admin
+    WHERE ic.card_id = p_card_id 
+      AND (c.user_id = auth.uid() OR v_caller_role = 'admin')
     ORDER BY ic.issue_at DESC;
 END;
 $$;
