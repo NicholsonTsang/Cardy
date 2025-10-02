@@ -15,22 +15,11 @@ END $$;
 DO $$ BEGIN
     CREATE TYPE public."PrintRequestStatus" AS ENUM (
         'SUBMITTED',
+        'PAYMENT_PENDING',
         'PROCESSING',
-        'SHIPPING',
+        'SHIPPED',
         'COMPLETED',
         'CANCELLED'
-    );
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
-    WHEN insufficient_privilege THEN NULL;
-END $$;
-
-DO $$ BEGIN
-    CREATE TYPE public."ProfileStatus" AS ENUM (
-        'NOT_SUBMITTED',
-        'PENDING_REVIEW',
-        'APPROVED',
-        'REJECTED'
     );
 EXCEPTION
     WHEN duplicate_object THEN NULL;
@@ -52,32 +41,14 @@ END $$;
 
 -- Drop tables if they exist
 DROP TABLE IF EXISTS print_request_feedbacks CASCADE;
-DROP TABLE IF EXISTS verification_feedbacks CASCADE;
 DROP TABLE IF EXISTS print_requests CASCADE;
 DROP TABLE IF EXISTS issue_cards CASCADE;
 DROP TABLE IF EXISTS card_batches CASCADE;
 DROP TABLE IF EXISTS content_items CASCADE;
 DROP TABLE IF EXISTS cards CASCADE;
-DROP TABLE IF EXISTS user_profiles CASCADE;
 DROP TABLE IF EXISTS admin_audit_log CASCADE;
 DROP TABLE IF EXISTS admin_feedback_history CASCADE;
 DROP TABLE IF EXISTS batch_payments CASCADE;
-
--- User Profiles table
-CREATE TABLE user_profiles (
-    user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    public_name TEXT, -- Display name for public use (required for basic profile)
-    bio TEXT, -- User description (required for basic profile)
-    company_name TEXT, -- Optional company info
-    -- Verification fields (only filled during verification process)
-    full_name TEXT, -- Legal name for verification (only required during verification)
-    verification_status "ProfileStatus" DEFAULT 'NOT_SUBMITTED' NOT NULL,
-    supporting_documents TEXT[],
-    verified_at TIMESTAMP WITH TIME ZONE, -- When verification was completed
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
 
 -- Cards table
 CREATE TABLE cards (
@@ -213,11 +184,6 @@ $$ LANGUAGE plpgsql;
 
 -- Create triggers for updating the updated_at timestamp
 -- MOVED TO sql/triggers.sql
-DROP TRIGGER IF EXISTS update_user_profiles_updated_at ON user_profiles;
-CREATE TRIGGER update_user_profiles_updated_at
-    BEFORE UPDATE ON user_profiles
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at();
 
 -- =================================================================
 -- SIMPLIFIED AUDIT SYSTEM
@@ -237,17 +203,6 @@ CREATE TABLE admin_audit_log (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Verification feedbacks table (best practice: separate tables for different entities)
-CREATE TABLE verification_feedbacks (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id UUID NOT NULL REFERENCES user_profiles(user_id) ON DELETE CASCADE,
-    admin_user_id UUID NOT NULL, -- REFERENCES auth.users(id)
-    admin_email VARCHAR(255), -- Denormalized for performance
-    message TEXT NOT NULL,
-    is_internal BOOLEAN DEFAULT FALSE, -- Internal notes vs user-visible feedback
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
 -- Print request feedbacks table
 CREATE TABLE print_request_feedbacks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -264,11 +219,6 @@ CREATE INDEX IF NOT EXISTS idx_audit_admin_user ON admin_audit_log(admin_user_id
 CREATE INDEX IF NOT EXISTS idx_audit_action_type ON admin_audit_log(action_type);
 CREATE INDEX IF NOT EXISTS idx_audit_created_at ON admin_audit_log(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_audit_target_user ON admin_audit_log(target_user_id);
-
--- Indexes for verification feedbacks
-CREATE INDEX IF NOT EXISTS idx_verification_feedbacks_user ON verification_feedbacks(user_id);
-CREATE INDEX IF NOT EXISTS idx_verification_feedbacks_admin ON verification_feedbacks(admin_user_id);
-CREATE INDEX IF NOT EXISTS idx_verification_feedbacks_created ON verification_feedbacks(created_at DESC);
 
 -- Indexes for print request feedbacks
 CREATE INDEX IF NOT EXISTS idx_print_feedbacks_request ON print_request_feedbacks(print_request_id);

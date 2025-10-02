@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Wed Oct  1 19:06:24 CST 2025
+-- Generated: Thu Oct  2 12:56:52 CST 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -1838,210 +1838,6 @@ BEGIN
 END;
 $$; 
 
--- File: 08_user_profiles.sql
--- -----------------------------------------------------------------
-DROP FUNCTION IF EXISTS get_user_profile CASCADE;
-DROP FUNCTION IF EXISTS create_or_update_basic_profile CASCADE;
-DROP FUNCTION IF EXISTS submit_verification CASCADE;
-DROP FUNCTION IF EXISTS review_verification CASCADE;
-DROP FUNCTION IF EXISTS withdraw_verification CASCADE;
-
--- =================================================================
--- USER PROFILE FUNCTIONS
--- Functions for user profile management and verification
--- =================================================================
-
--- Get the profile for the currently authenticated user
-CREATE OR REPLACE FUNCTION public.get_user_profile()
-RETURNS TABLE (
-    user_id UUID,
-    public_name TEXT,
-    bio TEXT,
-    company_name TEXT,
-    full_name TEXT,
-    verification_status "ProfileStatus",
-    supporting_documents TEXT[],
-    verified_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-)
-LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        up.user_id,
-        up.public_name,
-        up.bio,
-        up.company_name,
-        up.full_name,
-        up.verification_status,
-        up.supporting_documents,
-        up.verified_at,
-        up.created_at,
-        up.updated_at
-    FROM public.user_profiles up
-    WHERE up.user_id = auth.uid();
-END;
-$$;
-
--- Create or Update basic user profile (no verification)
-CREATE OR REPLACE FUNCTION public.create_or_update_basic_profile(
-    p_public_name TEXT,
-    p_bio TEXT,
-    p_company_name TEXT DEFAULT NULL
-)
-RETURNS UUID
-LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID := auth.uid();
-BEGIN
-    INSERT INTO public.user_profiles (user_id, public_name, bio, company_name)
-    VALUES (v_user_id, p_public_name, p_bio, p_company_name)
-    ON CONFLICT (user_id) DO UPDATE 
-    SET 
-        public_name = EXCLUDED.public_name,
-        bio = EXCLUDED.bio,
-        company_name = EXCLUDED.company_name,
-        updated_at = NOW();
-    
-    RETURN v_user_id;
-END;
-$$;
-
--- Submit verification application
-CREATE OR REPLACE FUNCTION public.submit_verification(
-    p_full_name TEXT,
-    p_supporting_documents TEXT[]
-)
-RETURNS UUID
-LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID := auth.uid();
-BEGIN
-    -- Update the profile with verification info
-    UPDATE public.user_profiles 
-    SET 
-        full_name = p_full_name,
-        supporting_documents = p_supporting_documents,
-        verification_status = 'PENDING_REVIEW',
-        updated_at = NOW()
-    WHERE user_id = v_user_id;
-    
-    -- If no profile exists yet, create one (shouldn't happen in normal flow)
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Profile must be created before submitting verification';
-    END IF;
-    
-    RETURN v_user_id;
-END;
-$$;
-
--- (Admin) Function to review a verification
-CREATE OR REPLACE FUNCTION public.review_verification(
-    p_target_user_id UUID,
-    p_new_status "ProfileStatus",
-    p_admin_feedback TEXT
-)
-RETURNS BOOLEAN
-LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can review verifications.';
-    END IF;
-
-    -- Ensure status is only set to APPROVED or REJECTED
-    IF p_new_status NOT IN ('APPROVED', 'REJECTED') THEN
-        RAISE EXCEPTION 'Review status must be APPROVED or REJECTED.';
-    END IF;
-
-    UPDATE public.user_profiles
-    SET 
-        verification_status = p_new_status,
-        verified_at = CASE WHEN p_new_status = 'APPROVED' THEN NOW() ELSE NULL END,
-        updated_at = NOW()
-    WHERE user_id = p_target_user_id;
-
-    -- Create feedback entry if admin provided feedback
-    IF p_admin_feedback IS NOT NULL AND LENGTH(TRIM(p_admin_feedback)) > 0 THEN
-        DECLARE
-            v_admin_email VARCHAR(255);
-        BEGIN
-            SELECT email INTO v_admin_email FROM auth.users WHERE id = auth.uid();
-            
-            INSERT INTO verification_feedbacks (
-                user_id,
-                admin_user_id,
-                admin_email,
-                message
-            ) VALUES (
-                p_target_user_id,
-                auth.uid(),
-                v_admin_email,
-                p_admin_feedback
-            );
-        END;
-    END IF;
-
-    -- Log using the centralized audit function (emails handled automatically)
-    PERFORM log_admin_action(
-        auth.uid(),
-        'VERIFICATION_REVIEW',
-        CASE 
-            WHEN p_new_status = 'APPROVED' THEN 'Verification approved'
-            WHEN p_new_status = 'REJECTED' THEN 'Verification rejected'
-            ELSE 'Verification reviewed'
-        END || CASE WHEN p_admin_feedback IS NOT NULL THEN ': ' || p_admin_feedback ELSE '' END,
-        p_target_user_id,
-        jsonb_build_object(
-            'verification_status', p_new_status,
-            'review_type', p_new_status::TEXT,
-            'has_feedback', (p_admin_feedback IS NOT NULL AND LENGTH(TRIM(p_admin_feedback)) > 0)
-        )
-    );
-    
-    RETURN FOUND;
-END;
-$$;
-
--- (User) Function to withdraw verification submission
-CREATE OR REPLACE FUNCTION public.withdraw_verification()
-RETURNS BOOLEAN
-LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID := auth.uid();
-    v_current_status "ProfileStatus";
-BEGIN
-    -- Get current verification status
-    SELECT verification_status INTO v_current_status
-    FROM public.user_profiles
-    WHERE user_id = v_user_id;
-    
-    -- Only allow withdrawal if status is PENDING_REVIEW
-    IF v_current_status != 'PENDING_REVIEW' THEN
-        RAISE EXCEPTION 'Verification can only be withdrawn when status is PENDING_REVIEW. Current status: %', v_current_status;
-    END IF;
-
-    -- Reset verification status and clear verification data
-    UPDATE public.user_profiles
-    SET 
-        verification_status = 'NOT_SUBMITTED',
-        full_name = NULL,
-        supporting_documents = NULL,
-        verified_at = NULL,
-        updated_at = NOW()
-    WHERE user_id = v_user_id;
-    
-    RETURN FOUND;
-END;
-$$; 
-
 -- File: 09_user_analytics.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS get_user_all_issued_cards CASCADE;
@@ -2272,6 +2068,8 @@ DROP FUNCTION IF EXISTS get_print_request_feedbacks CASCADE;
 DROP FUNCTION IF EXISTS reset_user_verification CASCADE;
 DROP FUNCTION IF EXISTS admin_manual_verification CASCADE;
 DROP FUNCTION IF EXISTS get_user_activity_summary CASCADE;
+DROP FUNCTION IF EXISTS admin_get_all_users CASCADE;
+DROP FUNCTION IF EXISTS admin_update_user_role CASCADE;
 
 -- =================================================================
 -- ADMIN FUNCTIONS
@@ -2579,12 +2377,10 @@ $$;
 CREATE OR REPLACE FUNCTION admin_get_system_stats_enhanced()
 RETURNS TABLE (
     total_users BIGINT,
-    total_verified_users BIGINT,
     total_cards BIGINT,
     total_batches BIGINT,
     total_issued_cards BIGINT,
     total_activated_cards BIGINT,
-    pending_verifications BIGINT,
     pending_payment_batches BIGINT,
     paid_batches BIGINT,
     waived_batches BIGINT,
@@ -2604,13 +2400,11 @@ RETURNS TABLE (
     daily_issued_cards BIGINT,
     weekly_issued_cards BIGINT,
     monthly_issued_cards BIGINT,
-    -- NEW AUDIT METRICS
+    -- AUDIT METRICS
     total_audit_entries BIGINT,
     critical_actions_today BIGINT,
     high_severity_actions_week BIGINT,
-    unique_admin_users_month BIGINT,
-    recent_feedback_count BIGINT,
-    total_feedback_count BIGINT
+    unique_admin_users_month BIGINT
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     caller_role TEXT;
@@ -2626,24 +2420,26 @@ BEGIN
 
     RETURN QUERY
     SELECT 
-        -- Existing metrics
+        -- User and content metrics
         (SELECT COUNT(*) FROM auth.users) as total_users,
-        (SELECT COUNT(*) FROM user_profiles WHERE verification_status = 'APPROVED') as total_verified_users,
         (SELECT COUNT(*) FROM cards) as total_cards,
         (SELECT COUNT(*) FROM card_batches) as total_batches,
         (SELECT COUNT(*) FROM issue_cards) as total_issued_cards,
         (SELECT COUNT(*) FROM issue_cards WHERE active = true) as total_activated_cards,
-        (SELECT COUNT(*) FROM user_profiles WHERE verification_status = 'PENDING_REVIEW') as pending_verifications,
+        -- Payment metrics
         (SELECT COUNT(*) FROM card_batches WHERE payment_required = true AND payment_completed = false AND payment_waived = false) as pending_payment_batches,
         (SELECT COUNT(*) FROM card_batches WHERE payment_completed = true) as paid_batches,
         (SELECT COUNT(*) FROM card_batches WHERE payment_waived = true) as waived_batches,
+        -- Print request metrics
         (SELECT COUNT(*) FROM print_requests WHERE status = 'SUBMITTED') as print_requests_submitted,
         (SELECT COUNT(*) FROM print_requests WHERE status = 'PROCESSING') as print_requests_processing,
-        (SELECT COUNT(*) FROM print_requests WHERE status = 'SHIPPING') as print_requests_shipping,
+        (SELECT COUNT(*) FROM print_requests WHERE status = 'SHIPPED') as print_requests_shipping,
+        -- Revenue metrics
         (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded' AND created_at >= CURRENT_DATE) as daily_revenue_cents,
         (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_revenue_cents,
         (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_revenue_cents,
         (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded') as total_revenue_cents,
+        -- Growth metrics
         (SELECT COUNT(*) FROM auth.users WHERE created_at >= CURRENT_DATE) as daily_new_users,
         (SELECT COUNT(*) FROM auth.users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_new_users,
         (SELECT COUNT(*) FROM auth.users WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_new_users,
@@ -2653,14 +2449,11 @@ BEGIN
         (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE) as daily_issued_cards,
         (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_issued_cards,
         (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_issued_cards,
-        -- SIMPLIFIED AUDIT METRICS
+        -- Audit metrics
         (SELECT COUNT(*) FROM admin_audit_log) as total_audit_entries,
         (SELECT COUNT(*) FROM admin_audit_log WHERE action_type = 'PAYMENT_WAIVER' AND created_at >= CURRENT_DATE) as payment_waivers_today,
         (SELECT COUNT(*) FROM admin_audit_log WHERE action_type = 'ROLE_CHANGE' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as role_changes_week,
-        (SELECT COUNT(DISTINCT admin_user_id) FROM admin_audit_log WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as unique_admin_users_month,
-        (SELECT COUNT(*) FROM verification_feedbacks WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') + 
-         (SELECT COUNT(*) FROM print_request_feedbacks WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as recent_feedback_count,
-        (SELECT COUNT(*) FROM verification_feedbacks) + (SELECT COUNT(*) FROM print_request_feedbacks) as total_feedback_count;
+        (SELECT COUNT(DISTINCT admin_user_id) FROM admin_audit_log WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as unique_admin_users_month;
 END;
 $$;
 
@@ -2709,7 +2502,7 @@ BEGIN
         pr.batch_id AS batch_id,
         pr.user_id AS user_id,
         au.email::text AS user_email,
-        up.public_name AS user_public_name,
+        SPLIT_PART(au.email, '@', 1)::text AS user_public_name, -- Use email username as display name
         c.name AS card_name,
         cb.batch_name AS batch_name,
         cb.cards_count AS cards_count,
@@ -2723,12 +2516,10 @@ BEGIN
     JOIN card_batches cb ON pr.batch_id = cb.id
     JOIN cards c ON cb.card_id = c.id
     LEFT JOIN auth.users au ON pr.user_id = au.id
-    LEFT JOIN user_profiles up ON pr.user_id = up.user_id
     WHERE 
         (p_status IS NULL OR pr.status = p_status)
         AND (p_search_query IS NULL OR (
             au.email ILIKE '%' || p_search_query || '%' OR
-            up.public_name ILIKE '%' || p_search_query || '%' OR
             c.name ILIKE '%' || p_search_query || '%' OR
             cb.batch_name ILIKE '%' || p_search_query || '%' OR
             pr.shipping_address ILIKE '%' || p_search_query || '%'
@@ -3639,6 +3430,124 @@ BEGIN
             (SELECT MAX(updated_at) FROM print_requests WHERE user_id = p_user_id)
         ) as last_activity_date,
         EXTRACT(DAY FROM NOW() - v_user_created_at)::INTEGER as account_age_days;
+END;
+$$;
+
+-- =================================================================
+-- USER MANAGEMENT FUNCTIONS (without profile/verification)
+-- =================================================================
+
+-- Get all users with basic info and activity stats
+CREATE OR REPLACE FUNCTION admin_get_all_users()
+RETURNS TABLE (
+    user_id UUID,
+    user_email VARCHAR(255),
+    role TEXT,
+    cards_count INTEGER,
+    issued_cards_count INTEGER,
+    created_at TIMESTAMP WITH TIME ZONE,
+    last_sign_in_at TIMESTAMP WITH TIME ZONE,
+    email_confirmed_at TIMESTAMP WITH TIME ZONE
+)
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view all users.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        au.id as user_id,
+        au.email as user_email,
+        COALESCE(au.raw_user_meta_data->>'role', 'cardIssuer') as role,
+        COUNT(DISTINCT c.id)::INTEGER as cards_count,
+        COUNT(DISTINCT ic.id)::INTEGER as issued_cards_count,
+        au.created_at,
+        au.last_sign_in_at,
+        au.email_confirmed_at
+    FROM auth.users au
+    LEFT JOIN cards c ON c.user_id = au.id
+    LEFT JOIN card_batches cb ON cb.created_by = au.id
+    LEFT JOIN issue_cards ic ON ic.batch_id = cb.id
+    GROUP BY au.id, au.email, au.raw_user_meta_data, au.created_at, au.last_sign_in_at, au.email_confirmed_at
+    ORDER BY au.created_at DESC;
+END;
+$$;
+
+-- Update user role
+CREATE OR REPLACE FUNCTION admin_update_user_role(
+    p_user_id UUID,
+    p_new_role TEXT,
+    p_reason TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+    v_user_email VARCHAR(255);
+    v_old_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can update user roles.';
+    END IF;
+
+    -- Validate new role
+    IF p_new_role NOT IN ('admin', 'cardIssuer', 'user') THEN
+        RAISE EXCEPTION 'Invalid role. Must be: admin, cardIssuer, or user.';
+    END IF;
+
+    -- Get current user info
+    SELECT email, raw_user_meta_data->>'role' 
+    INTO v_user_email, v_old_role
+    FROM auth.users
+    WHERE id = p_user_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'User not found.';
+    END IF;
+
+    -- Update user role in auth.users metadata
+    UPDATE auth.users
+    SET raw_user_meta_data = jsonb_set(
+        COALESCE(raw_user_meta_data, '{}'::jsonb),
+        '{role}',
+        to_jsonb(p_new_role)
+    ),
+    updated_at = NOW()
+    WHERE id = p_user_id;
+
+    -- Log the role change in audit log
+    PERFORM log_admin_action(
+        'USER_ROLE_UPDATE',
+        format('Changed user role from %s to %s. Reason: %s', 
+            COALESCE(v_old_role, 'none'), 
+            p_new_role, 
+            p_reason
+        ),
+        jsonb_build_object(
+            'user_id', p_user_id,
+            'user_email', v_user_email,
+            'old_role', v_old_role,
+            'new_role', p_new_role,
+            'reason', p_reason
+        ),
+        p_user_id,
+        v_user_email
+    );
+
+    RETURN TRUE;
 END;
 $$;
 

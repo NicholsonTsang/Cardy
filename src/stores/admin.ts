@@ -5,30 +5,20 @@
 import { defineStore } from 'pinia'
 import { computed } from 'vue'
 import { useAdminDashboardStore } from '@/stores/admin/dashboard'
-import { useAdminVerificationsStore } from '@/stores/admin/verifications'
 import { useAdminPrintRequestsStore } from '@/stores/admin/printRequests'
 import { useAdminBatchesStore } from '@/stores/admin/batches'
-import { useAdminFeedbackStore } from '@/stores/admin/feedback'
 import { useAuditLogStore } from '@/stores/admin/auditLog'
 
 // Re-export individual stores for direct import
 export { useAdminDashboardStore } from '@/stores/admin/dashboard'
-export { useAdminVerificationsStore } from '@/stores/admin/verifications'
 export { useAdminPrintRequestsStore } from '@/stores/admin/printRequests'
 export { useAdminBatchesStore } from '@/stores/admin/batches'
-export { useAdminFeedbackStore } from '@/stores/admin/feedback'
 
 // Re-export all types for backward compatibility
 export type { 
   AdminDashboardStats, 
   AdminActivity
 } from '@/stores/admin/dashboard'
-
-export type { 
-  AdminVerification, 
-  AdminUser, 
-  AdminUserActivity
-} from '@/stores/admin/verifications'
 
 export type { 
   AdminPrintRequest
@@ -38,10 +28,6 @@ export type {
   AdminBatchRequiringAttention
 } from '@/stores/admin/batches'
 
-export type { 
-  AdminFeedback
-} from '@/stores/admin/feedback'
-
 export type {
   AuditLogEntry as AdminAuditLog
 } from '@/stores/admin/auditLog'
@@ -50,17 +36,12 @@ export type {
 export const useAdminStore = defineStore('admin', () => {
   // Get all the modular stores
   const dashboardStore = useAdminDashboardStore()
-  const verificationsStore = useAdminVerificationsStore()
   const printRequestsStore = useAdminPrintRequestsStore()
   const batchesStore = useAdminBatchesStore()
-  const feedbackStore = useAdminFeedbackStore()
   const auditLogStore = useAuditLogStore()
 
   // Computed properties that aggregate data from different stores
   const dashboardStats = computed(() => dashboardStore.dashboardStats)
-  const allVerifications = computed(() => verificationsStore.allVerifications)
-  const pendingVerifications = computed(() => verificationsStore.pendingVerifications)
-  const allUsers = computed(() => verificationsStore.allUsers)
   const printRequests = computed(() => printRequestsStore.printRequests)
   const batchesRequiringAttention = computed(() => batchesStore.batchesRequiringAttention)
   const recentActivity = computed(() => dashboardStore.recentActivity)
@@ -68,12 +49,10 @@ export const useAdminStore = defineStore('admin', () => {
   // Loading states
   const isLoading = computed(() => 
     dashboardStore.isLoading || 
-    verificationsStore.isLoading ||
     printRequestsStore.isLoadingPrintRequests ||
     batchesStore.isLoadingBatches
   )
   const isLoadingStats = computed(() => dashboardStore.isLoadingStats)
-  const isLoadingVerifications = computed(() => verificationsStore.isLoadingVerifications)
   const isLoadingPrintRequests = computed(() => printRequestsStore.isLoadingPrintRequests)
   const isLoadingBatches = computed(() => batchesStore.isLoadingBatches)
 
@@ -81,17 +60,6 @@ export const useAdminStore = defineStore('admin', () => {
   const fetchDashboardStats = dashboardStore.fetchDashboardStats
   const fetchRecentActivity = dashboardStore.fetchRecentActivity
   const loadDashboard = dashboardStore.loadDashboard
-
-  const fetchPendingVerifications = verificationsStore.fetchPendingVerifications
-  const fetchAllVerifications = verificationsStore.fetchAllVerifications
-  const fetchVerificationById = verificationsStore.fetchVerificationById
-  const reviewVerification = verificationsStore.reviewVerification
-  const loadUsersWithDetails = verificationsStore.loadUsersWithDetails
-  const updateUserRole = verificationsStore.updateUserRole
-  const resetUserVerification = verificationsStore.resetUserVerification
-  const manualVerification = verificationsStore.manualVerification
-  const getUserActivitySummary = verificationsStore.getUserActivitySummary
-  const setSelectedVerificationUser = verificationsStore.setSelectedVerificationUser
 
   const fetchAllPrintRequests = printRequestsStore.fetchAllPrintRequests
   const updatePrintRequestStatus = printRequestsStore.updatePrintRequestStatus
@@ -101,15 +69,10 @@ export const useAdminStore = defineStore('admin', () => {
 
   const fetchAuditLogs = auditLogStore.fetchAuditLogs
   const fetchAuditLogsCount = auditLogStore.fetchAuditLogsCount
-  const getFeedbackHistory = feedbackStore.getFeedbackHistory
-  const createOrUpdateFeedback = feedbackStore.createOrUpdateFeedback
 
   return {
     // Computed state
     dashboardStats,
-    allVerifications,
-    pendingVerifications,
-    allUsers,
     printRequests,
     batchesRequiringAttention,
     recentActivity,
@@ -117,7 +80,6 @@ export const useAdminStore = defineStore('admin', () => {
     // Loading states
     isLoading,
     isLoadingStats,
-    isLoadingVerifications,
     isLoadingPrintRequests,
     isLoadingBatches,
 
@@ -125,18 +87,6 @@ export const useAdminStore = defineStore('admin', () => {
     fetchDashboardStats,
     fetchRecentActivity,
     loadDashboard,
-
-    // Verification methods
-    fetchPendingVerifications,
-    fetchAllVerifications,
-    fetchVerificationById,
-    reviewVerification,
-    loadUsersWithDetails,
-    updateUserRole,
-    resetUserVerification,
-    manualVerification,
-    getUserActivitySummary,
-    setSelectedVerificationUser,
 
     // Print request methods
     fetchAllPrintRequests,
@@ -146,10 +96,8 @@ export const useAdminStore = defineStore('admin', () => {
     fetchBatchesRequiringAttention,
     waiveBatchPayment,
 
-    // Feedback and audit methods
+    // Audit methods
     fetchAuditLogs,
-    fetchAuditLogsCount,
-    getFeedbackHistory,
-    createOrUpdateFeedback
+    fetchAuditLogsCount
   }
 }) 

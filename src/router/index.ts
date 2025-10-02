@@ -29,20 +29,8 @@ const router = createRouter({
           component: () => import('@/views/Dashboard/CardIssuer/IssuedCards.vue'),
           meta: { requiredRole: 'cardIssuer' }
         },
-        {
-          path: 'profile',
-          name: 'profile',
-          component: () => import('@/views/Dashboard/CardIssuer/Profile.vue'),
-          meta: { requiredRole: 'cardIssuer' }
-        },
         
         // Admin Routes (now using the same DashboardLayout)
-        {
-          path: 'verifications',
-          name: 'admin-verifications',
-          component: () => import('@/views/Dashboard/Admin/VerificationManagement.vue'),
-          meta: { requiredRole: 'admin' }
-        },
         {
           path: 'print-requests',
           name: 'admin-print-requests',

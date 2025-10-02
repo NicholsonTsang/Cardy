@@ -19,21 +19,7 @@
           <h2 class="text-xl font-bold text-slate-900">Quick Actions</h2>
         </div>
         
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <router-link :to="{ name: 'admin-verifications' }" class="block">
-            <div class="bg-gradient-to-r from-orange-50 to-orange-100 border border-orange-200 rounded-xl p-4 hover:from-orange-100 hover:to-orange-200 transition-colors">
-              <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center">
-                  <i class="pi pi-shield text-white text-sm"></i>
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-orange-800">Review Verifications</p>
-                  <p class="text-xs text-orange-600">{{ stats.pending_verifications }} pending</p>
-                </div>
-              </div>
-            </div>
-          </router-link>
-          
+        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
           <router-link :to="{ name: 'admin-print-requests' }" class="block">
             <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 hover:from-blue-100 hover:to-blue-200 transition-colors">
               <div class="flex items-center gap-3">
@@ -104,41 +90,6 @@
               </div>
               <div class="mt-2">
                 <span class="text-xs text-slate-500">All registered</span>
-              </div>
-            </div>
-
-            <!-- Verified Users -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Verified Users</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.total_verified_users }}</h3>
-                </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-verified text-white text-sm"></i>
-                </div>
-              </div>
-              <div class="mt-2">
-                <span class="text-xs text-slate-500">{{ verificationRate }}% verified</span>
-              </div>
-            </div>
-
-            <!-- Pending Verifications -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Pending Verifications</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.pending_verifications }}</h3>
-                </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-clock text-white text-sm"></i>
-                </div>
-              </div>
-              <div class="mt-2">
-                <router-link :to="{ name: 'admin-verifications' }" class="inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors">
-                  Review
-                  <i class="pi pi-arrow-right ml-1 text-xs"></i>
-                </router-link>
               </div>
             </div>
 
@@ -464,26 +415,23 @@
 <script setup>
 import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { useAdminDashboardStore, useAdminFeedbackStore } from '@/stores/admin'
+import { useAdminDashboardStore } from '@/stores/admin'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
 import { supabase } from '@/lib/supabase'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 
 const dashboardStore = useAdminDashboardStore()
-const feedbackStore = useAdminFeedbackStore()
 const router = useRouter()
 const toast = useToast()
 
 // Use dashboard store state directly
 const stats = computed(() => dashboardStore.dashboardStats || {
   total_users: 0,
-  total_verified_users: 0,
   total_cards: 0,
   total_batches: 0,
   total_issued_cards: 0,
   total_activated_cards: 0,
-  pending_verifications: 0,
   print_requests_submitted: 0,
   print_requests_processing: 0,
   print_requests_shipping: 0,
@@ -503,11 +451,6 @@ const stats = computed(() => dashboardStore.dashboardStats || {
 })
 
 // Computed property for verification rate
-const verificationRate = computed(() => {
-  const total = stats.value.total_users
-  const verified = stats.value.total_verified_users
-  return total > 0 ? Math.round((verified / total) * 100) : 0
-})
 
 // Use dashboard store loading states
 const isLoading = computed(() => dashboardStore.isLoading)
@@ -550,10 +493,6 @@ onUnmounted(() => {
   }
 })
 
-function reviewVerification(request) {
-  // This would now use the verifications store if needed
-  router.push({ name: 'admin-verifications' })
-}
 
 function handleBatch(batch) {
   router.push({ 
@@ -563,7 +502,14 @@ function handleBatch(batch) {
 }
 
 function getActivityColor(activity) {
-  return feedbackStore.getActionTypeColor(activity.action_type)
+  // Simple color mapping without feedback store
+  const colorMap = {
+    'USER_ROLE_UPDATE': 'orange',
+    'PAYMENT_WAIVED': 'purple',
+    'PRINT_REQUEST_STATUS_UPDATE': 'blue',
+    'DEFAULT': 'slate'
+  }
+  return colorMap[activity.action_type] || colorMap['DEFAULT']
 }
 
 function getActivityIcon(activity) {

@@ -4,24 +4,22 @@ import { supabase } from '@/lib/supabase'
 
 export interface AdminDashboardStats {
   total_users: number;
-  total_verified_users: number;
   total_cards: number;
   total_batches: number;
   total_issued_cards: number;
   total_activated_cards: number;
-  pending_verifications: number;
   pending_payment_batches: number;
   paid_batches: number;
   waived_batches: number;
   print_requests_submitted: number;
   print_requests_processing: number;
   print_requests_shipping: number;
-  // New audit-related metrics
+  // Audit-related metrics
   total_audit_entries: number;
   critical_actions_today: number;
   high_severity_actions_week: number;
   unique_admin_users_month: number;
-  // Existing revenue metrics
+  // Revenue metrics
   daily_revenue_cents: number;
   weekly_revenue_cents: number;
   monthly_revenue_cents: number;
@@ -35,8 +33,6 @@ export interface AdminDashboardStats {
   daily_issued_cards: number;
   weekly_issued_cards: number;
   monthly_issued_cards: number;
-  recent_feedback_count: number;
-  total_feedback_count: number;
 }
 
 export interface AdminActivity {
@@ -57,7 +53,6 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
   const isLoading = ref(false)
 
   // Computed
-  const pendingVerificationCount = computed(() => dashboardStats.value?.pending_verifications || 0)
   const totalPrintRequestsCount = computed(() => {
     const stats = dashboardStats.value
     if (!stats) return 0
@@ -81,26 +76,22 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
       // Map database fields to interface format
       const stats: AdminDashboardStats = {
         total_users: dbStats.total_users || 0,
-        total_verified_users: dbStats.total_verified_users || 0,
         total_cards: dbStats.total_cards || 0,
         total_batches: dbStats.total_batches || 0,
         total_issued_cards: dbStats.total_issued_cards || 0,
         total_activated_cards: dbStats.total_activated_cards || 0,
-        pending_verifications: dbStats.pending_verifications || 0,
         pending_payment_batches: dbStats.pending_payment_batches || 0,
         paid_batches: dbStats.paid_batches || 0,
         waived_batches: dbStats.waived_batches || 0,
         print_requests_submitted: dbStats.print_requests_submitted || 0,
         print_requests_processing: dbStats.print_requests_processing || 0,
         print_requests_shipping: dbStats.print_requests_shipping || 0,
-        // New audit metrics
+        // Audit metrics
         total_audit_entries: dbStats.total_audit_entries || 0,
         critical_actions_today: dbStats.payment_waivers_today || 0,
         high_severity_actions_week: dbStats.role_changes_week || 0,
         unique_admin_users_month: dbStats.unique_admin_users_month || 0,
-        recent_feedback_count: dbStats.recent_feedback_count || 0,
-        total_feedback_count: dbStats.total_feedback_count || 0,
-        // Existing revenue metrics
+        // Revenue metrics
         daily_revenue_cents: dbStats.daily_revenue_cents || 0,
         weekly_revenue_cents: dbStats.weekly_revenue_cents || 0,
         monthly_revenue_cents: dbStats.monthly_revenue_cents || 0,
@@ -206,7 +197,6 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
     isLoading,
     
     // Computed
-    pendingVerificationCount,
     totalPrintRequestsCount,
     
     // Actions

@@ -167,12 +167,7 @@ const adminMenuItems = [
   {
     label: 'Dashboard',
     icon: 'pi pi-chart-line',
-    command: () => router.push('/cms/dashboard')
-  },
-  {
-    label: 'Verifications',
-    icon: 'pi pi-shield',
-    command: () => router.push('/cms/verifications')
+    command: () => router.push('/cms/admin')
   },
   {
     label: 'Users',
@@ -228,17 +223,6 @@ const unifiedMenuItems = computed(() => {
     { separator: true },
     
     // User Actions Section
-    {
-      label: 'Account Settings',
-      disabled: true,
-      class: 'section-header'
-    },
-    // Only show Profile Settings for cardIssuer, not for admin
-    ...(userRole.value === 'cardIssuer' ? [{
-      label: 'Profile Settings',
-      icon: 'pi pi-cog',
-      command: () => router.push('/cms/profile')
-    }] : []),
     {
       label: 'Sign Out',
       icon: 'pi pi-sign-out',
