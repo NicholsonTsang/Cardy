@@ -54,138 +54,17 @@ BEGIN
     -- Generate cards using the new function
     PERFORM generate_batch_cards(p_batch_id);
     
-    -- Log the waiver
-    PERFORM log_admin_action(
-        auth.uid(),
-        'PAYMENT_WAIVER',
-        'Payment waived for batch ' || v_batch_record.batch_name || ' (' || v_batch_record.cards_count || ' cards): ' || p_waiver_reason,
-        v_batch_record.created_by,
-        jsonb_build_object(
-            'batch_id', p_batch_id,
-            'batch_name', v_batch_record.batch_name,
-            'cards_count', v_batch_record.cards_count,
-            'waived_amount_cents', v_batch_record.cards_count * 200
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Waived payment for batch: ' || v_batch_record.batch_name || ' (' || v_batch_record.cards_count || ' cards, $' || (v_batch_record.cards_count * 2) || ')');
     
     RETURN p_batch_id;
 END;
 $$;
 
 -- =================================================================
--- SIMPLIFIED AUDIT SYSTEM FUNCTIONS
+-- LEGACY ADMIN AUDIT FUNCTIONS (DEPRECATED - Use operations_log instead)
+-- These functions are kept for backward compatibility but redirect to operations_log
 -- =================================================================
-
--- Simple audit logging function with direct email lookup
-CREATE OR REPLACE FUNCTION log_admin_action(
-    p_admin_user_id UUID,
-    p_action_type VARCHAR(50),
-    p_description TEXT,
-    p_target_user_id UUID DEFAULT NULL,
-    p_details JSONB DEFAULT NULL
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_admin_email VARCHAR(255);
-    v_target_email VARCHAR(255);
-    v_audit_id UUID;
-BEGIN
-    -- Get admin email
-    SELECT email INTO v_admin_email FROM auth.users WHERE id = p_admin_user_id;
-    
-    -- Get target user email if target user is specified
-    IF p_target_user_id IS NOT NULL THEN
-        SELECT email INTO v_target_email FROM auth.users WHERE id = p_target_user_id;
-    END IF;
-    
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        p_admin_user_id,
-        v_admin_email,
-        p_target_user_id,
-        v_target_email,
-        p_action_type,
-        p_description,
-        p_details
-    )
-    RETURNING id INTO v_audit_id;
-    
-    RETURN v_audit_id;
-END;
-$$;
-
--- Simple audit log retrieval function
-CREATE OR REPLACE FUNCTION get_admin_audit_logs(
-    p_action_type TEXT DEFAULT NULL,
-    p_admin_user_id UUID DEFAULT NULL,
-    p_target_user_id UUID DEFAULT NULL,
-    p_start_date TIMESTAMPTZ DEFAULT NULL,
-    p_end_date TIMESTAMPTZ DEFAULT NULL,
-    p_limit INTEGER DEFAULT 50,
-    p_offset INTEGER DEFAULT 0
-)
-RETURNS TABLE (
-    id UUID,
-    admin_user_id UUID,
-    admin_email VARCHAR(255),
-    target_user_id UUID,
-    target_user_email VARCHAR(255),
-    action_type VARCHAR(50),
-    description TEXT,
-    details JSONB,
-    created_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-    v_action_types TEXT[];
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view audit logs.';
-    END IF;
-
-    -- Handle comma-separated action types for compatibility
-    IF p_action_type IS NOT NULL THEN
-        IF p_action_type LIKE '%,%' THEN
-            v_action_types := string_to_array(p_action_type, ',');
-        ELSE
-            v_action_types := ARRAY[p_action_type];
-        END IF;
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        aal.id,
-        aal.admin_user_id,
-        aal.admin_email,
-        aal.target_user_id,
-        aal.target_user_email,
-        aal.action_type,
-        aal.description,
-        aal.details,
-        aal.created_at
-    FROM admin_audit_log aal
-    WHERE 
-        (v_action_types IS NULL OR aal.action_type = ANY(v_action_types))
-        AND (p_admin_user_id IS NULL OR aal.admin_user_id = p_admin_user_id)
-        AND (p_target_user_id IS NULL OR aal.target_user_id = p_target_user_id)
-        AND (p_start_date IS NULL OR aal.created_at >= p_start_date)
-        AND (p_end_date IS NULL OR aal.created_at <= p_end_date)
-    ORDER BY aal.created_at DESC
-    LIMIT p_limit
-    OFFSET p_offset;
-END;
-$$;
 
 -- Simple feedback creation for verification and print requests
 CREATE OR REPLACE FUNCTION create_admin_feedback(
@@ -376,11 +255,11 @@ BEGIN
         (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE) as daily_issued_cards,
         (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_issued_cards,
         (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_issued_cards,
-        -- Audit metrics
-        (SELECT COUNT(*) FROM admin_audit_log) as total_audit_entries,
-        (SELECT COUNT(*) FROM admin_audit_log WHERE action_type = 'PAYMENT_WAIVER' AND created_at >= CURRENT_DATE) as payment_waivers_today,
-        (SELECT COUNT(*) FROM admin_audit_log WHERE action_type = 'ROLE_CHANGE' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as role_changes_week,
-        (SELECT COUNT(DISTINCT admin_user_id) FROM admin_audit_log WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as unique_admin_users_month;
+        -- Operations log metrics
+        (SELECT COUNT(*) FROM operations_log) as total_audit_entries,
+        (SELECT COUNT(*) FROM operations_log WHERE operation LIKE '%Waived payment%' AND created_at >= CURRENT_DATE) as payment_waivers_today,
+        (SELECT COUNT(*) FROM operations_log WHERE operation LIKE '%Changed user role%' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as role_changes_week,
+        (SELECT COUNT(DISTINCT user_id) FROM operations_log WHERE user_role = 'admin' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as unique_admin_users_month;
 END;
 $$;
 
@@ -516,20 +395,8 @@ BEGIN
         END;
     END IF;
 
-    -- Log the status change
-    PERFORM log_admin_action(
-        auth.uid(),
-        'PRINT_REQUEST_UPDATE',
-        'Print request status changed from ' || v_request_record.status || ' to ' || p_new_status || ' for ' || v_request_record.card_name,
-        v_request_record.user_id,
-        jsonb_build_object(
-            'request_id', p_request_id,
-            'old_status', v_request_record.status,
-            'new_status', p_new_status,
-            'card_name', v_request_record.card_name,
-            'batch_name', v_request_record.batch_name
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Updated print request status to ' || p_new_status || ' for batch: ' || v_request_record.batch_name || ' (Request ID: ' || p_request_id || ')');
     
     RETURN FOUND;
 END;
@@ -580,88 +447,10 @@ $$;
 
 
 
--- (Admin) Get recent admin activity
-CREATE OR REPLACE FUNCTION get_recent_admin_activity(
-    p_limit INTEGER DEFAULT 50
-)
-RETURNS TABLE (
-    activity_type TEXT,
-    activity_date TIMESTAMPTZ,
-    user_email VARCHAR(255),
-    user_public_name TEXT,
-    description TEXT,
-    details JSONB
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view recent activity.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        aal.action_type AS activity_type,
-        aal.created_at AS activity_date,
-        aal.target_user_email AS user_email,
-        up.public_name AS user_public_name,
-        aal.description AS description,
-        aal.details AS details
-    FROM admin_audit_log aal
-    LEFT JOIN user_profiles up ON aal.target_user_id = up.user_id
-    ORDER BY aal.created_at DESC
-    LIMIT p_limit;
-END;
-$$;
-
--- (Admin) Get count of admin audit logs with filtering
-CREATE OR REPLACE FUNCTION get_admin_audit_logs_count(
-    p_action_type TEXT DEFAULT NULL,
-    p_admin_user_id UUID DEFAULT NULL,
-    p_target_user_id UUID DEFAULT NULL,
-    p_start_date TIMESTAMPTZ DEFAULT NULL,
-    p_end_date TIMESTAMPTZ DEFAULT NULL
-)
-RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-    v_count INTEGER;
-    v_action_types TEXT[];
-BEGIN
-    -- Check if caller is admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view audit logs.';
-    END IF;
-
-    -- Convert comma-separated string to array for compatibility
-    IF p_action_type IS NOT NULL THEN
-        IF p_action_type LIKE '%,%' THEN
-            v_action_types := string_to_array(p_action_type, ',');
-        ELSE
-            v_action_types := ARRAY[p_action_type];
-        END IF;
-    END IF;
-
-    SELECT COUNT(*)::INTEGER INTO v_count
-    FROM admin_audit_log aal
-    WHERE (v_action_types IS NULL OR aal.action_type = ANY(v_action_types))
-    AND (p_admin_user_id IS NULL OR aal.admin_user_id = p_admin_user_id)
-    AND (p_target_user_id IS NULL OR aal.target_user_id = p_target_user_id)
-    AND (p_start_date IS NULL OR aal.created_at >= p_start_date)
-    AND (p_end_date IS NULL OR aal.created_at <= p_end_date);
-
-    RETURN v_count;
-END;
-$$;
+-- Legacy functions removed - Use operations_log functions instead:
+-- - Use get_operations_log() instead of get_admin_audit_logs()
+-- - Use get_operations_log_stats() instead of get_admin_audit_logs_count()
+-- See 00_logging.sql for new functions
 
 -- (Admin) Get all verifications with comprehensive filtering
 CREATE OR REPLACE FUNCTION get_all_verifications(
@@ -1455,24 +1244,8 @@ BEGIN
     updated_at = NOW()
     WHERE id = p_user_id;
 
-    -- Log the role change in audit log
-    PERFORM log_admin_action(
-        'USER_ROLE_UPDATE',
-        format('Changed user role from %s to %s. Reason: %s', 
-            COALESCE(v_old_role, 'none'), 
-            p_new_role, 
-            p_reason
-        ),
-        jsonb_build_object(
-            'user_id', p_user_id,
-            'user_email', v_user_email,
-            'old_role', v_old_role,
-            'new_role', p_new_role,
-            'reason', p_reason
-        ),
-        p_user_id,
-        v_user_email
-    );
+    -- Log operation
+    PERFORM log_operation('Changed user role from ' || COALESCE(v_old_role, 'none') || ' to ' || p_new_role || ' for user: ' || v_user_email);
 
     RETURN TRUE;
 END;

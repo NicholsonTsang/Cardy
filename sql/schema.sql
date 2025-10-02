@@ -46,9 +46,9 @@ DROP TABLE IF EXISTS issue_cards CASCADE;
 DROP TABLE IF EXISTS card_batches CASCADE;
 DROP TABLE IF EXISTS content_items CASCADE;
 DROP TABLE IF EXISTS cards CASCADE;
-DROP TABLE IF EXISTS admin_audit_log CASCADE;
 DROP TABLE IF EXISTS admin_feedback_history CASCADE;
 DROP TABLE IF EXISTS batch_payments CASCADE;
+DROP TABLE IF EXISTS operations_log CASCADE;
 
 -- Cards table
 CREATE TABLE cards (
@@ -185,24 +185,6 @@ $$ LANGUAGE plpgsql;
 -- Create triggers for updating the updated_at timestamp
 -- MOVED TO sql/triggers.sql
 
--- =================================================================
--- SIMPLIFIED AUDIT SYSTEM
--- Simple admin action logging and feedback
--- =================================================================
-
--- Simple admin audit log - just track what admins do
-CREATE TABLE admin_audit_log (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    admin_user_id UUID NOT NULL,
-    admin_email VARCHAR(255),
-    target_user_id UUID,
-    target_user_email VARCHAR(255),
-    action_type VARCHAR(50) NOT NULL, -- Simple text field
-    description TEXT NOT NULL, -- What happened
-    details JSONB, -- Any additional data
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
 -- Print request feedbacks table
 CREATE TABLE print_request_feedbacks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -213,12 +195,6 @@ CREATE TABLE print_request_feedbacks (
     is_internal BOOLEAN DEFAULT FALSE, -- Internal notes vs user-visible feedback
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
-
--- Simple indexes for audit system
-CREATE INDEX IF NOT EXISTS idx_audit_admin_user ON admin_audit_log(admin_user_id);
-CREATE INDEX IF NOT EXISTS idx_audit_action_type ON admin_audit_log(action_type);
-CREATE INDEX IF NOT EXISTS idx_audit_created_at ON admin_audit_log(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_audit_target_user ON admin_audit_log(target_user_id);
 
 -- Indexes for print request feedbacks
 CREATE INDEX IF NOT EXISTS idx_print_feedbacks_request ON print_request_feedbacks(print_request_id);
@@ -264,3 +240,17 @@ CREATE INDEX IF NOT EXISTS idx_batch_payments_checkout_session ON batch_payments
 CREATE INDEX IF NOT EXISTS idx_batch_payments_status ON batch_payments(payment_status);
 -- Index for pending payments (where batch_id is null)
 CREATE INDEX IF NOT EXISTS idx_batch_payments_pending ON batch_payments(card_id, user_id) WHERE batch_id IS NULL;
+
+-- Operations Log table - Simple unified logging for all write operations
+CREATE TABLE operations_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL, -- REFERENCES auth.users(id)
+    user_role "UserRole" NOT NULL, -- User's role at time of operation
+    operation TEXT NOT NULL, -- Simple description of what happened
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Indexes for operations log
+CREATE INDEX IF NOT EXISTS idx_operations_log_user_id ON operations_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_operations_log_user_role ON operations_log(user_role);
+CREATE INDEX IF NOT EXISTS idx_operations_log_created_at ON operations_log(created_at DESC);

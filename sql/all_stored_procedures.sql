@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Thu Oct  2 12:56:52 CST 2025
+-- Generated: Thu Oct  2 16:09:00 CST 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -71,6 +71,136 @@ END $$;
 -- CLIENT-SIDE PROCEDURES
 -- =================================================================
 
+-- File: 00_logging.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS log_operation CASCADE;
+DROP FUNCTION IF EXISTS get_operations_log CASCADE;
+DROP FUNCTION IF EXISTS get_operations_log_stats CASCADE;
+
+-- =============================================
+-- Logging Helper Functions
+-- Simple unified logging for all write operations
+-- =============================================
+
+-- Helper function to log operations
+-- This should be called from any stored procedure that performs write operations
+CREATE OR REPLACE FUNCTION log_operation(
+    p_operation TEXT
+) RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+    v_user_role "UserRole";
+BEGIN
+    -- Get current user ID
+    v_user_id := auth.uid();
+    
+    -- Skip logging if no authenticated user (shouldn't happen in normal operations)
+    IF v_user_id IS NULL THEN
+        RETURN;
+    END IF;
+    
+    -- Get user role from auth.users metadata
+    SELECT COALESCE(
+        (raw_user_meta_data->>'role')::"UserRole",
+        'user'::"UserRole" -- Default to 'user' if role not set
+    ) INTO v_user_role
+    FROM auth.users
+    WHERE id = v_user_id;
+    
+    -- Insert log entry
+    INSERT INTO operations_log (user_id, user_role, operation)
+    VALUES (v_user_id, v_user_role, p_operation);
+    
+EXCEPTION
+    WHEN OTHERS THEN
+        -- Silently fail logging to not break the main operation
+        -- This ensures logging failures don't affect core functionality
+        RAISE WARNING 'Failed to log operation: %', SQLERRM;
+END;
+$$;
+
+-- Function to get recent operations log (admin only)
+CREATE OR REPLACE FUNCTION get_operations_log(
+    p_limit INTEGER DEFAULT 100,
+    p_offset INTEGER DEFAULT 0,
+    p_user_id UUID DEFAULT NULL,
+    p_user_role "UserRole" DEFAULT NULL
+)
+RETURNS TABLE (
+    id UUID,
+    user_id UUID,
+    user_email TEXT,
+    user_role "UserRole",
+    operation TEXT,
+    created_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view operations log.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        ol.id,
+        ol.user_id,
+        au.email::TEXT AS user_email,  -- Cast to TEXT to match return type
+        ol.user_role,
+        ol.operation,
+        ol.created_at
+    FROM operations_log ol
+    LEFT JOIN auth.users au ON ol.user_id = au.id
+    WHERE 
+        (p_user_id IS NULL OR ol.user_id = p_user_id)
+        AND (p_user_role IS NULL OR ol.user_role = p_user_role)
+    ORDER BY ol.created_at DESC
+    LIMIT p_limit OFFSET p_offset;
+END;
+$$;
+
+-- Function to get operations log summary statistics (admin only)
+CREATE OR REPLACE FUNCTION get_operations_log_stats()
+RETURNS TABLE (
+    total_operations BIGINT,
+    operations_today BIGINT,
+    operations_this_week BIGINT,
+    operations_this_month BIGINT,
+    admin_operations BIGINT,
+    card_issuer_operations BIGINT,
+    user_operations BIGINT
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view operations log statistics.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        (SELECT COUNT(*) FROM operations_log) as total_operations,
+        (SELECT COUNT(*) FROM operations_log WHERE created_at >= CURRENT_DATE) as operations_today,
+        (SELECT COUNT(*) FROM operations_log WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as operations_this_week,
+        (SELECT COUNT(*) FROM operations_log WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as operations_this_month,
+        (SELECT COUNT(*) FROM operations_log WHERE user_role = 'admin') as admin_operations,
+        (SELECT COUNT(*) FROM operations_log WHERE user_role = 'cardIssuer') as card_issuer_operations,
+        (SELECT COUNT(*) FROM operations_log WHERE user_role = 'user') as user_operations;
+END;
+$$;
+
+
+
 -- File: 01_auth_functions.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS handle_new_user CASCADE;
@@ -96,33 +226,12 @@ BEGIN
   SET raw_user_meta_data = raw_user_meta_data || jsonb_build_object('role', default_role)
   WHERE id = NEW.id;
   
-  -- Log new user registration in simplified audit table (self-registration)
-  INSERT INTO admin_audit_log (
-    admin_user_id,
-    admin_email,
-    target_user_id,
-    target_user_email,
-    action_type,
-    description,
-    details
-  ) VALUES (
-    NEW.id, -- Self-registration
-    NEW.email, -- Admin email = user email for self-registration
+  -- Log new user registration
+  INSERT INTO operations_log (user_id, user_role, operation)
+  VALUES (
     NEW.id,
-    NEW.email, -- Target email = user email
-    'USER_REGISTRATION',
-    'New user account created: ' || NEW.email,
-    jsonb_build_object(
-      'email', NEW.email,
-      'role', default_role,
-      'registration_method', CASE 
-        WHEN NEW.is_anonymous THEN 'anonymous'
-        WHEN NEW.app_metadata->>'provider' = 'google' THEN 'google_oauth'
-        WHEN NEW.app_metadata->>'provider' = 'github' THEN 'github_oauth'
-        ELSE 'email_password'
-      END,
-      'email_domain', SPLIT_PART(NEW.email, '@', 2)
-    )
+    default_role::"UserRole",
+    'New user registered: ' || NEW.email
   );
   
   RETURN NEW;
@@ -209,7 +318,6 @@ CREATE OR REPLACE FUNCTION create_card(
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
-    caller_role TEXT;
 BEGIN
     INSERT INTO cards (
         user_id,
@@ -234,42 +342,8 @@ BEGIN
     )
     RETURNING id INTO v_card_id;
     
-    -- Get caller role for audit context
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE id = auth.uid();
-    
-    -- Log card creation in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        'CARD_CREATION',
-        'User created new card design: ' || p_name,
-        jsonb_build_object(
-            'card_id', v_card_id,
-            'name', p_name,
-            'description', p_description,
-            'image_url', p_image_url,
-            'conversation_ai_enabled', p_conversation_ai_enabled,
-            'ai_prompt', p_ai_prompt,
-            'qr_code_position', p_qr_code_position,
-            'is_admin_action', (caller_role = 'admin'),
-            'has_ai_features', p_conversation_ai_enabled,
-            'has_custom_image', (p_image_url IS NOT NULL),
-            'security_impact', 'low',
-            'business_impact', 'medium'
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Created card: ' || p_name || ' (ID: ' || v_card_id || ')');
     
     RETURN v_card_id;
 END;
@@ -323,7 +397,6 @@ CREATE OR REPLACE FUNCTION update_card(
 DECLARE
     v_old_record RECORD;
     v_changes_made JSONB := '{}';
-    caller_role TEXT;
     has_changes BOOLEAN := FALSE;
 BEGIN
     -- Get existing card data before update for audit logging
@@ -407,60 +480,8 @@ BEGIN
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
     
-    -- Get caller role for audit context
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE id = auth.uid();
-    
-    -- Log card update in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        v_old_record.user_id,
-        (SELECT email FROM auth.users WHERE id = v_old_record.user_id),
-        'CARD_UPDATE',
-        'User updated card design: ' || COALESCE(p_name, v_old_record.name),
-        jsonb_build_object(
-            'card_id', p_card_id,
-            'old_values', jsonb_build_object(
-                'name', v_old_record.name,
-                'description', v_old_record.description,
-                'image_url', v_old_record.image_url,
-                'conversation_ai_enabled', v_old_record.conversation_ai_enabled,
-                'ai_prompt', v_old_record.ai_prompt,
-                'qr_code_position', v_old_record.qr_code_position
-            ),
-            'new_values', jsonb_build_object(
-                'name', COALESCE(p_name, v_old_record.name),
-                'description', COALESCE(p_description, v_old_record.description),
-                'image_url', COALESCE(p_image_url, v_old_record.image_url),
-                'conversation_ai_enabled', COALESCE(p_conversation_ai_enabled, v_old_record.conversation_ai_enabled),
-                'ai_prompt', COALESCE(p_ai_prompt, v_old_record.ai_prompt),
-                'qr_code_position', COALESCE(p_qr_code_position, v_old_record.qr_code_position::TEXT)
-            ),
-            'changes_made', v_changes_made,
-            'fields_changed', ARRAY(SELECT jsonb_object_keys(v_changes_made)),
-            'is_admin_action', (caller_role = 'admin'),
-            'ai_features_changed', (
-                (p_conversation_ai_enabled IS NOT NULL AND p_conversation_ai_enabled != v_old_record.conversation_ai_enabled) OR
-                (p_ai_prompt IS NOT NULL AND p_ai_prompt != v_old_record.ai_prompt)
-            ),
-            'security_impact', CASE 
-                WHEN (p_conversation_ai_enabled IS NOT NULL AND p_conversation_ai_enabled != v_old_record.conversation_ai_enabled) OR
-                     (p_ai_prompt IS NOT NULL AND p_ai_prompt != v_old_record.ai_prompt) THEN 'medium'
-                ELSE 'low'
-            END,
-            'business_impact', 'medium'
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Updated card: ' || COALESCE(p_name, v_old_record.name) || ' (ID: ' || p_card_id || ')');
     
     RETURN FOUND;
 END;
@@ -471,9 +492,6 @@ CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_record RECORD;
-    v_batches_count INTEGER;
-    v_issued_cards_count INTEGER;
-    caller_role TEXT;
 BEGIN
     -- Get card information before deletion for audit logging
     SELECT 
@@ -495,66 +513,11 @@ BEGIN
         RAISE EXCEPTION 'Card not found or not authorized to delete.';
     END IF;
     
-    -- Get associated data counts for audit logging
-    SELECT COUNT(*) INTO v_batches_count
-    FROM card_batches cb
-    WHERE cb.card_id = p_card_id;
-    
-    SELECT COUNT(ic.*) INTO v_issued_cards_count
-    FROM card_batches cb
-    LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
-    WHERE cb.card_id = p_card_id;
-    
-    -- Get caller role for audit context
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE id = auth.uid();
-    
     -- Perform the deletion
     DELETE FROM cards WHERE id = p_card_id AND user_id = auth.uid();
     
-    -- Log card deletion in audit table (CRITICAL for compliance)
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        v_card_record.user_id,
-        (SELECT email FROM auth.users WHERE id = v_card_record.user_id),
-        'CARD_DELETION',
-        'User deleted card design: ' || v_card_record.name,
-        jsonb_build_object(
-            'card_id', v_card_record.id,
-            'card_name', v_card_record.name,
-            'deleted_card_data', jsonb_build_object(
-                'name', v_card_record.name,
-                'description', v_card_record.description,
-                'image_url', v_card_record.image_url,
-                'conversation_ai_enabled', v_card_record.conversation_ai_enabled,
-                'ai_prompt', v_card_record.ai_prompt,
-                'qr_code_position', v_card_record.qr_code_position,
-                'created_at', v_card_record.created_at,
-                'updated_at', v_card_record.updated_at
-            ),
-            'is_admin_action', (caller_role = 'admin'),
-            'data_impact', CASE 
-                WHEN v_issued_cards_count > 0 THEN 'high'
-                WHEN v_batches_count > 0 THEN 'medium'
-                ELSE 'low'
-            END,
-            'batches_affected', v_batches_count,
-            'issued_cards_affected', v_issued_cards_count,
-            'had_ai_features', v_card_record.conversation_ai_enabled,
-            'security_impact', 'medium',
-            'deleted_at', NOW()
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Deleted card: ' || v_card_record.name || ' (ID: ' || p_card_id || ')');
     
     RETURN FOUND;
 END;
@@ -721,6 +684,9 @@ BEGIN
     )
     RETURNING id INTO v_content_item_id;
     
+    -- Log operation
+    PERFORM log_operation('Created content item: ' || p_name || ' (ID: ' || v_content_item_id || ')');
+    
     RETURN v_content_item_id;
 END;
 $$;
@@ -737,9 +703,10 @@ CREATE OR REPLACE FUNCTION update_content_item(
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_user_id UUID;
+    v_item_name TEXT;
 BEGIN
     -- Check if the user owns the card that contains this content item
-    SELECT c.user_id INTO v_user_id
+    SELECT c.user_id, ci.name INTO v_user_id, v_item_name
     FROM content_items ci
     JOIN cards c ON ci.card_id = c.id
     WHERE ci.id = p_content_item_id;
@@ -759,6 +726,9 @@ BEGIN
         ai_metadata = COALESCE(p_ai_metadata, ai_metadata),
         updated_at = now()
     WHERE id = p_content_item_id;
+    
+    -- Log operation
+    PERFORM log_operation('Updated content item: ' || COALESCE(p_name, v_item_name) || ' (ID: ' || p_content_item_id || ')');
     
     RETURN FOUND;
 END;
@@ -816,6 +786,9 @@ BEGIN
     SET sort_order = p_new_sort_order
     WHERE id = p_content_item_id;
     
+    -- Log operation
+    PERFORM log_operation('Reordered content item to position ' || p_new_sort_order || ' (ID: ' || p_content_item_id || ')');
+    
     RETURN FOUND;
 END;
 $$;
@@ -825,9 +798,10 @@ CREATE OR REPLACE FUNCTION delete_content_item(p_content_item_id UUID)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_user_id UUID;
+    v_item_name TEXT;
 BEGIN
     -- Check if the user owns the card that contains this content item
-    SELECT c.user_id INTO v_user_id
+    SELECT c.user_id, ci.name INTO v_user_id, v_item_name
     FROM content_items ci
     JOIN cards c ON ci.card_id = c.id
     WHERE ci.id = p_content_item_id;
@@ -838,6 +812,9 @@ BEGIN
     
     -- Delete the content item (cascade will handle children)
     DELETE FROM content_items WHERE id = p_content_item_id;
+    
+    -- Log operation
+    PERFORM log_operation('Deleted content item: ' || v_item_name || ' (ID: ' || p_content_item_id || ')');
     
     RETURN FOUND;
 END;
@@ -945,6 +922,9 @@ BEGIN
     -- NOTE: Cards are NOT created here in the two-step process
     -- Cards will only be created after payment is confirmed via confirm_batch_payment()
     -- OR when admin waives payment via admin_waive_batch_payment()
+    
+    -- Log operation
+    PERFORM log_operation('Issued batch: ' || p_quantity || ' cards for card ' || p_card_id);
     
     RETURN v_batch_id;
 END;
@@ -1074,58 +1054,19 @@ BEGIN
         updated_at = now()
     WHERE id = p_batch_id;
     
-    -- Log batch status change in audit table
+    -- Log operation
     DECLARE
-        caller_role TEXT;
         batch_name TEXT;
-        is_admin_action BOOLEAN := FALSE;
     BEGIN
-        SELECT raw_user_meta_data->>'role' INTO caller_role
-        FROM auth.users
-        WHERE auth.users.id = auth.uid();
-        
         SELECT cb.batch_name INTO batch_name
         FROM card_batches cb
         WHERE cb.id = p_batch_id;
         
-        IF caller_role = 'admin' THEN
-            is_admin_action := TRUE;
-        END IF;
-        
-        INSERT INTO admin_audit_log (
-            admin_user_id,
-            admin_email,
-            target_user_id,
-            target_user_email,
-            action_type,
-            description,
-            details
-        ) VALUES (
-            auth.uid(),
-            (SELECT email FROM auth.users WHERE id = auth.uid()),
-            v_user_id,
-            (SELECT email FROM auth.users WHERE id = v_user_id),
-            'BATCH_STATUS_CHANGE',
+        PERFORM log_operation(
             CASE 
-                WHEN p_disable_status THEN 'Batch disabled by user: ' || batch_name
-                ELSE 'Batch enabled by user: ' || batch_name
-            END,
-            jsonb_build_object(
-                'batch_id', p_batch_id,
-                'card_id', v_card_id,
-                'batch_name', batch_name,
-                'action', CASE 
-                    WHEN p_disable_status THEN 'batch_disabled'
-                    ELSE 'batch_enabled'
-                END,
-                'old_status', jsonb_build_object('is_disabled', NOT p_disable_status),
-                'new_status', jsonb_build_object('is_disabled', p_disable_status),
-                'is_admin_action', is_admin_action,
-                'status_change', CASE 
-                    WHEN p_disable_status THEN 'enabled_to_disabled'
-                    ELSE 'disabled_to_enabled'
-                END
-            )
+                WHEN p_disable_status THEN 'Disabled batch: ' || batch_name || ' (ID: ' || p_batch_id || ')'
+                ELSE 'Enabled batch: ' || batch_name || ' (ID: ' || p_batch_id || ')'
+            END
         );
     END;
     
@@ -1143,6 +1084,9 @@ BEGIN
         active_at = NOW(),
         activated_by = auth.uid()
     WHERE id = p_card_id AND active = false;
+    
+    -- Log operation
+    PERFORM log_operation('Activated issued card (ID: ' || p_card_id || ')');
     
     RETURN FOUND;
 END;
@@ -1196,6 +1140,9 @@ BEGIN
     
     -- Delete the issued card
     DELETE FROM issue_cards WHERE id = p_issued_card_id;
+    
+    -- Log operation
+    PERFORM log_operation('Deleted issued card (ID: ' || p_issued_card_id || ')');
     
     RETURN FOUND;
 END;
@@ -1268,59 +1215,8 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_batch_id;
     
-    -- Log card generation in audit table
-    DECLARE
-        caller_role TEXT;
-        is_admin_action BOOLEAN := FALSE;
-    BEGIN
-        SELECT raw_user_meta_data->>'role' INTO caller_role
-        FROM auth.users
-        WHERE auth.users.id = auth.uid();
-        
-        IF caller_role = 'admin' THEN
-            is_admin_action := TRUE;
-        END IF;
-        
-        INSERT INTO admin_audit_log (
-            admin_user_id,
-            admin_email,
-            target_user_id,
-            target_user_email,
-            action_type,
-            description,
-            details
-        ) VALUES (
-            auth.uid(),
-            (SELECT email FROM auth.users WHERE id = auth.uid()),
-            v_batch_record.card_owner,
-            (SELECT email FROM auth.users WHERE id = v_batch_record.card_owner),
-            'CARD_GENERATION',
-            CASE 
-                WHEN is_admin_action THEN 'Admin generated cards for batch: ' || v_batch_record.batch_name
-                WHEN v_batch_record.payment_waived THEN 'Cards generated after payment waiver: ' || v_batch_record.batch_name
-                ELSE 'Cards generated after payment confirmation: ' || v_batch_record.batch_name
-            END,
-            jsonb_build_object(
-                'batch_id', p_batch_id,
-                'card_id', v_batch_record.card_id,
-                'batch_name', v_batch_record.batch_name,
-                'cards_count', v_batch_record.cards_count,
-                'action', 'cards_generated',
-                'old_status', jsonb_build_object('cards_generated', false, 'cards_count', 0),
-                'new_status', jsonb_build_object(
-                    'cards_generated', true,
-                    'cards_generated_at', NOW(),
-                    'cards_count', v_batch_record.cards_count
-                ),
-                'is_admin_action', is_admin_action,
-                'payment_method', CASE 
-                    WHEN v_batch_record.payment_waived THEN 'waived'
-                    WHEN v_batch_record.payment_completed THEN 'stripe'
-                    ELSE 'unknown'
-                END
-            )
-        );
-    END;
+    -- Log operation
+    PERFORM log_operation('Generated ' || v_batch_record.cards_count || ' cards for batch: ' || v_batch_record.batch_name || ' (ID: ' || p_batch_id || ')');
     
     RETURN p_batch_id;
 END;
@@ -1509,6 +1405,9 @@ BEGIN
     )
     RETURNING id INTO v_print_request_id;
 
+    -- Log operation
+    PERFORM log_operation('Requested card printing for batch ' || p_batch_id || ' (Request ID: ' || v_print_request_id || ')');
+
     RETURN v_print_request_id;
 END;
 $$;
@@ -1606,33 +1505,8 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_request_id;
 
-    -- Log the withdrawal in audit table for admin visibility
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(), -- The card issuer is performing this action
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        auth.uid(), -- They are the target user as well
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        'PRINT_REQUEST_WITHDRAWAL',
-        'Print request withdrawn by card issuer for ' || v_card_name || ' - ' || v_batch_name || COALESCE(': ' || p_withdrawal_reason, ''),
-        jsonb_build_object(
-            'request_id', p_request_id,
-            'batch_id', v_batch_id,
-            'card_name', v_card_name,
-            'batch_name', v_batch_name,
-            'old_status', 'SUBMITTED',
-            'new_status', 'CANCELLED',
-            'self_withdrawal', true,
-            'withdrawal_reason', p_withdrawal_reason
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Withdrew print request for batch: ' || v_batch_name || ' (Request ID: ' || p_request_id || ')');
     
     RETURN FOUND;
 END;
@@ -1706,6 +1580,11 @@ BEGIN
             active_at = NOW(),
             activated_by = auth.uid() -- Set to current user ID if authenticated, NULL if not
         WHERE id = p_issue_card_id AND active = false;
+        
+        -- Log operation (only if user is authenticated)
+        IF auth.uid() IS NOT NULL THEN
+            PERFORM log_operation('Auto-activated issued card on first access (ID: ' || p_issue_card_id || ')');
+        END IF;
         
         v_is_card_active := TRUE; -- Mark as active for current request
     END IF;
@@ -2046,16 +1925,12 @@ $$;
 -- File: 11_admin_functions.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS admin_waive_batch_payment CASCADE;
-DROP FUNCTION IF EXISTS log_admin_action CASCADE;
-DROP FUNCTION IF EXISTS get_admin_audit_logs CASCADE;
 DROP FUNCTION IF EXISTS create_admin_feedback CASCADE;
 DROP FUNCTION IF EXISTS get_admin_feedback_history CASCADE;
 DROP FUNCTION IF EXISTS admin_get_system_stats_enhanced CASCADE;
 DROP FUNCTION IF EXISTS admin_get_all_print_requests CASCADE;
 DROP FUNCTION IF EXISTS admin_update_print_request_status CASCADE;
 DROP FUNCTION IF EXISTS admin_get_pending_verifications CASCADE;
-DROP FUNCTION IF EXISTS get_recent_admin_activity CASCADE;
-DROP FUNCTION IF EXISTS get_admin_audit_logs_count CASCADE;
 DROP FUNCTION IF EXISTS get_all_verifications CASCADE;
 DROP FUNCTION IF EXISTS get_verification_by_id CASCADE;
 DROP FUNCTION IF EXISTS get_all_users_with_details CASCADE;
@@ -2127,138 +2002,17 @@ BEGIN
     -- Generate cards using the new function
     PERFORM generate_batch_cards(p_batch_id);
     
-    -- Log the waiver
-    PERFORM log_admin_action(
-        auth.uid(),
-        'PAYMENT_WAIVER',
-        'Payment waived for batch ' || v_batch_record.batch_name || ' (' || v_batch_record.cards_count || ' cards): ' || p_waiver_reason,
-        v_batch_record.created_by,
-        jsonb_build_object(
-            'batch_id', p_batch_id,
-            'batch_name', v_batch_record.batch_name,
-            'cards_count', v_batch_record.cards_count,
-            'waived_amount_cents', v_batch_record.cards_count * 200
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Waived payment for batch: ' || v_batch_record.batch_name || ' (' || v_batch_record.cards_count || ' cards, $' || (v_batch_record.cards_count * 2) || ')');
     
     RETURN p_batch_id;
 END;
 $$;
 
 -- =================================================================
--- SIMPLIFIED AUDIT SYSTEM FUNCTIONS
+-- LEGACY ADMIN AUDIT FUNCTIONS (DEPRECATED - Use operations_log instead)
+-- These functions are kept for backward compatibility but redirect to operations_log
 -- =================================================================
-
--- Simple audit logging function with direct email lookup
-CREATE OR REPLACE FUNCTION log_admin_action(
-    p_admin_user_id UUID,
-    p_action_type VARCHAR(50),
-    p_description TEXT,
-    p_target_user_id UUID DEFAULT NULL,
-    p_details JSONB DEFAULT NULL
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_admin_email VARCHAR(255);
-    v_target_email VARCHAR(255);
-    v_audit_id UUID;
-BEGIN
-    -- Get admin email
-    SELECT email INTO v_admin_email FROM auth.users WHERE id = p_admin_user_id;
-    
-    -- Get target user email if target user is specified
-    IF p_target_user_id IS NOT NULL THEN
-        SELECT email INTO v_target_email FROM auth.users WHERE id = p_target_user_id;
-    END IF;
-    
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        p_admin_user_id,
-        v_admin_email,
-        p_target_user_id,
-        v_target_email,
-        p_action_type,
-        p_description,
-        p_details
-    )
-    RETURNING id INTO v_audit_id;
-    
-    RETURN v_audit_id;
-END;
-$$;
-
--- Simple audit log retrieval function
-CREATE OR REPLACE FUNCTION get_admin_audit_logs(
-    p_action_type TEXT DEFAULT NULL,
-    p_admin_user_id UUID DEFAULT NULL,
-    p_target_user_id UUID DEFAULT NULL,
-    p_start_date TIMESTAMPTZ DEFAULT NULL,
-    p_end_date TIMESTAMPTZ DEFAULT NULL,
-    p_limit INTEGER DEFAULT 50,
-    p_offset INTEGER DEFAULT 0
-)
-RETURNS TABLE (
-    id UUID,
-    admin_user_id UUID,
-    admin_email VARCHAR(255),
-    target_user_id UUID,
-    target_user_email VARCHAR(255),
-    action_type VARCHAR(50),
-    description TEXT,
-    details JSONB,
-    created_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-    v_action_types TEXT[];
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view audit logs.';
-    END IF;
-
-    -- Handle comma-separated action types for compatibility
-    IF p_action_type IS NOT NULL THEN
-        IF p_action_type LIKE '%,%' THEN
-            v_action_types := string_to_array(p_action_type, ',');
-        ELSE
-            v_action_types := ARRAY[p_action_type];
-        END IF;
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        aal.id,
-        aal.admin_user_id,
-        aal.admin_email,
-        aal.target_user_id,
-        aal.target_user_email,
-        aal.action_type,
-        aal.description,
-        aal.details,
-        aal.created_at
-    FROM admin_audit_log aal
-    WHERE 
-        (v_action_types IS NULL OR aal.action_type = ANY(v_action_types))
-        AND (p_admin_user_id IS NULL OR aal.admin_user_id = p_admin_user_id)
-        AND (p_target_user_id IS NULL OR aal.target_user_id = p_target_user_id)
-        AND (p_start_date IS NULL OR aal.created_at >= p_start_date)
-        AND (p_end_date IS NULL OR aal.created_at <= p_end_date)
-    ORDER BY aal.created_at DESC
-    LIMIT p_limit
-    OFFSET p_offset;
-END;
-$$;
 
 -- Simple feedback creation for verification and print requests
 CREATE OR REPLACE FUNCTION create_admin_feedback(
@@ -2449,11 +2203,11 @@ BEGIN
         (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE) as daily_issued_cards,
         (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_issued_cards,
         (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_issued_cards,
-        -- Audit metrics
-        (SELECT COUNT(*) FROM admin_audit_log) as total_audit_entries,
-        (SELECT COUNT(*) FROM admin_audit_log WHERE action_type = 'PAYMENT_WAIVER' AND created_at >= CURRENT_DATE) as payment_waivers_today,
-        (SELECT COUNT(*) FROM admin_audit_log WHERE action_type = 'ROLE_CHANGE' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as role_changes_week,
-        (SELECT COUNT(DISTINCT admin_user_id) FROM admin_audit_log WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as unique_admin_users_month;
+        -- Operations log metrics
+        (SELECT COUNT(*) FROM operations_log) as total_audit_entries,
+        (SELECT COUNT(*) FROM operations_log WHERE operation LIKE '%Waived payment%' AND created_at >= CURRENT_DATE) as payment_waivers_today,
+        (SELECT COUNT(*) FROM operations_log WHERE operation LIKE '%Changed user role%' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as role_changes_week,
+        (SELECT COUNT(DISTINCT user_id) FROM operations_log WHERE user_role = 'admin' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as unique_admin_users_month;
 END;
 $$;
 
@@ -2589,20 +2343,8 @@ BEGIN
         END;
     END IF;
 
-    -- Log the status change
-    PERFORM log_admin_action(
-        auth.uid(),
-        'PRINT_REQUEST_UPDATE',
-        'Print request status changed from ' || v_request_record.status || ' to ' || p_new_status || ' for ' || v_request_record.card_name,
-        v_request_record.user_id,
-        jsonb_build_object(
-            'request_id', p_request_id,
-            'old_status', v_request_record.status,
-            'new_status', p_new_status,
-            'card_name', v_request_record.card_name,
-            'batch_name', v_request_record.batch_name
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Updated print request status to ' || p_new_status || ' for batch: ' || v_request_record.batch_name || ' (Request ID: ' || p_request_id || ')');
     
     RETURN FOUND;
 END;
@@ -2653,88 +2395,10 @@ $$;
 
 
 
--- (Admin) Get recent admin activity
-CREATE OR REPLACE FUNCTION get_recent_admin_activity(
-    p_limit INTEGER DEFAULT 50
-)
-RETURNS TABLE (
-    activity_type TEXT,
-    activity_date TIMESTAMPTZ,
-    user_email VARCHAR(255),
-    user_public_name TEXT,
-    description TEXT,
-    details JSONB
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view recent activity.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        aal.action_type AS activity_type,
-        aal.created_at AS activity_date,
-        aal.target_user_email AS user_email,
-        up.public_name AS user_public_name,
-        aal.description AS description,
-        aal.details AS details
-    FROM admin_audit_log aal
-    LEFT JOIN user_profiles up ON aal.target_user_id = up.user_id
-    ORDER BY aal.created_at DESC
-    LIMIT p_limit;
-END;
-$$;
-
--- (Admin) Get count of admin audit logs with filtering
-CREATE OR REPLACE FUNCTION get_admin_audit_logs_count(
-    p_action_type TEXT DEFAULT NULL,
-    p_admin_user_id UUID DEFAULT NULL,
-    p_target_user_id UUID DEFAULT NULL,
-    p_start_date TIMESTAMPTZ DEFAULT NULL,
-    p_end_date TIMESTAMPTZ DEFAULT NULL
-)
-RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-    v_count INTEGER;
-    v_action_types TEXT[];
-BEGIN
-    -- Check if caller is admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view audit logs.';
-    END IF;
-
-    -- Convert comma-separated string to array for compatibility
-    IF p_action_type IS NOT NULL THEN
-        IF p_action_type LIKE '%,%' THEN
-            v_action_types := string_to_array(p_action_type, ',');
-        ELSE
-            v_action_types := ARRAY[p_action_type];
-        END IF;
-    END IF;
-
-    SELECT COUNT(*)::INTEGER INTO v_count
-    FROM admin_audit_log aal
-    WHERE (v_action_types IS NULL OR aal.action_type = ANY(v_action_types))
-    AND (p_admin_user_id IS NULL OR aal.admin_user_id = p_admin_user_id)
-    AND (p_target_user_id IS NULL OR aal.target_user_id = p_target_user_id)
-    AND (p_start_date IS NULL OR aal.created_at >= p_start_date)
-    AND (p_end_date IS NULL OR aal.created_at <= p_end_date);
-
-    RETURN v_count;
-END;
-$$;
+-- Legacy functions removed - Use operations_log functions instead:
+-- - Use get_operations_log() instead of get_admin_audit_logs()
+-- - Use get_operations_log_stats() instead of get_admin_audit_logs_count()
+-- See 00_logging.sql for new functions
 
 -- (Admin) Get all verifications with comprehensive filtering
 CREATE OR REPLACE FUNCTION get_all_verifications(
@@ -3528,24 +3192,8 @@ BEGIN
     updated_at = NOW()
     WHERE id = p_user_id;
 
-    -- Log the role change in audit log
-    PERFORM log_admin_action(
-        'USER_ROLE_UPDATE',
-        format('Changed user role from %s to %s. Reason: %s', 
-            COALESCE(v_old_role, 'none'), 
-            p_new_role, 
-            p_reason
-        ),
-        jsonb_build_object(
-            'user_id', p_user_id,
-            'user_email', v_user_email,
-            'old_role', v_old_role,
-            'new_role', p_new_role,
-            'reason', p_reason
-        ),
-        p_user_id,
-        v_user_email
-    );
+    -- Log operation
+    PERFORM log_operation('Changed user role from ' || COALESCE(v_old_role, 'none') || ' to ' || p_new_role || ' for user: ' || v_user_email);
 
     RETURN TRUE;
 END;
@@ -3632,34 +3280,8 @@ BEGIN
         p_metadata
     ) RETURNING id INTO v_payment_id;
     
-    -- Log payment creation in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        'PAYMENT_CREATION',
-        'Stripe checkout session payment created',
-        jsonb_build_object(
-            'payment_id', v_payment_id,
-            'payment_status', 'pending',
-            'amount_cents', p_amount_cents,
-            'currency', 'usd',
-            'action', 'payment_session_created',
-            'stripe_checkout_session_id', p_stripe_checkout_session_id,
-            'stripe_payment_intent_id', p_stripe_payment_intent_id,
-            'batch_id', p_batch_id,
-            'metadata', p_metadata
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Created batch payment for batch ' || p_batch_id || ' (Payment ID: ' || v_payment_id || ', Amount: $' || (p_amount_cents::DECIMAL / 100) || ')');
     
     RETURN v_payment_id;
 END;
@@ -3764,45 +3386,8 @@ BEGIN
     -- Generate cards using the new function
     PERFORM generate_batch_cards(v_payment_record.batch_id);
     
-    -- Log payment confirmation in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        v_payment_record.user_id,
-        (SELECT email FROM auth.users WHERE id = v_payment_record.user_id),
-        'PAYMENT_CONFIRMATION',
-        'Batch payment confirmed via Stripe checkout session',
-        jsonb_build_object(
-            'old_status', jsonb_build_object(
-                'payment_status', v_payment_record.payment_status,
-                'payment_completed', false,
-                'cards_generated', false
-            ),
-            'new_status', jsonb_build_object(
-                'payment_status', 'succeeded',
-                'payment_completed', true,
-                'payment_completed_at', NOW(),
-                'payment_method', p_payment_method,
-                'cards_generated', true
-            ),
-            'action', 'payment_confirmed',
-            'payment_method', p_payment_method,
-            'stripe_checkout_session_id', p_stripe_checkout_session_id,
-            'batch_id', v_payment_record.batch_id,
-            'amount_cents', v_payment_record.amount_cents,
-            'currency', v_payment_record.currency,
-            'cards_count', v_payment_record.cards_count,
-            'automated_card_generation', true
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Confirmed batch payment via Stripe (Batch ID: ' || v_payment_record.batch_id || ', Amount: $' || (v_payment_record.amount_cents::DECIMAL / 100) || ')');
     
     RETURN v_payment_record.batch_id;
 END;
@@ -3902,6 +3487,9 @@ BEGIN
     )
     RETURNING id INTO v_payment_id;
     
+    -- Log operation
+    PERFORM log_operation('Created pending batch payment for card ' || p_card_id || ' (' || p_cards_count || ' cards, Payment ID: ' || v_payment_id || ')');
+    
     RETURN v_payment_id;
 END;
 $$;
@@ -3977,49 +3565,8 @@ BEGIN
     -- Generate cards for the new batch
     PERFORM generate_batch_cards(v_batch_id);
     
-    -- Log payment confirmation in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        v_payment_record.user_id,
-        (SELECT email FROM auth.users WHERE id = v_payment_record.user_id),
-        'PENDING_BATCH_PAYMENT_CONFIRMATION',
-        'Pending batch payment confirmed and batch created: ' || v_generated_batch_name,
-        jsonb_build_object(
-            'old_status', jsonb_build_object(
-                'payment_status', v_payment_record.payment_status,
-                'batch_exists', false,
-                'cards_generated', false
-            ),
-            'new_status', jsonb_build_object(
-                'payment_status', 'succeeded',
-                'batch_created', true,
-                'batch_id', v_batch_id,
-                'batch_name', v_generated_batch_name,
-                'payment_completed_at', NOW(),
-                'payment_method', p_payment_method,
-                'cards_generated', true
-            ),
-            'action', 'pending_payment_confirmed_batch_created',
-            'payment_method', p_payment_method,
-            'stripe_checkout_session_id', p_stripe_checkout_session_id,
-            'batch_id', v_batch_id,
-            'card_id', v_payment_record.card_id,
-            'amount_cents', v_payment_record.amount_cents,
-            'currency', v_payment_record.currency,
-            'cards_count', v_payment_record.cards_count,
-            'automated_batch_creation', true,
-            'automated_card_generation', true
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Confirmed pending batch payment and created batch: ' || v_generated_batch_name || ' (Batch ID: ' || v_batch_id || ', ' || v_payment_record.cards_count || ' cards)');
     
     RETURN v_batch_id;
 END;

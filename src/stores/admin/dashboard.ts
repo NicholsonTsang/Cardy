@@ -120,17 +120,32 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
   const fetchRecentActivity = async (limit: number = 50): Promise<AdminActivity[]> => {
     isLoadingActivity.value = true
     try {
-      const { data, error } = await supabase.rpc('get_recent_admin_activity', {
-        p_limit: limit
+      // Use new operations_log system instead of old admin_audit_log
+      const { data, error } = await supabase.rpc('get_operations_log', {
+        p_limit: limit,
+        p_offset: 0,
+        p_user_id: null,
+        p_user_role: 'admin' // Filter to admin operations only
       })
+      
       if (error) {
-        console.warn('get_recent_admin_activity function not found, returning empty array')
+        console.warn('get_operations_log function error, returning empty array:', error)
         recentActivity.value = []
         return []
       }
       
-      recentActivity.value = data || []
-      return data || []
+      // Transform operations_log format to AdminActivity format
+      const transformedData = (data || []).map((log: any) => ({
+        activity_type: log.operation.split(':')[0].trim(), // Extract type from operation text
+        activity_date: log.created_at,
+        user_email: log.user_email || '',
+        user_public_name: log.user_email?.split('@')[0] || 'Unknown',
+        description: log.operation,
+        details: null
+      }))
+      
+      recentActivity.value = transformedData
+      return transformedData
     } catch (error) {
       console.error('Error fetching recent activity:', error)
       // Return empty array instead of throwing to prevent dashboard crash

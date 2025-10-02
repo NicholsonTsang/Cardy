@@ -79,6 +79,9 @@ BEGIN
     )
     RETURNING id INTO v_print_request_id;
 
+    -- Log operation
+    PERFORM log_operation('Requested card printing for batch ' || p_batch_id || ' (Request ID: ' || v_print_request_id || ')');
+
     RETURN v_print_request_id;
 END;
 $$;
@@ -176,33 +179,8 @@ BEGIN
         updated_at = NOW()
     WHERE id = p_request_id;
 
-    -- Log the withdrawal in audit table for admin visibility
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(), -- The card issuer is performing this action
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        auth.uid(), -- They are the target user as well
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        'PRINT_REQUEST_WITHDRAWAL',
-        'Print request withdrawn by card issuer for ' || v_card_name || ' - ' || v_batch_name || COALESCE(': ' || p_withdrawal_reason, ''),
-        jsonb_build_object(
-            'request_id', p_request_id,
-            'batch_id', v_batch_id,
-            'card_name', v_card_name,
-            'batch_name', v_batch_name,
-            'old_status', 'SUBMITTED',
-            'new_status', 'CANCELLED',
-            'self_withdrawal', true,
-            'withdrawal_reason', p_withdrawal_reason
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Withdrew print request for batch: ' || v_batch_name || ' (Request ID: ' || p_request_id || ')');
     
     RETURN FOUND;
 END;

@@ -51,7 +51,6 @@ CREATE OR REPLACE FUNCTION create_card(
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
-    caller_role TEXT;
 BEGIN
     INSERT INTO cards (
         user_id,
@@ -76,42 +75,8 @@ BEGIN
     )
     RETURNING id INTO v_card_id;
     
-    -- Get caller role for audit context
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE id = auth.uid();
-    
-    -- Log card creation in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        'CARD_CREATION',
-        'User created new card design: ' || p_name,
-        jsonb_build_object(
-            'card_id', v_card_id,
-            'name', p_name,
-            'description', p_description,
-            'image_url', p_image_url,
-            'conversation_ai_enabled', p_conversation_ai_enabled,
-            'ai_prompt', p_ai_prompt,
-            'qr_code_position', p_qr_code_position,
-            'is_admin_action', (caller_role = 'admin'),
-            'has_ai_features', p_conversation_ai_enabled,
-            'has_custom_image', (p_image_url IS NOT NULL),
-            'security_impact', 'low',
-            'business_impact', 'medium'
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Created card: ' || p_name || ' (ID: ' || v_card_id || ')');
     
     RETURN v_card_id;
 END;
@@ -165,7 +130,6 @@ CREATE OR REPLACE FUNCTION update_card(
 DECLARE
     v_old_record RECORD;
     v_changes_made JSONB := '{}';
-    caller_role TEXT;
     has_changes BOOLEAN := FALSE;
 BEGIN
     -- Get existing card data before update for audit logging
@@ -249,60 +213,8 @@ BEGIN
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
     
-    -- Get caller role for audit context
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE id = auth.uid();
-    
-    -- Log card update in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        v_old_record.user_id,
-        (SELECT email FROM auth.users WHERE id = v_old_record.user_id),
-        'CARD_UPDATE',
-        'User updated card design: ' || COALESCE(p_name, v_old_record.name),
-        jsonb_build_object(
-            'card_id', p_card_id,
-            'old_values', jsonb_build_object(
-                'name', v_old_record.name,
-                'description', v_old_record.description,
-                'image_url', v_old_record.image_url,
-                'conversation_ai_enabled', v_old_record.conversation_ai_enabled,
-                'ai_prompt', v_old_record.ai_prompt,
-                'qr_code_position', v_old_record.qr_code_position
-            ),
-            'new_values', jsonb_build_object(
-                'name', COALESCE(p_name, v_old_record.name),
-                'description', COALESCE(p_description, v_old_record.description),
-                'image_url', COALESCE(p_image_url, v_old_record.image_url),
-                'conversation_ai_enabled', COALESCE(p_conversation_ai_enabled, v_old_record.conversation_ai_enabled),
-                'ai_prompt', COALESCE(p_ai_prompt, v_old_record.ai_prompt),
-                'qr_code_position', COALESCE(p_qr_code_position, v_old_record.qr_code_position::TEXT)
-            ),
-            'changes_made', v_changes_made,
-            'fields_changed', ARRAY(SELECT jsonb_object_keys(v_changes_made)),
-            'is_admin_action', (caller_role = 'admin'),
-            'ai_features_changed', (
-                (p_conversation_ai_enabled IS NOT NULL AND p_conversation_ai_enabled != v_old_record.conversation_ai_enabled) OR
-                (p_ai_prompt IS NOT NULL AND p_ai_prompt != v_old_record.ai_prompt)
-            ),
-            'security_impact', CASE 
-                WHEN (p_conversation_ai_enabled IS NOT NULL AND p_conversation_ai_enabled != v_old_record.conversation_ai_enabled) OR
-                     (p_ai_prompt IS NOT NULL AND p_ai_prompt != v_old_record.ai_prompt) THEN 'medium'
-                ELSE 'low'
-            END,
-            'business_impact', 'medium'
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Updated card: ' || COALESCE(p_name, v_old_record.name) || ' (ID: ' || p_card_id || ')');
     
     RETURN FOUND;
 END;
@@ -313,9 +225,6 @@ CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_record RECORD;
-    v_batches_count INTEGER;
-    v_issued_cards_count INTEGER;
-    caller_role TEXT;
 BEGIN
     -- Get card information before deletion for audit logging
     SELECT 
@@ -337,66 +246,11 @@ BEGIN
         RAISE EXCEPTION 'Card not found or not authorized to delete.';
     END IF;
     
-    -- Get associated data counts for audit logging
-    SELECT COUNT(*) INTO v_batches_count
-    FROM card_batches cb
-    WHERE cb.card_id = p_card_id;
-    
-    SELECT COUNT(ic.*) INTO v_issued_cards_count
-    FROM card_batches cb
-    LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
-    WHERE cb.card_id = p_card_id;
-    
-    -- Get caller role for audit context
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE id = auth.uid();
-    
     -- Perform the deletion
     DELETE FROM cards WHERE id = p_card_id AND user_id = auth.uid();
     
-    -- Log card deletion in audit table (CRITICAL for compliance)
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        v_card_record.user_id,
-        (SELECT email FROM auth.users WHERE id = v_card_record.user_id),
-        'CARD_DELETION',
-        'User deleted card design: ' || v_card_record.name,
-        jsonb_build_object(
-            'card_id', v_card_record.id,
-            'card_name', v_card_record.name,
-            'deleted_card_data', jsonb_build_object(
-                'name', v_card_record.name,
-                'description', v_card_record.description,
-                'image_url', v_card_record.image_url,
-                'conversation_ai_enabled', v_card_record.conversation_ai_enabled,
-                'ai_prompt', v_card_record.ai_prompt,
-                'qr_code_position', v_card_record.qr_code_position,
-                'created_at', v_card_record.created_at,
-                'updated_at', v_card_record.updated_at
-            ),
-            'is_admin_action', (caller_role = 'admin'),
-            'data_impact', CASE 
-                WHEN v_issued_cards_count > 0 THEN 'high'
-                WHEN v_batches_count > 0 THEN 'medium'
-                ELSE 'low'
-            END,
-            'batches_affected', v_batches_count,
-            'issued_cards_affected', v_issued_cards_count,
-            'had_ai_features', v_card_record.conversation_ai_enabled,
-            'security_impact', 'medium',
-            'deleted_at', NOW()
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Deleted card: ' || v_card_record.name || ' (ID: ' || p_card_id || ')');
     
     RETURN FOUND;
 END;

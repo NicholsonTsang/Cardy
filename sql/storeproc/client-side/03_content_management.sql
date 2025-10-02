@@ -150,6 +150,9 @@ BEGIN
     )
     RETURNING id INTO v_content_item_id;
     
+    -- Log operation
+    PERFORM log_operation('Created content item: ' || p_name || ' (ID: ' || v_content_item_id || ')');
+    
     RETURN v_content_item_id;
 END;
 $$;
@@ -166,9 +169,10 @@ CREATE OR REPLACE FUNCTION update_content_item(
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_user_id UUID;
+    v_item_name TEXT;
 BEGIN
     -- Check if the user owns the card that contains this content item
-    SELECT c.user_id INTO v_user_id
+    SELECT c.user_id, ci.name INTO v_user_id, v_item_name
     FROM content_items ci
     JOIN cards c ON ci.card_id = c.id
     WHERE ci.id = p_content_item_id;
@@ -188,6 +192,9 @@ BEGIN
         ai_metadata = COALESCE(p_ai_metadata, ai_metadata),
         updated_at = now()
     WHERE id = p_content_item_id;
+    
+    -- Log operation
+    PERFORM log_operation('Updated content item: ' || COALESCE(p_name, v_item_name) || ' (ID: ' || p_content_item_id || ')');
     
     RETURN FOUND;
 END;
@@ -245,6 +252,9 @@ BEGIN
     SET sort_order = p_new_sort_order
     WHERE id = p_content_item_id;
     
+    -- Log operation
+    PERFORM log_operation('Reordered content item to position ' || p_new_sort_order || ' (ID: ' || p_content_item_id || ')');
+    
     RETURN FOUND;
 END;
 $$;
@@ -254,9 +264,10 @@ CREATE OR REPLACE FUNCTION delete_content_item(p_content_item_id UUID)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_user_id UUID;
+    v_item_name TEXT;
 BEGIN
     -- Check if the user owns the card that contains this content item
-    SELECT c.user_id INTO v_user_id
+    SELECT c.user_id, ci.name INTO v_user_id, v_item_name
     FROM content_items ci
     JOIN cards c ON ci.card_id = c.id
     WHERE ci.id = p_content_item_id;
@@ -267,6 +278,9 @@ BEGIN
     
     -- Delete the content item (cascade will handle children)
     DELETE FROM content_items WHERE id = p_content_item_id;
+    
+    -- Log operation
+    PERFORM log_operation('Deleted content item: ' || v_item_name || ' (ID: ' || p_content_item_id || ')');
     
     RETURN FOUND;
 END;

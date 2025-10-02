@@ -51,20 +51,49 @@ export const useAuditLogStore = defineStore('auditLog', () => {
     error.value = null
     
     try {
-      const { data, error: fetchError } = await supabase.rpc('get_admin_audit_logs', {
-        p_action_type: filters.action_type || null,
-        p_admin_user_id: filters.admin_user_id || null,
-        p_target_user_id: filters.target_user_id || null,
-        p_start_date: filters.start_date?.toISOString() || null,
-        p_end_date: filters.end_date?.toISOString() || null,
+      // Use new operations_log system instead of old admin_audit_log
+      const { data, error: fetchError } = await supabase.rpc('get_operations_log', {
         p_limit: limit,
-        p_offset: offset
+        p_offset: offset,
+        p_user_id: filters.admin_user_id || filters.target_user_id || null,
+        p_user_role: null // Get all roles
       })
 
       if (fetchError) throw fetchError
 
-      auditLogs.value = data || []
-      return data || []
+      // Transform operations_log to match old AuditLogEntry format for backward compatibility
+      const transformedData = (data || []).map((log: any) => ({
+        id: log.id,
+        admin_user_id: log.user_id,
+        admin_email: log.user_email || '',
+        target_user_id: log.user_id, // In operations_log, same as user_id
+        target_user_email: log.user_email || '',
+        action_type: log.operation.split(':')[0].trim() || 'OPERATION', // Extract action from operation text
+        description: log.operation,
+        details: null, // No JSONB details in new system
+        created_at: log.created_at
+      }))
+
+      // Apply client-side filtering if needed
+      let filteredData = transformedData
+      if (filters.action_type) {
+        filteredData = filteredData.filter((log: any) => 
+          log.description.toLowerCase().includes(filters.action_type!.toLowerCase())
+        )
+      }
+      if (filters.start_date) {
+        filteredData = filteredData.filter((log: any) => 
+          new Date(log.created_at) >= filters.start_date!
+        )
+      }
+      if (filters.end_date) {
+        filteredData = filteredData.filter((log: any) => 
+          new Date(log.created_at) <= filters.end_date!
+        )
+      }
+
+      auditLogs.value = filteredData
+      return filteredData
     } catch (err: any) {
       console.error('Error fetching audit logs:', err)
       error.value = err.message || 'Failed to fetch audit logs'
@@ -76,18 +105,16 @@ export const useAuditLogStore = defineStore('auditLog', () => {
 
   const fetchAuditLogsCount = async (filters: Partial<AuditLogFilters> = {}): Promise<number> => {
     try {
-      const { data, error: countError } = await supabase.rpc('get_admin_audit_logs_count', {
-        p_action_type: filters.action_type || null,
-        p_admin_user_id: filters.admin_user_id || null,
-        p_target_user_id: filters.target_user_id || null,
-        p_start_date: filters.start_date?.toISOString() || null,
-        p_end_date: filters.end_date?.toISOString() || null
-      })
+      // Use new operations_log_stats instead of old admin_audit_logs_count
+      const { data, error: countError } = await supabase.rpc('get_operations_log_stats')
 
       if (countError) throw countError
 
-      totalCount.value = data || 0
-      return data || 0
+      const stats = (data && data.length > 0) ? data[0] : null
+      const count = stats ? stats.total_operations : 0
+
+      totalCount.value = count
+      return count
     } catch (err: any) {
       console.error('Error fetching audit logs count:', err)
       throw err
@@ -99,13 +126,27 @@ export const useAuditLogStore = defineStore('auditLog', () => {
     error.value = null
 
     try {
-      const { data, error: fetchError } = await supabase.rpc('get_recent_admin_activity', {
-        p_limit: limit
+      // Use new operations_log system
+      const { data, error: fetchError } = await supabase.rpc('get_operations_log', {
+        p_limit: limit,
+        p_offset: 0,
+        p_user_id: null,
+        p_user_role: null // Get all operations
       })
 
       if (fetchError) throw fetchError
 
-      return data || []
+      // Transform to match old format
+      const transformedData = (data || []).map((log: any) => ({
+        activity_type: log.operation.split(':')[0].trim() || 'OPERATION',
+        activity_date: log.created_at,
+        user_email: log.user_email,
+        user_public_name: log.user_email?.split('@')[0] || 'Unknown',
+        description: log.operation,
+        details: null
+      }))
+
+      return transformedData
     } catch (err: any) {
       console.error('Error fetching recent activity:', err)
       error.value = err.message || 'Failed to fetch recent activity'

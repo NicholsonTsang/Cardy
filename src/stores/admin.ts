@@ -8,11 +8,14 @@ import { useAdminDashboardStore } from '@/stores/admin/dashboard'
 import { useAdminPrintRequestsStore } from '@/stores/admin/printRequests'
 import { useAdminBatchesStore } from '@/stores/admin/batches'
 import { useAuditLogStore } from '@/stores/admin/auditLog'
+import { useOperationsLogStore } from '@/stores/admin/operationsLog'
 
 // Re-export individual stores for direct import
 export { useAdminDashboardStore } from '@/stores/admin/dashboard'
 export { useAdminPrintRequestsStore } from '@/stores/admin/printRequests'
 export { useAdminBatchesStore } from '@/stores/admin/batches'
+export { useAuditLogStore } from '@/stores/admin/auditLog'
+export { useOperationsLogStore } from '@/stores/admin/operationsLog'
 
 // Re-export all types for backward compatibility
 export type { 
@@ -31,6 +34,11 @@ export type {
 export type {
   AuditLogEntry as AdminAuditLog
 } from '@/stores/admin/auditLog'
+
+export type {
+  OperationsLogEntry,
+  OperationsLogStats
+} from '@/stores/admin/operationsLog'
 
 // Legacy admin store that delegates to the new modular stores
 export const useAdminStore = defineStore('admin', () => {

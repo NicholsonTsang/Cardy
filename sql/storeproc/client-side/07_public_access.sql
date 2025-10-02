@@ -61,6 +61,11 @@ BEGIN
             activated_by = auth.uid() -- Set to current user ID if authenticated, NULL if not
         WHERE id = p_issue_card_id AND active = false;
         
+        -- Log operation (only if user is authenticated)
+        IF auth.uid() IS NOT NULL THEN
+            PERFORM log_operation('Auto-activated issued card on first access (ID: ' || p_issue_card_id || ')');
+        END IF;
+        
         v_is_card_active := TRUE; -- Mark as active for current request
     END IF;
 

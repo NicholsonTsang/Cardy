@@ -18,33 +18,12 @@ BEGIN
   SET raw_user_meta_data = raw_user_meta_data || jsonb_build_object('role', default_role)
   WHERE id = NEW.id;
   
-  -- Log new user registration in simplified audit table (self-registration)
-  INSERT INTO admin_audit_log (
-    admin_user_id,
-    admin_email,
-    target_user_id,
-    target_user_email,
-    action_type,
-    description,
-    details
-  ) VALUES (
-    NEW.id, -- Self-registration
-    NEW.email, -- Admin email = user email for self-registration
+  -- Log new user registration
+  INSERT INTO operations_log (user_id, user_role, operation)
+  VALUES (
     NEW.id,
-    NEW.email, -- Target email = user email
-    'USER_REGISTRATION',
-    'New user account created: ' || NEW.email,
-    jsonb_build_object(
-      'email', NEW.email,
-      'role', default_role,
-      'registration_method', CASE 
-        WHEN NEW.is_anonymous THEN 'anonymous'
-        WHEN NEW.app_metadata->>'provider' = 'google' THEN 'google_oauth'
-        WHEN NEW.app_metadata->>'provider' = 'github' THEN 'github_oauth'
-        ELSE 'email_password'
-      END,
-      'email_domain', SPLIT_PART(NEW.email, '@', 2)
-    )
+    default_role::"UserRole",
+    'New user registered: ' || NEW.email
   );
   
   RETURN NEW;

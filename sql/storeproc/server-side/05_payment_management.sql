@@ -66,34 +66,8 @@ BEGIN
         p_metadata
     ) RETURNING id INTO v_payment_id;
     
-    -- Log payment creation in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        'PAYMENT_CREATION',
-        'Stripe checkout session payment created',
-        jsonb_build_object(
-            'payment_id', v_payment_id,
-            'payment_status', 'pending',
-            'amount_cents', p_amount_cents,
-            'currency', 'usd',
-            'action', 'payment_session_created',
-            'stripe_checkout_session_id', p_stripe_checkout_session_id,
-            'stripe_payment_intent_id', p_stripe_payment_intent_id,
-            'batch_id', p_batch_id,
-            'metadata', p_metadata
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Created batch payment for batch ' || p_batch_id || ' (Payment ID: ' || v_payment_id || ', Amount: $' || (p_amount_cents::DECIMAL / 100) || ')');
     
     RETURN v_payment_id;
 END;
@@ -198,45 +172,8 @@ BEGIN
     -- Generate cards using the new function
     PERFORM generate_batch_cards(v_payment_record.batch_id);
     
-    -- Log payment confirmation in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        v_payment_record.user_id,
-        (SELECT email FROM auth.users WHERE id = v_payment_record.user_id),
-        'PAYMENT_CONFIRMATION',
-        'Batch payment confirmed via Stripe checkout session',
-        jsonb_build_object(
-            'old_status', jsonb_build_object(
-                'payment_status', v_payment_record.payment_status,
-                'payment_completed', false,
-                'cards_generated', false
-            ),
-            'new_status', jsonb_build_object(
-                'payment_status', 'succeeded',
-                'payment_completed', true,
-                'payment_completed_at', NOW(),
-                'payment_method', p_payment_method,
-                'cards_generated', true
-            ),
-            'action', 'payment_confirmed',
-            'payment_method', p_payment_method,
-            'stripe_checkout_session_id', p_stripe_checkout_session_id,
-            'batch_id', v_payment_record.batch_id,
-            'amount_cents', v_payment_record.amount_cents,
-            'currency', v_payment_record.currency,
-            'cards_count', v_payment_record.cards_count,
-            'automated_card_generation', true
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Confirmed batch payment via Stripe (Batch ID: ' || v_payment_record.batch_id || ', Amount: $' || (v_payment_record.amount_cents::DECIMAL / 100) || ')');
     
     RETURN v_payment_record.batch_id;
 END;
@@ -336,6 +273,9 @@ BEGIN
     )
     RETURNING id INTO v_payment_id;
     
+    -- Log operation
+    PERFORM log_operation('Created pending batch payment for card ' || p_card_id || ' (' || p_cards_count || ' cards, Payment ID: ' || v_payment_id || ')');
+    
     RETURN v_payment_id;
 END;
 $$;
@@ -411,49 +351,8 @@ BEGIN
     -- Generate cards for the new batch
     PERFORM generate_batch_cards(v_batch_id);
     
-    -- Log payment confirmation in audit table
-    INSERT INTO admin_audit_log (
-        admin_user_id,
-        admin_email,
-        target_user_id,
-        target_user_email,
-        action_type,
-        description,
-        details
-    ) VALUES (
-        auth.uid(),
-        (SELECT email FROM auth.users WHERE id = auth.uid()),
-        v_payment_record.user_id,
-        (SELECT email FROM auth.users WHERE id = v_payment_record.user_id),
-        'PENDING_BATCH_PAYMENT_CONFIRMATION',
-        'Pending batch payment confirmed and batch created: ' || v_generated_batch_name,
-        jsonb_build_object(
-            'old_status', jsonb_build_object(
-                'payment_status', v_payment_record.payment_status,
-                'batch_exists', false,
-                'cards_generated', false
-            ),
-            'new_status', jsonb_build_object(
-                'payment_status', 'succeeded',
-                'batch_created', true,
-                'batch_id', v_batch_id,
-                'batch_name', v_generated_batch_name,
-                'payment_completed_at', NOW(),
-                'payment_method', p_payment_method,
-                'cards_generated', true
-            ),
-            'action', 'pending_payment_confirmed_batch_created',
-            'payment_method', p_payment_method,
-            'stripe_checkout_session_id', p_stripe_checkout_session_id,
-            'batch_id', v_batch_id,
-            'card_id', v_payment_record.card_id,
-            'amount_cents', v_payment_record.amount_cents,
-            'currency', v_payment_record.currency,
-            'cards_count', v_payment_record.cards_count,
-            'automated_batch_creation', true,
-            'automated_card_generation', true
-        )
-    );
+    -- Log operation
+    PERFORM log_operation('Confirmed pending batch payment and created batch: ' || v_generated_batch_name || ' (Batch ID: ' || v_batch_id || ', ' || v_payment_record.cards_count || ' cards)');
     
     RETURN v_batch_id;
 END;
