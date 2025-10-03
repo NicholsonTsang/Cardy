@@ -71,35 +71,6 @@ export interface IssuanceStats {
   total_batches: number;
 }
 
-export interface UserIssuedCard extends IssuedCard {
-  card_name: string;
-  card_image_url: string | null;
-}
-
-export interface UserCardBatch extends CardBatch {
-  card_name: string;
-}
-
-export interface UserIssuanceStats {
-  total_issued: number;
-  total_activated: number;
-  activation_rate: number;
-  total_batches: number;
-  total_cards: number;
-  pending_cards: number;
-  disabled_batches: number;
-  active_print_requests: number;
-}
-
-export interface RecentActivity {
-  activity_type: string;
-  activity_date: string;
-  card_name: string;
-  batch_name: string;
-  description: string;
-  count: number;
-}
-
 export interface BatchPayment {
   payment_id: string;
   stripe_checkout_session_id: string;
@@ -125,22 +96,6 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
   const isLoading = ref(false);
   const error = ref<string | null>(null);
   const printRequestsForBatch = ref<Record<string, PrintRequest[]>>({});
-
-  // User-level data (across all cards)
-  const userIssuedCards = ref<UserIssuedCard[]>([]);
-  const userBatches = ref<UserCardBatch[]>([]);
-  const userStats = ref<UserIssuanceStats>({
-    total_issued: 0,
-    total_activated: 0,
-    activation_rate: 0,
-    total_batches: 0,
-    total_cards: 0,
-    pending_cards: 0,
-    disabled_batches: 0,
-    active_print_requests: 0
-  });
-  const recentActivity = ref<RecentActivity[]>([]);
-  const isLoadingUserData = ref(false);
 
   const fetchIssuedCards = async (cardId: string): Promise<IssuedCard[]> => {
     isLoading.value = true;
@@ -297,53 +252,6 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     }
   };
 
-  // User-level functions (across all cards)
-  const fetchUserIssuedCards = async (): Promise<UserIssuedCard[]> => {
-    const { data, error } = await supabase.rpc('get_user_all_issued_cards');
-    if (error) throw error;
-    userIssuedCards.value = data || [];
-    return data as UserIssuedCard[];
-  };
-
-  const fetchUserBatches = async (): Promise<UserCardBatch[]> => {
-    const { data, error } = await supabase.rpc('get_user_all_card_batches');
-    if (error) throw error;
-    userBatches.value = data || [];
-    return data as UserCardBatch[];
-  };
-
-  const fetchUserStats = async (): Promise<UserIssuanceStats[]> => {
-    const { data, error } = await supabase.rpc('get_user_issuance_stats');
-    if (error) throw error;
-    if (data && data.length > 0) {
-      userStats.value = data[0];
-    }
-    return data as UserIssuanceStats[];
-  };
-
-  const fetchRecentActivity = async (limit: number = 50): Promise<RecentActivity[]> => {
-    const { data, error } = await supabase.rpc('get_user_recent_activity', {
-      p_limit: limit
-    });
-    if (error) throw error;
-    recentActivity.value = data || [];
-    return data as RecentActivity[];
-  };
-
-  const loadUserData = async () => {
-    isLoadingUserData.value = true;
-    try {
-      await Promise.all([
-        fetchUserIssuedCards(),
-        fetchUserBatches(),
-        fetchUserStats(),
-        fetchRecentActivity(20) // Limit to 20 recent activities
-      ]);
-    } finally {
-      isLoadingUserData.value = false;
-    }
-  };
-
   // Admin functions for card generation
   const generateBatchCards = async (batchId: string) => {
     const { data, error } = await supabase.rpc('generate_batch_cards', {
@@ -369,12 +277,6 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     requestPrintForBatch,
     fetchPrintRequestsForBatch,
     loadCardData,
-    userIssuedCards,
-    userBatches,
-    userStats,
-    recentActivity,
-    isLoadingUserData,
-    loadUserData,
     generateBatchCards,
     withdrawPrintRequest
   };

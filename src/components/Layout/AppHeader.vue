@@ -155,11 +155,6 @@ const cardIssuerMenuItems = [
     label: 'My Cards',
     icon: 'pi pi-folder',
     command: () => router.push('/cms/mycards')
-  },
-  {
-    label: 'Issued Cards', 
-    icon: 'pi pi-credit-card',
-    command: () => router.push('/cms/issuedcards')
   }
 ]
 

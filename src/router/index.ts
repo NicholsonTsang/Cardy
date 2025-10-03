@@ -23,12 +23,6 @@ const router = createRouter({
           component: () => import('@/views/Dashboard/CardIssuer/MyCards.vue'),
           meta: { requiredRole: 'cardIssuer' }
         },
-        {
-          path: 'issuedcards',
-          name: 'issuedcards',
-          component: () => import('@/views/Dashboard/CardIssuer/IssuedCards.vue'),
-          meta: { requiredRole: 'cardIssuer' }
-        },
         
         // Admin Routes (now using the same DashboardLayout)
         {

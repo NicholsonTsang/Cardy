@@ -25,8 +25,7 @@ The monolithic `schemaStoreProc.sql` file has been broken down into 11 focused m
 5. `06_print_requests.sql` - Physical card printing requests
 6. `07_public_access.sql` - Public card access and mobile QR scanning
 7. `08_user_profiles.sql` - User profile and verification management
-8. `09_user_analytics.sql` - User-level analytics and reporting
-9. `11_admin_functions.sql` - Admin-only operations and system management
+8. `11_admin_functions.sql` - Admin-only operations and system management
 
 ### Server-Side Modules (in server-side/ folder)
 - `05_payment_management.sql` - Stripe payment processing (Edge Functions)
@@ -116,13 +115,6 @@ The monolithic `schemaStoreProc.sql` file has been broken down into 11 focused m
 - `submit_verification()` - Submit verification documents
 - `review_verification()` - Admin verification review
 - `withdraw_verification()` - Cancel verification submission
-
-### User Analytics (09_user_analytics.sql)
-- `get_user_all_issued_cards()` - All issued cards across designs
-- `get_user_issuance_stats()` - Aggregated user statistics
-- `get_user_all_card_batches()` - All batches across designs
-- `get_user_recent_activity()` - Recent activity feed
-
 
 ### Admin Functions (11_admin_functions.sql)
 - `admin_waive_batch_payment()` - Waive payment and generate cards
