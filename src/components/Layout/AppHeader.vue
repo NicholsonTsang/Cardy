@@ -258,18 +258,14 @@ const handleLogout = async () => {
     if (mainMenu.value) {
       mainMenu.value.hide()
     }
-    toast.add({
-      severity: 'success',
-      summary: 'Signed Out',
-      detail: 'You have been successfully signed out',
-      life: 3000
-    })
+    // Silent redirect - the landing page shows user is signed out
     router.push('/')
   } catch (error) {
+    // Only show error toast for failures
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to sign out. Please try again.',
+      summary: 'Sign Out Failed',
+      detail: 'Could not sign out. Please try again.',
       life: 5000
     })
   }

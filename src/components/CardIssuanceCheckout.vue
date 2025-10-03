@@ -1175,13 +1175,7 @@ const downloadBatchCodes = async (batch) => {
     a.click()
     document.body.removeChild(a)
     window.URL.revokeObjectURL(url)
-    
-    toast.add({
-      severity: 'success',
-      summary: 'Download Started',
-      detail: `Downloaded ${batchCards.length} card access codes`,
-      life: 3000
-    })
+    // Browser shows download notification - no toast needed
     
   } catch (error) {
     console.error('Error downloading codes:', error)

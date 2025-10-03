@@ -47,7 +47,9 @@
               icon="pi pi-download"
               @click="downloadAllQRCodes"
               outlined
-              class="border-blue-600 text-blue-600 hover:bg-blue-50"
+              disabled
+              v-tooltip.top="'Feature coming soon'"
+              class="border-slate-300 text-slate-400"
             />
             <Button 
               label="Download CSV" 
@@ -298,13 +300,7 @@ const downloadSingleQR = async (issueCardId, cardNumber) => {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-    
-    toast.add({
-      severity: 'success',
-      summary: 'Downloaded',
-      detail: `QR code for Card #${cardNumber} downloaded`,
-      life: 3000
-    })
+    // Browser shows download notification - no toast needed
   } catch (err) {
     toast.add({
       severity: 'error',
@@ -317,12 +313,8 @@ const downloadSingleQR = async (issueCardId, cardNumber) => {
 
 const downloadAllQRCodes = async () => {
   // Implementation for downloading all QR codes as a ZIP file
-  toast.add({
-    severity: 'info',
-    summary: 'Feature Coming Soon',
-    detail: 'Bulk QR code download will be available soon',
-    life: 3000
-  })
+  // Feature not yet implemented - button should be disabled with tooltip
+  console.log('Bulk QR download - feature coming soon')
 }
 
 const downloadCSV = () => {
@@ -350,13 +342,7 @@ const downloadCSV = () => {
     link.click()
     document.body.removeChild(link)
     window.URL.revokeObjectURL(url)
-    
-    toast.add({
-      severity: 'success',
-      summary: 'Downloaded',
-      detail: `CSV with ${issuedCards.value.length} card URLs downloaded`,
-      life: 3000
-    })
+    // Browser shows download notification - no toast needed
   } catch (err) {
     toast.add({
       severity: 'error',

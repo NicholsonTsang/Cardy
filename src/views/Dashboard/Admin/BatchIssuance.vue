@@ -320,20 +320,10 @@ const searchUser = async () => {
     if (data && data.length > 0) {
       selectedUser.value = data[0]  // Get first result from array
       await loadUserCards()
-      toast.add({
-        severity: 'success',
-        summary: 'User Found',
-        detail: `Found user: ${data[0].email}`,
-        life: 3000
-      })
+      // UI shows user info - no toast needed
     } else {
       errors.value.userEmail = 'User not found'
-      toast.add({
-        severity: 'warn',
-        summary: 'User Not Found',
-        detail: 'No user found with this email address',
-        life: 3000
-      })
+      // Inline error is sufficient - no toast needed
     }
   } catch (error) {
     console.error('Error searching user:', error)
@@ -370,12 +360,7 @@ const loadUserCards = async () => {
 
     if (userCards.value.length === 0) {
       errors.value.cardId = 'User has no cards'
-      toast.add({
-        severity: 'warn',
-        summary: 'No Cards Found',
-        detail: 'This user has not created any cards yet',
-        life: 3000
-      })
+      // Inline error + empty state is sufficient - no toast needed
     }
   } catch (error) {
     console.error('Error loading user cards:', error)
@@ -431,12 +416,7 @@ const validateForm = () => {
 
 const handleSubmit = async () => {
   if (!validateForm()) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Validation Error',
-      detail: 'Please fill in all required fields correctly',
-      life: 3000
-    })
+    // Inline errors are already shown - no toast needed
     return
   }
 
