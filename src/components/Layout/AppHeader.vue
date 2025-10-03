@@ -54,13 +54,22 @@
           </div>
 
           <!-- Authentication Buttons (for non-authenticated users) -->
-          <div v-else class="flex items-center space-x-3">
-            <router-link to="/login" class="auth-button">
-              <i class="pi pi-sign-in mr-2"></i>
-              Sign In
+          <div v-else class="flex items-center gap-2 sm:gap-4">
+            <!-- Sign In - Subtle text link -->
+            <router-link 
+              to="/login" 
+              class="hidden sm:inline-flex items-center px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200"
+            >
+              Sign in
             </router-link>
-            <router-link to="/signup" class="auth-button-secondary">
-              Get Started
+            
+            <!-- Get Started - Primary CTA -->
+            <router-link 
+              to="/signup" 
+              class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md group"
+            >
+              <span>Get started</span>
+              <i class="pi pi-arrow-right text-xs group-hover:translate-x-0.5 transition-transform duration-200"></i>
             </router-link>
           </div>
         </div>
@@ -274,14 +283,6 @@ const handleLogout = async () => {
   z-index: 50;
   backdrop-filter: blur(8px);
   background-color: rgba(255, 255, 255, 0.95);
-}
-
-.auth-button {
-  @apply px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center;
-}
-
-.auth-button-secondary {
-  @apply px-4 py-2 bg-slate-100 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-200 transition-colors duration-200 border border-slate-300;
 }
 
 .main-menu-button {
