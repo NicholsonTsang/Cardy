@@ -87,11 +87,15 @@ interface Props {
 defineProps<Props>()
 
 const getPaymentSeverity = (status: string) => {
-  switch (status) {
+  const normalized = status?.toUpperCase()
+  switch (normalized) {
     case 'PAID':
+    case 'COMPLETED':
       return 'success'
     case 'PENDING':
       return 'warning'
+    case 'FREE':
+      return 'success' // Admin-issued batches
     case 'WAIVED':
       return 'info'
     default:

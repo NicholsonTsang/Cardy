@@ -190,6 +190,11 @@ const adminMenuItems = [
     command: () => router.push('/cms/admin/user-cards')
   },
   {
+    label: 'Issue Free Batch',
+    icon: 'pi pi-gift',
+    command: () => router.push('/cms/admin/issue-batch')
+  },
+  {
     label: 'History Logs',
     icon: 'pi pi-history',
     command: () => router.push('/cms/admin/history')

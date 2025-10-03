@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Fri Oct  3 02:02:32 CST 2025
+-- Generated: Fri Oct  3 12:30:54 CST 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -1977,7 +1977,7 @@ $$;
 
 -- File: 11_admin_functions.sql
 -- -----------------------------------------------------------------
-DROP FUNCTION IF EXISTS admin_waive_batch_payment CASCADE;
+DROP FUNCTION IF EXISTS admin_issue_free_batch CASCADE;
 DROP FUNCTION IF EXISTS create_admin_feedback CASCADE;
 DROP FUNCTION IF EXISTS get_admin_feedback_history CASCADE;
 DROP FUNCTION IF EXISTS admin_get_system_stats_enhanced CASCADE;
@@ -2009,13 +2009,19 @@ DROP FUNCTION IF EXISTS admin_get_batch_issued_cards CASCADE;
 -- Functions for admin-only operations and system management
 -- =================================================================
 
--- (Admin) Waive payment for a batch and generate cards
-CREATE OR REPLACE FUNCTION admin_waive_batch_payment(
-    p_batch_id UUID,
-    p_waiver_reason TEXT
+-- (Admin) Issue a free batch to a user
+CREATE OR REPLACE FUNCTION admin_issue_free_batch(
+    p_user_email TEXT,
+    p_card_id UUID,
+    p_cards_count INTEGER,
+    p_reason TEXT DEFAULT 'Admin issued batch'
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
-    v_batch_record RECORD;
+    v_user_id UUID;
+    v_card_record RECORD;
+    v_batch_id UUID;
+    v_batch_number INTEGER;
+    v_batch_name TEXT;
     caller_role TEXT;
 BEGIN
     -- Check if the caller is an admin
@@ -2024,46 +2030,89 @@ BEGIN
     WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can waive batch payments.';
+        RAISE EXCEPTION 'Only admins can issue free batches.';
     END IF;
 
-    -- Get batch information
-    SELECT * INTO v_batch_record
-    FROM card_batches
-    WHERE id = p_batch_id;
+    -- Validate cards count
+    IF p_cards_count < 1 OR p_cards_count > 10000 THEN
+        RAISE EXCEPTION 'Cards count must be between 1 and 10,000.';
+    END IF;
+
+    -- Get user by email
+    SELECT id INTO v_user_id
+    FROM auth.users
+    WHERE email = p_user_email;
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'User with email % not found.', p_user_email;
+    END IF;
+
+    -- Get card information and verify ownership
+    SELECT c.* INTO v_card_record
+    FROM cards c
+    WHERE c.id = p_card_id AND c.user_id = v_user_id;
     
     IF NOT FOUND THEN
-        RAISE EXCEPTION 'Batch not found.';
+        RAISE EXCEPTION 'Card not found or does not belong to user %.', p_user_email;
     END IF;
-    
-    -- Check if payment can be waived
-    -- Note: In payment-first flow, all batches are created with payment_completed = TRUE
-    -- This function is mainly for legacy batches or special admin-created batches
-    IF v_batch_record.payment_completed = TRUE THEN
-        RAISE EXCEPTION 'Cannot waive payment for a batch that has already been paid.';
-    END IF;
-    
-    IF v_batch_record.payment_waived = TRUE THEN
-        RAISE EXCEPTION 'Payment has already been waived for this batch.';
-    END IF;
-    
-    -- Update batch to mark payment as waived
-    UPDATE card_batches 
-    SET 
-        payment_waived = TRUE,
-        payment_waived_by = auth.uid(),
-        payment_waived_at = NOW(),
-        payment_waiver_reason = p_waiver_reason,
-        updated_at = NOW()
-    WHERE id = p_batch_id;
-    
-    -- Generate cards using the new function
-    PERFORM generate_batch_cards(p_batch_id);
-    
+
+    -- Get next batch number for this card
+    SELECT COALESCE(MAX(batch_number), 0) + 1 INTO v_batch_number
+    FROM card_batches
+    WHERE card_id = p_card_id;
+
+    -- Auto-generate batch name
+    v_batch_name := 'Batch #' || v_batch_number || ' - Issued by Admin';
+
+    -- Generate new batch ID
+    v_batch_id := gen_random_uuid();
+
+    -- Create the batch with payment_required = FALSE (free batch)
+    INSERT INTO card_batches (
+        id,
+        card_id,
+        batch_name,
+        batch_number,
+        cards_count,
+        created_by,
+        payment_required,
+        payment_completed,
+        payment_waived,
+        payment_waived_by,
+        payment_waived_at,
+        payment_waiver_reason,
+        cards_generated,
+        created_at,
+        updated_at
+    ) VALUES (
+        v_batch_id,
+        p_card_id,
+        v_batch_name, -- Auto-generated name
+        v_batch_number,
+        p_cards_count,
+        v_user_id, -- Batch owned by the target user
+        FALSE, -- No payment required (free batch)
+        FALSE, -- Not paid
+        TRUE, -- Mark as waived so cards can be generated
+        auth.uid(), -- Admin who issued it
+        NOW(),
+        p_reason,
+        FALSE, -- Cards not yet generated
+        NOW(),
+        NOW()
+    );
+
+    -- Generate cards immediately
+    PERFORM generate_batch_cards(v_batch_id);
+
     -- Log operation
-    PERFORM log_operation('Waived payment for batch: ' || v_batch_record.batch_name || ' (' || v_batch_record.cards_count || ' cards, $' || (v_batch_record.cards_count * 2) || ')');
-    
-    RETURN p_batch_id;
+    PERFORM log_operation(
+        'Admin issued free batch: ' || v_batch_name || 
+        ' to user ' || p_user_email || 
+        ' (' || p_cards_count || ' cards) - Reason: ' || p_reason
+    );
+
+    RETURN v_batch_id;
 END;
 $$;
 
@@ -3297,6 +3346,7 @@ $$;
 CREATE OR REPLACE FUNCTION admin_get_user_cards(p_user_id UUID)
 RETURNS TABLE (
     id UUID,
+    card_name TEXT,
     name TEXT,
     description TEXT,
     image_url TEXT,
@@ -3305,6 +3355,7 @@ RETURNS TABLE (
     conversation_ai_enabled BOOLEAN,
     ai_prompt TEXT,
     qr_code_position TEXT,
+    batches_count BIGINT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
     user_email TEXT
@@ -3324,6 +3375,7 @@ BEGIN
     RETURN QUERY
     SELECT 
         c.id, 
+        c.name AS card_name,
         c.name, 
         c.description, 
         c.image_url, 
@@ -3332,12 +3384,17 @@ BEGIN
         c.conversation_ai_enabled,
         c.ai_prompt,
         c.qr_code_position::TEXT,
+        COUNT(cb.id)::BIGINT AS batches_count,
         c.created_at,
         c.updated_at,
         au.email::TEXT AS user_email
     FROM cards c
     JOIN auth.users au ON c.user_id = au.id
+    LEFT JOIN card_batches cb ON c.id = cb.card_id
     WHERE c.user_id = p_user_id
+    GROUP BY c.id, c.name, c.description, c.image_url, c.original_image_url,
+             c.crop_parameters, c.conversation_ai_enabled, c.ai_prompt,
+             c.qr_code_position, c.created_at, c.updated_at, au.email
     ORDER BY c.created_at DESC;
 END;
 $$;

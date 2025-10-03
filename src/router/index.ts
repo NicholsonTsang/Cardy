@@ -67,6 +67,12 @@ const router = createRouter({
           component: () => import('@/views/Dashboard/Admin/UserCardsView.vue'),
           meta: { requiredRole: 'admin' }
         },
+        {
+          path: 'admin/issue-batch',
+          name: 'admin-issue-batch',
+          component: () => import('@/views/Dashboard/Admin/BatchIssuance.vue'),
+          meta: { requiredRole: 'admin' }
+        },
       ]
     },
     {

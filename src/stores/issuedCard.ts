@@ -344,16 +344,7 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     }
   };
 
-  // Admin functions for fee waiver and card generation
-  const adminWaiveBatchPayment = async (batchId: string, waiverReason: string) => {
-    const { data, error } = await supabase.rpc('admin_waive_batch_payment', {
-      p_batch_id: batchId,
-      p_waiver_reason: waiverReason
-    });
-    if (error) throw error;
-    return data;
-  };
-
+  // Admin functions for card generation
   const generateBatchCards = async (batchId: string) => {
     const { data, error } = await supabase.rpc('generate_batch_cards', {
       p_batch_id: batchId
@@ -384,7 +375,6 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     recentActivity,
     isLoadingUserData,
     loadUserData,
-    adminWaiveBatchPayment,
     generateBatchCards,
     withdrawPrintRequest
   };

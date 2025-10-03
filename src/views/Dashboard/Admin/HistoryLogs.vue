@@ -232,7 +232,6 @@ const activityTypes = [
   { label: 'Verification Reviews', value: ACTION_TYPES.VERIFICATION_REVIEW },
   { label: 'Print Request Updates', value: ACTION_TYPES.PRINT_REQUEST_UPDATE },
   { label: 'Print Request Withdrawals', value: ACTION_TYPES.PRINT_REQUEST_WITHDRAWAL },
-  { label: 'Payment Waivers', value: ACTION_TYPES.PAYMENT_WAIVER },
   { label: 'Role Changes', value: ACTION_TYPES.ROLE_CHANGE }
 ]
 

@@ -35,7 +35,6 @@ export const ACTION_TYPES = {
   VERIFICATION_REVIEW: 'VERIFICATION_REVIEW',
   PRINT_REQUEST_UPDATE: 'PRINT_REQUEST_UPDATE',
   PRINT_REQUEST_WITHDRAWAL: 'PRINT_REQUEST_WITHDRAWAL',
-  PAYMENT_WAIVER: 'PAYMENT_WAIVER',
   ROLE_CHANGE: 'ROLE_CHANGE'
 } as const
 
@@ -150,7 +149,6 @@ export const useAuditLogStore = defineStore('auditLog', () => {
       'VERIFICATION_REVIEW': 'Verification Review',
       'VERIFICATION_RESET': 'Verification Reset',
       'MANUAL_VERIFICATION': 'Manual Verification',
-      'PAYMENT_WAIVER': 'Payment Waiver',
       'PRINT_REQUEST_UPDATE': 'Print Request Update'
     }
     return labels[actionType] || actionType.replace('_', ' ')
@@ -163,7 +161,6 @@ export const useAuditLogStore = defineStore('auditLog', () => {
       'VERIFICATION_REVIEW': 'bg-blue-500',
       'VERIFICATION_RESET': 'bg-blue-400',
       'MANUAL_VERIFICATION': 'bg-blue-600',
-      'PAYMENT_WAIVER': 'bg-orange-500',
       'PRINT_REQUEST_UPDATE': 'bg-purple-500'
     }
     return colors[actionType] || 'bg-slate-500'

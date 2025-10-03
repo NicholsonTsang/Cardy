@@ -124,8 +124,8 @@
 
           <Column field="total_amount" header="Amount" :sortable="true" style="width:100px">
             <template #body="{ data }">
-              <div class="text-right text-sm font-medium text-slate-900">
-                ${{ (data.total_amount / 100).toFixed(2) }}
+              <div class="text-right text-sm font-medium" :class="data.payment_status === 'free' ? 'text-slate-600' : 'text-slate-900'">
+                {{ data.payment_status === 'free' ? '-' : `$${(data.total_amount / 100).toFixed(2)}` }}
               </div>
             </template>
           </Column>
@@ -142,9 +142,9 @@
           <Column header="Actions" style="width:180px">
             <template #body="{ data }">
               <div class="flex items-center gap-1">
-                <!-- Primary Action: Print (no payment retry needed in payment-first flow) -->
+                <!-- Primary Action: Print (for paid and admin-issued batches) -->
                 <Button 
-                  v-if="data.payment_status === 'completed' && data.cards_generated && !data.has_print_request"
+                  v-if="(data.payment_status === 'completed' || data.payment_status === 'free') && data.cards_generated && !data.has_print_request"
                   label="Print" 
                   icon="pi pi-print"
                   size="small"
@@ -155,7 +155,7 @@
                 
                 <!-- Color buttons first -->
                 <Button 
-                  v-if="data.payment_status === 'completed' && data.cards_generated && data.has_print_request"
+                  v-if="(data.payment_status === 'completed' || data.payment_status === 'free') && data.cards_generated && data.has_print_request"
                   icon="pi pi-truck" 
                   size="small"
                   @click="viewPrintRequestDialog(data)"
@@ -169,7 +169,7 @@
                 
                 <!-- Outlined buttons after -->
                 <Button 
-                  v-if="data.payment_status === 'completed'"
+                  v-if="data.payment_status === 'completed' || data.payment_status === 'free'"
                   icon="pi pi-eye" 
                   size="small"
                   outlined
@@ -199,8 +199,9 @@
       v-model:visible="showCreateBatchDialog" 
       modal 
       header="Issue New Card Batch" 
-      style="width: 500px"
+      :style="{ width: '500px' }"
       class="standardized-dialog"
+      appendTo="body"
     >
       <div class="space-y-6">
         <div>
@@ -328,8 +329,9 @@
       v-model:visible="showBatchDetailsDialog" 
       modal 
       header="Batch Details" 
-      style="width: 600px"
+      :style="{ width: '600px' }"
       class="standardized-dialog"
+      appendTo="body"
     >
       <div v-if="loadingBatchDetails" class="flex items-center justify-center py-12">
         <i class="pi pi-spin pi-spinner text-4xl text-blue-600"></i>
@@ -371,17 +373,25 @@
                 </span>
               </p>
             </div>
-            <div>
+            <div v-if="selectedBatch.payment_status !== 'free'">
               <label class="text-sm text-slate-600">Amount</label>
               <p class="font-semibold text-slate-900">${{ (selectedBatch.total_amount / 100).toFixed(2) }}</p>
+            </div>
+            <div v-if="selectedBatch.payment_status === 'free'">
+              <label class="text-sm text-slate-600">Amount</label>
+              <p class="font-semibold text-slate-600">-</p>
             </div>
             <div v-if="selectedBatch.payment_completed_at">
               <label class="text-sm text-slate-600">Paid At</label>
               <p class="text-slate-900">{{ formatDate(selectedBatch.payment_completed_at) }}</p>
             </div>
-            <div v-if="selectedBatch.payment_waived">
-              <label class="text-sm text-slate-600">Payment Waived</label>
-              <p class="text-slate-900">Yes - {{ selectedBatch.payment_waiver_reason }}</p>
+            <div v-if="selectedBatch.payment_waived && selectedBatch.payment_status === 'free'">
+              <label class="text-sm text-slate-600">Issued By</label>
+              <p class="text-slate-900">Admin</p>
+            </div>
+            <div v-if="selectedBatch.payment_waiver_reason" class="col-span-2">
+              <label class="text-sm text-slate-600">Reason</label>
+              <p class="text-slate-900">{{ selectedBatch.payment_waiver_reason }}</p>
             </div>
           </div>
         </div>
@@ -467,8 +477,9 @@
       v-model:visible="showPrintRequestDialog" 
       modal 
       header="Request Physical Card Printing" 
-      style="width: 600px"
+      :style="{ width: '600px' }"
       class="standardized-dialog"
+      appendTo="body"
     >
       <div v-if="selectedBatchForPrint" class="space-y-6">
         <!-- Batch Info Summary -->
@@ -623,8 +634,9 @@
       v-model:visible="showPrintStatusDialog" 
       modal 
       header="Print Request Status" 
-      style="width: 600px"
+      :style="{ width: '600px' }"
       class="standardized-dialog"
+      appendTo="body"
     >
       <div v-if="selectedPrintRequestData" class="space-y-6">
         <!-- Request Overview -->
@@ -915,8 +927,10 @@ const loadBatches = async () => {
 
           return {
             ...batch,
-            // Payment-first flow: all batches are created after payment, so they should be completed or waived
-            payment_status: batch.payment_waived ? 'waived' : 'completed',
+            // Determine payment status: admin-issued, waived, paid, or pending
+            payment_status: !batch.payment_required ? 'free' : 
+                           batch.payment_waived ? 'waived' : 
+                           batch.payment_completed ? 'completed' : 'pending',
             total_amount: batch.payment_amount_cents || (batch.cards_count * 200),
             print_request_status: latestPrintRequest?.status || null,
             print_request_id: latestPrintRequest?.id || null,
@@ -926,8 +940,10 @@ const loadBatches = async () => {
           console.warn('Error loading print status for batch:', batch.id, printError)
           return {
             ...batch,
-            // Payment-first flow: all batches are created after payment, so they should be completed or waived
-            payment_status: batch.payment_waived ? 'waived' : 'completed',
+            // Determine payment status: admin-issued, waived, paid, or pending
+            payment_status: !batch.payment_required ? 'free' : 
+                           batch.payment_waived ? 'waived' : 
+                           batch.payment_completed ? 'completed' : 'pending',
             total_amount: batch.payment_amount_cents || (batch.cards_count * 200),
             print_request_status: null,
             print_request_id: null,
@@ -1392,6 +1408,8 @@ const getPaymentStatusClass = (status) => {
     pending: 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800',
     completed: 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800',
     succeeded: 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800',
+    free: 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800',
+    waived: 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800',
     failed: 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800',
     canceled: 'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800'
   }
@@ -1403,6 +1421,8 @@ const formatPaymentStatus = (status) => {
     pending: 'Pending',
     completed: 'Paid',
     succeeded: 'Paid',
+    free: 'Admin Issued',
+    waived: 'Waived',
     failed: 'Failed',
     canceled: 'Canceled'
   }

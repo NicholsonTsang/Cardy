@@ -193,7 +193,11 @@ const filterOptions = [
 // Computed
 const availableBatches = computed(() => {
   return batches.value
-    .filter(batch => batch.payment_completed && batch.cards_generated)
+    .filter(batch => {
+      // Include batches that are either paid, waived, or admin-issued
+      const isPaymentComplete = batch.payment_completed || batch.payment_waived || !batch.payment_required
+      return isPaymentComplete && batch.cards_generated
+    })
     .map(batch => ({
       ...batch,
       display_name: `${batch.batch_name} (${batch.cards_count} cards)`

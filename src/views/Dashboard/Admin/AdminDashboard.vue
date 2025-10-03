@@ -505,7 +505,6 @@ function getActivityColor(activity) {
   // Simple color mapping without feedback store
   const colorMap = {
     'USER_ROLE_UPDATE': 'orange',
-    'PAYMENT_WAIVED': 'purple',
     'PRINT_REQUEST_STATUS_UPDATE': 'blue',
     'DEFAULT': 'slate'
   }
@@ -523,7 +522,6 @@ function getActivityIcon(activity) {
     'VERIFICATION_REVIEW': 'pi-shield',
     'PRINT_REQUEST_UPDATE': 'pi-print',
     'PRINT_REQUEST_WITHDRAWAL': 'pi-times-circle',
-    'PAYMENT_WAIVER': 'pi-credit-card',
     'ROLE_CHANGE': 'pi-users'
   }
   return icons[activity.action_type] || 'pi-history'

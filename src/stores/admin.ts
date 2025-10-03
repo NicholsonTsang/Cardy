@@ -82,7 +82,7 @@ export const useAdminStore = defineStore('admin', () => {
   const updatePrintRequestStatus = printRequestsStore.updatePrintRequestStatus
 
   const fetchBatchesRequiringAttention = batchesStore.fetchBatchesRequiringAttention
-  const waiveBatchPayment = batchesStore.waiveBatchPayment
+  const issueBatch = batchesStore.issueBatch
 
   const fetchAuditLogs = auditLogStore.fetchAuditLogs
   const fetchAuditLogsCount = auditLogStore.fetchAuditLogsCount
@@ -111,7 +111,7 @@ export const useAdminStore = defineStore('admin', () => {
 
     // Batch methods
     fetchBatchesRequiringAttention,
-    waiveBatchPayment,
+    issueBatch,
 
     // Audit methods
     fetchAuditLogs,

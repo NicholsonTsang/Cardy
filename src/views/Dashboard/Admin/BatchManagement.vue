@@ -152,8 +152,7 @@ const paymentStatusFilter = ref(null);
 const paymentStatusOptions = ref([
   { label: 'Pending', value: 'PENDING' },
   { label: 'Paid', value: 'PAID' },
-  { label: 'Waived', value: 'WAIVED' },
-  { label: 'Free', value: 'FREE' }
+  { label: 'Admin Issued', value: 'FREE' }
 ]);
 
 // Computed for active filters
@@ -202,8 +201,7 @@ const getPaymentStatusSeverity = (status) => {
   switch (status) {
     case 'PENDING': return 'warning';
     case 'PAID': return 'success';
-    case 'WAIVED': return 'info';
-    case 'FREE': return 'secondary';
+    case 'FREE': return 'success'; // Admin-issued batches
     default: return 'secondary';
   }
 };

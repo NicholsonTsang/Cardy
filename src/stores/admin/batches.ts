@@ -6,7 +6,7 @@ export interface AdminBatch {
   id: string;
   batch_number: number;
   user_email: string;
-  payment_status: 'PENDING' | 'PAID' | 'WAIVED' | 'FREE';
+  payment_status: 'PENDING' | 'PAID' | 'FREE';
   cards_count: number;
   created_at: string;
 }
@@ -48,7 +48,7 @@ export const useAdminBatchesStore = defineStore('adminBatches', () => {
   // Actions
   const fetchAllBatches = async (
     emailSearch?: string, 
-    paymentStatus?: 'PENDING' | 'PAID' | 'WAIVED' | 'FREE',
+    paymentStatus?: 'PENDING' | 'PAID' | 'FREE',
     limit = 100,
     offset = 0
   ): Promise<AdminBatch[]> => {
@@ -88,20 +88,30 @@ export const useAdminBatchesStore = defineStore('adminBatches', () => {
     }
   }
 
-  const waiveBatchPayment = async (batchId: string, waiverReason: string): Promise<boolean> => {
+  const issueBatch = async (
+    userEmail: string,
+    cardId: string,
+    cardsCount: number,
+    reason: string
+  ): Promise<string> => {
     try {
-      const { data, error } = await supabase.rpc('admin_waive_batch_payment', {
-        p_batch_id: batchId,
-        p_waiver_reason: waiverReason
+      const { data, error } = await supabase.rpc('admin_issue_free_batch', {
+        p_user_email: userEmail,
+        p_card_id: cardId,
+        p_cards_count: cardsCount,
+        p_reason: reason
       })
       if (error) throw error
       
-      // Refresh batches requiring attention
-      await fetchBatchesRequiringAttention()
+      // Refresh batches lists
+      await Promise.all([
+        fetchAllBatches(),
+        fetchBatchesRequiringAttention()
+      ])
       
-      return true
+      return data
     } catch (error) {
-      console.error('Error waiving batch payment:', error)
+      console.error('Error issuing free batch:', error)
       throw error
     }
   }
@@ -132,7 +142,7 @@ export const useAdminBatchesStore = defineStore('adminBatches', () => {
     // Actions
     fetchAllBatches,
     fetchBatchesRequiringAttention,
-    waiveBatchPayment,
+    issueBatch,
     getBatchById,
     getBatchesByUser,
     
