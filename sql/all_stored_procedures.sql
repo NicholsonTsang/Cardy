@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Fri Oct  3 13:21:51 CST 2025
+-- Generated: Fri Oct  3 13:30:44 CST 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -51,8 +51,6 @@ BEGIN
             
             -- Admin functions
             'admin_confirm_batch_payment', 'admin_waive_batch_payment',
-            'get_user_all_issued_cards', 'get_user_issuance_stats',
-            'get_user_all_card_batches', 'get_user_recent_activity',
             'admin_update_user_role', 'admin_update_verification_status',
             'admin_get_user_verification_details', 'admin_reset_user_verification',
             'admin_get_platform_stats', 'admin_get_pending_verifications',
