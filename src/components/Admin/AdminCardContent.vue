@@ -34,9 +34,11 @@
             </div>
             <div class="flex-1">
               <h4 class="font-semibold text-slate-900 mb-2">{{ item.name }}</h4>
-              <p v-if="item.content" class="text-sm text-slate-600 whitespace-pre-wrap">
-                {{ item.content }}
-              </p>
+              <div 
+                v-if="item.content" 
+                v-html="renderMarkdown(item.content)"
+                class="text-sm text-slate-600 prose prose-sm max-w-none"
+              ></div>
               <div v-if="item.ai_metadata" class="mt-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-3 border border-amber-200">
                 <div class="flex items-center gap-2 mb-2">
                   <i class="pi pi-database text-amber-600 text-xs"></i>
@@ -71,9 +73,11 @@
               </div>
               <div class="flex-1">
                 <h5 class="font-medium text-slate-800 mb-1">{{ subItem.name }}</h5>
-                <p v-if="subItem.content" class="text-sm text-slate-600 whitespace-pre-wrap">
-                  {{ subItem.content }}
-                </p>
+                <div 
+                  v-if="subItem.content"
+                  v-html="renderMarkdown(subItem.content)"
+                  class="text-sm text-slate-600 prose prose-sm max-w-none"
+                ></div>
               </div>
             </div>
           </div>
@@ -86,6 +90,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import Tag from 'primevue/tag'
+import { marked } from 'marked'
 
 interface ContentItem {
   id: string
@@ -103,6 +108,12 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
+// Markdown rendering helper
+const renderMarkdown = (text: string | null): string => {
+  if (!text) return ''
+  return marked(text)
+}
 
 const parentContentItems = computed(() => {
   return props.content.filter(item => !item.parent_id)

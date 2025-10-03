@@ -20,7 +20,10 @@
       <!-- Content Info -->
       <div class="content-info">
         <h2 class="content-title">{{ content.content_item_name }}</h2>
-        <p class="content-description">{{ content.content_item_content }}</p>
+        <div 
+          class="content-description"
+          v-html="renderMarkdown(content.content_item_content)"
+        ></div>
         
         <!-- AI Assistant Button -->
         <div v-if="card.conversation_ai_enabled" class="ai-section">
@@ -85,6 +88,7 @@
 import { onMounted } from 'vue'
 import MobileAIAssistant from './MobileAIAssistant.vue'
 import { getContentAspectRatio } from '@/utils/cardConfig'
+import { marked } from 'marked'
 
 interface ContentItem {
   content_item_id: string
@@ -116,6 +120,12 @@ defineProps<Props>()
 const emit = defineEmits<{
   select: [item: ContentItem]
 }>()
+
+// Markdown rendering helper
+function renderMarkdown(text: string): string {
+  if (!text) return ''
+  return marked(text)
+}
 
 function handleSelect(item: ContentItem) {
   emit('select', item)
@@ -191,8 +201,30 @@ onMounted(() => {
   line-height: 1.6;
   margin: 0;
   margin-bottom: 1rem;
-  white-space: pre-wrap;
   word-break: break-word;
+}
+
+.content-description :deep(p) {
+  margin: 0 0 0.5rem 0;
+}
+
+.content-description :deep(h1),
+.content-description :deep(h2),
+.content-description :deep(h3),
+.content-description :deep(h4) {
+  color: white;
+  margin: 0.75rem 0 0.5rem 0;
+}
+
+.content-description :deep(ul),
+.content-description :deep(ol) {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+}
+
+.content-description :deep(a) {
+  color: #60a5fa;
+  text-decoration: underline;
 }
 
 .ai-section {

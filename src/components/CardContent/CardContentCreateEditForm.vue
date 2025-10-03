@@ -124,13 +124,13 @@
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-2">Description</label>
-                                <Textarea 
-                                    v-model="formData.description" 
-                                    rows="3" 
-                                    class="w-full" 
+                                <label class="block text-sm font-medium text-slate-700 mb-2">Description (Markdown)</label>
+                                <MdEditor 
+                                    v-model="formData.description"
+                                    language="en-US"
+                                    :toolbars="markdownToolbars"
                                     :placeholder="getDescriptionPlaceholder()"
-                                    autoResize
+                                    style="height: 300px;"
                                 />
                             </div>
                         </div>
@@ -197,6 +197,8 @@ import MyDialog from '@/components/MyDialog.vue';
 import ImageCropper from '@/components/ImageCropper.vue';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
 import { getContentAspectRatioNumber, getContentAspectRatioDisplay, getContentAspectRatio } from '@/utils/cardConfig';
+import { MdEditor } from 'md-editor-v3';
+import 'md-editor-v3/lib/style.css';
 import { generateCropPreview } from '@/utils/cropUtils';
 
 const props = defineProps({
@@ -275,6 +277,36 @@ const cropParameters = ref(null);
 // LinkedIn-style upload variables
 const isDragActive = ref(false);
 const fileInputRef = ref(null);
+
+// Markdown editor configuration
+const markdownToolbars = ref([
+    'bold',
+    'underline',
+    'italic',
+    '-',
+    'title',
+    'strikeThrough',
+    'sub',
+    'sup',
+    'quote',
+    'unorderedList',
+    'orderedList',
+    '-',
+    'codeRow',
+    'code',
+    'link',
+    'table',
+    '-',
+    'revoke',
+    'next',
+    'save',
+    '=',
+    'pageFullscreen',
+    'fullscreen',
+    'preview',
+    'htmlPreview',
+    'catalog'
+]);
 
 // Initialize form data when contentItem changes
 watch(() => props.contentItem, (newVal) => {

@@ -50,10 +50,13 @@
 
                         <div>
                             <h4 class="text-sm font-medium text-slate-700 mb-2">Description</h4>
-                            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
-                                <p class="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
-                                    {{ contentItem?.description || contentItem?.content || 'No description provided' }}
-                                </p>
+                            <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 prose prose-sm max-w-none">
+                                <div 
+                                    v-if="contentItem?.description || contentItem?.content"
+                                    v-html="renderMarkdown(contentItem?.description || contentItem?.content)"
+                                    class="text-sm text-slate-700 leading-relaxed"
+                                ></div>
+                                <p v-else class="text-sm text-slate-500 italic">No description provided</p>
                             </div>
                         </div>
                     </div>
@@ -88,6 +91,7 @@ import { onMounted } from 'vue';
 import Button from 'primevue/button';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
 import { getContentAspectRatio } from '@/utils/cardConfig';
+import { marked } from 'marked';
 
 defineProps({
     contentItem: {
@@ -97,6 +101,12 @@ defineProps({
 });
 
 defineEmits(['edit']);
+
+// Markdown rendering helper
+const renderMarkdown = (text) => {
+    if (!text) return '';
+    return marked(text);
+};
 
 // Set up CSS custom property for content aspect ratio
 onMounted(() => {
