@@ -130,26 +130,68 @@ sql/
 
 ## AI Infrastructure & Architecture
 
-### OpenAI Realtime API Integration
-CardStudio implements sophisticated voice-based AI conversations using OpenAI's Realtime API with WebRTC for low-latency audio streaming.
+### Three AI Conversation Modes
+
+CardStudio offers three distinct modes for AI-powered conversations with exhibits:
+
+| Mode | API | Input | Output | Best For | Status |
+|------|-----|-------|--------|----------|--------|
+| **Chat Completion** | Chat Completions API | Text + Voice (transcribed) | Text + TTS | Default, cost-effective conversations | ✅ Live |
+| **Real-Time Audio** | Realtime API + WebRTC | Live Audio Stream | Live Audio Stream | Natural, low-latency voice calls | 🎨 UI Complete |
+
+### Chat Completion Mode (Current Default)
+
+**Technology Stack:**
+- OpenAI Chat Completions API (`gpt-4o-mini`)
+- Whisper API for Speech-to-Text (STT)
+- OpenAI TTS API for Text-to-Speech
+- Server-Sent Events (SSE) for text streaming
 
 **Edge Functions:**
-- `get-openai-ephemeral-token/` - Securely generates ephemeral tokens for OpenAI sessions with configurable model selection
-- `openai-realtime-proxy/` - Proxies WebRTC SDP offers/answers between client and OpenAI
+- `chat-with-audio/` - Handles text/voice input, AI generation, and transcription
+- `chat-with-audio-stream/` - Streaming text responses
+- `generate-tts-audio/` - On-demand audio generation with caching
 
-**AI Features:**
-- **Real-time Voice Conversations**: Natural voice interactions with museum exhibits and artifacts
-- **Multi-language Support**: English, Cantonese, Mandarin, Spanish, French
-- **WebRTC Audio Streaming**: Low-latency audio for responsive conversations
+**Features:**
+- ✅ Text and voice input with inline switching
+- ✅ Streaming text responses for fast feedback
+- ✅ Audio playback with caching (language-aware)
+- ✅ Cost-optimized: ~7x cheaper than audio model
+- ✅ Multi-language support (10 languages)
+
+### Real-Time Audio Mode (UI Complete, Backend Pending)
+
+**Technology Stack:**
+- OpenAI Realtime API (`gpt-4o-mini-realtime-preview`)
+- WebRTC for peer-to-peer audio streaming
+- Server-Sent Events for signaling
+
+**Edge Functions (Planned):**
+- `openai-realtime-relay/` - WebRTC relay between client and OpenAI
+
+**Features (UI Complete):**
+- ✅ ChatGPT-style live conversation UI
+- ✅ Animated waveform visualization
+- ✅ Connection state management
+- ✅ Live transcript display
+- ✅ Status indicators and animations
+- ⏳ WebRTC implementation (pending)
+- ⏳ Actual audio streaming (pending)
+
+**AI Features (All Modes):**
+- **Multi-language Support**: English, Cantonese, Mandarin, Japanese, Korean, Spanish, French, Russian, Arabic, Thai
 - **Context-Aware Responses**: AI understands specific exhibit content and provides detailed explanations
 - **Secure Token Management**: Ephemeral tokens ensure security without exposing main API keys
-- **Environment-Based Model Selection**: Different OpenAI models for development vs production environments
+- **Environment-Based Configuration**: Different models and settings for development vs production
 
 **Frontend AI Component:**
-- `MobileAIAssistant.vue` - Complete voice chat interface with microphone controls
-- Supports both compact and full-screen conversation modes
-- Language selection and voice settings management
-- Real-time audio visualization and connection status
+- `MobileAIAssistant.vue` - Complete multi-mode AI assistant interface
+- Mode switcher (phone icon for realtime, chat icon for chat-completion)
+- Language selection screen before conversation
+- Streaming text responses with typing indicators
+- Voice recording with press-and-hold UX
+- Audio playback with caching and language awareness
+- Real-time conversation UI with waveform visualization
 
 ### AI Content Configuration
 
@@ -338,23 +380,9 @@ try {
 
 ## Environment Variables Configuration
 
-### Environment-Specific Configuration
+### Frontend Environment Variables
 
-The platform uses separate environment configurations for development and production:
-
-**Development (.env.local):**
-- Uses `gpt-4o-mini-realtime-preview-2024-12-17` model for cost efficiency
-- Local development URLs and test configurations
-- Lower-cost AI model suitable for development testing
-
-**Production (.env.production):**
-- Uses `gpt-4o-realtime-preview-2025-06-03` model for optimal quality
-- Production URLs and live API keys
-- Full-featured AI model for optimal user experience
-
-### Required Environment Variables
-
-**Core Configuration:**
+**Core Configuration (.env.local / .env.production):**
 ```bash
 # Supabase Backend
 VITE_SUPABASE_URL=https://your-project.supabase.co
@@ -363,17 +391,11 @@ VITE_SUPABASE_USER_FILES_BUCKET=userfiles
 
 # Payment Processing
 VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_key_here
-
-# AI Features
-VITE_OPENAI_MODEL=gpt-4o-realtime-preview-2025-06-03  # (production)
-OPENAI_API_KEY=your_openai_api_key_here  # (set in Supabase Edge Function secrets)
+VITE_STRIPE_SUCCESS_URL=http://localhost:5173/cms/mycards  # or production URL
 
 # Application URLs
 VITE_APP_BASE_URL=https://app.cardy.com
-```
 
-**Business Configuration:**
-```bash
 # Pricing (200 cents = $2.00 USD per card)
 VITE_CARD_PRICE_CENTS=200
 VITE_DEFAULT_CURRENCY=USD
@@ -383,31 +405,89 @@ VITE_CONTACT_WHATSAPP_URL=https://wa.me/852xxxxxx
 VITE_CONTACT_PHONE=+852 xxxxxx
 ```
 
-### Environment Setup
+### Edge Functions Configuration
 
-1. **Development**: Uses `.env.local` with cost-effective AI model configuration
-2. **Production**: Uses `.env.production` with full-featured AI model
-3. **Supabase Edge Functions**: Configure OPENAI_API_KEY and OPENAI_MODEL in Supabase dashboard secrets
+**📖 See `EDGE_FUNCTIONS_CONFIG.md` for complete documentation**
+
+**Quick Reference:**
+
+**Local Development (`supabase/config.toml`):**
+```toml
+[edge_runtime.secrets]
+# Stripe (Test Mode)
+STRIPE_SECRET_KEY = "sk_test_..."
+
+# OpenAI (Cost-effective)
+OPENAI_API_KEY = "sk-proj-..."
+OPENAI_AUDIO_MODEL = "gpt-4o-mini-audio-preview"
+OPENAI_MAX_TOKENS = "2000"
+OPENAI_TTS_VOICE = "alloy"
+OPENAI_AUDIO_FORMAT = "wav"
+```
+
+**Production (Supabase Dashboard Secrets):**
+```bash
+# Required
+STRIPE_SECRET_KEY=sk_live_...
+OPENAI_API_KEY=sk-proj-...
+
+# Optional (have defaults)
+OPENAI_AUDIO_MODEL=gpt-4o-mini-audio-preview
+OPENAI_MAX_TOKENS=3500
+OPENAI_TTS_VOICE=alloy
+OPENAI_AUDIO_FORMAT=wav
+```
+
+**Setup Scripts:**
+```bash
+# Interactive setup for production secrets
+./scripts/setup-production-secrets.sh
+
+# Deploy all Edge Functions
+./scripts/deploy-edge-functions.sh
+
+# Verify configuration
+./scripts/deploy-edge-functions.sh --verify
+```
 
 ### Configuration Files
 
-- `.env.local` - Development environment with mini OpenAI model
-- `.env.production` - Production environment with full OpenAI model
-- `supabase/config.toml` - Supabase local development configuration
-- Environment variables override hardcoded values for deployment flexibility
+- `.env.local` - Frontend development environment
+- `.env.production` - Frontend production environment
+- `supabase/config.toml` - Supabase local development + Edge Function secrets
+- `EDGE_FUNCTIONS_CONFIG.md` - Complete Edge Functions documentation
 
 ### Critical Production Settings
 
 1. **Security**: Never commit actual API keys to version control
-2. **URLs**: Update `VITE_APP_BASE_URL` for proper card QR code generation
+2. **URLs**: Update `VITE_APP_BASE_URL` and `VITE_STRIPE_SUCCESS_URL` for proper redirects
 3. **Pricing**: Configure `VITE_CARD_PRICE_CENTS` for different markets
 4. **Contact**: Set appropriate contact information for customer support
 5. **AI Models**: Use cost-effective models for development, full models for production
+6. **Stripe**: Use test keys in development, live keys only in production
 
 ## Deployment
 
+### Frontend Deployment
 - Production builds deploy to CDN
-- Supabase projects for staging/production
-- Environment variables for API keys
-- Database migrations via Supabase CLI
-- Edge Functions for serverless logic
+- Run `npm run build:production` for production builds
+- Environment variables configured via `.env.production`
+
+### Backend Deployment
+- Database migrations via `schema.sql` and stored procedures
+- Edge Functions via `npx supabase functions deploy` or deployment script
+- Secrets configured via Supabase Dashboard or CLI
+- See `EDGE_FUNCTIONS_CONFIG.md` for complete guide
+
+### Quick Deployment Commands
+```bash
+# Frontend
+npm run build:production
+
+# Edge Functions (all at once)
+./scripts/deploy-edge-functions.sh
+
+# Database (manual via Supabase Dashboard)
+# 1. Copy schema.sql and all_stored_procedures.sql
+# 2. Execute in SQL Editor
+```

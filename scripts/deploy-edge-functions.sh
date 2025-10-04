@@ -78,7 +78,7 @@ FUNCTIONS=(
   "chat-with-audio-stream"
   "generate-tts-audio"
   "get-openai-ephemeral-token"
-  "openai-realtime-proxy"
+  "openai-realtime-relay"
 )
 
 # Deploy specific function if provided

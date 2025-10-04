@@ -28,3 +28,8 @@ coverage
 *.sw?
 
 *.tsbuildinfo
+
+# Supabase local configuration (contains secrets)
+supabase/config.toml
+supabase/.branches/
+supabase/.temp/

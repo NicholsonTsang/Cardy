@@ -42,27 +42,16 @@ export const createCheckoutSession = async (cardCount, batchId, metadata = {}) =
       throw new Error('Stripe is not configured. Please add VITE_STRIPE_PUBLISHABLE_KEY to your .env file')
     }
 
-    // Build return URLs with cardId and tab parameters
-    const baseSuccessUrl = import.meta.env.VITE_STRIPE_SUCCESS_URL || `${window.location.origin}/cms/mycards`
-    const baseCancelUrl = import.meta.env.VITE_STRIPE_CANCEL_URL || `${window.location.origin}/cms/mycards`
-    
-    // Add cardId and tab=issuance parameters if card_id is in metadata
-    const cardId = metadata.card_id
-    const successUrl = cardId 
-      ? `${baseSuccessUrl}${baseSuccessUrl.includes('?') ? '&' : '?'}cardId=${cardId}&tab=issuance`
-      : baseSuccessUrl
-    
-    const cancelUrl = cardId
-      ? `${baseCancelUrl}${baseCancelUrl.includes('?') ? '&' : '?'}cardId=${cardId}&tab=issuance`
-      : baseCancelUrl
+    // Build base URL for Stripe return (success and cancel both use the same base)
+    // The Edge Function will append query parameters (cardId, batchId, tab, success/canceled)
+    const baseUrl = import.meta.env.VITE_STRIPE_SUCCESS_URL || `${window.location.origin}/cms/mycards`
 
     // Create checkout session via Edge Function
     const { data, error } = await supabase.functions.invoke('create-checkout-session', {
       body: {
         cardCount,
         batchId,
-        successUrl,
-        cancelUrl,
+        baseUrl,
         metadata
       }
     })

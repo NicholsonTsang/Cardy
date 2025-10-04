@@ -56,15 +56,15 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
-import AIAssistantModal from './AIAssistant/components/AIAssistantModal.vue'
-import ChatInterface from './AIAssistant/components/ChatInterface.vue'
-import RealtimeInterface from './AIAssistant/components/RealtimeInterface.vue'
-import { useRealtimeConnection } from './AIAssistant/composables/useRealtimeConnection'
-import { useChatCompletion } from './AIAssistant/composables/useChatCompletion'
-import { useVoiceRecording } from './AIAssistant/composables/useVoiceRecording'
-import { useCostSafeguards } from './AIAssistant/composables/useCostSafeguards'
-import { useInactivityTimer } from './AIAssistant/composables/useInactivityTimer'
-import type { Message, Language, ConversationMode, AIAssistantProps } from './AIAssistant/types'
+import AIAssistantModal from './components/AIAssistantModal.vue'
+import ChatInterface from './components/ChatInterface.vue'
+import RealtimeInterface from './components/RealtimeInterface.vue'
+import { useRealtimeConnection } from './composables/useRealtimeConnection'
+import { useChatCompletion } from './composables/useChatCompletion'
+import { useVoiceRecording } from './composables/useVoiceRecording'
+import { useCostSafeguards } from './composables/useCostSafeguards'
+import { useInactivityTimer } from './composables/useInactivityTimer'
+import type { Message, Language, ConversationMode, AIAssistantProps } from './types'
 
 const props = defineProps<AIAssistantProps>()
 
@@ -85,9 +85,6 @@ const showLanguageSelection = ref(true)
 const selectedLanguage = ref<Language | null>(null)
 const conversationMode = ref<ConversationMode>('chat-completion')
 const messages = ref<Message[]>([])
-// Track assistant message per OpenAI response_id so each response is a new bubble
-const assistantMessageByResponseId = ref<Record<string, string>>({})
-const pendingUserTranscriptId = ref<string | null>(null)
 const inputMode = ref<'text' | 'voice'>('text')
 const loadingStatus = ref('')
 const firstAudioPlayed = ref(false)
@@ -341,20 +338,7 @@ async function playMessageAudio(message: Message) {
 async function connectRealtime() {
   if (!selectedLanguage.value) return
   
-  // Prevent multiple simultaneous connections
-  if (realtimeConnection.isRealtimeConnected.value || 
-      realtimeConnection.realtimeStatus.value === 'connecting') {
-    console.log('⚠️ Already connecting or connected, ignoring duplicate request')
-    return
-  }
-  
   realtimeConnection.realtimeStatus.value = 'connecting'
-  
-  // Clean up any existing connection first
-  if (realtimeConnection.realtimeWebSocket.value) {
-    console.log('🧹 Cleaning up existing connection before creating new one')
-    await realtimeConnection.disconnect()
-  }
   
   try {
     // Get ephemeral token
@@ -364,12 +348,6 @@ async function connectRealtime() {
       props.contentItemName
     )
     
-    console.log('🎫 Token data received:', { 
-      hasToken: !!tokenData.ephemeral_token,
-      model: tokenData.session_config?.model,
-      expiresAt: tokenData.expires_at
-    })
-    
     // Request microphone
     await realtimeConnection.requestMicrophone()
     
@@ -377,10 +355,7 @@ async function connectRealtime() {
     realtimeConnection.createAudioContexts()
     
     // Create WebSocket
-    const ws = realtimeConnection.createWebSocket(
-      tokenData.session_config.model, 
-      tokenData.ephemeral_token
-    )
+    const ws = realtimeConnection.createWebSocket(tokenData.model, tokenData.token)
     
     // Setup WebSocket handlers
     ws.onopen = () => {
@@ -389,12 +364,10 @@ async function connectRealtime() {
       realtimeConnection.realtimeStatus.value = 'connected'
       
       // Send session configuration
-      const sessionUpdate = {
+      ws.send(JSON.stringify({
         type: 'session.update',
-        session: tokenData.session_config
-      }
-      console.log('📤 Sending session configuration:', sessionUpdate)
-      ws.send(JSON.stringify(sessionUpdate))
+        session: tokenData.sessionConfig
+      }))
       
       // Start sending audio
       realtimeConnection.startSendingAudio()
@@ -406,123 +379,38 @@ async function connectRealtime() {
     ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data)
-        console.log('📨 WebSocket message:', data.type, data)
         
         // Reset inactivity timer on any activity
         inactivityTimer.resetTimer()
-        
-        // Handle errors from server
-        if (data.type === 'error') {
-          console.error('❌ Server error:', data)
-          realtimeConnection.realtimeError.value = data.error?.message || 'Server error'
-          return
-        }
         
         // Handle audio delta
         if (data.type === 'response.audio.delta' && data.delta) {
           realtimeConnection.playRealtimeAudio(data.delta)
         }
         
-        // Stream user input transcription (delta)
-        if (
-          (data.type === 'conversation.item.input_audio_transcription.delta' ||
-           data.type === 'input_audio_transcription.delta') &&
-          data.delta
-        ) {
-          // If no pending message, create one
-          if (!pendingUserTranscriptId.value) {
-            const id = Date.now().toString()
-            pendingUserTranscriptId.value = id
-            messages.value.push({
-              id,
-              role: 'user',
-              content: data.delta,
-              timestamp: new Date(),
-              isStreaming: true
-            })
-          } else {
-            const msg = messages.value.find(m => m.id === pendingUserTranscriptId.value)
-            if (msg) {
-              msg.content = (msg.content || '') + data.delta
-            }
-          }
-        }
-
-        // Handle assistant transcript (delta) - ensure each response is a separate bubble
+        // Handle transcript
         if (data.type === 'response.audio_transcript.delta' && data.delta) {
-          const responseId = data.response_id
-          if (responseId && !assistantMessageByResponseId.value[responseId]) {
-            const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
-            assistantMessageByResponseId.value[responseId] = id
+          const lastMessage = messages.value[messages.value.length - 1]
+          if (!lastMessage || lastMessage.role !== 'assistant') {
             messages.value.push({
-              id,
+              id: Date.now().toString(),
               role: 'assistant',
               content: data.delta,
-              timestamp: new Date(),
-              isStreaming: true
+              timestamp: new Date()
             })
-          } else if (responseId) {
-            const msgId = assistantMessageByResponseId.value[responseId]
-            const msg = messages.value.find(m => m.id === msgId)
-            if (msg) msg.content = (msg.content || '') + data.delta
           } else {
-            // Fallback if response_id missing: create/update last assistant bubble
-            const lastMessage = messages.value[messages.value.length - 1]
-            if (!lastMessage || lastMessage.role !== 'assistant' || !lastMessage.isStreaming) {
-              messages.value.push({
-                id: Date.now().toString(),
-                role: 'assistant',
-                content: data.delta,
-                timestamp: new Date(),
-                isStreaming: true
-              })
-            } else {
-              lastMessage.content = (lastMessage.content || '') + data.delta
-            }
-          }
-        }
-
-        // Mark assistant response completed
-        if (data.type === 'response.completed' && data.response) {
-          const responseId = data.response.id
-          const msgId = assistantMessageByResponseId.value[responseId]
-          if (msgId) {
-            const msg = messages.value.find(m => m.id === msgId)
-            if (msg) msg.isStreaming = false
-            delete assistantMessageByResponseId.value[responseId]
+            lastMessage.content = (lastMessage.content || '') + data.delta
           }
         }
         
-        // Handle input transcript (user speech) - completed
-        if (
-          (data.type === 'conversation.item.input_audio_transcription.completed' ||
-           data.type === 'input_audio_transcription.completed') &&
-          data.transcript
-        ) {
-          if (pendingUserTranscriptId.value) {
-            const msg = messages.value.find(m => m.id === pendingUserTranscriptId.value)
-            if (msg) {
-              msg.content = data.transcript
-              msg.isStreaming = false
-            } else {
-              // Fallback: create message if not found
-              messages.value.push({
-                id: Date.now().toString(),
-                role: 'user',
-                content: data.transcript,
-                timestamp: new Date()
-              })
-            }
-          } else {
-            // No pending id, create a new finalized message
-            messages.value.push({
-              id: Date.now().toString(),
-              role: 'user',
-              content: data.transcript,
-              timestamp: new Date()
-            })
-          }
-          pendingUserTranscriptId.value = null
+        // Handle input transcript (user speech)
+        if (data.type === 'conversation.item.input_audio_transcription.completed' && data.transcript) {
+          messages.value.push({
+            id: Date.now().toString(),
+            role: 'user',
+            content: data.transcript,
+            timestamp: new Date()
+          })
         }
       } catch (err) {
         console.error('WebSocket message error:', err)
@@ -535,12 +423,8 @@ async function connectRealtime() {
       realtimeConnection.realtimeError.value = 'Connection error'
     }
     
-    ws.onclose = (event) => {
-      console.log('🔌 WebSocket closed', {
-        code: event.code,
-        reason: event.reason,
-        wasClean: event.wasClean
-      })
+    ws.onclose = () => {
+      console.log('🔌 WebSocket closed')
       realtimeConnection.isRealtimeConnected.value = false
       realtimeConnection.realtimeStatus.value = 'disconnected'
       inactivityTimer.clearTimer()

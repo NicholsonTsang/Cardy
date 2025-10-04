@@ -1,0 +1,69 @@
+// Shared TypeScript types for AI Assistant
+
+export interface Language {
+  code: string
+  name: string
+  flag: string
+}
+
+export interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: Date
+  isStreaming?: boolean
+  audio?: {
+    data: string
+    format: string
+  }
+  audioUrl?: string
+  audioLoading?: boolean
+  language?: string
+}
+
+export interface CardData {
+  card_name: string
+  card_description: string
+  ai_prompt?: string
+}
+
+export interface AIAssistantProps {
+  contentItemName: string
+  contentItemContent: string
+  aiMetadata: string
+  cardData: CardData
+}
+
+export type ConversationMode = 'chat-completion' | 'realtime'
+export type InputMode = 'text' | 'voice'
+
+export interface RealtimeConnectionState {
+  isConnected: boolean
+  isSpeaking: boolean
+  status: 'disconnected' | 'connecting' | 'connected' | 'error'
+  error: string | null
+}
+
+export interface SessionConfig {
+  model: string
+  voice: string
+  instructions: string
+  input_audio_format: string
+  output_audio_format: string
+  temperature: number
+  max_response_output_tokens: number
+}
+
+export interface ChatCompletionState {
+  isLoading: boolean
+  error: string | null
+  streamingMessageId: string | null
+}
+
+export interface VoiceRecordingState {
+  isRecording: boolean
+  recordingDuration: number
+  isCancelZone: boolean
+  error: string | null
+}
+
