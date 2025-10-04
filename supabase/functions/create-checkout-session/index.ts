@@ -48,12 +48,23 @@ serve(async (req) => {
     }
 
     // Parse request body
-    const { cardCount, batchId, successUrl, cancelUrl, metadata = {} } = await req.json()
+    const { cardCount, batchId, baseUrl, metadata = {} } = await req.json()
 
     // Validate input
     if (!cardCount || !batchId || cardCount <= 0) {
       return new Response(
         JSON.stringify({ error: 'Invalid card count or batch ID' }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    // Validate baseUrl is provided
+    if (!baseUrl || !isValidUrl(baseUrl)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or missing baseUrl' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -135,17 +146,10 @@ serve(async (req) => {
       }
     }
 
-    // Construct the checkout session
-    // Priority: Frontend params > Environment variable > Origin header + path > Localhost fallback
-    const successBaseUrl = (successUrl && isValidUrl(successUrl) ? successUrl : null)
-      || Deno.env.get('STRIPE_SUCCESS_URL')
-      || `${req.headers.get('origin')}/cms/mycards`
-      || 'http://localhost:5173/cms/mycards'
-      
-    const cancelBaseUrl = (cancelUrl && isValidUrl(cancelUrl) ? cancelUrl : null)
-      || Deno.env.get('STRIPE_CANCEL_URL')
-      || `${req.headers.get('origin')}/cms/mycards`
-      || 'http://localhost:5173/cms/mycards'
+    // Use baseUrl from frontend for both success and cancel URLs
+    // Format: {baseUrl}?cardId={cardId}&batchId={batchId}&tab=issuance&...
+    const successBaseUrl = baseUrl
+    const cancelBaseUrl = baseUrl
     
     const checkoutSession = await stripe.checkout.sessions.create({
       payment_method_types: ['card'],
