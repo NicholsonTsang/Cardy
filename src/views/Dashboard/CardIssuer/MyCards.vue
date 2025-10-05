@@ -11,7 +11,7 @@
                 confirmClass="bg-blue-600 hover:bg-blue-700 text-white border-0"
                 successMessage="Card created successfully!"
                 errorMessage="Failed to create card"
-                :showToasts="true"
+                :showToasts="false"
                 @hide="onDialogHide"
             >
                 <CardCreateEditView ref="cardCreateEditRef" modeProp="create" />
@@ -248,8 +248,15 @@ const handleAddCard = async () => {
     }
     
     await handleAsyncError(async () => {
-        await cardStore.addCard(payload);
+        const newCardId = await cardStore.addCard(payload);
         await cardStore.fetchCards();
+        
+        // Auto-select the newly created card
+        if (newCardId) {
+            selectedCardId.value = newCardId;
+            activeTab.value = 0; // Switch to first tab (General)
+        }
+        
         // Success feedback provided by UI update and dialog close
     }, 'creating card');
 };
