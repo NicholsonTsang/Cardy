@@ -78,10 +78,20 @@
                                         class="action-button-content"
                                     />
                                     <Button 
-                                        label="Edit crop"
-                                        icon="pi pi-crop"
-                                        @click="handleReCrop"
+                                        label="Crop image"
+                                        icon="pi pi-expand"
+                                        @click="handleCropImage"
                                         severity="info"
+                                        outlined
+                                        size="small"
+                                        class="action-button-content"
+                                    />
+                                    <Button 
+                                        v-if="isCropped"
+                                        label="Undo crop"
+                                        icon="pi pi-undo"
+                                        @click="handleUndoCrop"
+                                        severity="warning"
                                         outlined
                                         size="small"
                                         class="action-button-content"
@@ -285,6 +295,11 @@ const cropParameters = ref(null);
 const isDragActive = ref(false);
 const fileInputRef = ref(null);
 
+// Check if image is cropped
+const isCropped = computed(() => {
+    return croppedImageFile.value !== null || cropParameters.value !== null || formData.value.cropParameters !== null;
+});
+
 // Markdown editor configuration
 const markdownToolbars = ref([
     'bold',
@@ -346,18 +361,22 @@ const handleImageUpload = (event) => {
         // Store the original image file
         imageFile.value = file;
         
-        // Create a preview URL for cropping
+        // Always show the image with object-fit: contain (no auto-cropping)
         const reader = new FileReader();
         reader.onload = (e) => {
-            cropImageSrc.value = e.target.result;
-            showCropDialog.value = true;
+            previewImage.value = e.target.result;
         };
         reader.readAsDataURL(file);
+        
+        // Reset crop-related state when a new image is uploaded
+        croppedImageFile.value = null;
+        cropParameters.value = null;
+        formData.value.cropParameters = null;
     }
 };
 
-// Re-crop existing image
-const handleReCrop = () => {
+// Open crop dialog for existing image
+const handleCropImage = () => {
     // Priority: imageFile (new upload) > originalImageUrl (saved) > imageUrl (fallback for old data)
     const originalImage = imageFile.value || formData.value.originalImageUrl || formData.value.imageUrl;
     
@@ -366,12 +385,38 @@ const handleReCrop = () => {
         const imageSrc = imageFile.value ? URL.createObjectURL(imageFile.value) : originalImage;
         cropImageSrc.value = imageSrc;
         
-        // Set the existing crop parameters to restore previous crop state
+        // Set the existing crop parameters to restore previous crop state (if any)
         cropParameters.value = formData.value.cropParameters || null;
         showCropDialog.value = true;
     } else {
-        console.warn('No original image available for re-cropping');
+        console.warn('No image available for cropping');
     }
+};
+
+// Undo crop and revert to object-fit: contain
+const handleUndoCrop = () => {
+    // Clear all crop-related data
+    croppedImageFile.value = null;
+    cropParameters.value = null;
+    formData.value.cropParameters = null;
+    
+    // Revert preview to original image with object-fit: contain
+    if (imageFile.value) {
+        // Use the original uploaded file
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            previewImage.value = e.target.result;
+        };
+        reader.readAsDataURL(imageFile.value);
+    } else if (formData.value.originalImageUrl) {
+        // Use the saved original image URL
+        previewImage.value = formData.value.originalImageUrl;
+    } else if (formData.value.imageUrl) {
+        // Fallback to imageUrl if no original is available
+        previewImage.value = formData.value.imageUrl;
+    }
+    
+    console.log('Crop undone - reverted to object-fit: contain');
 };
 
 // LinkedIn-style upload functions
@@ -409,7 +454,7 @@ const handleDrop = (event) => {
     }
 };
 
-// Process image file (LinkedIn flow: immediate cropping)
+// Process image file (show with object-fit: contain by default)
 const processImageFile = (file) => {
     // Validate file size (5MB)
     if (file.size > 5000000) {
@@ -420,13 +465,14 @@ const processImageFile = (file) => {
     // Store the file
     imageFile.value = file;
     
-    // Create preview URL
+    // Create preview URL and display with object-fit: contain
     const previewUrl = URL.createObjectURL(file);
+    previewImage.value = previewUrl;
     
-    // LinkedIn-style: Immediately open crop dialog after upload
-    cropImageSrc.value = previewUrl;
-    cropParameters.value = null; // Start fresh
-    showCropDialog.value = true;
+    // Reset crop-related state when a new image is uploaded
+    croppedImageFile.value = null;
+    cropParameters.value = null;
+    formData.value.cropParameters = null;
 };
 
 const handleCancel = () => {
