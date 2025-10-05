@@ -136,24 +136,26 @@
                         </div>
                     </div>
 
-                    <!-- AI Metadata Section (shown only if card has AI enabled) -->
+                    <!-- AI Knowledge Base Section (shown only if card has AI enabled) -->
                     <div v-if="cardAiEnabled" class="border-t border-slate-200 pt-6">
-                        <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-4">
-                            <label class="flex items-center gap-2 text-sm font-medium text-amber-900 mb-2">
+                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                            <label class="flex items-center gap-2 text-sm font-medium text-blue-900 mb-2">
                                 <i class="pi pi-database"></i>
-                                AI Metadata
+                                AI Knowledge Base
+                                <span class="text-xs text-blue-600 ml-auto">{{ aiKnowledgeBaseWordCount }}/500 words</span>
                             </label>
                             <Textarea 
-                                v-model="formData.aiMetadata" 
-                                rows="4" 
-                                class="w-full" 
-                                :placeholder="getAiMetadataPlaceholder()"
+                                v-model="formData.aiKnowledgeBase" 
+                                rows="5" 
+                                class="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none bg-white" 
+                                :class="{ 'border-red-500': aiKnowledgeBaseWordCount > 500 }"
+                                :placeholder="getAiKnowledgePlaceholder()"
                                 autoResize
                             />
-                            <div class="mt-3 p-3 bg-amber-100 rounded-lg">
-                                <p class="text-xs text-amber-800 flex items-start gap-2">
-                                    <i class="pi pi-lightbulb mt-0.5 flex-shrink-0"></i>
-                                    <span><strong>Tip:</strong> Provide additional knowledge data about this {{ itemTypeLabel.toLowerCase() }}. Include facts, specifications, historical details, or other information that will help the AI provide accurate and detailed responses to visitor questions.</span>
+                            <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                <p class="text-xs text-blue-800 flex items-start gap-2">
+                                    <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
+                                    <span><strong>Purpose:</strong> Provide content-specific knowledge for this {{ itemTypeLabel.toLowerCase() }}. Include facts, specifications, historical details, or contextual information that helps the AI answer visitor questions accurately (max 500 words).</span>
                                 </p>
                             </div>
                         </div>
@@ -244,12 +246,12 @@ const getDescriptionPlaceholder = () => {
     }
 };
 
-// Generate appropriate placeholder text for AI metadata
-const getAiMetadataPlaceholder = () => {
+// Generate appropriate placeholder text for AI knowledge base
+const getAiKnowledgePlaceholder = () => {
     if (props.parentId) {
-        return 'Provide additional knowledge data about this sub-item. Include facts, specifications, historical details, or other information that will help the AI provide accurate and detailed responses to visitor questions...';
+        return 'Provide content-specific knowledge for this sub-item. Include facts, specifications, historical details, or contextual information...';
     } else {
-        return 'Provide additional knowledge data about this content item. Include facts, specifications, historical details, or other information that will help the AI provide accurate and detailed responses to visitor questions...';
+        return 'Provide content-specific knowledge for this content item. Include facts, specifications, historical details, or contextual information...';
     }
 };
 
@@ -259,8 +261,13 @@ const formData = ref({
     description: '',
     imageUrl: null,
     originalImageUrl: null,
-    aiMetadata: '',
+    aiKnowledgeBase: '',
     cropParameters: null
+});
+
+// Word count computed property
+const aiKnowledgeBaseWordCount = computed(() => {
+    return (formData.value.aiKnowledgeBase || '').trim().split(/\s+/).filter(word => word.length > 0).length;
 });
 
 const previewImage = ref(null);
@@ -317,7 +324,7 @@ watch(() => props.contentItem, (newVal) => {
             description: newVal.description || newVal.content || '',
             imageUrl: newVal.imageUrl || newVal.image_url || null,
             originalImageUrl: newVal.originalImageUrl || newVal.original_image_url || null,
-            aiMetadata: newVal.aiMetadata || newVal.ai_metadata || '',
+            aiKnowledgeBase: newVal.aiKnowledgeBase || newVal.ai_knowledge_base || '',
             cropParameters: newVal.cropParameters || newVal.crop_parameters || null
         };
         originalData.value = { ...formData.value };
@@ -454,7 +461,7 @@ const resetForm = () => {
         description: '',
         imageUrl: null,
         originalImageUrl: null,
-        aiMetadata: '',
+        aiKnowledgeBase: '',
         cropParameters: null
     };
     previewImage.value = null;

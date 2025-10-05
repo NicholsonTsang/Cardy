@@ -26,8 +26,12 @@ export function validateCardData(card) {
     errors.push('Card description must be less than 500 characters');
   }
 
-  if (card.ai_prompt && card.ai_prompt.length > 2000) {
-    warnings.push('AI prompt is very long and may affect performance');
+  if (card.ai_instruction && card.ai_instruction.length > 100) {
+    errors.push('AI instruction must be less than 100 words');
+  }
+  
+  if (card.ai_knowledge_base && card.ai_knowledge_base.length > 2000) {
+    warnings.push('AI knowledge base is very long and may affect performance');
   }
 
   // Email validation
@@ -196,7 +200,8 @@ export function cleanCardData(card) {
     card_name: (card.card_name || '').trim(),
     card_description: (card.card_description || '').trim(),
     card_type: (card.card_type || 'general').trim().toLowerCase(),
-    ai_prompt: (card.ai_prompt || '').trim(),
+    ai_instruction: (card.ai_instruction || '').trim(),
+    ai_knowledge_base: (card.ai_knowledge_base || '').trim(),
     tags: (card.tags || '').trim(),
     business_name: (card.business_name || '').trim(),
     business_address: (card.business_address || '').trim(),

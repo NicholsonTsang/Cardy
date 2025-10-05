@@ -52,6 +52,7 @@
           :content="selectedContent"
           :sub-items="subContent"
           :card="cardData"
+          :parent-item="parentOfSelected"
           @select="selectContent"
         />
       </transition>
@@ -136,6 +137,14 @@ const subContent = computed(() => {
   )
 })
 
+// Find the parent of the currently selected content (null if it's a top-level item)
+const parentOfSelected = computed(() => {
+  if (!selectedContent.value || !selectedContent.value.content_item_parent_id) return null
+  return contentItems.value.find(
+    item => item.content_item_id === selectedContent.value!.content_item_parent_id
+  ) || null
+})
+
 // Methods
 async function fetchCardData() {
   try {
@@ -179,7 +188,8 @@ async function fetchCardData() {
       card_image_url: firstRow.card_image_url,
       crop_parameters: firstRow.card_crop_parameters,
       conversation_ai_enabled: firstRow.card_conversation_ai_enabled,
-      ai_prompt: firstRow.card_ai_prompt,
+      ai_instruction: firstRow.card_ai_instruction,
+      ai_knowledge_base: firstRow.card_ai_knowledge_base,
       is_activated: isPreviewMode.value ? true : firstRow.is_activated, // Always activated in preview mode
       is_preview: isPreviewMode.value || firstRow.is_preview || false
     }
@@ -193,7 +203,7 @@ async function fetchCardData() {
         content_item_name: item.content_item_name,
         content_item_content: item.content_item_content,
         content_item_image_url: item.content_item_image_url,
-        content_item_ai_metadata: item.content_item_ai_metadata,
+        content_item_ai_knowledge_base: item.content_item_ai_knowledge_base,
         content_item_sort_order: item.content_item_sort_order || 0,
         crop_parameters: item.crop_parameters
       }))

@@ -230,24 +230,59 @@
                                v-tooltip="'AI assistant helps visitors interact with your card content'"></i>
                         </div>
 
-                        <!-- AI Instructions Field (shown when AI is enabled) -->
-                        <div v-if="formData.conversation_ai_enabled" class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-                            <label class="block text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
-                                <i class="pi pi-lightbulb"></i>
-                                AI Assistance Instructions
-                            </label>
-                            <Textarea 
-                                v-model="formData.ai_prompt" 
-                                rows="4" 
-                                class="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none bg-white" 
-                                placeholder="Provide instructions for the AI assistant when helping visitors with questions about content items in this card. For example: 'You are an expert travel guide. Help visitors plan their adventures and understand safety requirements.'"
-                                autoResize
-                            />
-                            <div class="mt-3 p-3 bg-blue-100 rounded-lg">
-                                <p class="text-xs text-blue-800 flex items-start gap-2">
-                                    <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
-                                    <span><strong>Instructions:</strong> These instructions will guide the AI when answering questions about any content item in this card. The AI will use these instructions along with the content item's description and metadata to provide helpful responses.</span>
-                                </p>
+                        <!-- AI Instruction Field (shown when AI is enabled) -->
+                        <div v-if="formData.conversation_ai_enabled" class="space-y-4">
+                            <!-- AI Instruction (Role & Guidelines) -->
+                            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                                <label class="block text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
+                                    <i class="pi pi-user"></i>
+                                    AI Instruction (Role & Guidelines)
+                                    <span class="text-xs text-blue-600 ml-auto">{{ aiInstructionWordCount }}/100 words</span>
+                                </label>
+                                <Textarea 
+                                    v-model="formData.ai_instruction" 
+                                    rows="3" 
+                                    class="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none bg-white" 
+                                    :class="{ 'border-red-500': aiInstructionWordCount > 100 }"
+                                    placeholder="Enter AI role and guidelines..."
+                                    autoResize
+                                />
+                                <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div class="text-xs text-blue-800 flex items-start gap-2">
+                                        <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
+                                        <div class="space-y-2">
+                                            <p>
+                                                <strong>Purpose:</strong> Define the AI's role, personality, tone, and any restrictions or guidelines it should follow. Keep it concise (max 100 words).
+                                            </p>
+                                            <p class="text-blue-700">
+                                                <strong>Example:</strong> <em>"{{ DEFAULT_AI_INSTRUCTION }}"</em>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- AI Knowledge Base -->
+                            <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
+                                <label class="block text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
+                                    <i class="pi pi-database"></i>
+                                    AI Knowledge Base
+                                    <span class="text-xs text-blue-600 ml-auto">{{ aiKnowledgeBaseWordCount }}/2000 words</span>
+                                </label>
+                                <Textarea 
+                                    v-model="formData.ai_knowledge_base" 
+                                    rows="6" 
+                                    class="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none bg-white" 
+                                    :class="{ 'border-red-500': aiKnowledgeBaseWordCount > 2000 }"
+                                    placeholder="Provide background knowledge, facts, historical context, specifications, or domain expertise that strengthens the AI's ability to answer questions accurately. Be detailed and comprehensive."
+                                    autoResize
+                                />
+                                <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <div class="text-xs text-blue-800 flex items-start gap-2">
+                                        <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
+                                        <span><strong>Purpose:</strong> Supply detailed domain knowledge, historical facts, specifications, or context that helps the AI provide accurate, informative responses about your card's content (max 2000 words).</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -322,14 +357,27 @@ const props = defineProps({
 
 const emit = defineEmits(['save', 'cancel']);
 
+// Get default AI instruction from environment
+const DEFAULT_AI_INSTRUCTION = import.meta.env.VITE_DEFAULT_AI_INSTRUCTION || "You are a knowledgeable and friendly AI assistant for museum and exhibition visitors. Provide accurate, engaging, and educational explanations about exhibits and artifacts. Keep responses conversational and easy to understand. If you don't know something, politely say so rather than making up information.";
+
 const formData = reactive({
     id: null,
     name: '',
     description: '',
     qr_code_position: 'BR',
-    ai_prompt: '',
+    ai_instruction: '',
+    ai_knowledge_base: '',
     conversation_ai_enabled: false,
     cropParameters: null
+});
+
+// Word count computed properties
+const aiInstructionWordCount = computed(() => {
+    return formData.ai_instruction.trim().split(/\s+/).filter(word => word.length > 0).length;
+});
+
+const aiKnowledgeBaseWordCount = computed(() => {
+    return formData.ai_knowledge_base.trim().split(/\s+/).filter(word => word.length > 0).length;
 });
 
 const previewImage = ref(null);
@@ -403,13 +451,22 @@ watch(() => props.cardProp, (newVal) => {
     }
 }, { deep: true });
 
+// Watch for AI being disabled - clear instruction and knowledge base
+watch(() => formData.conversation_ai_enabled, (newValue) => {
+    if (newValue === false) {
+        formData.ai_instruction = '';
+        formData.ai_knowledge_base = '';
+    }
+});
+
 const initializeForm = () => {
     if (props.cardProp) {
         formData.id = props.cardProp.id;
         formData.name = props.cardProp.name || '';
         formData.description = props.cardProp.description || '';
         formData.qr_code_position = props.cardProp.qr_code_position || 'BR';
-        formData.ai_prompt = props.cardProp.ai_prompt || '';
+        formData.ai_instruction = props.cardProp.ai_instruction || '';
+        formData.ai_knowledge_base = props.cardProp.ai_knowledge_base || '';
         formData.conversation_ai_enabled = props.cardProp.conversation_ai_enabled || false;
         formData.cropParameters = props.cardProp.cropParameters || props.cardProp.crop_parameters || null;
         
@@ -438,9 +495,11 @@ const resetForm = () => {
     formData.name = '';
     formData.description = '';
     formData.qr_code_position = 'BR';
-    formData.ai_prompt = '';
+    formData.ai_instruction = '';
+    formData.ai_knowledge_base = '';
     formData.conversation_ai_enabled = false;
     formData.cropParameters = null;
+    
     previewImage.value = null;
     imageFile.value = null;
     croppedImageFile.value = null;

@@ -8,7 +8,7 @@ export interface PublicContentItem {
     content_item_name: string;
     content_item_content: string;
     content_item_image_url: string | null;
-    content_item_ai_metadata: string;
+    content_item_ai_knowledge_base: string;
     content_item_sort_order: number;
 }
 
@@ -17,7 +17,8 @@ export interface PublicCardData {
     card_description: string;
     card_image_url: string | null;
     card_conversation_ai_enabled: boolean;
-    card_ai_prompt: string;
+    card_ai_instruction: string;
+    card_ai_knowledge_base: string;
     content_items: PublicContentItem[];
     is_activated: boolean;
 }
@@ -28,13 +29,14 @@ interface RawRpcResponseItem {
     card_description: string;
     card_image_url: string | null;
     card_conversation_ai_enabled: boolean;
-    card_ai_prompt: string;
+    card_ai_instruction: string;
+    card_ai_knowledge_base: string;
     content_item_id: string | null; // Can be null if card has no content
     content_item_parent_id: string | null;
     content_item_name: string | null;
     content_item_content: string | null;
     content_item_image_url: string | null;
-    content_item_ai_metadata: string | null;
+    content_item_ai_knowledge_base: string | null;
     content_item_sort_order: number | null;
     is_activated: boolean;
 }
@@ -68,7 +70,8 @@ export const usePublicCardStore = defineStore('publicCard', () => {
                         card_description: data[0].card_description,
                         card_image_url: data[0].card_image_url,
                         card_conversation_ai_enabled: data[0].card_conversation_ai_enabled,
-                        card_ai_prompt: data[0].card_ai_prompt,
+                        card_ai_instruction: data[0].card_ai_instruction,
+                        card_ai_knowledge_base: data[0].card_ai_knowledge_base,
                         is_activated: data[0].is_activated,
                         content_items: [],
                     };
@@ -87,7 +90,7 @@ export const usePublicCardStore = defineStore('publicCard', () => {
                     content_item_name: item.content_item_name!,
                     content_item_content: item.content_item_content!,
                     content_item_image_url: item.content_item_image_url,
-                    content_item_ai_metadata: item.content_item_ai_metadata!,
+                    content_item_ai_knowledge_base: item.content_item_ai_knowledge_base!,
                     content_item_sort_order: item.content_item_sort_order!,
                 }));
             
@@ -102,7 +105,8 @@ export const usePublicCardStore = defineStore('publicCard', () => {
                 card_description: firstRecord.card_description,
                 card_image_url: firstRecord.card_image_url,
                 card_conversation_ai_enabled: firstRecord.card_conversation_ai_enabled,
-                card_ai_prompt: firstRecord.card_ai_prompt,
+                card_ai_instruction: firstRecord.card_ai_instruction,
+                card_ai_knowledge_base: firstRecord.card_ai_knowledge_base,
                 is_activated: firstRecord.is_activated,
                 content_items: contentItems,
             };

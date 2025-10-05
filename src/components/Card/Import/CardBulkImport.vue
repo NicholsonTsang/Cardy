@@ -87,6 +87,25 @@
       </div>
     </div>
 
+    <!-- Inline Feedback Messages -->
+    <div v-if="feedbackMessage" class="inline-feedback" :class="`feedback-${feedbackMessage.severity}`">
+      <div class="feedback-content">
+        <div class="feedback-icon">
+          <i :class="getFeedbackIcon(feedbackMessage.severity)"></i>
+        </div>
+        <div class="feedback-text">
+          <h4 class="feedback-title">{{ feedbackMessage.summary }}</h4>
+          <p class="feedback-detail">{{ feedbackMessage.detail }}</p>
+        </div>
+        <Button 
+          icon="pi pi-times" 
+          @click="clearFeedback"
+          class="p-button-text p-button-sm feedback-close"
+          v-tooltip="'Dismiss'"
+        />
+      </div>
+    </div>
+
     <!-- File Upload Area - Only for regular import mode -->
     <div v-if="props.mode === 'regular'" class="upload-zone" :class="{ 'dragover': isDragover, 'has-file': selectedFile }">
       <input 
@@ -464,6 +483,7 @@ const importPreview = ref(null)
 const importResults = ref(null)
 const importStatus = ref('')
 const importProgress = ref(0)
+const feedbackMessage = ref(null) // Inline feedback message state
 const expandedItems = ref([])
 const createdImageUrls = ref(new Set())
 
@@ -526,6 +546,32 @@ const organizedContentItems = computed(() => {
   return organized
 })
 
+// Feedback Helper Functions
+function showFeedback(severity, summary, detail, autoDismiss = true) {
+  feedbackMessage.value = { severity, summary, detail }
+  
+  // Auto-dismiss after delay for non-error messages
+  if (autoDismiss && severity !== 'error') {
+    setTimeout(() => {
+      feedbackMessage.value = null
+    }, severity === 'success' ? 4000 : 6000)
+  }
+}
+
+function clearFeedback() {
+  feedbackMessage.value = null
+}
+
+function getFeedbackIcon(severity) {
+  const icons = {
+    success: 'pi pi-check-circle',
+    info: 'pi pi-info-circle',
+    warn: 'pi pi-exclamation-triangle',
+    error: 'pi pi-times-circle'
+  }
+  return icons[severity] || 'pi pi-info-circle'
+}
+
 // Methods
 async function loadExampleFile() {
   try {
@@ -548,21 +594,15 @@ async function loadExampleFile() {
     await processFile(file)
     
     // Show success message with educational context
-    toast.add({
-      severity: 'info',
-      summary: 'Example Loaded',
-      detail: 'Review the preview below to understand the import structure, then click "Confirm Import" to try it!',
-      life: 6000
-    })
+    showFeedback('info', 'Example Loaded', 
+      'Review the preview below to understand the import structure, then click "Confirm Import" to try it!', 
+      true)
     
   } catch (error) {
     console.error('Example file loading error:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Example Load Failed', 
-      detail: 'Could not load the example file. Please try downloading and uploading the template manually.',
-      life: 5000
-    })
+    showFeedback('error', 'Example Load Failed', 
+      'Could not load the example file. Please try downloading and uploading the template manually.', 
+      false)
   }
 }
 
@@ -581,20 +621,14 @@ async function downloadTemplate() {
     link.click()
     window.URL.revokeObjectURL(url)
     
-    toast.add({
-      severity: 'success',
-      summary: 'Template Downloaded',
-      detail: 'Excel template with examples and formulas downloaded successfully',
-      life: 3000
-    })
+    showFeedback('success', 'Template Downloaded', 
+      'Excel template with examples and formulas downloaded successfully', 
+      true)
   } catch (error) {
     console.error('Template download error:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'Download Failed',
-      detail: 'Failed to generate import template',
-      life: 5000
-    })
+    showFeedback('error', 'Download Failed', 
+      'Failed to generate import template', 
+      false)
   }
 }
 
@@ -620,22 +654,16 @@ function handleFileDrop(event) {
 async function processFile(file) {
   // File validation
   if (!file.name.match(/\.xlsx$/i)) {
-    toast.add({
-      severity: 'error',
-      summary: 'Invalid File Type',
-      detail: 'Please select an Excel file (.xlsx) with embedded images',
-      life: 5000
-    })
+    showFeedback('error', 'Invalid File Type', 
+      'Please select an Excel file (.xlsx) with embedded images', 
+      false)
     return
   }
 
   if (file.size > 25 * 1024 * 1024) { // 25MB limit
-    toast.add({
-      severity: 'error',
-      summary: 'File Too Large',
-      detail: 'File size must be less than 25MB',
-      life: 5000
-    })
+    showFeedback('error', 'File Too Large', 
+      'File size must be less than 25MB', 
+      false)
     return
   }
 
@@ -648,28 +676,19 @@ async function processFile(file) {
     importPreview.value = preview
     
     if (preview.isValid) {
-      toast.add({
-        severity: 'success',
-        summary: 'File Analyzed',
-        detail: `Found ${preview.contentItems.length} content items${extractedImageCount.value > 0 ? ` with ${extractedImageCount.value} embedded images` : ''}`,
-        life: 5000
-      })
+      showFeedback('success', 'File Analyzed', 
+        `Found ${preview.contentItems.length} content items${extractedImageCount.value > 0 ? ` with ${extractedImageCount.value} embedded images` : ''}`, 
+        true)
     } else {
-      toast.add({
-        severity: 'warn',
-        summary: 'Validation Issues',
-        detail: `File has ${preview.errors.length} errors that must be fixed`,
-        life: 5000
-      })
+      showFeedback('warn', 'Validation Issues', 
+        `File has ${preview.errors.length} errors that must be fixed. Review the preview below for details.`, 
+        false)
     }
   } catch (error) {
     console.error('File analysis error:', error)
-    toast.add({
-      severity: 'error',
-      summary: 'File Analysis Failed',
-      detail: error.message || 'Failed to analyze the uploaded file',
-      life: 5000
-    })
+    showFeedback('error', 'File Analysis Failed', 
+      error.message || 'Failed to analyze the uploaded file', 
+      false)
     removeFile()
   }
 }
@@ -722,12 +741,12 @@ async function executeImport() {
     // Emit event to refresh parent
     emit('imported', result)
     
-    toast.add({
-      severity: result.success ? 'success' : 'warn',
-      summary: result.success ? 'Import Successful' : 'Import Completed with Issues',
-      detail: result.message,
-      life: 5000
-    })
+    showFeedback(
+      result.success ? 'success' : 'warn',
+      result.success ? 'Import Successful' : 'Import Completed with Issues',
+      result.message,
+      true
+    )
     
   } catch (error) {
     console.error('Import error:', error)
@@ -737,12 +756,9 @@ async function executeImport() {
       details: { errors: 1 }
     }
     
-    toast.add({
-      severity: 'error',
-      summary: 'Import Failed',
-      detail: error.message || 'Failed to import data',
-      life: 5000
-    })
+    showFeedback('error', 'Import Failed', 
+      error.message || 'Failed to import data', 
+      false)
   } finally {
     importing.value = false
   }
@@ -824,7 +840,8 @@ async function importDataToDatabase(importData) {
       const { data, error } = await supabase.rpc('create_card', {
         p_name: importData.cardData.name,
         p_description: importData.cardData.description,
-        p_ai_prompt: importData.cardData.ai_prompt,
+        p_ai_instruction: importData.cardData.ai_instruction || '',
+        p_ai_knowledge_base: importData.cardData.ai_knowledge_base || '',
         p_conversation_ai_enabled: importData.cardData.conversation_ai_enabled,
         p_qr_code_position: qrPosition,
         p_image_url: cardImageUrl
@@ -864,7 +881,7 @@ async function importDataToDatabase(importData) {
               p_parent_id: null,
               p_name: item.name,
               p_content: item.content,
-              p_ai_metadata: item.ai_metadata,
+              p_ai_knowledge_base: item.ai_knowledge_base || '',
               p_image_url: contentImageUrl
             });
             
@@ -909,7 +926,7 @@ async function importDataToDatabase(importData) {
               p_parent_id: parentId,
               p_name: item.name,
               p_content: item.content,
-              p_ai_metadata: item.ai_metadata,
+              p_ai_knowledge_base: item.ai_knowledge_base || '',
               p_image_url: contentImageUrl
             });
             
@@ -1063,6 +1080,114 @@ function getChildImageUrl(child, parentIndex, childIndex) {
 
 .import-description {
   @apply text-slate-600 text-sm leading-relaxed;
+}
+
+/* Inline Feedback Styles */
+.inline-feedback {
+  @apply rounded-lg p-4 mb-6 border-l-4 animate-fadeIn;
+}
+
+.feedback-success {
+  @apply bg-emerald-50 border-emerald-500;
+}
+
+.feedback-info {
+  @apply bg-blue-50 border-blue-500;
+}
+
+.feedback-warn {
+  @apply bg-amber-50 border-amber-500;
+}
+
+.feedback-error {
+  @apply bg-red-50 border-red-500;
+}
+
+.feedback-content {
+  @apply flex items-start gap-3;
+}
+
+.feedback-icon {
+  @apply flex-shrink-0 text-2xl mt-0.5;
+}
+
+.feedback-success .feedback-icon {
+  @apply text-emerald-600;
+}
+
+.feedback-info .feedback-icon {
+  @apply text-blue-600;
+}
+
+.feedback-warn .feedback-icon {
+  @apply text-amber-600;
+}
+
+.feedback-error .feedback-icon {
+  @apply text-red-600;
+}
+
+.feedback-text {
+  @apply flex-1;
+}
+
+.feedback-title {
+  @apply font-semibold text-base mb-1;
+}
+
+.feedback-success .feedback-title {
+  @apply text-emerald-900;
+}
+
+.feedback-info .feedback-title {
+  @apply text-blue-900;
+}
+
+.feedback-warn .feedback-title {
+  @apply text-amber-900;
+}
+
+.feedback-error .feedback-title {
+  @apply text-red-900;
+}
+
+.feedback-detail {
+  @apply text-sm leading-relaxed;
+}
+
+.feedback-success .feedback-detail {
+  @apply text-emerald-700;
+}
+
+.feedback-info .feedback-detail {
+  @apply text-blue-700;
+}
+
+.feedback-warn .feedback-detail {
+  @apply text-amber-700;
+}
+
+.feedback-error .feedback-detail {
+  @apply text-red-700;
+}
+
+.feedback-close {
+  @apply flex-shrink-0 mt-1;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.3s ease-out;
 }
 
 /* Mode-specific content containers */

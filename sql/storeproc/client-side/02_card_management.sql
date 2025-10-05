@@ -13,7 +13,8 @@ RETURNS TABLE (
     original_image_url TEXT,
     crop_parameters JSONB,
     conversation_ai_enabled BOOLEAN,
-    ai_prompt TEXT,
+    ai_instruction TEXT,
+    ai_knowledge_base TEXT,
     qr_code_position TEXT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
@@ -28,7 +29,8 @@ BEGIN
         c.original_image_url,
         c.crop_parameters,
         c.conversation_ai_enabled,
-        c.ai_prompt,
+        c.ai_instruction,
+        c.ai_knowledge_base,
         c.qr_code_position::TEXT,
         c.created_at,
         c.updated_at
@@ -46,7 +48,8 @@ CREATE OR REPLACE FUNCTION create_card(
     p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
-    p_ai_prompt TEXT DEFAULT '',
+    p_ai_instruction TEXT DEFAULT '',
+    p_ai_knowledge_base TEXT DEFAULT '',
     p_qr_code_position TEXT DEFAULT 'BR'
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -60,7 +63,8 @@ BEGIN
         original_image_url,
         crop_parameters,
         conversation_ai_enabled,
-        ai_prompt,
+        ai_instruction,
+        ai_knowledge_base,
         qr_code_position
     ) VALUES (
         auth.uid(),
@@ -70,7 +74,8 @@ BEGIN
         p_original_image_url,
         p_crop_parameters,
         p_conversation_ai_enabled,
-        p_ai_prompt,
+        p_ai_instruction,
+        p_ai_knowledge_base,
         p_qr_code_position::"QRCodePosition"
     )
     RETURNING id INTO v_card_id;
@@ -92,7 +97,8 @@ RETURNS TABLE (
     qr_code_position TEXT,
     image_url TEXT,
     conversation_ai_enabled BOOLEAN,
-    ai_prompt TEXT,
+    ai_instruction TEXT,
+    ai_knowledge_base TEXT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -106,7 +112,8 @@ BEGIN
         c.qr_code_position::TEXT,
         c.image_url, 
         c.conversation_ai_enabled,
-        c.ai_prompt,
+        c.ai_instruction,
+        c.ai_knowledge_base,
         c.created_at, 
         c.updated_at
     FROM cards c
@@ -124,7 +131,8 @@ CREATE OR REPLACE FUNCTION update_card(
     p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT NULL,
-    p_ai_prompt TEXT DEFAULT NULL,
+    p_ai_instruction TEXT DEFAULT NULL,
+    p_ai_knowledge_base TEXT DEFAULT NULL,
     p_qr_code_position TEXT DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -141,7 +149,8 @@ BEGIN
         original_image_url,
         crop_parameters,
         conversation_ai_enabled,
-        ai_prompt,
+        ai_instruction,
+        ai_knowledge_base,
         qr_code_position,
         user_id,
         updated_at
@@ -184,8 +193,13 @@ BEGIN
         has_changes := TRUE;
     END IF;
     
-    IF p_ai_prompt IS NOT NULL AND p_ai_prompt != v_old_record.ai_prompt THEN
-        v_changes_made := v_changes_made || jsonb_build_object('ai_prompt', jsonb_build_object('from', v_old_record.ai_prompt, 'to', p_ai_prompt));
+    IF p_ai_instruction IS NOT NULL AND p_ai_instruction != v_old_record.ai_instruction THEN
+        v_changes_made := v_changes_made || jsonb_build_object('ai_instruction', jsonb_build_object('from', v_old_record.ai_instruction, 'to', p_ai_instruction));
+        has_changes := TRUE;
+    END IF;
+    
+    IF p_ai_knowledge_base IS NOT NULL AND p_ai_knowledge_base != v_old_record.ai_knowledge_base THEN
+        v_changes_made := v_changes_made || jsonb_build_object('ai_knowledge_base', jsonb_build_object('from', v_old_record.ai_knowledge_base, 'to', p_ai_knowledge_base));
         has_changes := TRUE;
     END IF;
     
@@ -197,7 +211,7 @@ BEGIN
     -- Only proceed if there are actual changes
     IF NOT has_changes THEN
         RETURN TRUE; -- No changes to make
-    END IF;
+END IF;
     
     -- Perform the update
     UPDATE cards
@@ -208,7 +222,8 @@ BEGIN
         original_image_url = COALESCE(p_original_image_url, original_image_url),
         crop_parameters = COALESCE(p_crop_parameters, crop_parameters),
         conversation_ai_enabled = COALESCE(p_conversation_ai_enabled, conversation_ai_enabled),
-        ai_prompt = COALESCE(p_ai_prompt, ai_prompt),
+        ai_instruction = COALESCE(p_ai_instruction, ai_instruction),
+        ai_knowledge_base = COALESCE(p_ai_knowledge_base, ai_knowledge_base),
         qr_code_position = COALESCE(p_qr_code_position::"QRCodePosition", qr_code_position),
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
@@ -233,7 +248,8 @@ BEGIN
         c.description,
         c.image_url,
         c.conversation_ai_enabled,
-        c.ai_prompt,
+        c.ai_instruction,
+        c.ai_knowledge_base,
         c.qr_code_position,
         c.user_id,
         c.created_at,

@@ -24,13 +24,15 @@ export interface Message {
 export interface CardData {
   card_name: string
   card_description: string
-  ai_prompt?: string
+  ai_instruction?: string
+  ai_knowledge_base?: string
 }
 
 export interface AIAssistantProps {
   contentItemName: string
   contentItemContent: string
-  aiMetadata: string
+  contentItemKnowledgeBase: string // Content item's own knowledge (max 500 words)
+  parentContentKnowledgeBase: string // Parent content item's knowledge (for sub-items)
   cardData: CardData
 }
 

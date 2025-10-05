@@ -61,7 +61,8 @@ CREATE TABLE cards (
     original_image_url TEXT, -- Original uploaded image (raw, uncropped)
     crop_parameters JSONB, -- JSON object containing crop parameters for dynamic image cropping (position, zoom, dimensions, etc.)
     conversation_ai_enabled BOOLEAN DEFAULT false,
-    ai_prompt TEXT DEFAULT '' NOT NULL, -- Instructions for AI assistance when answering content item questions
+    ai_instruction TEXT DEFAULT '' NOT NULL, -- AI role and guidelines (max 100 words) - defines AI's role, personality, and restrictions
+    ai_knowledge_base TEXT DEFAULT '' NOT NULL, -- Background knowledge for AI conversations (max 2000 words) - detailed domain knowledge, facts, specifications
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -82,7 +83,7 @@ CREATE TABLE content_items (
     image_url TEXT, -- Cropped/processed image for display
     original_image_url TEXT, -- Original uploaded image (raw, uncropped)
     crop_parameters JSONB, -- JSON object containing crop parameters for dynamic image cropping (position, zoom, dimensions, etc.)
-    ai_metadata TEXT DEFAULT '' NOT NULL,
+    ai_knowledge_base TEXT DEFAULT '' NOT NULL, -- Content-specific knowledge for AI (max 500 words)
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

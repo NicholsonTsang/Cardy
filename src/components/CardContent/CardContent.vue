@@ -243,7 +243,10 @@
                 <!-- Content Details (when an item ID is selected) -->
                 <template v-else>
                     <div v-if="currentSelectedItemData" class="h-full">
-                         <CardContentView :contentItem="currentSelectedItemData" />
+                         <CardContentView 
+                            :contentItem="currentSelectedItemData" 
+                            :cardAiEnabled="props.cardAiEnabled"
+                         />
                     </div>
                     <!-- Empty state if selectedContentItem ID is set, but data not found -->
                     <div v-else class="flex flex-col items-center justify-center h-full text-center">

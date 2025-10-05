@@ -157,7 +157,8 @@ async function createCardSheet(workbook, cardData, options) {
   dataRow.values = [
     cardData.name || '',
     cardData.description || '',
-    cardData.ai_prompt || '',
+    cardData.ai_instruction || '',
+    cardData.ai_knowledge_base || '',
     cardData.conversation_ai_enabled,
     cardData.qr_code_position || 'BR',
     '' // Placeholder for image
@@ -177,7 +178,7 @@ async function createCardSheet(workbook, cardData, options) {
   // No data validation for simplicity
   
   // Set row height to fit content with text wrapping
-  const combinedContent = (cardData.description || '') + ' ' + (cardData.ai_prompt || '');
+  const combinedContent = (cardData.description || '') + ' ' + (cardData.ai_instruction || '') + ' ' + (cardData.ai_knowledge_base || '');
   const cardDataHeight = calculateRowHeight(combinedContent, 80, 35);
   dataRow.height = cardDataHeight;
   
@@ -190,7 +191,8 @@ async function createCardSheet(workbook, cardData, options) {
   worksheet.columns = [
     { width: 25 }, // Name
     { width: 40 }, // Description
-    { width: 45 }, // AI Prompt
+    { width: 30 }, // AI Instruction
+    { width: 45 }, // AI Knowledge Base
     { width: 15 }, // AI Enabled
     { width: 15 }, // QR Position
     { width: 25 }  // Card Image
@@ -198,10 +200,11 @@ async function createCardSheet(workbook, cardData, options) {
   
   // Add helpful cell comments (same as template)
   dataRow.getCell(1).note = 'This will be the main title displayed on your card';
-  dataRow.getCell(3).note = 'Define how AI should behave when helping visitors';
-  dataRow.getCell(4).note = 'Enable voice conversations with visitors';
-  dataRow.getCell(5).note = 'Where QR code appears on physical card';
-  dataRow.getCell(6).note = 'Right-click and paste image, or drag and drop';
+  dataRow.getCell(3).note = 'Define the AI\'s role, personality, and restrictions (max 100 words)';
+  dataRow.getCell(4).note = 'Provide detailed background knowledge for the AI (max 2000 words)';
+  dataRow.getCell(5).note = 'Enable voice conversations with visitors';
+  dataRow.getCell(6).note = 'Where QR code appears on physical card';
+  dataRow.getCell(7).note = 'Right-click and paste image, or drag and drop';
   
   // Freeze headers
   worksheet.views = [{ state: 'frozen', ySplit: EXCEL_CONFIG.CARD_SHEET.DESCRIPTIONS_ROW }];
@@ -312,7 +315,7 @@ async function createContentSheet(workbook, contentItems) {
     // Add helpful comments for guidance (same as template)
     if (i === 0) {
       row.getCell(1).note = 'Give each content item a clear, descriptive name';
-      row.getCell(3).note = 'Keywords help AI understand context and provide better assistance';
+      row.getCell(3).note = 'Provide content-specific knowledge for AI assistance (max 500 words)';
       row.getCell(5).note = 'Layer 1 = Main categories, Layer 2 = Items within categories';
       row.getCell(6).note = 'For Layer 2 items, enter the Excel cell reference of the parent item';
     }
@@ -392,7 +395,8 @@ async function createTemplateCardSheet(workbook) {
   const emptyData = [
     '', // Name
     '', // Description
-    '', // AI Prompt
+    '', // AI Instruction
+    '', // AI Knowledge Base
     '', // AI Enabled
     '', // QR Position
     ''  // Card Image
@@ -416,10 +420,11 @@ async function createTemplateCardSheet(workbook) {
   
   // Add helpful cell comments
   dataRow.getCell(1).note = 'This will be the main title displayed on your card';
-  dataRow.getCell(3).note = 'Define how AI should behave when helping visitors';
-  dataRow.getCell(4).note = 'Enable voice conversations with visitors';
-  dataRow.getCell(5).note = 'Where QR code appears on physical card';
-  dataRow.getCell(6).note = 'Right-click and paste image, or drag and drop';
+  dataRow.getCell(3).note = 'Define the AI\'s role, personality, and restrictions (max 100 words)';
+  dataRow.getCell(4).note = 'Provide detailed background knowledge for the AI (max 2000 words)';
+  dataRow.getCell(5).note = 'Enable voice conversations with visitors';
+  dataRow.getCell(6).note = 'Where QR code appears on physical card';
+  dataRow.getCell(7).note = 'Right-click and paste image, or drag and drop';
   
   dataRow.height = 35; // Larger row for better readability
   
@@ -427,7 +432,8 @@ async function createTemplateCardSheet(workbook) {
   worksheet.columns = [
     { width: 25 }, // Name
     { width: 40 }, // Description
-    { width: 45 }, // AI Prompt
+    { width: 30 }, // AI Instruction
+    { width: 45 }, // AI Knowledge Base
     { width: 15 }, // AI Enabled
     { width: 15 }, // QR Position
     { width: 25 }  // Card Image
@@ -514,7 +520,7 @@ async function createTemplateContentSheet(workbook) {
     // Add helpful comments for first row
     if (i === 0) {
       row.getCell(1).note = 'Give each content item a clear, descriptive name';
-      row.getCell(3).note = 'Keywords help AI understand context and provide better assistance';
+      row.getCell(3).note = 'Provide content-specific knowledge for AI assistance (max 500 words)';
       row.getCell(5).note = 'Layer 1 = Main categories, Layer 2 = Items within categories';
       row.getCell(6).note = 'For Layer 2 items, enter the Excel cell reference of the parent item';
     }
@@ -565,7 +571,8 @@ async function parseCardSheet(worksheet, result) {
       const fieldMapping = {
         'Name': 'name',
         'Description': 'description',
-        'AI Prompt': 'ai_prompt',
+        'AI Instruction': 'ai_instruction',
+        'AI Knowledge Base': 'ai_knowledge_base',
         'AI Enabled': 'conversation_ai_enabled',
         'QR Position': 'qr_code_position'
       };

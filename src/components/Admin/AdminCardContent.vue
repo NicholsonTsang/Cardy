@@ -39,13 +39,13 @@
                 v-html="renderMarkdown(item.content)"
                 class="text-sm text-slate-600 prose prose-sm max-w-none"
               ></div>
-              <div v-if="item.ai_metadata" class="mt-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-3 border border-amber-200">
+              <div v-if="item.ai_knowledge_base" class="mt-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-3 border border-amber-200">
                 <div class="flex items-center gap-2 mb-2">
                   <i class="pi pi-database text-amber-600 text-xs"></i>
-                  <span class="text-xs font-medium text-amber-900">AI Metadata</span>
+                  <span class="text-xs font-medium text-amber-900">AI Knowledge Base</span>
                 </div>
-                <p class="text-xs text-amber-800 whitespace-pre-wrap leading-relaxed">
-                  {{ item.ai_metadata }}
+                <p class="text-xs text-amber-800 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
+                  {{ item.ai_knowledge_base }}
                 </p>
               </div>
             </div>
@@ -78,6 +78,15 @@
                   v-html="renderMarkdown(subItem.content)"
                   class="text-sm text-slate-600 prose prose-sm max-w-none"
                 ></div>
+                <div v-if="subItem.ai_knowledge_base" class="mt-2 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-2 border border-amber-200">
+                  <div class="flex items-center gap-2 mb-1">
+                    <i class="pi pi-database text-amber-600 text-xs"></i>
+                    <span class="text-xs font-medium text-amber-900">AI Knowledge Base</span>
+                  </div>
+                  <p class="text-xs text-amber-800 whitespace-pre-wrap leading-relaxed max-h-24 overflow-y-auto">
+                    {{ subItem.ai_knowledge_base }}
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -98,7 +107,7 @@ interface ContentItem {
   content: string | null
   image_url: string | null
   parent_id: string | null
-  ai_metadata: string | null
+  ai_knowledge_base: string | null
 }
 
 interface Props {

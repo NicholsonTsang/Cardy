@@ -14,7 +14,7 @@ RETURNS TABLE (
     image_url TEXT,
     original_image_url TEXT,
     crop_parameters JSONB,
-    ai_metadata TEXT,
+    ai_knowledge_base TEXT,
     sort_order INTEGER,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
@@ -30,7 +30,7 @@ BEGIN
         ci.image_url, 
         ci.original_image_url,
         ci.crop_parameters,
-        ci.ai_metadata,
+        ci.ai_knowledge_base,
         ci.sort_order,
         ci.created_at,
         ci.updated_at
@@ -56,7 +56,7 @@ RETURNS TABLE (
     image_url TEXT,
     original_image_url TEXT,
     crop_parameters JSONB,
-    ai_metadata TEXT,
+    ai_knowledge_base TEXT,
     sort_order INTEGER,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
@@ -72,7 +72,7 @@ BEGIN
         ci.image_url, 
         ci.original_image_url,
         ci.crop_parameters,
-        ci.ai_metadata,
+        ci.ai_knowledge_base,
         ci.sort_order,
         ci.created_at,
         ci.updated_at
@@ -91,7 +91,7 @@ CREATE OR REPLACE FUNCTION create_content_item(
     p_image_url TEXT DEFAULT NULL,
     p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
-    p_ai_metadata TEXT DEFAULT ''
+    p_ai_knowledge_base TEXT DEFAULT ''
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_content_item_id UUID;
@@ -135,7 +135,7 @@ BEGIN
         image_url,
         original_image_url,
         crop_parameters,
-        ai_metadata,
+        ai_knowledge_base,
         sort_order
     ) VALUES (
         p_card_id,
@@ -145,7 +145,7 @@ BEGIN
         p_image_url,
         p_original_image_url,
         p_crop_parameters,
-        p_ai_metadata,
+        p_ai_knowledge_base,
         v_next_sort_order
     )
     RETURNING id INTO v_content_item_id;
@@ -165,7 +165,7 @@ CREATE OR REPLACE FUNCTION update_content_item(
     p_image_url TEXT DEFAULT NULL,
     p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
-    p_ai_metadata TEXT DEFAULT NULL
+    p_ai_knowledge_base TEXT DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_user_id UUID;
@@ -189,7 +189,7 @@ BEGIN
         image_url = COALESCE(p_image_url, image_url),
         original_image_url = COALESCE(p_original_image_url, original_image_url),
         crop_parameters = COALESCE(p_crop_parameters, crop_parameters),
-        ai_metadata = COALESCE(p_ai_metadata, ai_metadata),
+        ai_knowledge_base = COALESCE(p_ai_knowledge_base, ai_knowledge_base),
         updated_at = now()
     WHERE id = p_content_item_id;
     

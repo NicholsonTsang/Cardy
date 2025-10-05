@@ -98,28 +98,50 @@ const firstAudioPlayed = ref(false)
 
 const systemInstructions = computed(() => {
   const languageName = selectedLanguage.value?.name || 'English'
+  const isSubItem = props.parentContentKnowledgeBase && props.parentContentKnowledgeBase.trim().length > 0
   
-  return `You are an AI assistant for the content item "${props.contentItemName}" within the digital card "${props.cardData.card_name}".
+  // Build instruction sections
+  let instructions = `You are an AI assistant for the ${isSubItem ? 'sub-content item' : 'content item'} "${props.contentItemName}" within the digital card "${props.cardData.card_name}".
 
-Your role: Provide helpful information about this specific content item to museum/exhibition visitors.
+Your role: Provide helpful information about this specific ${isSubItem ? 'sub-item' : 'item'} to museum/exhibition visitors.
 
 Content Details:
 - Item Name: ${props.contentItemName}
-- Item Description: ${props.contentItemContent}
+- Item Description: ${props.contentItemContent}`
 
-${props.aiMetadata ? `Additional Knowledge: ${props.aiMetadata}` : ''}
+  // Add card-level instruction (role & guidelines) - highest priority
+  if (props.cardData.ai_instruction) {
+    instructions += `\n\n=== AI Role & Guidelines ===\n${props.cardData.ai_instruction}`
+  }
 
-${props.cardData.ai_prompt ? `Special Instructions: ${props.cardData.ai_prompt}` : ''}
+  // Add card-level knowledge base (general background knowledge)
+  if (props.cardData.ai_knowledge_base) {
+    instructions += `\n\n=== Card Knowledge Base (General Context) ===\n${props.cardData.ai_knowledge_base}`
+  }
 
-Communication Guidelines:
+  // For sub-items: Add parent content item knowledge
+  if (isSubItem) {
+    instructions += `\n\n=== Parent Content Knowledge ===\n${props.parentContentKnowledgeBase}`
+  }
+
+  // Add this content item's specific knowledge
+  if (props.contentItemKnowledgeBase) {
+    instructions += `\n\n=== ${isSubItem ? 'Sub-Item' : 'Content Item'} Specific Knowledge ===\n${props.contentItemKnowledgeBase}`
+  }
+
+  // Add communication guidelines
+  instructions += `\n\n=== Communication Guidelines ===
 - Speak ONLY in ${languageName}
 - Be conversational and friendly
-- Focus specifically on this content item
+- Focus specifically on this ${isSubItem ? 'sub-item' : 'content item'}
+- Use knowledge in hierarchical order: AI guidelines → Card knowledge → ${isSubItem ? 'Parent knowledge → ' : ''}Specific item knowledge
 - Provide engaging and educational responses
 - Keep responses concise but informative (2-3 sentences max for chat)
-- If asked about other topics, politely redirect to this content item
+- If asked about other topics, politely redirect to this ${isSubItem ? 'sub-item' : 'content item'}
 
 Remember: You are here to enhance the visitor's understanding of "${props.contentItemName}".`
+
+  return instructions
 })
 
 const welcomeMessages: Record<string, string> = {

@@ -14,7 +14,8 @@ export interface Card {
     original_image_url: string | null; // Original uploaded image (raw, uncropped)
     crop_parameters?: any; // JSON object containing crop parameters
     conversation_ai_enabled: boolean;
-    ai_prompt: string;
+    ai_instruction: string; // AI role and guidelines (max 100 words)
+    ai_knowledge_base: string; // Background knowledge for AI (max 2000 words)
     created_at: string;
     updated_at: string;
 }
@@ -28,7 +29,8 @@ export interface CardFormData {
     original_image_url?: string; // Original image URL
     cropParameters?: any; // JSON object containing crop parameters for dynamic image cropping
     conversation_ai_enabled: boolean;
-    ai_prompt: string;
+    ai_instruction: string; // AI role and guidelines (max 100 words)
+    ai_knowledge_base: string; // Background knowledge for AI (max 2000 words)
     qr_code_position: string;
     id?: string; // Optional for updates
 }
@@ -148,7 +150,8 @@ export const useCardStore = defineStore('card', () => {
                     p_original_image_url: originalImageUrl,
                     p_crop_parameters: cardData.cropParameters || null,
                     p_conversation_ai_enabled: cardData.conversation_ai_enabled,
-                    p_ai_prompt: cardData.ai_prompt,
+                    p_ai_instruction: cardData.ai_instruction,
+                    p_ai_knowledge_base: cardData.ai_knowledge_base,
                     p_qr_code_position: cardData.qr_code_position
                 });
                 
@@ -249,7 +252,8 @@ export const useCardStore = defineStore('card', () => {
                 p_original_image_url: originalImageUrl || null,
                 p_crop_parameters: updateData.cropParameters || null,
                 p_conversation_ai_enabled: updateData.conversation_ai_enabled,
-                p_ai_prompt: updateData.ai_prompt,
+                p_ai_instruction: updateData.ai_instruction,
+                p_ai_knowledge_base: updateData.ai_knowledge_base,
                 p_qr_code_position: updateData.qr_code_position
             };
             

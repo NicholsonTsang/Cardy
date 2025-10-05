@@ -46,10 +46,25 @@
           </div>
         </div>
 
-        <div v-if="card.ai_prompt">
-          <label class="block text-sm font-medium text-slate-700 mb-1">AI Prompt</label>
-          <div class="p-3 bg-slate-50 rounded border border-slate-200 text-sm text-slate-700 whitespace-pre-wrap">
-            {{ card.ai_prompt }}
+        <div v-if="card.ai_instruction" class="space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-blue-700 mb-1 flex items-center gap-2">
+              <i class="pi pi-user text-xs"></i>
+              AI Instruction (Role & Guidelines)
+            </label>
+            <div class="p-3 bg-blue-50 rounded border border-blue-200 text-sm text-slate-700 whitespace-pre-wrap">
+              {{ card.ai_instruction }}
+            </div>
+          </div>
+        </div>
+
+        <div v-if="card.ai_knowledge_base">
+          <label class="block text-sm font-medium text-amber-700 mb-1 flex items-center gap-2">
+            <i class="pi pi-database text-xs"></i>
+            AI Knowledge Base
+          </label>
+          <div class="p-3 bg-amber-50 rounded border border-amber-200 text-sm text-slate-700 whitespace-pre-wrap max-h-48 overflow-y-auto">
+            {{ card.ai_knowledge_base }}
           </div>
         </div>
 
@@ -77,7 +92,8 @@ interface Card {
   description: string | null
   image_url: string | null
   conversation_ai_enabled: boolean
-  ai_prompt: string | null
+  ai_instruction: string | null
+  ai_knowledge_base: string | null
   qr_code_position: string
   created_at: string
   updated_at: string

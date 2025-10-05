@@ -62,22 +62,22 @@
                     </div>
                 </div>
 
-                <!-- AI Metadata -->
-                <div v-if="contentItem?.ai_metadata" 
-                     class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-200">
-                    <h3 class="text-lg font-semibold text-amber-900 mb-4 flex items-center gap-2">
-                        <i class="pi pi-database text-amber-600"></i>
-                        AI Metadata
+                <!-- AI Knowledge Base -->
+                <div v-if="cardAiEnabled && contentItem?.ai_knowledge_base" 
+                     class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-6 border border-blue-200">
+                    <h3 class="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                        <i class="pi pi-database text-blue-600"></i>
+                        AI Knowledge Base
                     </h3>
-                    <div class="bg-white rounded-lg p-4 border border-amber-200">
-                        <p class="text-sm text-amber-800 whitespace-pre-wrap leading-relaxed">
-                            {{ contentItem.ai_metadata }}
+                    <div class="bg-white rounded-lg p-4 border border-blue-200">
+                        <p class="text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">
+                            {{ contentItem.ai_knowledge_base }}
                         </p>
                     </div>
-                    <div class="mt-3 p-3 bg-amber-100 rounded-lg">
-                        <p class="text-xs text-amber-800 flex items-start gap-2">
+                    <div class="mt-3 p-3 bg-blue-100 rounded-lg">
+                        <p class="text-xs text-blue-800 flex items-start gap-2">
                             <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
-                            <span>This additional knowledge data helps the AI provide more accurate and detailed responses about this content item.</span>
+                            <span>This content-specific knowledge helps the AI provide accurate and detailed responses about this {{ contentItem?.parent_id ? 'sub-item' : 'content item' }}.</span>
                         </p>
                     </div>
                 </div>
@@ -97,6 +97,10 @@ defineProps({
     contentItem: {
         type: Object,
         default: null
+    },
+    cardAiEnabled: {
+        type: Boolean,
+        default: false
     }
 });
 

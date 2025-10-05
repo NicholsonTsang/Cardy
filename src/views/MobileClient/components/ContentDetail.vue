@@ -30,7 +30,8 @@
           <MobileAIAssistant 
             :content-item-name="content.content_item_name"
             :content-item-content="content.content_item_content"
-            :ai-metadata="content.content_item_ai_metadata || ''"
+            :content-item-knowledge-base="content.content_item_ai_knowledge_base || ''"
+            :parent-content-knowledge-base="parentKnowledgeBase"
             :card-data="card"
           />
         </div>
@@ -85,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
 import MobileAIAssistant from './MobileAIAssistant.vue'
 import { getContentAspectRatio } from '@/utils/cardConfig'
 import { marked } from 'marked'
@@ -96,7 +97,7 @@ interface ContentItem {
   content_item_name: string
   content_item_content: string
   content_item_image_url: string
-  content_item_ai_metadata: string
+  content_item_ai_knowledge_base: string
   content_item_sort_order: number
   crop_parameters?: any
 }
@@ -106,7 +107,8 @@ interface CardData {
   card_description: string
   card_image_url: string
   conversation_ai_enabled: boolean
-  ai_prompt: string
+  ai_instruction: string
+  ai_knowledge_base: string
   is_activated: boolean
 }
 
@@ -114,9 +116,15 @@ interface Props {
   content: ContentItem
   subItems: ContentItem[]
   card: CardData
+  parentItem?: ContentItem | null // For sub-items, this is the parent content item
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
+
+// Compute parent knowledge base (empty if this is a top-level item)
+const parentKnowledgeBase = computed(() => {
+  return props.parentItem?.content_item_ai_knowledge_base || ''
+})
 const emit = defineEmits<{
   select: [item: ContentItem]
 }>()

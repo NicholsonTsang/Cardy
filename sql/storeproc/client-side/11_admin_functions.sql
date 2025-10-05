@@ -1347,7 +1347,8 @@ RETURNS TABLE (
     original_image_url TEXT,
     crop_parameters JSONB,
     conversation_ai_enabled BOOLEAN,
-    ai_prompt TEXT,
+    ai_instruction TEXT,
+    ai_knowledge_base TEXT,
     qr_code_position TEXT,
     batches_count BIGINT,
     created_at TIMESTAMPTZ,
@@ -1376,7 +1377,8 @@ BEGIN
         c.original_image_url,
         c.crop_parameters,
         c.conversation_ai_enabled,
-        c.ai_prompt,
+        c.ai_instruction,
+        c.ai_knowledge_base,
         c.qr_code_position::TEXT,
         COUNT(cb.id)::BIGINT AS batches_count,
         c.created_at,
@@ -1387,7 +1389,7 @@ BEGIN
     LEFT JOIN card_batches cb ON c.id = cb.card_id
     WHERE c.user_id = p_user_id
     GROUP BY c.id, c.name, c.description, c.image_url, c.original_image_url,
-             c.crop_parameters, c.conversation_ai_enabled, c.ai_prompt,
+             c.crop_parameters, c.conversation_ai_enabled, c.ai_instruction, c.ai_knowledge_base,
              c.qr_code_position, c.created_at, c.updated_at, au.email
     ORDER BY c.created_at DESC;
 END;
@@ -1404,7 +1406,7 @@ RETURNS TABLE (
     image_url TEXT,
     original_image_url TEXT,
     crop_parameters JSONB,
-    ai_metadata TEXT,
+    ai_knowledge_base TEXT,
     sort_order INTEGER,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
@@ -1431,7 +1433,7 @@ BEGIN
         ci.image_url, 
         ci.original_image_url,
         ci.crop_parameters,
-        ci.ai_metadata,
+        ci.ai_knowledge_base,
         ci.sort_order,
         ci.created_at,
         ci.updated_at

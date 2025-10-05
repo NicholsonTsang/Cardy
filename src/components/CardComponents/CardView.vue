@@ -113,19 +113,40 @@
                         </div>
 
                         <!-- AI Configuration -->
-                        <div v-if="cardProp.ai_prompt" 
-                             class="bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl p-6 border border-amber-200">
-                            <h3 class="text-lg font-semibold text-amber-900 mb-4 flex items-center gap-2">
-                                <i class="pi pi-microphone text-amber-600"></i>
-                                AI Assistance Instructions
+                        <div v-if="cardProp.conversation_ai_enabled" 
+                             class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
+                            <h3 class="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
+                                <i class="pi pi-comments text-blue-600"></i>
+                                AI Assistance Configuration
                             </h3>
-                            <div class="bg-white rounded-lg p-4 border border-amber-200">
-                                <p class="text-sm text-amber-800 whitespace-pre-wrap leading-relaxed">{{ cardProp.ai_prompt }}</p>
+                            
+                            <!-- AI Instruction -->
+                            <div v-if="cardProp.ai_instruction" class="mb-4">
+                                <h4 class="text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
+                                    <i class="pi pi-user text-blue-600"></i>
+                                    AI Instruction (Role & Guidelines)
+                                </h4>
+                                <div class="bg-white rounded-lg p-4 border border-blue-200">
+                                    <p class="text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">{{ cardProp.ai_instruction }}</p>
+                                </div>
                             </div>
-                            <div class="mt-3 p-3 bg-amber-100 rounded-lg">
-                                <p class="text-xs text-amber-800 flex items-center gap-2">
+
+                            <!-- AI Knowledge Base -->
+                            <div v-if="cardProp.ai_knowledge_base" class="mb-4">
+                                <h4 class="text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
+                                    <i class="pi pi-book text-blue-600"></i>
+                                    AI Knowledge Base
+                                </h4>
+                                <div class="bg-white rounded-lg p-4 border border-blue-200">
+                                    <p class="text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">{{ cardProp.ai_knowledge_base }}</p>
+                                </div>
+                            </div>
+
+                            <!-- Info Note -->
+                            <div class="mt-3 p-3 bg-blue-100 rounded-lg">
+                                <p class="text-xs text-blue-800 flex items-center gap-2">
                                     <i class="pi pi-info-circle"></i>
-                                    <span>These instructions guide AI assistance for content items in this card.</span>
+                                    <span>AI assistance is enabled. These settings guide the AI when interacting with visitors.</span>
                                 </p>
                             </div>
                         </div>

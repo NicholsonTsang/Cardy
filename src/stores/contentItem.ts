@@ -13,7 +13,7 @@ export interface ContentItem {
     image_url: string | null; // Cropped/processed image for display
     original_image_url: string | null; // Original uploaded image (raw, uncropped)
     crop_parameters?: any; // JSON object containing crop parameters
-    ai_metadata: string;
+    ai_knowledge_base: string; // Content-specific knowledge for AI (max 500 words)
     sort_order: number;
     created_at: string;
     updated_at: string;
@@ -28,7 +28,7 @@ export interface ContentItemFormData {
     image_url?: string; // Cropped image URL
     original_image_url?: string; // Original image URL
     cropParameters?: any; // JSON object containing crop parameters for dynamic image cropping
-    aiMetadata?: string;
+    aiKnowledgeBase?: string; // Content-specific knowledge for AI (max 500 words)
     // card_id and parent_id are passed as separate params to createContentItem
 }
 
@@ -124,7 +124,7 @@ export const useContentItemStore = defineStore('contentItem', () => {
           p_image_url: croppedImageUrl,
           p_original_image_url: originalImageUrl,
           p_crop_parameters: itemData.cropParameters || null,
-          p_ai_metadata: itemData.aiMetadata || '',
+          p_ai_knowledge_base: itemData.aiKnowledgeBase || '',
         });
       
       if (err) throw err;
@@ -177,7 +177,7 @@ export const useContentItemStore = defineStore('contentItem', () => {
           p_image_url: croppedImageUrl || null,
           p_original_image_url: originalImageUrl || null,
           p_crop_parameters: itemData.cropParameters || null,
-          p_ai_metadata: itemData.aiMetadata || '',
+          p_ai_knowledge_base: itemData.aiKnowledgeBase || '',
         });
       
       if (err) throw err;
