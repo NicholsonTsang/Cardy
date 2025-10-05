@@ -26,12 +26,20 @@ export function validateCardData(card) {
     errors.push('Card description must be less than 500 characters');
   }
 
-  if (card.ai_instruction && card.ai_instruction.length > 100) {
-    errors.push('AI instruction must be less than 100 words');
+  // AI Instruction validation (max 100 words)
+  if (card.ai_instruction) {
+    const wordCount = card.ai_instruction.trim().split(/\s+/).filter(word => word.length > 0).length;
+    if (wordCount > 100) {
+      errors.push(`AI instruction must be less than 100 words (currently ${wordCount} words)`);
+    }
   }
   
-  if (card.ai_knowledge_base && card.ai_knowledge_base.length > 2000) {
-    warnings.push('AI knowledge base is very long and may affect performance');
+  // AI Knowledge Base validation (max 2000 words for cards)
+  if (card.ai_knowledge_base) {
+    const wordCount = card.ai_knowledge_base.trim().split(/\s+/).filter(word => word.length > 0).length;
+    if (wordCount > 2000) {
+      warnings.push(`AI knowledge base exceeds 2000 words (currently ${wordCount} words) and may affect performance`);
+    }
   }
 
   // Email validation
@@ -92,6 +100,14 @@ export function validateContentData(content) {
   // Content length validation
   if (content.content && content.content.length > 5000) {
     warnings.push('Content text is very long and may affect display');
+  }
+
+  // AI Knowledge Base validation (max 500 words for content items)
+  if (content.ai_knowledge_base) {
+    const wordCount = content.ai_knowledge_base.trim().split(/\s+/).filter(word => word.length > 0).length;
+    if (wordCount > 500) {
+      warnings.push(`AI knowledge base exceeds 500 words (currently ${wordCount} words) and may affect performance`);
+    }
   }
 
   // Order position validation
@@ -224,7 +240,7 @@ export function cleanContentData(content) {
     type: (content.type || 'text').trim().toLowerCase(),
     title: (content.title || '').trim(),
     content: (content.content || '').trim(),
-    ai_metadata: (content.ai_metadata || '').trim(),
+    ai_knowledge_base: (content.ai_knowledge_base || '').trim(),
     order_position: parseInt(content.order_position) || 0,
     media_url: (content.media_url || '').trim(),
     media_type: (content.media_type || '').trim()

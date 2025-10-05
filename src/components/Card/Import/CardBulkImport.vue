@@ -458,6 +458,8 @@
 import { ref, computed, onUnmounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { generateImportTemplate, importExcelToCardData } from '@/utils/excelHandler'
+import { applyCropParametersToImage, parseCropParameters } from '@/utils/imageCropUtils'
+import { getCardAspectRatio, getContentAspectRatio } from '@/utils/cardConfig'
 import { supabase } from '@/lib/supabase'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
@@ -816,14 +818,60 @@ async function importDataToDatabase(importData) {
     if (importData.cardData) {
       // Handle card image if it exists
       let cardImageUrl = null;
+      let cardOriginalImageUrl = null;
+      let cardCropParams = null;
+      
       if (importData.images && importData.images.has('card_image')) {
         const cardImages = importData.images.get('card_image');
         if (cardImages && cardImages.length > 0) {
-          try {
-            cardImageUrl = await uploadImageToSupabase(cardImages[0], 'card-images');
-            results.imagesProcessed++;
-          } catch (imgError) {
-            results.errors.push(`Failed to upload card image: ${imgError.message}`);
+          const originalImageFile = cardImages[0];
+          
+          // Parse crop parameters from imported data
+          const cropParamsJson = importData.cardData.crop_parameters_json;
+          const parsedCropParams = parseCropParameters(cropParamsJson);
+          
+          if (parsedCropParams) {
+            // Has crop parameters - generate cropped image
+            try {
+              importStatus.value = 'Applying crop parameters to card image...';
+              const cardAspectRatio = getCardAspectRatio();
+              const croppedImageFile = await applyCropParametersToImage(
+                originalImageFile,
+                parsedCropParams,
+                cardAspectRatio
+              );
+              
+              // Upload both images
+              importStatus.value = 'Uploading original card image...';
+              cardOriginalImageUrl = await uploadImageToSupabase(originalImageFile, 'card-images');
+              importStatus.value = 'Uploading cropped card image...';
+              cardImageUrl = await uploadImageToSupabase(croppedImageFile, 'card-images');
+              cardCropParams = parsedCropParams;
+              results.imagesProcessed += 2;
+              
+              console.log('✓ Card image cropped and uploaded successfully');
+            } catch (cropError) {
+              console.warn('Failed to apply crop parameters:', cropError);
+              results.errors.push(`Failed to apply crop to card image: ${cropError.message}`);
+              // Fallback: use original as both
+              try {
+                cardImageUrl = await uploadImageToSupabase(originalImageFile, 'card-images');
+                cardOriginalImageUrl = cardImageUrl;
+                results.imagesProcessed++;
+              } catch (uploadError) {
+                results.errors.push(`Failed to upload card image: ${uploadError.message}`);
+              }
+            }
+          } else {
+            // No crop parameters - use original for both
+            try {
+              importStatus.value = 'Uploading card image...';
+              cardImageUrl = await uploadImageToSupabase(originalImageFile, 'card-images');
+              cardOriginalImageUrl = cardImageUrl;
+              results.imagesProcessed++;
+            } catch (imgError) {
+              results.errors.push(`Failed to upload card image: ${imgError.message}`);
+            }
           }
         }
       }
@@ -837,6 +885,7 @@ async function importDataToDatabase(importData) {
         results.warnings++;
       }
 
+      importStatus.value = 'Creating card...';
       const { data, error } = await supabase.rpc('create_card', {
         p_name: importData.cardData.name,
         p_description: importData.cardData.description,
@@ -844,7 +893,9 @@ async function importDataToDatabase(importData) {
         p_ai_knowledge_base: importData.cardData.ai_knowledge_base || '',
         p_conversation_ai_enabled: importData.cardData.conversation_ai_enabled,
         p_qr_code_position: qrPosition,
-        p_image_url: cardImageUrl
+        p_image_url: cardImageUrl,
+        p_original_image_url: cardOriginalImageUrl,
+        p_crop_parameters: cardCropParams
       })
       
       if (error) throw error
@@ -863,26 +914,70 @@ async function importDataToDatabase(importData) {
           try {
             // Handle content item image if it exists
             let contentImageUrl = null;
+            let contentOriginalImageUrl = null;
+            let contentCropParams = null;
+            
             if (item.has_images && importData.images) {
               const itemKey = `item_${importData.contentItems.indexOf(item) + 5}`; // Row number in Excel
               const itemImages = importData.images.get(itemKey);
               if (itemImages && itemImages.length > 0) {
-                try {
-                  contentImageUrl = await uploadImageToSupabase(itemImages[0], 'content-item-images');
-                  results.imagesProcessed++;
-                } catch (imgError) {
-                  results.errors.push(`Failed to upload image for "${item.name}": ${imgError.message}`);
+                const originalImageFile = itemImages[0];
+                
+                // Parse crop parameters
+                const cropParamsJson = item.crop_parameters_json;
+                const parsedCropParams = parseCropParameters(cropParamsJson);
+                
+                if (parsedCropParams) {
+                  // Has crop parameters - generate cropped image
+                  try {
+                    importStatus.value = `Cropping image for "${item.name}"...`;
+                    const contentAspectRatio = getContentAspectRatio();
+                    const croppedImageFile = await applyCropParametersToImage(
+                      originalImageFile,
+                      parsedCropParams,
+                      contentAspectRatio
+                    );
+                    
+                    // Upload both images
+                    contentOriginalImageUrl = await uploadImageToSupabase(originalImageFile, 'content-item-images');
+                    contentImageUrl = await uploadImageToSupabase(croppedImageFile, 'content-item-images');
+                    contentCropParams = parsedCropParams;
+                    results.imagesProcessed += 2;
+                  } catch (cropError) {
+                    console.warn(`Failed to crop image for "${item.name}":`, cropError);
+                    results.errors.push(`Failed to crop image for "${item.name}": ${cropError.message}`);
+                    // Fallback
+                    try {
+                      contentImageUrl = await uploadImageToSupabase(originalImageFile, 'content-item-images');
+                      contentOriginalImageUrl = contentImageUrl;
+                      results.imagesProcessed++;
+                    } catch (uploadError) {
+                      results.errors.push(`Failed to upload image for "${item.name}": ${uploadError.message}`);
+                    }
+                  }
+                } else {
+                  // No crop parameters
+                  try {
+                    contentImageUrl = await uploadImageToSupabase(originalImageFile, 'content-item-images');
+                    contentOriginalImageUrl = contentImageUrl;
+                    results.imagesProcessed++;
+                  } catch (imgError) {
+                    results.errors.push(`Failed to upload image for "${item.name}": ${imgError.message}`);
+                  }
                 }
               }
             }
 
+            importStatus.value = `Creating content item "${item.name}"...`;
             const { data: contentData, error: contentError } = await supabase.rpc('create_content_item', {
               p_card_id: cardId,
               p_parent_id: null,
               p_name: item.name,
               p_content: item.content,
               p_ai_knowledge_base: item.ai_knowledge_base || '',
-              p_image_url: contentImageUrl
+              p_image_url: contentImageUrl,
+              p_original_image_url: contentOriginalImageUrl,
+              p_crop_parameters: contentCropParams
             });
             
             if (contentError) throw contentError;
@@ -908,26 +1003,70 @@ async function importDataToDatabase(importData) {
 
             // Handle content item image if it exists
             let contentImageUrl = null;
+            let contentOriginalImageUrl = null;
+            let contentCropParams = null;
+            
             if (item.has_images && importData.images) {
               const itemKey = `item_${importData.contentItems.indexOf(item) + 5}`; // Row number in Excel
               const itemImages = importData.images.get(itemKey);
               if (itemImages && itemImages.length > 0) {
-                try {
-                  contentImageUrl = await uploadImageToSupabase(itemImages[0], 'content-item-images');
-                  results.imagesProcessed++;
-                } catch (imgError) {
-                  results.errors.push(`Failed to upload image for "${item.name}": ${imgError.message}`);
+                const originalImageFile = itemImages[0];
+                
+                // Parse crop parameters
+                const cropParamsJson = item.crop_parameters_json;
+                const parsedCropParams = parseCropParameters(cropParamsJson);
+                
+                if (parsedCropParams) {
+                  // Has crop parameters - generate cropped image
+                  try {
+                    importStatus.value = `Cropping image for "${item.name}"...`;
+                    const contentAspectRatio = getContentAspectRatio();
+                    const croppedImageFile = await applyCropParametersToImage(
+                      originalImageFile,
+                      parsedCropParams,
+                      contentAspectRatio
+                    );
+                    
+                    // Upload both images
+                    contentOriginalImageUrl = await uploadImageToSupabase(originalImageFile, 'content-item-images');
+                    contentImageUrl = await uploadImageToSupabase(croppedImageFile, 'content-item-images');
+                    contentCropParams = parsedCropParams;
+                    results.imagesProcessed += 2;
+                  } catch (cropError) {
+                    console.warn(`Failed to crop image for "${item.name}":`, cropError);
+                    results.errors.push(`Failed to crop image for "${item.name}": ${cropError.message}`);
+                    // Fallback
+                    try {
+                      contentImageUrl = await uploadImageToSupabase(originalImageFile, 'content-item-images');
+                      contentOriginalImageUrl = contentImageUrl;
+                      results.imagesProcessed++;
+                    } catch (uploadError) {
+                      results.errors.push(`Failed to upload image for "${item.name}": ${uploadError.message}`);
+                    }
+                  }
+                } else {
+                  // No crop parameters
+                  try {
+                    contentImageUrl = await uploadImageToSupabase(originalImageFile, 'content-item-images');
+                    contentOriginalImageUrl = contentImageUrl;
+                    results.imagesProcessed++;
+                  } catch (imgError) {
+                    results.errors.push(`Failed to upload image for "${item.name}": ${imgError.message}`);
+                  }
                 }
               }
             }
 
+            importStatus.value = `Creating sub-item "${item.name}"...`;
             const { error: contentError } = await supabase.rpc('create_content_item', {
               p_card_id: cardId,
               p_parent_id: parentId,
               p_name: item.name,
               p_content: item.content,
               p_ai_knowledge_base: item.ai_knowledge_base || '',
-              p_image_url: contentImageUrl
+              p_image_url: contentImageUrl,
+              p_original_image_url: contentOriginalImageUrl,
+              p_crop_parameters: contentCropParams
             });
             
             if (contentError) throw contentError;
