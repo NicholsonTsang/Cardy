@@ -21,7 +21,8 @@ interface ChatMessage {
 
 interface RequestBody {
   messages: ChatMessage[]
-  systemPrompt: string
+  systemPrompt?: string
+  systemInstructions?: string  // Accept both parameter names
   language: string
   modalities?: ('text' | 'audio')[]
   textMessage?: string  // For text-only input
@@ -41,7 +42,8 @@ serve(async (req) => {
   try {
     const { 
       messages, 
-      systemPrompt, 
+      systemPrompt,
+      systemInstructions, // Accept both parameter names
       language, 
       modalities = ['text', 'audio'],
       voiceInput,
@@ -49,12 +51,29 @@ serve(async (req) => {
     }: RequestBody = await req.json()
 
     console.log('Chat with audio request:', {
-      messageCount: messages.length,
+      messageCount: messages?.length || 0,
       language,
       modalities,
       hasVoiceInput: !!voiceInput,
-      transcribeOnly
+      transcribeOnly,
+      hasSystemPrompt: !!(systemPrompt || systemInstructions)
     })
+
+    // Validate messages
+    if (!messages || !Array.isArray(messages)) {
+      throw new Error('Messages array is required')
+    }
+
+    // Filter out any messages with null/undefined/empty content
+    const validMessages = messages.filter(msg => {
+      if (!msg) return false
+      // Allow messages with content arrays (for audio input)
+      if (Array.isArray(msg.content)) return msg.content.length > 0
+      // Filter out null/undefined/empty string content
+      return msg.content != null && msg.content !== ''
+    })
+
+    console.log(`Filtered messages: ${messages.length} → ${validMessages.length} valid`)
 
     // Get OpenAI API key
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
@@ -68,13 +87,15 @@ serve(async (req) => {
     const whisperModel = Deno.env.get('OPENAI_WHISPER_MODEL') || 'whisper-1'
     const textModel = Deno.env.get('OPENAI_TEXT_MODEL') || 'gpt-4o-mini'
 
-    // Build messages array with system prompt
+    // Build messages array with system prompt (accept both parameter names)
+    const systemMessage = systemPrompt || systemInstructions || 'You are a helpful AI assistant for museum and exhibition visitors.'
+    
     const fullMessages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt }
+      { role: 'system', content: systemMessage }
     ]
 
-    // Add conversation history
-    messages.forEach(msg => {
+    // Add conversation history (already filtered)
+    validMessages.forEach(msg => {
       fullMessages.push(msg)
     })
 

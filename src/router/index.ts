@@ -92,6 +92,17 @@ const router = createRouter({
       ]
     },
     {
+      path: '/reset-password',
+      component: AppLayout,
+      children: [
+        {
+          path: '',
+          name: 'reset-password',
+          component: () => import('@/views/Dashboard/ResetPassword.vue')
+        }
+      ]
+    },
+    {
       path: '/c/:issue_card_id',
       name: 'publiccardview',
       component: () => import('@/views/MobileClient/PublicCardView.vue')

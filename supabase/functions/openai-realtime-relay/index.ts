@@ -13,6 +13,7 @@ interface RealtimeSessionConfig {
 interface CreateSessionRequest {
   language?: string
   systemPrompt?: string
+  systemInstructions?: string  // Accept both parameter names for consistency
   contentItemName?: string
 }
 
@@ -45,19 +46,22 @@ Deno.serve(async (req: Request) => {
 
     // Parse request body
     const body = await req.json() as CreateSessionRequest
-    const { language = 'en', systemPrompt, contentItemName } = body
+    const { language = 'en', systemPrompt, systemInstructions, contentItemName } = body
 
     console.log('Creating realtime session:', { 
       model, 
       voice, 
       language,
-      contentItemName: contentItemName || 'N/A'
+      contentItemName: contentItemName || 'N/A',
+      hasSystemPrompt: !!(systemPrompt || systemInstructions)
     })
 
-    // Build system instructions
-    let instructions = systemPrompt || `You are a helpful AI assistant for a museum or exhibition. 
+    // Build system instructions (accept both parameter names)
+    const defaultInstructions = `You are a helpful AI assistant for a museum or exhibition. 
 Provide detailed, engaging explanations about exhibits and artifacts. 
 Use natural, conversational language suitable for voice interaction.`
+    
+    let instructions = systemPrompt || systemInstructions || defaultInstructions
 
     if (contentItemName) {
       instructions += `\n\nYou are currently discussing: ${contentItemName}`

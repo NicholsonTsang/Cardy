@@ -19,32 +19,64 @@ export function useChatCompletion() {
     error.value = null
 
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke(
-        'chat-with-audio-stream',
-        {
-          body: {
-            messages: messages.map(m => ({
-              role: m.role,
-              content: m.content
-            })),
-            systemInstructions
-          }
-        }
-      )
+      // Get the function URL from Supabase
+      const { data: { url } } = await supabase.auth.getSession()
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-audio-stream`
+      
+      // Get the auth token
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
 
-      if (invokeError) throw invokeError
+      // Use fetch to handle SSE streaming properly
+      const response = await fetch(functionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          messages: messages.map(m => ({
+            role: m.role,
+            content: m.content
+          })),
+          systemInstructions
+        })
+      })
 
-      // Handle streaming response
-      if (data && typeof data === 'string') {
-        const lines = data.split('\n')
-        let fullContent = ''
+      if (!response.ok) {
+        const errorText = await response.text()
+        throw new Error(`HTTP ${response.status}: ${errorText}`)
+      }
+
+      // Read the streaming response
+      const reader = response.body?.getReader()
+      const decoder = new TextDecoder()
+      let fullContent = ''
+
+      if (!reader) {
+        throw new Error('Response body is not readable')
+      }
+
+      while (true) {
+        const { done, value } = await reader.read()
+        
+        if (done) break
+
+        const chunk = decoder.decode(value, { stream: true })
+        const lines = chunk.split('\n')
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
+            const data = line.slice(6)
+            
+            if (data === '[DONE]') {
+              continue
+            }
+
             try {
-              const chunk = JSON.parse(line.substring(6))
-              if (chunk.content) {
-                fullContent += chunk.content
+              const parsed = JSON.parse(data)
+              if (parsed.content) {
+                fullContent += parsed.content
                 onStreamUpdate(fullContent)
               }
             } catch (e) {
@@ -52,11 +84,9 @@ export function useChatCompletion() {
             }
           }
         }
-
-        return { content: fullContent }
       }
 
-      throw new Error('Invalid response format')
+      return { content: fullContent }
     } catch (err: any) {
       console.error('AI response error:', err)
       error.value = err.message || 'Failed to get AI response'
@@ -77,34 +107,43 @@ export function useChatCompletion() {
     error.value = null
 
     try {
-      // Convert blob to base64
+      // Convert blob to base64 (properly handle large files)
       const arrayBuffer = await audioBlob.arrayBuffer()
       const bytes = new Uint8Array(arrayBuffer)
-      const base64Audio = btoa(String.fromCharCode(...bytes))
+      
+      // Convert to base64 in chunks to avoid stack overflow
+      let binary = ''
+      const chunkSize = 8192
+      for (let i = 0; i < bytes.length; i += chunkSize) {
+        const chunk = bytes.subarray(i, i + chunkSize)
+        binary += String.fromCharCode.apply(null, Array.from(chunk))
+      }
+      const base64Audio = btoa(binary)
 
       const { data, error: invokeError } = await supabase.functions.invoke(
         'chat-with-audio',
         {
           body: {
-            audioData: base64Audio,
-            audioFormat: 'wav',
             messages: messages.map(m => ({
               role: m.role,
               content: m.content
             })),
             systemInstructions,
             language,
-            voiceInput: true,
+            voiceInput: {
+              data: base64Audio,
+              format: 'wav'
+            },
             modalities: ['text']
           }
         }
       )
 
       if (invokeError) throw invokeError
-      if (!data) throw new Error('No response from server')
+      if (!data || !data.success) throw new Error('No response from server')
 
       return {
-        textContent: data.content || '',
+        textContent: data.message?.content || '',
         userTranscription: data.userTranscription || '[Voice input]'
       }
     } catch (err: any) {

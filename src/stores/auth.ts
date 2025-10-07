@@ -108,22 +108,6 @@ export const useAuthStore = defineStore('auth', () => {
     return data
   }
 
-  async function signInWithGoogle() {
-    loading.value = true
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: {
-        redirectTo: `${window.location.origin}/login?oauth=success` // Redirect back to login with success flag
-      }
-    })
-    loading.value = false // Will be set again by onAuthStateChange
-    if (error) {
-      console.error('Google sign in error:', error.message)
-      toast.add({ severity: 'error', summary: 'Google Sign In Failed', detail: error.message, group: 'br', life: 3000 })
-      throw error
-    }
-  }
-
   async function signOut() {
     loading.value = true
     const { error } = await supabase.auth.signOut()
@@ -212,6 +196,79 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  async function sendPasswordResetEmail(email_value: string) {
+    loading.value = true
+    try {
+      // Get the redirect URL from environment or use default
+      const redirectUrl = `${window.location.origin}/reset-password`
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email_value, {
+        redirectTo: redirectUrl
+      })
+      
+      if (error) {
+        console.error('Password reset error:', error.message)
+        toast.add({ 
+          severity: 'error', 
+          summary: 'Reset Failed', 
+          detail: error.message, 
+          group: 'br', 
+          life: 3000 
+        })
+        throw error
+      }
+      
+      toast.add({ 
+        severity: 'success', 
+        summary: 'Email Sent', 
+        detail: 'Check your email for the password reset link.', 
+        group: 'br', 
+        life: 5000 
+      })
+      
+      return { success: true }
+    } catch (error: any) {
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function updatePassword(newPassword: string) {
+    loading.value = true
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      })
+      
+      if (error) {
+        console.error('Password update error:', error.message)
+        toast.add({ 
+          severity: 'error', 
+          summary: 'Update Failed', 
+          detail: error.message, 
+          group: 'br', 
+          life: 3000 
+        })
+        throw error
+      }
+      
+      toast.add({ 
+        severity: 'success', 
+        summary: 'Password Updated', 
+        detail: 'Your password has been successfully updated.', 
+        group: 'br', 
+        life: 3000 
+      })
+      
+      return { success: true }
+    } catch (error: any) {
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
   // Call initialize when the store is created
   // initialize(); // We will call this from the router guard to ensure it runs at the right time
 
@@ -221,12 +278,13 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     signUpWithEmail,
     signInWithEmail,
-    signInWithGoogle,
     signOut,
     isLoggedIn,
     isEmailVerified,
     initialize,
     refreshSession,
-    getUserRoleFromDatabase
+    getUserRoleFromDatabase,
+    sendPasswordResetEmail,
+    updatePassword
   }
 }) 

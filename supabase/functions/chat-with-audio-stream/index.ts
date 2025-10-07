@@ -11,13 +11,26 @@ Deno.serve(async (req) => {
     const { 
       messages, 
       systemPrompt, 
+      systemInstructions, // Accept both names
       language 
     } = await req.json()
 
     console.log('Streaming chat request:', {
-      messageCount: messages.length,
-      language
+      messageCount: messages?.length || 0,
+      language,
+      hasSystemPrompt: !!(systemPrompt || systemInstructions)
     })
+
+    // Validate messages
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      throw new Error('Messages array is required and must not be empty')
+    }
+
+    // Filter out any messages with null/undefined content
+    const validMessages = messages.filter(m => m && m.content != null && m.content !== '')
+    if (validMessages.length === 0) {
+      throw new Error('No valid messages with content found')
+    }
 
     // Get OpenAI API key
     const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
@@ -25,10 +38,11 @@ Deno.serve(async (req) => {
       throw new Error('OPENAI_API_KEY not configured')
     }
 
-    // Build messages array with system prompt
+    // Build messages array with system prompt (accept both parameter names)
+    const systemMessage = systemPrompt || systemInstructions || 'You are a helpful assistant.'
     const fullMessages = [
-      { role: 'system', content: systemPrompt },
-      ...messages
+      { role: 'system', content: systemMessage },
+      ...validMessages
     ]
 
     // Call OpenAI with streaming enabled (use text-capable model)

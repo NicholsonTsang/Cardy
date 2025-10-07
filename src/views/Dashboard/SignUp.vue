@@ -20,28 +20,6 @@
                 </div>
                 <!-- Form Section -->
                 <div class="px-8 pb-8">
-                    <!-- Social Login -->
-                    <div class="mb-6">
-                        <Button 
-                            @click="handleGoogleSignUp" 
-                            :disabled="isLoading" 
-                            outlined 
-                            icon="pi pi-google" 
-                            severity="secondary" 
-                            class="w-full py-3 border-slate-300 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200"
-                            label="Continue with Google" 
-                        />
-                    </div>
-
-                    <!-- Divider -->
-                    <div class="relative mb-6">
-                        <div class="absolute inset-0 flex items-center">
-                            <div class="w-full border-t border-slate-200"></div>
-                        </div>
-                        <div class="relative flex justify-center text-sm">
-                            <span class="px-4 bg-white text-slate-500 font-medium">or create account with email</span>
-                        </div>
-                    </div>
                     <!-- Email Form -->
                     <form @submit.prevent="handleSignUp" class="space-y-5">
                         <!-- Email Field -->
@@ -255,20 +233,6 @@ async function handleSignUp() {
     } catch (error) {
         errorMessage.value = error.message || 'Failed to create account. Please try again.';
         console.error('Sign up error:', error);
-    } finally {
-        isLoading.value = false;
-    }
-}
-
-async function handleGoogleSignUp() {
-    isLoading.value = true;
-    errorMessage.value = '';
-    try {
-        await authStore.signInWithGoogle(); // Same flow for sign up and sign in with OAuth
-        // Supabase handles redirect
-    } catch (error) {
-        errorMessage.value = error.message || 'Failed to continue with Google.';
-        console.error('Google sign up error:', error);
     } finally {
         isLoading.value = false;
     }

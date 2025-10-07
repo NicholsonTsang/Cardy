@@ -21,30 +21,6 @@
 
                 <!-- Form Section -->
                 <div class="px-8 pb-8">
-                    <!-- Social Login -->
-                    <div class="mb-6">
-                        <Button 
-                            @click="handleGoogleSignIn" 
-                            :disabled="isLoading" 
-                            outlined 
-                            icon="pi pi-google" 
-                            severity="secondary" 
-                            class="w-full py-3 border-slate-300 hover:border-blue-400 hover:bg-blue-50 transition-all duration-200"
-                            label="Continue with Google"
-                            :aria-label="isLoading ? 'Signing in with Google...' : 'Sign in with Google'"
-                        />
-                    </div>
-
-                    <!-- Divider -->
-                    <div class="relative mb-6">
-                        <div class="absolute inset-0 flex items-center">
-                            <div class="w-full border-t border-slate-200"></div>
-                        </div>
-                        <div class="relative flex justify-center text-sm">
-                            <span class="px-4 bg-white text-slate-500 font-medium">or continue with email</span>
-                        </div>
-                    </div>
-
                     <!-- Email Form -->
                     <form @submit.prevent="handleSignIn" class="space-y-5">
                         <!-- Email Field -->
@@ -88,7 +64,7 @@
                                 <Checkbox id="rememberme" v-model="rememberMe" :binary="true" class="mr-2" />
                                 <label for="rememberme" class="text-sm text-slate-600">Remember me</label>
                             </div>
-                            <a href="#" class="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors">
+                            <a @click="showForgotPasswordDialog = true" class="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors cursor-pointer">
                                 Forgot password?
                             </a>
                         </div>
@@ -135,6 +111,62 @@
                 </p>
             </footer>
         </div>
+
+        <!-- Forgot Password Dialog -->
+        <Dialog 
+            v-model:visible="showForgotPasswordDialog" 
+            modal 
+            :closable="true"
+            :draggable="false"
+            class="w-full max-w-md mx-4"
+            header="Reset Password"
+        >
+            <div class="space-y-4">
+                <p class="text-slate-600 text-sm">
+                    Enter your email address and we'll send you a link to reset your password.
+                </p>
+                
+                <div class="space-y-2">
+                    <label for="reset-email" class="block text-sm font-medium text-slate-700">Email Address</label>
+                    <InputText 
+                        id="reset-email" 
+                        v-model="resetEmail" 
+                        type="email" 
+                        placeholder="Enter your email" 
+                        class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': resetEmailError }"
+                    />
+                    <p v-if="resetEmailError" class="text-sm text-red-600">{{ resetEmailError }}</p>
+                </div>
+
+                <Message v-if="resetSuccessMessage" severity="success" :closable="false" class="mb-2">
+                    {{ resetSuccessMessage }}
+                </Message>
+                
+                <Message v-if="resetErrorMessage" severity="error" :closable="false" class="mb-2">
+                    {{ resetErrorMessage }}
+                </Message>
+            </div>
+
+            <template #footer>
+                <div class="flex gap-2 justify-end">
+                    <Button 
+                        label="Cancel" 
+                        severity="secondary"
+                        outlined
+                        @click="closeForgotPasswordDialog" 
+                        :disabled="isSendingResetEmail"
+                    />
+                    <Button 
+                        label="Send Reset Link" 
+                        severity="primary"
+                        @click="handleSendPasswordReset" 
+                        :loading="isSendingResetEmail"
+                        :disabled="!resetEmail || !!resetEmailError"
+                    />
+                </div>
+            </template>
+        </Dialog>
     </div>
 </template>
 
@@ -143,9 +175,10 @@ import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import InputText from 'primevue/inputtext';
 import Message from 'primevue/message';
-import { ref, computed, onMounted } from 'vue';
+import Dialog from 'primevue/dialog';
+import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth.js';
-import { useRouter, useRoute } from 'vue-router';
+import { useRouter } from 'vue-router';
 
 const email = ref('');
 const password = ref('');
@@ -153,10 +186,16 @@ const rememberMe = ref(false);
 
 const authStore = useAuthStore();
 const router = useRouter();
-const route = useRoute();
 
 const isLoading = ref(false);
 const errorMessage = ref('');
+
+// Forgot Password Dialog
+const showForgotPasswordDialog = ref(false);
+const resetEmail = ref('');
+const isSendingResetEmail = ref(false);
+const resetSuccessMessage = ref('');
+const resetErrorMessage = ref('');
 
 // Form validation
 const emailError = computed(() => {
@@ -169,6 +208,47 @@ const passwordError = computed(() => {
     if (!password.value) return '';
     return password.value.length < 6 ? 'Password must be at least 6 characters' : '';
 });
+
+const resetEmailError = computed(() => {
+    if (!resetEmail.value) return '';
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return !emailRegex.test(resetEmail.value) ? 'Please enter a valid email address' : '';
+});
+
+async function handleSendPasswordReset() {
+    // Clear previous messages
+    resetSuccessMessage.value = '';
+    resetErrorMessage.value = '';
+    
+    // Validate email
+    if (resetEmailError.value) {
+        resetErrorMessage.value = 'Please enter a valid email address';
+        return;
+    }
+
+    isSendingResetEmail.value = true;
+    try {
+        await authStore.sendPasswordResetEmail(resetEmail.value);
+        resetSuccessMessage.value = 'Password reset link sent! Check your email.';
+        
+        // Close dialog after 2 seconds
+        setTimeout(() => {
+            closeForgotPasswordDialog();
+        }, 2000);
+    } catch (error) {
+        resetErrorMessage.value = error.message || 'Failed to send reset email. Please try again.';
+        console.error('Password reset error:', error);
+    } finally {
+        isSendingResetEmail.value = false;
+    }
+}
+
+function closeForgotPasswordDialog() {
+    showForgotPasswordDialog.value = false;
+    resetEmail.value = '';
+    resetSuccessMessage.value = '';
+    resetErrorMessage.value = '';
+}
 
 async function handleSignIn() {
     // Clear previous errors
@@ -191,42 +271,9 @@ async function handleSignIn() {
     }
 }
 
-async function handleGoogleSignIn() {
-    isLoading.value = true;
-    errorMessage.value = '';
-    try {
-        await authStore.signInWithGoogle();
-    } catch (error) {
-        errorMessage.value = error.message || 'Failed to sign in with Google.';
-        console.error('Google sign in error:', error);
-    } finally {
-        isLoading.value = false;
-    }
-}
-
 function goToSignUp() {
     router.push('/signup');
 }
-
-// Handle OAuth callback
-onMounted(async () => {
-    const oauthSuccess = route.query.oauth;
-    if (oauthSuccess === 'success' && authStore.isLoggedIn() && authStore.isEmailVerified()) {
-        // User has successfully signed in via OAuth, redirect to their default page
-        await authStore.refreshSession();
-        
-        // Get user role and redirect
-        const user = authStore.session?.user;
-        const role = user?.app_metadata?.role || user?.user_metadata?.role || user?.raw_user_meta_data?.role;
-        const userRole = role === 'card_issuer' ? 'cardIssuer' : role;
-        
-        if (userRole === 'admin') {
-            router.push({ name: 'admin-dashboard' });
-        } else {
-            router.push({ name: 'mycards' });
-        }
-    }
-});
 </script>
 
 <style scoped>
