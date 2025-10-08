@@ -32,10 +32,6 @@ services:
       options:
         max-size: "10m"
         max-file: "3"
-    # Resource limits (docker-compose format)
-    mem_limit: 512m
-    memswap_limit: 512m
-    cpus: 1.0
 
 networks:
   relay-network:
