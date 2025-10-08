@@ -227,15 +227,8 @@ wss.on('connection', (clientWs: WSWebSocket, req: IncomingMessage) => {
     // OpenAI WebSocket handlers
     openaiWs.on('open', () => {
       log.info(`Connected to OpenAI: ${sessionId}`)
-      
-      // Send ready signal to client with accepted subprotocols
-      if (clientWs.readyState === WSWebSocket.OPEN) {
-        clientWs.send(JSON.stringify({
-          type: 'relay.connected',
-          sessionId,
-          timestamp: new Date().toISOString()
-        }))
-      }
+      // Note: Don't send relay.connected message as it may interfere with OpenAI protocol
+      // The client will know connection is successful when it receives OpenAI's session.created
     })
     
     openaiWs.on('message', (data: Buffer) => {
