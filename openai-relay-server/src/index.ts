@@ -243,7 +243,13 @@ wss.on('connection', (clientWs: WSWebSocket, req: IncomingMessage) => {
           // Log message type for debugging
           try {
             const message = JSON.parse(data.toString()) as OpenAIMessage
-            log.debug(`OpenAI → Client: ${sessionId}`, { type: message.type })
+            
+            // Always log errors in full detail
+            if (message.type === 'error') {
+              log.error(`❌ OpenAI Error Message: ${sessionId}`, message)
+            } else {
+              log.debug(`OpenAI → Client: ${sessionId}`, { type: message.type })
+            }
           } catch {
             // Binary data, skip logging
           }

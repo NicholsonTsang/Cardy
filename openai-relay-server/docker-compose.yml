@@ -18,7 +18,7 @@ services:
       HEARTBEAT_INTERVAL: 30000
       INACTIVITY_TIMEOUT: 300000
       ALLOWED_ORIGINS: "*"
-      DEBUG: "false"
+      DEBUG: "true"
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
       interval: 30s

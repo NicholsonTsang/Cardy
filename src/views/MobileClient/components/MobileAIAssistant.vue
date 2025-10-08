@@ -407,34 +407,64 @@ async function connectRealtime() {
       tokenData.ephemeral_token
     )
     
+    // Track if session is ready
+    let sessionReady = false
+    
     // Setup WebSocket handlers
     ws.onopen = () => {
-      console.log('✅ Realtime connection established')
-      realtimeConnection.isRealtimeConnected.value = true
-      realtimeConnection.realtimeStatus.value = 'connected'
-      
-      // Send session configuration
-      const sessionUpdate = {
-        type: 'session.update',
-        session: tokenData.session_config
-      }
-      console.log('📤 Sending session configuration:', sessionUpdate)
-      ws.send(JSON.stringify(sessionUpdate))
-      
-      // Start sending audio
-      realtimeConnection.startSendingAudio()
-      
-      // Start inactivity timer
-      inactivityTimer.startTimer()
+      console.log('✅ Relay connection established')
+      console.log('⏳ Waiting for OpenAI session...')
+      // Note: Don't start audio yet! Wait for session.created from OpenAI
     }
     
-    ws.onmessage = (event) => {
+    ws.onmessage = async (event) => {
       try {
-        const data = JSON.parse(event.data)
+        let messageText: string
+        
+        // Handle different message types
+        if (typeof event.data === 'string') {
+          // Already a string (text frame)
+          messageText = event.data
+        } else if (event.data instanceof Blob) {
+          // Binary frame as Blob - convert to text
+          messageText = await event.data.text()
+          console.log('📦 Converted binary Blob to text')
+        } else if (event.data instanceof ArrayBuffer) {
+          // Binary frame as ArrayBuffer - convert to text
+          messageText = new TextDecoder().decode(event.data)
+          console.log('📦 Converted binary ArrayBuffer to text')
+        } else {
+          console.warn('⚠️ Unexpected message type:', typeof event.data)
+          return
+        }
+        
+        const data = JSON.parse(messageText)
         console.log('📨 WebSocket message:', data.type, data)
         
         // Reset inactivity timer on any activity
         inactivityTimer.resetTimer()
+        
+        // Handle session.created - This is when OpenAI is ready!
+        if (data.type === 'session.created' && !sessionReady) {
+          console.log('✅ OpenAI session established!')
+          sessionReady = true
+          realtimeConnection.isRealtimeConnected.value = true
+          realtimeConnection.realtimeStatus.value = 'connected'
+          
+          // Now send session configuration
+          const sessionUpdate = {
+            type: 'session.update',
+            session: tokenData.session_config
+          }
+          console.log('📤 Sending session configuration:', sessionUpdate)
+          ws.send(JSON.stringify(sessionUpdate))
+          
+          // Start sending audio
+          realtimeConnection.startSendingAudio()
+          
+          // Start inactivity timer
+          inactivityTimer.startTimer()
+        }
         
         // Handle errors from server
         if (data.type === 'error') {
@@ -550,7 +580,9 @@ async function connectRealtime() {
           pendingUserTranscriptId.value = null
         }
       } catch (err) {
-        console.error('WebSocket message error:', err)
+        console.error('❌ WebSocket message error:', err)
+        console.error('   Message data type:', typeof event.data)
+        console.error('   Message data:', event.data instanceof Blob ? 'Blob' : event.data)
       }
     }
     
