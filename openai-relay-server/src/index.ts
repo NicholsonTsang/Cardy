@@ -424,7 +424,7 @@ process.on('SIGTERM', () => {
   clearInterval(heartbeatInterval)
   
   // Close all connections
-  connections.forEach((connection, sessionId) => {
+  connections.forEach((_connection, sessionId) => {
     cleanup(sessionId)
   })
   
