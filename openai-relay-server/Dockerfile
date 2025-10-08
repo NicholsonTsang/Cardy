@@ -9,9 +9,9 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Install dependencies
-RUN npm ci --only=production && \
-    npm ci --only=development
+# Install dependencies (use npm install since we don't have package-lock.json yet)
+RUN npm install --production && \
+    npm install
 
 # Copy source code
 COPY src ./src
@@ -33,7 +33,7 @@ RUN addgroup -g 1001 -S nodejs && \
 
 # Copy package files and install production dependencies only
 COPY package*.json ./
-RUN npm ci --only=production && \
+RUN npm install --production && \
     npm cache clean --force
 
 # Copy built application from builder
