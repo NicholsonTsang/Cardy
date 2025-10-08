@@ -5,8 +5,8 @@
         <i class="pi pi-times" />
       </button>
       <i class="pi pi-globe language-globe-icon" />
-      <h2 class="language-title">Choose Your Language</h2>
-      <p class="language-subtitle">Select a language to start chatting</p>
+      <h2 class="language-title">{{ $t('mobile.choose_language') }}</h2>
+      <p class="language-subtitle">{{ $t('mobile.select_language_to_chat') }}</p>
     </div>
     
     <div class="language-grid">
@@ -24,7 +24,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import type { Language } from '../types'
+
+const { t } = useI18n()
 
 defineEmits<{
   (e: 'select', language: Language): void

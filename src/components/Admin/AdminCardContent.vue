@@ -8,8 +8,8 @@
     <!-- Empty State -->
     <div v-else-if="content.length === 0" class="text-center py-12">
       <i class="pi pi-inbox text-5xl text-slate-300 mb-3"></i>
-      <h3 class="text-lg font-medium text-slate-700 mb-2">No Content Items</h3>
-      <p class="text-slate-500">This card has no content items yet.</p>
+      <h3 class="text-lg font-medium text-slate-700 mb-2">{{ $t('content.no_content_items') }}</h3>
+      <p class="text-slate-500">{{ $t('content.no_content_items_desc') }}</p>
     </div>
 
     <!-- Content Items -->
@@ -42,7 +42,7 @@
               <div v-if="item.ai_knowledge_base" class="mt-3 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-3 border border-amber-200">
                 <div class="flex items-center gap-2 mb-2">
                   <i class="pi pi-database text-amber-600 text-xs"></i>
-                  <span class="text-xs font-medium text-amber-900">AI Knowledge Base</span>
+                  <span class="text-xs font-medium text-amber-900">{{ $t('dashboard.ai_knowledge_base') }}</span>
                 </div>
                 <p class="text-xs text-amber-800 whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto">
                   {{ item.ai_knowledge_base }}
@@ -98,8 +98,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Tag from 'primevue/tag'
 import { marked } from 'marked'
+
+const { t } = useI18n()
 
 interface ContentItem {
   id: string

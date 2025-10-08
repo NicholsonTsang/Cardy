@@ -5,9 +5,9 @@
             <div>
                 <h3 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
                     <i class="pi pi-mobile text-blue-600"></i>
-                    Mobile Preview
+                    {{ $t('dashboard.mobile_preview') }}
                 </h3>
-                <p class="text-sm text-slate-600 mt-1">See how your card will appear to visitors on mobile devices</p>
+                <p class="text-sm text-slate-600 mt-1">{{ $t('dashboard.mobile_preview_description') }}</p>
             </div>
         </div>
 
@@ -16,7 +16,7 @@
             <!-- Loading State -->
             <div v-if="isLoading" class="flex flex-col items-center justify-center py-12">
                 <ProgressSpinner strokeWidth="3" animationDuration=".8s" class="w-8 h-8 text-blue-600"/>
-                <p class="mt-3 text-sm text-slate-600">Loading mobile preview...</p>
+                <p class="mt-3 text-sm text-slate-600">{{ $t('dashboard.loading_mobile_preview') }}</p>
             </div>
 
             <!-- Error State -->
@@ -24,10 +24,10 @@
                 <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-3">
                     <i class="pi pi-exclamation-triangle text-xl text-red-500"></i>
                 </div>
-                <h4 class="text-sm font-medium text-red-600 mb-2">Preview Unavailable</h4>
+                <h4 class="text-sm font-medium text-red-600 mb-2">{{ $t('dashboard.preview_unavailable') }}</h4>
                 <p class="text-xs text-slate-600 mb-4">{{ error }}</p>
                 <Button 
-                    label="Retry" 
+                    :label="$t('dashboard.retry')" 
                     icon="pi pi-refresh" 
                     @click="loadPreview" 
                     size="small"
@@ -59,14 +59,14 @@
                         <!-- Loading -->
                         <div v-if="iframeLoading" class="mobile-loading">
                             <ProgressSpinner strokeWidth="3" animationDuration=".8s" class="w-10 h-10 text-blue-600"/>
-                            <p class="loading-text">Loading mobile preview...</p>
+                            <p class="loading-text">{{ $t('dashboard.loading_mobile_preview') }}</p>
                         </div>
                     </div>
                 </VueDevice>
                 
                 <!-- Preview Info -->
                 <div class="preview-info">
-                    <p class="info-text">Live preview of your mobile card experience</p>
+                    <p class="info-text">{{ $t('dashboard.live_preview') }}</p>
                 </div>
             </div>
         </div>
@@ -75,10 +75,13 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { supabase } from '@/lib/supabase';
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
 import { VueDevice } from 'vue-devices';
+
+const { t } = useI18n();
 
 const props = defineProps({
     cardProp: {
@@ -118,7 +121,7 @@ const loadPreview = async () => {
         }
         
         if (!previewData || previewData.length === 0) {
-            error.value = 'Preview access denied. You can only preview your own cards.';
+            error.value = t('dashboard.preview_access_denied');
             return;
         }
         
@@ -127,7 +130,7 @@ const loadPreview = async () => {
         
     } catch (err) {
         console.error('Error loading preview:', err);
-        error.value = err.message || 'Failed to load mobile preview';
+        error.value = err.message || t('dashboard.failed_load_preview');
     } finally {
         isLoading.value = false;
     }
@@ -139,7 +142,7 @@ const handleIframeLoad = () => {
 
 const handleIframeError = () => {
     iframeLoading.value = false;
-    error.value = 'Failed to load mobile preview content';
+    error.value = t('dashboard.failed_load_preview_content');
 };
 
 // Watch for card changes

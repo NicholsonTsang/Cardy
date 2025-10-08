@@ -40,7 +40,7 @@
 
     <!-- Sub Items -->
     <div v-if="subItems.length > 0" class="sub-items">
-      <h3 class="sub-items-title">Related Content</h3>
+      <h3 class="sub-items-title">{{ $t('mobile.related_content') }}</h3>
       <div class="sub-items-list">
         <div 
           v-for="subItem in subItems" 
@@ -71,11 +71,11 @@
             <div class="sub-item-footer">
               <span class="explore-hint">
                 <i class="pi pi-arrow-right" />
-                Tap to explore
+                {{ $t('mobile.tap_to_explore') }}
               </span>
               <span v-if="card.conversation_ai_enabled" class="ai-hint">
                 <i class="pi pi-microphone" />
-                AI
+                {{ $t('mobile.ai') }}
               </span>
             </div>
           </div>
@@ -87,9 +87,12 @@
 
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import MobileAIAssistant from './MobileAIAssistant.vue'
 import { getContentAspectRatio } from '@/utils/cardConfig'
 import { marked } from 'marked'
+
+const { t } = useI18n()
 
 interface ContentItem {
   content_item_id: string

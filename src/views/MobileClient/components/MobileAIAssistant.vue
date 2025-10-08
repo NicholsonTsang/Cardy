@@ -3,7 +3,7 @@
     <!-- AI Button -->
     <button @click="openModal" class="ai-button">
       <i class="pi pi-comments" />
-      <span>Ask AI Assistant</span>
+      <span>{{ $t('mobile.ask_ai_assistant') }}</span>
     </button>
 
     <!-- Modal -->
@@ -56,6 +56,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AIAssistantModal from './AIAssistant/components/AIAssistantModal.vue'
 import ChatInterface from './AIAssistant/components/ChatInterface.vue'
 import RealtimeInterface from './AIAssistant/components/RealtimeInterface.vue'
@@ -65,6 +66,8 @@ import { useVoiceRecording } from './AIAssistant/composables/useVoiceRecording'
 import { useCostSafeguards } from './AIAssistant/composables/useCostSafeguards'
 import { useInactivityTimer } from './AIAssistant/composables/useInactivityTimer'
 import type { Message, Language, ConversationMode, AIAssistantProps } from './AIAssistant/types'
+
+const { t } = useI18n()
 
 const props = defineProps<AIAssistantProps>()
 

@@ -3,7 +3,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <!-- Card Image -->
       <div>
-        <label class="block text-sm font-medium text-slate-700 mb-2">Card Image</label>
+        <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.card_image') }}</label>
         <div v-if="card.image_url" class="relative" style="aspect-ratio: 2/3; max-width: 300px;">
           <img
             :src="card.image_url"
@@ -14,7 +14,7 @@
         <div v-else class="aspect-[2/3] max-w-[300px] bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center">
           <div class="text-center">
             <i class="pi pi-image text-4xl text-slate-400 mb-2"></i>
-            <p class="text-slate-500 text-sm">No image</p>
+            <p class="text-slate-500 text-sm">{{ $t('dashboard.no_image') }}</p>
           </div>
         </div>
       </div>
@@ -22,25 +22,25 @@
       <!-- Card Details -->
       <div class="space-y-4">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Card Name</label>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ $t('dashboard.card_name') }}</label>
           <p class="text-base font-semibold text-slate-900">{{ card.name }}</p>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">Description</label>
-          <p class="text-sm text-slate-600">{{ card.description || 'No description' }}</p>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ $t('common.description') }}</label>
+          <p class="text-sm text-slate-600">{{ card.description || $t('dashboard.no_description') }}</p>
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">QR Position</label>
+            <label class="block text-sm font-medium text-slate-700 mb-1">{{ $t('dashboard.qr_position') }}</label>
             <Tag :value="card.qr_code_position" severity="info" />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">AI Enabled</label>
+            <label class="block text-sm font-medium text-slate-700 mb-1">{{ $t('dashboard.ai_enabled') }}</label>
             <Tag
-              :value="card.conversation_ai_enabled ? 'Yes' : 'No'"
+              :value="card.conversation_ai_enabled ? $t('common.yes') : $t('common.no')"
               :severity="card.conversation_ai_enabled ? 'success' : 'secondary'"
             />
           </div>
@@ -50,7 +50,7 @@
           <div>
             <label class="block text-sm font-medium text-blue-700 mb-1 flex items-center gap-2">
               <i class="pi pi-user text-xs"></i>
-              AI Instruction (Role & Guidelines)
+              {{ $t('dashboard.ai_instruction') }}
             </label>
             <div class="p-3 bg-blue-50 rounded border border-blue-200 text-sm text-slate-700 whitespace-pre-wrap">
               {{ card.ai_instruction }}
@@ -61,7 +61,7 @@
         <div v-if="card.ai_knowledge_base">
           <label class="block text-sm font-medium text-amber-700 mb-1 flex items-center gap-2">
             <i class="pi pi-database text-xs"></i>
-            AI Knowledge Base
+            {{ $t('dashboard.ai_knowledge_base') }}
           </label>
           <div class="p-3 bg-amber-50 rounded border border-amber-200 text-sm text-slate-700 whitespace-pre-wrap max-h-48 overflow-y-auto">
             {{ card.ai_knowledge_base }}
@@ -70,11 +70,11 @@
 
         <div class="grid grid-cols-2 gap-4 text-xs text-slate-500 pt-4 border-t border-slate-200">
           <div>
-            <span class="font-medium">Created:</span><br />
+            <span class="font-medium">{{ $t('common.created_at') }}:</span><br />
             {{ formatDateTime(card.created_at) }}
           </div>
           <div>
-            <span class="font-medium">Updated:</span><br />
+            <span class="font-medium">{{ $t('common.updated_at') }}:</span><br />
             {{ formatDateTime(card.updated_at) }}
           </div>
         </div>
@@ -84,7 +84,10 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import Tag from 'primevue/tag'
+
+const { t } = useI18n()
 
 interface Card {
   id: string

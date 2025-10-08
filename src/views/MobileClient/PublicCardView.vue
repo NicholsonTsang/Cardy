@@ -3,16 +3,16 @@
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-container">
       <ProgressSpinner class="spinner" />
-      <p class="loading-text">Loading card...</p>
+      <p class="loading-text">{{ $t('mobile.loading_card') }}</p>
     </div>
 
     <!-- Error State -->
     <div v-else-if="error" class="error-container">
       <i class="pi pi-exclamation-triangle error-icon" />
-      <h2 class="error-title">Card Not Found</h2>
+      <h2 class="error-title">{{ $t('mobile.card_not_found') }}</h2>
       <p class="error-message">{{ error }}</p>
       <Button 
-        label="Try Again" 
+        :label="$t('common.try_again')" 
         @click="handleRetry" 
         class="retry-button"
       />
@@ -63,9 +63,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
 import ProgressSpinner from 'primevue/progressspinner'
 import Button from 'primevue/button'
+
+const { t } = useI18n()
 
 // Child Components - We'll create these next
 import MobileHeader from './components/MobileHeader.vue'
@@ -119,7 +122,7 @@ const isContentListView = computed(() => currentView.value === 'content-list')
 const isContentDetailView = computed(() => currentView.value === 'content-detail')
 
 const headerTitle = computed(() => {
-  if (isContentListView.value) return 'Explore Content'
+  if (isContentListView.value) return t('mobile.explore_content')
   if (isContentDetailView.value && selectedContent.value) {
     return selectedContent.value.content_item_name
   }

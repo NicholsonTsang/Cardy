@@ -9,10 +9,8 @@
           </div>
         </div>
         <div class="text-section">
-          <h3 class="import-title">Bulk Import Cards</h3>
-          <p class="import-description">
-            Import cards with embedded images from Excel files. Images are automatically extracted and processed.
-          </p>
+          <h3 class="import-title">{{ $t('import.bulk_import_cards') }}</h3>
+          <p class="import-description">{{ $t('import.bulk_import_desc') }}</p>
         </div>
       </div>
     </div>
@@ -24,17 +22,15 @@
         <div class="example-header">
           <div class="example-badge">
             <i class="pi pi-star"></i>
-            <span>Learn with Example</span>
+            <span>{{ $t('import.learn_with_example') }}</span>
           </div>
-          <h3 class="example-title">Try Our Pre-Built Museum Card</h3>
-          <p class="example-description">
-            Load a complete example card with AI prompts, content hierarchy, and embedded images. Perfect for learning how CardStudio works!
-          </p>
+          <h3 class="example-title">{{ $t('import.try_prebuilt_museum_card') }}</h3>
+          <p class="example-description">{{ $t('import.example_card_desc') }}</p>
         </div>
         
         <div class="example-action">
           <Button 
-            label="Load Example Card"
+            :label="$t('import.load_example_card')"
             icon="pi pi-play"
             @click="loadExampleFile"
             :disabled="importing"
@@ -43,15 +39,15 @@
           <div class="example-features">
             <div class="feature-item">
               <i class="pi pi-check-circle text-emerald-600"></i>
-              <span>Museum artifacts & exhibits</span>
+              <span>{{ $t('import.feature_artifacts_exhibits') }}</span>
             </div>
             <div class="feature-item">
               <i class="pi pi-check-circle text-emerald-600"></i>
-              <span>AI conversation prompts</span>
+              <span>{{ $t('import.feature_ai_prompts') }}</span>
             </div>
             <div class="feature-item">
               <i class="pi pi-check-circle text-emerald-600"></i>
-              <span>Professional images included</span>
+              <span>{{ $t('import.feature_professional_images') }}</span>
             </div>
           </div>
         </div>
@@ -65,23 +61,23 @@
         <div class="action-grid">
           <div class="action-item template-action">
             <Button 
-              label="Download Template"
+              :label="$t('import.download_template')"
               icon="pi pi-download"
               @click="downloadTemplate"
               class="template-button bg-blue-600 hover:bg-blue-700 text-white border-0"
             />
-            <span class="action-desc">Excel template with formulas and examples</span>
+            <span class="action-desc">{{ $t('import.template_desc') }}</span>
           </div>
           
           <div class="action-item import-action">
             <Button 
-              label="Choose Excel File"
+              :label="$t('import.choose_excel_file')"
               icon="pi pi-file-excel"
               @click="triggerFileInput"
               :disabled="importing"
               class="import-button bg-blue-600 hover:bg-blue-700 text-white border-0"
             />
-            <span class="action-desc">Upload .xlsx file with embedded images</span>
+            <span class="action-desc">{{ $t('import.upload_excel_desc') }}</span>
           </div>
         </div>
       </div>
@@ -101,7 +97,7 @@
           icon="pi pi-times" 
           @click="clearFeedback"
           class="p-button-text p-button-sm feedback-close"
-          v-tooltip="'Dismiss'"
+          v-tooltip="$t('common.close')"
         />
       </div>
     </div>
@@ -126,13 +122,13 @@
         <div v-if="!selectedFile" class="drop-content">
           <i class="pi pi-cloud-upload drop-icon"></i>
           <div class="drop-text">
-            <h4>Drop your Excel file here</h4>
-            <p>or click to browse files</p>
+            <h4>{{ $t('import.drop_excel_here') }}</h4>
+            <p>{{ $t('import.or_click_to_browse') }}</p>
           </div>
           <div class="file-requirements">
-            <span class="requirement">• Excel files (.xlsx) with embedded images</span>
-            <span class="requirement">• Maximum 25MB file size</span>
-            <span class="requirement">• Images are automatically extracted</span>
+            <span class="requirement">• {{ $t('import.req_excel_with_images') }}</span>
+            <span class="requirement">• {{ $t('import.req_max_size') }}</span>
+            <span class="requirement">• {{ $t('import.req_images_extracted') }}</span>
           </div>
         </div>
         
@@ -144,7 +140,7 @@
             <div class="file-meta">
               <span v-if="importPreview" class="meta-item">
                 <i class="pi pi-check-circle text-blue-600"></i>
-                Analysis complete
+                {{ $t('import.analysis_complete') }}
               </span>
             </div>
           </div>
@@ -152,7 +148,7 @@
             icon="pi pi-times"
             @click.stop="removeFile"
             class="p-button-text p-button-sm remove-button"
-            v-tooltip="'Remove file'"
+            v-tooltip="$t('common.delete')"
           />
         </div>
       </div>
@@ -163,20 +159,20 @@
       <div class="preview-header">
         <h4 class="preview-title">
           <i class="pi pi-eye preview-icon"></i>
-          Import Preview
+          {{ $t('import.import_preview') }}
         </h4>
         <div class="preview-stats">
           <span class="stat-item">
             <i class="pi pi-id-card text-blue-600"></i>
-            {{ importPreview.cardData ? 1 : 0 }} card
+            {{ importPreview.cardData ? 1 : 0 }} {{ $t('import.card') }}
           </span>
           <span class="stat-item">
             <i class="pi pi-list text-blue-600"></i>
-            {{ importPreview.contentItems.length }} content items
+            {{ importPreview.contentItems.length }} {{ $t('import.content_items') }}
           </span>
           <span class="stat-item">
             <i class="pi pi-image text-purple-600"></i>
-            {{ extractedImageCount }} embedded images
+            {{ extractedImageCount }} {{ $t('import.embedded_images') }}
           </span>
         </div>
       </div>
@@ -185,7 +181,7 @@
       <div v-if="importPreview.errors.length > 0" class="validation-errors">
         <h5 class="errors-title">
           <i class="pi pi-times-circle"></i>
-          Validation Errors
+          {{ $t('import.validation_errors') }}
         </h5>
         <div class="errors-list">
           <div 
@@ -197,7 +193,7 @@
             <span class="error-text">{{ error }}</span>
           </div>
           <div v-if="importPreview.errors.length > 5" class="more-errors">
-            +{{ importPreview.errors.length - 5 }} more errors
+            +{{ importPreview.errors.length - 5 }} {{ $t('import.more_errors') }}
           </div>
         </div>
       </div>
@@ -205,7 +201,7 @@
       <div v-if="importPreview.warnings.length > 0" class="validation-warnings">
         <h5 class="warnings-title">
           <i class="pi pi-exclamation-triangle"></i>
-          Validation Warnings
+          {{ $t('import.validation_warnings') }}
         </h5>
         <div class="warnings-list">
           <div 
@@ -217,7 +213,7 @@
             <span class="warning-text">{{ warning }}</span>
           </div>
           <div v-if="importPreview.warnings.length > 3" class="more-warnings">
-            +{{ importPreview.warnings.length - 3 }} more warnings
+            +{{ importPreview.warnings.length - 3 }} {{ $t('import.more_warnings') }}
           </div>
         </div>
       </div>
@@ -226,7 +222,7 @@
       <div v-if="importPreview.cardData" class="card-preview">
         <h5 class="preview-section-title">
           <i class="pi pi-id-card"></i>
-          Import Preview - Card Information
+          {{ $t('import.import_preview_card_info') }}
         </h5>
         <div class="card-preview-content">
           <div class="card-preview-header">
@@ -235,7 +231,7 @@
               <img 
                 v-if="getCardImageUrl()"
                 :src="getCardImageUrl()"
-                :alt="importPreview.cardData.name || 'Card Image'"
+                :alt="importPreview.cardData.name || $t('import.card_image')"
                 class="card-preview-image"
               />
               <div v-else class="card-image-placeholder">
@@ -246,16 +242,16 @@
             <!-- Card Details -->
             <div class="card-details">
               <div class="preview-field">
-                <span class="field-label">Name:</span>
-                <span class="field-value">{{ importPreview.cardData.name || 'Unnamed Card' }}</span>
+                <span class="field-label">{{ $t('common.name') }}:</span>
+                <span class="field-value">{{ importPreview.cardData.name || $t('import.unnamed_card') }}</span>
               </div>
               <div class="preview-field">
-                <span class="field-label">Description:</span>
+                <span class="field-label">{{ $t('common.description') }}:</span>
                 <span class="field-value">{{ truncateText(importPreview.cardData.description, 100) }}</span>
               </div>
               <div class="preview-field">
-                <span class="field-label">AI Enabled:</span>
-                <span class="field-value">{{ importPreview.cardData.conversation_ai_enabled ? 'Yes' : 'No' }}</span>
+                <span class="field-label">{{ $t('import.ai_enabled') }}:</span>
+                <span class="field-value">{{ importPreview.cardData.conversation_ai_enabled ? $t('common.yes') : $t('common.no') }}</span>
               </div>
             </div>
           </div>
@@ -266,7 +262,7 @@
       <div v-if="importPreview.contentItems.length > 0" class="content-preview">
         <h5 class="preview-section-title">
           <i class="pi pi-list"></i>
-          Import Preview - Content Structure ({{ importPreview.contentItems.length }} items)
+          {{ $t('import.import_preview_content_structure', { count: importPreview.contentItems.length }) }}
         </h5>
         
         <!-- Hierarchical Content Preview -->
@@ -304,9 +300,9 @@
                 <div class="preview-item-info">
                   <div class="preview-item-name">{{ item.name }}</div>
                   <div class="preview-item-meta">
-                    <span class="layer-badge layer-1">Layer 1</span>
+                    <span class="layer-badge layer-1">{{ $t('import.layer_1') }}</span>
                     <span v-if="item.children && item.children.length > 0" class="children-count">
-                      {{ item.children.length }} sub-item{{ item.children.length !== 1 ? 's' : '' }}
+                      {{ $t('content.sub_items_count', { count: item.children.length }) }}
                     </span>
                     <span v-if="item.has_images" class="image-badge">
                       <i class="pi pi-image"></i>
@@ -348,8 +344,8 @@
                     <div class="preview-item-info">
                       <div class="preview-item-name">{{ child.name }}</div>
                       <div class="preview-item-meta">
-                        <span class="layer-badge layer-2">Layer 2</span>
-                        <span class="sub-item-index">Sub-item {{ childIndex + 1 }}</span>
+                        <span class="layer-badge layer-2">{{ $t('import.layer_2') }}</span>
+                        <span class="sub-item-index">{{ $t('content.sub_item_index', { index: childIndex + 1 }) }}</span>
                         <span v-if="child.has_images" class="image-badge">
                           <i class="pi pi-image"></i>
                           {{ child.image_count }}
@@ -365,7 +361,7 @@
                 <!-- Show more indicator if there are more children -->
                 <div v-if="item.children.length > 5" class="more-children">
                   <i class="pi pi-ellipsis-h"></i>
-                  +{{ item.children.length - 5 }} more sub-items
+                  +{{ item.children.length - 5 }} {{ $t('import.more_sub_items') }}
                 </div>
               </div>
             </Transition>
@@ -376,7 +372,7 @@
       <!-- Preview Actions -->
       <div class="preview-actions">
         <Button 
-          label="Cancel"
+          :label="$t('common.cancel')"
           icon="pi pi-times"
           @click="cancelImport"
           class="cancel-button text-blue-600 hover:text-blue-800 border-0 bg-transparent"
@@ -395,7 +391,7 @@
     <!-- Import Progress -->
     <div v-if="importing" class="import-progress">
       <div class="progress-header">
-        <h4 class="progress-title">Importing Data...</h4>
+        <h4 class="progress-title">{{ $t('import.importing_data') }}</h4>
         <span class="progress-percent">{{ importProgressPercent }}%</span>
       </div>
       <ProgressBar :value="importProgressPercent" class="progress-bar" />
@@ -415,7 +411,7 @@
         </div>
         <div class="results-content">
           <h4 class="results-title">
-            {{ importResults.success ? 'Import Completed' : 'Import Failed' }}
+            {{ importResults.success ? $t('import.import_completed') : $t('import.import_failed') }}
           </h4>
           <p class="results-summary">{{ importResults.message }}</p>
         </div>
@@ -424,19 +420,19 @@
       <div v-if="importResults.success && importResults.details" class="results-details">
         <div class="detail-grid">
           <div class="detail-item">
-            <span class="detail-label">Cards Created</span>
+            <span class="detail-label">{{ $t('import.cards_created') }}</span>
             <span class="detail-value success">{{ importResults.details.cardsCreated || 0 }}</span>
           </div>
           <div class="detail-item">
-            <span class="detail-label">Content Items</span>
+            <span class="detail-label">{{ $t('import.content_items_created') }}</span>
             <span class="detail-value success">{{ importResults.details.contentCreated || 0 }}</span>
           </div>
           <div class="detail-item">
-            <span class="detail-label">Images Processed</span>
+            <span class="detail-label">{{ $t('import.images_processed') }}</span>
             <span class="detail-value info">{{ importResults.details.imagesProcessed || 0 }}</span>
           </div>
           <div class="detail-item" v-if="importResults.details.warnings">
-            <span class="detail-label">Warnings</span>
+            <span class="detail-label">{{ $t('import.warnings') }}</span>
             <span class="detail-value warning">{{ importResults.details.warnings }}</span>
           </div>
         </div>
@@ -444,7 +440,7 @@
       
       <div class="results-actions">
         <Button 
-          label="Import Another File"
+          :label="$t('import.import_another_file')"
           icon="pi pi-plus"
           @click="resetImport"
           class="reset-button text-blue-600 hover:text-blue-800 border-0 bg-transparent"
@@ -456,6 +452,7 @@
 
 <script setup>
 import { ref, computed, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { generateImportTemplate, importExcelToCardData } from '@/utils/excelHandler'
 import { applyCropParametersToImage, parseCropParameters } from '@/utils/imageCropUtils'
@@ -475,6 +472,7 @@ const props = defineProps({
 
 const emit = defineEmits(['imported'])
 const toast = useToast()
+const { t } = useI18n()
 
 // State
 const fileInput = ref()
@@ -493,14 +491,14 @@ const createdImageUrls = ref(new Set())
 const importProgressPercent = computed(() => Math.round(importProgress.value))
 
 const confirmButtonLabel = computed(() => {
-  if (importing.value) return 'Importing...'
-  if (!importPreview.value) return 'Confirm Import'
+  if (importing.value) return t('import.importing')
+  if (!importPreview.value) return t('import.confirm_import')
   const errors = importPreview.value.errors.length
   const warnings = importPreview.value.warnings.length
   
-  if (errors > 0) return `Cannot Import (${errors} errors)`
-  if (warnings > 0) return `Import with ${warnings} warnings`
-  return 'Confirm Import'
+  if (errors > 0) return t('import.cannot_import_with_errors', { errors })
+  if (warnings > 0) return t('import.import_with_warnings', { warnings })
+  return t('import.confirm_import')
 })
 
 const canExecuteImport = computed(() => {
@@ -578,7 +576,7 @@ function getFeedbackIcon(severity) {
 async function loadExampleFile() {
   try {
     // Show loading state
-    importStatus.value = 'Loading example file...'
+    importStatus.value = t('import.loading_example_file')
     
     // Fetch the example file from the public folder
     const response = await fetch('/document/ImportFileExample.xlsx')
@@ -596,14 +594,14 @@ async function loadExampleFile() {
     await processFile(file)
     
     // Show success message with educational context
-    showFeedback('info', 'Example Loaded', 
-      'Review the preview below to understand the import structure, then click "Confirm Import" to try it!', 
+    showFeedback('info', t('import.example_loaded'), 
+      t('import.example_loaded_desc'), 
       true)
     
   } catch (error) {
     console.error('Example file loading error:', error)
-    showFeedback('error', 'Example Load Failed', 
-      'Could not load the example file. Please try downloading and uploading the template manually.', 
+    showFeedback('error', t('import.example_load_failed'), 
+      t('import.example_load_failed_desc'), 
       false)
   }
 }
@@ -623,13 +621,13 @@ async function downloadTemplate() {
     link.click()
     window.URL.revokeObjectURL(url)
     
-    showFeedback('success', 'Template Downloaded', 
-      'Excel template with examples and formulas downloaded successfully', 
+    showFeedback('success', t('import.template_downloaded'), 
+      t('import.template_downloaded_desc'), 
       true)
   } catch (error) {
     console.error('Template download error:', error)
-    showFeedback('error', 'Download Failed', 
-      'Failed to generate import template', 
+    showFeedback('error', t('messages.download_failed'), 
+      t('import.failed_generate_template'), 
       false)
   }
 }
@@ -656,15 +654,15 @@ function handleFileDrop(event) {
 async function processFile(file) {
   // File validation
   if (!file.name.match(/\.xlsx$/i)) {
-    showFeedback('error', 'Invalid File Type', 
-      'Please select an Excel file (.xlsx) with embedded images', 
+    showFeedback('error', t('import.invalid_file_type'), 
+      t('import.select_excel_with_images'), 
       false)
     return
   }
 
   if (file.size > 25 * 1024 * 1024) { // 25MB limit
-    showFeedback('error', 'File Too Large', 
-      'File size must be less than 25MB', 
+    showFeedback('error', t('import.file_too_large'), 
+      t('import.file_size_limit'), 
       false)
     return
   }
@@ -673,23 +671,23 @@ async function processFile(file) {
   
   // Analyze file
   try {
-    importStatus.value = 'Analyzing Excel file and extracting images...'
+    importStatus.value = t('import.analyzing_excel_extracting')
     const preview = await importExcelToCardData(file)
     importPreview.value = preview
     
     if (preview.isValid) {
-      showFeedback('success', 'File Analyzed', 
-        `Found ${preview.contentItems.length} content items${extractedImageCount.value > 0 ? ` with ${extractedImageCount.value} embedded images` : ''}`, 
+      showFeedback('success', t('import.file_analyzed'), 
+        t('import.file_analyzed_desc', { count: preview.contentItems.length, images: extractedImageCount.value }), 
         true)
     } else {
-      showFeedback('warn', 'Validation Issues', 
-        `File has ${preview.errors.length} errors that must be fixed. Review the preview below for details.`, 
+      showFeedback('warn', t('import.validation_issues'), 
+        t('import.validation_issues_desc', { errors: preview.errors.length }), 
         false)
     }
   } catch (error) {
     console.error('File analysis error:', error)
-    showFeedback('error', 'File Analysis Failed', 
-      error.message || 'Failed to analyze the uploaded file', 
+    showFeedback('error', t('import.file_analysis_failed'), 
+      error.message || t('import.failed_analyze_uploaded_file'), 
       false)
     removeFile()
   }
@@ -719,7 +717,7 @@ async function executeImport() {
   
   importing.value = true
   importProgress.value = 0
-  importStatus.value = 'Starting import...'
+  importStatus.value = t('import.starting_import')
   
   try {
     // Simulate progress updates
@@ -735,7 +733,7 @@ async function executeImport() {
     
     clearInterval(progressInterval)
     importProgress.value = 100
-    importStatus.value = 'Import completed'
+    importStatus.value = t('import.import_completed')
     
     importResults.value = result
     importPreview.value = null
@@ -745,7 +743,7 @@ async function executeImport() {
     
     showFeedback(
       result.success ? 'success' : 'warn',
-      result.success ? 'Import Successful' : 'Import Completed with Issues',
+      result.success ? t('import.import_successful') : t('import.import_completed_with_issues'),
       result.message,
       true
     )
@@ -754,12 +752,12 @@ async function executeImport() {
     console.error('Import error:', error)
     importResults.value = {
       success: false,
-      message: error.message || 'Import failed with unknown error',
+      message: error.message || t('import.failed_unknown_error'),
       details: { errors: 1 }
     }
     
-    showFeedback('error', 'Import Failed', 
-      error.message || 'Failed to import data', 
+    showFeedback('error', t('import.import_failed'), 
+      error.message || t('import.failed_import_data'), 
       false)
   } finally {
     importing.value = false
@@ -1101,12 +1099,12 @@ async function importDataToDatabase(importData) {
 
 function updateImportStatus() {
   const statuses = [
-    'Validating data structure...',
-    'Creating card record...',
-    'Processing content items...',
-    'Handling embedded images...',
-    'Updating relationships...',
-    'Finalizing import...'
+    t('import.status_validating'),
+    t('import.status_creating_card'),
+    t('import.status_processing_content'),
+    t('import.status_handling_images'),
+    t('import.status_updating_relationships'),
+    t('import.status_finalizing')
   ]
   const statusIndex = Math.floor((importProgress.value / 100) * statuses.length)
   importStatus.value = statuses[Math.min(statusIndex, statuses.length - 1)]

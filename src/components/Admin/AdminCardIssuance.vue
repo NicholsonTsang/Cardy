@@ -8,8 +8,8 @@
     <!-- Empty State -->
     <div v-else-if="batches.length === 0" class="text-center py-12">
       <i class="pi pi-inbox text-5xl text-slate-300 mb-3"></i>
-      <h3 class="text-lg font-medium text-slate-700 mb-2">No Batches Issued</h3>
-      <p class="text-slate-500">This card has no issued batches yet.</p>
+      <h3 class="text-lg font-medium text-slate-700 mb-2">{{ $t('batches.no_batches') }}</h3>
+      <p class="text-slate-500">{{ $t('batches.no_batches_desc') }}</p>
     </div>
 
     <!-- Batches Table -->
@@ -20,40 +20,40 @@
         stripedRows
         responsiveLayout="scroll"
       >
-        <Column field="batch_name" header="Batch Name" :style="{ minWidth: '150px' }">
+        <Column field="batch_name" :header="$t('batches.batch_name')" :style="{ minWidth: '150px' }">
           <template #body="{ data }">
             <span class="font-medium text-slate-900">{{ data.batch_name }}</span>
           </template>
         </Column>
         
-        <Column field="batch_number" header="Number" :style="{ minWidth: '100px' }">
+        <Column field="batch_number" :header="$t('batches.number')" :style="{ minWidth: '100px' }">
           <template #body="{ data }">
             <span class="text-slate-700">#{{ data.batch_number }}</span>
           </template>
         </Column>
         
-        <Column field="cards_count" header="Cards Count" :style="{ minWidth: '120px' }">
+        <Column field="cards_count" :header="$t('batches.cards_count')" :style="{ minWidth: '120px' }">
           <template #body="{ data }">
             <Tag :value="`${data.cards_count}`" severity="info" />
           </template>
         </Column>
         
-        <Column field="payment_status" header="Payment" :style="{ minWidth: '120px' }">
+        <Column field="payment_status" :header="$t('batches.payment')" :style="{ minWidth: '120px' }">
           <template #body="{ data }">
             <Tag :value="data.payment_status" :severity="getPaymentSeverity(data.payment_status)" />
           </template>
         </Column>
         
-        <Column field="is_disabled" header="Status" :style="{ minWidth: '100px' }">
+        <Column field="is_disabled" :header="$t('common.status')" :style="{ minWidth: '100px' }">
           <template #body="{ data }">
             <Tag
-              :value="data.is_disabled ? 'Disabled' : 'Active'"
+              :value="data.is_disabled ? $t('common.disabled') : $t('common.active')"
               :severity="data.is_disabled ? 'danger' : 'success'"
             />
           </template>
         </Column>
         
-        <Column field="created_at" header="Created" :style="{ minWidth: '120px' }">
+        <Column field="created_at" :header="$t('common.created_at')" :style="{ minWidth: '120px' }">
           <template #body="{ data }">
             <span class="text-xs text-slate-600">{{ formatDate(data.created_at) }}</span>
           </template>
@@ -64,9 +64,12 @@
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+
+const { t } = useI18n()
 
 interface Batch {
   id: string

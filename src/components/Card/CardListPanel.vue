@@ -3,17 +3,17 @@
         <!-- Header -->
         <div class="p-4 border-b border-slate-200 bg-white">
             <div class="flex items-center justify-between mb-3">
-                <h1 class="text-2xl font-bold text-slate-900">Card Designs</h1>
+                <h1 class="text-2xl font-bold text-slate-900">{{ $t('dashboard.card_designs') }}</h1>
                 <Button 
                     icon="pi pi-plus" 
                     @click="$emit('create-card')" 
                     rounded
                     text
-                    aria-label="Create New Card"
-                    v-tooltip.top="'Create New Card'"
+                    :aria-label="$t('dashboard.create_new_card')"
+                    v-tooltip.top="$t('dashboard.create_new_card')"
                 />
             </div>
-            <p class="text-slate-600 -mt-2 mb-4 text-sm">Create and manage your templates.</p>
+            <p class="text-slate-600 -mt-2 mb-4 text-sm">{{ $t('dashboard.create_and_manage') }}</p>
             
             <!-- Search -->
             <IconField>
@@ -22,7 +22,7 @@
                     class="w-full" 
                     :model-value="searchQuery" 
                     @update:model-value="$emit('update:searchQuery', $event)"
-                    placeholder="Search cards..." 
+                    :placeholder="$t('dashboard.search_cards')" 
                 />
             </IconField>
             
@@ -30,7 +30,7 @@
             <div class="mt-4 space-y-2">
                 <div class="relative">
                     <Button 
-                        label="Try Example"
+                        :label="$t('dashboard.try_example')"
                         icon="pi pi-star"
                         @click="openExampleImport"
                         class="w-full bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white border-0 font-semibold shadow-sm"
@@ -41,7 +41,7 @@
                     </div>
                 </div>
                 <Button 
-                    label="Import Cards"
+                    :label="$t('dashboard.import_cards')"
                     icon="pi pi-upload"
                     @click="openRegularImport"
                     class="w-full bg-blue-600 hover:bg-blue-700 text-white border-0"
@@ -68,7 +68,7 @@
                     :options="yearOptions" 
                     optionLabel="label" 
                     optionValue="value"
-                    placeholder="Year"
+                    :placeholder="$t('dashboard.year')"
                     showClear
                     class="w-full text-sm"
                 />
@@ -78,7 +78,7 @@
                     :options="monthOptions" 
                     optionLabel="label" 
                     optionValue="value"
-                    placeholder="Month"
+                    :placeholder="$t('dashboard.month')"
                     showClear
                     :disabled="!selectedYear" 
                     class="w-full text-sm"
@@ -86,7 +86,7 @@
             </div>
             <Button 
                 v-if="selectedYear || selectedMonth"
-                label="Clear Date Filters"
+                :label="$t('dashboard.clear_date_filters')"
                 icon="pi pi-times"
                 @click="$emit('clear-date-filters')"
                 text
@@ -101,13 +101,13 @@
             <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="pi pi-id-card text-2xl text-slate-400"></i>
             </div>
-            <h3 class="text-xl font-semibold text-slate-900 mb-2">No Cards Yet</h3>
-            <p class="text-slate-500 mb-8">Start by creating your first card design</p>
+            <h3 class="text-xl font-semibold text-slate-900 mb-2">{{ $t('dashboard.no_cards_yet') }}</h3>
+            <p class="text-slate-500 mb-8">{{ $t('dashboard.start_creating') }}</p>
             
             <!-- Primary Action -->
             <div class="mb-6">
                 <Button 
-                    label="Create New Card"
+                    :label="$t('dashboard.create_new_card')"
                     icon="pi pi-plus"
                     @click="$emit('create-card')"
                     class="bg-blue-600 hover:bg-blue-700 text-white border-0 px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
@@ -121,8 +121,8 @@
             <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                 <i class="pi pi-search-slash text-2xl text-slate-400"></i>
             </div>
-            <h3 class="text-lg font-medium text-slate-900 mb-2">No Results Found</h3>
-            <p class="text-slate-500 mb-4">No cards match your search criteria.</p>
+            <h3 class="text-lg font-medium text-slate-900 mb-2">{{ $t('dashboard.no_results_found') }}</h3>
+            <p class="text-slate-500 mb-4">{{ $t('dashboard.no_cards_match_search') }}</p>
         </div>
 
         <!-- Cards List -->
@@ -154,6 +154,7 @@
 
 <script setup>
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
@@ -163,6 +164,8 @@ import Paginator from 'primevue/paginator';
 import Dialog from 'primevue/dialog';
 import CardListItem from './CardListItem.vue';
 import CardBulkImport from './Import/CardBulkImport.vue';
+
+const { t } = useI18n();
 
 const props = defineProps({
     cards: {
@@ -216,7 +219,7 @@ const importMode = ref('regular'); // 'regular' or 'example'
 
 // Computed dialog title
 const importDialogTitle = computed(() => {
-    return importMode.value === 'example' ? 'Try Example Import' : 'Import Cards';
+    return importMode.value === 'example' ? t('dashboard.try_example_import') : t('dashboard.import_cards');
 });
 
 // Handle opening different import modes
@@ -258,21 +261,20 @@ const yearOptions = computed(() => {
 });
 
 const monthOptions = computed(() => {
-    const months = [
-        { label: 'January', value: 0 },
-        { label: 'February', value: 1 },
-        { label: 'March', value: 2 },
-        { label: 'April', value: 3 },
-        { label: 'May', value: 4 },
-        { label: 'June', value: 5 },
-        { label: 'July', value: 6 },
-        { label: 'August', value: 7 },
-        { label: 'September', value: 8 },
-        { label: 'October', value: 9 },
-        { label: 'November', value: 10 },
-        { label: 'December', value: 11 }
+    return [
+        { label: t('common.january'), value: 0 },
+        { label: t('common.february'), value: 1 },
+        { label: t('common.march'), value: 2 },
+        { label: t('common.april'), value: 3 },
+        { label: t('common.may'), value: 4 },
+        { label: t('common.june'), value: 5 },
+        { label: t('common.july'), value: 6 },
+        { label: t('common.august'), value: 7 },
+        { label: t('common.september'), value: 8 },
+        { label: t('common.october'), value: 9 },
+        { label: t('common.november'), value: 10 },
+        { label: t('common.december'), value: 11 }
     ];
-    return months;
 });
 </script>
 

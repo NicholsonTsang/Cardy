@@ -23,7 +23,7 @@
           
           <!-- Sub-items Badge -->
           <div v-if="getSubItemsCount(item) > 0" class="badge">
-            {{ getSubItemsCount(item) }} items
+            {{ getSubItemsCount(item) }} {{ $t('mobile.items') }}
           </div>
         </div>
 
@@ -35,11 +35,11 @@
           <div class="card-footer">
             <span class="explore-hint">
               <i class="pi pi-arrow-right" />
-              Tap to explore
+              {{ $t('mobile.tap_to_explore') }}
             </span>
             <span v-if="cardAiEnabled" class="ai-badge">
               <i class="pi pi-microphone" />
-              AI Chat
+              {{ $t('mobile.ai_chat') }}
             </span>
           </div>
         </div>
@@ -50,7 +50,10 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getContentAspectRatio } from '@/utils/cardConfig'
+
+const { t } = useI18n()
 
 interface ContentItem {
   content_item_id: string

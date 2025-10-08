@@ -10,7 +10,7 @@
             </div>
             <div class="hidden sm:block">
               <h1 class="text-xl font-bold text-slate-900">CardStudio</h1>
-              <p class="text-xs text-slate-500 -mt-1">Digital Souvenir Platform</p>
+              <p class="text-xs text-slate-500 -mt-1">{{ $t('common.tagline') }}</p>
             </div>
           </router-link>
         </div>
@@ -20,6 +20,9 @@
 
         <!-- Right Side: Main Navigation Menu -->
         <div class="flex items-center space-x-4">
+          <!-- Language Switcher -->
+          <LanguageSwitcher />
+          
           <!-- Single Unified Menu for Authenticated Users -->
           <div v-if="isAuthenticated" class="relative">
             <Menu 
@@ -45,7 +48,7 @@
                       class="w-2 h-2 rounded-full"
                       :class="userRole === 'admin' ? 'bg-red-500' : 'bg-blue-500'"
                     ></div>
-                    {{ userRole === 'admin' ? 'Admin' : 'Card Issuer' }}
+                    {{ userRole === 'admin' ? $t('common.admin') : $t('common.card_issuer') }}
                   </div>
                 </div>
                 <i class="pi pi-chevron-down text-slate-400 transition-transform duration-200"></i>
@@ -60,7 +63,7 @@
               to="/login" 
               class="hidden sm:inline-flex items-center px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors duration-200"
             >
-              Sign in
+              {{ $t('auth.sign_in') }}
             </router-link>
             
             <!-- Get Started - Primary CTA -->
@@ -68,7 +71,7 @@
               to="/signup" 
               class="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white text-sm font-semibold rounded-lg hover:from-blue-700 hover:to-indigo-700 transition-all duration-200 shadow-sm hover:shadow-md group"
             >
-              <span>Get started</span>
+              <span>{{ $t('auth.get_started') }}</span>
               <i class="pi pi-arrow-right text-xs group-hover:translate-x-0.5 transition-transform duration-200"></i>
             </router-link>
           </div>
@@ -80,12 +83,15 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import { useToast } from 'primevue/usetoast'
+import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
 
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const toast = useToast()
@@ -158,52 +164,52 @@ const userInitials = computed(() => {
   return name.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2)
 })
 
-// Menu items for different user roles
-const cardIssuerMenuItems = [
+// Menu items for different user roles - dynamically generated with t()
+const cardIssuerMenuItems = computed(() => [
   {
-    label: 'My Cards',
+    label: t('dashboard.my_cards'),
     icon: 'pi pi-folder',
     command: () => router.push('/cms/mycards')
   }
-]
+])
 
-const adminMenuItems = [
+const adminMenuItems = computed(() => [
   {
-    label: 'Dashboard',
+    label: t('dashboard.dashboard'),
     icon: 'pi pi-chart-line',
     command: () => router.push('/cms/admin')
   },
   {
-    label: 'Users',
+    label: t('admin.user_management'),
     icon: 'pi pi-users',
-    command: () => router.push('/cms/users')
+    command: () => router.push('/cms/admin/users')
   },
   {
-    label: 'Batches',
+    label: t('header.batch_management'),
     icon: 'pi pi-box',
-    command: () => router.push('/cms/batches')
+    command: () => router.push('/cms/admin/batches')
   },
   {
-    label: 'Print Requests',
+    label: t('admin.print_requests'),
     icon: 'pi pi-print',
-    command: () => router.push('/cms/print-requests')
+    command: () => router.push('/cms/admin/print-requests')
   },
   {
-    label: 'User Cards',
+    label: t('admin.user_cards_viewer'),
     icon: 'pi pi-id-card',
     command: () => router.push('/cms/admin/user-cards')
   },
   {
-    label: 'Issue Free Batch',
+    label: t('header.issue_free_batch'),
     icon: 'pi pi-gift',
     command: () => router.push('/cms/admin/issue-batch')
   },
   {
-    label: 'History Logs',
+    label: t('header.history_logs'),
     icon: 'pi pi-history',
     command: () => router.push('/cms/admin/history')
   }
-]
+])
 
 // Unified menu items that combine navigation with user actions
 const unifiedMenuItems = computed(() => {
@@ -213,7 +219,7 @@ const unifiedMenuItems = computed(() => {
     return []
   }
   
-  const navItems = userRole.value === 'cardIssuer' ? cardIssuerMenuItems : adminMenuItems
+  const navItems = userRole.value === 'cardIssuer' ? cardIssuerMenuItems.value : adminMenuItems.value
   console.log('AppHeader: Menu items for role:', userRole.value, navItems)
   
   return [
@@ -228,7 +234,7 @@ const unifiedMenuItems = computed(() => {
     
     // Navigation Section
     {
-      label: userRole.value === 'admin' ? 'Admin Panel' : 'Card Management',
+      label: userRole.value === 'admin' ? t('header.admin_panel') : t('header.card_management'),
       disabled: true,
       class: 'section-header'
     },
@@ -238,7 +244,7 @@ const unifiedMenuItems = computed(() => {
     
     // User Actions Section
     {
-      label: 'Sign Out',
+      label: t('auth.sign_out'),
       icon: 'pi pi-sign-out',
       command: handleLogout
     }
@@ -264,8 +270,8 @@ const handleLogout = async () => {
     // Only show error toast for failures
     toast.add({
       severity: 'error',
-      summary: 'Sign Out Failed',
-      detail: 'Could not sign out. Please try again.',
+      summary: t('auth.sign_out_failed'),
+      detail: t('auth.sign_out_failed_detail'),
       life: 5000
     })
   }

@@ -3,7 +3,7 @@
         <!-- Action Buttons - Only show in standalone edit mode -->
         <div class="flex justify-end gap-3 mb-6" v-if="isEditMode && !isInDialog">
             <Button 
-                label="Cancel" 
+                :label="$t('common.cancel')" 
                 icon="pi pi-times" 
                 severity="secondary" 
                 outlined
@@ -11,7 +11,7 @@
                 @click="handleCancel" 
             />
             <Button 
-                label="Save Changes" 
+                :label="$t('dashboard.save_changes')" 
                 icon="pi pi-save" 
                 class="px-4 py-2 shadow-lg hover:shadow-xl transition-shadow bg-blue-600 hover:bg-blue-700 text-white border-0"
                 :disabled="!isFormValid"
@@ -26,7 +26,7 @@
                 <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
                     <h3 class="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
                         <i class="pi pi-image text-blue-600"></i>
-                        Card Artwork
+                        {{ $t('dashboard.card_artwork') }}
                     </h3>
                     
                     <!-- Single-Column Layout -->
@@ -64,7 +64,7 @@
                             <div v-if="!previewImage" class="p-3 bg-blue-100 rounded-lg">
                                 <p class="text-xs text-blue-800 flex items-start gap-2">
                                     <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
-                                    <span><strong>Image Requirements:</strong> Upload JPG or PNG files up to 5MB. For best results, use images with a 2:3 aspect ratio (e.g., 800×1200px). You can crop and adjust your image after uploading.</span>
+                                    <span><strong>{{ $t('dashboard.image_requirements') }}</strong> {{ $t('dashboard.image_requirements_text') }}</span>
                                 </p>
                             </div>
                             
@@ -83,8 +83,8 @@
                                         <div class="upload-icon-container">
                                             <i class="pi pi-camera upload-icon"></i>
                                         </div>
-                                        <h4 class="upload-title">Add a photo</h4>
-                                        <p class="upload-subtitle">Drag and drop or click to upload</p>
+                                        <h4 class="upload-title">{{ $t('dashboard.add_photo') }}</h4>
+                                        <p class="upload-subtitle">{{ $t('dashboard.drag_drop_upload') }}</p>
                                         
                                         <!-- Hidden File Input -->
                                         <input 
@@ -96,7 +96,7 @@
                                         />
                                         
                                         <Button 
-                                            label="Upload photo"
+                                            :label="$t('dashboard.upload_photo')"
                                             icon="pi pi-upload"
                                             @click="triggerFileInput"
                                             class="upload-trigger-button"
@@ -107,35 +107,35 @@
                                 
                                 <!-- Action Buttons - Only when image exists -->
                                 <div v-else class="image-actions-only">
-                                    <div class="image-actions">
-                                        <Button 
-                                            label="Change photo"
-                                            icon="pi pi-image"
-                                            @click="triggerFileInput"
-                                            severity="secondary"
-                                            outlined
-                                            size="small"
-                                            class="action-button"
-                                        />
-                                        <Button 
-                                            label="Crop image"
-                                            icon="pi pi-expand"
-                                            @click="handleCropImage"
-                                            severity="info"
-                                            outlined
-                                            size="small"
-                                            class="action-button"
-                                        />
-                                        <Button 
-                                            v-if="isCropped"
-                                            label="Undo crop"
-                                            icon="pi pi-undo"
-                                            @click="handleUndoCrop"
-                                            severity="warning"
-                                            outlined
-                                            size="small"
-                                            class="action-button"
-                                        />
+                                <div class="image-actions">
+                                    <Button 
+                                        :label="$t('dashboard.change_photo')"
+                                        icon="pi pi-image"
+                                        @click="triggerFileInput"
+                                        severity="secondary"
+                                        outlined
+                                        size="small"
+                                        class="action-button"
+                                    />
+                                    <Button 
+                                        :label="$t('dashboard.crop_image')"
+                                        icon="pi pi-expand"
+                                        @click="handleCropImage"
+                                        severity="info"
+                                        outlined
+                                        size="small"
+                                        class="action-button"
+                                    />
+                                    <Button 
+                                        v-if="isCropped"
+                                        :label="$t('dashboard.undo_crop')"
+                                        icon="pi pi-undo"
+                                        @click="handleUndoCrop"
+                                        severity="warning"
+                                        outlined
+                                        size="small"
+                                        class="action-button"
+                                    />
                                     </div>
                                     
                                     <!-- Hidden File Input for Change Photo -->
@@ -153,22 +153,22 @@
                             <div class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
                                 <h4 class="font-medium text-slate-900 mb-3 flex items-center gap-2">
                                     <i class="pi pi-qrcode text-slate-600"></i>
-                                    QR Code Settings
+                                    {{ $t('dashboard.qr_code_settings') }}
                                 </h4>
                                 <div>
-                                    <label for="qr_code_position" class="block text-sm font-medium text-slate-700 mb-2">Position on Card</label>
+                                    <label for="qr_code_position" class="block text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.position_on_card') }}</label>
                                     <Dropdown 
                                         id="qr_code_position"
                                         v-model="formData.qr_code_position" 
                                         :options="qrCodePositions" 
                                         optionLabel="name" 
                                         optionValue="code" 
-                                        placeholder="Select position" 
+                                        :placeholder="$t('dashboard.select_position')" 
                                         class="w-full"
                                     />
                                     <p class="text-xs text-slate-500 mt-2 flex items-center gap-1">
                                         <i class="pi pi-eye text-xs"></i>
-                                        Preview updates in real-time
+                                        {{ $t('dashboard.preview_updates_realtime') }}
                                     </p>
                                 </div>
                             </div>
@@ -183,27 +183,27 @@
                     <div>
                         <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                             <i class="pi pi-cog text-blue-600"></i>
-                            Card Details
+                            {{ $t('dashboard.card_details') }}
                         </h3>
                         
                         <div class="space-y-4">
                             <div>
-                                <label for="cardName" class="block text-sm font-medium text-slate-700 mb-2">Card Name *</label>
+                                <label for="cardName" class="block text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.card_name') }} *</label>
                                 <InputText 
                                     id="cardName" 
                                     type="text" 
                                     v-model="formData.name" 
                                     class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                     :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': !formData.name.trim() && showValidation }"
-                                    placeholder="Enter a descriptive card name"
+                                    :placeholder="$t('dashboard.enter_card_name')"
                                 />
-                                <p v-if="!formData.name.trim() && showValidation" class="text-sm text-red-600 mt-1">Card name is required</p>
+                                <p v-if="!formData.name.trim() && showValidation" class="text-sm text-red-600 mt-1">{{ $t('dashboard.card_name_required') }}</p>
                             </div>
 
                             <div>
                                 <label for="cardDescription" class="block text-sm font-medium text-slate-700 mb-2">
-                                    Card Description 
-                                    <span class="text-xs text-slate-500 font-normal">(Markdown supported)</span>
+                                    {{ $t('dashboard.card_description') }} 
+                                    <span class="text-xs text-slate-500 font-normal">({{ $t('dashboard.markdown_supported') }})</span>
                                 </label>
                                 <div class="border border-slate-300 rounded-lg overflow-hidden">
                                     <MdEditor 
@@ -226,15 +226,15 @@
                     <div class="p-4 border border-slate-200 rounded-lg">
                         <h4 class="font-medium text-slate-900 mb-3 flex items-center gap-2">
                             <i class="pi pi-brain text-blue-600"></i>
-                            AI Assistant Configuration
+                            {{ $t('dashboard.ai_assistant_configuration') }}
                         </h4>
                         
                         <!-- AI Toggle -->
                         <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200 mb-4">
                             <ToggleSwitch v-model="formData.conversation_ai_enabled" inputId="ai_enabled" />
                             <div class="flex-1">
-                                <label for="ai_enabled" class="block text-sm font-medium text-slate-700">Enable AI Assistant</label>
-                                <p class="text-xs text-slate-500">Allow visitors to ask questions about your card content</p>
+                                <label for="ai_enabled" class="block text-sm font-medium text-slate-700">{{ $t('dashboard.enable_ai_assistant') }}</label>
+                                <p class="text-xs text-slate-500">{{ $t('dashboard.allow_visitors_ask') }}</p>
                             </div>
                             <i class="pi pi-info-circle text-slate-400 cursor-help" 
                                v-tooltip="'AI assistant helps visitors interact with your card content'"></i>
@@ -246,26 +246,24 @@
                             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
                                 <label class="block text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
                                     <i class="pi pi-user"></i>
-                                    AI Instruction (Role & Guidelines)
-                                    <span class="text-xs text-blue-600 ml-auto">{{ aiInstructionWordCount }}/100 words</span>
+                                    {{ $t('dashboard.ai_instruction_role_guidelines') }}
+                                    <span class="text-xs text-blue-600 ml-auto">{{ aiInstructionWordCount }}/100 {{ $t('dashboard.words') }}</span>
                                 </label>
                                 <Textarea 
                                     v-model="formData.ai_instruction" 
                                     rows="3" 
                                     class="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none bg-white" 
                                     :class="{ 'border-red-500': aiInstructionWordCount > 100 }"
-                                    placeholder="Enter AI role and guidelines..."
+                                    :placeholder="$t('dashboard.enter_ai_role_guidelines')"
                                     autoResize
                                 />
                                 <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                     <div class="text-xs text-blue-800 flex items-start gap-2">
                                         <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
                                         <div class="space-y-2">
-                                            <p>
-                                                <strong>Purpose:</strong> Define the AI's role, personality, tone, and any restrictions or guidelines it should follow. Keep it concise (max 100 words).
-                                            </p>
+                                            <p>{{ $t('dashboard.purpose_define_ai') }}</p>
                                             <p class="text-blue-700">
-                                                <strong>Example:</strong> <em>"{{ DEFAULT_AI_INSTRUCTION }}"</em>
+                                                <strong>{{ $t('dashboard.example') }}:</strong> <em>"{{ DEFAULT_AI_INSTRUCTION }}"</em>
                                             </p>
                                         </div>
                                     </div>
@@ -276,21 +274,21 @@
                             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
                                 <label class="block text-sm font-medium text-blue-900 mb-2 flex items-center gap-2">
                                     <i class="pi pi-database"></i>
-                                    AI Knowledge Base
-                                    <span class="text-xs text-blue-600 ml-auto">{{ aiKnowledgeBaseWordCount }}/2000 words</span>
+                                    {{ $t('dashboard.ai_knowledge_base_label') }}
+                                    <span class="text-xs text-blue-600 ml-auto">{{ aiKnowledgeBaseWordCount }}/2000 {{ $t('dashboard.words') }}</span>
                                 </label>
                                 <Textarea 
                                     v-model="formData.ai_knowledge_base" 
                                     rows="6" 
                                     class="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none bg-white" 
                                     :class="{ 'border-red-500': aiKnowledgeBaseWordCount > 2000 }"
-                                    placeholder="Provide background knowledge, facts, historical context, specifications, or domain expertise that strengthens the AI's ability to answer questions accurately. Be detailed and comprehensive."
+                                    :placeholder="$t('dashboard.knowledge_base_placeholder')"
                                     autoResize
                                 />
                                 <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                     <div class="text-xs text-blue-800 flex items-start gap-2">
                                         <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
-                                        <span><strong>Purpose:</strong> Supply detailed domain knowledge, historical facts, specifications, or context that helps the AI provide accurate, informative responses about your card's content (max 2000 words).</span>
+                                        <span>{{ $t('dashboard.knowledge_purpose') }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -303,13 +301,13 @@
         <!-- Image Crop Dialog -->
         <MyDialog
             v-model="showCropDialog"
-            header="Crop Image"
+            :header="$t('dashboard.crop_image_dialog')"
             :style="{ width: '90vw', maxWidth: '900px' }"
             :closable="false"
             :showConfirm="true"
             :showCancel="true"
-            confirmLabel="Apply"
-            cancelLabel="Cancel"
+            :confirmLabel="$t('dashboard.apply')"
+            :cancelLabel="$t('common.cancel')"
             :confirmHandle="handleCropConfirm"
             @cancel="handleCropCancelled"
         >
@@ -327,6 +325,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, watch, computed, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
@@ -366,6 +365,9 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['save', 'cancel']);
+
+// i18n
+const { t } = useI18n();
 
 // Get default AI instruction from environment
 const DEFAULT_AI_INSTRUCTION = import.meta.env.VITE_DEFAULT_AI_INSTRUCTION || "You are a knowledgeable and friendly AI assistant for museum and exhibition visitors. Provide accurate, engaging, and educational explanations about exhibits and artifacts. Keep responses conversational and easy to understand. If you don't know something, politely say so rather than making up information.";
@@ -437,11 +439,11 @@ const markdownToolbars = ref([
     'catalog'
 ]);
 
-const qrCodePositions = ref([
-    { name: 'Top Left', code: 'TL' },
-    { name: 'Top Right', code: 'TR' },
-    { name: 'Bottom Left', code: 'BL' },
-    { name: 'Bottom Right', code: 'BR' }
+const qrCodePositions = computed(() => [
+    { name: t('dashboard.top_left'), code: 'TL' },
+    { name: t('dashboard.top_right'), code: 'TR' },
+    { name: t('dashboard.bottom_left'), code: 'BL' },
+    { name: t('dashboard.bottom_right'), code: 'BR' }
 ]);
 
 const showValidation = ref(false);

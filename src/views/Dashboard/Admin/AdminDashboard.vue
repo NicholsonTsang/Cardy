@@ -1,9 +1,9 @@
 <template>
-  <PageWrapper title="Admin Dashboard" description="System overview and management">
+  <PageWrapper :title="$t('admin.admin_dashboard')" :description="$t('admin.system_overview')">
     <template #actions>
       <Button 
         icon="pi pi-refresh" 
-        label="Refresh Data" 
+        :label="$t('admin.refresh_data')" 
         severity="secondary"
         outlined
         @click="refreshData"
@@ -16,7 +16,7 @@
       <!-- Quick Actions Section -->
       <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
         <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold text-slate-900">Quick Actions</h2>
+          <h2 class="text-xl font-bold text-slate-900">{{ $t('admin.quick_actions') }}</h2>
         </div>
         
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -27,8 +27,8 @@
                   <i class="pi pi-print text-white text-sm"></i>
                 </div>
                 <div>
-                  <p class="text-sm font-medium text-blue-800">Manage Print Requests</p>
-                  <p class="text-xs text-blue-600">{{ stats.print_requests_submitted }} submitted</p>
+                  <p class="text-sm font-medium text-blue-800">{{ $t('admin.manage_print_requests') }}</p>
+                  <p class="text-xs text-blue-600">{{ stats.print_requests_submitted }} {{ $t('admin.submitted') }}</p>
                 </div>
               </div>
             </div>
@@ -41,8 +41,8 @@
                   <i class="pi pi-box text-white text-sm"></i>
                 </div>
                 <div>
-                  <p class="text-sm font-medium text-purple-800">Manage Batches</p>
-                  <p class="text-xs text-purple-600">View all batches</p>
+                  <p class="text-sm font-medium text-purple-800">{{ $t('admin.manage_batches') }}</p>
+                  <p class="text-xs text-purple-600">{{ $t('admin.view_all_batches') }}</p>
                 </div>
               </div>
             </div>
@@ -55,8 +55,8 @@
                   <i class="pi pi-history text-white text-sm"></i>
                 </div>
                 <div>
-                  <p class="text-sm font-medium text-slate-800">View History Logs</p>
-                  <p class="text-xs text-slate-600">All admin actions</p>
+                  <p class="text-sm font-medium text-slate-800">{{ $t('admin.view_history_logs') }}</p>
+                  <p class="text-xs text-slate-600">{{ $t('admin.all_admin_actions') }}</p>
                 </div>
               </div>
             </div>
@@ -68,7 +68,7 @@
       <div>
         <h2 class="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 flex items-center gap-2">
           <i class="pi pi-users text-blue-600 text-sm sm:text-base"></i>
-          <span class="truncate">User Management</span>
+          <span class="truncate">{{ $t('admin.user_management') }}</span>
         </h2>
         <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
           <template v-if="isLoadingStats">
@@ -81,7 +81,7 @@
             <div class="bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
-                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">Total Users</p>
+                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">{{ $t('admin.total_users') }}</p>
                   <h3 class="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate">{{ stats.total_users }}</h3>
                 </div>
                 <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md sm:shadow-lg flex-shrink-0">
@@ -89,7 +89,7 @@
                 </div>
               </div>
               <div class="mt-1.5 sm:mt-2">
-                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">All registered</span>
+                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">{{ $t('admin.all_registered') }}</span>
               </div>
             </div>
 
@@ -97,7 +97,7 @@
             <div class="bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
-                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">Daily New</p>
+                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">{{ $t('admin.daily_new') }}</p>
                   <h3 class="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate">{{ stats.daily_new_users }}</h3>
                 </div>
                 <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-md sm:shadow-lg flex-shrink-0">
@@ -105,7 +105,7 @@
                 </div>
               </div>
               <div class="mt-1.5 sm:mt-2">
-                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">Today</span>
+                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">{{ $t('admin.today') }}</span>
               </div>
             </div>
 
@@ -113,7 +113,7 @@
             <div class="bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
-                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">Weekly New</p>
+                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">{{ $t('admin.weekly_new') }}</p>
                   <h3 class="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate">{{ stats.weekly_new_users }}</h3>
                 </div>
                 <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center shadow-md sm:shadow-lg flex-shrink-0">
@@ -121,7 +121,7 @@
                 </div>
               </div>
               <div class="mt-1.5 sm:mt-2">
-                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">Last 7 days</span>
+                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">{{ $t('admin.last_7_days') }}</span>
               </div>
             </div>
 
@@ -129,7 +129,7 @@
             <div class="bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
-                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">Monthly New</p>
+                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">{{ $t('admin.monthly_new') }}</p>
                   <h3 class="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate">{{ stats.monthly_new_users }}</h3>
                 </div>
                 <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-md sm:shadow-lg flex-shrink-0">
@@ -137,7 +137,7 @@
                 </div>
               </div>
               <div class="mt-1.5 sm:mt-2">
-                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">Last 30 days</span>
+                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">{{ $t('admin.last_30_days') }}</span>
               </div>
             </div>
           </template>
@@ -148,7 +148,7 @@
       <div>
         <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
           <i class="pi pi-print text-blue-600"></i>
-          Print Request Pipeline
+          {{ $t('admin.print_request_pipeline') }}
         </h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <template v-if="isLoadingStats">
@@ -161,7 +161,7 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Print Submitted</p>
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.print_submitted') }}</p>
                   <h3 class="text-lg font-bold text-slate-900">{{ stats.print_requests_submitted }}</h3>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
@@ -170,7 +170,7 @@
               </div>
               <div class="mt-2">
                 <router-link :to="{ name: 'admin-print-requests' }" class="inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors">
-                  Process
+                  {{ $t('admin.process') }}
                   <i class="pi pi-arrow-right ml-1 text-xs"></i>
                 </router-link>
               </div>
@@ -180,7 +180,7 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Print Processing</p>
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.print_processing') }}</p>
                   <h3 class="text-lg font-bold text-slate-900">{{ stats.print_requests_processing }}</h3>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
@@ -189,7 +189,7 @@
               </div>
               <div class="mt-2">
                 <router-link :to="{ name: 'admin-print-requests' }" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
-                  Track
+                  {{ $t('admin.track') }}
                   <i class="pi pi-arrow-right ml-1 text-xs"></i>
                 </router-link>
               </div>
@@ -199,7 +199,7 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Print Shipping</p>
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.print_shipping') }}</p>
                   <h3 class="text-lg font-bold text-slate-900">{{ stats.print_requests_shipping }}</h3>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
@@ -208,7 +208,7 @@
               </div>
               <div class="mt-2">
                 <router-link :to="{ name: 'admin-print-requests' }" class="inline-flex items-center text-xs font-medium text-green-600 hover:text-green-700 transition-colors">
-                  Monitor
+                  {{ $t('admin.monitor') }}
                   <i class="pi pi-arrow-right ml-1 text-xs"></i>
                 </router-link>
               </div>
@@ -221,7 +221,7 @@
       <div>
         <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
           <i class="pi pi-chart-line text-blue-600"></i>
-          Revenue Analytics
+          {{ $t('admin.revenue_analytics') }}
         </h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <template v-if="isLoadingStats">
@@ -234,7 +234,7 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Daily Revenue</p>
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.daily_revenue') }}</p>
                   <h3 class="text-lg font-bold text-slate-900 truncate">{{ formatRevenue(stats.daily_revenue_cents) }}</h3>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
@@ -242,7 +242,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <span class="text-xs text-slate-500">Today</span>
+                <span class="text-xs text-slate-500">{{ $t('admin.today') }}</span>
               </div>
             </div>
 
@@ -250,7 +250,7 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Weekly Revenue</p>
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.weekly_revenue') }}</p>
                   <h3 class="text-lg font-bold text-slate-900 truncate">{{ formatRevenue(stats.weekly_revenue_cents) }}</h3>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
@@ -258,7 +258,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <span class="text-xs text-slate-500">Last 7 days</span>
+                <span class="text-xs text-slate-500">{{ $t('admin.last_7_days') }}</span>
               </div>
             </div>
 
@@ -266,7 +266,7 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Monthly Revenue</p>
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.monthly_revenue') }}</p>
                   <h3 class="text-lg font-bold text-slate-900 truncate">{{ formatRevenue(stats.monthly_revenue_cents) }}</h3>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
@@ -274,7 +274,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <span class="text-xs text-slate-500">Last 30 days</span>
+                <span class="text-xs text-slate-500">{{ $t('admin.last_30_days') }}</span>
               </div>
             </div>
           </template>
@@ -285,7 +285,7 @@
       <div>
         <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
           <i class="pi pi-id-card text-blue-600"></i>
-          Card Design Growth
+          {{ $t('admin.card_design_growth') }}
         </h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <template v-if="isLoadingStats">
@@ -298,7 +298,7 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Daily New Cards</p>
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.daily_new_cards') }}</p>
                   <h3 class="text-lg font-bold text-slate-900">{{ stats.daily_new_cards }}</h3>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-rose-500 to-rose-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
@@ -306,7 +306,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <span class="text-xs text-slate-500">Today</span>
+                <span class="text-xs text-slate-500">{{ $t('admin.today') }}</span>
               </div>
             </div>
 
@@ -314,7 +314,7 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Weekly New Cards</p>
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.weekly_new_cards') }}</p>
                   <h3 class="text-lg font-bold text-slate-900">{{ stats.weekly_new_cards }}</h3>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
@@ -322,7 +322,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <span class="text-xs text-slate-500">Last 7 days</span>
+                <span class="text-xs text-slate-500">{{ $t('admin.last_7_days') }}</span>
               </div>
             </div>
 
@@ -330,7 +330,7 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Monthly New Cards</p>
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.monthly_new_cards') }}</p>
                   <h3 class="text-lg font-bold text-slate-900">{{ stats.monthly_new_cards }}</h3>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
@@ -338,7 +338,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <span class="text-xs text-slate-500">Last 30 days</span>
+                <span class="text-xs text-slate-500">{{ $t('admin.last_30_days') }}</span>
               </div>
             </div>
           </template>
@@ -349,7 +349,7 @@
       <div>
         <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
           <i class="pi pi-share-alt text-blue-600"></i>
-          Card Issuance Trends
+          {{ $t('admin.card_issuance_trends') }}
         </h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
           <template v-if="isLoadingStats">
@@ -362,7 +362,7 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Daily Issued Cards</p>
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.daily_issued_cards') }}</p>
                   <h3 class="text-lg font-bold text-slate-900">{{ stats.daily_issued_cards }}</h3>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
@@ -370,7 +370,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <span class="text-xs text-slate-500">Today</span>
+                <span class="text-xs text-slate-500">{{ $t('admin.today') }}</span>
               </div>
             </div>
 
@@ -378,15 +378,15 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Weekly Issued Cards</p>
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.weekly_issued_cards') }}</p>
                   <h3 class="text-lg font-bold text-slate-900">{{ stats.weekly_issued_cards }}</h3>
                 </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items center justify-center shadow-lg flex-shrink-0 ml-2">
                   <i class="pi pi-share-alt text-white text-sm"></i>
                 </div>
               </div>
               <div class="mt-2">
-                <span class="text-xs text-slate-500">Last 7 days</span>
+                <span class="text-xs text-slate-500">{{ $t('admin.last_7_days') }}</span>
               </div>
             </div>
 
@@ -394,7 +394,7 @@
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">Monthly Issued Cards</p>
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.monthly_issued_cards') }}</p>
                   <h3 class="text-lg font-bold text-slate-900">{{ stats.monthly_issued_cards }}</h3>
                 </div>
                 <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
@@ -402,7 +402,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <span class="text-xs text-slate-500">Last 30 days</span>
+                <span class="text-xs text-slate-500">{{ $t('admin.last_30_days') }}</span>
               </div>
             </div>
           </template>
@@ -420,10 +420,12 @@ import PageWrapper from '@/components/Layout/PageWrapper.vue'
 import { supabase } from '@/lib/supabase'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
+import { useI18n } from 'vue-i18n'
 
 const dashboardStore = useAdminDashboardStore()
 const router = useRouter()
 const toast = useToast()
+const { t } = useI18n()
 
 // Use dashboard store state directly
 const stats = computed(() => dashboardStore.dashboardStats || {
@@ -473,8 +475,8 @@ const loadDashboardData = async () => {
     console.error('Error loading dashboard data:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load dashboard data. Please try again.',
+      summary: t('messages.operation_failed'),
+      detail: t('admin.failed_to_load_dashboard'),
       life: 5000
     })
   }

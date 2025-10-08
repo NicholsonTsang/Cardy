@@ -22,7 +22,7 @@
           <!-- Status Indicator -->
           <div class="status-indicator" :class="card.is_activated ? 'active' : 'pending'">
             <div class="status-dot"></div>
-            <span>{{ card.is_activated ? 'Active' : 'Activating' }}</span>
+            <span>{{ card.is_activated ? t('common.active') : t('mobile.activating') }}</span>
           </div>
         </div>
       </div>
@@ -43,7 +43,7 @@
         <button @click="handleExplore" class="action-button">
           <span class="button-label">
             <i class="pi pi-compass" />
-            Explore Content
+            {{ t('mobile.explore_content') }}
           </span>
           <div class="button-bg"></div>
         </button>
@@ -51,7 +51,7 @@
         <!-- AI Indicator -->
         <div v-if="card.conversation_ai_enabled" class="ai-indicator">
           <i class="pi pi-microphone" />
-          <span>AI Voice Guide Available</span>
+          <span>{{ t('mobile.ai_voice_guide') }}</span>
         </div>
       </div>
     </div>
@@ -60,7 +60,10 @@
 
 <script setup lang="ts">
 import { onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { getCardAspectRatio } from '@/utils/cardConfig'
+
+const { t } = useI18n()
 
 interface Props {
   card: {

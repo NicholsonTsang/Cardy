@@ -22,11 +22,11 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <h2 class="text-xl font-semibold text-slate-900">{{ selectedCard.name }}</h2>
-                        <p class="text-slate-600 mt-1">Manage your card design, content, and issuance.</p>
+                        <p class="text-slate-600 mt-1">{{ t('dashboard.manage_card_subtitle') }}</p>
                     </div>
                     <div>
                         <Button 
-                            label="Export" 
+                            :label="t('common.export')" 
                             icon="pi pi-download" 
                             @click="showExportDialog = true"
                             class="export-button bg-blue-600 hover:bg-blue-700 text-white border-0"
@@ -39,7 +39,7 @@
             <Dialog 
                 v-model:visible="showExportDialog"
                 modal 
-                header="Export Card Data"
+                :header="t('common.export_card_data')"
                 :style="{ width: '40rem' }"
                 :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
                 class="export-dialog standardized-dialog"
@@ -109,6 +109,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Tabs from 'primevue/tabs';
 import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
@@ -122,6 +123,8 @@ import CardIssuanceCheckout from '@/components/CardIssuanceCheckout.vue';
 import CardAccessQR from '@/components/CardComponents/CardAccessQR.vue';
 import MobilePreview from '@/components/CardComponents/MobilePreview.vue';
 import CardExport from '@/components/Card/Export/CardExport.vue';
+
+const { t } = useI18n();
 
 const props = defineProps({
     selectedCard: {
@@ -175,22 +178,22 @@ const mobilePreviewRefreshKey = ref(0);
 // Export dialog state
 const showExportDialog = ref(false);
 
-const tabs = [
-    { label: 'General', icon: 'pi pi-cog' },
-    { label: 'Content', icon: 'pi pi-list' },
-    { label: 'Card Issuance', icon: 'pi pi-credit-card' },
-    { label: 'QR & Access', icon: 'pi pi-qrcode' },
-    { label: 'Mobile Preview', icon: 'pi pi-mobile' }
-];
+const tabs = computed(() => [
+    { label: t('dashboard.general'), icon: 'pi pi-cog' },
+    { label: t('dashboard.content'), icon: 'pi pi-list' },
+    { label: t('dashboard.card_issuance'), icon: 'pi pi-credit-card' },
+    { label: t('dashboard.qr_access'), icon: 'pi pi-qrcode' },
+    { label: t('dashboard.mobile_preview'), icon: 'pi pi-mobile' }
+]);
 
 const emptyStateTitle = computed(() => {
-    return props.hasCards ? 'Select a Card Design' : 'No Card Designs';
+    return props.hasCards ? t('dashboard.select_a_card') : t('dashboard.no_cards_yet');
 });
 
 const emptyStateMessage = computed(() => {
     return props.hasCards 
-        ? 'Choose a card from the list to view its details' 
-        : 'Create your first card design by clicking the \'+\' button';
+        ? t('dashboard.choose_card_to_view') 
+        : t('dashboard.create_first_card_instruction');
 });
 
 // Watch for tab changes and refresh MobilePreview when preview tab (index 4) is activated

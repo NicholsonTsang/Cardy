@@ -3,7 +3,7 @@
     <!-- No Print Requests -->
     <div v-if="!printRequests || printRequests.length === 0" class="flex items-center gap-2">
       <i class="pi pi-circle text-slate-300 text-xs"></i>
-      <span class="text-xs text-slate-500">No requests</span>
+      <span class="text-xs text-slate-500">{{ $t('print.no_requests') }}</span>
     </div>
 
     <!-- Single Active Print Request -->
@@ -17,7 +17,7 @@
           />
           <i v-if="activeRequest.status === 'SHIPPED'" 
              class="pi pi-truck text-blue-600 text-xs" 
-             v-tooltip.top="'In transit'"></i>
+             v-tooltip.top="$t('print.in_transit')"></i>
         </div>
         
         <!-- Withdraw button for SUBMITTED status -->
@@ -28,7 +28,7 @@
           size="small"
           text
           @click="$emit('withdraw-request', activeRequest, batch)"
-          v-tooltip.top="'Withdraw request'"
+          v-tooltip.top="$t('print.withdraw_request')"
         />
       </div>
       
@@ -48,7 +48,7 @@
     <div v-else-if="hasHistory" class="space-y-1">
       <div class="flex items-center gap-2">
         <Tag 
-          value="HISTORY" 
+          :value="$t('print.history')" 
           severity="secondary" 
           class="px-2 py-1 text-xs"
         />
@@ -58,7 +58,7 @@
           size="small"
           text
           @click="showHistory = !showHistory"
-          v-tooltip.top="'View print request history'"
+          v-tooltip.top="$t('print.view_history')"
         />
       </div>
       
@@ -76,7 +76,7 @@
             <span class="text-xs text-slate-500">{{ formatDate(request.requested_at) }}</span>
           </div>
           <div v-if="isWithdrawn(request)" class="text-red-600 text-xs">
-            <i class="pi pi-times-circle mr-1"></i>Withdrawn by user
+            <i class="pi pi-times-circle mr-1"></i>{{ $t('print.withdrawn_by_user') }}
           </div>
         </div>
       </div>
@@ -85,12 +85,12 @@
     <!-- Available for Print Request -->
     <div v-else class="flex items-center gap-2">
       <Button 
-        label="Request Print" 
+        :label="$t('print.request_print')" 
         icon="pi pi-print" 
         severity="info" 
         size="small"
         @click="$emit('request-print', batch)"
-        v-tooltip.top="'Submit print request'"
+        v-tooltip.top="$t('print.submit_request')"
       />
     </div>
   </div>
@@ -98,8 +98,11 @@
 
 <script setup>
 import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
+
+const { t } = useI18n();
 
 const props = defineProps({
   batch: {

@@ -7,10 +7,10 @@
           <i class="pi pi-id-card text-3xl text-slate-400"></i>
         </div>
         <h3 class="text-xl font-medium text-slate-900 mb-2">
-          Select a Card
+          {{ $t('admin.select_a_card') }}
         </h3>
         <p class="text-slate-500">
-          Choose a card from the list to view its details
+          {{ $t('admin.choose_card_to_view') }}
         </p>
       </div>
     </div>
@@ -24,7 +24,7 @@
             <h2 class="text-xl font-semibold text-slate-900">{{ selectedCard.name }}</h2>
             <p class="text-slate-600 mt-1 text-sm flex items-center gap-2">
               <i class="pi pi-eye text-xs"></i>
-              Read-only view
+              {{ $t('admin.read_only_view') }}
             </p>
           </div>
         </div>
@@ -89,6 +89,7 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Tabs from 'primevue/tabs'
 import TabList from 'primevue/tablist'
 import Tab from 'primevue/tab'
@@ -98,6 +99,8 @@ import AdminCardGeneral from './AdminCardGeneral.vue'
 import AdminCardContent from './AdminCardContent.vue'
 import AdminCardIssuance from './AdminCardIssuance.vue'
 import CardAccessQR from '@/components/CardComponents/CardAccessQR.vue'
+
+const { t } = useI18n()
 import MobilePreview from '@/components/CardComponents/MobilePreview.vue'
 
 interface Card {
@@ -149,13 +152,13 @@ const emit = defineEmits<{
   (e: 'update:activeTab', value: string): void
 }>()
 
-const tabs = [
-  { label: 'General', icon: 'pi pi-info-circle' },
-  { label: 'Content', icon: 'pi pi-list' },
-  { label: 'Issuance', icon: 'pi pi-box' },
-  { label: 'QR & Access', icon: 'pi pi-qrcode' },
-  { label: 'Preview', icon: 'pi pi-mobile' }
-]
+const tabs = computed(() => [
+  { label: t('dashboard.general'), icon: 'pi pi-info-circle' },
+  { label: t('dashboard.content'), icon: 'pi pi-list' },
+  { label: t('dashboard.issuance'), icon: 'pi pi-box' },
+  { label: t('dashboard.qr_access'), icon: 'pi pi-qrcode' },
+  { label: t('dashboard.preview'), icon: 'pi pi-mobile' }
+])
 
 const handleTabChange = (value: string) => {
   emit('update:activeTab', value)

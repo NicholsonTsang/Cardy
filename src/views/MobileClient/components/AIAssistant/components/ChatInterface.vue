@@ -43,7 +43,7 @@
           <button 
             @click="$emit('toggle-input-mode')" 
             class="input-icon-button"
-            title="Switch to voice input"
+            :title="$t('mobile.switch_to_voice')"
           >
             <i class="pi pi-microphone" />
           </button>
@@ -51,7 +51,7 @@
           <input 
             v-model="textInput"
             type="text"
-            placeholder="Type your message..."
+            :placeholder="$t('mobile.type_message')"
             class="text-input"
             @keypress.enter="handleSendText"
             :disabled="isLoading"
@@ -88,9 +88,12 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
 import MessageBubble from './MessageBubble.vue'
 import VoiceInputButton from './VoiceInputButton.vue'
 import type { Message } from '../types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   messages: Message[]

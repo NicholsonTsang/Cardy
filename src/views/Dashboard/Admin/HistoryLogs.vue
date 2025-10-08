@@ -1,9 +1,9 @@
 <template>
-  <PageWrapper title="History Logs" description="Track and analyze all administrative actions and system activities">
+  <PageWrapper :title="$t('admin.view_history_logs')" :description="$t('admin.all_admin_actions')">
     <template #actions>
       <Button 
         icon="pi pi-refresh" 
-        label="Refresh" 
+        :label="$t('admin.refresh_data')" 
         severity="secondary"
         outlined
         @click="refreshData"
@@ -11,7 +11,7 @@
       />
       <Button 
         icon="pi pi-file-export" 
-        label="Export CSV" 
+        :label="$t('admin.export_csv')" 
         severity="secondary"
         outlined
         @click="exportData"
@@ -22,7 +22,7 @@
       <!-- Recent Activity -->
       <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
         <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold text-slate-900">Recent Activity</h2>
+          <h2 class="text-xl font-bold text-slate-900">{{ $t('admin.recent_activity') }}</h2>
           <Button 
             icon="pi pi-refresh" 
             text 
@@ -42,13 +42,13 @@
               </InputIcon>
               <InputText
                 v-model="activityFilters.searchQuery"
-                placeholder="Search by email or operation (e.g., user@example.com or 'Created card')"
+                :placeholder="$t('admin.search_by_email')"
                 class="w-full"
                 @keyup.enter="onFilterChange"
               />
             </IconField>
             <Button
-              label="Search"
+              :label="$t('common.search')"
               icon="pi pi-search"
               @click="onFilterChange"
               :loading="isLoadingActivity"
@@ -62,13 +62,13 @@
               :options="activityTypes"
               optionLabel="label"
               optionValue="value"
-              placeholder="Filter by type"
+              :placeholder="$t('admin.filter_by_type')"
               class="w-full"
               @change="onFilterChange"
             />
             <Calendar
               v-model="activityFilters.startDate"
-              placeholder="Start date"
+              :placeholder="$t('admin.start_date')"
               :showTime="true"
               :maxDate="activityFilters.endDate || new Date()"
               class="w-full"
@@ -76,7 +76,7 @@
             />
             <Calendar
               v-model="activityFilters.endDate"
-              placeholder="End date"
+              :placeholder="$t('admin.end_date')"
               :showTime="true"
               :minDate="activityFilters.startDate"
               :maxDate="new Date()"
@@ -84,7 +84,7 @@
               @date-select="onFilterChange"
             />
             <Button
-              label="Clear Filters"
+              :label="$t('admin.clear_filters')"
               icon="pi pi-times"
               text
               @click="clearFilters"
@@ -102,7 +102,7 @@
         <template v-else>
           <div class="divide-y divide-slate-200">
             <div v-if="!recentActivity.length" class="p-4 text-center text-slate-500">
-              No activities found
+              {{ $t('admin.no_activities_found') }}
             </div>
             <div v-for="activity in recentActivity" :key="activity.id" class="py-3">
               <div class="flex items-start gap-3">
@@ -142,8 +142,8 @@
                 <div class="flex-1 min-w-0">
                   <p class="text-sm text-slate-900">{{ activity.description }}</p>
                   <div class="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                    <span>By {{ activity.admin_email }}</span>
-                    <span v-if="activity.target_user_email">• For {{ activity.target_user_email }}</span>
+                    <span>{{ $t('admin.operation_user') }}: {{ activity.admin_email }}</span>
+                    <span v-if="activity.target_user_email">• {{ $t('admin.user_email') }}: {{ activity.target_user_email }}</span>
                     <span>•</span>
                     <time :datetime="activity.created_at">
                       {{ formatDate(activity.created_at) }}
@@ -175,10 +175,7 @@
               :rows="activityPagination.limit"
               :totalRecords="activityPagination.total"
               :rowsPerPageOptions="[10, 20, 50]"
-              @rowsChange="(e) => {
-                activityPagination.limit = e.rows;
-                loadActivity();
-              }"
+              @page="onPageChange"
             />
           </div>
         </template>
@@ -189,6 +186,7 @@
 
 <script setup>
 import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useAuditLogStore, ACTION_TYPES } from '@/stores/admin/auditLog'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
@@ -202,6 +200,7 @@ import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 
+const { t } = useI18n()
 const toast = useToast()
 const auditLogStore = useAuditLogStore()
 
@@ -243,9 +242,16 @@ const paginationFirst = computed({
   get: () => (activityPagination.value.page - 1) * activityPagination.value.limit,
   set: (value) => {
     activityPagination.value.page = Math.floor(value / activityPagination.value.limit) + 1
-    loadActivity()
   }
 })
+
+// Handle page change events (including rows per page change)
+const onPageChange = (event) => {
+  // event = { page, first, rows, pageCount }
+  activityPagination.value.limit = event.rows
+  activityPagination.value.page = event.page + 1 // PrimeVue uses 0-based page index
+  loadActivity()
+}
 
 // Load activity with filters and pagination
 const loadActivity = async () => {

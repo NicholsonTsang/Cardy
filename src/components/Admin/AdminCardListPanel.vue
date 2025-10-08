@@ -3,17 +3,17 @@
     <!-- Header -->
     <div class="p-4 border-b border-slate-200 bg-white">
       <div class="flex items-center justify-between mb-3">
-        <h1 class="text-2xl font-bold text-slate-900">User Cards</h1>
+        <h1 class="text-2xl font-bold text-slate-900">{{ $t('admin.user_cards') }}</h1>
         <Tag :value="`${filteredCards.length}`" severity="info" />
       </div>
-      <p class="text-slate-600 -mt-2 mb-4 text-sm">View user's card designs (read-only).</p>
+      <p class="text-slate-600 -mt-2 mb-4 text-sm">{{ $t('admin.view_user_cards_desc') }}</p>
       
       <!-- Search -->
       <IconField>
         <InputIcon class="pi pi-search" />
         <InputText
           v-model="searchQuery"
-          placeholder="Search cards..."
+          :placeholder="$t('admin.search_cards')"
           class="w-full"
         />
       </IconField>
@@ -23,8 +23,8 @@
     <div v-if="cards.length === 0" class="flex-1 flex flex-col justify-center p-4 text-center min-h-[400px]">
       <div class="flex flex-col items-center space-y-3">
         <i class="pi pi-inbox text-5xl text-slate-300"></i>
-        <h3 class="text-lg font-medium text-slate-700">No Cards Found</h3>
-        <p class="text-slate-500 text-sm">This user has not created any cards yet.</p>
+        <h3 class="text-lg font-medium text-slate-700">{{ $t('dashboard.no_cards_found') }}</h3>
+        <p class="text-slate-500 text-sm">{{ $t('admin.user_no_cards_yet') }}</p>
       </div>
     </div>
 
@@ -95,10 +95,13 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Tag from 'primevue/tag'
+
+const { t } = useI18n()
 import Paginator from 'primevue/paginator'
 
 interface Card {

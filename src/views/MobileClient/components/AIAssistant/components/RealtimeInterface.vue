@@ -32,22 +32,22 @@
         
         <!-- Status Text -->
         <div class="realtime-status-text">
-          <h3 v-if="status === 'disconnected'">Ready to Connect</h3>
-          <h3 v-else-if="status === 'connecting'">Connecting...</h3>
-          <h3 v-else-if="isSpeaking">AI is speaking</h3>
-          <h3 v-else-if="isConnected">Listening...</h3>
+          <h3 v-if="status === 'disconnected'">{{ $t('mobile.ready_to_connect') }}</h3>
+          <h3 v-else-if="status === 'connecting'">{{ $t('mobile.connecting') }}</h3>
+          <h3 v-else-if="isSpeaking">{{ $t('mobile.ai_speaking') }}</h3>
+          <h3 v-else-if="isConnected">{{ $t('mobile.listening') }}</h3>
         </div>
       </div>
 
       <!-- Live Transcript -->
       <div ref="transcriptContainer" class="realtime-transcript">
         <div v-if="messages.length === 0" class="transcript-placeholder">
-          <p>Conversation transcript will appear here</p>
+          <p>{{ $t('mobile.transcript_appears_here') }}</p>
         </div>
         <div v-else class="transcript-messages">
           <div v-for="message in messages" :key="message.id" 
                class="transcript-message" :class="message.role">
-            <span class="transcript-role">{{ message.role === 'user' ? 'You' : 'AI' }}:</span>
+            <span class="transcript-role">{{ message.role === 'user' ? $t('mobile.you') : $t('mobile.ai') }}:</span>
             <span class="transcript-content">{{ message.content }}</span>
           </div>
         </div>
@@ -64,7 +64,7 @@
         :disabled="status === 'connecting'"
       >
         <i class="pi pi-phone" />
-        <span>{{ status === 'connecting' ? 'Connecting...' : 'Start Live Call' }}</span>
+        <span>{{ status === 'connecting' ? $t('mobile.connecting') : $t('mobile.start_live_call') }}</span>
       </button>
 
       <!-- Talk Controls (when connected) -->
@@ -74,12 +74,12 @@
           class="realtime-disconnect-button"
         >
           <i class="pi pi-phone" style="transform: rotate(135deg);" />
-          <span>End Call</span>
+          <span>{{ $t('mobile.end_call') }}</span>
         </button>
         
         <div class="realtime-mode-info">
           <i class="pi pi-info-circle" />
-          <span>Speak naturally - AI will respond in real-time</span>
+          <span>{{ $t('mobile.speak_naturally') }}</span>
         </div>
       </div>
     </div>
@@ -88,7 +88,10 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import type { Message } from '../types'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   isConnected: boolean

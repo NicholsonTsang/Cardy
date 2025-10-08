@@ -26,19 +26,19 @@ const router = createRouter({
         
         // Admin Routes (now using the same DashboardLayout)
         {
-          path: 'print-requests',
+          path: 'admin/print-requests',
           name: 'admin-print-requests',
           component: () => import('@/views/Dashboard/Admin/PrintRequestManagement.vue'),
           meta: { requiredRole: 'admin' }
         },
         {
-          path: 'users',
+          path: 'admin/users',
           name: 'admin-users',
           component: () => import('@/views/Dashboard/Admin/UserManagement.vue'),
           meta: { requiredRole: 'admin' }
         },
         {
-          path: 'batches',
+          path: 'admin/batches',
           name: 'admin-batches',
           component: () => import('@/views/Dashboard/Admin/BatchManagement.vue'),
           meta: { requiredRole: 'admin' }

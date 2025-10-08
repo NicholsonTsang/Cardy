@@ -7,14 +7,14 @@
             </div>
             <div class="flex gap-3">
                 <Button 
-                    label="Edit Card" 
+                    :label="$t('dashboard.edit_card')" 
                     icon="pi pi-pencil" 
                     @click="handleEdit" 
                     severity="info" 
                     class="px-4 py-2 shadow-lg hover:shadow-xl transition-shadow"
                 />
                 <Button 
-                    label="Delete" 
+                    :label="$t('common.delete')" 
                     icon="pi pi-trash" 
                     @click="handleRequestDelete" 
                     severity="danger" 
@@ -33,7 +33,7 @@
                         <div class="bg-slate-50 rounded-xl p-6">
                             <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                                 <i class="pi pi-image text-blue-600"></i>
-                                Card Artwork
+                                {{ $t('dashboard.card_artwork') }}
                             </h3>
                             <div class="card-artwork-container relative">
                                 <!-- Display the already-cropped image_url directly, no need to re-apply crop parameters -->
@@ -53,7 +53,7 @@
                                      class="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg">
                                     <div class="text-center text-slate-400">
                                         <i class="pi pi-image text-3xl mb-3"></i>
-                                        <p class="text-sm font-medium">No artwork uploaded</p>
+                                        <p class="text-sm font-medium">{{ $t('dashboard.no_artwork_uploaded') }}</p>
                                     </div>
                                 </div>
                                 
@@ -77,16 +77,16 @@
                         <div class="bg-slate-50 rounded-xl p-6">
                             <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                                 <i class="pi pi-info-circle text-blue-600"></i>
-                                Basic Information
+                                {{ $t('dashboard.basic_information') }}
                             </h3>
                             <div class="space-y-4">
                                 <div>
-                                    <h4 class="text-sm font-medium text-slate-700 mb-2">Card Name</h4>
-                                    <p class="text-base text-slate-900 font-medium">{{ cardProp.name || 'Untitled Card' }}</p>
+                                    <h4 class="text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.card_name') }}</h4>
+                                    <p class="text-base text-slate-900 font-medium">{{ cardProp.name || $t('dashboard.untitled_card') }}</p>
                                 </div>
 
                                 <div v-if="cardProp.description">
-                                    <h4 class="text-sm font-medium text-slate-700 mb-2">Description</h4>
+                                    <h4 class="text-sm font-medium text-slate-700 mb-2">{{ $t('common.description') }}</h4>
                                     <div 
                                         class="text-sm text-slate-600 leading-relaxed prose prose-sm max-w-none prose-slate"
                                         v-html="renderMarkdown(cardProp.description)"
@@ -99,15 +99,15 @@
                         <div class="bg-slate-50 rounded-xl p-6">
                             <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                                 <i class="pi pi-cog text-blue-600"></i>
-                                Configuration
+                                {{ $t('dashboard.configuration') }}
                             </h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div class="bg-white rounded-lg p-4 border border-slate-200">
                                     <h4 class="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
                                         <i class="pi pi-qrcode text-slate-500"></i>
-                                        QR Code Position
+                                        {{ $t('dashboard.qr_code_position') }}
                                     </h4>
-                                    <p class="text-sm text-slate-600">{{ displayQrCodePositionForView || 'Not set' }}</p>
+                                    <p class="text-sm text-slate-600">{{ displayQrCodePositionForView || $t('dashboard.not_set') }}</p>
                                 </div>
                             </div>
                         </div>
@@ -117,14 +117,14 @@
                              class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
                             <h3 class="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
                                 <i class="pi pi-comments text-blue-600"></i>
-                                AI Assistance Configuration
+                                {{ $t('dashboard.ai_assistance_configuration') }}
                             </h3>
                             
                             <!-- AI Instruction -->
                             <div v-if="cardProp.ai_instruction" class="mb-4">
                                 <h4 class="text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
                                     <i class="pi pi-user text-blue-600"></i>
-                                    AI Instruction (Role & Guidelines)
+                                    {{ $t('dashboard.ai_instruction_role') }}
                                 </h4>
                                 <div class="bg-white rounded-lg p-4 border border-blue-200">
                                     <p class="text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">{{ cardProp.ai_instruction }}</p>
@@ -135,7 +135,7 @@
                             <div v-if="cardProp.ai_knowledge_base" class="mb-4">
                                 <h4 class="text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
                                     <i class="pi pi-book text-blue-600"></i>
-                                    AI Knowledge Base
+                                    {{ $t('dashboard.ai_knowledge_base') }}
                                 </h4>
                                 <div class="bg-white rounded-lg p-4 border border-blue-200">
                                     <p class="text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">{{ cardProp.ai_knowledge_base }}</p>
@@ -146,7 +146,7 @@
                             <div class="mt-3 p-3 bg-blue-100 rounded-lg">
                                 <p class="text-xs text-blue-800 flex items-center gap-2">
                                     <i class="pi pi-info-circle"></i>
-                                    <span>AI assistance is enabled. These settings guide the AI when interacting with visitors.</span>
+                                    <span>{{ $t('dashboard.ai_enabled_note') }}</span>
                                 </p>
                             </div>
                         </div>
@@ -155,16 +155,16 @@
                         <div class="bg-slate-50 rounded-xl p-6">
                             <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                                 <i class="pi pi-calendar text-blue-600"></i>
-                                Metadata
+                                {{ $t('dashboard.metadata') }}
                             </h3>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div v-if="cardProp.created_at" class="bg-white rounded-lg p-4 border border-slate-200">
-                                    <h4 class="text-sm font-medium text-slate-700 mb-2">Created</h4>
+                                    <h4 class="text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.created') }}</h4>
                                     <p class="text-sm text-slate-600">{{ formatDate(cardProp.created_at) }}</p>
                                 </div>
 
                                 <div v-if="cardProp.updated_at" class="bg-white rounded-lg p-4 border border-slate-200">
-                                    <h4 class="text-sm font-medium text-slate-700 mb-2">Last Updated</h4>
+                                    <h4 class="text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.last_updated') }}</h4>
                                     <p class="text-sm text-slate-600">{{ formatDate(cardProp.updated_at) }}</p>
                                 </div>
                             </div>
@@ -177,13 +177,13 @@
         <!-- Edit Dialog -->
         <MyDialog
             v-model="showEditDialog"
-            header="Edit Card"
+            :header="$t('dashboard.edit_card')"
             :confirmHandle="handleSaveEdit"
-            confirmLabel="Save Changes"
+            :confirmLabel="$t('dashboard.save_changes')"
             confirmSeverity="primary"
-            cancelLabel="Cancel"
-            successMessage="Card updated successfully"
-            errorMessage="Failed to update card"
+            :cancelLabel="$t('common.cancel')"
+            :successMessage="$t('dashboard.card_updated')"
+            :errorMessage="$t('messages.operation_failed')"
             @cancel="handleCancelEdit"
             @hide="handleDialogHide"
             style="width: 90vw; max-width: 1200px;"
@@ -200,6 +200,7 @@
 
 <script setup>
 import { computed, ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import MyDialog from '@/components/MyDialog.vue';
@@ -207,6 +208,8 @@ import CardCreateEditForm from './CardCreateEditForm.vue';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
 import { getCardAspectRatio } from '@/utils/cardConfig';
 import { marked } from 'marked';
+
+const { t } = useI18n();
 
 const props = defineProps({
     cardProp: {
@@ -236,10 +239,10 @@ const displayQrCodePositionForView = computed(() => {
     if (!props.cardProp || !props.cardProp.qr_code_position) return null;
     
     const positions = {
-        'TL': 'Top Left',
-        'TR': 'Top Right',
-        'BL': 'Bottom Left',
-        'BR': 'Bottom Right'
+        'TL': t('dashboard.top_left'),
+        'TR': t('dashboard.top_right'),
+        'BL': t('dashboard.bottom_left'),
+        'BR': t('dashboard.bottom_right')
     };
     
     return positions[props.cardProp.qr_code_position] || props.cardProp.qr_code_position;

@@ -1,9 +1,9 @@
 <template>
-  <PageWrapper title="Batch Management" description="View and manage all card batches">
+  <PageWrapper :title="$t('batches.card_batches')" :description="$t('admin.view_all_batches')">
     <template #actions>
       <Button 
         icon="pi pi-refresh" 
-        label="Refresh" 
+        :label="$t('admin.refresh_data')" 
         @click="refreshData"
         :loading="batchesStore.isLoadingAllBatches"
         severity="secondary"
@@ -16,8 +16,8 @@
     <!-- All Batches -->
     <div class="bg-white rounded-xl shadow-soft border border-slate-200 overflow-hidden">
       <div class="px-6 py-4 border-b border-slate-200">
-        <h2 class="text-lg font-semibold text-slate-900">All Batches</h2>
-        <p class="text-sm text-slate-600 mt-1">View and manage all card batches</p>
+        <h2 class="text-lg font-semibold text-slate-900">{{ $t('batches.card_batches') }}</h2>
+        <p class="text-sm text-slate-600 mt-1">{{ $t('admin.view_all_batches') }}</p>
       </div>
 
       <DataTable 
@@ -33,30 +33,30 @@
           <div class="flex flex-col gap-4">
             <div class="flex justify-between items-center">
               <span class="text-sm text-slate-600">
-                Total: {{ batchesStore.allBatches.length }} batches
+                {{ $t('common.total') || 'Total' }}: {{ batchesStore.allBatches.length }}
               </span>
             </div>
             
             <!-- Filters -->
             <div class="flex flex-wrap gap-3 items-center">
               <div class="flex items-center gap-2">
-                <label class="text-sm text-slate-700 font-medium">Email Search:</label>
+                <label class="text-sm text-slate-700 font-medium">{{ $t('admin.search_by_email') }}</label>
                 <InputText 
                   v-model="emailSearch"
-                  placeholder="Search by user email..."
+                  :placeholder="$t('admin.search_by_email')"
                   class="w-64"
                   @input="applyFilters"
                 />
               </div>
               
               <div class="flex items-center gap-2">
-                <label class="text-sm text-slate-700 font-medium">Payment Status:</label>
+                <label class="text-sm text-slate-700 font-medium">{{ $t('batches.payment_status') }}</label>
                 <Select 
                   v-model="paymentStatusFilter"
                   :options="paymentStatusOptions"
                   optionLabel="label"
                   optionValue="value"
-                  placeholder="All Statuses"
+                  :placeholder="$t('admin.all_statuses') || 'All Statuses'"
                   class="w-40"
                   showClear
                   @change="applyFilters"
@@ -65,7 +65,7 @@
               
               <Button 
                 icon="pi pi-times"
-                label="Clear Filters"
+                :label="$t('admin.clear_filters') || 'Clear Filters'"
                 @click="clearFilters"
                 size="small"
                 severity="secondary"
@@ -84,13 +84,13 @@
           </template>
         </Column>
 
-        <Column field="user_email" header="User Email" sortable>
+        <Column field="user_email" :header="$t('admin.user_email')" sortable>
           <template #body="{ data }">
             <span class="text-slate-900">{{ data.user_email }}</span>
           </template>
         </Column>
         
-        <Column field="payment_status" header="Payment Status" sortable>
+        <Column field="payment_status" :header="$t('batches.payment_status')" sortable>
           <template #body="{ data }">
             <Tag
               :value="data.payment_status"
@@ -100,13 +100,13 @@
           </template>
         </Column>
 
-        <Column field="cards_count" header="Card Count" sortable>
+        <Column field="cards_count" :header="$t('batches.total_cards')" sortable>
           <template #body="{ data }">
             <span class="font-medium text-slate-900">{{ data.cards_count }}</span>
           </template>
         </Column>
 
-        <Column field="created_at" header="Created At" sortable>
+        <Column field="created_at" :header="$t('dashboard.created')" sortable>
           <template #body="{ data }">
             <span class="text-sm text-slate-600">
               {{ formatDate(data.created_at) }}
@@ -117,8 +117,8 @@
         <template #empty>
           <div class="text-center py-8">
             <i class="pi pi-inbox text-4xl text-slate-400 mb-4"></i>
-            <p class="text-lg font-medium text-slate-900 mb-2">No Batches Found</p>
-            <p class="text-slate-600">No batches match your current filters.</p>
+            <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('batches.no_batches_found') }}</p>
+            <p class="text-slate-600">{{ $t('admin.no_batches_match_filters') || 'No batches match your current filters.' }}</p>
           </div>
         </template>
       </DataTable>
@@ -129,6 +129,7 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import { useAdminBatchesStore } from '@/stores/admin';
 
@@ -141,6 +142,7 @@ import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import PageWrapper from '@/components/Layout/PageWrapper.vue';
 
+const { t } = useI18n();
 const toast = useToast();
 const batchesStore = useAdminBatchesStore();
 
@@ -149,10 +151,10 @@ const emailSearch = ref('');
 const paymentStatusFilter = ref(null);
 
 // Filter options
-const paymentStatusOptions = ref([
-  { label: 'Pending', value: 'PENDING' },
-  { label: 'Paid', value: 'PAID' },
-  { label: 'Admin Issued', value: 'FREE' }
+const paymentStatusOptions = computed(() => [
+  { label: t('batches.pending'), value: 'PENDING' },
+  { label: t('batches.paid'), value: 'PAID' },
+  { label: t('batches.admin_issued'), value: 'FREE' }
 ]);
 
 // Computed for active filters
@@ -170,8 +172,8 @@ const applyFilters = async () => {
   } catch (error) {
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to apply filters',
+      summary: t('common.error'),
+      detail: t('batches.failed_to_apply_filters'),
       life: 3000
     });
   }

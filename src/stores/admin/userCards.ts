@@ -17,7 +17,8 @@ export interface AdminUserCard {
   original_image_url: string | null
   crop_parameters: any
   conversation_ai_enabled: boolean
-  ai_prompt: string | null
+  ai_instruction: string | null
+  ai_knowledge_base: string | null
   qr_code_position: string
   created_at: string
   updated_at: string
@@ -33,7 +34,7 @@ export interface AdminCardContent {
   image_url: string | null
   original_image_url: string | null
   crop_parameters: any
-  ai_metadata: string | null
+  ai_knowledge_base: string | null
   sort_order: number
   created_at: string
   updated_at: string

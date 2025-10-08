@@ -15,8 +15,8 @@
                             />
                         </svg>
                     </div>
-                    <h1 class="text-2xl font-bold text-slate-900 mb-2">Create Your Account</h1>
-                    <p class="text-slate-600">Join CardStudio CMS to start creating digital cards</p>
+                    <h1 class="text-2xl font-bold text-slate-900 mb-2">{{ $t('auth.create_account') }}</h1>
+                    <p class="text-slate-600">{{ $t('auth.join_cardstudio') }}</p>
                 </div>
                 <!-- Form Section -->
                 <div class="px-8 pb-8">
@@ -24,12 +24,12 @@
                     <form @submit.prevent="handleSignUp" class="space-y-5">
                         <!-- Email Field -->
                         <div class="space-y-2">
-                            <label for="email" class="block text-sm font-medium text-slate-700">Email Address</label>
+                            <label for="email" class="block text-sm font-medium text-slate-700">{{ $t('auth.email_address') }}</label>
                             <InputText 
                                 id="email" 
                                 v-model="email" 
                                 type="email" 
-                                placeholder="Enter your email" 
+                                :placeholder="$t('auth.email_address')" 
                                 class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                 :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': emailError }"
                                 required 
@@ -39,12 +39,12 @@
 
                         <!-- Password Field -->
                         <div class="space-y-2">
-                            <label for="password" class="block text-sm font-medium text-slate-700">Password</label>
+                            <label for="password" class="block text-sm font-medium text-slate-700">{{ $t('auth.password') }}</label>
                             <InputText 
                                 id="password" 
                                 v-model="password" 
                                 type="password" 
-                                placeholder="Enter your password" 
+                                :placeholder="$t('auth.password')" 
                                 class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                 :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': passwordError }"
                                 required 
@@ -64,12 +64,12 @@
 
                         <!-- Confirm Password Field -->
                         <div class="space-y-2">
-                            <label for="confirmPassword" class="block text-sm font-medium text-slate-700">Confirm Password</label>
+                            <label for="confirmPassword" class="block text-sm font-medium text-slate-700">{{ $t('auth.confirm_password') }}</label>
                             <InputText 
                                 id="confirmPassword" 
                                 v-model="confirmPassword" 
                                 type="password" 
-                                placeholder="Confirm your password" 
+                                :placeholder="$t('auth.confirm_password')" 
                                 class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                 :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': confirmPasswordError }"
                                 required 
@@ -108,7 +108,7 @@
                         <!-- Submit Button -->
                         <Button 
                             type="submit" 
-                            label="Create Account" 
+                            :label="$t('auth.create_account')" 
                             severity="primary"
                             class="w-full py-3 border-0 shadow-lg hover:shadow-xl transition-all duration-200" 
                             :style="{
@@ -126,9 +126,9 @@
                     <!-- Sign In Link -->
                     <div class="mt-8 text-center">
                         <p class="text-slate-600">
-                            Already have an account? 
+                            {{ $t('auth.already_have_account') }} 
                             <a @click="goToSignIn" class="text-blue-600 hover:text-blue-800 font-medium cursor-pointer transition-colors">
-                                Sign in here
+                                {{ $t('auth.sign_in_here') }}
                             </a>
                         </p>
                     </div>
@@ -146,6 +146,9 @@ import Message from 'primevue/message';
 import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth.js';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const email = ref('');
 const password = ref('');
@@ -162,17 +165,17 @@ const errorMessage = ref('');
 const emailError = computed(() => {
     if (!email.value) return '';
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return !emailRegex.test(email.value) ? 'Please enter a valid email address' : '';
+    return !emailRegex.test(email.value) ? t('auth.invalid_email') : '';
 });
 
 const passwordError = computed(() => {
     if (!password.value) return '';
-    return password.value.length < 8 ? 'Password must be at least 8 characters' : '';
+    return password.value.length < 8 ? t('auth.password_requirements') : '';
 });
 
 const confirmPasswordError = computed(() => {
     if (!confirmPassword.value) return '';
-    return password.value !== confirmPassword.value ? 'Passwords do not match' : '';
+    return password.value !== confirmPassword.value ? t('auth.passwords_must_match') : '';
 });
 
 const isFormValid = computed(() => {
@@ -216,12 +219,12 @@ async function handleSignUp() {
     
     // Validate form
     if (emailError.value || passwordError.value || confirmPasswordError.value) {
-        errorMessage.value = 'Please fix the errors above';
+        errorMessage.value = t('validation.required_field');
         return;
     }
     
     if (!agreeToTerms.value) {
-        errorMessage.value = 'Please agree to the Terms of Service and Privacy Policy';
+        errorMessage.value = t('auth.agree_to_terms');
         return;
     }
     
@@ -231,7 +234,7 @@ async function handleSignUp() {
         // Message is shown by the auth store
         // router.push('/login'); // Or a "check your email" page
     } catch (error) {
-        errorMessage.value = error.message || 'Failed to create account. Please try again.';
+        errorMessage.value = error.message || t('auth.sign_up_error');
         console.error('Sign up error:', error);
     } finally {
         isLoading.value = false;

@@ -5,7 +5,7 @@
       <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-sm font-medium text-slate-600 mb-2">Total Issued</h3>
+            <h3 class="text-sm font-medium text-slate-600 mb-2">{{ $t('batches.total_issued') }}</h3>
             <p class="text-3xl font-bold text-slate-900">{{ stats.total_issued }}</p>
           </div>
           <div class="p-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
@@ -17,9 +17,9 @@
       <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-sm font-medium text-slate-600 mb-2">Activation Rate</h3>
+            <h3 class="text-sm font-medium text-slate-600 mb-2">{{ $t('batches.activation_rate') }}</h3>
             <p class="text-3xl font-bold text-slate-900">{{ stats.activation_rate }}%</p>
-            <p class="text-sm text-blue-600 mt-1">{{ stats.total_activated }} active</p>
+            <p class="text-sm text-blue-600 mt-1">{{ stats.total_activated }} {{ $t('common.active') }}</p>
           </div>
           <div class="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
             <i class="pi pi-check-circle text-white text-2xl"></i>
@@ -30,7 +30,7 @@
       <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
         <div class="flex items-center justify-between">
           <div>
-            <h3 class="text-sm font-medium text-slate-600 mb-2">Batches</h3>
+            <h3 class="text-sm font-medium text-slate-600 mb-2">{{ $t('batches.batches') }}</h3>
             <p class="text-3xl font-bold text-slate-900">{{ stats.total_batches }}</p>
           </div>
           <div class="p-4 bg-gradient-to-r from-purple-500 to-violet-500 rounded-xl">
@@ -68,9 +68,9 @@
     <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
       <div class="p-6 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
         <div class="flex justify-between items-center">
-          <h3 class="text-lg font-semibold text-slate-900">Card Batches</h3>
+          <h3 class="text-lg font-semibold text-slate-900">{{ $t('batches.card_batches') }}</h3>
           <Button 
-            label="Issue New Batch" 
+            :label="$t('batches.issue_batch')" 
             icon="pi pi-plus"
             @click="showCreateBatchDialog = true"
             class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0"
@@ -89,7 +89,7 @@
           currentPageReportTemplate="{first} to {last} of {totalRecords}"
           class="w-full"
         >
-          <Column field="batch_name" header="Batch" :sortable="true" style="min-width:160px">
+          <Column field="batch_name" :header="$t('batches.batch')" :sortable="true" style="min-width:160px">
             <template #body="{ data }">
               <div>
                 <div class="text-sm font-medium text-slate-900 mb-1">{{ data.batch_name }}</div>
@@ -102,7 +102,7 @@
             </template>
           </Column>
 
-          <Column field="cards_count" header="Cards" :sortable="true" style="width:100px">
+          <Column field="cards_count" :header="$t('batches.cards')" :sortable="true" style="width:100px">
             <template #body="{ data }">
               <div class="text-center">
                 <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
@@ -112,7 +112,7 @@
             </template>
           </Column>
 
-          <Column field="payment_status" header="Payment" :sortable="true" style="width:120px">
+          <Column field="payment_status" :header="$t('batches.payment_status')" :sortable="true" style="width:120px">
             <template #body="{ data }">
               <div class="text-center">
                 <span :class="getPaymentStatusClass(data.payment_status)">
@@ -122,7 +122,7 @@
             </template>
           </Column>
 
-          <Column field="total_amount" header="Amount" :sortable="true" style="width:100px">
+          <Column field="total_amount" :header="$t('batches.total_amount')" :sortable="true" style="width:100px">
             <template #body="{ data }">
               <div class="text-right text-sm font-medium" :class="data.payment_status === 'free' ? 'text-slate-600' : 'text-slate-900'">
                 {{ data.payment_status === 'free' ? '-' : `$${(data.total_amount / 100).toFixed(2)}` }}
@@ -130,7 +130,7 @@
             </template>
           </Column>
 
-          <Column field="created_at" header="Created" :sortable="true" style="width:140px">
+          <Column field="created_at" :header="$t('dashboard.created')" :sortable="true" style="width:140px">
             <template #body="{ data }">
               <div class="text-xs text-slate-600">
                 {{ formatDate(data.created_at) }}
@@ -139,18 +139,18 @@
           </Column>
 
 
-          <Column header="Actions" style="width:180px">
+          <Column :header="$t('common.actions')" style="width:180px">
             <template #body="{ data }">
               <div class="flex items-center gap-1">
                 <!-- Primary Action: Print (for paid and admin-issued batches) -->
                 <Button 
                   v-if="(data.payment_status === 'completed' || data.payment_status === 'free') && data.cards_generated && !data.has_print_request"
-                  label="Print" 
+                  :label="$t('batches.request_print')" 
                   icon="pi pi-print"
                   size="small"
                   @click="requestPrint(data)"
                   class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 font-medium shadow-md hover:shadow-lg transition-all duration-200 animate-pulse"
-                  v-tooltip.top="'Request physical cards'"
+                  v-tooltip.top="$t('batches.request_print')"
                 />
                 
                 <!-- Color buttons first -->
@@ -164,7 +164,7 @@
                     'bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200',
                     data.print_request_status !== 'COMPLETED' ? 'animate-pulse' : ''
                   ]"
-                  v-tooltip.top="'Print Status'"
+                  v-tooltip.top="$t('batches.print_request_status')"
                 />
                 
                 <!-- Outlined buttons after -->
@@ -175,7 +175,7 @@
                   outlined
                   @click="viewBatchCards(data)"
                   class="border-blue-600 text-blue-600 hover:bg-blue-50"
-                  v-tooltip.top="'View Cards'"
+                  v-tooltip.top="$t('batches.view_cards')"
                 />
                 
                 <!-- Details button always visible -->
@@ -185,7 +185,7 @@
                   outlined
                   @click="viewBatchDetails(data)"
                   class="border-slate-600 text-slate-600 hover:bg-slate-50"
-                  v-tooltip.top="'Details'"
+                  v-tooltip.top="$t('common.details')"
                 />
               </div>
             </template>
@@ -198,19 +198,19 @@
     <Dialog 
       v-model:visible="showCreateBatchDialog" 
       modal 
-      header="Issue New Card Batch" 
+      :header="$t('batches.issue_batch')" 
       :style="{ width: '500px' }"
       class="standardized-dialog"
       appendTo="body"
     >
       <div class="space-y-6">
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">Number of Cards</label>
+          <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('batches.cards') }}</label>
           <InputNumber 
             v-model="newBatch.cardCount"
             :min="1"
             :max="1000"
-            placeholder="Enter number of cards"
+            :placeholder="$t('batches.enter_number_of_cards')"
             class="w-full"
           />
           <small class="text-slate-500 mt-1">
@@ -257,12 +257,12 @@
       <template #footer>
         <div class="flex gap-3 justify-end">
           <Button 
-            label="Cancel" 
+            :label="$t('common.cancel')" 
             outlined 
             @click="showCreateBatchDialog = false"
           />
           <Button 
-            label="Pay & Issue" 
+            :label="$t('batches.pay_and_issue')" 
             @click="createBatch"
             :loading="creatingBatch"
             :disabled="!newBatch.cardCount || !currentCard"
@@ -279,7 +279,7 @@
           <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <i class="pi pi-check text-blue-600 text-2xl"></i>
           </div>
-          <h3 class="text-xl font-semibold text-slate-900 mb-2">Payment Successful!</h3>
+          <h3 class="text-xl font-semibold text-slate-900 mb-2">{{ $t('batches.payment_successful') }}</h3>
           <p class="text-slate-600 mb-6">
             Your digital cards have been generated and are ready for distribution.
           </p>
@@ -288,33 +288,33 @@
           <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
             <h4 class="font-semibold text-blue-900 mb-3 flex items-center gap-2">
               <i class="pi pi-lightbulb text-blue-600"></i>
-              What's Next?
+              {{ $t('batches.whats_next') }}
             </h4>
             <div class="space-y-2 text-sm text-blue-800">
               <div class="flex items-center gap-2">
                 <i class="pi pi-check text-blue-600"></i>
-                <span>✓ Digital cards are live and scannable</span>
+                <span>✓ {{ $t('batches.digital_cards_live') }}</span>
               </div>
               <div class="flex items-center gap-2">
                 <i class="pi pi-print text-purple-600"></i>
-                <span class="font-medium">Request physical card printing for visitors</span>
+                <span class="font-medium">{{ $t('batches.request_physical_printing_short') }}</span>
               </div>
               <div class="flex items-center gap-2">
                 <i class="pi pi-share-alt text-blue-600"></i>
-                <span>Download QR codes to share with your audience</span>
+                <span>{{ $t('batches.download_qr_codes_hint') }}</span>
               </div>
             </div>
           </div>
           
           <div class="flex gap-3 justify-center">
             <Button 
-              label="Request Print" 
+              :label="$t('batches.request_print')" 
               icon="pi pi-print"
               @click="handleSuccessPrintRequest"
               class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 font-medium"
             />
             <Button 
-              label="View Cards" 
+              :label="$t('batches.view_cards')" 
               outlined
               @click="closeSuccessMessage"
               class="border-blue-600 text-blue-600 hover:bg-blue-50"
@@ -328,7 +328,7 @@
     <Dialog 
       v-model:visible="showBatchDetailsDialog" 
       modal 
-      header="Batch Details" 
+      :header="$t('batches.batch_details')" 
       :style="{ width: '600px' }"
       class="standardized-dialog"
       appendTo="body"
@@ -363,10 +363,10 @@
 
         <!-- Payment Info -->
         <div class="bg-slate-50 rounded-lg p-4">
-          <h4 class="font-medium text-slate-900 mb-3">Payment Information</h4>
+          <h4 class="font-medium text-slate-900 mb-3">{{ $t('batches.payment_information') }}</h4>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="text-sm text-slate-600">Status</label>
+              <label class="text-sm text-slate-600">{{ $t('common.status') }}</label>
               <p class="mt-1">
                 <span :class="getPaymentStatusClass(selectedBatch.payment_status)">
                   {{ formatPaymentStatus(selectedBatch.payment_status) }}
@@ -374,7 +374,7 @@
               </p>
             </div>
             <div v-if="selectedBatch.payment_status !== 'free'">
-              <label class="text-sm text-slate-600">Amount</label>
+              <label class="text-sm text-slate-600">{{ $t('batches.total_amount') }}</label>
               <p class="font-semibold text-slate-900">${{ (selectedBatch.total_amount / 100).toFixed(2) }}</p>
             </div>
             <div v-if="selectedBatch.payment_status === 'free'">
@@ -382,15 +382,15 @@
               <p class="font-semibold text-slate-600">-</p>
             </div>
             <div v-if="selectedBatch.payment_completed_at">
-              <label class="text-sm text-slate-600">Paid At</label>
+              <label class="text-sm text-slate-600">{{ $t('batches.paid_at') }}</label>
               <p class="text-slate-900">{{ formatDate(selectedBatch.payment_completed_at) }}</p>
             </div>
             <div v-if="selectedBatch.payment_waived && selectedBatch.payment_status === 'free'">
-              <label class="text-sm text-slate-600">Issued By</label>
+              <label class="text-sm text-slate-600">{{ $t('batches.issued_by') }}</label>
               <p class="text-slate-900">Admin</p>
             </div>
             <div v-if="selectedBatch.payment_waiver_reason" class="col-span-2">
-              <label class="text-sm text-slate-600">Reason</label>
+              <label class="text-sm text-slate-600">{{ $t('common.reason') }}</label>
               <p class="text-slate-900">{{ selectedBatch.payment_waiver_reason }}</p>
             </div>
           </div>
@@ -398,10 +398,10 @@
 
         <!-- Cards Generation Status -->
         <div class="bg-slate-50 rounded-lg p-4">
-          <h4 class="font-medium text-slate-900 mb-3">Cards Generation</h4>
+          <h4 class="font-medium text-slate-900 mb-3">{{ $t('batches.cards_generation') }}</h4>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="text-sm text-slate-600">Generated</label>
+              <label class="text-sm text-slate-600">{{ $t('batches.generated') }}</label>
               <p class="font-semibold">
                 <span :class="selectedBatch.cards_generated ? 'text-blue-700' : 'text-yellow-700'">
                   {{ selectedBatch.cards_generated ? 'Yes' : 'No' }}
@@ -409,7 +409,7 @@
               </p>
             </div>
             <div v-if="selectedBatch.cards_generated_at">
-              <label class="text-sm text-slate-600">Generated At</label>
+              <label class="text-sm text-slate-600">{{ $t('batches.generated_at') }}</label>
               <p class="text-slate-900">{{ formatDate(selectedBatch.cards_generated_at) }}</p>
             </div>
           </div>
@@ -417,14 +417,14 @@
 
         <!-- Timestamps -->
         <div class="bg-slate-50 rounded-lg p-4">
-          <h4 class="font-medium text-slate-900 mb-3">Timestamps</h4>
+          <h4 class="font-medium text-slate-900 mb-3">{{ $t('common.timestamps') }}</h4>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="text-sm text-slate-600">Created At</label>
+              <label class="text-sm text-slate-600">{{ $t('common.created_at') }}</label>
               <p class="text-slate-900">{{ formatDate(selectedBatch.created_at) }}</p>
             </div>
             <div>
-              <label class="text-sm text-slate-600">Updated At</label>
+              <label class="text-sm text-slate-600">{{ $t('common.updated_at') }}</label>
               <p class="text-slate-900">{{ formatDate(selectedBatch.updated_at) }}</p>
             </div>
           </div>
@@ -444,14 +444,14 @@
       <template #footer>
         <div class="flex gap-3 justify-between">
           <Button 
-            label="Close" 
+            :label="$t('common.close')" 
             outlined 
             @click="showBatchDetailsDialog = false"
             class="border-slate-600 text-slate-600 hover:bg-slate-50"
           />
           <div v-if="selectedBatch?.payment_status === 'completed' && selectedBatch?.cards_generated" class="flex gap-2">
             <Button 
-              label="Download Codes" 
+              :label="$t('batches.download_codes')" 
               icon="pi pi-download"
               @click="downloadBatchCodes(selectedBatch)"
               :loading="downloadingCodes"
@@ -460,7 +460,7 @@
               class="border-blue-600 text-blue-600 hover:bg-blue-50"
             />
             <Button 
-              label="View Cards" 
+              :label="$t('batches.view_cards')" 
               icon="pi pi-eye"
               @click="viewBatchCards(selectedBatch)"
               outlined
@@ -476,7 +476,7 @@
     <Dialog 
       v-model:visible="showPrintRequestDialog" 
       modal 
-      header="Request Physical Card Printing" 
+      :header="$t('batches.request_physical_printing')" 
       :style="{ width: '600px' }"
       class="standardized-dialog"
       appendTo="body"
@@ -511,13 +511,13 @@
         <!-- Shipping Address -->
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-2">
-            Shipping Address <span class="text-red-500">*</span>
+            {{ $t('batches.shipping_address') }} <span class="text-red-500">*</span>
           </label>
           <Textarea 
             v-model="printRequestForm.shipping_address"
             rows="4"
             class="w-full"
-            placeholder="Enter full shipping address including:&#10;- Full name&#10;- Street address&#10;- City, State/Province&#10;- Postal/ZIP code&#10;- Country"
+            :placeholder="$t('batches.shipping_address_placeholder')"
             :class="{ 'p-invalid': printRequestForm.errors.shipping_address }"
           />
           <small v-if="printRequestForm.errors.shipping_address" class="p-error">
@@ -527,7 +527,7 @@
 
         <!-- Contact Information -->
         <div class="space-y-4">
-          <h4 class="text-sm font-medium text-slate-700">Contact Information</h4>
+          <h4 class="text-sm font-medium text-slate-700">{{ $t('batches.contact_information') }}</h4>
           <p class="text-xs text-slate-600 mb-3">
             Please provide at least one contact method for updates about your print request.
           </p>
@@ -536,13 +536,13 @@
             <!-- Contact Email -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-2">
-                Email Address
+                {{ $t('common.email') }}
               </label>
               <InputText 
                 v-model="printRequestForm.contact_email"
                 type="email"
                 class="w-full"
-                placeholder="Enter email for updates"
+                :placeholder="$t('batches.enter_email_for_updates')"
                 :class="{ 'p-invalid': printRequestForm.errors.contact_email }"
               />
               <small v-if="printRequestForm.errors.contact_email" class="p-error">
@@ -553,13 +553,13 @@
             <!-- WhatsApp Number -->
             <div>
               <label class="block text-sm font-medium text-slate-700 mb-2">
-                WhatsApp Number
+                {{ $t('batches.whatsapp_number') }}
               </label>
               <InputText 
                 v-model="printRequestForm.contact_whatsapp"
                 type="tel"
                 class="w-full"
-                placeholder="+1 234 567 8900"
+                :placeholder="$t('batches.whatsapp_placeholder')"
                 :class="{ 'p-invalid': printRequestForm.errors.contact_whatsapp }"
               />
               <small v-if="printRequestForm.errors.contact_whatsapp" class="p-error">
@@ -574,24 +574,24 @@
         <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
           <h4 class="font-semibold text-slate-900 mb-3 flex items-center gap-2">
             <i class="pi pi-print"></i>
-            Print Specifications
+            {{ $t('batches.print_specifications') }}
           </h4>
           <div class="space-y-2 text-sm text-slate-700">
             <div class="flex items-center gap-2">
               <i class="pi pi-check text-blue-600"></i>
-              <span>High-quality cardstock material</span>
+              <span>{{ $t('batches.print_spec_cardstock') }}</span>
             </div>
             <div class="flex items-center gap-2">
               <i class="pi pi-check text-blue-600"></i>
-              <span>Full-color printing on both sides</span>
+              <span>{{ $t('batches.print_spec_fullcolor') }}</span>
             </div>
             <div class="flex items-center gap-2">
               <i class="pi pi-check text-blue-600"></i>
-              <span>QR codes printed for each card</span>
+              <span>{{ $t('batches.print_spec_qr') }}</span>
             </div>
             <div class="flex items-center gap-2">
               <i class="pi pi-check text-blue-600"></i>
-              <span>Professional packaging and shipping</span>
+              <span>{{ $t('batches.print_spec_packaging') }}</span>
             </div>
           </div>
         </div>
@@ -601,10 +601,9 @@
           <div class="flex items-start gap-3">
             <i class="pi pi-exclamation-triangle text-amber-600 text-lg mt-0.5"></i>
             <div>
-              <h5 class="font-medium text-amber-900 mb-1">Important Notice</h5>
+              <h5 class="font-medium text-amber-900 mb-1">{{ $t('batches.important_notice') }}</h5>
               <p class="text-sm text-amber-800">
-                This will submit a print request to our production team. Processing typically takes 3-5 business days, 
-                plus shipping time. You'll receive tracking information once your order ships.
+                {{ $t('batches.important_notice_text') }}
               </p>
             </div>
           </div>
@@ -614,12 +613,12 @@
       <template #footer>
         <div class="flex gap-3 justify-end">
           <Button 
-            label="Cancel" 
+            :label="$t('common.cancel')" 
             outlined 
             @click="closePrintRequestDialog"
           />
           <Button 
-            label="Submit Print Request" 
+            :label="$t('batches.submit_print_request')" 
             icon="pi pi-print"
             severity="primary"
             @click="submitPrintRequest"
@@ -633,7 +632,7 @@
     <Dialog 
       v-model:visible="showPrintStatusDialog" 
       modal 
-      header="Print Request Status" 
+      :header="$t('batches.print_request_status')" 
       :style="{ width: '600px' }"
       class="standardized-dialog"
       appendTo="body"
@@ -647,21 +646,21 @@
           </h4>
           <div class="grid grid-cols-2 gap-4">
             <div>
-              <label class="text-sm font-medium text-slate-700">Batch Name</label>
+              <label class="text-sm font-medium text-slate-700">{{ $t('batches.batch_name') }}</label>
               <p class="text-sm text-slate-900 mt-1">{{ selectedPrintRequestData.batch_info?.batch_name }}</p>
             </div>
             <div>
-              <label class="text-sm font-medium text-slate-700">Cards Count</label>
+              <label class="text-sm font-medium text-slate-700">{{ $t('batches.cards_count') }}</label>
               <p class="text-sm text-slate-900 mt-1">
                 {{ selectedPrintRequestData.cards_count || selectedPrintRequestData.batch_info?.cards_count || 'N/A' }} cards
               </p>
             </div>
             <div>
-              <label class="text-sm font-medium text-slate-700">Request ID</label>
+              <label class="text-sm font-medium text-slate-700">{{ $t('batches.request_id') }}</label>
               <p class="text-xs text-slate-600 mt-1 font-mono">{{ selectedPrintRequestData.id }}</p>
             </div>
             <div>
-              <label class="text-sm font-medium text-slate-700">Submitted</label>
+              <label class="text-sm font-medium text-slate-700">{{ $t('batches.submitted') }}</label>
               <p class="text-sm text-slate-900 mt-1">{{ formatDate(selectedPrintRequestData.requested_at) }}</p>
             </div>
           </div>
@@ -759,7 +758,7 @@
         <div class="bg-green-50 rounded-lg p-4 border border-green-200">
           <h4 class="font-semibold text-green-900 mb-3 flex items-center gap-2">
             <i class="pi pi-map-marker text-green-600"></i>
-            Shipping Address
+            {{ $t('batches.shipping_address') }}
           </h4>
           <div class="bg-white rounded border border-green-200 p-3">
             <pre class="text-sm text-slate-900 whitespace-pre-wrap font-sans">{{ selectedPrintRequestData.shipping_address }}</pre>
@@ -770,15 +769,15 @@
         <div v-if="selectedPrintRequestData.contact_email || selectedPrintRequestData.contact_whatsapp" class="bg-purple-50 rounded-lg p-4 border border-purple-200">
           <h4 class="font-semibold text-purple-900 mb-3 flex items-center gap-2">
             <i class="pi pi-phone text-purple-600"></i>
-            Contact Information
+            {{ $t('batches.contact_information') }}
           </h4>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div v-if="selectedPrintRequestData.contact_email">
-              <label class="text-sm font-medium text-purple-700">Email</label>
+              <label class="text-sm font-medium text-purple-700">{{ $t('common.email') }}</label>
               <p class="text-sm text-purple-900 mt-1">{{ selectedPrintRequestData.contact_email }}</p>
             </div>
             <div v-if="selectedPrintRequestData.contact_whatsapp">
-              <label class="text-sm font-medium text-purple-700">WhatsApp</label>
+              <label class="text-sm font-medium text-purple-700">{{ $t('batches.whatsapp_number') }}</label>
               <p class="text-sm text-purple-900 mt-1">{{ selectedPrintRequestData.contact_whatsapp }}</p>
             </div>
           </div>
@@ -788,7 +787,7 @@
         <div v-if="selectedPrintRequestData.admin_notes" class="bg-amber-50 rounded-lg p-4 border border-amber-200">
           <h4 class="font-semibold text-amber-900 mb-3 flex items-center gap-2">
             <i class="pi pi-comment text-amber-600"></i>
-            Updates from CardStudio
+            {{ $t('batches.updates_from_cardstudio') }}
           </h4>
           <div class="bg-white rounded border border-amber-200 p-3">
             <pre class="text-sm text-slate-900 whitespace-pre-wrap font-sans">{{ selectedPrintRequestData.admin_notes }}</pre>
@@ -799,7 +798,7 @@
       <template #footer>
         <div class="flex gap-3 justify-end">
           <Button 
-            label="Close" 
+            :label="$t('common.close')" 
             outlined 
             @click="showPrintStatusDialog = false"
             class="border-slate-600 text-slate-600 hover:bg-slate-50"
@@ -813,6 +812,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Button from 'primevue/button'
@@ -824,6 +824,8 @@ import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
 import { supabase } from '@/lib/supabase'
 import { createCheckoutSession, handleCheckoutSuccess } from '@/utils/stripeCheckout.js'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const route = useRoute()
@@ -959,8 +961,8 @@ const loadBatches = async () => {
     console.error('Error loading batches:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load batches',
+      summary: t('common.error'),
+      detail: t('batches.failed_to_load'),
       life: 5000
     })
   } finally {
@@ -1029,8 +1031,8 @@ const loadCurrentCard = async () => {
     console.error('Error loading current card:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load card information',
+      summary: t('common.error'),
+      detail: t('dashboard.failed_to_load_card'),
       life: 5000
     })
   }
@@ -1072,8 +1074,8 @@ const createBatch = async () => {
     console.error('Error initiating payment:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: error.message || 'Failed to initiate payment',
+      summary: t('common.error'),
+      detail: error.message || t('batches.payment_failed'),
       life: 5000
     })
   } finally {
@@ -1096,8 +1098,8 @@ const handlePayment = async (formData) => {
     console.error('Payment error:', error)
     toast.add({
       severity: 'error',
-      summary: 'Payment Error',
-      detail: error.message || 'Failed to initiate payment',
+      summary: t('batches.payment_error'),
+      detail: error.message || t('batches.payment_failed'),
       life: 5000
     })
   } finally {

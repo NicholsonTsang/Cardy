@@ -6,7 +6,7 @@
                 <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
                     <h3 class="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
                         <i class="pi pi-image text-blue-600"></i>
-                        {{ itemTypeLabel }} Image
+                        {{ parentId ? $t('dashboard.sub_item_image_label') : $t('dashboard.content_item_image') }}
                     </h3>
                     
                     <!-- Single-Column Layout -->
@@ -17,7 +17,7 @@
                             <div class="p-3 bg-blue-100 rounded-lg">
                                 <p class="text-xs text-blue-800 flex items-start gap-2">
                                     <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
-                                    <span><strong>Image Requirements:</strong> Upload JPG or PNG files up to 5MB. Recommended aspect ratio: {{ getContentAspectRatioDisplay() }} for optimal display. You can crop and adjust your image after uploading.</span>
+                                    <span><strong>{{ $t('dashboard.image_requirements') }}:</strong> {{ $t('dashboard.image_requirements_content', { ratio: getContentAspectRatioDisplay() }) }}</span>
                                 </p>
                             </div>
                         
@@ -34,8 +34,8 @@
                                     <div class="upload-icon-container">
                                         <i class="pi pi-image upload-icon"></i>
                                     </div>
-                                    <h4 class="upload-title">Add {{ parentId ? 'sub-item' : 'content' }} image</h4>
-                                    <p class="upload-subtitle">Drag and drop or click to upload</p>
+                                    <h4 class="upload-title">{{ parentId ? $t('dashboard.add_sub_item_image') : $t('dashboard.add_content_image') }}</h4>
+                                    <p class="upload-subtitle">{{ $t('dashboard.drag_drop_upload') }}</p>
                                 
                                     <!-- Hidden File Input -->
                                     <input 
@@ -47,7 +47,7 @@
                                     />
                                     
                                     <Button 
-                                        label="Upload image"
+                                        :label="$t('dashboard.upload_photo')"
                                         icon="pi pi-upload"
                                         @click="triggerFileInput"
                                         class="upload-trigger-button"
@@ -69,7 +69,7 @@
                                 
                                 <div class="image-actions-content">
                                     <Button 
-                                        label="Change image"
+                                        :label="$t('dashboard.change_photo')"
                                         icon="pi pi-image"
                                         @click="triggerFileInput"
                                         severity="secondary"
@@ -78,7 +78,7 @@
                                         class="action-button-content"
                                     />
                                     <Button 
-                                        label="Crop image"
+                                        :label="$t('dashboard.crop_image')"
                                         icon="pi pi-expand"
                                         @click="handleCropImage"
                                         severity="info"
@@ -88,7 +88,7 @@
                                     />
                                     <Button 
                                         v-if="isCropped"
-                                        label="Undo crop"
+                                        :label="$t('dashboard.undo_crop')"
                                         icon="pi pi-undo"
                                         @click="handleUndoCrop"
                                         severity="warning"
@@ -118,23 +118,23 @@
                     <div>
                         <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                             <i class="pi pi-cog text-blue-600"></i>
-                            {{ itemTypeLabel }} Details
+                            {{ parentId ? $t('dashboard.sub_item_details') : $t('dashboard.content_item_details') }}
                         </h3>
                         
                         <div class="space-y-4">
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-2">Name *</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.name_label') }} *</label>
                                 <InputText 
                                     v-model="formData.name" 
                                     class="w-full" 
-                                    :placeholder="`Enter ${itemTypeLabel.toLowerCase()} name`"
+                                    :placeholder="$t('dashboard.enter_content_name', { type: itemTypeLabelLower })"
                                     :class="{ 'p-invalid': !formData.name.trim() }"
                                 />
-                                <small v-if="!formData.name.trim()" class="p-error">Name is required</small>
+                                <small v-if="!formData.name.trim()" class="p-error">{{ $t('dashboard.name_required') }}</small>
                             </div>
 
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-2">Description (Markdown)</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.description_markdown') }}</label>
                                 <MdEditor 
                                     v-model="formData.description"
                                     language="en-US"
@@ -151,8 +151,8 @@
                         <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
                             <label class="flex items-center gap-2 text-sm font-medium text-blue-900 mb-2">
                                 <i class="pi pi-database"></i>
-                                AI Knowledge Base
-                                <span class="text-xs text-blue-600 ml-auto">{{ aiKnowledgeBaseWordCount }}/500 words</span>
+                                {{ $t('dashboard.ai_knowledge_base_content') }}
+                                <span class="text-xs text-blue-600 ml-auto">{{ aiKnowledgeBaseWordCount }}/500 {{ $t('dashboard.words') }}</span>
                             </label>
                             <Textarea 
                                 v-model="formData.aiKnowledgeBase" 
@@ -165,7 +165,7 @@
                             <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                                 <p class="text-xs text-blue-800 flex items-start gap-2">
                                     <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
-                                    <span><strong>Purpose:</strong> Provide content-specific knowledge for this {{ itemTypeLabel.toLowerCase() }}. Include facts, specifications, historical details, or contextual information that helps the AI answer visitor questions accurately (max 500 words).</span>
+                                    <span>{{ $t('dashboard.ai_knowledge_purpose_content', { type: itemTypeLabelLower }) }}</span>
                                 </p>
                             </div>
                         </div>
@@ -179,13 +179,13 @@
     <MyDialog 
         v-model="showCropDialog"
         modal
-        :header="`Crop ${itemTypeLabel} Image`"
+        :header="$t('dashboard.crop_content_image', { type: itemTypeLabel })"
         :style="{ width: '90vw', maxWidth: '800px' }"
         :closable="false"
         :showConfirm="true"
         :showCancel="true"
-        confirmLabel="Apply"
-        cancelLabel="Cancel"
+        :confirmLabel="$t('dashboard.apply')"
+        :cancelLabel="$t('common.cancel')"
         :confirmHandle="handleCropConfirm"
         @cancel="handleCropCancelled"
     >
@@ -202,9 +202,12 @@
 
 <script setup>
 import { ref, watch, computed, onMounted, nextTick, defineProps, defineEmits, defineExpose } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import Textarea from 'primevue/textarea';
 import InputText from 'primevue/inputtext';
+
+const { t } = useI18n();
 import MyDialog from '@/components/MyDialog.vue';
 import ImageCropper from '@/components/ImageCropper.vue';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
@@ -244,24 +247,29 @@ const emit = defineEmits(['cancel']);
 
 // Determine the item type label based on whether it has a parent
 const itemTypeLabel = computed(() => {
-    return props.parentId ? 'Sub-item' : 'Content Item';
+    return props.parentId ? t('content.sub_item') : t('content.content_item');
+});
+
+// Lowercase version for placeholders
+const itemTypeLabelLower = computed(() => {
+    return props.parentId ? t('dashboard.sub_item_lower') : t('dashboard.content_item_lower');
 });
 
 // Generate appropriate placeholder text for description
 const getDescriptionPlaceholder = () => {
     if (props.parentId) {
-        return 'Describe this sub-item, its significance, details, and any interesting information visitors should know...';
+        return t('content.sub_item_description_placeholder');
     } else {
-        return 'Describe this content item, its context, significance, and what visitors can expect to learn...';
+        return t('content.content_item_description_placeholder');
     }
 };
 
 // Generate appropriate placeholder text for AI knowledge base
 const getAiKnowledgePlaceholder = () => {
     if (props.parentId) {
-        return 'Provide content-specific knowledge for this sub-item. Include facts, specifications, historical details, or contextual information...';
+        return t('content.sub_item_ai_placeholder');
     } else {
-        return 'Provide content-specific knowledge for this content item. Include facts, specifications, historical details, or contextual information...';
+        return t('content.content_item_ai_placeholder');
     }
 };
 

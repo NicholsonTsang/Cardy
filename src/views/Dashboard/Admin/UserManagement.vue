@@ -1,9 +1,9 @@
 <template>
-  <PageWrapper title="User Management" description="View and manage system users">
+  <PageWrapper :title="$t('admin.user_management')" :description="$t('admin.view_manage_users')">
     <template #actions>
       <Button 
         icon="pi pi-refresh" 
-        label="Refresh" 
+        :label="$t('admin.refresh_data')" 
         severity="secondary"
         outlined
         @click="refreshData"
@@ -11,7 +11,7 @@
       />
       <Button 
         icon="pi pi-download" 
-        label="Export CSV" 
+        :label="$t('admin.export_csv')" 
         severity="secondary"
         outlined
         @click="exportUsers"
@@ -24,7 +24,7 @@
         <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-medium text-slate-600 mb-2">Total Users</h3>
+              <h3 class="text-sm font-medium text-slate-600 mb-2">{{ $t('admin.total_users') }}</h3>
               <p class="text-3xl font-bold text-slate-900">{{ userStats.total }}</p>
             </div>
             <div class="p-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
@@ -36,7 +36,7 @@
         <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-medium text-slate-600 mb-2">Card Issuers</h3>
+              <h3 class="text-sm font-medium text-slate-600 mb-2">{{ $t('admin.card_issuers') || 'Card Issuers' }}</h3>
               <p class="text-3xl font-bold text-slate-900">{{ userStats.cardIssuers }}</p>
             </div>
             <div class="p-4 bg-gradient-to-r from-green-500 to-green-600 rounded-xl">
@@ -48,7 +48,7 @@
         <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-medium text-slate-600 mb-2">Admins</h3>
+              <h3 class="text-sm font-medium text-slate-600 mb-2">{{ $t('admin.admins') || 'Admins' }}</h3>
               <p class="text-3xl font-bold text-slate-900">{{ userStats.admins }}</p>
             </div>
             <div class="p-4 bg-gradient-to-r from-purple-500 to-violet-500 rounded-xl">
@@ -60,14 +60,14 @@
 
       <!-- Filters and Search -->
       <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6">
-        <h3 class="text-lg font-semibold text-slate-900 mb-4">Filters & Search</h3>
+        <h3 class="text-lg font-semibold text-slate-900 mb-4">{{ $t('admin.filters_search') || 'Filters & Search' }}</h3>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="md:col-span-2">
             <IconField>
               <InputIcon class="pi pi-search" />
               <InputText 
                 v-model="searchQuery"
-                placeholder="Search by email..."
+                :placeholder="$t('admin.search_by_email')"
                 class="w-full"
                 @input="filterUsers"
               />
@@ -79,7 +79,7 @@
               :options="roleOptions"
               optionLabel="label"
               optionValue="value"
-              placeholder="Filter by Role"
+              :placeholder="$t('admin.filter_by_role') || 'Filter by Role'"
               class="w-full"
               @change="filterUsers"
               showClear
@@ -88,10 +88,10 @@
         </div>
         <div v-if="hasActiveFilters" class="mt-4 flex items-center justify-between">
           <span class="text-sm text-slate-600">
-            {{ filteredUsers.length }} of {{ allUsers.length }} users shown
+            {{ filteredUsers.length }} {{ $t('admin.of') || 'of' }} {{ allUsers.length }} {{ $t('admin.users_shown') || 'users shown' }}
           </span>
           <Button 
-            label="Clear Filters" 
+            :label="$t('admin.clear_filters')" 
             size="small"
             text
             severity="secondary"
@@ -113,13 +113,13 @@
           @page="onPageChange"
           paginatorTemplate="FirstPageLink PrevPageLink PageLinks NextPageLink LastPageLink CurrentPageReport RowsPerPageDropdown"
           :rowsPerPageOptions="[10, 20, 50, 100]"
-          currentPageReportTemplate="Showing {first} to {last} of {totalRecords} users"
+          :currentPageReportTemplate="$t('admin.current_page_report') || 'Showing {first} to {last} of {totalRecords} users'"
           class="users-table"
           responsiveLayout="scroll"
           :scrollable="true"
           scrollHeight="flex"
         >
-          <Column field="user_email" header="Email" sortable :style="{ width: '280px', minWidth: '250px' }" frozen>
+          <Column field="user_email" :header="$t('admin.user_email')" sortable :style="{ width: '280px', minWidth: '250px' }" frozen>
             <template #body="{ data }">
               <div class="flex items-center gap-2">
                 <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
@@ -130,7 +130,7 @@
             </template>
           </Column>
 
-          <Column field="role" header="Role" sortable :style="{ width: '140px', minWidth: '140px' }">
+          <Column field="role" :header="$t('admin.user_role')" sortable :style="{ width: '140px', minWidth: '140px' }">
             <template #body="{ data }">
               <Tag 
                 :value="getRoleLabel(data.role)"
@@ -140,7 +140,7 @@
             </template>
           </Column>
 
-          <Column field="cards_count" header="Cards" sortable :style="{ width: '100px', minWidth: '100px' }" class="text-center">
+          <Column field="cards_count" :header="$t('batches.cards')" sortable :style="{ width: '100px', minWidth: '100px' }" class="text-center">
             <template #body="{ data }">
               <div class="text-center">
                 <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -150,7 +150,7 @@
             </template>
           </Column>
 
-          <Column field="issued_cards_count" header="Issued" sortable :style="{ width: '100px', minWidth: '100px' }" class="text-center">
+          <Column field="issued_cards_count" :header="$t('admin.issued') || 'Issued'" sortable :style="{ width: '100px', minWidth: '100px' }" class="text-center">
             <template #body="{ data }">
               <div class="text-center">
                 <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
@@ -160,21 +160,21 @@
             </template>
           </Column>
 
-          <Column field="created_at" header="Registered" sortable :style="{ width: '140px', minWidth: '140px' }">
+          <Column field="created_at" :header="$t('admin.registered') || 'Registered'" sortable :style="{ width: '140px', minWidth: '140px' }">
             <template #body="{ data }">
               <span class="text-slate-600 text-xs whitespace-nowrap">{{ formatDate(data.created_at) }}</span>
             </template>
           </Column>
 
-          <Column field="last_sign_in_at" header="Last Sign In" sortable :style="{ width: '140px', minWidth: '140px' }">
+          <Column field="last_sign_in_at" :header="$t('admin.last_sign_in') || 'Last Sign In'" sortable :style="{ width: '140px', minWidth: '140px' }">
             <template #body="{ data }">
               <span class="text-slate-600 text-xs whitespace-nowrap">
-                {{ data.last_sign_in_at ? formatDate(data.last_sign_in_at) : 'Never' }}
+                {{ data.last_sign_in_at ? formatDate(data.last_sign_in_at) : ($t('admin.never') || 'Never') }}
               </span>
             </template>
           </Column>
 
-          <Column header="Actions" :style="{ width: '100px', minWidth: '100px' }" frozen alignFrozen="right" class="text-center">
+          <Column :header="$t('common.actions')" :style="{ width: '100px', minWidth: '100px' }" frozen alignFrozen="right" class="text-center">
             <template #body="{ data }">
               <div class="flex items-center justify-center gap-2">
                 <Button 
@@ -183,76 +183,77 @@
                   outlined
                   severity="secondary"
                   @click="manageUserRole(data)"
-                  v-tooltip.top="'Manage Role'"
+                  v-tooltip.top="$t('admin.manage_role')"
                 />
               </div>
             </template>
           </Column>
         </DataTable>
       </div>
-    </div>
 
-    <!-- Role Management Dialog -->
-    <Dialog 
-      v-model:visible="showRoleDialog"
-      modal
-      header="Manage User Role"
-      :style="{ width: '90vw', maxWidth: '500px' }"
-      @hide="closeRoleDialog"
-    >
-      <div v-if="selectedUser" class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">User</label>
-          <div class="p-3 bg-slate-50 rounded-lg">
-            <p class="font-medium text-slate-900">{{ selectedUser.user_email }}</p>
-            <p class="text-sm text-slate-600">Current Role: {{ getRoleLabel(selectedUser.role) }}</p>
+      <!-- Role Management Dialog -->
+      <Dialog 
+        v-model:visible="showRoleDialog"
+        modal
+        :header="$t('admin.manage_user_role') || 'Manage User Role'"
+        :style="{ width: '90vw', maxWidth: '500px' }"
+        @hide="closeRoleDialog"
+      >
+        <div v-if="selectedUser" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('admin.user') || 'User' }}</label>
+            <div class="p-3 bg-slate-50 rounded-lg">
+              <p class="font-medium text-slate-900">{{ selectedUser.user_email }}</p>
+              <p class="text-sm text-slate-600">{{ $t('admin.current_role') || 'Current Role' }}: {{ getRoleLabel(selectedUser.role) }}</p>
+            </div>
+          </div>
+
+          <div>
+            <label for="newRole" class="block text-sm font-medium text-slate-700 mb-2">
+              {{ $t('admin.new_role') || 'New Role' }} <span class="text-red-500">*</span>
+            </label>
+            <Select 
+              id="newRole"
+              v-model="newUserRole"
+              :options="roleChangeOptions"
+              optionLabel="label"
+              optionValue="value"
+              :placeholder="$t('admin.select_new_role') || 'Select new role'"
+              class="w-full"
+            />
+          </div>
+
+          <div>
+            <label for="reason" class="block text-sm font-medium text-slate-700 mb-2">
+              {{ $t('admin.reason_for_change') || 'Reason for Change' }} <span class="text-red-500">*</span>
+            </label>
+            <Textarea 
+              id="reason"
+              v-model="roleChangeReason"
+              rows="3"
+              :placeholder="$t('admin.reason_placeholder') || 'Explain why this role change is necessary...'"
+              class="w-full"
+            />
           </div>
         </div>
 
-        <div>
-          <label for="newRole" class="block text-sm font-medium text-slate-700 mb-2">
-            New Role <span class="text-red-500">*</span>
-          </label>
-          <Select 
-            id="newRole"
-            v-model="newUserRole"
-            :options="roleChangeOptions"
-            optionLabel="label"
-            optionValue="value"
-            placeholder="Select new role"
-            class="w-full"
+        <template #footer>
+          <Button :label="$t('common.cancel')" text severity="secondary" @click="closeRoleDialog" />
+          <Button 
+            :label="$t('admin.update_role') || 'Update Role'" 
+            severity="primary"
+            @click="updateUserRole"
+            :disabled="!newUserRole || !roleChangeReason"
           />
-        </div>
-
-        <div>
-          <label for="reason" class="block text-sm font-medium text-slate-700 mb-2">
-            Reason for Change <span class="text-red-500">*</span>
-          </label>
-          <Textarea 
-            id="reason"
-            v-model="roleChangeReason"
-            rows="3"
-            placeholder="Explain why this role change is necessary..."
-            class="w-full"
-          />
-        </div>
-      </div>
-
-      <template #footer>
-        <Button label="Cancel" text severity="secondary" @click="closeRoleDialog" />
-        <Button 
-          label="Update Role" 
-          severity="primary"
-          @click="updateUserRole"
-          :disabled="!newUserRole || !roleChangeReason"
-        />
-      </template>
-    </Dialog>
+        </template>
+      </Dialog>
+    </div>
   </PageWrapper>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
@@ -267,6 +268,7 @@ import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
 
+const { t } = useI18n()
 const toast = useToast()
 
 // State
@@ -308,18 +310,18 @@ const hasActiveFilters = computed(() => {
 })
 
 // Options
-const roleOptions = [
-  { label: 'All Roles', value: null },
-  { label: 'Card Issuer', value: 'cardIssuer' },
-  { label: 'Admin', value: 'admin' },
-  { label: 'User', value: 'user' }
-]
+const roleOptions = computed(() => [
+  { label: t('admin.all_roles'), value: null },
+  { label: t('common.card_issuer'), value: 'cardIssuer' },
+  { label: t('common.admin'), value: 'admin' },
+  { label: t('admin.user'), value: 'user' }
+])
 
-const roleChangeOptions = [
-  { label: 'Card Issuer', value: 'cardIssuer' },
-  { label: 'Admin', value: 'admin' },
-  { label: 'User', value: 'user' }
-]
+const roleChangeOptions = computed(() => [
+  { label: t('common.card_issuer'), value: 'cardIssuer' },
+  { label: t('common.admin'), value: 'admin' },
+  { label: t('admin.user'), value: 'user' }
+])
 
 // Methods
 const loadUsers = async () => {
@@ -334,8 +336,8 @@ const loadUsers = async () => {
     console.error('Error loading users:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load users',
+      summary: t('common.error'),
+      detail: t('admin.failed_to_load_users'),
       life: 3000
     })
   } finally {
@@ -430,8 +432,8 @@ const updateUserRole = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Success',
-      detail: 'User role updated successfully',
+      summary: t('common.success'),
+      detail: t('admin.user_role_updated_successfully'),
       life: 3000
     })
 
@@ -441,8 +443,8 @@ const updateUserRole = async () => {
     console.error('Error updating user role:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to update user role',
+      summary: t('common.error'),
+      detail: t('admin.failed_to_update_user_role'),
       life: 3000
     })
   }
@@ -450,9 +452,9 @@ const updateUserRole = async () => {
 
 // Helper functions
 const getRoleLabel = (role) => {
-  if (role === 'cardIssuer' || role === 'card_issuer') return 'Card Issuer'
-  if (role === 'admin') return 'Admin'
-  return 'User'
+  if (role === 'cardIssuer' || role === 'card_issuer') return t('common.card_issuer')
+  if (role === 'admin') return t('common.admin')
+  return t('admin.user')
 }
 
 const getRoleSeverity = (role) => {

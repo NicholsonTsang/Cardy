@@ -74,29 +74,28 @@
               </div>
               
               <h2 class="text-2xl sm:text-3xl lg:text-5xl font-bold text-white mb-4 sm:mb-6 leading-tight">
-                See the Magic
+                {{ $t('landing.see_magic') }}
                 <br class="hidden lg:block" />
                 <span class="bg-gradient-to-r from-yellow-400 to-orange-500 bg-clip-text text-transparent">
-                  In Action
+                  {{ $t('landing.in_action') }}
                 </span>
               </h2>
               
               <p class="text-sm sm:text-base lg:text-lg text-slate-300 mb-6 sm:mb-8 leading-relaxed">
-                Experience our Ancient Artifacts demo. Scan the QR code to start an 
-                AI-guided conversation that brings history to life.
+                {{ $t('landing.demo_experience') }}
               </p>
               
               <!-- CTA Buttons -->
               <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6 sm:mb-8">
                 <Button 
-                  label="Start Creating Today" 
+                  :label="$t('landing.start_creating')" 
                   icon="pi pi-arrow-right"
                   iconPos="right"
                   @click="handleOrganizerDemo"
                   class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 px-6 sm:px-8 py-3 sm:py-4 font-bold shadow-xl text-sm sm:text-base"
                 />
                 <Button 
-                  label="Watch Video Demo" 
+                  :label="$t('landing.watch_demo')" 
                   icon="pi pi-play"
                   outlined
                   class="border-2 border-white/30 text-white hover:bg-white/10 px-6 sm:px-8 py-3 sm:py-4 font-semibold text-sm sm:text-base"
@@ -958,11 +957,14 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
 import QrCode from 'qrcode.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'primevue/usetoast'
+
+const { t } = useI18n()
 
 const router = useRouter()
 const authStore = useAuthStore()

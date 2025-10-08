@@ -1,7 +1,7 @@
 <template>
   <PageWrapper 
-    title="User Cards Viewer" 
-    description="View card designs and content for any user by email (read-only)">
+    :title="$t('admin.user_cards_viewer')" 
+    :description="$t('admin.user_cards_viewer_desc')">
     
     <!-- User Search Section -->
     <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 mb-6">
@@ -9,7 +9,7 @@
         <div class="flex-1">
           <label class="block text-sm font-medium text-slate-700 mb-2">
             <i class="pi pi-search mr-2"></i>
-            Search User by Email
+            {{ $t('admin.search_user_by_email') }}
           </label>
           <div class="flex gap-3">
             <IconField class="flex-1">
@@ -18,14 +18,14 @@
               </InputIcon>
               <InputText
                 v-model="searchEmail"
-                placeholder="Enter user email address..."
+                :placeholder="$t('admin.enter_user_email_address')"
                 class="w-full"
                 :disabled="isLoading"
                 @keyup.enter="handleSearchUser"
               />
             </IconField>
             <Button
-              label="Search"
+              :label="$t('common.search')"
               icon="pi pi-search"
               @click="handleSearchUser"
               :loading="isLoading"
@@ -33,7 +33,7 @@
             />
             <Button
               v-if="currentUser"
-              label="Clear"
+              :label="$t('common.clear')"
               icon="pi pi-times"
               @click="handleClearSearch"
               severity="secondary"
@@ -55,15 +55,15 @@
               <div class="flex items-center gap-2 text-sm text-slate-600">
                 <Tag :value="currentUser.role" severity="info" class="px-2 py-1 text-xs" />
                 <span>•</span>
-                <span>{{ userCards.length }} card{{ userCards.length !== 1 ? 's' : '' }}</span>
+                <span>{{ userCards.length }} {{ $t('batches.cards').toLowerCase() }}</span>
                 <span>•</span>
-                <span>Joined {{ formatDate(currentUser.created_at) }}</span>
+                <span>{{ $t('admin.registered') }} {{ formatDate(currentUser.created_at) }}</span>
               </div>
             </div>
           </div>
           <div class="text-xs text-slate-500">
             <i class="pi pi-eye mr-1"></i>
-            Read-only view
+            {{ $t('admin.read_only_view') || 'Read-only view' }}
           </div>
         </div>
       </div>
@@ -92,8 +92,8 @@
       <!-- Card Detail Panel (Read-only) -->
       <div class="lg:col-span-3">
         <AdminCardDetailPanel
-          :selectedCard="selectedCard"
-          :content="selectedCardContent"
+          :selectedCard="selectedCard as any"
+          :content="selectedCardContent as any"
           :batches="selectedCardBatches"
           :isLoadingContent="isLoadingContent"
           :isLoadingBatches="isLoadingBatches"
@@ -105,14 +105,15 @@
     <!-- Empty State (No User Selected) -->
     <div v-else class="bg-white rounded-xl shadow-lg border border-slate-200 p-12 text-center">
       <i class="pi pi-search text-6xl text-slate-300 mb-4"></i>
-      <h3 class="text-xl font-semibold text-slate-700 mb-2">Search for a User</h3>
-      <p class="text-slate-500">Enter a user's email address above to view their cards</p>
+      <h3 class="text-xl font-semibold text-slate-700 mb-2">{{ $t('admin.search_for_user') }}</h3>
+      <p class="text-slate-500">{{ $t('admin.enter_email_to_view_cards') }}</p>
     </div>
   </PageWrapper>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useAdminUserCardsStore } from '@/stores/admin/userCards'
 import { storeToRefs } from 'pinia'
 import { useToast } from 'primevue/usetoast'
@@ -140,6 +141,7 @@ const {
 } = storeToRefs(adminUserCardsStore)
 
 const toast = useToast()
+const { t } = useI18n()
 
 // Component state
 const searchEmail = ref('')
@@ -164,8 +166,8 @@ const handleSearchUser = async () => {
   if (!searchEmail.value.trim()) {
     toast.add({
       severity: 'warn',
-      summary: 'Email Required',
-      detail: 'Please enter a user email address',
+      summary: t('common.email_required'),
+      detail: t('admin.please_enter_email'),
       life: 3000
     })
     return
@@ -179,16 +181,16 @@ const handleSearchUser = async () => {
       
       toast.add({
         severity: 'success',
-        summary: 'User Found',
-        detail: `Loaded ${userCards.value.length} cards for ${user.email}`,
+        summary: t('admin.user_found'),
+        detail: t('admin.loaded_cards', { count: userCards.value.length, email: user.email }),
         life: 3000
       })
     }
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Search Failed',
-      detail: err.message || 'Failed to search user',
+      summary: t('admin.search_failed'),
+      detail: err.message || t('admin.failed_to_search_user'),
       life: 5000
     })
   }

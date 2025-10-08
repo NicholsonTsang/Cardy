@@ -15,8 +15,8 @@
                             />
                         </svg>
                     </div>
-                    <h1 id="signin-title" class="text-2xl font-bold text-slate-900 mb-2">Welcome Back</h1>
-                    <p class="text-slate-600" id="signin-description">Sign in to your CardStudio CMS account</p>
+                    <h1 id="signin-title" class="text-2xl font-bold text-slate-900 mb-2">{{ $t('auth.welcome_back') }}</h1>
+                    <p class="text-slate-600" id="signin-description">{{ $t('auth.cms_account_subtitle') }}</p>
                 </div>
 
                 <!-- Form Section -->
@@ -25,12 +25,12 @@
                     <form @submit.prevent="handleSignIn" class="space-y-5">
                         <!-- Email Field -->
                         <div class="space-y-2">
-                            <label for="email" class="block text-sm font-medium text-slate-700">Email Address</label>
+                            <label for="email" class="block text-sm font-medium text-slate-700">{{ $t('auth.email_address') }}</label>
                             <InputText 
                                 id="email" 
                                 v-model="email" 
                                 type="email" 
-                                placeholder="Enter your email" 
+                                :placeholder="$t('auth.email_address')" 
                                 class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                 :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': emailError }"
                                 required 
@@ -40,12 +40,12 @@
 
                         <!-- Password Field -->
                         <div class="space-y-2">
-                            <label for="password" class="block text-sm font-medium text-slate-700">Password</label>
+                            <label for="password" class="block text-sm font-medium text-slate-700">{{ $t('auth.password') }}</label>
                             <InputText 
                                 id="password" 
                                 v-model="password" 
                                 type="password" 
-                                placeholder="Enter your password" 
+                                :placeholder="$t('auth.password')" 
                                 class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                 :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': passwordError }"
                                 required 
@@ -62,17 +62,17 @@
                         <div class="flex items-center justify-between">
                             <div class="flex items-center">
                                 <Checkbox id="rememberme" v-model="rememberMe" :binary="true" class="mr-2" />
-                                <label for="rememberme" class="text-sm text-slate-600">Remember me</label>
+                                <label for="rememberme" class="text-sm text-slate-600">{{ $t('auth.remember_me') }}</label>
                             </div>
                             <a @click="showForgotPasswordDialog = true" class="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors cursor-pointer">
-                                Forgot password?
+                                {{ $t('auth.forgot_password') }}
                             </a>
                         </div>
 
                         <!-- Submit Button -->
                         <Button 
                             type="submit" 
-                            label="Sign In" 
+                            :label="$t('auth.sign_in')" 
                             severity="primary"
                             class="w-full py-3 border-0 shadow-lg hover:shadow-xl transition-all duration-200" 
                             :style="{
@@ -86,9 +86,9 @@
                     <!-- Sign Up Link -->
                     <div class="mt-8 text-center">
                         <p class="text-slate-600">
-                            Don't have an account? 
+                            {{ $t('auth.dont_have_account') }} 
                             <a @click="goToSignUp" class="text-blue-600 hover:text-blue-800 font-medium cursor-pointer transition-colors">
-                                Create one today
+                                {{ $t('auth.sign_up_here') }}
                             </a>
                         </p>
                     </div>
@@ -119,20 +119,20 @@
             :closable="true"
             :draggable="false"
             class="w-full max-w-md mx-4"
-            header="Reset Password"
+            :header="$t('auth.reset_password')"
         >
             <div class="space-y-4">
                 <p class="text-slate-600 text-sm">
-                    Enter your email address and we'll send you a link to reset your password.
+                    {{ $t('auth.enter_email_to_reset') }}
                 </p>
                 
                 <div class="space-y-2">
-                    <label for="reset-email" class="block text-sm font-medium text-slate-700">Email Address</label>
+                    <label for="reset-email" class="block text-sm font-medium text-slate-700">{{ $t('auth.email_address') }}</label>
                     <InputText 
                         id="reset-email" 
                         v-model="resetEmail" 
                         type="email" 
-                        placeholder="Enter your email" 
+                        :placeholder="$t('auth.email_address')" 
                         class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                         :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': resetEmailError }"
                     />
@@ -151,14 +151,14 @@
             <template #footer>
                 <div class="flex gap-2 justify-end">
                     <Button 
-                        label="Cancel" 
+                        :label="$t('common.cancel')" 
                         severity="secondary"
                         outlined
                         @click="closeForgotPasswordDialog" 
                         :disabled="isSendingResetEmail"
                     />
                     <Button 
-                        label="Send Reset Link" 
+                        :label="$t('auth.send_reset_link')" 
                         severity="primary"
                         @click="handleSendPasswordReset" 
                         :loading="isSendingResetEmail"
@@ -179,6 +179,9 @@ import Dialog from 'primevue/dialog';
 import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth.js';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const email = ref('');
 const password = ref('');
@@ -201,18 +204,18 @@ const resetErrorMessage = ref('');
 const emailError = computed(() => {
     if (!email.value) return '';
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return !emailRegex.test(email.value) ? 'Please enter a valid email address' : '';
+    return !emailRegex.test(email.value) ? t('auth.invalid_email') : '';
 });
 
 const passwordError = computed(() => {
     if (!password.value) return '';
-    return password.value.length < 6 ? 'Password must be at least 6 characters' : '';
+    return password.value.length < 6 ? t('auth.password_requirements') : '';
 });
 
 const resetEmailError = computed(() => {
     if (!resetEmail.value) return '';
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return !emailRegex.test(resetEmail.value) ? 'Please enter a valid email address' : '';
+    return !emailRegex.test(resetEmail.value) ? t('auth.invalid_email') : '';
 });
 
 async function handleSendPasswordReset() {
@@ -222,21 +225,21 @@ async function handleSendPasswordReset() {
     
     // Validate email
     if (resetEmailError.value) {
-        resetErrorMessage.value = 'Please enter a valid email address';
+        resetErrorMessage.value = t('auth.invalid_email');
         return;
     }
 
     isSendingResetEmail.value = true;
     try {
         await authStore.sendPasswordResetEmail(resetEmail.value);
-        resetSuccessMessage.value = 'Password reset link sent! Check your email.';
+        resetSuccessMessage.value = t('auth.password_reset_email_sent');
         
         // Close dialog after 2 seconds
         setTimeout(() => {
             closeForgotPasswordDialog();
         }, 2000);
     } catch (error) {
-        resetErrorMessage.value = error.message || 'Failed to send reset email. Please try again.';
+        resetErrorMessage.value = error.message || t('messages.network_error');
         console.error('Password reset error:', error);
     } finally {
         isSendingResetEmail.value = false;
@@ -256,7 +259,7 @@ async function handleSignIn() {
     
     // Validate form
     if (emailError.value || passwordError.value) {
-        errorMessage.value = 'Please fix the errors above';
+        errorMessage.value = t('validation.required_field');
         return;
     }
 
@@ -264,7 +267,7 @@ async function handleSignIn() {
     try {
         await authStore.signInWithEmail(email.value, password.value);
     } catch (error) {
-        errorMessage.value = error.message || 'Failed to sign in. Please check your credentials.';
+        errorMessage.value = error.message || t('auth.sign_in_error');
         console.error('Sign in error:', error);
     } finally {
         isLoading.value = false;

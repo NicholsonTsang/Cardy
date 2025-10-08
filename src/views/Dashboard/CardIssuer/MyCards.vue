@@ -1,16 +1,16 @@
 <template>
-    <PageWrapper title="My Cards" description="Manage your card designs, content, and issuance.">
+    <PageWrapper :title="$t('dashboard.my_cards')" :description="$t('dashboard.manage_cards_description')">
         <div class="space-y-6">
             <!-- Add Card Dialog -->
             <MyDialog 
                 v-model="showAddCardDialog"
                 modal
-                header="Create New Card"
+                :header="$t('dashboard.create_new_card')"
                 :confirmHandle="handleAddCard"
-                confirmLabel="Create Card"
+                :confirmLabel="$t('dashboard.create_card')"
                 confirmClass="bg-blue-600 hover:bg-blue-700 text-white border-0"
-                successMessage="Card created successfully!"
-                errorMessage="Failed to create card"
+                :successMessage="$t('dashboard.card_created')"
+                :errorMessage="$t('messages.operation_failed')"
                 :showToasts="false"
                 @hide="onDialogHide"
             >
@@ -74,8 +74,10 @@ import CardCreateEditView from '@/components/CardComponents/CardCreateEditView.v
 import CardListPanel from '@/components/Card/CardListPanel.vue';
 import CardDetailPanel from '@/components/Card/CardDetailPanel.vue';
 import Button from 'primevue/button';
+import { useI18n } from 'vue-i18n';
 
 // Stores and composables
+const { t } = useI18n();
 const cardStore = useCardStore();
 const { cards, isLoading } = storeToRefs(cardStore);
 const { handleError, handleAsyncError } = useErrorHandler();
@@ -284,17 +286,17 @@ const handleCardCancel = () => {
 const triggerDeleteConfirmation = (cardId) => {
     const cardToDelete = cards.value.find(card => card.id === cardId);
     if (!cardToDelete) {
-        handleError('Card not found for deletion.', 'deleting card');
+        handleError(t('messages.operation_failed'), 'deleting card');
         return;
     }
 
     confirm.require({
         group: 'deleteCardConfirmation',
-        message: `Are you sure you want to delete the card "${cardToDelete.name}"? This action cannot be undone.`,
-        header: 'Confirm Deletion',
+        message: t('dashboard.confirm_delete_card_message', { name: cardToDelete.name }),
+        header: t('dashboard.confirm_deletion'),
         icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Delete',
-        rejectLabel: 'Cancel',
+        acceptLabel: t('dashboard.delete_card'),
+        rejectLabel: t('common.cancel'),
         acceptClass: 'p-button-danger',
         accept: async () => {
             await handleAsyncError(async () => {

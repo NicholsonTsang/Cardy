@@ -2,57 +2,57 @@
   <div class="space-y-6">
     <!-- Header -->
     <div class="text-center">
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">QR Codes & Access URLs</h3>
-      <p class="text-slate-600">Generate QR codes and shareable URLs for your issued cards</p>
+      <h3 class="text-lg font-semibold text-slate-900 mb-2">{{ $t('batches.qr_codes_and_access') }}</h3>
+      <p class="text-slate-600">{{ $t('batches.generate_qr_codes') }}</p>
     </div>
-
+    
     <!-- Loading State -->
     <div v-if="loading" class="flex items-center justify-center py-12">
       <i class="pi pi-spin pi-spinner text-4xl text-blue-600"></i>
     </div>
-
+    
     <!-- No Batches State -->
     <div v-else-if="!batches.length" class="text-center py-12">
       <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
         <i class="pi pi-qrcode text-3xl text-slate-400"></i>
       </div>
-      <h4 class="text-lg font-medium text-slate-900 mb-2">No Card Batches Found</h4>
-      <p class="text-slate-600">Create and issue card batches first to generate QR codes</p>
+      <h4 class="text-lg font-medium text-slate-900 mb-2">{{ $t('batches.no_batches_found') }}</h4>
+      <p class="text-slate-600">{{ $t('batches.create_batch_for_qr') }}</p>
     </div>
-
+    
     <!-- QR Code Generator -->
     <div v-else class="space-y-6">
       <!-- Batch Selector -->
       <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-        <h4 class="font-semibold text-slate-900 mb-4">Select Card Batch</h4>
+        <h4 class="font-semibold text-slate-900 mb-4">{{ $t('batches.select_card_batch') }}</h4>
         <Dropdown 
           v-model="selectedBatch"
           :options="availableBatches"
           optionLabel="display_name"
           optionValue="id"
-          placeholder="Choose a batch to generate QR codes"
+          :placeholder="$t('batches.choose_batch_to_generate')"
           class="w-full"
           @change="onBatchChange"
         />
-        <p class="text-sm text-slate-500 mt-2">Only paid batches with generated cards are available for QR code generation</p>
+        <p class="text-sm text-slate-500 mt-2">{{ $t('batches.only_paid_batches') }}</p>
       </div>
-
+      
       <!-- QR Code Display -->
       <div v-if="selectedBatch && selectedBatchData" class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
         <div class="flex items-center justify-between mb-6">
-          <h4 class="font-semibold text-slate-900">QR Codes & URLs</h4>
+          <h4 class="font-semibold text-slate-900">{{ $t('batches.qr_codes_and_urls') }}</h4>
           <div class="flex gap-2">
             <Button 
-              label="Download All QR Codes" 
+              :label="$t('batches.download_all_qr')" 
               icon="pi pi-download"
               @click="downloadAllQRCodes"
               outlined
               disabled
-              v-tooltip.top="'Feature coming soon'"
+              v-tooltip.top="$t('batches.feature_coming_soon')"
               class="border-slate-300 text-slate-400"
             />
             <Button 
-              label="Download CSV" 
+              :label="$t('batches.download_csv')" 
               icon="pi pi-file-excel"
               @click="downloadCSV"
               outlined
@@ -60,31 +60,31 @@
             />
           </div>
         </div>
-
+        
         <!-- Batch Info -->
         <div class="bg-slate-50 rounded-lg p-4 mb-6">
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
-              <label class="text-sm font-medium text-slate-600">Batch Name</label>
+              <label class="text-sm font-medium text-slate-600">{{ $t('batches.batch_name') }}</label>
               <p class="font-semibold text-slate-900">{{ selectedBatchData.batch_name }}</p>
             </div>
             <div>
-              <label class="text-sm font-medium text-slate-600">Total Cards</label>
+              <label class="text-sm font-medium text-slate-600">{{ $t('batches.total_cards') }}</label>
               <p class="font-semibold text-slate-900">{{ selectedBatchData.cards_count }}</p>
             </div>
             <div>
-              <label class="text-sm font-medium text-slate-600">Active Cards</label>
+              <label class="text-sm font-medium text-slate-600">{{ $t('batches.active_cards') }}</label>
               <p class="font-semibold text-slate-900">{{ issuedCards.filter(card => card.active).length }}</p>
             </div>
           </div>
         </div>
-
+        
         <!-- QR Code Grid -->
         <div v-if="issuedCards.length" class="space-y-4">
           <div class="flex items-center justify-between">
-            <h5 class="font-medium text-slate-900">Individual QR Codes</h5>
+            <h5 class="font-medium text-slate-900">{{ $t('batches.individual_qr_codes') }}</h5>
             <div class="flex items-center gap-2">
-              <label class="text-sm text-slate-600">Show:</label>
+              <label class="text-sm text-slate-600">{{ $t('batches.show') }}</label>
               <Dropdown 
                 v-model="displayFilter"
                 :options="filterOptions"
@@ -113,7 +113,7 @@
                   <div class="text-xs text-slate-600 break-all">{{ card.id }}</div>
                   <div class="flex items-center justify-center gap-2">
                     <span :class="card.active ? 'text-green-600' : 'text-yellow-600'" class="text-xs font-medium">
-                      {{ card.active ? 'Active' : 'Inactive' }}
+                      {{ card.active ? $t('common.active') : $t('common.inactive') }}
                     </span>
                   </div>
                   
@@ -125,7 +125,7 @@
                       size="small"
                       outlined
                       class="border-blue-600 text-blue-600 hover:bg-blue-50"
-                      v-tooltip="'Copy URL'"
+                      v-tooltip="$t('batches.copy_url')"
                     />
                     <Button 
                       icon="pi pi-download"
@@ -133,7 +133,7 @@
                       size="small"
                       outlined
                       class="border-green-600 text-green-600 hover:bg-green-50"
-                      v-tooltip="'Download QR'"
+                      v-tooltip="$t('batches.download_qr')"
                     />
                     <Button 
                       icon="pi pi-external-link"
@@ -141,7 +141,7 @@
                       size="small"
                       outlined
                       class="border-purple-600 text-purple-600 hover:bg-purple-50"
-                      v-tooltip="'Open Card'"
+                      v-tooltip="$t('batches.open_card')"
                     />
                   </div>
                 </div>
@@ -156,12 +156,15 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
 import QrCode from 'qrcode.vue'
 import * as QRCodeLib from 'qrcode'
 import { supabase } from '@/lib/supabase'
+
+const { t } = useI18n()
 
 const props = defineProps({
   cardId: {
@@ -186,11 +189,11 @@ const selectedBatch = ref(null)
 const displayFilter = ref('all')
 
 // Filter options
-const filterOptions = [
-  { label: 'All Cards', value: 'all' },
-  { label: 'Active Only', value: 'active' },
-  { label: 'Inactive Only', value: 'inactive' }
-]
+const filterOptions = computed(() => [
+  { label: t('batches.all_cards'), value: 'all' },
+  { label: t('batches.active_only'), value: 'active' },
+  { label: t('batches.inactive_only'), value: 'inactive' }
+])
 
 // Computed
 const availableBatches = computed(() => {
@@ -202,7 +205,7 @@ const availableBatches = computed(() => {
     })
     .map(batch => ({
       ...batch,
-      display_name: `${batch.batch_name} (${batch.cards_count} cards)`
+      display_name: `${batch.batch_name} (${batch.cards_count} ${t('batches.cards').toLowerCase()})`
     }))
 })
 
@@ -236,8 +239,8 @@ const loadBatches = async () => {
     console.error('Error loading batches:', err)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load card batches',
+      summary: t('messages.operation_failed'),
+      detail: t('batches.failed_to_load_batches'),
       life: 5000
     })
   }
@@ -256,8 +259,8 @@ const loadIssuedCards = async (batchId) => {
     console.error('Error loading issued cards:', err)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load issued cards',
+      summary: t('messages.operation_failed'),
+      detail: t('batches.failed_to_load_issued_cards'),
       life: 5000
     })
   }
@@ -277,8 +280,8 @@ const copyURL = async (issueCardId) => {
   } catch (err) {
     toast.add({
       severity: 'error',
-      summary: 'Copy Failed',
-      detail: 'Could not copy URL to clipboard',
+      summary: t('messages.copy_failed'),
+      detail: t('messages.could_not_copy_url'),
       life: 3000
     })
   }
@@ -304,8 +307,8 @@ const downloadSingleQR = async (issueCardId, cardNumber) => {
   } catch (err) {
     toast.add({
       severity: 'error',
-      summary: 'Download Failed',
-      detail: 'Could not generate QR code',
+      summary: t('messages.download_failed'),
+      detail: t('messages.could_not_generate_qr'),
       life: 3000
     })
   }
@@ -319,11 +322,17 @@ const downloadAllQRCodes = async () => {
 
 const downloadCSV = () => {
   try {
-    const headers = ['Card Number', 'Issue Card ID', 'Status', 'QR Code URL', 'Access URL']
+    const headers = [
+      t('batches.csv_card_number'),
+      t('batches.csv_issue_card_id'),
+      t('batches.csv_status'),
+      t('batches.csv_qr_code_url'),
+      t('batches.csv_access_url')
+    ]
     const rows = issuedCards.value.map((card, index) => [
       index + 1,
       card.id,
-      card.active ? 'Active' : 'Inactive',
+      card.active ? t('common.active') : t('common.inactive'),
       getCardURL(card.id),
       getCardURL(card.id)
     ])
@@ -346,8 +355,8 @@ const downloadCSV = () => {
   } catch (err) {
     toast.add({
       severity: 'error',
-      summary: 'Download Failed',
-      detail: 'Could not generate CSV file',
+      summary: t('messages.download_failed'),
+      detail: t('messages.could_not_generate_csv'),
       life: 3000
     })
   }

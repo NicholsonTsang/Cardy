@@ -1,7 +1,7 @@
 <template>
   <PageWrapper 
-    title="Issue Free Batch" 
-    description="Issue a free batch of cards to any user"
+    :title="$t('admin.issue_free_batch')" 
+    :description="$t('admin.issue_free_batch_desc')"
   >
     <div class="max-w-4xl mx-auto">
       <!-- Instructions Card -->
@@ -9,11 +9,9 @@
         <div class="flex items-start gap-3">
           <i class="pi pi-info-circle text-blue-600 text-xl mt-1"></i>
           <div>
-            <h3 class="text-lg font-semibold text-blue-900 mb-2">About Free Batch Issuance</h3>
+            <h3 class="text-lg font-semibold text-blue-900 mb-2">{{ $t('admin.about_free_batch_issuance') }}</h3>
             <p class="text-sm text-blue-800 leading-relaxed">
-              This feature allows you to issue a free batch of cards to any user without requiring payment. 
-              The batch will be created immediately with cards generated and ready for use. 
-              This is useful for promotional purposes, partnership agreements, or customer support resolutions.
+              {{ $t('admin.about_free_batch_text') }}
             </p>
           </div>
         </div>
@@ -22,27 +20,27 @@
       <!-- Issuance Form -->
       <div class="bg-white rounded-xl shadow-soft border border-slate-200 overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-200">
-          <h2 class="text-lg font-semibold text-slate-900">Batch Configuration</h2>
-          <p class="text-sm text-slate-600 mt-1">Fill in the details to issue a free batch</p>
+          <h2 class="text-lg font-semibold text-slate-900">{{ $t('admin.batch_configuration') }}</h2>
+          <p class="text-sm text-slate-600 mt-1">{{ $t('admin.fill_details_to_issue') }}</p>
         </div>
 
         <form @submit.prevent="handleSubmit" class="p-6 space-y-6">
           <!-- User Email Search -->
           <div class="space-y-2">
             <label class="block text-sm font-medium text-slate-700">
-              User Email <span class="text-red-500">*</span>
+              {{ $t('common.email') }} <span class="text-red-500">*</span>
             </label>
             <div class="flex gap-3">
               <InputText 
                 v-model="form.userEmail"
-                placeholder="Enter user email address"
+                :placeholder="$t('admin.enter_user_email_address')"
                 class="flex-1"
                 :class="{ 'p-invalid': errors.userEmail }"
                 @input="handleUserEmailChange"
               />
               <Button 
                 icon="pi pi-search" 
-                label="Search User"
+                :label="$t('admin.search_user')"
                 @click="searchUser"
                 :loading="isSearchingUser"
                 :disabled="!form.userEmail || isSearchingUser"
@@ -57,10 +55,10 @@
               <div class="flex items-center gap-3">
                 <i class="pi pi-check-circle text-green-600 text-xl"></i>
                 <div class="flex-1">
-                  <p class="text-sm font-medium text-green-900">User Found</p>
+                  <p class="text-sm font-medium text-green-900">{{ $t('admin.user_found') }}</p>
                   <p class="text-sm text-green-700">{{ selectedUser.email }}</p>
                   <p class="text-xs text-green-600 mt-1">
-                    {{ selectedUser.cards_count || 0 }} cards created
+                    {{ selectedUser.cards_count || 0 }} {{ $t('admin.cards_created') }}
                   </p>
                 </div>
               </div>
@@ -70,14 +68,14 @@
           <!-- Card Selection -->
           <div class="space-y-2">
             <label class="block text-sm font-medium text-slate-700">
-              Select Card <span class="text-red-500">*</span>
+              {{ $t('admin.select_card') }} <span class="text-red-500">*</span>
             </label>
             <Select 
               v-model="form.cardId"
               :options="userCards"
               optionLabel="card_name"
               optionValue="id"
-              placeholder="Select a card to issue batch for"
+              :placeholder="$t('admin.select_card_to_issue')"
               class="w-full"
               :disabled="!selectedUser || isLoadingCards"
               :loading="isLoadingCards"
@@ -93,19 +91,19 @@
             </Select>
             <small v-if="errors.cardId" class="text-red-500">{{ errors.cardId }}</small>
             <small v-else class="text-slate-500">
-              {{ selectedUser ? 'Choose which card to create the batch for' : 'Search for a user first' }}
+              {{ selectedUser ? $t('admin.choose_which_card') : $t('admin.search_user_first') }}
             </small>
           </div>
 
           <!-- Batch Name Info -->
           <div class="space-y-2">
             <label class="block text-sm font-medium text-slate-700">
-              Batch Name
+              {{ $t('admin.batch_name') }}
             </label>
             <div class="p-3 bg-slate-50 border border-slate-200 rounded-lg">
               <p class="text-sm text-slate-600">
                 <i class="pi pi-info-circle text-slate-500 mr-2"></i>
-                Batch name will be auto-generated as <span class="font-mono font-medium text-slate-900">"Batch #[number] - Issued by Admin"</span>
+                {{ $t('admin.batch_name_auto_generated') }}
               </p>
             </div>
           </div>
@@ -113,7 +111,7 @@
           <!-- Cards Count -->
           <div class="space-y-2">
             <label class="block text-sm font-medium text-slate-700">
-              Number of Cards <span class="text-red-500">*</span>
+              {{ $t('admin.batch_quantity') }} <span class="text-red-500">*</span>
             </label>
             <InputNumber 
               v-model="form.cardsCount"
@@ -121,16 +119,16 @@
               :max="10000"
               :step="1"
               showButtons
-              placeholder="Enter number of cards"
+              :placeholder="$t('admin.enter_batch_quantity')"
               class="w-full"
               :class="{ 'p-invalid': errors.cardsCount }"
               inputClass="w-full"
             />
             <small v-if="errors.cardsCount" class="text-red-500">{{ errors.cardsCount }}</small>
             <small v-else class="text-slate-500">
-              Between 1 and 10,000 cards. 
+              {{ $t('admin.min_1_max_1000') }}
               <span v-if="form.cardsCount > 0" class="font-medium text-slate-700">
-                (Regular cost: ${{ (form.cardsCount * 2).toLocaleString() }})
+                ({{ $t('admin.regular_cost') }}: ${{ (form.cardsCount * 2).toLocaleString() }})
               </span>
             </small>
           </div>
@@ -138,45 +136,45 @@
           <!-- Reason -->
           <div class="space-y-2">
             <label class="block text-sm font-medium text-slate-700">
-              Reason for Free Issuance <span class="text-red-500">*</span>
+              {{ $t('admin.issuance_reason') }} <span class="text-red-500">*</span>
             </label>
             <Textarea 
               v-model="form.reason"
               rows="4"
-              placeholder="e.g., Partnership agreement, Promotional campaign, Customer support resolution"
+              :placeholder="$t('admin.explain_why_issuing')"
               class="w-full"
               :class="{ 'p-invalid': errors.reason }"
             />
             <small v-if="errors.reason" class="text-red-500">{{ errors.reason }}</small>
-            <small v-else class="text-slate-500">Explain why this batch is being issued for free</small>
+            <small v-else class="text-slate-500">{{ $t('admin.explain_why_issuing') }}</small>
           </div>
 
           <!-- Summary Card -->
           <div v-if="isFormComplete" class="p-4 bg-slate-50 border border-slate-200 rounded-lg">
-            <h4 class="text-sm font-semibold text-slate-900 mb-3">Issuance Summary</h4>
+            <h4 class="text-sm font-semibold text-slate-900 mb-3">{{ $t('admin.issuance_summary') }}</h4>
             <div class="space-y-2 text-sm">
               <div class="flex justify-between">
-                <span class="text-slate-600">User:</span>
+                <span class="text-slate-600">{{ $t('admin.user') }}:</span>
                 <span class="font-medium text-slate-900">{{ form.userEmail }}</span>
               </div>
               <div class="flex justify-between">
-                <span class="text-slate-600">Card:</span>
+                <span class="text-slate-600">{{ $t('admin.card') }}:</span>
                 <span class="font-medium text-slate-900">{{ selectedCardName }}</span>
               </div>
               <div class="flex justify-between">
-                <span class="text-slate-600">Batch Name:</span>
-                <span class="font-mono text-sm text-slate-900">Auto-generated</span>
+                <span class="text-slate-600">{{ $t('admin.batch_name') }}:</span>
+                <span class="font-mono text-sm text-slate-900">{{ $t('admin.auto_generated') }}</span>
               </div>
               <div class="flex justify-between">
-                <span class="text-slate-600">Cards Count:</span>
+                <span class="text-slate-600">{{ $t('admin.cards_count') }}:</span>
                 <span class="font-medium text-slate-900">{{ form.cardsCount }}</span>
               </div>
               <div class="flex justify-between pt-2 border-t border-slate-300">
-                <span class="text-slate-600">Regular Cost:</span>
+                <span class="text-slate-600">{{ $t('admin.regular_cost') }}:</span>
                 <span class="font-semibold text-slate-900">${{ (form.cardsCount * 2).toLocaleString() }}</span>
               </div>
               <div class="flex justify-between">
-                <span class="text-green-600 font-medium">Free Issuance:</span>
+                <span class="text-green-600 font-medium">{{ $t('admin.free_issuance') }}:</span>
                 <span class="font-semibold text-green-600">$0.00</span>
               </div>
             </div>
@@ -185,7 +183,7 @@
           <!-- Action Buttons -->
           <div class="flex justify-end gap-3 pt-4 border-t border-slate-200">
             <Button 
-              label="Cancel" 
+              :label="$t('common.cancel')" 
               severity="secondary"
               outlined
               @click="handleCancel"
@@ -193,7 +191,7 @@
             />
             <Button 
               type="submit"
-              label="Issue Free Batch"
+              :label="$t('admin.issue_free_batch_button')"
               icon="pi pi-check"
               :loading="isSubmitting"
               :disabled="!isFormComplete || isSubmitting"
@@ -205,8 +203,8 @@
       <!-- Recent Issuances -->
       <div v-if="recentIssuances.length > 0" class="mt-6 bg-white rounded-xl shadow-soft border border-slate-200 overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-200">
-          <h2 class="text-lg font-semibold text-slate-900">Recent Free Batch Issuances</h2>
-          <p class="text-sm text-slate-600 mt-1">Latest batches issued in this session</p>
+          <h2 class="text-lg font-semibold text-slate-900">{{ $t('admin.recent_free_batch_issuances') }}</h2>
+          <p class="text-sm text-slate-600 mt-1">{{ $t('admin.latest_batches_issued') }}</p>
         </div>
         <div class="p-6">
           <div class="space-y-3">
@@ -220,12 +218,12 @@
                 <div>
                   <p class="text-sm font-medium text-slate-900">{{ issuance.batchName }}</p>
                   <p class="text-xs text-slate-600">
-                    {{ issuance.cardsCount }} cards issued to {{ issuance.userEmail }}
+                    {{ issuance.cardsCount }} {{ $t('admin.cards_issued_to') }} {{ issuance.userEmail }}
                   </p>
                   <p class="text-xs text-slate-500 mt-1">{{ formatTimeAgo(issuance.timestamp) }}</p>
                 </div>
               </div>
-              <Tag value="Issued" severity="success" />
+              <Tag :value="$t('admin.issued')" severity="success" />
             </div>
           </div>
         </div>
@@ -238,6 +236,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
+import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
 import { useAdminBatchesStore } from '@/stores/admin'
 
@@ -252,6 +251,7 @@ import PageWrapper from '@/components/Layout/PageWrapper.vue'
 
 const router = useRouter()
 const toast = useToast()
+const { t } = useI18n()
 const batchesStore = useAdminBatchesStore()
 
 // State
@@ -330,8 +330,8 @@ const searchUser = async () => {
     errors.value.userEmail = error.message || 'Failed to search user'
     toast.add({
       severity: 'error',
-      summary: 'Search Failed',
-      detail: error.message || 'Failed to search for user',
+      summary: t('admin.search_failed'),
+      detail: error.message || t('admin.failed_to_search_user'),
       life: 5000
     })
   } finally {
@@ -367,8 +367,8 @@ const loadUserCards = async () => {
     errors.value.cardId = 'Failed to load cards'
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load user cards',
+      summary: t('common.error'),
+      detail: t('admin.failed_to_load_user_cards'),
       life: 5000
     })
   } finally {
@@ -441,8 +441,8 @@ const handleSubmit = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Batch Issued Successfully',
-      detail: `${form.value.cardsCount} cards issued to ${form.value.userEmail}`,
+      summary: t('common.success'),
+      detail: t('admin.batch_issued_successfully'),
       life: 5000
     })
 
@@ -452,8 +452,8 @@ const handleSubmit = async () => {
     console.error('Error issuing batch:', error)
     toast.add({
       severity: 'error',
-      summary: 'Issuance Failed',
-      detail: error.message || 'Failed to issue batch',
+      summary: t('common.error'),
+      detail: error.message || t('admin.failed_to_issue_batch'),
       life: 5000
     })
   } finally {

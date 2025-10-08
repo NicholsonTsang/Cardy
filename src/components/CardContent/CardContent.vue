@@ -4,10 +4,10 @@
         <div class="xl:col-span-2 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
             <div class="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
                 <div class="flex justify-between items-center">
-                    <h2 class="text-lg font-semibold text-slate-900">Card Content</h2>
+                    <h2 class="text-lg font-semibold text-slate-900">{{ $t('content.card_content') }}</h2>
                     <Button 
                         icon="pi pi-plus" 
-                        label="Add Content" 
+                        :label="$t('content.add_content')" 
                         @click="showAddSerieDialog = true" 
                         class="shadow-md hover:shadow-lg transition-shadow"
                     />
@@ -21,8 +21,8 @@
                     <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                         <i class="pi pi-file-edit text-2xl text-slate-400"></i>
                     </div>
-                    <h3 class="text-lg font-medium text-slate-900 mb-2">No Content Items</h3>
-                    <p class="text-slate-500 mb-4">Create your first content item to get started</p>
+                    <h3 class="text-lg font-medium text-slate-900 mb-2">{{ $t('content.no_content_items') }}</h3>
+                    <p class="text-slate-500 mb-4">{{ $t('content.add_first_content') }}</p>
                     <!-- <Button 
                         icon="pi pi-plus" 
                         label="Add Content" 
@@ -34,12 +34,12 @@
                 <div v-if="contentItems.length > 0 && !dragHintDismissed" class="flex items-start gap-2.5 px-3 py-2.5 mb-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
                     <i class="pi pi-info-circle text-blue-600 mt-0.5 flex-shrink-0"></i>
                     <span class="leading-relaxed flex-1">
-                        Tip: Drag items by their handle to reorder
+                        {{ $t('content.drag_tip') }}
                     </span>
                     <button 
                         @click="dragHintDismissed = true"
                         class="flex-shrink-0 text-blue-600 hover:text-blue-800 transition-colors"
-                        title="Dismiss"
+                        :title="$t('common.close')"
                     >
                         <i class="pi pi-times text-xs"></i>
                     </button>
@@ -68,7 +68,7 @@
                                     <!-- Left: Drag Handle -->
                                     <div 
                                         class="flex-shrink-0 flex items-center justify-center w-6 h-6 mt-1 rounded hover:bg-slate-100 cursor-move parent-drag-handle transition-all group/drag"
-                                        title="Drag to reorder"
+                                        :title="$t('content.drag_to_reorder')"
                                         @click.stop
                                     >
                                         <i class="pi pi-bars text-slate-400 text-xs group-hover/drag:text-slate-600 transition-colors"></i>
@@ -102,7 +102,7 @@
                                                 {{ item.name }}
                                             </div>
                                             <div v-if="item.children && item.children.length > 0" class="text-xs text-slate-500 mt-1">
-                                                {{ item.children.length }} sub-item{{ item.children.length !== 1 ? 's' : '' }}
+                                                {{ $t('content.sub_items_count', { count: item.children.length }) }}
                                             </div>
                                         </div>
                                     </div>
@@ -112,7 +112,7 @@
                                         v-if="item.children && item.children.length > 0"
                                         class="flex-shrink-0 w-6 h-6 mt-1 flex items-center justify-center rounded hover:bg-slate-100 transition-colors"
                                         @click.stop="expandContentItems[index] = !expandContentItems[index]"
-                                        :title="expandContentItems[index] ? 'Collapse' : 'Expand'"
+                                        :title="expandContentItems[index] ? $t('content.collapse') : $t('content.expand')"
                                     >
                                         <i 
                                             :class="expandContentItems[index] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'"
@@ -125,7 +125,7 @@
                                 <div class="px-3 pb-3 border-t border-slate-100">
                                     <Button 
                                         icon="pi pi-plus" 
-                                        label="Add Sub-item"
+                                        :label="$t('content.add_sub_item')"
                                         severity="secondary" 
                                         outlined
                                         size="small"
@@ -159,7 +159,7 @@
                                                     <!-- Drag Handle -->
                                                     <div 
                                                         class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move child-drag-handle transition-all group/drag"
-                                                        title="Drag to reorder"
+                                                        :title="$t('content.drag_to_reorder')"
                                                         @click.stop
                                                     >
                                                         <i class="pi pi-bars text-slate-400 text-[10px] group-hover/drag:text-slate-600 transition-colors"></i>
@@ -191,7 +191,7 @@
                                                             {{ child.name }}
                                                         </div>
                                                         <div class="text-xs text-slate-500 mt-0.5">
-                                                            Sub-item {{ childIndex + 1 }}
+                                                            {{ $t('content.sub_item_index', { index: childIndex + 1 }) }}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -210,18 +210,18 @@
         <div class="xl:col-span-3 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
             <div class="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
                 <div class="flex items-center justify-between">
-                    <h3 class="text-lg font-semibold text-slate-900">Content Details</h3>
+                    <h3 class="text-lg font-semibold text-slate-900">{{ $t('content.content_details') }}</h3>
                     <div v-if="currentSelectedItemData" class="flex gap-2">
                         <Button 
                             icon="pi pi-pencil" 
-                            label="Edit"
+                            :label="$t('common.edit')"
                             severity="info" 
                             class="px-3 py-2"
                             @click="() => openEditDialog(currentSelectedItemData)"
                         />
                         <Button 
                             icon="pi pi-trash" 
-                            label="Delete"
+                            :label="$t('common.delete')"
                             severity="danger" 
                             outlined
                             class="px-3 py-2"
@@ -236,8 +236,8 @@
                     <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                         <i class="pi pi-file-edit text-3xl text-slate-400"></i>
                     </div>
-                    <h3 class="text-xl font-medium text-slate-900 mb-2">Select a Content Item</h3>
-                    <p class="text-slate-500">Choose an item from the list to view and edit its details</p>
+                    <h3 class="text-xl font-medium text-slate-900 mb-2">{{ $t('content.select_content_item') }}</h3>
+                    <p class="text-slate-500">{{ $t('content.choose_item_to_view') }}</p>
                 </div>
                 
                 <!-- Content Details (when an item ID is selected) -->
@@ -253,8 +253,8 @@
                          <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
                             <i class="pi pi-ghost text-3xl text-slate-400"></i>
                          </div>
-                         <h3 class="text-xl font-medium text-slate-900 mb-2">Item Not Found</h3>
-                         <p class="text-slate-500">The selected content item could not be loaded. It may have been removed.</p>
+                         <h3 class="text-xl font-medium text-slate-900 mb-2">{{ $t('content.item_not_found') }}</h3>
+                         <p class="text-slate-500">{{ $t('content.item_not_found_description') }}</p>
                     </div>
                 </template>
             </div>
@@ -264,12 +264,12 @@
         <MyDialog 
             v-model="showAddSerieDialog"
             modal
-            header="Add Content Item"
+            :header="$t('content.add_content_item')"
             :confirmHandle="handleAddContentItem"
-            confirmLabel="Add Content"
+            :confirmLabel="$t('content.add_content')"
             confirmClass="bg-blue-600 hover:bg-blue-700 text-white border-0"
             successMessage="Content item added successfully!"
-            errorMessage="Failed to add content item"
+            :errorMessage="$t('messages.operation_failed')"
             @hide="onAddDialogHide"
         >
             <CardContentCreateEditForm ref="cardContentCreateFormRef" mode="create" :cardId="cardId" :cardAiEnabled="cardAiEnabled" />
@@ -279,12 +279,12 @@
         <MyDialog 
             v-model="showAddItemDialog"
             modal
-            header="Add Sub-item"
+            :header="$t('content.add_sub_item')"
             :confirmHandle="handleAddSubItem"
-            confirmLabel="Add Sub-item"
+            :confirmLabel="$t('content.add_sub_item')"
             confirmClass="bg-blue-600 hover:bg-blue-700 text-white border-0"
             successMessage="Sub-item added successfully!"
-            errorMessage="Failed to add sub-item"
+            :errorMessage="$t('messages.operation_failed')"
             @hide="onAddSubItemDialogHide"
         >
             <CardContentCreateEditForm ref="cardContentSubItemCreateFormRef" mode="create" :cardId="cardId" :parentId="parentItemId" :cardAiEnabled="cardAiEnabled" />
@@ -294,12 +294,12 @@
         <MyDialog 
             v-model="showEditDialog"
             modal
-            header="Edit Content Item"
+            :header="$t('content.edit_content_item')"
             :confirmHandle="handleEditContentItem"
-            confirmLabel="Update Content"
+            :confirmLabel="$t('content.update_content')"
             confirmClass="bg-blue-600 hover:bg-blue-700 text-white border-0"
             successMessage="Content item updated successfully!"
-            errorMessage="Failed to update content item"
+            :errorMessage="$t('messages.operation_failed')"
             @hide="onEditDialogHide"
         >
             <CardContentCreateEditForm ref="cardContentEditFormRef" mode="edit" :cardId="cardId" :contentItem="editingContentItem" :cardAiEnabled="cardAiEnabled" />
@@ -324,6 +324,7 @@ import CroppedImageDisplay from '@/components/CroppedImageDisplay.vue';
 import { getContentAspectRatio } from '@/utils/cardConfig';
 import { useContentItemStore } from '@/stores/contentItem';
 import { useToast } from 'primevue/usetoast';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
     cardId: {
@@ -339,6 +340,7 @@ const props = defineProps({
 const contentItemStore = useContentItemStore();
 const toast = useToast();
 const confirm = useConfirm();
+const { t } = useI18n();
 
 const selectedContentItem = ref(null);
 const showAddSerieDialog = ref(false);
@@ -401,7 +403,7 @@ const loadContentItems = async () => {
         contentItems.value = parentItems;
     } catch (error) {
         console.error('Error loading content items:', error);
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to load content items', life: 3000 });
+        toast.add({ severity: 'error', summary: t('messages.operation_failed'), detail: t('content.failed_to_load_items'), life: 3000 });
     }
 };
 
@@ -559,11 +561,11 @@ const handleEditContentItem = async () => {
 const confirmDeleteContentItem = (itemId, itemName, itemType) => {
     confirm.require({
         group: 'deleteContentConfirmation',
-        message: `Are you sure you want to delete the ${itemType} "${itemName}"? This action cannot be undone.`,
-        header: `Delete ${itemType.charAt(0).toUpperCase() + itemType.slice(1)}`,
+        message: t('messages.confirm_delete_item', { itemType, itemName }),
+        header: t('messages.confirm_deletion_title', { itemType }),
         icon: 'pi pi-exclamation-triangle',
-        acceptLabel: 'Delete',
-        rejectLabel: 'Cancel',
+        acceptLabel: t('common.delete'),
+        rejectLabel: t('common.cancel'),
         acceptClass: 'p-button-danger',
         accept: async () => {
             await deleteContentItem(itemId);
@@ -586,7 +588,7 @@ const deleteContentItem = async (itemId) => {
         // Success feedback provided by visual removal from list
     } catch (error) {
         console.error('Error deleting content item:', error);
-        toast.add({ severity: 'error', summary: 'Error', detail: 'Failed to delete content item', life: 3000 });
+        toast.add({ severity: 'error', summary: t('messages.operation_failed'), detail: t('content.failed_to_delete_item'), life: 3000 });
     }
 };
 

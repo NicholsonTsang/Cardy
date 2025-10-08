@@ -8,8 +8,8 @@
                     <div class="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl mb-6 shadow-lg">
                         <i class="pi pi-lock text-white text-3xl"></i>
                     </div>
-                    <h1 id="reset-title" class="text-2xl font-bold text-slate-900 mb-2">Reset Password</h1>
-                    <p class="text-slate-600">Enter your new password below</p>
+                    <h1 id="reset-title" class="text-2xl font-bold text-slate-900 mb-2">{{ $t('auth.reset_password') }}</h1>
+                    <p class="text-slate-600">{{ $t('auth.enter_new_password') }}</p>
                 </div>
 
                 <!-- Form Section -->
@@ -17,28 +17,28 @@
                     <form @submit.prevent="handleResetPassword" class="space-y-5">
                         <!-- New Password Field -->
                         <div class="space-y-2">
-                            <label for="new-password" class="block text-sm font-medium text-slate-700">New Password</label>
+                            <label for="new-password" class="block text-sm font-medium text-slate-700">{{ $t('auth.new_password') }}</label>
                             <InputText 
                                 id="new-password" 
                                 v-model="newPassword" 
                                 type="password" 
-                                placeholder="Enter new password" 
+                                :placeholder="$t('auth.new_password')" 
                                 class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                 :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': newPasswordError }"
                                 required 
                             />
                             <p v-if="newPasswordError" class="text-sm text-red-600">{{ newPasswordError }}</p>
-                            <p class="text-xs text-slate-500">Password must be at least 6 characters</p>
+                            <p class="text-xs text-slate-500">{{ $t('auth.password_requirements') }}</p>
                         </div>
 
                         <!-- Confirm Password Field -->
                         <div class="space-y-2">
-                            <label for="confirm-password" class="block text-sm font-medium text-slate-700">Confirm Password</label>
+                            <label for="confirm-password" class="block text-sm font-medium text-slate-700">{{ $t('auth.confirm_password') }}</label>
                             <InputText 
                                 id="confirm-password" 
                                 v-model="confirmPassword" 
                                 type="password" 
-                                placeholder="Confirm new password" 
+                                :placeholder="$t('auth.confirm_password')" 
                                 class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                 :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': confirmPasswordError }"
                                 required 
@@ -59,7 +59,7 @@
                         <!-- Submit Button -->
                         <Button 
                             type="submit" 
-                            label="Reset Password" 
+                            :label="$t('auth.reset_password')" 
                             severity="primary"
                             class="w-full py-3 border-0 shadow-lg hover:shadow-xl transition-all duration-200" 
                             :style="{
@@ -90,6 +90,9 @@ import Message from 'primevue/message';
 import { ref, computed, onMounted } from 'vue';
 import { useAuthStore } from '@/stores/auth.js';
 import { useRouter, useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const newPassword = ref('');
 const confirmPassword = ref('');
@@ -105,12 +108,12 @@ const successMessage = ref('');
 // Form validation
 const newPasswordError = computed(() => {
     if (!newPassword.value) return '';
-    return newPassword.value.length < 6 ? 'Password must be at least 6 characters' : '';
+    return newPassword.value.length < 6 ? t('auth.password_requirements') : '';
 });
 
 const confirmPasswordError = computed(() => {
     if (!confirmPassword.value) return '';
-    return confirmPassword.value !== newPassword.value ? 'Passwords do not match' : '';
+    return confirmPassword.value !== newPassword.value ? t('auth.passwords_must_match') : '';
 });
 
 async function handleResetPassword() {
@@ -120,21 +123,21 @@ async function handleResetPassword() {
     
     // Validate form
     if (newPasswordError.value || confirmPasswordError.value) {
-        errorMessage.value = 'Please fix the errors above';
+        errorMessage.value = t('validation.required_field');
         return;
     }
 
     isLoading.value = true;
     try {
         await authStore.updatePassword(newPassword.value);
-        successMessage.value = 'Password updated successfully! Redirecting to sign in...';
+        successMessage.value = t('auth.password_update_success');
         
         // Redirect to sign in after 2 seconds
         setTimeout(() => {
             router.push('/login');
         }, 2000);
     } catch (error) {
-        errorMessage.value = error.message || 'Failed to reset password. The link may have expired.';
+        errorMessage.value = error.message || t('messages.network_error');
         console.error('Reset password error:', error);
     } finally {
         isLoading.value = false;
