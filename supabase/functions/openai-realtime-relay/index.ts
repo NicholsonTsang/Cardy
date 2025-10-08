@@ -39,7 +39,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Get configuration from environment
-    const model = Deno.env.get('OPENAI_REALTIME_MODEL') || 'gpt-4o-realtime-preview-2024-12-17'
+    const model = Deno.env.get('OPENAI_REALTIME_MODEL') || 'gpt-4o-mini-realtime-preview-2024-12-17'
     const voice = Deno.env.get('OPENAI_REALTIME_VOICE') || 'alloy'
     const temperature = parseFloat(Deno.env.get('OPENAI_REALTIME_TEMPERATURE') || '0.8')
     const maxTokens = parseInt(Deno.env.get('OPENAI_REALTIME_MAX_TOKENS') || '4096')

@@ -66,12 +66,13 @@ CardStudio is built with Vue 3 + TypeScript, using PrimeVue UI components, Pinia
 - **No direct table access** - all queries use `supabase.rpc()` calls
 - **Stripe** integration for payments (via Edge Functions)
 - **OpenAI Realtime API** integration for voice-based AI conversations
-- **Edge Functions** for AI token management and WebRTC proxy
+- **Edge Functions** for AI token management
+- **Express.js Relay Server** for bypassing regional OpenAI blocks
 
 ## Key Commands
 
 ```bash
-# Development
+# Frontend Development
 npm run dev                 # Start development server (uses .env.local)
 npm run dev:local          # Start local development server
 npm run build              # Build for production
@@ -83,6 +84,13 @@ npm run preview            # Preview production build
 supabase start             # Start local Supabase
 supabase db reset          # Reset local database
 supabase gen types typescript --local > src/types/supabase.ts
+
+# OpenAI Relay Server
+cd openai-relay-server
+npm run dev                # Start relay server (development)
+npm run build              # Build relay server
+npm start                  # Start relay server (production)
+docker-compose up -d       # Start relay server with Docker
 ```
 
 ## Important File Structure
@@ -98,6 +106,15 @@ src/
 │   │   ├── Admin/       # Admin panel views
 │   │   └── CardIssuer/  # Card issuer views
 │   └── MobileClient/    # Mobile card viewing
+│       └── components/
+│           └── AIAssistant/  # AI conversation components
+│               ├── components/
+│               │   ├── ChatInterface.vue       # Chat completion UI
+│               │   ├── RealtimeInterface.vue   # Realtime audio UI
+│               │   └── LanguageSelector.vue    # Language selection
+│               └── composables/
+│                   ├── useChatCompletion.ts    # Chat API integration
+│                   └── useRealtimeConnection.ts # Realtime API integration
 ├── stores/              # Pinia stores for state management
 ├── utils/               # Helper functions
 └── router/              # Vue Router configuration
@@ -107,6 +124,13 @@ sql/
 ├── storeproc/           # Modular stored procedures (01-11)
 ├── triggers.sql         # Database triggers
 └── policy.sql           # RLS policies
+
+openai-relay-server/     # WebSocket relay for OpenAI Realtime API
+├── src/
+│   └── index.ts         # Express.js WebSocket relay server
+├── Dockerfile           # Docker container configuration
+├── docker-compose.yml   # Docker Compose setup
+└── README.md            # Relay server documentation
 ```
 
 ## Critical Design Specifications
@@ -159,24 +183,33 @@ CardStudio offers three distinct modes for AI-powered conversations with exhibit
 - ✅ Cost-optimized: ~7x cheaper than audio model
 - ✅ Multi-language support (10 languages)
 
-### Real-Time Audio Mode (UI Complete, Backend Pending)
+### Real-Time Audio Mode (Fully Functional with Relay Server)
 
 **Technology Stack:**
 - OpenAI Realtime API (`gpt-4o-mini-realtime-preview`)
-- WebRTC for peer-to-peer audio streaming
-- Server-Sent Events for signaling
+- WebSocket for bidirectional audio streaming
+- Express.js relay server for regional access
+- PCM16 audio format (24kHz sample rate)
 
-**Edge Functions (Planned):**
-- `openai-realtime-relay/` - WebRTC relay between client and OpenAI
+**Relay Server:**
+- `openai-relay-server/` - Express.js WebSocket relay for bypassing regional blocks
+- Deployed independently to accessible regions
+- Transparent proxy - no modifications to messages or audio
+- Docker deployment with health checks and auto-restart
 
-**Features (UI Complete):**
+**Edge Functions:**
+- `openai-realtime-relay/` - Generates ephemeral tokens for secure connections
+
+**Features:**
 - ✅ ChatGPT-style live conversation UI
 - ✅ Animated waveform visualization
 - ✅ Connection state management
 - ✅ Live transcript display
 - ✅ Status indicators and animations
-- ⏳ WebRTC implementation (pending)
-- ⏳ Actual audio streaming (pending)
+- ✅ WebSocket bidirectional streaming
+- ✅ Actual audio streaming (input and output)
+- ✅ Regional access via relay server
+- ✅ Barge-in detection (interrupt AI mid-response)
 
 **AI Features (All Modes):**
 - **Multi-language Support**: English, Cantonese, Mandarin, Japanese, Korean, Spanish, French, Russian, Arabic, Thai

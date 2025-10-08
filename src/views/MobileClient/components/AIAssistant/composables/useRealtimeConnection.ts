@@ -104,7 +104,20 @@ export function useRealtimeConnection() {
   }
 
   function createWebSocket(model: string, token: string) {
-    const wsUrl = `wss://api.openai.com/v1/realtime?model=${model}`
+    // Use relay server if configured, otherwise connect directly to OpenAI
+    const relayUrl = import.meta.env.VITE_OPENAI_RELAY_URL
+    
+    let wsUrl: string
+    if (relayUrl) {
+      // Connect to relay server
+      wsUrl = `${relayUrl}/realtime?model=${encodeURIComponent(model)}`
+      console.log('🔄 Connecting via relay server:', wsUrl)
+    } else {
+      // Direct connection to OpenAI (legacy, may be blocked in some regions)
+      wsUrl = `wss://api.openai.com/v1/realtime?model=${model}`
+      console.log('⚠️ Connecting directly to OpenAI (no relay configured):', wsUrl)
+    }
+    
     realtimeWebSocket.value = new WebSocket(wsUrl, [
       'realtime',
       `openai-insecure-api-key.${token}`,

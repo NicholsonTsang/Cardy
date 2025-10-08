@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  openai-relay:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: openai-realtime-relay:latest
+    container_name: openai-realtime-relay
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8080}:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=8080
+      - OPENAI_API_URL=${OPENAI_API_URL:-wss://api.openai.com/v1/realtime}
+      - MAX_CONNECTIONS=${MAX_CONNECTIONS:-100}
+      - HEARTBEAT_INTERVAL=${HEARTBEAT_INTERVAL:-30000}
+      - INACTIVITY_TIMEOUT=${INACTIVITY_TIMEOUT:-300000}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - DEBUG=${DEBUG:-false}
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - relay-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Resource limits (adjust based on your needs)
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+
+networks:
+  relay-network:
+    driver: bridge
+
