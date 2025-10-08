@@ -78,7 +78,7 @@ app.use(cors({
 app.use(express.json())
 
 // Health check endpoint
-app.get('/health', (req, res) => {
+app.get('/health', (_req, res) => {
   const uptime = Date.now() - stats.startTime
   const health = {
     status: 'healthy',
@@ -95,7 +95,7 @@ app.get('/health', (req, res) => {
 })
 
 // Readiness check endpoint
-app.get('/ready', (req, res) => {
+app.get('/ready', (_req, res) => {
   if (stats.activeConnections < MAX_CONNECTIONS) {
     res.json({ status: 'ready' })
   } else {
@@ -104,7 +104,7 @@ app.get('/ready', (req, res) => {
 })
 
 // Stats endpoint
-app.get('/stats', (req, res) => {
+app.get('/stats', (_req, res) => {
   res.json({
     ...stats,
     maxConnections: MAX_CONNECTIONS,
