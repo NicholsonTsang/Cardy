@@ -101,13 +101,13 @@ export function useRealtimeConnection() {
       'th': 'shimmer'
     }
     
-    return {
+    const tokenData = {
       success: true,
       token: 'relay-proxy-mode',
-      model: 'gpt-4o-mini-realtime-preview-2024-12-17',
+      model: 'gpt-realtime-mini-2025-10-06',
       sessionConfig: {
         type: 'realtime',  // Required for GA API
-        model: 'gpt-4o-mini-realtime-preview-2024-12-17',
+        model: 'gpt-realtime-mini-2025-10-06',
         output_modalities: ['audio', 'text'],  // GA API: "output_modalities" not "modalities"
         audio: {  // GA API: nested audio configuration
           input: {
@@ -134,6 +134,14 @@ export function useRealtimeConnection() {
         max_response_output_tokens: 4096
       }
     }
+    
+    console.log('🔑 Generated token data (open proxy mode):', {
+      hasModel: !!tokenData.model,
+      hasSessionConfig: !!tokenData.sessionConfig,
+      model: tokenData.model
+    })
+    
+    return tokenData
   }
 
   async function requestMicrophone() {

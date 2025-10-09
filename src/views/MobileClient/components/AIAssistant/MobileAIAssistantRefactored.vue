@@ -348,6 +348,13 @@ async function connectRealtime() {
       props.contentItemName
     )
     
+    console.log('🔍 Received token data:', tokenData)
+    
+    // Validate token data
+    if (!tokenData || !tokenData.model || !tokenData.sessionConfig) {
+      throw new Error('Invalid token data received: ' + JSON.stringify(tokenData))
+    }
+    
     // Request microphone
     await realtimeConnection.requestMicrophone()
     

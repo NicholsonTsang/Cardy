@@ -331,14 +331,14 @@ OPENAI_TTS_VOICE = "alloy"
 OPENAI_AUDIO_FORMAT = "wav"
 
 # OpenAI Realtime API Configuration (for real-time audio mode)
-# Use mini model for cost-effective real-time conversations (~7x cheaper)
-OPENAI_REALTIME_MODEL = "gpt-4o-mini-realtime-preview-2024-12-17"
+# Use mini model for cost-effective real-time conversations
+OPENAI_REALTIME_MODEL = "gpt-realtime-mini-2025-10-06"
 OPENAI_REALTIME_VOICE = "alloy"
 OPENAI_REALTIME_TEMPERATURE = "0.8"
 OPENAI_REALTIME_MAX_TOKENS = "4096"
 
 # Legacy OpenAI Realtime (if still using old implementation)
-# OPENAI_MODEL = "gpt-4o-realtime-preview-2025-06-03"
+# OPENAI_MODEL = "gpt-realtime-mini-2025-10-06"
 
 [analytics]
 enabled = true

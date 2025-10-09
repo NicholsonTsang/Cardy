@@ -148,7 +148,7 @@ log.info('WebSocket server initialized')
 // Parse WebSocket URL to extract model parameter
 function parseWebSocketAuth(req: IncomingMessage): { model: string } {
   const url = new URL(req.url || '', `http://${req.headers.host}`)
-  const model = url.searchParams.get('model') || 'gpt-4o-mini-realtime-preview-2024-12-17'
+  const model = url.searchParams.get('model') || 'gpt-realtime-mini-2025-10-06'
   
   log.debug('WebSocket connection request', { model })
   
