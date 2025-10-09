@@ -1,5 +1,5 @@
 // Main component
-export { default as MobileAIAssistant } from './MobileAIAssistantRefactored.vue'
+export { default as MobileAIAssistant } from './MobileAIAssistant.vue'
 
 // Sub-components
 export { default as AIAssistantModal } from './components/AIAssistantModal.vue'

@@ -341,18 +341,18 @@ async function connectRealtime() {
   realtimeConnection.realtimeStatus.value = 'connecting'
   
   try {
-    // Get ephemeral token
-    const tokenData = await realtimeConnection.getEphemeralToken(
+    // Get session configuration
+    const configData = realtimeConnection.getSessionConfiguration(
       selectedLanguage.value.code,
       systemInstructions.value,
       props.contentItemName
     )
     
-    console.log('🔍 Received token data:', tokenData)
+    console.log('🔍 Received configuration:', configData)
     
-    // Validate token data
-    if (!tokenData || !tokenData.model || !tokenData.sessionConfig) {
-      throw new Error('Invalid token data received: ' + JSON.stringify(tokenData))
+    // Validate configuration
+    if (!configData || !configData.model || !configData.sessionConfig) {
+      throw new Error('Invalid configuration received: ' + JSON.stringify(configData))
     }
     
     // Request microphone
@@ -361,8 +361,8 @@ async function connectRealtime() {
     // Create audio contexts
     realtimeConnection.createAudioContexts()
     
-    // Create WebSocket
-    const ws = realtimeConnection.createWebSocket(tokenData.model, tokenData.token)
+    // Create WebSocket (no token needed in open proxy mode)
+    const ws = realtimeConnection.createWebSocket(configData.model)
     
     let audioStarted = false
     const startAudioOnce = () => {
@@ -412,7 +412,7 @@ async function connectRealtime() {
           // Send session configuration
           const payload = {
             type: 'session.update',
-            session: tokenData.sessionConfig
+            session: configData.sessionConfig
           }
           
           try {

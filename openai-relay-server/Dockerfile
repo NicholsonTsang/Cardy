@@ -1,60 +1,32 @@
-# Multi-stage build for optimized production image
-
-# Stage 1: Build
-FROM node:20-alpine AS builder
+# Simplified OpenAI Relay Server
+FROM node:20-alpine
 
 WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
+
+# Install production dependencies only
+RUN npm ci --production
+
+# Copy source
+COPY src/index.ts ./src/
 COPY tsconfig.json ./
 
-# Install dependencies (use npm install since we don't have package-lock.json yet)
-RUN npm install --production && \
-    npm install
+# Build
+RUN npm install typescript && \
+    npx tsc src/index.ts --outDir dist --module commonjs --target es2020 && \
+    npm uninstall typescript
 
-# Copy source code
-COPY src ./src
-
-# Build TypeScript
-RUN npm run build
-
-# Stage 2: Production
-FROM node:20-alpine
-
-WORKDIR /app
-
-# Install dumb-init for proper signal handling
-RUN apk add --no-cache dumb-init
-
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-# Copy package files and install production dependencies only
-COPY package*.json ./
-RUN npm install --production && \
-    npm cache clean --force
-
-# Copy built application from builder
-COPY --from=builder /app/dist ./dist
-
-# Change ownership to nodejs user
-RUN chown -R nodejs:nodejs /app
-
-# Switch to non-root user
-USER nodejs
+# Run as non-root user
+USER node
 
 # Expose port
 EXPOSE 8080
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:8080/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"
+  CMD node -e "require('http').get('http://localhost:8080/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }).on('error', () => process.exit(1));"
 
-# Use dumb-init to handle signals properly
-ENTRYPOINT ["dumb-init", "--"]
-
-# Start application
+# Start server
 CMD ["node", "dist/index.js"]
-
