@@ -33,12 +33,6 @@ const HEARTBEAT_INTERVAL = parseInt(process.env.HEARTBEAT_INTERVAL || '30000', 1
 const INACTIVITY_TIMEOUT = parseInt(process.env.INACTIVITY_TIMEOUT || '300000', 10) // 5 minutes
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || ['*']
 
-// Validate required configuration
-if (!OPENAI_API_KEY) {
-  log.error('OPENAI_API_KEY environment variable is required')
-  process.exit(1)
-}
-
 // Logging utilities
 const log = {
   info: (msg: string, data?: any) => {
@@ -55,6 +49,12 @@ const log = {
       console.debug(`[DEBUG] ${new Date().toISOString()} - ${msg}`, data || '')
     }
   }
+}
+
+// Validate required configuration
+if (!OPENAI_API_KEY) {
+  log.error('OPENAI_API_KEY environment variable is required')
+  process.exit(1)
 }
 
 // Stats tracking
