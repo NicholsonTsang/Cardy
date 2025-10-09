@@ -76,11 +76,11 @@ export function useRealtimeConnection() {
       audioContext.value = new AudioContext({ sampleRate: 24000 })
       audioPlayer.value = new AudioContext({ sampleRate: 24000 })
       
-      // Connect to relay server
-      ws.value = new WebSocket(`${relayUrl}/realtime`, ['realtime'])
-      
       // Store session config for later use
       const sessionConfig = getSessionConfig(language, instructions)
+      
+      // Connect to relay server with model in query string
+      ws.value = new WebSocket(`${relayUrl}/realtime?model=${sessionConfig.model}`, ['realtime'])
       
       // Set up WebSocket handlers
       ws.value.onopen = () => {

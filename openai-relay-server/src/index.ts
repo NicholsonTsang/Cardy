@@ -74,6 +74,12 @@ wss.on('connection', (clientWs: any, req: any) => {
     origin: req.headers.origin 
   })
   
+  // Parse query parameters to get the model
+  const url = new URL(req.url || '', `http://${req.headers.host}`)
+  const model = url.searchParams.get('model') || 'gpt-4o-realtime-preview'
+  
+  log.info(`Using model: ${model}`)
+  
   // Store connection
   const connection = {
     clientWs,
@@ -82,9 +88,10 @@ wss.on('connection', (clientWs: any, req: any) => {
   }
   connections.set(sessionId, connection)
   
-  // Connect to OpenAI
+  // Connect to OpenAI with model in URL
   try {
-    const openaiWs = new WSWebSocket(OPENAI_API_URL, 'realtime', {
+    const openaiUrl = `${OPENAI_API_URL}?model=${model}`
+    const openaiWs = new WSWebSocket(openaiUrl, 'realtime', {
       headers: {
         'Authorization': `Bearer ${OPENAI_API_KEY}`,
         'OpenAI-Beta': 'realtime=v1'
