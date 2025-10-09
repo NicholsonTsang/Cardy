@@ -370,25 +370,46 @@ async function connectRealtime() {
       realtimeConnection.isRealtimeConnected.value = true
       realtimeConnection.realtimeStatus.value = 'connected'
       
-      // Send session configuration
+      // Send session configuration on connect; do NOT start audio yet
       ws.send(JSON.stringify({
         type: 'session.update',
         session: tokenData.sessionConfig
       }))
       
-      // Start sending audio
-      realtimeConnection.startSendingAudio()
-      
-      // Start inactivity timer
-      inactivityTimer.startTimer()
+      // Wait for session.updated before starting audio
     }
     
-    ws.onmessage = (event) => {
+    ws.onmessage = async (event) => {
       try {
-        const data = JSON.parse(event.data)
+        let textPayload: string | null = null
+        const payload: any = event.data
+        
+        if (typeof payload === 'string') {
+          textPayload = payload
+        } else if (payload instanceof Blob) {
+          textPayload = await payload.text()
+        } else if (payload instanceof ArrayBuffer) {
+          textPayload = new TextDecoder().decode(payload)
+        } else if (payload && typeof payload === 'object' && 'data' in payload && payload.data instanceof ArrayBuffer) {
+          textPayload = new TextDecoder().decode(payload.data)
+        }
+        
+        if (!textPayload) {
+          console.warn('🔎 Unknown WebSocket message payload type; skipping frame')
+          return
+        }
+        
+        const data = JSON.parse(textPayload)
         
         // Reset inactivity timer on any activity
         inactivityTimer.resetTimer()
+        
+        // Start sending audio ONLY after session config is applied
+        if (data.type === 'session.updated') {
+          console.log('⚙️ Session updated; starting audio stream')
+          realtimeConnection.startSendingAudio()
+          inactivityTimer.startTimer()
+        }
         
         // Handle audio delta (GA API event name)
         if (data.type === 'response.output_audio.delta' && data.delta) {

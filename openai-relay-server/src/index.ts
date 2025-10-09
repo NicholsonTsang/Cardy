@@ -197,11 +197,11 @@ wss.on('connection', (clientWs: WSWebSocket, req: IncomingMessage) => {
   
   try {
     // Use the server's OpenAI API key from environment
-    const openaiWs = new WSWebSocket(openaiUrl, [
-      'realtime',
-      `openai-insecure-api-key.${OPENAI_API_KEY}`
-      // Note: 'openai-beta.realtime-v1' removed - using GA API (2024-12-17 model)
-    ])
+    const openaiWs = new WSWebSocket(openaiUrl, 'realtime', {
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`
+      }
+    })
     
     connection.openaiWs = openaiWs
     
