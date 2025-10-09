@@ -473,8 +473,8 @@ async function connectRealtime() {
           return
         }
         
-        // Handle audio delta
-        if (data.type === 'response.audio.delta' && data.delta) {
+        // Handle audio delta (GA API event name)
+        if (data.type === 'response.output_audio.delta' && data.delta) {
           realtimeConnection.playRealtimeAudio(data.delta)
         }
         
@@ -503,8 +503,8 @@ async function connectRealtime() {
           }
         }
 
-        // Handle assistant transcript (delta) - ensure each response is a separate bubble
-        if (data.type === 'response.audio_transcript.delta' && data.delta) {
+        // Handle assistant transcript (delta) - GA API event name
+        if (data.type === 'response.output_audio_transcript.delta' && data.delta) {
           const responseId = data.response_id
           if (responseId && !assistantMessageByResponseId.value[responseId]) {
             const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`

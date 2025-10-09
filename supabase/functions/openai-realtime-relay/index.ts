@@ -1,13 +1,29 @@
 import { corsHeaders } from '../_shared/cors.ts'
 
 interface RealtimeSessionConfig {
+  type: string  // 'realtime' for speech-to-speech
   model?: string
-  voice?: string
+  output_modalities?: string[]
+  audio?: {
+    input?: {
+      format?: {
+        type: string
+        rate: number
+      }
+      turn_detection?: {
+        type: string
+      }
+    }
+    output?: {
+      format?: {
+        type: string
+      }
+      voice?: string
+    }
+  }
   instructions?: string
-  input_audio_format?: string
-  output_audio_format?: string
   temperature?: number
-  max_response_output_tokens?: number
+  max_output_tokens?: number
 }
 
 interface CreateSessionRequest {
@@ -39,7 +55,7 @@ Deno.serve(async (req: Request) => {
     }
 
     // Get configuration from environment
-    const model = Deno.env.get('OPENAI_REALTIME_MODEL') || 'gpt-4o-mini-realtime-preview-2024-12-17'
+    const model = Deno.env.get('OPENAI_REALTIME_MODEL') || 'gpt-realtime-mini-2025-10-06'
     const voice = Deno.env.get('OPENAI_REALTIME_VOICE') || 'alloy'
     const temperature = parseFloat(Deno.env.get('OPENAI_REALTIME_TEMPERATURE') || '0.8')
     const maxTokens = parseInt(Deno.env.get('OPENAI_REALTIME_MAX_TOKENS') || '4096')
@@ -107,15 +123,31 @@ Use natural, conversational language suitable for voice interaction.`
     const tokenData = await tokenResponse.json()
     console.log('✅ Ephemeral token generated successfully')
 
-    // Return session configuration
+    // Return session configuration (GA API format)
     const sessionConfig: RealtimeSessionConfig = {
+      type: 'realtime',  // Required for GA API
       model: model,
-      voice: voice,
+      output_modalities: ['audio'],  // Lock to audio output
+      audio: {
+        input: {
+          format: {
+            type: 'audio/pcm',
+            rate: 24000
+          },
+          turn_detection: {
+            type: 'semantic_vad'  // Voice Activity Detection
+          }
+        },
+        output: {
+          format: {
+            type: 'audio/pcm'
+          },
+          voice: voice
+        }
+      },
       instructions: instructions,
-      input_audio_format: 'pcm16',  // 16-bit PCM for better compatibility
-      output_audio_format: 'pcm16',
       temperature: temperature,
-      max_response_output_tokens: maxTokens
+      max_output_tokens: maxTokens  // Renamed from max_response_output_tokens
     }
 
     return new Response(
