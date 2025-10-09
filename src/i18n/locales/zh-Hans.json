@@ -194,7 +194,12 @@
     "realtime_mode": "Realtime Mode",
     "connecting": "Connecting...",
     "connected": "Connected",
-    "disconnected": "Disconnected"
+    "disconnected": "Disconnected",
+    "close": "关闭",
+    "change": "更改",
+    "welcome_message": "您好！我是 {name} 的 AI 助手。有什么可以帮助您的吗？",
+    "connection_error": "连接错误",
+    "open_ai_assistant": "开启 AI 助手"
   },
 
   "validation": {

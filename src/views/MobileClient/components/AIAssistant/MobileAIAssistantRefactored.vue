@@ -4,7 +4,7 @@
     <button @click="openModal" class="ai-button">
       <i class="pi pi-comments" />
       <span>Ask AI Assistant</span>
-        </button>
+    </button>
 
     <!-- Modal -->
     <AIAssistantModal
@@ -42,10 +42,10 @@
       <!-- Realtime Mode -->
       <RealtimeInterface
         v-else-if="conversationMode === 'realtime'"
-        :is-connected="realtimeConnection.isConnected.value"
-        :is-speaking="realtimeConnection.isSpeaking.value"
-        :status="realtimeConnection.status.value"
-        :status-text="realtimeStatusText"
+        :is-connected="realtimeConnection.isRealtimeConnected.value"
+        :is-speaking="realtimeConnection.isRealtimeSpeaking.value"
+        :status="realtimeConnection.realtimeStatus.value"
+        :status-text="realtimeConnection.statusText.value"
         :messages="messages"
         @connect="connectRealtime"
         @disconnect="disconnectRealtime"
@@ -132,32 +132,18 @@ const welcomeMessages: Record<string, string> = {
   'th': `สวัสดี! ฉันเป็น AI ผู้ช่วยของ "${props.contentItemName}" ถามอะไรก็ได้เกี่ยวกับนิทรรศการนี้!`
 }
 
-// Computed property for realtime status text
-const realtimeStatusText = computed(() => {
-  switch (realtimeConnection.status) {
-    case 'connecting':
-      return 'Connecting...'
-    case 'connected':
-      return 'Connected'
-    case 'error':
-      return 'Connection error'
-    default:
-      return 'Disconnected'
-  }
-})
-
 // ============================================================================
 // COST SAFEGUARDS & INACTIVITY TIMER
 // ============================================================================
 
 const inactivityTimer = useInactivityTimer(300000, () => {
-  if (realtimeConnection.isConnected.value) {
+  if (realtimeConnection.isRealtimeConnected.value) {
     disconnectRealtime()
   }
 })
 
 const costSafeguards = useCostSafeguards(
-  realtimeConnection.isConnected,
+  realtimeConnection.isRealtimeConnected,
   () => disconnectRealtime()
 )
 
@@ -183,7 +169,7 @@ function closeModal() {
   firstAudioPlayed.value = false
   conversationMode.value = 'chat-completion'
   
-  if (realtimeConnection.isConnected.value) {
+  if (realtimeConnection.isRealtimeConnected.value) {
     disconnectRealtime()
   }
   
@@ -195,8 +181,8 @@ function closeModal() {
 function selectLanguage(language: Language) {
   selectedLanguage.value = language
   showLanguageSelection.value = false
-    
-    // Add welcome message
+  
+  // Add welcome message
   const welcomeText = welcomeMessages[language.code] || welcomeMessages['en']
   messages.value = [{
     id: Date.now().toString(),
@@ -212,7 +198,7 @@ function toggleConversationMode() {
     messages.value = [] // Clear messages
   } else {
     conversationMode.value = 'chat-completion'
-    if (realtimeConnection.isConnected.value) {
+    if (realtimeConnection.isRealtimeConnected.value) {
       disconnectRealtime()
     }
     // Add welcome message back
@@ -244,7 +230,7 @@ async function sendTextMessage(text: string) {
     content: text,
     timestamp: new Date()
   })
-
+  
   // Create streaming assistant message
   const streamingMessageId = (Date.now() + 1).toString()
   messages.value.push({
@@ -352,31 +338,104 @@ async function playMessageAudio(message: Message) {
 async function connectRealtime() {
   if (!selectedLanguage.value) return
   
+  realtimeConnection.realtimeStatus.value = 'connecting'
+  
   try {
-    // Connect to realtime with simplified API
-    const ws = await realtimeConnection.connect(
+    // Get session configuration
+    const configData = realtimeConnection.getSessionConfiguration(
       selectedLanguage.value.code,
-      systemInstructions.value
+      systemInstructions.value,
+      props.contentItemName
     )
     
-    // Add custom message handler for transcripts
-    const originalOnMessage = ws.onmessage
+    console.log('🔍 Received configuration:', configData)
+    
+    // Validate configuration
+    if (!configData || !configData.model || !configData.sessionConfig) {
+      throw new Error('Invalid configuration received: ' + JSON.stringify(configData))
+    }
+    
+    // Request microphone
+    await realtimeConnection.requestMicrophone()
+    
+    // Create audio contexts
+    realtimeConnection.createAudioContexts()
+    
+    // Create WebSocket (no token needed in open proxy mode)
+    const ws = realtimeConnection.createWebSocket(configData.model)
+    
+    let audioStarted = false
+    const startAudioOnce = () => {
+      if (audioStarted) return
+      audioStarted = true
+      console.log('🎙️ Starting audio stream (guarded)')
+      realtimeConnection.startSendingAudio()
+      inactivityTimer.startTimer()
+    }
+    
+    // Setup WebSocket handlers
+    ws.onopen = () => {
+      console.log('✅ Realtime connection established')
+      realtimeConnection.isRealtimeConnected.value = true
+      realtimeConnection.realtimeStatus.value = 'connected'
+    }
+    
     ws.onmessage = async (event) => {
-      // Call original handler first
-      if (originalOnMessage) {
-        originalOnMessage.call(ws, event)
-      }
-      
-      // Handle transcripts for UI
       try {
-        const data = typeof event.data === 'string' 
-          ? JSON.parse(event.data)
-          : JSON.parse(await event.data.text())
+        let textPayload: string | null = null
+        const payload: any = event.data
+        
+        if (typeof payload === 'string') {
+          textPayload = payload
+        } else if (payload instanceof Blob) {
+          textPayload = await payload.text()
+        } else if (payload instanceof ArrayBuffer) {
+          textPayload = new TextDecoder().decode(payload)
+        } else if (payload && typeof payload === 'object' && 'data' in payload && payload.data instanceof ArrayBuffer) {
+          textPayload = new TextDecoder().decode(payload.data)
+        }
+        
+        if (!textPayload) {
+          console.warn('🔎 Unknown WebSocket message payload type; skipping frame')
+          return
+        }
+        
+        const data = JSON.parse(textPayload)
         
         // Reset inactivity timer on any activity
         inactivityTimer.resetTimer()
         
-        // Handle assistant transcript
+        // Send session configuration after receiving session.created
+        if (data.type === 'session.created') {
+          console.log('🎯 Received session.created, sending session.update...')
+          
+          // Send session configuration
+          const payload = {
+            type: 'session.update',
+            session: configData.sessionConfig
+          }
+          
+          try {
+            const message = JSON.stringify(payload)
+            console.log('📤 Sending session.update, length:', message.length)
+            ws.send(message)
+            console.log('✅ session.update sent after session.created')
+          } catch (err) {
+            console.error('❌ Failed to send session.update:', err)
+          }
+        }
+        
+        if (data.type === 'session.updated') {
+          console.log('⚙️ Session updated; starting audio stream')
+          startAudioOnce()
+        }
+        
+        // Handle audio delta (GA API event name)
+        if (data.type === 'response.output_audio.delta' && data.delta) {
+          realtimeConnection.playRealtimeAudio(data.delta)
+        }
+        
+        // Handle transcript (GA API event name)
         if (data.type === 'response.output_audio_transcript.delta' && data.delta) {
           const lastMessage = messages.value[messages.value.length - 1]
           if (!lastMessage || lastMessage.role !== 'assistant') {
@@ -401,35 +460,33 @@ async function connectRealtime() {
           })
         }
       } catch (err) {
-        console.error('Transcript handling error:', err)
+        console.error('WebSocket message error:', err)
       }
     }
     
-    // Start inactivity timer
-    inactivityTimer.startTimer()
+    ws.onerror = (err) => {
+      console.error('❌ WebSocket error:', err)
+      realtimeConnection.realtimeStatus.value = 'error'
+      realtimeConnection.realtimeError.value = 'Connection error'
+    }
     
-    // Cost safeguards
-    costSafeguards.addSafeguards()
-    
-    // Add welcome message
-    messages.value.push({
-      id: Date.now().toString(),
-      role: 'assistant',
-      content: welcomeMessages[selectedLanguage.value.code] || welcomeMessages['en'],
-      timestamp: new Date()
-    })
+    ws.onclose = () => {
+      console.log('🔌 WebSocket closed')
+      realtimeConnection.isRealtimeConnected.value = false
+      realtimeConnection.realtimeStatus.value = 'disconnected'
+      inactivityTimer.clearTimer()
+    }
   } catch (err: any) {
     console.error('❌ Realtime connection error:', err)
-    realtimeConnection.error = err.message
+    realtimeConnection.realtimeStatus.value = 'error'
+    realtimeConnection.realtimeError.value = err.message
     await realtimeConnection.disconnect()
   }
 }
 
 function disconnectRealtime() {
-  console.log('Disconnecting realtime...')
+  inactivityTimer.clearTimer()
   realtimeConnection.disconnect()
-  costSafeguards.removeSafeguards()
-  inactivityTimer.stopTimer()
   
   // Add goodbye message
   if (messages.value.length > 0) {

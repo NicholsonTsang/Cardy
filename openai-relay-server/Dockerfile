@@ -15,7 +15,7 @@ COPY tsconfig.json ./
 
 # Build
 RUN npm install typescript && \
-    npx tsc src/index.ts --outDir dist --module commonjs --target es2020 && \
+    npx tsc src/index.ts --outDir dist --module es2020 --target es2020 --moduleResolution node && \
     npm uninstall typescript
 
 # Run as non-root user

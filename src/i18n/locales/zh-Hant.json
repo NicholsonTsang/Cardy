@@ -594,7 +594,12 @@
     "choose_language": "選擇您的語言",
     "select_language_to_chat": "選擇語言開始聊天",
     "activating": "啟用中",
-    "ai_voice_guide": "AI 語音導覽可用"
+    "ai_voice_guide": "AI 語音導覽可用",
+    "close": "關閉",
+    "change": "更改",
+    "welcome_message": "您好！我是 {name} 的 AI 助手。有什麼可以幫助您的嗎？",
+    "connection_error": "連接錯誤",
+    "open_ai_assistant": "開啟 AI 助手"
   },
 
   "validation": {

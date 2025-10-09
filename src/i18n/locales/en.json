@@ -601,7 +601,12 @@
     "choose_language": "Choose Your Language",
     "select_language_to_chat": "Select a language to start chatting",
     "activating": "Activating",
-    "ai_voice_guide": "AI Voice Guide Available"
+    "ai_voice_guide": "AI Voice Guide Available",
+    "close": "Close",
+    "change": "Change",
+    "welcome_message": "Hello! I'm the AI assistant for {name}. How can I help you?",
+    "connection_error": "Connection error",
+    "open_ai_assistant": "Open AI Assistant"
   },
 
   "validation": {
