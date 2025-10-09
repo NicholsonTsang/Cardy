@@ -88,7 +88,7 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import MobileAIAssistant from './MobileAIAssistant.vue'
+import { MobileAIAssistant } from './AIAssistant'
 import { getContentAspectRatio } from '@/utils/cardConfig'
 import { marked } from 'marked'
 

@@ -28,6 +28,7 @@ interface OpenAIMessage {
 const PORT = parseInt(process.env.PORT || '8080', 10)
 const OPENAI_API_URL = process.env.OPENAI_API_URL || 'wss://api.openai.com/v1/realtime'
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
+const OPENAI_REALTIME_MODEL = process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-mini-2025-10-06'
 const MAX_CONNECTIONS = parseInt(process.env.MAX_CONNECTIONS || '100', 10)
 const HEARTBEAT_INTERVAL = parseInt(process.env.HEARTBEAT_INTERVAL || '30000', 10)
 const INACTIVITY_TIMEOUT = parseInt(process.env.INACTIVITY_TIMEOUT || '300000', 10) // 5 minutes
@@ -148,7 +149,7 @@ log.info('WebSocket server initialized')
 // Parse WebSocket URL to extract model parameter
 function parseWebSocketAuth(req: IncomingMessage): { model: string } {
   const url = new URL(req.url || '', `http://${req.headers.host}`)
-  const model = url.searchParams.get('model') || 'gpt-realtime-mini-2025-10-06'
+  const model = url.searchParams.get('model') || OPENAI_REALTIME_MODEL
   
   log.debug('WebSocket connection request', { model })
   
@@ -440,6 +441,7 @@ process.on('SIGINT', () => {
 server.listen(PORT, () => {
   log.info(`OpenAI Realtime Relay Server started (OPEN PROXY MODE)`, {
     port: PORT,
+    defaultModel: OPENAI_REALTIME_MODEL,
     maxConnections: MAX_CONNECTIONS,
     heartbeatInterval: HEARTBEAT_INTERVAL,
     inactivityTimeout: INACTIVITY_TIMEOUT,
