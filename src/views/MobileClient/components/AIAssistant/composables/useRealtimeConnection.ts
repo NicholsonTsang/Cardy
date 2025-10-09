@@ -106,30 +106,18 @@ export function useRealtimeConnection() {
       token: 'relay-proxy-mode',
       model: 'gpt-realtime-mini-2025-10-06',
       sessionConfig: {
-        type: 'realtime',  // Required for GA API
         model: 'gpt-realtime-mini-2025-10-06',
-        output_modalities: ['audio', 'text'],  // GA API: "output_modalities" not "modalities"
-        audio: {  // GA API: nested audio configuration
-          input: {
-            format: {
-              type: 'audio/pcm',
-              rate: 24000
-            },
-            turn_detection: {
-              type: 'semantic_vad',
-              threshold: 0.5,
-              prefix_padding_ms: 300,
-              silence_duration_ms: 500
-            }
-          },
-          output: {
-            format: {
-              type: 'audio/pcm'
-            },
-            voice: voiceMap[language] || 'alloy'  // GA API: voice in audio.output
-          }
-        },
+        modalities: ['audio', 'text'],  // GA API uses "modalities" not "output_modalities"
+        voice: voiceMap[language] || 'alloy',  // GA API: voice at top level
         instructions: `${systemPrompt}\n\nYou are speaking with someone interested in: ${contentItemName}. Provide engaging, natural conversation.`,
+        input_audio_format: 'pcm16',  // GA API: simple format string
+        output_audio_format: 'pcm16',  // GA API: simple format string
+        turn_detection: {
+          type: 'server_vad',  // GA API: use server_vad
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 500
+        },
         temperature: 0.8,
         max_response_output_tokens: 4096
       }

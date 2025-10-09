@@ -47,30 +47,18 @@ export interface RealtimeConnectionState {
 }
 
 export interface SessionConfig {
-  type: 'realtime' | 'transcription'
   model: string
-  output_modalities?: string[]
-  audio?: {
-    input?: {
-      format?: {
-        type: string
-        rate?: number
-      }
-      turn_detection?: {
-        type: string
-        threshold?: number
-        prefix_padding_ms?: number
-        silence_duration_ms?: number
-      }
-    }
-    output?: {
-      format?: {
-        type: string
-      }
-      voice?: string
-    }
-  }
+  modalities?: string[]  // GA API uses "modalities"
+  voice?: string  // GA API: voice at top level
   instructions?: string
+  input_audio_format?: string  // GA API: simple format string
+  output_audio_format?: string  // GA API: simple format string
+  turn_detection?: {
+    type: string
+    threshold?: number
+    prefix_padding_ms?: number
+    silence_duration_ms?: number
+  }
   temperature?: number
   max_response_output_tokens?: number
 }

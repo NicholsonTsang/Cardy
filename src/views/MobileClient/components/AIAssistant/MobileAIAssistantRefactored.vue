@@ -364,19 +364,20 @@ async function connectRealtime() {
     // Create WebSocket
     const ws = realtimeConnection.createWebSocket(tokenData.model, tokenData.token)
     
+    let audioStarted = false
+    const startAudioOnce = () => {
+      if (audioStarted) return
+      audioStarted = true
+      console.log('🎙️ Starting audio stream (guarded)')
+      realtimeConnection.startSendingAudio()
+      inactivityTimer.startTimer()
+    }
+    
     // Setup WebSocket handlers
     ws.onopen = () => {
       console.log('✅ Realtime connection established')
       realtimeConnection.isRealtimeConnected.value = true
       realtimeConnection.realtimeStatus.value = 'connected'
-      
-      // Send session configuration on connect; do NOT start audio yet
-      ws.send(JSON.stringify({
-        type: 'session.update',
-        session: tokenData.sessionConfig
-      }))
-      
-      // Wait for session.updated before starting audio
     }
     
     ws.onmessage = async (event) => {
@@ -404,11 +405,29 @@ async function connectRealtime() {
         // Reset inactivity timer on any activity
         inactivityTimer.resetTimer()
         
-        // Start sending audio ONLY after session config is applied
+        // Send session configuration after receiving session.created
+        if (data.type === 'session.created') {
+          console.log('🎯 Received session.created, sending session.update...')
+          
+          // Send session configuration
+          const payload = {
+            type: 'session.update',
+            session: tokenData.sessionConfig
+          }
+          
+          try {
+            const message = JSON.stringify(payload)
+            console.log('📤 Sending session.update, length:', message.length)
+            ws.send(message)
+            console.log('✅ session.update sent after session.created')
+          } catch (err) {
+            console.error('❌ Failed to send session.update:', err)
+          }
+        }
+        
         if (data.type === 'session.updated') {
           console.log('⚙️ Session updated; starting audio stream')
-          realtimeConnection.startSendingAudio()
-          inactivityTimer.startTimer()
+          startAudioOnce()
         }
         
         // Handle audio delta (GA API event name)

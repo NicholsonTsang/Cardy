@@ -292,7 +292,18 @@ wss.on('connection', (clientWs: WSWebSocket, req: IncomingMessage) => {
           
           // Always log session.update in full detail for debugging
           if (message.type === 'session.update') {
-            log.info(`📤 session.update payload: ${sessionId}`, message)
+            log.info(`📤 session.update payload: ${sessionId}`, {
+              type: message.type,
+              session: {
+                ...message.session,
+                // Log audio config in detail
+                turn_detection: message.session?.turn_detection,
+                input_audio_format: message.session?.input_audio_format,
+                output_audio_format: message.session?.output_audio_format,
+                voice: message.session?.voice,
+                modalities: message.session?.modalities
+              }
+            })
           } else {
             log.debug(`Client → OpenAI: ${sessionId}`, { type: message.type })
           }

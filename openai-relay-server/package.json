@@ -20,19 +20,19 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.21.2",
-    "ws": "^8.18.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.5",
-    "dotenv": "^16.4.7",
-    "helmet": "^8.0.0",
-    "compression": "^1.7.5"
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "helmet": "^8.1.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@types/express": "^5.0.0",
-    "@types/ws": "^8.5.13",
-    "@types/cors": "^2.8.17",
-    "@types/node": "^22.14.0",
     "@types/compression": "^1.7.5",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.14.0",
+    "@types/ws": "^8.5.13",
     "tsx": "^4.19.2",
     "typescript": "^5.8.0"
   },
@@ -40,4 +40,3 @@
     "node": ">=20.0.0"
   }
 }
-

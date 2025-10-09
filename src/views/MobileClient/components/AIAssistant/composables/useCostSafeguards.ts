@@ -6,10 +6,17 @@ export function useCostSafeguards(
   disconnectCallback: () => void
 ) {
   let hasAddedListeners = false
+  let lastConnectedAt = 0
+  const GRACE_MS = 10000 // 10 seconds grace period to allow connection to fully establish
 
   // Safeguard 1: Tab visibility change
   const handleVisibilityChange = () => {
     if (document.hidden && isRealtimeConnected.value) {
+      const sinceConnect = Date.now() - lastConnectedAt
+      if (sinceConnect < GRACE_MS) {
+        console.log('🛡️ [COST SAFEGUARD] Tab hidden shortly after connect - ignoring (grace)')
+        return
+      }
       console.log('🛡️ [COST SAFEGUARD] Tab hidden - disconnecting realtime')
       disconnectCallback()
     }
@@ -31,6 +38,11 @@ export function useCostSafeguards(
   // Safeguard 3: Window blur (user switches apps)
   const handleWindowBlur = () => {
     if (isRealtimeConnected.value) {
+      const sinceConnect = Date.now() - lastConnectedAt
+      if (sinceConnect < GRACE_MS) {
+        console.log('🛡️ [COST SAFEGUARD] Window blur shortly after connect - ignoring (grace)')
+        return
+      }
       console.log('🛡️ [COST SAFEGUARD] Window lost focus - disconnecting realtime')
       disconnectCallback()
     }
@@ -63,6 +75,7 @@ export function useCostSafeguards(
   // Watch connection state and manage listeners
   watch(isRealtimeConnected, (connected) => {
     if (connected) {
+      lastConnectedAt = Date.now()
       addSafeguards()
     } else {
       removeSafeguards()
