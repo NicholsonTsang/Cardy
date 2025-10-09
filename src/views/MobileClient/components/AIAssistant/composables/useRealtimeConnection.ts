@@ -9,13 +9,32 @@ export interface RealtimeConnectionState {
 }
 
 export interface SessionConfig {
+  type: 'realtime' | 'transcription'
   model: string
-  voice: string
-  instructions: string
-  input_audio_format: string
-  output_audio_format: string
-  temperature: number
-  max_response_output_tokens: number
+  output_modalities?: string[]
+  audio?: {
+    input?: {
+      format?: {
+        type: string
+        rate?: number
+      }
+      turn_detection?: {
+        type: string
+        threshold?: number
+        prefix_padding_ms?: number
+        silence_duration_ms?: number
+      }
+    }
+    output?: {
+      format?: {
+        type: string
+      }
+      voice?: string
+    }
+  }
+  instructions?: string
+  temperature?: number
+  max_response_output_tokens?: number
 }
 
 export function useRealtimeConnection() {
@@ -66,18 +85,55 @@ export function useRealtimeConnection() {
 
   // Methods
   async function getEphemeralToken(language: string, systemPrompt: string, contentItemName: string) {
-    const { data, error } = await supabase.functions.invoke('openai-realtime-relay', {
-      body: {
-        language,
-        systemPrompt,
-        contentItemName
+    // OPEN PROXY MODE: No token needed - relay server uses its own API key
+    // Return complete dummy data structure to maintain API compatibility
+    
+    const voiceMap: Record<string, string> = {
+      'en': 'alloy',
+      'zh-HK': 'nova',
+      'zh-CN': 'nova',
+      'ja': 'shimmer',
+      'ko': 'shimmer',
+      'es': 'echo',
+      'fr': 'fable',
+      'ru': 'onyx',
+      'ar': 'onyx',
+      'th': 'shimmer'
+    }
+    
+    return {
+      success: true,
+      token: 'relay-proxy-mode',
+      model: 'gpt-4o-mini-realtime-preview-2024-12-17',
+      sessionConfig: {
+        type: 'realtime',  // Required for GA API
+        model: 'gpt-4o-mini-realtime-preview-2024-12-17',
+        output_modalities: ['audio', 'text'],  // GA API: "output_modalities" not "modalities"
+        audio: {  // GA API: nested audio configuration
+          input: {
+            format: {
+              type: 'audio/pcm',
+              rate: 24000
+            },
+            turn_detection: {
+              type: 'semantic_vad',
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 500
+            }
+          },
+          output: {
+            format: {
+              type: 'audio/pcm'
+            },
+            voice: voiceMap[language] || 'alloy'  // GA API: voice in audio.output
+          }
+        },
+        instructions: `${systemPrompt}\n\nYou are speaking with someone interested in: ${contentItemName}. Provide engaging, natural conversation.`,
+        temperature: 0.8,
+        max_response_output_tokens: 4096
       }
-    })
-
-    if (error) throw error
-    if (!data?.success) throw new Error(data?.error || 'Failed to get token')
-
-    return data
+    }
   }
 
   async function requestMicrophone() {
@@ -103,26 +159,20 @@ export function useRealtimeConnection() {
     realtimeAudioPlayer.value = new AudioContext({ sampleRate: 24000 })
   }
 
-  function createWebSocket(model: string, token: string) {
-    // Use relay server if configured, otherwise connect directly to OpenAI
+  function createWebSocket(model: string, _token: string) {
+    // OPEN PROXY MODE: Connect to relay server without token authentication
     const relayUrl = import.meta.env.VITE_OPENAI_RELAY_URL
     
-    let wsUrl: string
-    if (relayUrl) {
-      // Connect to relay server
-      wsUrl = `${relayUrl}/realtime?model=${encodeURIComponent(model)}`
-      console.log('🔄 Connecting via relay server:', wsUrl)
-    } else {
-      // Direct connection to OpenAI (legacy, may be blocked in some regions)
-      wsUrl = `wss://api.openai.com/v1/realtime?model=${model}`
-      console.log('⚠️ Connecting directly to OpenAI (no relay configured):', wsUrl)
+    if (!relayUrl) {
+      throw new Error('VITE_OPENAI_RELAY_URL is not configured. Relay server is required in open proxy mode.')
     }
     
-    realtimeWebSocket.value = new WebSocket(wsUrl, [
-      'realtime',
-      `openai-insecure-api-key.${token}`,
-      'openai-beta.realtime-v1'
-    ])
+    // Connect to relay server (token is handled server-side)
+    const wsUrl = `${relayUrl}/realtime?model=${encodeURIComponent(model)}`
+    console.log('🔄 Connecting via relay server (open proxy mode):', wsUrl)
+    
+    // Simple WebSocket connection - no authentication protocols needed
+    realtimeWebSocket.value = new WebSocket(wsUrl, ['realtime'])
     return realtimeWebSocket.value
   }
 

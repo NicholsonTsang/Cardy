@@ -383,13 +383,13 @@ async function connectRealtime() {
         // Reset inactivity timer on any activity
         inactivityTimer.resetTimer()
         
-        // Handle audio delta
-        if (data.type === 'response.audio.delta' && data.delta) {
+        // Handle audio delta (GA API event name)
+        if (data.type === 'response.output_audio.delta' && data.delta) {
           realtimeConnection.playRealtimeAudio(data.delta)
         }
         
-        // Handle transcript
-        if (data.type === 'response.audio_transcript.delta' && data.delta) {
+        // Handle transcript (GA API event name)
+        if (data.type === 'response.output_audio_transcript.delta' && data.delta) {
           const lastMessage = messages.value[messages.value.length - 1]
           if (!lastMessage || lastMessage.role !== 'assistant') {
             messages.value.push({

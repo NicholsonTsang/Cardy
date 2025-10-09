@@ -124,9 +124,9 @@ Use natural, conversational language suitable for voice interaction.`
     console.log('✅ Ephemeral token generated successfully')
 
     // Return session configuration (GA API format)
+    // NOTE: Don't include 'model' - it's already set in WebSocket URL and cannot be changed
     const sessionConfig: RealtimeSessionConfig = {
       type: 'realtime',  // Required for GA API
-      model: model,
       output_modalities: ['audio'],  // Lock to audio output
       audio: {
         input: {
@@ -147,7 +147,7 @@ Use natural, conversational language suitable for voice interaction.`
       },
       instructions: instructions,
       temperature: temperature,
-      max_output_tokens: maxTokens  // Renamed from max_response_output_tokens
+      max_output_tokens: maxTokens
     }
 
     return new Response(

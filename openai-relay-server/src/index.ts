@@ -27,10 +27,17 @@ interface OpenAIMessage {
 // Configuration
 const PORT = parseInt(process.env.PORT || '8080', 10)
 const OPENAI_API_URL = process.env.OPENAI_API_URL || 'wss://api.openai.com/v1/realtime'
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY || ''
 const MAX_CONNECTIONS = parseInt(process.env.MAX_CONNECTIONS || '100', 10)
 const HEARTBEAT_INTERVAL = parseInt(process.env.HEARTBEAT_INTERVAL || '30000', 10)
 const INACTIVITY_TIMEOUT = parseInt(process.env.INACTIVITY_TIMEOUT || '300000', 10) // 5 minutes
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || ['*']
+
+// Validate required configuration
+if (!OPENAI_API_KEY) {
+  log.error('OPENAI_API_KEY environment variable is required')
+  process.exit(1)
+}
 
 // Logging utilities
 const log = {
@@ -138,35 +145,14 @@ const wss = new WebSocketServer({
 
 log.info('WebSocket server initialized')
 
-// Parse WebSocket subprotocols to extract token
-function parseWebSocketAuth(req: IncomingMessage): { model: string; token: string } | null {
+// Parse WebSocket URL to extract model parameter
+function parseWebSocketAuth(req: IncomingMessage): { model: string } {
   const url = new URL(req.url || '', `http://${req.headers.host}`)
   const model = url.searchParams.get('model') || 'gpt-4o-mini-realtime-preview-2024-12-17'
   
-  // Extract token from Sec-WebSocket-Protocol header
-  const protocols = req.headers['sec-websocket-protocol']
-  if (!protocols) {
-    log.warn('No Sec-WebSocket-Protocol header found')
-    return null
-  }
+  log.debug('WebSocket connection request', { model })
   
-  const protocolList = protocols.split(',').map(p => p.trim())
-  log.debug('WebSocket protocols', { protocolList })
-  
-  // Look for the token in format: openai-insecure-api-key.{token}
-  const tokenProtocol = protocolList.find(p => p.startsWith('openai-insecure-api-key.'))
-  if (!tokenProtocol) {
-    log.warn('No token protocol found')
-    return null
-  }
-  
-  const token = tokenProtocol.replace('openai-insecure-api-key.', '')
-  if (!token) {
-    log.warn('Empty token extracted')
-    return null
-  }
-  
-  return { model, token }
+  return { model }
 }
 
 // Handle WebSocket connections from clients
@@ -185,16 +171,9 @@ wss.on('connection', (clientWs: WSWebSocket, req: IncomingMessage) => {
     return
   }
   
-  // Parse authentication from WebSocket subprotocols
-  const auth = parseWebSocketAuth(req)
-  if (!auth) {
-    log.error(`Authentication failed for: ${sessionId}`)
-    clientWs.close(1008, 'Authentication required')
-    return
-  }
-  
-  const { model, token } = auth
-  log.info(`Authentication successful: ${sessionId}`, { model })
+  // Parse model from URL parameters
+  const { model } = parseWebSocketAuth(req)
+  log.info(`Connection accepted: ${sessionId}`, { model })
   
   // Update stats
   stats.totalConnections++
@@ -216,10 +195,11 @@ wss.on('connection', (clientWs: WSWebSocket, req: IncomingMessage) => {
   log.info(`Connecting to OpenAI: ${sessionId}`, { url: openaiUrl })
   
   try {
+    // Use the server's OpenAI API key from environment
     const openaiWs = new WSWebSocket(openaiUrl, [
       'realtime',
-      `openai-insecure-api-key.${token}`,
-      'openai-beta.realtime-v1'
+      `openai-insecure-api-key.${OPENAI_API_KEY}`
+      // Note: 'openai-beta.realtime-v1' removed - using GA API (2024-12-17 model)
     ])
     
     connection.openaiWs = openaiWs
@@ -458,12 +438,13 @@ process.on('SIGINT', () => {
 
 // Start server
 server.listen(PORT, () => {
-  log.info(`OpenAI Realtime Relay Server started`, {
+  log.info(`OpenAI Realtime Relay Server started (OPEN PROXY MODE)`, {
     port: PORT,
     maxConnections: MAX_CONNECTIONS,
     heartbeatInterval: HEARTBEAT_INTERVAL,
     inactivityTimeout: INACTIVITY_TIMEOUT,
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    warning: '⚠️  Server uses OpenAI API key directly - ensure proper network security!'
   })
 })
 

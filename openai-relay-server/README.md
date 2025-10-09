@@ -1,6 +1,15 @@
-# OpenAI Realtime API Relay Server
+# OpenAI Realtime API Relay Server (Open Proxy Mode)
 
-A WebSocket relay server that proxies connections between clients and the OpenAI Realtime API. This enables applications in regions where OpenAI is blocked to access the Realtime API through a relay server deployed in an accessible region.
+A WebSocket relay server that proxies connections between clients and the OpenAI Realtime API. This server operates in **open proxy mode**, using a server-side OpenAI API key to handle all authentication centrally.
+
+## ⚠️ SECURITY NOTICE
+
+**This relay server operates as an OPEN PROXY:**
+- The server uses its own OpenAI API key for all connections
+- Clients connect WITHOUT sending authentication tokens
+- **Network-level security is CRITICAL** - deploy behind firewall/VPN or use CORS restrictions
+- All connected clients share the same OpenAI API key and billing account
+- Consider implementing additional authentication/rate limiting for production use
 
 ## 🎯 Purpose
 
@@ -9,6 +18,7 @@ This relay server solves the problem of OpenAI API access restrictions by:
 - **Proxying WebSocket connections** between your frontend and OpenAI Realtime API
 - **Bidirectional streaming** of audio data (input and output)
 - **Transparent forwarding** of all messages without modification
+- **Centralized API key management** on the server side
 - **Automatic reconnection** and health monitoring
 - **Production-ready** with Docker support and graceful shutdown
 
@@ -22,14 +32,16 @@ This relay server solves the problem of OpenAI API access restrictions by:
   (Your Region)                        (Accessible Region)                       (api.openai.com)
 ```
 
-### Flow
+### Flow (Open Proxy Mode)
 
 1. **Client connects** to relay server via WebSocket (`ws://relay-server:8080/realtime`)
-2. **Relay server** extracts authentication token from WebSocket subprotocols
+2. **Relay server** uses its own OpenAI API key (no client authentication required)
 3. **Relay creates** upstream connection to OpenAI Realtime API
 4. **Messages flow bidirectionally** through the relay without modification
 5. **Audio streams** (PCM16 base64) are forwarded in both directions
 6. **Connection lifecycle** is synchronized between client and OpenAI
+
+**Key Difference**: Clients no longer send authentication tokens - the relay handles all OpenAI authentication.
 
 ## 🚀 Quick Start
 
@@ -50,8 +62,11 @@ npm install
 2. **Configure environment**:
 ```bash
 cp .env.example .env
-# Edit .env with your settings
+# REQUIRED: Add your OpenAI API key to .env
+nano .env  # Set OPENAI_API_KEY=sk-proj-...
 ```
+
+**⚠️ CRITICAL**: The `OPENAI_API_KEY` environment variable is **required**. The server will not start without it.
 
 3. **Start development server**:
 ```bash
@@ -128,21 +143,23 @@ Docker will automatically restart the container if health checks fail.
 
 ### Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `8080` | Server listening port |
-| `NODE_ENV` | `development` | Environment mode |
-| `OPENAI_API_URL` | `wss://api.openai.com/v1/realtime` | OpenAI Realtime API endpoint |
-| `MAX_CONNECTIONS` | `100` | Maximum concurrent connections |
-| `HEARTBEAT_INTERVAL` | `30000` | WebSocket ping interval (ms) |
-| `INACTIVITY_TIMEOUT` | `300000` | Connection timeout (ms) - 5 minutes |
-| `ALLOWED_ORIGINS` | `*` | CORS allowed origins (comma-separated) |
-| `DEBUG` | `false` | Enable debug logging |
+| Variable | Default | Required | Description |
+|----------|---------|----------|-------------|
+| `OPENAI_API_KEY` | - | **YES** | Your OpenAI API key (server exits if missing) |
+| `PORT` | `8080` | No | Server listening port |
+| `NODE_ENV` | `development` | No | Environment mode |
+| `OPENAI_API_URL` | `wss://api.openai.com/v1/realtime` | No | OpenAI Realtime API endpoint |
+| `MAX_CONNECTIONS` | `100` | No | Maximum concurrent connections |
+| `HEARTBEAT_INTERVAL` | `30000` | No | WebSocket ping interval (ms) |
+| `INACTIVITY_TIMEOUT` | `300000` | No | Connection timeout (ms) - 5 minutes |
+| `ALLOWED_ORIGINS` | `*` | No | CORS allowed origins (comma-separated) |
+| `DEBUG` | `false` | No | Enable debug logging |
 
 ### Production Configuration Example
 
 ```bash
 # .env
+OPENAI_API_KEY=sk-proj-your-production-key-here
 NODE_ENV=production
 PORT=8080
 MAX_CONNECTIONS=200
@@ -151,6 +168,13 @@ HEARTBEAT_INTERVAL=30000
 INACTIVITY_TIMEOUT=300000
 DEBUG=false
 ```
+
+**⚠️ SECURITY BEST PRACTICES:**
+1. Never commit `.env` file to version control
+2. Use separate API keys for development and production
+3. Configure `ALLOWED_ORIGINS` to specific domains (not `*`)
+4. Deploy behind firewall or VPN for additional security
+5. Monitor API usage in OpenAI dashboard for anomalies
 
 ## 🔌 API Endpoints
 
@@ -163,22 +187,19 @@ DEBUG=false
   - Default: `gpt-4o-mini-realtime-preview-2024-12-17` (cost-effective)
   - Alternative: `gpt-4o-realtime-preview-2024-12-17` (full model)
 
-**Subprotocols** (required):
-- `realtime`
-- `openai-insecure-api-key.{ephemeral_token}`
-- `openai-beta.realtime-v1`
+**Subprotocols**:
+- `realtime` (required)
 
-**Example Connection**:
+**Example Connection (Open Proxy Mode)**:
 ```javascript
+// Simple connection - no authentication token needed
 const ws = new WebSocket(
   'ws://localhost:8080/realtime?model=gpt-4o-mini-realtime-preview-2024-12-17',
-  [
-    'realtime',
-    'openai-insecure-api-key.your_token_here',
-    'openai-beta.realtime-v1'
-  ]
+  ['realtime']
 )
 ```
+
+**Note**: In open proxy mode, clients do NOT send authentication tokens. The relay server uses its own OpenAI API key.
 
 ### HTTP Endpoints
 
@@ -243,27 +264,20 @@ VITE_OPENAI_RELAY_URL=ws://localhost:8080
 
 ### 2. Update WebSocket Connection
 
-The frontend automatically uses the relay server if `VITE_OPENAI_RELAY_URL` is configured:
+The frontend connects to the relay server without authentication:
 
 ```typescript
-// useRealtimeConnection.ts (already updated)
-function createWebSocket(model: string, token: string) {
+// useRealtimeConnection.ts (open proxy mode)
+function createWebSocket(model: string) {
   const relayUrl = import.meta.env.VITE_OPENAI_RELAY_URL
   
-  let wsUrl: string
-  if (relayUrl) {
-    // Connect via relay
-    wsUrl = `${relayUrl}/realtime?model=${encodeURIComponent(model)}`
-  } else {
-    // Direct connection (legacy)
-    wsUrl = `wss://api.openai.com/v1/realtime?model=${model}`
+  if (!relayUrl) {
+    throw new Error('VITE_OPENAI_RELAY_URL is required')
   }
   
-  return new WebSocket(wsUrl, [
-    'realtime',
-    `openai-insecure-api-key.${token}`,
-    'openai-beta.realtime-v1'
-  ])
+  // Simple connection - no token authentication
+  const wsUrl = `${relayUrl}/realtime?model=${encodeURIComponent(model)}`
+  return new WebSocket(wsUrl, ['realtime'])
 }
 ```
 
@@ -279,17 +293,13 @@ curl http://localhost:8080/health
 # Install wscat
 npm install -g wscat
 
-# Connect to relay (uses default gpt-4o-mini model)
+# Connect to relay (open proxy mode - no token needed)
 wscat -c "ws://localhost:8080/realtime" \
-  --subprotocol "realtime" \
-  --subprotocol "openai-insecure-api-key.YOUR_TOKEN_HERE" \
-  --subprotocol "openai-beta.realtime-v1"
+  --subprotocol "realtime"
 
 # Or specify full model explicitly
 wscat -c "ws://localhost:8080/realtime?model=gpt-4o-realtime-preview-2024-12-17" \
-  --subprotocol "realtime" \
-  --subprotocol "openai-insecure-api-key.YOUR_TOKEN_HERE" \
-  --subprotocol "openai-beta.realtime-v1"
+  --subprotocol "realtime"
 ```
 
 ### Load Testing
@@ -329,7 +339,7 @@ Consider adding Prometheus metrics for production monitoring:
 
 The relay server handles various error scenarios:
 
-1. **Authentication Failures**: Closes connection with code `1008`
+1. **Missing API Key**: Server exits immediately on startup if `OPENAI_API_KEY` is not set
 2. **Capacity Reached**: Rejects new connections with code `1008`
 3. **Upstream Errors**: Forwards error messages to client
 4. **Connection Drops**: Automatically cleans up both ends
@@ -345,11 +355,37 @@ The relay server handles various error scenarios:
 
 ## 🔒 Security Considerations
 
-1. **Token Security**: Ephemeral tokens are transmitted via WebSocket subprotocols (not logged)
-2. **CORS**: Configure `ALLOWED_ORIGINS` to restrict access
-3. **Rate Limiting**: Consider adding rate limiting per IP (not included)
-4. **TLS**: Use `wss://` in production with SSL termination (Nginx/Cloudflare)
-5. **Network Isolation**: Deploy in private network with firewall rules
+**⚠️ CRITICAL - Open Proxy Security:**
+
+This server operates in **open proxy mode** - anyone who can connect will use your OpenAI API key. Implement multiple security layers:
+
+1. **Network Security** (REQUIRED):
+   - Deploy behind firewall or VPN
+   - Use IP whitelisting
+   - Consider API gateway with authentication
+
+2. **CORS Restrictions** (REQUIRED):
+   - Set `ALLOWED_ORIGINS` to specific domains (never `*` in production)
+   - Example: `ALLOWED_ORIGINS=https://app.cardy.com`
+
+3. **Additional Authentication** (RECOMMENDED):
+   - Add custom authentication middleware
+   - Use API keys for client identification
+   - Implement rate limiting per client
+
+4. **TLS/SSL** (REQUIRED):
+   - Use `wss://` in production with SSL termination
+   - Never expose unencrypted WebSocket endpoints
+
+5. **Monitoring** (REQUIRED):
+   - Monitor OpenAI API usage in dashboard
+   - Set up billing alerts
+   - Track connection patterns for anomalies
+
+6. **Rate Limiting** (RECOMMENDED):
+   - Add rate limiting per IP address
+   - Set per-client connection limits
+   - Implement request throttling
 
 ### Recommended Security Setup
 

@@ -47,13 +47,32 @@ export interface RealtimeConnectionState {
 }
 
 export interface SessionConfig {
+  type: 'realtime' | 'transcription'
   model: string
-  voice: string
-  instructions: string
-  input_audio_format: string
-  output_audio_format: string
-  temperature: number
-  max_response_output_tokens: number
+  output_modalities?: string[]
+  audio?: {
+    input?: {
+      format?: {
+        type: string
+        rate?: number
+      }
+      turn_detection?: {
+        type: string
+        threshold?: number
+        prefix_padding_ms?: number
+        silence_duration_ms?: number
+      }
+    }
+    output?: {
+      format?: {
+        type: string
+      }
+      voice?: string
+    }
+  }
+  instructions?: string
+  temperature?: number
+  max_response_output_tokens?: number
 }
 
 export interface ChatCompletionState {
