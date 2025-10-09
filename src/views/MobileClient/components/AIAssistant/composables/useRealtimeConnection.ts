@@ -37,7 +37,7 @@ export function useRealtimeConnection() {
     return {
       type: 'realtime',
       model: 'gpt-realtime-mini-2025-10-06',
-      output_modalities: ['audio', 'text'],
+      output_modalities: ['audio'], // Corrected: Only 'audio' is needed for audio + transcript
       instructions,
       audio: {
         input: {
