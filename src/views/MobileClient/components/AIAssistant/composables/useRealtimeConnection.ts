@@ -35,20 +35,31 @@ export function useRealtimeConnection() {
   // Get session configuration for OpenAI
   function getSessionConfig(language: string, instructions: string) {
     return {
+      type: 'realtime',
       model: 'gpt-realtime-mini-2025-10-06',
-      modalities: ['text', 'audio'],
+      output_modalities: ['audio', 'text'],
       instructions,
-      voice: voiceMap[language] || 'alloy',
-      input_audio_format: 'pcm16',
-      output_audio_format: 'pcm16',
-      turn_detection: {
-        type: 'server_vad',
-        threshold: 0.5,
-        prefix_padding_ms: 300,
-        silence_duration_ms: 500
-      },
-      temperature: 0.8,
-      max_output_tokens: 'inf'
+      audio: {
+        input: {
+          format: {
+            type: 'audio/pcm',
+            rate: 24000
+          },
+          turn_detection: {
+            type: 'server_vad',
+            threshold: 0.5,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 200
+          }
+        },
+        output: {
+          format: {
+            type: 'audio/pcm',
+            rate: 24000
+          },
+          voice: voiceMap[language] || 'alloy'
+        }
+      }
     }
   }
   

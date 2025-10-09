@@ -31,6 +31,9 @@ const log = {
     if (process.env.DEBUG === 'true') {
       console.log(`[DEBUG] ${new Date().toISOString()} - ${msg}`, data || '')
     }
+  },
+  warn: (msg: string, data?: any) => {
+    console.warn(`[WARN] ${new Date().toISOString()} - ${msg}`, data || '')
   }
 }
 
@@ -153,19 +156,17 @@ wss.on('connection', (clientWs: any, req: any) => {
     if (connection.openaiWs?.readyState === WSWebSocket.OPEN) {
       connection.openaiWs.send(data)
       
-      // Log important messages
+      // Log session updates for debugging
       try {
         const message = JSON.parse(data.toString())
         if (message.type === 'session.update') {
-          log.info(`Session update from client: ${sessionId}`, {
-            model: message.session?.model,
-            voice: message.session?.voice,
-            modalities: message.session?.modalities
-          })
+          log.info(`Session update from client: ${sessionId}`, message.session)
         }
       } catch {
-        // Binary data, skip logging
+        // Not a JSON message, probably binary audio data
       }
+    } else {
+      log.warn(`OpenAI connection not ready: ${sessionId}`)
     }
   })
   
