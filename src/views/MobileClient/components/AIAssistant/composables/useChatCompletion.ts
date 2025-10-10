@@ -9,6 +9,21 @@ export function useChatCompletion() {
   const streamingMessageId = ref<string | null>(null)
   const currentPlayingMessageId = ref<string | null>(null)
 
+  // Voice configuration by language (TTS API)
+  // Supported voices: 'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'
+  const voiceMap: Record<string, string> = {
+    'en': 'alloy',      // English - Neutral, versatile
+    'zh-HK': 'nova',    // Cantonese - Female, energetic
+    'zh-CN': 'nova',    // Mandarin - Female, clear tones
+    'ja': 'shimmer',    // Japanese - Female, soft
+    'ko': 'nova',       // Korean - Female, energetic
+    'th': 'shimmer',    // Thai - Female, calming
+    'es': 'echo',       // Spanish - Male, clear
+    'fr': 'fable',      // French - Male, warm
+    'ru': 'onyx',       // Russian - Male, authoritative
+    'ar': 'onyx'        // Arabic - Male, professional
+  }
+
   // Get AI response with text input
   async function getAIResponse(
     messages: Message[],
@@ -190,7 +205,7 @@ export function useChatCompletion() {
         body: JSON.stringify({
           text,
           language,
-          voice: 'alloy'
+          voice: voiceMap[language] || 'alloy'  // Use language-specific voice
         })
       })
 

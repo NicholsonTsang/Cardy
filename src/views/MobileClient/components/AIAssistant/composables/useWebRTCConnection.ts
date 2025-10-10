@@ -13,19 +13,19 @@ export function useWebRTCConnection() {
   const isSpeaking = ref(false)
   const mediaStream = ref<MediaStream | null>(null)
   
-  // Voice configuration by language
+  // Voice configuration by language (Realtime API)
   // Supported voices: 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse', 'marin', 'cedar'
   const voiceMap: Record<string, string> = {
-    'en': 'alloy',
-    'zh-HK': 'shimmer',
-    'zh-CN': 'shimmer',
-    'ja': 'shimmer',
-    'ko': 'shimmer',
-    'es': 'echo',
-    'fr': 'ballad',
-    'ru': 'sage',
-    'ar': 'sage',
-    'th': 'shimmer'
+    'en': 'alloy',      // English - Neutral, versatile
+    'zh-HK': 'coral',   // Cantonese - Female, friendly
+    'zh-CN': 'coral',   // Mandarin - Female, natural
+    'ja': 'shimmer',    // Japanese - Female, soft
+    'ko': 'coral',      // Korean - Female, conversational
+    'th': 'shimmer',    // Thai - Female, calming
+    'es': 'echo',       // Spanish - Male, clear
+    'fr': 'ballad',     // French - Female, warm
+    'ru': 'sage',       // Russian - Male, calm
+    'ar': 'sage'        // Arabic - Male, respectful
   }
   
   // Get ephemeral token from Edge Function
