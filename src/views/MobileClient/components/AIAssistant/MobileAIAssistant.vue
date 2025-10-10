@@ -9,11 +9,10 @@
     <!-- Modal -->
     <AIAssistantModal
       :is-open="isModalOpen"
-      :show-language-selection="showLanguageSelection"
+      :show-language-selection="false"
       :conversation-mode="conversationMode"
       :content-item-name="contentItemName"
       @close="closeModal"
-      @select-language="selectLanguage"
       @toggle-mode="toggleConversationMode"
     >
       <!-- Chat Completion Mode -->
@@ -64,9 +63,11 @@ import { useChatCompletion } from './composables/useChatCompletion'
 import { useVoiceRecording } from './composables/useVoiceRecording'
 import { useCostSafeguards } from './composables/useCostSafeguards'
 import { useInactivityTimer } from './composables/useInactivityTimer'
-import type { Message, Language, ConversationMode, AIAssistantProps } from './types'
+import { useLanguageStore } from '@/stores/language'
+import type { Message, ConversationMode, AIAssistantProps } from './types'
 
 const props = defineProps<AIAssistantProps>()
+const languageStore = useLanguageStore()
 
 // ============================================================================
 // COMPOSABLES
@@ -81,8 +82,6 @@ const realtimeConnection = useWebRTCConnection()
 // ============================================================================
 
 const isModalOpen = ref(false)
-const showLanguageSelection = ref(true)
-const selectedLanguage = ref<Language | null>(null)
 const conversationMode = ref<ConversationMode>('chat-completion')
 const messages = ref<Message[]>([])
 const inputMode = ref<'text' | 'voice'>('text')
@@ -94,8 +93,8 @@ const firstAudioPlayed = ref(false)
 // ============================================================================
 
 const systemInstructions = computed(() => {
-  const languageName = selectedLanguage.value?.name || 'English'
-  const languageCode = selectedLanguage.value?.code || 'en'
+  const languageName = languageStore.selectedLanguage.name
+  const languageCode = languageStore.selectedLanguage.code
   
   // Language-specific emphasis
   let languageNote = ''
@@ -185,17 +184,22 @@ const costSafeguards = useCostSafeguards(
 function openModal() {
   isModalOpen.value = true
   document.body.style.overflow = 'hidden'
-  showLanguageSelection.value = true
-  selectedLanguage.value = null
   messages.value = []
   firstAudioPlayed.value = false
+  
+  // Add welcome message using global language
+  const welcomeText = welcomeMessages[languageStore.selectedLanguage.code] || welcomeMessages['en']
+  messages.value = [{
+    id: Date.now().toString(),
+    role: 'assistant',
+    content: welcomeText,
+    timestamp: new Date()
+  }]
 }
 
 function closeModal() {
   isModalOpen.value = false
   document.body.style.overflow = ''
-  showLanguageSelection.value = true
-  selectedLanguage.value = null
   messages.value = []
   firstAudioPlayed.value = false
   conversationMode.value = 'chat-completion'
@@ -209,20 +213,6 @@ function closeModal() {
   }
 }
 
-function selectLanguage(language: Language) {
-  selectedLanguage.value = language
-  showLanguageSelection.value = false
-    
-    // Add welcome message
-  const welcomeText = welcomeMessages[language.code] || welcomeMessages['en']
-  messages.value = [{
-    id: Date.now().toString(),
-    role: 'assistant',
-    content: welcomeText,
-    timestamp: new Date()
-  }]
-}
-
 function toggleConversationMode() {
   if (conversationMode.value === 'chat-completion') {
     conversationMode.value = 'realtime'
@@ -233,7 +223,7 @@ function toggleConversationMode() {
       disconnectRealtime()
     }
     // Add welcome message back
-    const welcomeText = welcomeMessages[selectedLanguage.value?.code || 'en'] || welcomeMessages['en']
+    const welcomeText = welcomeMessages[languageStore.selectedLanguage.code] || welcomeMessages['en']
     messages.value = [{
       id: Date.now().toString(),
       role: 'assistant',
@@ -252,7 +242,7 @@ function toggleInputMode() {
 }
 
 async function sendTextMessage(text: string) {
-  if (!text.trim() || !selectedLanguage.value) return
+  if (!text.trim()) return
   
   // Add user message
   messages.value.push({
@@ -315,7 +305,7 @@ async function startVoiceRecording() {
 
 async function stopVoiceRecording() {
   const audioBlob = await voiceRecording.stopRecording()
-  if (!audioBlob || !selectedLanguage.value) return
+  if (!audioBlob) return
   
   loadingStatus.value = 'Transcribing voice...'
   
@@ -324,7 +314,7 @@ async function stopVoiceRecording() {
       audioBlob,
       messages.value,
       systemInstructions.value,
-      selectedLanguage.value.code
+      languageStore.selectedLanguage.code
     )
     
     // Add user message with transcription
@@ -356,10 +346,8 @@ function cancelVoiceRecording() {
 }
 
 async function playMessageAudio(message: Message) {
-  if (!selectedLanguage.value) return
-  
   firstAudioPlayed.value = true
-  await chatCompletion.playMessageAudio(message, selectedLanguage.value.code)
+  await chatCompletion.playMessageAudio(message, languageStore.selectedLanguage.code)
 }
 
 // ============================================================================
@@ -367,12 +355,10 @@ async function playMessageAudio(message: Message) {
 // ============================================================================
 
 async function connectRealtime() {
-  if (!selectedLanguage.value) return
-  
   console.log('🚀 ========== CONNECTING TO REALTIME API ==========')
-  console.log('🌍 Selected Language Object:', selectedLanguage.value)
-  console.log('🔤 Language Code:', selectedLanguage.value.code)
-  console.log('📛 Language Name:', selectedLanguage.value.name)
+  console.log('🌍 Selected Language Object:', languageStore.selectedLanguage)
+  console.log('🔤 Language Code:', languageStore.selectedLanguage.code)
+  console.log('📛 Language Name:', languageStore.selectedLanguage.name)
   console.log('📋 System Instructions Preview (first 500 chars):')
   console.log(systemInstructions.value.substring(0, 500) + '...')
   console.log('🚀 ===============================================')
@@ -403,7 +389,7 @@ async function connectRealtime() {
     
     // Connect via WebRTC
     await realtimeConnection.connect(
-      selectedLanguage.value.code,
+      languageStore.selectedLanguage.code,
       systemInstructions.value
     )
     

@@ -7,10 +7,13 @@
       <h1 class="header-title">{{ title }}</h1>
       <p v-if="subtitle" class="header-subtitle">{{ subtitle }}</p>
     </div>
+    <LanguageSelector />
   </header>
 </template>
 
 <script setup lang="ts">
+import LanguageSelector from './LanguageSelector.vue'
+
 interface Props {
   title: string
   subtitle?: string
