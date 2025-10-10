@@ -90,12 +90,26 @@ export function useWebRTCConnection() {
         isConnected.value = true
         status.value = 'connected'
         
-        // Prepare session configuration
+        // Language name mapping for explicit instructions
+        const languageNames: Record<string, string> = {
+          'en': 'English',
+          'zh-HK': 'Cantonese (廣東話)',
+          'zh-CN': 'Mandarin Chinese (普通話)',
+          'ja': 'Japanese (日本語)',
+          'ko': 'Korean (한국어)',
+          'th': 'Thai (ภาษาไทย)',
+          'es': 'Spanish (Español)',
+          'fr': 'French (Français)',
+          'ru': 'Russian (Русский)',
+          'ar': 'Arabic (العربية)'
+        }
+        
+        // Prepare session configuration with language enforcement
         const sessionConfig = {
           type: 'session.update',
           session: {
             modalities: ['text', 'audio'],
-            instructions,
+            instructions: `LANGUAGE REQUIREMENT: You MUST respond ONLY in ${languageNames[language] || 'English'}. Never use any other language.\n\n${instructions}`,
             voice: voiceMap[language] || 'alloy',
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
@@ -131,7 +145,7 @@ export function useWebRTCConnection() {
             type: 'response.create',
             response: {
               modalities: ['text', 'audio'],
-              instructions: 'Greet the user warmly and briefly ask how you can help them understand the content better. Keep it natural and conversational.'
+              instructions: `CRITICAL: Respond ONLY in ${languageNames[language] || 'English'}. Greet the user warmly and briefly ask how you can help them understand the content better. Keep it natural and conversational. DO NOT use any other language.`
             }
           }
           
