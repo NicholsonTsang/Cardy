@@ -65,9 +65,9 @@ CardStudio is built with Vue 3 + TypeScript, using PrimeVue UI components, Pinia
 - **RLS policies** for data security
 - **No direct table access** - all queries use `supabase.rpc()` calls
 - **Stripe** integration for payments (via Edge Functions)
-- **OpenAI Realtime API** integration for voice-based AI conversations
-- **Edge Functions** for AI token management
-- **Express.js Relay Server** for bypassing regional OpenAI blocks
+- **OpenAI Realtime API** integration via WebRTC for voice-based AI conversations
+- **Edge Functions** for AI token management and API integrations
+- **Ephemeral tokens** for secure, temporary OpenAI connections
 
 ## Key Commands
 
@@ -80,57 +80,149 @@ npm run build:production   # Build for production with production env
 npm run type-check         # Run TypeScript type checking
 npm run preview            # Preview production build
 
-# Database
+# Database Operations
 supabase start             # Start local Supabase
-supabase db reset          # Reset local database
-supabase gen types typescript --local > src/types/supabase.ts
+supabase stop              # Stop local Supabase
+supabase db reset          # Reset local database (runs migrations)
+supabase gen types typescript --local > src/types/supabase.ts  # Generate TypeScript types
 
-# OpenAI Relay Server
-cd openai-relay-server
-npm run dev                # Start relay server (development)
-npm run build              # Build relay server
-npm start                  # Start relay server (production)
-docker-compose up -d       # Start relay server with Docker
+# Database Deployment (Manual via Supabase Dashboard)
+# 1. Navigate to SQL Editor in Supabase Dashboard
+# 2. Copy contents of sql/schema.sql and execute
+# 3. Copy contents of sql/all_stored_procedures.sql and execute
+# 4. Copy contents of sql/policy.sql and execute
+# 5. Copy contents of sql/triggers.sql and execute
+
+# Edge Functions
+npx supabase functions serve                    # Run all functions locally
+npx supabase functions serve <function-name>    # Run specific function locally
+npx supabase functions deploy <function-name>   # Deploy specific function
+./scripts/deploy-edge-functions.sh              # Deploy all functions at once
+
+# Edge Function Secrets (Production)
+npx supabase secrets set OPENAI_API_KEY=sk-...
+npx supabase secrets set STRIPE_SECRET_KEY=sk_live_...
+npx supabase secrets set OPENAI_REALTIME_MODEL=gpt-realtime-mini-2025-10-06
+
+# View Edge Function Logs
+npx supabase functions logs <function-name>     # View logs for specific function
+npx supabase functions logs <function-name> --follow  # Stream logs in real-time
 ```
 
 ## Important File Structure
 
 ```
 src/
-├── components/           # Reusable Vue components
-│   ├── Card/            # Card-related components
-│   ├── CardContent/     # Content management components
-│   └── Profile/         # User profile components
-├── views/               # Page-level components
-│   ├── Dashboard/       # Main dashboard views
-│   │   ├── Admin/       # Admin panel views
-│   │   └── CardIssuer/  # Card issuer views
-│   └── MobileClient/    # Mobile card viewing
+├── components/                    # Reusable Vue components
+│   ├── Admin/                     # Admin-specific components
+│   │   ├── AdminCardContent.vue   # Admin card content viewer
+│   │   ├── AdminUserManagement.vue # User management interface
+│   │   └── AdminPrintRequests.vue # Print request management
+│   ├── CardComponents/            # Card-related components
+│   │   ├── CardCreateEditForm.vue # Card creation/editing
+│   │   └── CardView.vue           # Card display/preview
+│   ├── CardContent/               # Content management components
+│   │   ├── CardContentCreateEditForm.vue # Content creation/editing
+│   │   ├── CardContentView.vue    # Content display
+│   │   └── ContentItemsList.vue   # Hierarchical content list
+│   ├── Layout/                    # Layout components
+│   │   ├── AppHeader.vue          # Main dashboard header
+│   │   └── Sidebar.vue            # Dashboard sidebar navigation
+│   ├── DashboardLanguageSelector.vue # Dashboard language selector
+│   └── ...                        # Other shared components
+│
+├── views/                         # Page-level components
+│   ├── Dashboard/                 # Main dashboard views
+│   │   ├── Admin/                 # Admin panel views
+│   │   │   ├── AdminDashboard.vue # Admin overview
+│   │   │   ├── UserManagement.vue # User verification
+│   │   │   └── PrintRequests.vue  # Print request management
+│   │   └── CardIssuer/            # Card issuer views
+│   │       ├── MyCards.vue        # Card management
+│   │       ├── CardIssuance.vue   # Batch issuance
+│   │       └── Analytics.vue      # Usage analytics
+│   │
+│   └── MobileClient/              # Mobile card viewing (QR scan experience)
+│       ├── PublicCardView.vue     # Main mobile card viewer
 │       └── components/
-│           └── AIAssistant/  # AI conversation components
+│           ├── MobileHeader.vue             # Mobile header with back button
+│           ├── CardOverview.vue             # Card landing page
+│           ├── ContentList.vue              # Content items list
+│           ├── ContentDetail.vue            # Content item detail view
+│           ├── LanguageSelector.vue         # Mobile header language selector
+│           ├── LanguageSelectorModal.vue    # Card overview language selector
+│           └── AIAssistant/                 # AI conversation system
+│               ├── MobileAIAssistant.vue    # Main AI assistant wrapper
 │               ├── components/
-│               │   ├── ChatInterface.vue       # Chat completion UI
-│               │   ├── RealtimeInterface.vue   # Realtime audio UI
-│               │   └── LanguageSelector.vue    # Language selection
-│               └── composables/
-│                   ├── useChatCompletion.ts    # Chat API integration
-│                   └── useRealtimeConnection.ts # Realtime API integration
-├── stores/              # Pinia stores for state management
-├── utils/               # Helper functions
-└── router/              # Vue Router configuration
+│               │   ├── AIAssistantModal.vue     # Modal container
+│               │   ├── ChatInterface.vue        # Chat completion UI
+│               │   ├── RealtimeInterface.vue    # Realtime audio UI
+│               │   └── LanguageSelector.vue     # (Deprecated - language now global)
+│               ├── composables/
+│               │   ├── useWebRTCConnection.ts   # WebRTC Realtime API
+│               │   ├── useChatCompletion.ts     # Chat API integration
+│               │   ├── useVoiceRecording.ts     # Voice recording logic
+│               │   ├── useCostSafeguards.ts     # Cost protection
+│               │   └── useInactivityTimer.ts    # Inactivity detection
+│               ├── types/index.ts               # TypeScript types
+│               └── index.ts                     # Component exports
+│
+├── stores/                        # Pinia stores for global state
+│   ├── language.ts                # Language management (mobile & dashboard)
+│   ├── auth.ts                    # Authentication state
+│   ├── cards.ts                   # Card management
+│   └── ...                        # Other stores
+│
+├── i18n/                          # Internationalization
+│   ├── index.ts                   # i18n configuration
+│   └── locales/
+│       ├── en.json                # English translations
+│       ├── zh-Hant.json           # Traditional Chinese (繁體中文)
+│       └── zh-Hans.json           # Simplified Chinese (简体中文)
+│
+├── lib/                           # Core libraries
+│   └── supabase.ts                # Supabase client initialization
+│
+├── utils/                         # Helper functions
+│   ├── cardConfig.ts              # Card aspect ratio utilities
+│   ├── excelHandler.js            # Excel import/export
+│   └── ...                        # Other utilities
+│
+└── router/                        # Vue Router configuration
+    └── index.ts                   # Route definitions
 
 sql/
-├── schema.sql           # Database schema
-├── storeproc/           # Modular stored procedures (01-11)
-├── triggers.sql         # Database triggers
-└── policy.sql           # RLS policies
+├── schema.sql                     # Database schema (tables, enums, indexes)
+├── all_stored_procedures.sql      # Combined stored procedures for deployment
+├── storeproc/                     # Modular stored procedures
+│   ├── client-side/               # Frontend-callable procedures
+│   │   ├── 01_auth_functions.sql         # Authentication
+│   │   ├── 02_card_management.sql        # Card CRUD
+│   │   ├── 03_content_management.sql     # Content CRUD
+│   │   ├── 04_batch_management.sql       # Batch issuance
+│   │   ├── 06_print_requests.sql         # Print requests
+│   │   ├── 07_public_access.sql          # Public card access
+│   │   ├── 08_user_profiles.sql          # User profiles
+│   │   ├── 09_user_analytics.sql         # Analytics
+│   │   ├── 11_admin_functions.sql        # Admin operations
+│   │   └── execute_all.sql               # Execute all client-side
+│   └── server-side/               # Edge Function procedures
+│       ├── 05_payment_management.sql     # Stripe payments
+│       └── execute_server_side.sql       # Execute all server-side
+├── triggers.sql                   # Database triggers
+├── policy.sql                     # RLS policies
+└── migrations/                    # Database migrations
 
-openai-relay-server/     # WebSocket relay for OpenAI Realtime API
-├── src/
-│   └── index.ts         # Express.js WebSocket relay server
-├── Dockerfile           # Docker container configuration
-├── docker-compose.yml   # Docker Compose setup
-└── README.md            # Relay server documentation
+supabase/
+├── functions/                     # Edge Functions
+│   ├── create-checkout-session/  # Stripe checkout
+│   ├── process-payment/           # Stripe webhooks
+│   ├── chat-with-audio/           # Chat completion (text/voice)
+│   ├── chat-with-audio-stream/    # Streaming chat responses
+│   ├── generate-tts-audio/        # Text-to-speech
+│   ├── openai-realtime-token/     # Realtime API ephemeral tokens
+│   └── _shared/                   # Shared utilities (CORS, etc.)
+└── config.toml                    # Supabase configuration + secrets
 ```
 
 ## Critical Design Specifications
@@ -151,6 +243,292 @@ openai-relay-server/     # WebSocket relay for OpenAI Realtime API
 - Local `ref()` for component-specific state
 - Consistent naming: `loading`, `error`, `data`
 - Always handle error states with user feedback
+
+### Language & Internationalization System
+
+**Two Independent Language Stores:**
+- **`useMobileLanguageStore`** - For mobile client (QR scan experience)
+- **`useDashboardLanguageStore`** - For CMS/Dashboard (card issuer interface)
+- **Independence**: Changing language in one context does not affect the other
+
+**Language Selectors:**
+- **Mobile Client**: 
+  - `LanguageSelector.vue` in `MobileHeader` (top-right icon)
+  - `LanguageSelectorModal.vue` in `CardOverview` (language chip)
+  - Bottom sheet modal design on mobile, centered modal on desktop
+- **Dashboard**: 
+  - `DashboardLanguageSelector.vue` in `AppHeader` (top-right)
+  - Bottom sheet modal design
+
+**Language Store Integration:**
+```typescript
+// Mobile Client
+import { useMobileLanguageStore } from '@/stores/language'
+const languageStore = useMobileLanguageStore()
+
+// Dashboard
+import { useDashboardLanguageStore } from '@/stores/language'
+const languageStore = useDashboardLanguageStore()
+
+// Change language (automatically updates i18n locale)
+languageStore.setLanguage(languageCode)
+
+// Access current language
+const currentLanguage = languageStore.selectedLanguage // { code, name, flag }
+```
+
+**i18n Usage:**
+```typescript
+import { useI18n } from 'vue-i18n'
+const { t } = useI18n()
+
+// In template
+{{ $t('common.save') }}
+{{ $t('dashboard.card_created') }}
+{{ $t('mobile.explore_content') }}
+
+// Pluralization (use pipe syntax, not ICU)
+"sub_items_count": "{count} sub-item | {count} sub-items"
+```
+
+**Translation Keys Structure:**
+- `common.*` - Shared across all contexts
+- `dashboard.*` - Dashboard/CMS specific
+- `mobile.*` - Mobile client specific
+- `auth.*` - Authentication related
+- `errors.*` - Error messages
+
+**Supported Languages:**
+- English (`en`)
+- Traditional Chinese (`zh-Hant`, 繁體中文)
+- Simplified Chinese (`zh-Hans`, 简体中文)
+
+**Best Practices:**
+- Always use `$t()` or `t()` for user-facing text
+- Never hardcode English text in templates
+- Use pipe syntax for pluralization in Vue i18n, not ICU message format
+- Test language switching in both mobile and dashboard contexts independently
+- Ensure translation keys exist in all language files
+
+### Markdown Rendering
+
+**Card Descriptions:**
+- Card descriptions (`card_description` field) support **markdown formatting**
+- Rendered using `marked` library (no sanitization needed for trusted content)
+- Displayed with rich formatting in `CardOverview.vue`
+
+**Content Items:**
+- Content item descriptions (`content_item_content` field) support **markdown formatting**
+- Rendered in `ContentDetail.vue` using `marked`
+- Supports bold, italic, links, lists, headings, code, blockquotes
+
+**Markdown Implementation:**
+```typescript
+import { marked } from 'marked'
+
+const renderedContent = computed(() => {
+  if (!content.value) return ''
+  return marked(content.value)
+})
+```
+
+**Supported Markdown:**
+- **Bold**: `**text**`
+- *Italic*: `*text*`
+- [Links](url): `[text](url)`
+- Lists: `- item` or `1. item`
+- Headings: `# H1`, `## H2`, `### H3`
+- `Inline code`: `` `code` ``
+- > Blockquotes: `> quote`
+
+**Styling:**
+- White text on dark backgrounds
+- Links in light blue (`#93c5fd`)
+- Code with semi-transparent backgrounds
+- Proper spacing and margins
+- Mobile-optimized font sizes
+
+## Mobile Client Architecture
+
+### Overview
+The Mobile Client (`src/views/MobileClient/`) provides the end-user experience for visitors scanning QR codes on physical souvenir cards. It's a fully responsive, mobile-first interface optimized for smartphones and tablets.
+
+### Main Component: PublicCardView.vue
+**Purpose**: Main container component that orchestrates the entire mobile experience
+
+**Key Features:**
+- **Route Handling**: Supports both activated cards (`/c/:cardId`) and preview mode (`/preview/:cardId`)
+- **View State Management**: Three-view navigation system (card → content list → content detail)
+- **Navigation Stack**: Tracks user navigation for proper back button behavior
+- **Loading & Error States**: Graceful handling of loading states and error conditions
+
+**View Types:**
+1. **Card View** (`isCardView`) - Landing page showing card overview
+2. **Content List View** (`isContentListView`) - List of top-level content items
+3. **Content Detail View** (`isContentDetailView`) - Detailed view of specific content item with sub-items
+
+### Component Hierarchy
+
+```
+PublicCardView.vue (Main Container)
+├── MobileHeader.vue (Navigation header, shown in list & detail views)
+│   └── LanguageSelector.vue (Language selection in header)
+│
+├── CardOverview.vue (Card landing page)
+│   ├── Language chip button (triggers language selector)
+│   └── LanguageSelectorModal.vue (Bottom sheet language selector)
+│
+├── ContentList.vue (List of content items)
+│   └── ContentItem cards (clickable items)
+│
+└── ContentDetail.vue (Content item detail)
+    ├── Content description (markdown rendered)
+    ├── Content image (with aspect ratio handling)
+    ├── Sub-items list (if parent item)
+    └── MobileAIAssistant.vue (AI conversation interface)
+```
+
+### Mobile Client Components
+
+**1. MobileHeader.vue**
+- Fixed header with back button, title, and language selector
+- Glassmorphism design (blur + transparency)
+- Emits `@back` event for navigation
+- Shows title and optional subtitle
+
+**2. CardOverview.vue**
+- Full-screen landing page with card image and description
+- **Language selection chip** in info panel
+- **Markdown-rendered description** with rich formatting
+- "Explore Contents" button to view content list
+- Gradient overlay for text readability
+- Responsive design for various screen sizes
+
+**3. ContentList.vue**
+- Grid layout of content items with images
+- Hierarchical display (shows parent items with sub-item counts)
+- Click to navigate to detail view
+- Loading state while fetching data
+
+**4. ContentDetail.vue**
+- Full content item display with image and description
+- **Markdown-rendered content** for rich text formatting
+- Sub-items list for hierarchical content
+- **AI Assistant integration** for conversation about content
+- Smooth transitions between content items
+
+**5. LanguageSelector.vue** (Mobile Header)
+- Icon button in mobile header (top-right)
+- Bottom sheet modal on mobile
+- Centered modal on desktop
+- Updates global mobile language store
+
+**6. LanguageSelectorModal.vue** (Card Overview)
+- Modal-only component (no trigger button)
+- Bottom sheet design matching header selector
+- Triggered by language chip in CardOverview
+- Emits `@select` and `@close` events
+
+### Navigation Flow
+
+```
+1. User scans QR code → PublicCardView loads
+2. CardOverview displays (view = 'card')
+3. User clicks "Explore Contents"
+   → ContentList displays (view = 'content-list')
+   → Navigation stack: [{ view: 'card', content: null }]
+4. User selects a content item
+   → ContentDetail displays (view = 'content-detail')
+   → Navigation stack: [{ view: 'card', content: null }, { view: 'content-list', content: null }]
+5. User clicks back in MobileHeader
+   → Navigate back through stack
+   → ContentList displays
+6. User selects sub-item in ContentDetail
+   → ContentDetail updates with new content
+   → Navigation stack grows
+7. User can always return to CardOverview via back button
+```
+
+### Language Selection Flow
+
+```
+1. User lands on CardOverview
+2. Two language selection entry points:
+   a) Language chip in CardOverview info panel
+   b) Globe icon in MobileHeader (on list/detail views)
+3. User selects language from bottom sheet modal
+4. Language updates in useMobileLanguageStore
+5. i18n locale automatically updates via setLocale()
+6. All UI text and AI conversations follow selected language
+7. Language persists across views and sessions (localStorage)
+```
+
+### Data Fetching
+
+**PublicCardView.vue** handles all data fetching:
+```typescript
+// Fetch card data
+const { data: cardData, error } = await supabase.rpc('get_public_card_by_id', {
+  p_card_id: route.params.cardId
+})
+
+// Fetch content items (hierarchical)
+const { data: contentItems } = await supabase.rpc('get_public_content_items', {
+  p_card_id: route.params.cardId
+})
+
+// Computed properties
+const topLevelContent = computed(() => 
+  contentItems.value.filter(item => !item.content_item_parent_id)
+)
+
+const subContent = computed(() =>
+  contentItems.value.filter(item => 
+    item.content_item_parent_id === selectedContent.value?.content_item_id
+  )
+)
+```
+
+### Mobile Optimization
+
+**Performance:**
+- Lazy loading of images
+- Optimized asset sizes
+- Minimal JavaScript bundle
+- Fast initial render
+
+**UX:**
+- Touch-friendly targets (min 44px)
+- Smooth transitions (view-transition animation)
+- Responsive images with proper aspect ratios
+- Bottom sheet modals for mobile-native feel
+- Glassmorphism for modern aesthetic
+
+**Accessibility:**
+- Semantic HTML structure
+- ARIA labels where needed
+- Keyboard navigation support
+- High contrast text
+- Touch gesture support
+
+### Integration Points
+
+**1. AI Assistant Integration:**
+- `ContentDetail.vue` embeds `MobileAIAssistant.vue`
+- AI receives content context (name, description, knowledge base)
+- Language automatically follows `useMobileLanguageStore`
+- Supports both chat and realtime conversation modes
+
+**2. Language System:**
+- Independent from dashboard language
+- Persists in localStorage
+- Updates i18n locale automatically
+- Affects all UI text and AI conversations
+
+**3. Analytics:**
+- Card scans tracked via database
+- Content views logged
+- AI interaction metrics captured
 
 ## AI Infrastructure & Architecture
 
@@ -183,76 +561,87 @@ CardStudio offers three distinct modes for AI-powered conversations with exhibit
 - ✅ Cost-optimized: ~7x cheaper than audio model
 - ✅ Multi-language support (10 languages)
 
-### Real-Time Audio Mode (Fully Functional with Relay Server)
+### Real-Time Audio Mode (WebRTC Direct Connection)
 
 **Technology Stack:**
-- OpenAI Realtime API (`gpt-4o-mini-realtime-preview`)
-- WebSocket for bidirectional audio streaming
-- Express.js relay server for regional access
+- OpenAI Realtime API (`gpt-realtime-mini-2025-10-06`)
+- **WebRTC** for direct peer-to-peer connection to OpenAI
+- **Ephemeral tokens** for secure, temporary authentication
 - PCM16 audio format (24kHz sample rate)
-
-**Relay Server:**
-- `openai-relay-server/` - Express.js WebSocket relay for bypassing regional blocks
-- Deployed independently to accessible regions
-- Transparent proxy - no modifications to messages or audio
-- Docker deployment with health checks and auto-restart
+- **RTCPeerConnection** and **RTCDataChannel** for bidirectional communication
 
 **Edge Functions:**
-- `openai-realtime-relay/` - Generates ephemeral tokens for secure connections
+- `openai-realtime-token/` - Generates ephemeral tokens for secure WebRTC connections
+- Token lifespan: ~60 seconds (refresh on each connection)
+- **Model Configuration**: Centralized in Edge Function via `OPENAI_REALTIME_MODEL` environment variable
 
 **Features:**
 - ✅ ChatGPT-style live conversation UI
 - ✅ Animated waveform visualization
 - ✅ Connection state management
-- ✅ Live transcript display
+- ✅ **Live transcript display** (both user and AI speech)
 - ✅ Status indicators and animations
-- ✅ WebSocket bidirectional streaming
-- ✅ Actual audio streaming (input and output)
-- ✅ Regional access via relay server
+- ✅ **WebRTC bidirectional audio streaming** (no relay server needed)
+- ✅ Direct peer-to-peer connection to OpenAI
+- ✅ **AI initiates conversation** with greeting in selected language
 - ✅ Barge-in detection (interrupt AI mid-response)
+- ✅ **Comprehensive context feeding**: card AI instructions, content knowledge base, parent content context
 
 **AI Features (All Modes):**
-- **Multi-language Support**: English, Cantonese, Mandarin, Japanese, Korean, Spanish, French, Russian, Arabic, Thai
+- **Multi-language Support**: English, Cantonese (廣東話), Mandarin (國語), Japanese (日本語), Korean (한국어), Spanish (Español), French (Français), Russian (Русский), Arabic (العربية), Thai (ภาษาไทย)
 - **Context-Aware Responses**: AI understands specific exhibit content and provides detailed explanations
 - **Secure Token Management**: Ephemeral tokens ensure security without exposing main API keys
 - **Environment-Based Configuration**: Different models and settings for development vs production
+- **Language Enforcement**: Strict language adherence with explicit prompting for Cantonese and Mandarin differentiation
 
 **Frontend AI Component:**
 - `MobileAIAssistant.vue` - Complete multi-mode AI assistant interface
 - Mode switcher (phone icon for realtime, chat icon for chat-completion)
-- Language selection screen before conversation
+- **Global language selection** via mobile header and card overview (not inside AI assistant)
 - Streaming text responses with typing indicators
 - Voice recording with press-and-hold UX
 - Audio playback with caching and language awareness
 - Real-time conversation UI with waveform visualization
+- **Live transcription display** for both user and AI speech in realtime mode
 
 ### AI Content Configuration
 
-**Card AI Prompt (ai_prompt field):**
+**Card AI Instructions (ai_instruction field):**
 - **Purpose**: Sets the overall AI assistance instructions and role definition
 - **Scope**: Applies to all content items within the card
 - **Content**: Defines the AI's role, personality, knowledge domain, and interaction requirements
+- **Character Limit**: Max 100 words (enforced in UI)
 - **Example**: "You are a knowledgeable museum curator specializing in ancient history. Provide detailed, educational explanations about historical artifacts and civilizations. Use engaging storytelling to make complex historical concepts accessible to visitors of all ages."
 
-**Content Item AI Metadata (ai_metadata field):**
-- **Purpose**: Provides supplemental information for AI to answer user questions about specific content items
+**Card AI Knowledge Base (ai_knowledge_base field):**
+- **Purpose**: Provides detailed background knowledge for card-level AI conversations
+- **Scope**: Card-wide knowledge that applies to all exhibits
+- **Content**: Historical context, domain facts, specifications, guidelines
+- **Character Limit**: Max 2000 words (enforced in UI)
+- **Example**: "The Ancient World exhibition spans 3000 BCE to 500 CE, covering major civilizations including Mesopotamia, Egypt, Greece, Rome, India, and China. Key themes include the development of writing systems, architectural innovations, religious beliefs, trade networks, and political structures."
+
+**Content Item AI Knowledge Base (content_item_ai_knowledge_base field):**
+- **Purpose**: Provides detailed information for AI to answer user questions about specific content items
 - **Scope**: Specific to individual content items (exhibits, artifacts, etc.)
-- **Content**: Keywords, topics, and contextual information relevant to the specific content
-- **Format**: Short phrases separated by commas and spaces for optimal UI display
-- **Example**: "ancient civilizations, mesopotamia, egypt, greece, rome"
-- **Usage**: AI uses this metadata to understand the context and provide relevant responses about specific exhibits
+- **Content**: Detailed descriptions, historical context, significance, related facts
+- **Format**: Plain text or markdown (supports rich formatting)
+- **Character Limit**: Max 2000 words per content item (enforced in UI)
+- **Example**: "Lost Cities of Mesopotamia explores the cradle of civilization, including Babylon (founded c. 2300 BCE), Ur (c. 3800 BCE), and Uruk (c. 4000 BCE). Key inventions: cuneiform writing, Hammurabi's Code, ziggurats, irrigation systems. The region gave rise to the Sumerian, Akkadian, Babylonian, and Assyrian empires."
 
 **AI Conversation Flow:**
-1. **Card-Level Context**: AI prompt establishes the overall role and interaction style
-2. **Content-Specific Context**: AI metadata provides detailed information about the specific exhibit/artifact
-3. **Dynamic Responses**: AI combines both contexts to provide accurate, engaging answers about the content
-4. **Multi-Language Support**: All AI responses adapt to the visitor's selected language
+1. **Card-Level Instructions**: AI instructions establish the overall role and interaction style
+2. **Card-Level Knowledge**: AI knowledge base provides broad domain context
+3. **Content-Specific Knowledge**: Content item knowledge base provides detailed information about the specific exhibit/artifact
+4. **Parent Content Context**: For sub-items, parent content's knowledge base is also provided
+5. **Language Enforcement**: Explicit language requirements ensure responses in the correct language
+6. **Dynamic Responses**: AI combines all contexts to provide accurate, engaging answers
 
 **Best Practices:**
-- Keep AI metadata concise with short phrases to prevent UI overflow
-- Use descriptive but brief terms that capture the essence of the content
-- Separate metadata items with commas and spaces for proper text wrapping
-- Ensure AI prompts are clear and specific to the museum/exhibition context
+- Use clear, concise AI instructions that define the AI's role and personality
+- Populate knowledge bases with rich, detailed information for comprehensive AI responses
+- For hierarchical content, ensure parent knowledge complements sub-item knowledge
+- Use markdown in content descriptions for better formatting (bold, lists, links)
+- Explicitly specify language requirements to ensure proper AI responses in Cantonese vs Mandarin
 
 ## Database Schema Key Points
 
@@ -402,6 +791,11 @@ try {
 6. **Database**: NEVER use `supabase.from()` - ALL operations must use `supabase.rpc()` with stored procedures
 7. **Table styling**: Don't override global table theme - use inline styling with consistent CSS classes
 8. **Table header consistency**: All tables use standard sizing (0.875rem headers) - avoid `p-datatable-sm` unless absolutely necessary
+9. **Language stores**: Use `useMobileLanguageStore` for mobile client, `useDashboardLanguageStore` for dashboard - they are independent
+10. **i18n pluralization**: Use pipe syntax (`{count} item | {count} items`), NOT ICU message format
+11. **Translation keys**: Always check that keys exist in ALL language files before using
+12. **Markdown rendering**: Use `marked(text)` for rendering, display with `v-html` for trusted content
+13. **AI language enforcement**: Include explicit language requirements in system instructions for Cantonese/Mandarin differentiation
 
 ## Testing Strategy
 
@@ -465,7 +859,8 @@ STRIPE_SECRET_KEY=sk_live_...
 OPENAI_API_KEY=sk-proj-...
 
 # Optional (have defaults)
-OPENAI_AUDIO_MODEL=gpt-4o-mini-audio-preview
+OPENAI_AUDIO_MODEL=gpt-4o-mini-audio-preview  # For chat completion mode
+OPENAI_REALTIME_MODEL=gpt-realtime-mini-2025-10-06  # For realtime mode
 OPENAI_MAX_TOKENS=3500
 OPENAI_TTS_VOICE=alloy
 OPENAI_AUDIO_FORMAT=wav
