@@ -10,7 +10,7 @@ export { default as MessageBubble } from './components/MessageBubble.vue'
 export { default as VoiceInputButton } from './components/VoiceInputButton.vue'
 
 // Composables
-export { useRealtimeConnection } from './composables/useRealtimeConnection'
+export { useWebRTCConnection } from './composables/useWebRTCConnection'
 export { useChatCompletion } from './composables/useChatCompletion'
 export { useVoiceRecording } from './composables/useVoiceRecording'
 export { useCostSafeguards } from './composables/useCostSafeguards'

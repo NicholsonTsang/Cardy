@@ -59,7 +59,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import AIAssistantModal from './components/AIAssistantModal.vue'
 import ChatInterface from './components/ChatInterface.vue'
 import RealtimeInterface from './components/RealtimeInterface.vue'
-import { useRealtimeConnection } from './composables/useRealtimeConnection'
+import { useWebRTCConnection } from './composables/useWebRTCConnection'
 import { useChatCompletion } from './composables/useChatCompletion'
 import { useVoiceRecording } from './composables/useVoiceRecording'
 import { useCostSafeguards } from './composables/useCostSafeguards'
@@ -74,7 +74,7 @@ const props = defineProps<AIAssistantProps>()
 
 const chatCompletion = useChatCompletion()
 const voiceRecording = useVoiceRecording()
-const realtimeConnection = useRealtimeConnection()
+const realtimeConnection = useWebRTCConnection()
 
 // ============================================================================
 // STATE
@@ -353,57 +353,11 @@ async function connectRealtime() {
   if (!selectedLanguage.value) return
   
   try {
-    // Connect to realtime with simplified API
-    const ws = await realtimeConnection.connect(
+    // Connect via WebRTC
+    await realtimeConnection.connect(
       selectedLanguage.value.code,
       systemInstructions.value
     )
-    
-    // Add custom message handler for transcripts
-    const originalOnMessage = ws.onmessage
-    ws.onmessage = async (event) => {
-      // Call original handler first
-      if (originalOnMessage) {
-        originalOnMessage.call(ws, event)
-      }
-      
-      // Handle transcripts for UI
-      try {
-        const data = typeof event.data === 'string' 
-          ? JSON.parse(event.data)
-          : JSON.parse(await event.data.text())
-        
-        // Reset inactivity timer on any activity
-        inactivityTimer.resetTimer()
-        
-        // Handle assistant transcript
-        if (data.type === 'response.output_audio_transcript.delta' && data.delta) {
-          const lastMessage = messages.value[messages.value.length - 1]
-          if (!lastMessage || lastMessage.role !== 'assistant') {
-            messages.value.push({
-              id: Date.now().toString(),
-              role: 'assistant',
-              content: data.delta,
-              timestamp: new Date()
-            })
-          } else {
-            lastMessage.content = (lastMessage.content || '') + data.delta
-          }
-        }
-        
-        // Handle input transcript (user speech)
-        if (data.type === 'conversation.item.input_audio_transcription.completed' && data.transcript) {
-          messages.value.push({
-            id: Date.now().toString(),
-            role: 'user',
-            content: data.transcript,
-            timestamp: new Date()
-          })
-        }
-      } catch (err) {
-        console.error('Transcript handling error:', err)
-      }
-    }
     
     // Start inactivity timer
     inactivityTimer.startTimer()
@@ -420,7 +374,6 @@ async function connectRealtime() {
     })
   } catch (err: any) {
     console.error('❌ Realtime connection error:', err)
-    realtimeConnection.error = err.message
     await realtimeConnection.disconnect()
   }
 }
