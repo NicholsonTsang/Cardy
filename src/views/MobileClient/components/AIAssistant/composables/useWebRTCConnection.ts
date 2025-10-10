@@ -90,17 +90,39 @@ export function useWebRTCConnection() {
         isConnected.value = true
         status.value = 'connected'
         
-        // Send session configuration
+        // Send session configuration with context
         sendMessage({
           type: 'session.update',
           session: {
-            type: 'realtime',
+            modalities: ['text', 'audio'],
             instructions,
-            input_audio_transcription: { model: 'whisper-1' },
-            turn_detection: { type: 'server_vad' },
-            voice: voiceMap[language] || 'alloy'
+            voice: voiceMap[language] || 'alloy',
+            input_audio_format: 'pcm16',
+            output_audio_format: 'pcm16',
+            input_audio_transcription: { 
+              model: 'whisper-1' 
+            },
+            turn_detection: { 
+              type: 'server_vad',
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 500
+            },
+            temperature: 0.8,
+            max_response_output_tokens: 4096
           }
         })
+        
+        // Trigger AI's first greeting after session is configured
+        setTimeout(() => {
+          sendMessage({
+            type: 'response.create',
+            response: {
+              modalities: ['text', 'audio'],
+              instructions: 'Greet the user warmly and briefly ask how you can help them understand the content better. Keep it natural and conversational.'
+            }
+          })
+        }, 500)
       }
       
       dc.value.onmessage = (event) => {
