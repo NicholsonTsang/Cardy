@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
-import { useI18n } from 'vue-i18n'
+import { setLocale } from '@/i18n'
 
 export interface Language {
   code: string
@@ -38,27 +38,22 @@ export const useMobileLanguageStore = defineStore('mobileLanguage', () => {
     
     // Update i18n locale if requested
     if (updateI18n) {
-      try {
-        const i18n = useI18n()
-        // Map our language codes to i18n locale codes
-        const localeMap: Record<string, string> = {
-          'en': 'en',
-          'zh-HK': 'zh-Hant',
-          'zh-CN': 'zh-Hans',
-          'ja': 'ja',
-          'ko': 'ko',
-          'th': 'th',
-          'es': 'es',
-          'fr': 'fr',
-          'ru': 'ru',
-          'ar': 'ar'
-        }
-        const locale = localeMap[language.code] || 'en'
-        i18n.locale.value = locale
-        console.log('📱 i18n locale updated to:', locale)
-      } catch (error) {
-        console.warn('Could not update i18n locale (might be in Pinia context):', error)
+      // Map our language codes to i18n locale codes
+      const localeMap: Record<string, string> = {
+        'en': 'en',
+        'zh-HK': 'zh-Hant',
+        'zh-CN': 'zh-Hans',
+        'ja': 'ja',
+        'ko': 'ko',
+        'th': 'th',
+        'es': 'es',
+        'fr': 'fr',
+        'ru': 'ru',
+        'ar': 'ar'
       }
+      const locale = localeMap[language.code] || 'en'
+      setLocale(locale)
+      console.log('📱 i18n locale updated to:', locale)
     }
   }
 
@@ -91,27 +86,22 @@ export const useDashboardLanguageStore = defineStore('dashboardLanguage', () => 
     
     // Update i18n locale if requested
     if (updateI18n) {
-      try {
-        const i18n = useI18n()
-        // Map our language codes to i18n locale codes
-        const localeMap: Record<string, string> = {
-          'en': 'en',
-          'zh-HK': 'zh-Hant',
-          'zh-CN': 'zh-Hans',
-          'ja': 'ja',
-          'ko': 'ko',
-          'th': 'th',
-          'es': 'es',
-          'fr': 'fr',
-          'ru': 'ru',
-          'ar': 'ar'
-        }
-        const locale = localeMap[language.code] || 'en'
-        i18n.locale.value = locale
-        console.log('🖥️ i18n locale updated to:', locale)
-      } catch (error) {
-        console.warn('Could not update i18n locale (might be in Pinia context):', error)
+      // Map our language codes to i18n locale codes
+      const localeMap: Record<string, string> = {
+        'en': 'en',
+        'zh-HK': 'zh-Hant',
+        'zh-CN': 'zh-Hans',
+        'ja': 'ja',
+        'ko': 'ko',
+        'th': 'th',
+        'es': 'es',
+        'fr': 'fr',
+        'ru': 'ru',
+        'ar': 'ar'
       }
+      const locale = localeMap[language.code] || 'en'
+      setLocale(locale)
+      console.log('🖥️ i18n locale updated to:', locale)
     }
   }
 
