@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { supabase } from '@/utils/supabase'
+import { supabase } from '@/lib/supabase'
 
 export function useWebRTCConnection() {
   // Connection state
