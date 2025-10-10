@@ -14,6 +14,9 @@ serve(async (req) => {
       throw new Error('OpenAI API key not configured')
     }
 
+    // Get Realtime model from environment (with fallback)
+    const REALTIME_MODEL = Deno.env.get('OPENAI_REALTIME_MODEL') || 'gpt-realtime-mini-2025-10-06'
+
     // Parse request body
     const { sessionConfig } = await req.json()
 
@@ -25,7 +28,7 @@ serve(async (req) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini-realtime-preview-2024-12-17',
+        model: REALTIME_MODEL,
         voice: sessionConfig?.voice || 'alloy',
       }),
     })
