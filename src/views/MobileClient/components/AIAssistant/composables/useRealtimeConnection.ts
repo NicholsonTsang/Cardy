@@ -34,10 +34,9 @@ export function useRealtimeConnection() {
   
   // Get session configuration for OpenAI
   function getSessionConfig(language: string, instructions: string) {
-    return {
-      type: 'realtime',
-      model: 'gpt-realtime-mini-2025-10-06',
-      output_modalities: ['audio'], // Corrected: Only 'audio' is needed for audio + transcript
+    const session = {
+      type: 'realtime', // Add type for session.update
+      output_modalities: ['audio'], // audio implies transcript as well
       instructions,
       audio: {
         input: {
@@ -60,6 +59,11 @@ export function useRealtimeConnection() {
           voice: voiceMap[language] || 'alloy'
         }
       }
+    }
+
+    return {
+      model: 'gpt-4o-mini-realtime-preview-2024-12-17',
+      session
     }
   }
   
@@ -87,11 +91,11 @@ export function useRealtimeConnection() {
       audioContext.value = new AudioContext({ sampleRate: 24000 })
       audioPlayer.value = new AudioContext({ sampleRate: 24000 })
       
-      // Store session config for later use
-      const sessionConfig = getSessionConfig(language, instructions)
+      // Build model + session config (exclude model from session.update)
+      const { model, session } = getSessionConfig(language, instructions)
       
       // Connect to relay server with model in query string
-      ws.value = new WebSocket(`${relayUrl}/realtime?model=${sessionConfig.model}`, ['realtime'])
+      ws.value = new WebSocket(`${relayUrl}/realtime?model=${model}`, ['realtime'])
       
       // Set up WebSocket handlers
       ws.value.onopen = () => {
@@ -106,12 +110,12 @@ export function useRealtimeConnection() {
             ? JSON.parse(event.data)
             : JSON.parse(await event.data.text())
           
-          // Send session config after connection
+          // Send session config after connection (do not include model/type)
           if (data.type === 'session.created') {
             console.log('📤 Sending session configuration')
             ws.value!.send(JSON.stringify({
               type: 'session.update',
-              session: sessionConfig
+              session
             }))
           }
           
