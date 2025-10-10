@@ -1,0 +1,660 @@
+<template>
+  <div class="ai-assistant">
+    <!-- AI Button -->
+    <button @click="openModal" class="ai-button">
+      <i class="pi pi-comments" />
+      <span>{{ $t('mobile.ask_ai_assistant') }}</span>
+    </button>
+
+    <!-- Modal -->
+    <AIAssistantModal
+      :is-open="isModalOpen"
+      :show-language-selection="showLanguageSelection"
+      :conversation-mode="conversationMode"
+      :content-item-name="contentItemName"
+      @close="closeModal"
+      @select-language="selectLanguage"
+      @toggle-mode="toggleConversationMode"
+    >
+      <!-- Chat Completion Mode -->
+      <ChatInterface
+        v-if="conversationMode === 'chat-completion'"
+        :messages="messages"
+        :is-loading="chatCompletion.isLoading.value"
+        :error="chatCompletion.error.value"
+        :loading-status="loadingStatus"
+        :input-mode="inputMode"
+        :is-recording="voiceRecording.isRecording.value"
+        :recording-duration="voiceRecording.recordingDuration.value"
+        :is-cancel-zone="voiceRecording.isCancelZone.value"
+        :waveform-data="voiceRecording.waveformData.value"
+        :current-playing-message-id="chatCompletion.currentPlayingMessageId.value"
+        :first-audio-played="firstAudioPlayed"
+        @send-text="sendTextMessage"
+        @toggle-input-mode="toggleInputMode"
+        @start-recording="startVoiceRecording"
+        @stop-recording="stopVoiceRecording"
+        @cancel-recording="cancelVoiceRecording"
+        @update-cancel-zone="voiceRecording.isCancelZone.value = $event"
+        @play-audio="playMessageAudio"
+      />
+
+      <!-- Realtime Mode -->
+      <RealtimeInterface
+        v-else-if="conversationMode === 'realtime'"
+        :is-connected="realtimeConnection.isRealtimeConnected.value"
+        :is-speaking="realtimeConnection.isRealtimeSpeaking.value"
+        :status="realtimeConnection.realtimeStatus.value"
+        :status-text="realtimeConnection.statusText.value"
+        :messages="messages"
+        @connect="connectRealtime"
+        @disconnect="disconnectRealtime"
+      />
+    </AIAssistantModal>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, watch, nextTick } from 'vue'
+import { useI18n } from 'vue-i18n'
+import AIAssistantModal from './AIAssistant/components/AIAssistantModal.vue'
+import ChatInterface from './AIAssistant/components/ChatInterface.vue'
+import RealtimeInterface from './AIAssistant/components/RealtimeInterface.vue'
+import { useRealtimeConnection } from './AIAssistant/composables/useRealtimeConnection'
+import { useChatCompletion } from './AIAssistant/composables/useChatCompletion'
+import { useVoiceRecording } from './AIAssistant/composables/useVoiceRecording'
+import { useCostSafeguards } from './AIAssistant/composables/useCostSafeguards'
+import { useInactivityTimer } from './AIAssistant/composables/useInactivityTimer'
+import type { Message, Language, ConversationMode, AIAssistantProps } from './AIAssistant/types'
+
+const { t } = useI18n()
+
+const props = defineProps<AIAssistantProps>()
+
+// ============================================================================
+// COMPOSABLES
+// ============================================================================
+
+const chatCompletion = useChatCompletion()
+const voiceRecording = useVoiceRecording()
+const realtimeConnection = useRealtimeConnection()
+
+// ============================================================================
+// STATE
+// ============================================================================
+
+const isModalOpen = ref(false)
+const showLanguageSelection = ref(true)
+const selectedLanguage = ref<Language | null>(null)
+const conversationMode = ref<ConversationMode>('chat-completion')
+const messages = ref<Message[]>([])
+// Track assistant message per OpenAI response_id so each response is a new bubble
+const assistantMessageByResponseId = ref<Record<string, string>>({})
+const pendingUserTranscriptId = ref<string | null>(null)
+const inputMode = ref<'text' | 'voice'>('text')
+const loadingStatus = ref('')
+const firstAudioPlayed = ref(false)
+
+// ============================================================================
+// COMPUTED
+// ============================================================================
+
+const systemInstructions = computed(() => {
+  const languageName = selectedLanguage.value?.name || 'English'
+  const isSubItem = props.parentContentKnowledgeBase && props.parentContentKnowledgeBase.trim().length > 0
+  
+  // Build instruction sections
+  let instructions = `You are an AI assistant for the ${isSubItem ? 'sub-content item' : 'content item'} "${props.contentItemName}" within the digital card "${props.cardData.card_name}".
+
+Your role: Provide helpful information about this specific ${isSubItem ? 'sub-item' : 'item'} to museum/exhibition visitors.
+
+Content Details:
+- Item Name: ${props.contentItemName}
+- Item Description: ${props.contentItemContent}`
+
+  // Add card-level instruction (role & guidelines) - highest priority
+  if (props.cardData.ai_instruction) {
+    instructions += `\n\n=== AI Role & Guidelines ===\n${props.cardData.ai_instruction}`
+  }
+
+  // Add card-level knowledge base (general background knowledge)
+  if (props.cardData.ai_knowledge_base) {
+    instructions += `\n\n=== Card Knowledge Base (General Context) ===\n${props.cardData.ai_knowledge_base}`
+  }
+
+  // For sub-items: Add parent content item knowledge
+  if (isSubItem) {
+    instructions += `\n\n=== Parent Content Knowledge ===\n${props.parentContentKnowledgeBase}`
+  }
+
+  // Add this content item's specific knowledge
+  if (props.contentItemKnowledgeBase) {
+    instructions += `\n\n=== ${isSubItem ? 'Sub-Item' : 'Content Item'} Specific Knowledge ===\n${props.contentItemKnowledgeBase}`
+  }
+
+  // Add communication guidelines
+  instructions += `\n\n=== Communication Guidelines ===
+- Speak ONLY in ${languageName}
+- Be conversational and friendly
+- Focus specifically on this ${isSubItem ? 'sub-item' : 'content item'}
+- Use knowledge in hierarchical order: AI guidelines → Card knowledge → ${isSubItem ? 'Parent knowledge → ' : ''}Specific item knowledge
+- Provide engaging and educational responses
+- Keep responses concise but informative (2-3 sentences max for chat)
+- If asked about other topics, politely redirect to this ${isSubItem ? 'sub-item' : 'content item'}
+
+Remember: You are here to enhance the visitor's understanding of "${props.contentItemName}".`
+
+  return instructions
+})
+
+const welcomeMessages: Record<string, string> = {
+  'en': `Hi! I'm your AI assistant for "${props.contentItemName}". Feel free to ask me anything about this exhibit!`,
+  'zh-HK': `你好！我係「${props.contentItemName}」嘅AI助手。有咩想知都可以問我！`,
+  'zh-CN': `你好！我是「${props.contentItemName}」的AI助手。有什么想知道的都可以问我！`,
+  'ja': `こんにちは！「${props.contentItemName}」のAIアシスタントです。この展示について何でも聞いてください！`,
+  'ko': `안녕하세요! "${props.contentItemName}"의 AI 어시스턴트입니다. 이 전시에 대해 무엇이든 물어보세요!`,
+  'es': `¡Hola! Soy tu asistente de IA para "${props.contentItemName}". ¡Pregúntame lo que quieras sobre esta exhibición!`,
+  'fr': `Bonjour ! Je suis votre assistant IA pour "${props.contentItemName}". N'hésitez pas à me poser des questions sur cette exposition !`,
+  'ru': `Привет! Я ваш AI-помощник для "${props.contentItemName}". Спрашивайте меня о чем угодно!`,
+  'ar': `مرحبا! أنا مساعدك الذكي لـ "${props.contentItemName}". لا تتردد في طرح أي أسئلة!`,
+  'th': `สวัสดี! ฉันเป็น AI ผู้ช่วยของ "${props.contentItemName}" ถามอะไรก็ได้เกี่ยวกับนิทรรศการนี้!`
+}
+
+// ============================================================================
+// COST SAFEGUARDS & INACTIVITY TIMER
+// ============================================================================
+
+const inactivityTimer = useInactivityTimer(300000, () => {
+  if (realtimeConnection.isRealtimeConnected.value) {
+    disconnectRealtime()
+  }
+})
+
+const costSafeguards = useCostSafeguards(
+  realtimeConnection.isRealtimeConnected,
+  () => disconnectRealtime()
+)
+
+// ============================================================================
+// MODAL METHODS
+// ============================================================================
+
+function openModal() {
+  isModalOpen.value = true
+  document.body.style.overflow = 'hidden'
+  showLanguageSelection.value = true
+  selectedLanguage.value = null
+  messages.value = []
+  firstAudioPlayed.value = false
+}
+
+function closeModal() {
+  isModalOpen.value = false
+  document.body.style.overflow = ''
+  showLanguageSelection.value = true
+  selectedLanguage.value = null
+  messages.value = []
+  firstAudioPlayed.value = false
+  conversationMode.value = 'chat-completion'
+  
+  if (realtimeConnection.isRealtimeConnected.value) {
+    disconnectRealtime()
+  }
+  
+  if (voiceRecording.isRecording.value) {
+    voiceRecording.cancelRecording()
+  }
+}
+
+function selectLanguage(language: Language) {
+  selectedLanguage.value = language
+  showLanguageSelection.value = false
+  
+  // Add welcome message
+  const welcomeText = welcomeMessages[language.code] || welcomeMessages['en']
+  messages.value = [{
+    id: Date.now().toString(),
+    role: 'assistant',
+    content: welcomeText,
+    timestamp: new Date()
+  }]
+}
+
+function toggleConversationMode() {
+  if (conversationMode.value === 'chat-completion') {
+    conversationMode.value = 'realtime'
+    messages.value = [] // Clear messages
+  } else {
+    conversationMode.value = 'chat-completion'
+    if (realtimeConnection.isRealtimeConnected.value) {
+      disconnectRealtime()
+    }
+    // Add welcome message back
+    const welcomeText = welcomeMessages[selectedLanguage.value?.code || 'en'] || welcomeMessages['en']
+    messages.value = [{
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: welcomeText,
+      timestamp: new Date()
+    }]
+  }
+}
+
+// ============================================================================
+// CHAT COMPLETION METHODS
+// ============================================================================
+
+function toggleInputMode() {
+  inputMode.value = inputMode.value === 'text' ? 'voice' : 'text'
+}
+
+async function sendTextMessage(text: string) {
+  if (!text.trim() || !selectedLanguage.value) return
+  
+  // Add user message
+  messages.value.push({
+    id: Date.now().toString(),
+    role: 'user',
+    content: text,
+    timestamp: new Date()
+  })
+  
+  // Create streaming assistant message
+  const streamingMessageId = (Date.now() + 1).toString()
+  messages.value.push({
+    id: streamingMessageId,
+    role: 'assistant',
+    content: '',
+    timestamp: new Date(),
+    isStreaming: true
+  })
+  
+  chatCompletion.streamingMessageId.value = streamingMessageId
+  loadingStatus.value = 'Generating response...'
+  
+  try {
+    const result = await chatCompletion.getAIResponse(
+      messages.value.filter(m => !m.isStreaming),
+      systemInstructions.value,
+      (content) => {
+        const message = messages.value.find(m => m.id === streamingMessageId)
+        if (message) {
+          message.content = content
+        }
+      }
+    )
+    
+    // Finalize message
+    const message = messages.value.find(m => m.id === streamingMessageId)
+    if (message) {
+      message.isStreaming = false
+      message.content = result.content
+    }
+  } catch (err) {
+    const message = messages.value.find(m => m.id === streamingMessageId)
+    if (message) {
+      message.isStreaming = false
+      message.content = 'Sorry, I encountered an error. Please try again.'
+    }
+  } finally {
+    loadingStatus.value = ''
+    chatCompletion.streamingMessageId.value = null
+  }
+}
+
+async function startVoiceRecording() {
+  try {
+    await voiceRecording.startRecording()
+  } catch (err) {
+    console.error('Failed to start recording:', err)
+  }
+}
+
+async function stopVoiceRecording() {
+  const audioBlob = await voiceRecording.stopRecording()
+  if (!audioBlob || !selectedLanguage.value) return
+  
+  loadingStatus.value = 'Transcribing voice...'
+  
+  try {
+    const result = await chatCompletion.getAIResponseWithVoice(
+      audioBlob,
+      messages.value,
+      systemInstructions.value,
+      selectedLanguage.value.code
+    )
+    
+    // Add user message with transcription
+    messages.value.push({
+      id: Date.now().toString(),
+      role: 'user',
+      content: result.userTranscription,
+      timestamp: new Date(),
+      audio: { data: '', format: 'wav' }
+    })
+    
+    // Add assistant message
+    messages.value.push({
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      content: result.textContent,
+      timestamp: new Date()
+    })
+  } catch (err) {
+    console.error('Voice processing error:', err)
+    chatCompletion.error.value = 'Failed to process voice input'
+  } finally {
+    loadingStatus.value = ''
+  }
+}
+
+function cancelVoiceRecording() {
+  voiceRecording.cancelRecording()
+}
+
+async function playMessageAudio(message: Message) {
+  if (!selectedLanguage.value) return
+  
+  firstAudioPlayed.value = true
+  await chatCompletion.playMessageAudio(message, selectedLanguage.value.code)
+}
+
+// ============================================================================
+// REALTIME METHODS
+// ============================================================================
+
+async function connectRealtime() {
+  if (!selectedLanguage.value) return
+  
+  // Prevent multiple simultaneous connections
+  if (realtimeConnection.isRealtimeConnected.value || 
+      realtimeConnection.realtimeStatus.value === 'connecting') {
+    console.log('⚠️ Already connecting or connected, ignoring duplicate request')
+    return
+  }
+  
+  realtimeConnection.realtimeStatus.value = 'connecting'
+  
+  // Clean up any existing connection first
+  if (realtimeConnection.realtimeWebSocket.value) {
+    console.log('🧹 Cleaning up existing connection before creating new one')
+    await realtimeConnection.disconnect()
+  }
+  
+  try {
+    // Get ephemeral token
+    const tokenData = await realtimeConnection.getEphemeralToken(
+      selectedLanguage.value.code,
+      systemInstructions.value,
+      props.contentItemName
+    )
+    
+    console.log('🎫 Token data received:', { 
+      hasToken: !!tokenData.ephemeral_token,
+      model: tokenData.session_config?.model,
+      expiresAt: tokenData.expires_at
+    })
+    
+    // Request microphone
+    await realtimeConnection.requestMicrophone()
+    
+    // Create audio contexts
+    realtimeConnection.createAudioContexts()
+    
+    // Create WebSocket
+    const ws = realtimeConnection.createWebSocket(
+      tokenData.session_config.model, 
+      tokenData.ephemeral_token
+    )
+    
+    // Track if session is ready
+    let sessionReady = false
+    
+    // Setup WebSocket handlers
+    ws.onopen = () => {
+      console.log('✅ Relay connection established')
+      console.log('⏳ Waiting for OpenAI session...')
+      // Note: Don't start audio yet! Wait for session.created from OpenAI
+    }
+    
+    ws.onmessage = async (event) => {
+      try {
+        let messageText: string
+        
+        // Handle different message types
+        if (typeof event.data === 'string') {
+          // Already a string (text frame)
+          messageText = event.data
+        } else if (event.data instanceof Blob) {
+          // Binary frame as Blob - convert to text
+          messageText = await event.data.text()
+          console.log('📦 Converted binary Blob to text')
+        } else if (event.data instanceof ArrayBuffer) {
+          // Binary frame as ArrayBuffer - convert to text
+          messageText = new TextDecoder().decode(event.data)
+          console.log('📦 Converted binary ArrayBuffer to text')
+        } else {
+          console.warn('⚠️ Unexpected message type:', typeof event.data)
+          return
+        }
+        
+        const data = JSON.parse(messageText)
+        console.log('📨 WebSocket message:', data.type, data)
+        
+        // Reset inactivity timer on any activity
+        inactivityTimer.resetTimer()
+        
+        // Handle session.created - This is when OpenAI is ready!
+        if (data.type === 'session.created' && !sessionReady) {
+          console.log('✅ OpenAI session established!')
+          sessionReady = true
+          realtimeConnection.isRealtimeConnected.value = true
+          realtimeConnection.realtimeStatus.value = 'connected'
+          
+          // Now send session configuration
+          const sessionUpdate = {
+            type: 'session.update',
+            session: tokenData.session_config
+          }
+          console.log('📤 Sending session configuration:', sessionUpdate)
+          ws.send(JSON.stringify(sessionUpdate))
+          
+          // Start sending audio
+          realtimeConnection.startSendingAudio()
+          
+          // Start inactivity timer
+          inactivityTimer.startTimer()
+        }
+        
+        // Handle errors from server
+        if (data.type === 'error') {
+          console.error('❌ Server error:', data)
+          realtimeConnection.realtimeError.value = data.error?.message || 'Server error'
+          return
+        }
+        
+        // Handle audio delta (GA API event name)
+        if (data.type === 'response.output_audio.delta' && data.delta) {
+          realtimeConnection.playRealtimeAudio(data.delta)
+        }
+        
+        // Stream user input transcription (delta)
+        if (
+          (data.type === 'conversation.item.input_audio_transcription.delta' ||
+           data.type === 'input_audio_transcription.delta') &&
+          data.delta
+        ) {
+          // If no pending message, create one
+          if (!pendingUserTranscriptId.value) {
+            const id = Date.now().toString()
+            pendingUserTranscriptId.value = id
+            messages.value.push({
+              id,
+              role: 'user',
+              content: data.delta,
+              timestamp: new Date(),
+              isStreaming: true
+            })
+          } else {
+            const msg = messages.value.find(m => m.id === pendingUserTranscriptId.value)
+            if (msg) {
+              msg.content = (msg.content || '') + data.delta
+            }
+          }
+        }
+
+        // Handle assistant transcript (delta) - GA API event name
+        if (data.type === 'response.output_audio_transcript.delta' && data.delta) {
+          const responseId = data.response_id
+          if (responseId && !assistantMessageByResponseId.value[responseId]) {
+            const id = `${Date.now()}-${Math.random().toString(36).slice(2)}`
+            assistantMessageByResponseId.value[responseId] = id
+            messages.value.push({
+              id,
+              role: 'assistant',
+              content: data.delta,
+              timestamp: new Date(),
+              isStreaming: true
+            })
+          } else if (responseId) {
+            const msgId = assistantMessageByResponseId.value[responseId]
+            const msg = messages.value.find(m => m.id === msgId)
+            if (msg) msg.content = (msg.content || '') + data.delta
+          } else {
+            // Fallback if response_id missing: create/update last assistant bubble
+            const lastMessage = messages.value[messages.value.length - 1]
+            if (!lastMessage || lastMessage.role !== 'assistant' || !lastMessage.isStreaming) {
+              messages.value.push({
+                id: Date.now().toString(),
+                role: 'assistant',
+                content: data.delta,
+                timestamp: new Date(),
+                isStreaming: true
+              })
+            } else {
+              lastMessage.content = (lastMessage.content || '') + data.delta
+            }
+          }
+        }
+
+        // Mark assistant response completed
+        if (data.type === 'response.completed' && data.response) {
+          const responseId = data.response.id
+          const msgId = assistantMessageByResponseId.value[responseId]
+          if (msgId) {
+            const msg = messages.value.find(m => m.id === msgId)
+            if (msg) msg.isStreaming = false
+            delete assistantMessageByResponseId.value[responseId]
+          }
+        }
+        
+        // Handle input transcript (user speech) - completed
+        if (
+          (data.type === 'conversation.item.input_audio_transcription.completed' ||
+           data.type === 'input_audio_transcription.completed') &&
+          data.transcript
+        ) {
+          if (pendingUserTranscriptId.value) {
+            const msg = messages.value.find(m => m.id === pendingUserTranscriptId.value)
+            if (msg) {
+              msg.content = data.transcript
+              msg.isStreaming = false
+            } else {
+              // Fallback: create message if not found
+              messages.value.push({
+                id: Date.now().toString(),
+                role: 'user',
+                content: data.transcript,
+                timestamp: new Date()
+              })
+            }
+          } else {
+            // No pending id, create a new finalized message
+            messages.value.push({
+              id: Date.now().toString(),
+              role: 'user',
+              content: data.transcript,
+              timestamp: new Date()
+            })
+          }
+          pendingUserTranscriptId.value = null
+        }
+      } catch (err) {
+        console.error('❌ WebSocket message error:', err)
+        console.error('   Message data type:', typeof event.data)
+        console.error('   Message data:', event.data instanceof Blob ? 'Blob' : event.data)
+      }
+    }
+    
+    ws.onerror = (err) => {
+      console.error('❌ WebSocket error:', err)
+      realtimeConnection.realtimeStatus.value = 'error'
+      realtimeConnection.realtimeError.value = 'Connection error'
+    }
+    
+    ws.onclose = (event) => {
+      console.log('🔌 WebSocket closed', {
+        code: event.code,
+        reason: event.reason,
+        wasClean: event.wasClean
+      })
+      realtimeConnection.isRealtimeConnected.value = false
+      realtimeConnection.realtimeStatus.value = 'disconnected'
+      inactivityTimer.clearTimer()
+    }
+  } catch (err: any) {
+    console.error('❌ Realtime connection error:', err)
+    realtimeConnection.realtimeStatus.value = 'error'
+    realtimeConnection.realtimeError.value = err.message
+    await realtimeConnection.disconnect()
+  }
+}
+
+function disconnectRealtime() {
+  inactivityTimer.clearTimer()
+  realtimeConnection.disconnect()
+  
+  // Add goodbye message
+  if (messages.value.length > 0) {
+    messages.value.push({
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: 'Call ended. Switch back to chat mode or start a new call.',
+      timestamp: new Date()
+    })
+  }
+}
+</script>
+
+<style scoped>
+.ai-assistant {
+  position: relative;
+}
+
+.ai-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+}
+
+.ai-button:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 8px -1px rgba(59, 130, 246, 0.4);
+}
+
+.ai-button i {
+  font-size: 1.25rem;
+}
+</style>
+

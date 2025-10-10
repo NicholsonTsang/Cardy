@@ -14,6 +14,7 @@ interface ImportMetaEnv {
   readonly VITE_STRIPE_SUCCESS_URL: string
   readonly VITE_STRIPE_CANCEL_URL: string
   readonly VITE_DEFAULT_AI_INSTRUCTION: string
+  readonly VITE_OPENAI_RELAY_URL?: string // Optional: URL of the OpenAI Realtime API relay server
 }
 
 interface ImportMeta {
