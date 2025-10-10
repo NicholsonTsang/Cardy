@@ -14,16 +14,17 @@ export function useWebRTCConnection() {
   const mediaStream = ref<MediaStream | null>(null)
   
   // Voice configuration by language
+  // Supported voices: 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse', 'marin', 'cedar'
   const voiceMap: Record<string, string> = {
     'en': 'alloy',
-    'zh-HK': 'nova',
-    'zh-CN': 'nova',
+    'zh-HK': 'shimmer',
+    'zh-CN': 'shimmer',
     'ja': 'shimmer',
     'ko': 'shimmer',
     'es': 'echo',
-    'fr': 'fable',
-    'ru': 'onyx',
-    'ar': 'onyx',
+    'fr': 'ballad',
+    'ru': 'sage',
+    'ar': 'sage',
     'th': 'shimmer'
   }
   
