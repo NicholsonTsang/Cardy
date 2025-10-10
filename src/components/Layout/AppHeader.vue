@@ -20,8 +20,8 @@
 
         <!-- Right Side: Main Navigation Menu -->
         <div class="flex items-center space-x-4">
-          <!-- Language Switcher -->
-          <LanguageSwitcher />
+          <!-- Dashboard Language Selector -->
+          <DashboardLanguageSelector />
           
           <!-- Single Unified Menu for Authenticated Users -->
           <div v-if="isAuthenticated" class="relative">
@@ -89,7 +89,7 @@ import { useAuthStore } from '@/stores/auth'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import { useToast } from 'primevue/usetoast'
-import LanguageSwitcher from '@/components/LanguageSwitcher.vue'
+import DashboardLanguageSelector from '@/components/DashboardLanguageSelector.vue'
 
 const { t } = useI18n()
 const router = useRouter()

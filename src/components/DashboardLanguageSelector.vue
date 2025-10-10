@@ -1,59 +1,121 @@
 <template>
-  <!-- Language Selection Modal -->
-  <Teleport to="body">
-    <Transition name="modal">
-      <div class="modal-overlay" @click="$emit('close')">
-        <div class="modal-content" @click.stop>
-          <div class="modal-header">
-            <h2>{{ $t('mobile.select_language') }}</h2>
-            <button @click="$emit('close')" class="close-button">
-              <i class="pi pi-times" />
-            </button>
-          </div>
+  <div class="dashboard-language-selector">
+    <!-- Language Button -->
+    <button 
+      @click="showModal = true" 
+      class="language-button"
+      :title="$t('common.select_language')"
+    >
+      <span class="language-flag">{{ languageStore.selectedLanguage.flag }}</span>
+      <span class="language-code">{{ languageStore.selectedLanguage.code.toUpperCase() }}</span>
+      <i class="pi pi-chevron-down language-icon"></i>
+    </button>
 
-          <div class="language-grid">
-            <button
-              v-for="lang in languageStore.languages"
-              :key="lang.code"
-              @click="selectLanguage(lang)"
-              class="language-option"
-              :class="{ active: languageStore.selectedLanguage.code === lang.code }"
-            >
-              <span class="flag">{{ lang.flag }}</span>
-              <span class="name">{{ lang.name }}</span>
-              <i v-if="languageStore.selectedLanguage.code === lang.code" class="pi pi-check" />
-            </button>
+    <!-- Language Selection Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showModal" class="modal-overlay" @click="showModal = false">
+          <div class="modal-content" @click.stop>
+            <div class="modal-header">
+              <div class="header-indicator"></div>
+              <h2>{{ $t('common.select_language') }}</h2>
+              <button @click="showModal = false" class="close-button">
+                <i class="pi pi-times" />
+              </button>
+            </div>
+
+            <div class="language-grid">
+              <button
+                v-for="lang in languageStore.languages"
+                :key="lang.code"
+                @click="selectLanguage(lang)"
+                class="language-option"
+                :class="{ active: languageStore.selectedLanguage.code === lang.code }"
+              >
+                <span class="flag">{{ lang.flag }}</span>
+                <span class="name">{{ lang.name }}</span>
+                <i v-if="languageStore.selectedLanguage.code === lang.code" class="pi pi-check checkmark" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </Transition>
-  </Teleport>
+      </Transition>
+    </Teleport>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { useMobileLanguageStore } from '@/stores/language'
+import { ref } from 'vue'
+import { useDashboardLanguageStore } from '@/stores/language'
 import type { Language } from '@/stores/language'
 
-const languageStore = useMobileLanguageStore()
-
-const emit = defineEmits<{
-  select: [language: Language]
-  close: []
-}>()
+const languageStore = useDashboardLanguageStore()
+const showModal = ref(false)
 
 function selectLanguage(language: Language) {
   languageStore.setLanguage(language)
-  emit('select', language)
-  emit('close')
+  showModal.value = false
 }
 </script>
 
 <style scoped>
+.dashboard-language-selector {
+  position: relative;
+}
+
+/* Language Button */
+.language-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.language-button:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.language-button:active {
+  transform: scale(0.98);
+}
+
+.language-flag {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
+.language-code {
+  font-weight: 600;
+  font-size: 0.75rem;
+  color: #475569;
+  letter-spacing: 0.05em;
+}
+
+.language-icon {
+  font-size: 0.625rem;
+  color: #94a3b8;
+  transition: transform 0.2s;
+}
+
+.language-button:hover .language-icon {
+  color: #64748b;
+}
+
 /* Modal Overlay */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -67,7 +129,7 @@ function selectLanguage(language: Language) {
   background: white;
   border-radius: 16px;
   width: 100%;
-  max-width: 500px;
+  max-width: 600px;
   max-height: 80vh;
   overflow: hidden;
   display: flex;
@@ -82,6 +144,11 @@ function selectLanguage(language: Language) {
   padding: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
   background: #f9fafb;
+  position: relative;
+}
+
+.header-indicator {
+  display: none;
 }
 
 .modal-header h2 {
@@ -118,9 +185,9 @@ function selectLanguage(language: Language) {
 .language-grid {
   padding: 1.5rem;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 1rem;
-  max-height: calc(80vh - 100px);
+  max-height: calc(80vh - 120px);
   overflow-y: auto;
   background: #f9fafb;
 }
@@ -169,7 +236,7 @@ function selectLanguage(language: Language) {
   line-height: 1.3;
 }
 
-.language-option .pi-check {
+.language-option .checkmark {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
@@ -218,41 +285,43 @@ function selectLanguage(language: Language) {
   transform: scale(0.9) translateY(20px);
 }
 
-/* Mobile Responsive */
-@media (max-width: 640px) {
+/* Mobile - Bottom Sheet */
+@media (max-width: 767px) {
   .modal-overlay {
+    align-items: flex-end;
     padding: 0;
   }
   
   .modal-content {
     border-radius: 20px 20px 0 0;
-    max-height: 90vh;
-    align-self: flex-end;
-    width: 100%;
+    max-width: 100%;
+    max-height: 85vh;
+  }
+  
+  .header-indicator {
+    display: block;
+    position: absolute;
+    top: 0.75rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    background: #d1d5db;
+    border-radius: 2px;
+  }
+  
+  .modal-header h2,
+  .close-button {
+    margin-top: 0.5rem;
   }
   
   .language-grid {
     grid-template-columns: repeat(2, 1fr);
-    padding: 1rem;
-  }
-  
-  .language-option {
-    padding: 1rem 0.75rem;
-  }
-  
-  .language-option .flag {
-    font-size: 2rem;
   }
   
   .modal-enter-from .modal-content,
   .modal-leave-to .modal-content {
     transform: translateY(100%);
-  }
-}
-
-@media (min-width: 640px) {
-  .language-grid {
-    grid-template-columns: repeat(3, 1fr);
   }
 }
 
@@ -269,6 +338,14 @@ function selectLanguage(language: Language) {
   .language-option:hover {
     transform: none;
   }
+}
+
+/* Focus styles */
+.language-button:focus-visible,
+.close-button:focus-visible,
+.language-option:focus-visible {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
 }
 </style>
 

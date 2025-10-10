@@ -1,7 +1,7 @@
 <template>
   <div class="language-selector">
     <!-- Language Button in Header -->
-    <button @click="showModal = true" class="language-button" :title="$t('mobile.selectLanguage')">
+    <button @click="showModal = true" class="language-button" :title="$t('mobile.select_language')">
       <span class="language-flag">{{ languageStore.selectedLanguage.flag }}</span>
       <span class="language-code">{{ languageStore.selectedLanguage.code.toUpperCase() }}</span>
     </button>
@@ -12,7 +12,7 @@
         <div v-if="showModal" class="modal-overlay" @click="showModal = false">
           <div class="modal-content" @click.stop>
             <div class="modal-header">
-              <h2>{{ $t('mobile.selectLanguage') }}</h2>
+              <h2>{{ $t('mobile.select_language') }}</h2>
               <button @click="showModal = false" class="close-button">
                 <i class="pi pi-times" />
               </button>
@@ -40,10 +40,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useLanguageStore } from '@/stores/language'
+import { useMobileLanguageStore } from '@/stores/language'
 import type { Language } from '@/stores/language'
 
-const languageStore = useLanguageStore()
+const languageStore = useMobileLanguageStore()
 const showModal = ref(false)
 
 function selectLanguage(language: Language) {

@@ -76,11 +76,11 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getCardAspectRatio } from '@/utils/cardConfig'
-import { useLanguageStore } from '@/stores/language'
+import { useMobileLanguageStore } from '@/stores/language'
 import LanguageSelectorModal from './LanguageSelectorModal.vue'
 
 const { t } = useI18n()
-const languageStore = useLanguageStore()
+const languageStore = useMobileLanguageStore()
 const showLanguageSelector = ref(false)
 
 interface Props {

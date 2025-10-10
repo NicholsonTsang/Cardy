@@ -63,11 +63,11 @@ import { useChatCompletion } from './composables/useChatCompletion'
 import { useVoiceRecording } from './composables/useVoiceRecording'
 import { useCostSafeguards } from './composables/useCostSafeguards'
 import { useInactivityTimer } from './composables/useInactivityTimer'
-import { useLanguageStore } from '@/stores/language'
+import { useMobileLanguageStore } from '@/stores/language'
 import type { Message, ConversationMode, AIAssistantProps } from './types'
 
 const props = defineProps<AIAssistantProps>()
-const languageStore = useLanguageStore()
+const languageStore = useMobileLanguageStore()
 
 // ============================================================================
 // COMPOSABLES
