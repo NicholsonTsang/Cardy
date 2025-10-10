@@ -13,6 +13,10 @@ export function useWebRTCConnection() {
   const isSpeaking = ref(false)
   const mediaStream = ref<MediaStream | null>(null)
   
+  // Transcript callbacks
+  let onUserTranscriptCallback: ((text: string) => void) | null = null
+  let onAssistantTranscriptCallback: ((text: string) => void) | null = null
+  
   // Voice configuration by language (Realtime API)
   // Supported voices: 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse', 'marin', 'cedar'
   const voiceMap: Record<string, string> = {
@@ -230,10 +234,15 @@ export function useWebRTCConnection() {
     }
   }
   
+  // Transcript state for accumulation
+  let currentAssistantTranscript = ''
+  
   // Handle incoming data channel messages
   function handleDataChannelMessage(data: string) {
     try {
       const message = JSON.parse(data)
+      
+      console.log('📨 Received message type:', message.type)
       
       // Handle different message types
       switch (message.type) {
@@ -242,9 +251,38 @@ export function useWebRTCConnection() {
           console.log('📋 Session event:', message.type)
           break
           
+        case 'conversation.item.input_audio_transcription.completed':
+          // User's speech transcript
+          if (message.transcript && onUserTranscriptCallback) {
+            console.log('🎤 User said:', message.transcript)
+            onUserTranscriptCallback(message.transcript)
+          }
+          break
+          
         case 'response.audio_transcript.delta':
-          console.log('📝 Transcript:', message.delta)
-          // Emit transcript event for UI
+          // AI response transcript (streaming)
+          if (message.delta) {
+            console.log('📝 AI transcript delta:', message.delta)
+            currentAssistantTranscript += message.delta
+          }
+          break
+          
+        case 'response.audio_transcript.done':
+          // AI response complete
+          if (currentAssistantTranscript && onAssistantTranscriptCallback) {
+            console.log('✅ AI transcript complete:', currentAssistantTranscript)
+            onAssistantTranscriptCallback(currentAssistantTranscript)
+            currentAssistantTranscript = ''
+          }
+          break
+          
+        case 'response.done':
+          // Response fully completed - fallback if no audio_transcript.done
+          if (currentAssistantTranscript && onAssistantTranscriptCallback) {
+            console.log('✅ AI response done:', currentAssistantTranscript)
+            onAssistantTranscriptCallback(currentAssistantTranscript)
+            currentAssistantTranscript = ''
+          }
           break
           
         case 'error':
@@ -253,7 +291,7 @@ export function useWebRTCConnection() {
           break
           
         default:
-          console.log('📨 Message:', message.type)
+          console.log('📨 Unhandled message:', message.type)
       }
     } catch (err) {
       console.error('Failed to parse message:', err)
@@ -328,6 +366,16 @@ export function useWebRTCConnection() {
     isConnected.value = false
     isSpeaking.value = false
     status.value = 'disconnected'
+    currentAssistantTranscript = ''
+  }
+  
+  // Set transcript callbacks
+  function onUserTranscript(callback: (text: string) => void) {
+    onUserTranscriptCallback = callback
+  }
+  
+  function onAssistantTranscript(callback: (text: string) => void) {
+    onAssistantTranscriptCallback = callback
   }
   
   return {
@@ -341,6 +389,8 @@ export function useWebRTCConnection() {
     connect,
     disconnect,
     interrupt,
-    sendText
+    sendText,
+    onUserTranscript,
+    onAssistantTranscript
   }
 }

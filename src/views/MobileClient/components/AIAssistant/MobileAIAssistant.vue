@@ -378,6 +378,29 @@ async function connectRealtime() {
   console.log('🚀 ===============================================')
   
   try {
+    // Set up transcript callbacks before connecting
+    realtimeConnection.onUserTranscript((text: string) => {
+      // Add user message to chat
+      messages.value.push({
+        id: Date.now().toString(),
+        role: 'user',
+        content: text,
+        timestamp: new Date()
+      })
+      console.log('💬 Added user message:', text)
+    })
+    
+    realtimeConnection.onAssistantTranscript((text: string) => {
+      // Add assistant message to chat
+      messages.value.push({
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: text,
+        timestamp: new Date()
+      })
+      console.log('💬 Added assistant message:', text)
+    })
+    
     // Connect via WebRTC
     await realtimeConnection.connect(
       selectedLanguage.value.code,
@@ -389,14 +412,6 @@ async function connectRealtime() {
     
     // Cost safeguards
     costSafeguards.addSafeguards()
-    
-    // Add welcome message
-    messages.value.push({
-      id: Date.now().toString(),
-      role: 'assistant',
-      content: welcomeMessages[selectedLanguage.value.code] || welcomeMessages['en'],
-      timestamp: new Date()
-    })
   } catch (err: any) {
     console.error('❌ Realtime connection error:', err)
     await realtimeConnection.disconnect()
