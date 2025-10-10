@@ -369,6 +369,14 @@ async function playMessageAudio(message: Message) {
 async function connectRealtime() {
   if (!selectedLanguage.value) return
   
+  console.log('🚀 ========== CONNECTING TO REALTIME API ==========')
+  console.log('🌍 Selected Language Object:', selectedLanguage.value)
+  console.log('🔤 Language Code:', selectedLanguage.value.code)
+  console.log('📛 Language Name:', selectedLanguage.value.name)
+  console.log('📋 System Instructions Preview (first 500 chars):')
+  console.log(systemInstructions.value.substring(0, 500) + '...')
+  console.log('🚀 ===============================================')
+  
   try {
     // Connect via WebRTC
     await realtimeConnection.connect(

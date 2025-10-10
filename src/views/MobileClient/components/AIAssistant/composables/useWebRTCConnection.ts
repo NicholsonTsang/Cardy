@@ -90,8 +90,8 @@ export function useWebRTCConnection() {
         isConnected.value = true
         status.value = 'connected'
         
-        // Send session configuration with context
-        sendMessage({
+        // Prepare session configuration
+        const sessionConfig = {
           type: 'session.update',
           session: {
             modalities: ['text', 'audio'],
@@ -111,17 +111,32 @@ export function useWebRTCConnection() {
             temperature: 0.8,
             max_response_output_tokens: 4096
           }
-        })
+        }
+        
+        // DEBUG: Print full session configuration
+        console.log('🔧 ========== REALTIME API SESSION CONFIGURATION ==========')
+        console.log('🌍 Selected Language:', language)
+        console.log('🎤 Voice:', voiceMap[language] || 'alloy')
+        console.log('📝 Full Instructions:')
+        console.log(instructions)
+        console.log('📦 Complete Session Config:', JSON.stringify(sessionConfig, null, 2))
+        console.log('🔧 =======================================================')
+        
+        // Send session configuration with context
+        sendMessage(sessionConfig)
         
         // Trigger AI's first greeting after session is configured
         setTimeout(() => {
-          sendMessage({
+          const greetingConfig = {
             type: 'response.create',
             response: {
               modalities: ['text', 'audio'],
               instructions: 'Greet the user warmly and briefly ask how you can help them understand the content better. Keep it natural and conversational.'
             }
-          })
+          }
+          
+          console.log('👋 Triggering AI first greeting:', greetingConfig)
+          sendMessage(greetingConfig)
         }, 500)
       }
       
