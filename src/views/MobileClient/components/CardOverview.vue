@@ -43,7 +43,7 @@
         
         <!-- Description -->
         <div class="description-wrapper">
-          <p class="card-description">{{ card.card_description }}</p>
+          <div class="card-description markdown-content" v-html="renderedDescription"></div>
         </div>
         
         <!-- Action Button -->
@@ -73,8 +73,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { marked } from 'marked'
 import { getCardAspectRatio } from '@/utils/cardConfig'
 import { useMobileLanguageStore } from '@/stores/language'
 import LanguageSelectorModal from './LanguageSelectorModal.vue'
@@ -95,10 +96,16 @@ interface Props {
   }
 }
 
-defineProps<Props>()
+const props = defineProps<Props>()
 const emit = defineEmits<{
   explore: []
 }>()
+
+// Render markdown description
+const renderedDescription = computed(() => {
+  if (!props.card.card_description) return ''
+  return marked(props.card.card_description)
+})
 
 function handleExplore() {
   emit('explore')
@@ -408,6 +415,76 @@ onMounted(() => {
   margin: 0;
   text-align: center;
   word-break: break-word;
+}
+
+/* Markdown Content Styling */
+.markdown-content :deep(p) {
+  margin: 0 0 0.75rem 0;
+}
+
+.markdown-content :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.markdown-content :deep(strong) {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.markdown-content :deep(em) {
+  font-style: italic;
+}
+
+.markdown-content :deep(a) {
+  color: #93c5fd;
+  text-decoration: underline;
+}
+
+.markdown-content :deep(ul),
+.markdown-content :deep(ol) {
+  margin: 0.5rem 0;
+  padding-left: 1.5rem;
+  text-align: left;
+}
+
+.markdown-content :deep(li) {
+  margin: 0.25rem 0;
+}
+
+.markdown-content :deep(h1),
+.markdown-content :deep(h2),
+.markdown-content :deep(h3) {
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.95);
+  margin: 0.75rem 0 0.5rem 0;
+}
+
+.markdown-content :deep(h1) {
+  font-size: 1.25rem;
+}
+
+.markdown-content :deep(h2) {
+  font-size: 1.125rem;
+}
+
+.markdown-content :deep(h3) {
+  font-size: 1rem;
+}
+
+.markdown-content :deep(code) {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.125rem 0.25rem;
+  border-radius: 0.25rem;
+  font-family: 'Courier New', monospace;
+  font-size: 0.875rem;
+}
+
+.markdown-content :deep(blockquote) {
+  border-left: 3px solid rgba(255, 255, 255, 0.3);
+  padding-left: 1rem;
+  margin: 0.75rem 0;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.75);
 }
 
 /* Custom Scrollbar */
