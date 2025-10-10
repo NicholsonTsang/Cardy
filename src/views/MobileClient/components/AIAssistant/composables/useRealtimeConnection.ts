@@ -67,26 +67,6 @@ export function useRealtimeConnection() {
     }
   }
   
-  // Fetch model configuration from server
-  async function fetchModelConfig(): Promise<string> {
-    const relayUrl = import.meta.env.VITE_OPENAI_RELAY_URL
-    if (!relayUrl) {
-      throw new Error('VITE_OPENAI_RELAY_URL not configured')
-    }
-    
-    try {
-      const response = await fetch(`${relayUrl}/config`)
-      if (!response.ok) {
-        throw new Error(`Failed to fetch config: ${response.statusText}`)
-      }
-      const data = await response.json()
-      return data.model
-    } catch (err) {
-      console.warn('Failed to fetch model from server, using fallback')
-      return 'gpt-4o-mini-realtime-preview-2024-12-17' // Fallback
-    }
-  }
-  
   // Connect to relay server
   async function connect(language: string, instructions: string): Promise<WebSocket> {
     const relayUrl = import.meta.env.VITE_OPENAI_RELAY_URL
@@ -98,10 +78,6 @@ export function useRealtimeConnection() {
     error.value = null
     
     try {
-      // Fetch model from server
-      const model = await fetchModelConfig()
-      console.log('🔧 Using model from server:', model)
-      
       // Request microphone access
       mediaStream.value = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -118,8 +94,8 @@ export function useRealtimeConnection() {
       // Build session config (exclude model from session.update)
       const { session } = getSessionConfig(language, instructions)
       
-      // Connect to relay server with model in query string
-      ws.value = new WebSocket(`${relayUrl}/realtime?model=${model}`, ['realtime'])
+      // Connect to relay server without model parameter (server uses .env config)
+      ws.value = new WebSocket(`${relayUrl}/realtime`, ['realtime'])
       
       // Set up WebSocket handlers
       ws.value.onopen = () => {

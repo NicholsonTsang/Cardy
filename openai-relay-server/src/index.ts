@@ -59,13 +59,6 @@ app.get('/health', (_req: any, res: any) => {
   })
 })
 
-// Model configuration endpoint
-app.get('/config', (_req: any, res: any) => {
-  res.json({ 
-    model: OPENAI_REALTIME_MODEL 
-  })
-})
-
 // Create HTTP server
 const server = createServer(app)
 
@@ -85,9 +78,8 @@ wss.on('connection', (clientWs: any, req: any) => {
     origin: req.headers.origin 
   })
   
-  // Parse query parameters to get the model (fallback to env config)
-  const url = new URL(req.url || '', `http://${req.headers.host}`)
-  const model = url.searchParams.get('model') || OPENAI_REALTIME_MODEL
+  // Use model from environment only (security: prevent client from specifying model)
+  const model = OPENAI_REALTIME_MODEL
   
   log.info(`Using model: ${model}`)
   
