@@ -11,6 +11,7 @@ dotenv.config()
 const PORT = process.env.PORT || 8080
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY
 const OPENAI_API_URL = process.env.OPENAI_API_URL || 'wss://api.openai.com/v1/realtime'
+const OPENAI_REALTIME_MODEL = process.env.OPENAI_REALTIME_MODEL || 'gpt-4o-mini-realtime-preview-2024-12-17'
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS?.split(',') || ['*']
 
 // Validate required configuration
@@ -58,6 +59,13 @@ app.get('/health', (_req: any, res: any) => {
   })
 })
 
+// Model configuration endpoint
+app.get('/config', (_req: any, res: any) => {
+  res.json({ 
+    model: OPENAI_REALTIME_MODEL 
+  })
+})
+
 // Create HTTP server
 const server = createServer(app)
 
@@ -77,9 +85,9 @@ wss.on('connection', (clientWs: any, req: any) => {
     origin: req.headers.origin 
   })
   
-  // Parse query parameters to get the model
+  // Parse query parameters to get the model (fallback to env config)
   const url = new URL(req.url || '', `http://${req.headers.host}`)
-  const model = url.searchParams.get('model') || 'gpt-4o-realtime-preview'
+  const model = url.searchParams.get('model') || OPENAI_REALTIME_MODEL
   
   log.info(`Using model: ${model}`)
   

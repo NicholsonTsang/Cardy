@@ -62,8 +62,28 @@ export function useRealtimeConnection() {
     }
 
     return {
-      model: 'gpt-4o-mini-realtime-preview-2024-12-17',
+      model: null, // Will be fetched from server
       session
+    }
+  }
+  
+  // Fetch model configuration from server
+  async function fetchModelConfig(): Promise<string> {
+    const relayUrl = import.meta.env.VITE_OPENAI_RELAY_URL
+    if (!relayUrl) {
+      throw new Error('VITE_OPENAI_RELAY_URL not configured')
+    }
+    
+    try {
+      const response = await fetch(`${relayUrl}/config`)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch config: ${response.statusText}`)
+      }
+      const data = await response.json()
+      return data.model
+    } catch (err) {
+      console.warn('Failed to fetch model from server, using fallback')
+      return 'gpt-4o-mini-realtime-preview-2024-12-17' // Fallback
     }
   }
   
@@ -78,6 +98,10 @@ export function useRealtimeConnection() {
     error.value = null
     
     try {
+      // Fetch model from server
+      const model = await fetchModelConfig()
+      console.log('🔧 Using model from server:', model)
+      
       // Request microphone access
       mediaStream.value = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -91,8 +115,8 @@ export function useRealtimeConnection() {
       audioContext.value = new AudioContext({ sampleRate: 24000 })
       audioPlayer.value = new AudioContext({ sampleRate: 24000 })
       
-      // Build model + session config (exclude model from session.update)
-      const { model, session } = getSessionConfig(language, instructions)
+      // Build session config (exclude model from session.update)
+      const { session } = getSessionConfig(language, instructions)
       
       // Connect to relay server with model in query string
       ws.value = new WebSocket(`${relayUrl}/realtime?model=${model}`, ['realtime'])
