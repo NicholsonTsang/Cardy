@@ -31,6 +31,13 @@
     <!-- Info Panel -->
     <div class="info-panel">
       <div class="panel-inner">
+        <!-- Language Selection Chip -->
+        <button @click="showLanguageSelector = true" class="language-chip" :title="t('mobile.select_language')">
+          <span class="language-chip-icon">🌐</span>
+          <span class="language-chip-text">{{ languageStore.selectedLanguage.name }}</span>
+          <span class="language-chip-flag">{{ languageStore.selectedLanguage.flag }}</span>
+        </button>
+        
         <!-- Card Title -->
         <h1 class="card-title">{{ card.card_name }}</h1>
         
@@ -55,15 +62,26 @@
         </div>
       </div>
     </div>
+    
+    <!-- Language Selector Modal -->
+    <LanguageSelectorModal
+      v-if="showLanguageSelector"
+      @select="handleLanguageSelect"
+      @close="showLanguageSelector = false"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { getCardAspectRatio } from '@/utils/cardConfig'
+import { useLanguageStore } from '@/stores/language'
+import LanguageSelectorModal from './LanguageSelectorModal.vue'
 
 const { t } = useI18n()
+const languageStore = useLanguageStore()
+const showLanguageSelector = ref(false)
 
 interface Props {
   card: {
@@ -84,6 +102,10 @@ const emit = defineEmits<{
 
 function handleExplore() {
   emit('explore')
+}
+
+function handleLanguageSelect() {
+  showLanguageSelector.value = false
 }
 
 // Set up CSS custom property for card aspect ratio
@@ -314,6 +336,53 @@ onMounted(() => {
   gap: 1rem;
 }
 
+/* Language Selection Chip */
+.language-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  color: white;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  margin: 0 auto 0.75rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.language-chip:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.language-chip:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.language-chip-icon {
+  font-size: 1rem;
+  opacity: 0.9;
+}
+
+.language-chip-text {
+  color: rgba(255, 255, 255, 0.95);
+  letter-spacing: 0.01em;
+}
+
+.language-chip-flag {
+  font-size: 1.125rem;
+  line-height: 1;
+}
+
 /* Card Title */
 .card-title {
   font-size: 1.625rem;
@@ -446,6 +515,19 @@ onMounted(() => {
   .info-panel {
     padding: 2rem 2rem 2.5rem;
   }
+  
+  .language-chip {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+  }
+  
+  .language-chip-icon {
+    font-size: 1.125rem;
+  }
+  
+  .language-chip-flag {
+    font-size: 1.25rem;
+  }
 }
 
 @media (min-width: 768px) {
@@ -470,5 +552,16 @@ onMounted(() => {
   .status-dot {
     animation: none;
   }
+  
+  .language-chip:hover,
+  .language-chip:active {
+    transform: none;
+  }
+}
+
+/* Focus styles for accessibility */
+.language-chip:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
 }
 </style>
