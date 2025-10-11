@@ -199,11 +199,12 @@ Cardy/
 │   ├── config.toml
 │   └── functions/          # Edge Functions (Deno)
 │       ├── _shared/        # CORS utils
-│       ├── chat-with-audio/  # Voice/text chat
-│       ├── create-checkout-session/  # Stripe
-│       ├── generate-tts-audio/  # TTS
-│       ├── openai-realtime-token/  # Realtime tokens
-│       └── ...             # Others: process-payment, openai-realtime-relay
+│       ├── chat-with-audio/  # Voice/text chat (STT + response)
+│       ├── chat-with-audio-stream/  # Streaming text responses
+│       ├── create-checkout-session/  # Stripe checkout
+│       ├── generate-tts-audio/  # Text-to-Speech
+│       ├── handle-checkout-success/  # Stripe webhook
+│       └── openai-realtime-token/  # WebRTC ephemeral tokens
 ├── scripts/                # Utility scripts
 │   ├── deploy-edge-functions.sh    # Deploy all Edge Functions
 │   ├── combine-storeproc.sh        # Combine stored procedures
@@ -240,9 +241,8 @@ Cardy/
 - **VoiceInputButton.vue**: Recording button with visual feedback.
 
 ### Composables (AI Logic)
-- **useChatCompletion.ts**: Handles OpenAI Chat API calls via Edge Functions (`chat-with-audio`), streaming, TTS.
-- **useRealtimeConnection.ts**: WebSocket management for Realtime API, audio processing, barge-in detection.
-- **useWebRTCConnection.ts**: WebRTC peer connection setup, SDP negotiation, direct streaming to OpenAI.
+- **useChatCompletion.ts**: Handles OpenAI Chat API calls via Edge Functions (`chat-with-audio`, `chat-with-audio-stream`), streaming, TTS via `generate-tts-audio`.
+- **useWebRTCConnection.ts**: WebRTC peer connection setup, SDP negotiation, direct streaming to OpenAI via ephemeral tokens from `openai-realtime-token`.
 - **useVoiceRecording.ts**: MediaRecorder for voice input, waveform visualization.
 - **useCostSafeguards.ts**: Session limits, cost monitoring.
 - **useInactivityTimer.ts**: Auto-disconnect on idle.
@@ -378,7 +378,7 @@ Next actions: (A) archive more files, (B) restore specific archived files, or (C
 ## Deep archive summaries (high-level highlights extracted from `docs_archive/`)
 
 - **Realtime & Relay**:
-  - Realtime mode uses WebRTC + ephemeral tokens for low-latency voice (model: `gpt-realtime-mini-2025-10-06`). Prefer direct WebRTC connection when possible; use the relay (`openai-relay-server/` or Supabase Edge Function `openai-realtime-relay`) for regions where OpenAI is blocked. Relay supports Docker/Railway/AWS, requires `VITE_OPENAI_RELAY_URL`, TLS, CORS, health checks, and connection limits. Set `OPENAI_REALTIME_MODEL` in Supabase secrets. See `docs_archive/OPENAI_RELAY_SERVER_SETUP.md` and `docs_archive/OPENAI_RELAY_IMPLEMENTATION_SUMMARY.md`.
+  - Realtime mode uses WebRTC + ephemeral tokens for low-latency voice (model: `gpt-realtime-mini-2025-10-06`). Direct WebRTC connection is used in production. Optional relay server implementation (`openai-relay-server/`) available for regions where OpenAI is blocked, but NOT deployed or active in current codebase. Set `OPENAI_REALTIME_MODEL` in Supabase secrets. See `docs_archive/OPENAI_RELAY_SERVER_SETUP.md` for relay setup if needed.
 
 - **AI Assistant Modes**:
   - Two main modes: Chat Completion (text-first, cheaper) and Realtime (voice, low-latency). Recommended production flow: Text + TTS (STT → text generation → TTS) for cost/UX, plus text streaming (SSE) for faster perceived responses. See `docs_archive/AI_TEXT_TTS_IMPLEMENTATION.md` and `AI_STREAMING_IMPLEMENTATION.md`.
