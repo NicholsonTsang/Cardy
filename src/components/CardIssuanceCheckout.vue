@@ -139,7 +139,7 @@
           </Column>
 
 
-          <Column :header="$t('common.actions')" style="width:180px">
+          <Column :header="$t('common.actions')" style="width:220px">
             <template #body="{ data }">
               <div class="flex items-center gap-1">
                 <!-- Primary Action: Print (for paid and admin-issued batches) -->
@@ -167,7 +167,18 @@
                   v-tooltip.top="$t('batches.print_request_status')"
                 />
                 
-                <!-- Outlined buttons after -->
+                <!-- Batch Summary Button - For completed batches -->
+                <Button 
+                  v-if="(data.payment_status === 'completed' || data.payment_status === 'free') && data.cards_generated"
+                  icon="pi pi-info-circle" 
+                  size="small"
+                  outlined
+                  @click="showBatchSuccessDialog(data)"
+                  class="border-blue-600 text-blue-600 hover:bg-blue-50"
+                  v-tooltip.top="$t('batches.view_batch_summary')"
+                />
+                
+                <!-- View Cards button -->
                 <Button 
                   v-if="data.payment_status === 'completed' || data.payment_status === 'free'"
                   icon="pi pi-eye" 
@@ -194,6 +205,21 @@
       </div>
     </div>
 
+    <!-- Credit Confirmation Dialog (Reusable Component) -->
+    <CreditConfirmationDialog
+      v-model:visible="showCreditConfirmDialog"
+      :credits-to-consume="requiredCredits"
+      :current-balance="creditStore.balance"
+      :loading="creatingBatch"
+      :action-description="$t('batches.batch_creation_action_description')"
+      :item-count="newBatch.cardCount"
+      :credits-per-item="2"
+      :item-label="$t('batches.cards_to_create')"
+      :confirm-label="$t('batches.confirm_and_create_batch')"
+      @confirm="confirmAndCreateBatch"
+      @cancel="cancelCreditConfirmation"
+    />
+
     <!-- Create Batch Dialog -->
     <Dialog 
       v-model:visible="showCreateBatchDialog" 
@@ -212,10 +238,16 @@
             :max="1000"
             :placeholder="$t('batches.enter_number_of_cards')"
             class="w-full"
+            @input="updateCreditEstimate"
           />
-          <small class="text-slate-500 mt-1">
-            Cost: ${{ ((newBatch.cardCount || 0) * 2).toFixed(2) }} ($2.00 per card)
-          </small>
+          <div class="flex items-center justify-between mt-2 text-sm">
+            <span class="text-slate-500">
+              {{ $t('batches.credits_required') }}: <strong>{{ requiredCredits }}</strong> {{ $t('batches.credits') }}
+            </span>
+            <span :class="hasEnoughCredits ? 'text-blue-600 font-medium' : 'text-orange-600 font-medium'">
+              {{ $t('batches.your_balance') }}: {{ creditStore.formattedBalance }} {{ $t('batches.credits') }}
+            </span>
+          </div>
         </div>
 
         <div>
@@ -243,13 +275,34 @@
           </div>
         </div>
 
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <h4 class="font-medium text-blue-900 mb-2">What happens next?</h4>
+        <!-- Insufficient Credits Warning -->
+        <div v-if="!hasEnoughCredits" class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <div class="flex items-start gap-3">
+            <i class="pi pi-exclamation-triangle text-orange-600 text-lg mt-0.5"></i>
+            <div>
+              <h4 class="font-medium text-orange-900 mb-2">{{ $t('batches.insufficient_credits') }}</h4>
+              <p class="text-sm text-orange-800 mb-3">
+                {{ $t('batches.insufficient_credits_message', { required: requiredCredits, balance: creditStore.formattedBalance }) }}
+              </p>
+              <Button 
+                :label="$t('batches.purchase_credits')" 
+                icon="pi pi-shopping-cart"
+                size="small"
+                @click="navigateToCreditPurchase"
+                class="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 border-0"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Success Flow Info -->
+        <div v-else class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h4 class="font-medium text-blue-900 mb-2">{{ $t('batches.what_happens_next') }}</h4>
           <ul class="text-sm text-blue-800 space-y-1">
-            <li>• You'll be redirected to Stripe Checkout for secure payment</li>
-            <li>• Batch will be created automatically after successful payment</li>
-            <li>• Cards will be generated and ready for distribution</li>
-            <li>• You can then distribute QR codes to your visitors</li>
+            <li>• {{ $t('batches.credits_will_be_consumed', { credits: requiredCredits }) }}</li>
+            <li>• {{ $t('batches.batch_created_instantly') }}</li>
+            <li>• {{ $t('batches.cards_generated_immediately') }}</li>
+            <li>• {{ $t('batches.ready_for_distribution') }}</li>
           </ul>
         </div>
       </div>
@@ -262,64 +315,139 @@
             @click="showCreateBatchDialog = false"
           />
           <Button 
-            :label="$t('batches.pay_and_issue')" 
-            @click="createBatch"
-            :loading="creatingBatch"
+            v-if="hasEnoughCredits"
+            :label="$t('batches.proceed_to_confirm')" 
+            icon="pi pi-arrow-right"
+            @click="showConfirmationDialog"
             :disabled="!newBatch.cardCount || !currentCard"
             class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0"
+          />
+          <Button 
+            v-else
+            :label="$t('batches.purchase_credits')" 
+            icon="pi pi-shopping-cart"
+            @click="navigateToCreditPurchase"
+            class="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 border-0"
           />
         </div>
       </template>
     </Dialog>
 
     <!-- Success Message -->
-    <div v-if="showSuccessMessage" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-      <div class="bg-white rounded-xl shadow-2xl p-8 max-w-lg mx-4">
-        <div class="text-center">
-          <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <i class="pi pi-check text-blue-600 text-2xl"></i>
+    <div v-if="showSuccessMessage" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
+      <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 overflow-hidden">
+        <!-- Success Header -->
+        <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-center">
+          <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
+            <i class="pi pi-check text-blue-600 text-4xl"></i>
           </div>
-          <h3 class="text-xl font-semibold text-slate-900 mb-2">{{ $t('batches.payment_successful') }}</h3>
-          <p class="text-slate-600 mb-6">
-            Your digital cards have been generated and are ready for distribution.
+          <h3 class="text-2xl font-bold text-white mb-2">{{ $t('batches.batch_created_success') }}</h3>
+          <p class="text-blue-100">
+            {{ $t('batches.cards_ready_for_distribution', { count: successfulBatch?.cards_count || 0 }) }}
           </p>
-          
-          <!-- Next Steps -->
-          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left">
-            <h4 class="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-              <i class="pi pi-lightbulb text-blue-600"></i>
-              {{ $t('batches.whats_next') }}
-            </h4>
-            <div class="space-y-2 text-sm text-blue-800">
-              <div class="flex items-center gap-2">
-                <i class="pi pi-check text-blue-600"></i>
-                <span>✓ {{ $t('batches.digital_cards_live') }}</span>
+        </div>
+
+        <!-- Content -->
+        <div class="p-6">
+          <!-- Batch Info Card -->
+          <div class="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
+            <div class="flex items-center justify-between mb-3">
+              <h4 class="font-semibold text-slate-900">{{ $t('batches.batch_details') }}</h4>
+              <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+                {{ successfulBatch?.batch_name }}
+              </span>
+            </div>
+            <div class="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span class="text-slate-600">{{ $t('batches.total_cards') }}:</span>
+                <p class="font-semibold text-slate-900">{{ successfulBatch?.cards_count }}</p>
               </div>
-              <div class="flex items-center gap-2">
-                <i class="pi pi-print text-purple-600"></i>
-                <span class="font-medium">{{ $t('batches.request_physical_printing_short') }}</span>
-              </div>
-              <div class="flex items-center gap-2">
-                <i class="pi pi-share-alt text-blue-600"></i>
-                <span>{{ $t('batches.download_qr_codes_hint') }}</span>
+              <div>
+                <span class="text-slate-600">{{ $t('batches.credits_used') }}:</span>
+                <p class="font-semibold text-orange-600">{{ (successfulBatch?.cards_count || 0) * 2 }} {{ $t('batches.credits') }}</p>
               </div>
             </div>
           </div>
-          
-          <div class="flex gap-3 justify-center">
-            <Button 
-              :label="$t('batches.request_print')" 
-              icon="pi pi-print"
-              @click="handleSuccessPrintRequest"
-              class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 font-medium"
-            />
-            <Button 
-              :label="$t('batches.view_cards')" 
-              outlined
-              @click="closeSuccessMessage"
-              class="border-blue-600 text-blue-600 hover:bg-blue-50"
-            />
+
+          <!-- Quick Actions -->
+          <div class="space-y-4 mb-6">
+            <h4 class="font-semibold text-slate-900 flex items-center gap-2">
+              <i class="pi pi-bolt text-orange-500"></i>
+              {{ $t('batches.quick_actions') }}
+            </h4>
+            
+            <!-- Action Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <!-- View Cards -->
+              <button
+                @click="closeSuccessMessage"
+                class="group relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 border-2 border-blue-300 rounded-lg p-4 text-left transition-all duration-200 hover:shadow-lg"
+              >
+                <div class="flex items-start gap-3">
+                  <div class="p-2 bg-blue-500 rounded-lg text-white group-hover:scale-110 transition-transform">
+                    <i class="pi pi-eye text-xl"></i>
+                  </div>
+                  <div class="flex-1">
+                    <h5 class="font-semibold text-blue-900 mb-1">{{ $t('batches.view_digital_cards') }}</h5>
+                    <p class="text-sm text-blue-700">{{ $t('batches.view_cards_description') }}</p>
+                  </div>
+                  <i class="pi pi-arrow-right text-blue-600 group-hover:translate-x-1 transition-transform"></i>
+                </div>
+              </button>
+
+              <!-- Request Printing -->
+              <button
+                @click="handleSuccessPrintRequest"
+                class="group relative overflow-hidden bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border-2 border-purple-300 rounded-lg p-4 text-left transition-all duration-200 hover:shadow-lg"
+              >
+                <div class="flex items-start gap-3">
+                  <div class="p-2 bg-purple-500 rounded-lg text-white group-hover:scale-110 transition-transform">
+                    <i class="pi pi-print text-xl"></i>
+                  </div>
+                  <div class="flex-1">
+                    <h5 class="font-semibold text-purple-900 mb-1">{{ $t('batches.order_physical_cards') }}</h5>
+                    <p class="text-sm text-purple-700">{{ $t('batches.print_request_description') }}</p>
+                  </div>
+                  <i class="pi pi-arrow-right text-purple-600 group-hover:translate-x-1 transition-transform"></i>
+                </div>
+              </button>
+            </div>
           </div>
+
+          <!-- Additional Info -->
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex items-start gap-3">
+              <i class="pi pi-info-circle text-blue-600 text-lg mt-0.5"></i>
+              <div>
+                <h5 class="font-medium text-blue-900 mb-2">{{ $t('batches.good_to_know') }}</h5>
+                <ul class="text-sm text-blue-800 space-y-1.5">
+                  <li class="flex items-start gap-2">
+                    <i class="pi pi-check-circle text-blue-600 text-xs mt-1"></i>
+                    <span>{{ $t('batches.cards_active_immediately') }}</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="pi pi-check-circle text-blue-600 text-xs mt-1"></i>
+                    <span>{{ $t('batches.download_qr_anytime') }}</span>
+                  </li>
+                  <li class="flex items-start gap-2">
+                    <i class="pi pi-check-circle text-blue-600 text-xs mt-1"></i>
+                    <span>{{ $t('batches.print_request_optional') }}</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-center">
+          <button 
+            @click="showSuccessMessage = false"
+            class="text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors flex items-center gap-2"
+          >
+            <i class="pi pi-times-circle"></i>
+            {{ $t('common.close') }}
+          </button>
         </div>
       </div>
     </div>
@@ -823,9 +951,11 @@ import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
 import { supabase } from '@/lib/supabase'
-import { createCheckoutSession, handleCheckoutSuccess } from '@/utils/stripeCheckout.js'
+import { useCreditStore } from '@/stores/credits'
+import CreditConfirmationDialog from '@/components/CreditConfirmationDialog.vue'
 
 const { t } = useI18n()
+const creditStore = useCreditStore()
 
 const router = useRouter()
 const route = useRoute()
@@ -852,6 +982,7 @@ const loadingBatches = ref(false)
 const creatingBatch = ref(false)
 const processingBatchId = ref(null)
 const showCreateBatchDialog = ref(false)
+const showCreditConfirmDialog = ref(false)
 const showSuccessMessage = ref(false)
 const showBatchDetailsDialog = ref(false)
 const selectedBatch = ref(null)
@@ -892,6 +1023,14 @@ const readyToPrintBatches = computed(() => {
     batch.cards_generated && 
     !batch.has_print_request
   )
+})
+
+const requiredCredits = computed(() => {
+  return (newBatch.value.cardCount || 0) * 2
+})
+
+const hasEnoughCredits = computed(() => {
+  return creditStore.balance >= requiredCredits.value
 })
 
 // Methods
@@ -1048,67 +1187,120 @@ const handleImageLoad = (event) => {
   console.log('Image loaded successfully:', event.target.src);
 }
 
-const createBatch = async () => {
+const showConfirmationDialog = () => {
+  // Close the create batch dialog
+  showCreateBatchDialog.value = false
+  // Show the confirmation dialog
+  showCreditConfirmDialog.value = true
+}
+
+const cancelCreditConfirmation = () => {
+  // Close confirmation dialog and return to create batch dialog
+  showCreditConfirmDialog.value = false
+  showCreateBatchDialog.value = true
+}
+
+const confirmAndCreateBatch = async () => {
   try {
     creatingBatch.value = true
 
-    // Payment-first flow: Edge Functions handle batch creation after payment success
-
-    // Close dialog
-    showCreateBatchDialog.value = false
+    // Double-check credit balance (in case it changed)
+    await creditStore.fetchCreditBalance()
     
-    // Prepare form data BEFORE resetting
-    const formData = {
-      cardCount: newBatch.value.cardCount
+    if (!hasEnoughCredits.value) {
+      showCreditConfirmDialog.value = false
+      toast.add({
+        severity: 'error',
+        summary: t('batches.insufficient_credits'),
+        detail: t('batches.credit_balance_changed'),
+        life: 5000
+      })
+      return
     }
 
-    // Initiate payment without creating batch first
-    await handlePayment(formData)
+    // Issue batch using credits - instant creation
+    const batchId = await creditStore.issueBatchWithCredits(
+      props.cardId, 
+      newBatch.value.cardCount,
+      false // print request handled separately
+    )
+
+    // Close confirmation dialog
+    showCreditConfirmDialog.value = false
     
-    // Reset form AFTER payment initiation
+    // Store card count for success message before resetting
+    const createdCardCount = newBatch.value.cardCount
+    
+    // Reset form
     newBatch.value = {
       cardCount: 50
     }
 
-  } catch (error) {
-    console.error('Error initiating payment:', error)
+    // Show success message
     toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: error.message || t('batches.payment_failed'),
+      severity: 'success',
+      summary: t('batches.batch_created'),
+      detail: t('batches.batch_created_successfully', { 
+        count: createdCardCount 
+      }),
       life: 5000
     })
+
+    // Reload data to show new batch
+    await loadData()
+
+    // Find and show the new batch
+    const newBatchData = batches.value.find(b => b.id === batchId)
+    if (newBatchData) {
+      successfulBatch.value = newBatchData
+      showSuccessMessage.value = true
+    }
+
+  } catch (error) {
+    console.error('Error creating batch:', error)
+    
+    // Close confirmation dialog on error
+    showCreditConfirmDialog.value = false
+    
+    let errorMessage = error.message || t('batches.batch_creation_failed')
+    
+    // Provide helpful error messages
+    if (error.message?.includes('Insufficient credits')) {
+      errorMessage = t('batches.insufficient_credits_error')
+      toast.add({
+        severity: 'error',
+        summary: t('batches.insufficient_credits'),
+        detail: errorMessage,
+        life: 5000
+      })
+      // Refresh credit balance
+      await creditStore.fetchCreditBalance()
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: t('common.error'),
+        detail: errorMessage,
+        life: 5000
+      })
+    }
   } finally {
     creatingBatch.value = false
   }
 }
 
-const handlePayment = async (formData) => {
-  try {
-    processingBatchId.value = 'processing'
+const updateCreditEstimate = () => {
+  // Recalculate required credits when card count changes
+  // Computed properties will automatically update
+}
 
-    // Payment-first flow: Create checkout session for new batch
-    // Batch will be created only after successful payment
-    await createCheckoutSession(formData.cardCount, 'pending-batch', {
-      card_id: props.cardId,
-      is_pending_batch: true // Flag to indicate batch creation is pending
-    })
-
-  } catch (error) {
-    console.error('Payment error:', error)
-    toast.add({
-      severity: 'error',
-      summary: t('batches.payment_error'),
-      detail: error.message || t('batches.payment_failed'),
-      life: 5000
-    })
-  } finally {
-    processingBatchId.value = null
-  }
+const navigateToCreditPurchase = () => {
+  showCreateBatchDialog.value = false
+  router.push('/cms/credits')
 }
 
 const viewBatchCards = (batch) => {
-  router.push(`/cms/issuedcards?batch_id=${batch.id}`)
+  // Navigate to the access tab with the specific batch selected
+  router.push(`/cms/mycards?cardId=${props.cardId}&tab=access&batchId=${batch.id}`)
 }
 
 const viewBatchDetails = async (batch) => {
@@ -1137,8 +1329,6 @@ const viewBatchDetails = async (batch) => {
     loadingBatchDetails.value = false
   }
 }
-
-// handlePaymentFromDetails removed - not needed in payment-first flow
 
 const downloadBatchCodes = async (batch) => {
   try {
@@ -1193,6 +1383,10 @@ const downloadBatchCodes = async (batch) => {
 }
 
 const closeSuccessMessage = () => {
+  // Navigate to view the batch cards
+  if (successfulBatch.value) {
+    viewBatchCards(successfulBatch.value)
+  }
   showSuccessMessage.value = false
   successfulBatch.value = null
   loadData() // Refresh data
@@ -1203,6 +1397,12 @@ const handleSuccessPrintRequest = () => {
     showSuccessMessage.value = false
     requestPrint(successfulBatch.value)
   }
+}
+
+const showBatchSuccessDialog = (batch) => {
+  // Set the batch as successful and show the dialog
+  successfulBatch.value = batch
+  showSuccessMessage.value = true
 }
 
 // Print request methods
@@ -1525,69 +1725,10 @@ const getBatchProgressText = (batch) => {
 }
 
 
-// Handle checkout success on page load
-const handlePageLoad = async () => {
-  const sessionId = route.query.session_id
-  const batchId = route.query.batch_id
-  const canceled = route.query.canceled
-
-  if (canceled) {
-    toast.add({
-      severity: 'warn',
-      summary: 'Payment Canceled',
-      detail: 'Payment was canceled. You can create a new batch anytime.',
-      life: 5000
-    })
-    // Clean URL
-    router.replace('/cms/mycards')
-    return
-  }
-
-  if (sessionId) {
-    try {
-      // Process successful payment - Edge Function handles batch creation
-      const result = await handleCheckoutSuccess(sessionId)
-      console.log('Payment processed successfully:', result)
-      
-      // Load updated data to show the new batch
-      await loadData()
-      
-      // Find the batch that was created
-      let batch = null
-      if (result && result.batchId) {
-        batch = batches.value.find(b => b.id === result.batchId)
-      } else {
-        // Find most recent batch for this card as fallback
-        const cardBatches = batches.value.filter(b => b.card_id === props.cardId)
-        batch = cardBatches.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0]
-      }
-      
-      if (batch) {
-        successfulBatch.value = batch
-        console.log('Found successful batch:', batch.batch_name)
-      }
-      
-      // Show success message
-      showSuccessMessage.value = true
-      
-      // Clean URL
-      router.replace('/cms/mycards')
-      
-    } catch (error) {
-      console.error('Error processing checkout success:', error)
-      toast.add({
-        severity: 'error',
-        summary: 'Payment Processing Error',
-        detail: error.message || 'Payment was successful but there was an issue processing it. Please contact support.',
-        life: 10000
-      })
-    }
-  }
-}
-
 // Lifecycle
 onMounted(async () => {
-  await handlePageLoad()
+  // Load credit balance on mount
+  await creditStore.fetchCreditBalance()
   await loadData()
 })
 </script>

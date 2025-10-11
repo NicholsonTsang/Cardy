@@ -50,6 +50,18 @@ serve(async (req) => {
     // Parse request body
     const { cardCount, batchId, baseUrl, metadata = {} } = await req.json()
 
+    // Basic URL validation helper (defined before use)
+    const isValidUrl = (url: string): boolean => {
+      try {
+        const urlObj = new URL(url)
+        // Allow http for localhost, https for everything else
+        const isLocalhost = urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1'
+        return (urlObj.protocol === 'https:') || (isLocalhost && urlObj.protocol === 'http:')
+      } catch {
+        return false
+      }
+    }
+
     // Validate input
     if (!cardCount || !batchId || cardCount <= 0) {
       return new Response(
@@ -132,18 +144,6 @@ serve(async (req) => {
       }
 
       batch = batchData[0]
-    }
-
-    // Basic URL validation helper
-    const isValidUrl = (url: string): boolean => {
-      try {
-        const urlObj = new URL(url)
-        // Allow http for localhost, https for everything else
-        const isLocalhost = urlObj.hostname === 'localhost' || urlObj.hostname === '127.0.0.1'
-        return (urlObj.protocol === 'https:') || (isLocalhost && urlObj.protocol === 'http:')
-      } catch {
-        return false
-      }
     }
 
     // Use baseUrl from frontend for both success and cancel URLs

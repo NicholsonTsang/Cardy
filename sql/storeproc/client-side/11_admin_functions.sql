@@ -907,18 +907,9 @@ BEGIN
     WHERE id = p_target_user_id;
 
     -- Log role change
-    PERFORM log_admin_action(
-        auth.uid(),
-        'ROLE_CHANGE',
-        'User role changed from ' || current_role || ' to ' || p_new_role || ' for ' || target_user_email || ': ' || p_reason,
-        p_target_user_id,
-        jsonb_build_object(
-            'target_email', target_user_email,
-            'from_role', current_role,
-            'to_role', p_new_role,
-            'is_admin_promotion', (p_new_role = 'admin'),
-            'is_admin_demotion', (current_role = 'admin' AND p_new_role != 'admin')
-        )
+    PERFORM log_operation(
+        format('Changed user role from %s to %s for user: %s', 
+            COALESCE(current_role, 'none'), p_new_role, target_user_email)
     );
     
     RETURN FOUND;
@@ -1033,17 +1024,8 @@ BEGIN
         updated_at = NOW()
     WHERE user_id = p_user_id;
 
-    -- Log the verification reset
-    PERFORM log_admin_action(
-        auth.uid(),
-        'VERIFICATION_RESET',
-        'Verification status reset for user ' || v_user_email,
-        p_user_id,
-        jsonb_build_object(
-            'target_email', v_user_email,
-            'reset_reason', 'admin_initiated'
-        )
-    );
+    -- Log operation
+    PERFORM log_operation(format('Reset verification for user: %s', v_user_email));
     
     RETURN FOUND;
 END;
@@ -1121,17 +1103,7 @@ BEGIN
     END IF;
 
     -- Log the manual verification
-    PERFORM log_admin_action(
-        auth.uid(),
-        'MANUAL_VERIFICATION',
-        'Manual verification approved for user ' || v_user_email || ': ' || p_reason,
-        p_user_id,
-        jsonb_build_object(
-            'target_email', v_user_email,
-            'approval_method', 'admin_override',
-            'previous_status', COALESCE(v_current_status, 'NOT_SUBMITTED')
-        )
-    );
+    PERFORM log_operation(format('Manually approved verification for user: %s', v_user_email));
     
     RETURN TRUE;
 END;

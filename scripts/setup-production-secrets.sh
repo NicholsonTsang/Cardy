@@ -54,9 +54,23 @@ if [ -z "$STRIPE_KEY" ]; then
   exit 1
 fi
 
+# Stripe Webhook Secret
+echo ""
+echo -e "${YELLOW}2. Stripe Webhook Secret${NC}"
+echo "   Get from: https://dashboard.stripe.com/webhooks"
+echo "   Format: whsec_..."
+echo "   Note: Create webhook endpoint first, then copy the signing secret"
+echo ""
+read -p "Enter STRIPE_WEBHOOK_SECRET: " STRIPE_WEBHOOK_SECRET
+
+if [ -z "$STRIPE_WEBHOOK_SECRET" ]; then
+  echo -e "${RED}❌ Stripe webhook secret is required!${NC}"
+  exit 1
+fi
+
 # OpenAI API Key
 echo ""
-echo -e "${YELLOW}2. OpenAI API Key${NC}"
+echo -e "${YELLOW}3. OpenAI API Key${NC}"
 echo "   Get from: https://platform.openai.com/api-keys"
 echo "   Format: sk-proj-..."
 echo ""
@@ -75,7 +89,7 @@ echo "==========================================================================
 echo ""
 
 # OpenAI Audio Model
-echo -e "${YELLOW}3. OpenAI Audio Model${NC}"
+echo -e "${YELLOW}4. OpenAI Audio Model${NC}"
 echo "   Options:"
 echo "     • gpt-4o-mini-audio-preview (cost-effective, recommended)"
 echo "     • gpt-4o-audio-preview (premium quality)"
@@ -86,7 +100,7 @@ OPENAI_MODEL=${OPENAI_MODEL:-gpt-4o-mini-audio-preview}
 
 # OpenAI Max Tokens
 echo ""
-echo -e "${YELLOW}4. OpenAI Max Tokens${NC}"
+echo -e "${YELLOW}5. OpenAI Max Tokens${NC}"
 echo "   Maximum tokens for AI responses"
 echo "   Default: 3500"
 echo ""
@@ -95,7 +109,7 @@ OPENAI_TOKENS=${OPENAI_TOKENS:-3500}
 
 # OpenAI TTS Voice
 echo ""
-echo -e "${YELLOW}5. OpenAI TTS Voice${NC}"
+echo -e "${YELLOW}6. OpenAI TTS Voice${NC}"
 echo "   Options: alloy, echo, fable, onyx, nova, shimmer"
 echo "   Default: alloy"
 echo ""
@@ -104,7 +118,7 @@ OPENAI_VOICE=${OPENAI_VOICE:-alloy}
 
 # OpenAI Audio Format
 echo ""
-echo -e "${YELLOW}6. OpenAI Audio Format${NC}"
+echo -e "${YELLOW}7. OpenAI Audio Format${NC}"
 echo "   Options: wav, mp3"
 echo "   Default: wav"
 echo ""
@@ -119,6 +133,7 @@ echo "==========================================================================
 echo ""
 echo "Required:"
 echo "  STRIPE_SECRET_KEY: ${STRIPE_KEY:0:20}... (${#STRIPE_KEY} chars)"
+echo "  STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:0:20}... (${#STRIPE_WEBHOOK_SECRET} chars)"
 echo "  OPENAI_API_KEY: ${OPENAI_KEY:0:20}... (${#OPENAI_KEY} chars)"
 echo ""
 echo "Optional:"
@@ -144,6 +159,9 @@ echo ""
 
 echo -e "${YELLOW}Setting STRIPE_SECRET_KEY...${NC}"
 npx supabase secrets set STRIPE_SECRET_KEY="$STRIPE_KEY"
+
+echo -e "${YELLOW}Setting STRIPE_WEBHOOK_SECRET...${NC}"
+npx supabase secrets set STRIPE_WEBHOOK_SECRET="$STRIPE_WEBHOOK_SECRET"
 
 echo -e "${YELLOW}Setting OPENAI_API_KEY...${NC}"
 npx supabase secrets set OPENAI_API_KEY="$OPENAI_KEY"

@@ -81,7 +81,7 @@ BEGIN
     RETURNING id INTO v_card_id;
     
     -- Log operation
-    PERFORM log_operation('Created card: ' || p_name || ' (ID: ' || v_card_id || ')');
+    PERFORM log_operation(format('Created card: %s', p_name));
     
     RETURN v_card_id;
 END;
@@ -229,9 +229,9 @@ END IF;
     WHERE id = p_card_id AND user_id = auth.uid();
     
     -- Log operation
-    PERFORM log_operation('Updated card: ' || COALESCE(p_name, v_old_record.name) || ' (ID: ' || p_card_id || ')');
+    PERFORM log_operation(format('Updated card: %s', COALESCE(p_name, v_old_record.name)));
     
-    RETURN FOUND;
+    RETURN TRUE;
 END;
 $$;
 
@@ -266,8 +266,8 @@ BEGIN
     DELETE FROM cards WHERE id = p_card_id AND user_id = auth.uid();
     
     -- Log operation
-    PERFORM log_operation('Deleted card: ' || v_card_record.name || ' (ID: ' || p_card_id || ')');
-    
-    RETURN FOUND;
+    PERFORM log_operation(format('Deleted card: %s', v_card_record.name));
+
+    RETURN TRUE;
 END;
 $$; 

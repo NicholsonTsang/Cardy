@@ -676,8 +676,9 @@ async function processFile(file) {
     importPreview.value = preview
     
     if (preview.isValid) {
+      const messageKey = extractedImageCount.value > 0 ? 'import.file_analyzed_desc_with_images' : 'import.file_analyzed_desc';
       showFeedback('success', t('import.file_analyzed'), 
-        t('import.file_analyzed_desc', { count: preview.contentItems.length, images: extractedImageCount.value }), 
+        t(messageKey, { count: preview.contentItems.length, images: extractedImageCount.value }), 
         true)
     } else {
       showFeedback('warn', t('import.validation_issues'), 

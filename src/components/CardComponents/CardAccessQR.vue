@@ -155,7 +155,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
@@ -174,10 +174,14 @@ const props = defineProps({
   cardName: {
     type: String,
     required: true
+  },
+  selectedBatchId: {
+    type: String,
+    default: null
   }
 })
 
-const emit = defineEmits([])
+const emit = defineEmits(['batch-changed'])
 
 const toast = useToast()
 
@@ -269,6 +273,8 @@ const loadIssuedCards = async (batchId) => {
 const onBatchChange = async () => {
   if (selectedBatch.value) {
     await loadIssuedCards(selectedBatch.value)
+    // Emit the batch change event to update URL
+    emit('batch-changed', selectedBatch.value)
   }
 }
 
@@ -362,15 +368,34 @@ const downloadCSV = () => {
   }
 }
 
+// Watchers
+watch(() => props.selectedBatchId, (newBatchId) => {
+  // Update selected batch when prop changes from parent (URL change)
+  if (newBatchId && selectedBatch.value !== newBatchId) {
+    const batchExists = availableBatches.value.some(b => b.id === newBatchId)
+    if (batchExists) {
+      selectedBatch.value = newBatchId
+      loadIssuedCards(newBatchId)
+    }
+  }
+})
+
 // Lifecycle
 onMounted(async () => {
   try {
     await loadBatches()
     
-    // Auto-select first available batch if exists
-    if (availableBatches.value.length > 0) {
+    // Priority 1: Use selectedBatchId from URL if provided and valid
+    if (props.selectedBatchId && availableBatches.value.some(b => b.id === props.selectedBatchId)) {
+      selectedBatch.value = props.selectedBatchId
+      await loadIssuedCards(props.selectedBatchId)
+    }
+    // Priority 2: Auto-select first available batch if exists and no URL param
+    else if (availableBatches.value.length > 0) {
       selectedBatch.value = availableBatches.value[0].id
-      await onBatchChange()
+      await loadIssuedCards(selectedBatch.value)
+      // Emit to update URL with first batch
+      emit('batch-changed', selectedBatch.value)
     }
   } finally {
     loading.value = false

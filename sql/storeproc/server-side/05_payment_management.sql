@@ -67,7 +67,10 @@ BEGIN
     ) RETURNING id INTO v_payment_id;
     
     -- Log operation
-    PERFORM log_operation('Created batch payment for batch ' || p_batch_id || ' (Payment ID: ' || v_payment_id || ', Amount: $' || (p_amount_cents::DECIMAL / 100) || ')');
+    PERFORM log_operation(
+        format('Batch payment created: $%s for batch %s', 
+            (p_amount_cents / 100.0)::numeric(10,2), p_batch_id)
+    );
     
     RETURN v_payment_id;
 END;
@@ -173,7 +176,10 @@ BEGIN
     PERFORM generate_batch_cards(v_payment_record.batch_id);
     
     -- Log operation
-    PERFORM log_operation('Confirmed batch payment via Stripe (Batch ID: ' || v_payment_record.batch_id || ', Amount: $' || (v_payment_record.amount_cents::DECIMAL / 100) || ')');
+    PERFORM log_operation(
+        format('Batch payment confirmed: $%s for batch %s', 
+            (v_payment_record.amount_cents / 100.0)::numeric(10,2), v_payment_record.batch_id)
+    );
     
     RETURN v_payment_record.batch_id;
 END;
@@ -274,7 +280,10 @@ BEGIN
     RETURNING id INTO v_payment_id;
     
     -- Log operation
-    PERFORM log_operation('Created pending batch payment for card ' || p_card_id || ' (' || p_cards_count || ' cards, Payment ID: ' || v_payment_id || ')');
+    PERFORM log_operation(
+        format('Pending batch payment created: $%s for %s cards', 
+            (p_amount_cents / 100.0)::numeric(10,2), p_cards_count)
+    );
     
     RETURN v_payment_id;
 END;
@@ -352,7 +361,10 @@ BEGIN
     PERFORM generate_batch_cards(v_batch_id);
     
     -- Log operation
-    PERFORM log_operation('Confirmed pending batch payment and created batch: ' || v_generated_batch_name || ' (Batch ID: ' || v_batch_id || ', ' || v_payment_record.cards_count || ' cards)');
+    PERFORM log_operation(
+        format('Pending batch payment confirmed: batch "%s" with %s cards created', 
+            v_generated_batch_name, v_payment_record.cards_count)
+    );
     
     RETURN v_batch_id;
 END;

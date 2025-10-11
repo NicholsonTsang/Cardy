@@ -170,6 +170,7 @@ CREATE INDEX IF NOT EXISTS idx_print_requests_status ON print_requests(status);
 
 -- Create partial unique index for active print requests only
 -- This allows multiple CANCELLED and COMPLETED requests per batch
+DROP INDEX IF EXISTS unique_active_print_request_per_batch;
 CREATE UNIQUE INDEX unique_active_print_request_per_batch 
 ON print_requests(batch_id) 
 WHERE status NOT IN ('COMPLETED', 'CANCELLED');
@@ -255,3 +256,109 @@ CREATE TABLE operations_log (
 CREATE INDEX IF NOT EXISTS idx_operations_log_user_id ON operations_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_operations_log_user_role ON operations_log(user_role);
 CREATE INDEX IF NOT EXISTS idx_operations_log_created_at ON operations_log(created_at DESC);
+
+-- =================================================================
+-- CREDIT SYSTEM TABLES
+-- =================================================================
+
+-- User Credits Wallet Table
+CREATE TABLE IF NOT EXISTS user_credits (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    balance DECIMAL(10, 2) NOT NULL DEFAULT 0 CHECK (balance >= 0),
+    total_purchased DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    total_consumed DECIMAL(10, 2) NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(user_id)
+);
+
+-- Credit Transactions Table (All credit movements)
+CREATE TABLE IF NOT EXISTS credit_transactions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    type VARCHAR(20) NOT NULL CHECK (type IN ('purchase', 'consumption', 'refund', 'adjustment')),
+    amount DECIMAL(10, 2) NOT NULL,
+    balance_before DECIMAL(10, 2) NOT NULL,
+    balance_after DECIMAL(10, 2) NOT NULL,
+    reference_type VARCHAR(50), -- 'stripe_purchase', 'batch_issuance', 'admin_adjustment', etc.
+    reference_id UUID, -- ID of the related record (purchase_id, batch_id, etc.)
+    description TEXT,
+    metadata JSONB,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Credit Purchases Table (Stripe payment records)
+CREATE TABLE IF NOT EXISTS credit_purchases (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    stripe_session_id VARCHAR(255) UNIQUE,
+    stripe_payment_intent_id VARCHAR(255),
+    amount_usd DECIMAL(10, 2) NOT NULL,
+    credits_amount DECIMAL(10, 2) NOT NULL, -- Same as amount_usd (1 credit = 1 USD)
+    status VARCHAR(20) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed', 'refunded')),
+    payment_method JSONB,
+    receipt_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    completed_at TIMESTAMPTZ,
+    metadata JSONB
+);
+
+-- Credit Consumption Table (Track what credits were used for)
+CREATE TABLE IF NOT EXISTS credit_consumptions (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    batch_id UUID REFERENCES card_batches(id) ON DELETE SET NULL,
+    card_id UUID REFERENCES cards(id) ON DELETE SET NULL,
+    consumption_type VARCHAR(50) NOT NULL DEFAULT 'batch_issuance', -- 'batch_issuance', 'single_card', etc.
+    quantity INTEGER NOT NULL DEFAULT 1, -- Number of cards
+    credits_per_unit DECIMAL(10, 2) NOT NULL DEFAULT 2.00, -- Credits per card
+    total_credits DECIMAL(10, 2) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Add credit cost columns to card_batches table (if not exists)
+ALTER TABLE card_batches ADD COLUMN IF NOT EXISTS credit_cost DECIMAL(10, 2);
+ALTER TABLE card_batches ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) DEFAULT 'stripe' CHECK (payment_method IN ('stripe', 'credits'));
+
+-- Update existing batches to mark them as stripe payments
+UPDATE card_batches SET payment_method = 'stripe' WHERE payment_method IS NULL;
+
+-- Indexes for credit system (DROP first to ensure updates)
+DROP INDEX IF EXISTS idx_user_credits_user_id;
+DROP INDEX IF EXISTS idx_credit_transactions_user_id;
+DROP INDEX IF EXISTS idx_credit_transactions_created_at;
+DROP INDEX IF EXISTS idx_credit_transactions_type;
+DROP INDEX IF EXISTS idx_credit_purchases_user_id;
+DROP INDEX IF EXISTS idx_credit_purchases_status;
+DROP INDEX IF EXISTS idx_credit_purchases_created_at;
+DROP INDEX IF EXISTS idx_credit_consumptions_user_id;
+DROP INDEX IF EXISTS idx_credit_consumptions_batch_id;
+DROP INDEX IF EXISTS idx_credit_consumptions_created_at;
+
+CREATE INDEX idx_user_credits_user_id ON user_credits(user_id);
+CREATE INDEX idx_credit_transactions_user_id ON credit_transactions(user_id);
+CREATE INDEX idx_credit_transactions_created_at ON credit_transactions(created_at DESC);
+CREATE INDEX idx_credit_transactions_type ON credit_transactions(type);
+CREATE INDEX idx_credit_purchases_user_id ON credit_purchases(user_id);
+CREATE INDEX idx_credit_purchases_status ON credit_purchases(status);
+CREATE INDEX idx_credit_purchases_created_at ON credit_purchases(created_at DESC);
+CREATE INDEX idx_credit_consumptions_user_id ON credit_consumptions(user_id);
+CREATE INDEX idx_credit_consumptions_batch_id ON credit_consumptions(batch_id);
+CREATE INDEX idx_credit_consumptions_created_at ON credit_consumptions(created_at DESC);
+
+-- Trigger to update user_credits updated_at
+CREATE OR REPLACE FUNCTION update_user_credits_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_user_credits_updated_at ON user_credits;
+CREATE TRIGGER trigger_update_user_credits_updated_at
+    BEFORE UPDATE ON user_credits
+    FOR EACH ROW
+    EXECUTE FUNCTION update_user_credits_updated_at();

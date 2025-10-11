@@ -15,7 +15,7 @@ CardStudio is a comprehensive **digital souvenir and exhibition platform** that 
 
 **Core Value Proposition:**
 -   **Interactive Digital Souvenirs**: Physical cards with QR codes link to rich multimedia content about exhibits and locations.
--   **Batch-Based Pricing**: Institutions pay $2 USD per card when creating souvenir batches.
+-   **Credit-Based System**: Institutions purchase credits (1 credit = $1 USD) and consume 2 credits per card when creating batches.
 -   **Advanced AI Voice Conversations**: Real-time voice-based AI using OpenAI Realtime API for natural conversations about exhibits.
 -   **Multi-Language Support**: AI guidance available in 10 languages.
 -   **Professional Souvenir Printing**: High-quality physical souvenir cards with global shipping.
@@ -108,7 +108,7 @@ For production deployment:
 When database schema or stored procedures need updates:
 
 1. **Edit Source Files**:
-   - Modify `sql/schema.sql` for schema changes (tables, enums, indexes)
+   - Modify `sql/schema.sql` for all schema changes (tables, enums, indexes, including credit system)
    - Modify files in `sql/storeproc/client-side/` for client procedures
    - Modify files in `sql/storeproc/server-side/` for server procedures
 
@@ -119,6 +119,11 @@ When database schema or stored procedures need updates:
 3. **Manual Deployment** (user responsibility):
    - Copy SQL from modified files
    - Execute in Supabase Dashboard > SQL Editor
+   - Execute files in order:
+     1. `sql/schema.sql` (includes credit system tables)
+     2. `sql/all_stored_procedures.sql`
+     3. `sql/policy.sql`
+     4. `sql/triggers.sql`
    - No migration scripts needed - manual deployment only
 
 **Note**: `sql/all_stored_procedures.sql` is a GENERATED file. Always edit the source files in `sql/storeproc/`, not the generated file.
@@ -146,7 +151,7 @@ supabase gen types typescript --local > src/types/supabase.ts  # Generate TypeSc
 # 2. Run: ./scripts/combine-storeproc.sh (generates all_stored_procedures.sql)
 # 3. Navigate to Supabase Dashboard > SQL Editor
 # 4. Manually copy and execute SQL files in order:
-#    - sql/schema.sql
+#    - sql/schema.sql (includes credit system tables)
 #    - sql/all_stored_procedures.sql
 #    - sql/policy.sql
 #    - sql/triggers.sql
@@ -218,9 +223,11 @@ Cardy/
 │   ├── router/             # Vue Router: index.ts with guards for auth/roles
 │   └── main.ts             # App entry
 ├── sql/                    # Database
-│   ├── schema.sql          # Tables, enums, indexes
+│   ├── schema.sql          # Tables, enums, indexes (including credit system)
 │   ├── all_stored_procedures.sql  # GENERATED - All RPC functions (do not edit directly)
-│   ├── storeproc/          # Source files: client-side/ (auth, card, content), server-side/ (payments)
+│   ├── storeproc/          # Source files:
+│   │   ├── client-side/    # Auth, card, content, credit management, admin functions
+│   │   └── server-side/    # Payment processing, credit purchase completion
 │   ├── policy.sql          # RLS policies
 │   ├── triggers.sql        # Triggers
 │   └── migrations/         # Versioned changes (for reference)
@@ -230,9 +237,12 @@ Cardy/
 │       ├── _shared/        # CORS utils
 │       ├── chat-with-audio/  # Voice/text chat (STT + response)
 │       ├── chat-with-audio-stream/  # Streaming text responses
-│       ├── create-checkout-session/  # Stripe checkout
+│       ├── create-checkout-session/  # Stripe checkout (legacy batch payment)
+│       ├── create-credit-checkout-session/  # Stripe credit purchase
 │       ├── generate-tts-audio/  # Text-to-Speech
-│       ├── handle-checkout-success/  # Stripe webhook
+│       ├── handle-checkout-success/  # Stripe webhook (legacy)
+│       ├── handle-credit-purchase-success/  # Credit purchase completion
+│       ├── stripe-credit-webhook/  # Credit system webhook
 │       └── openai-realtime-token/  # WebRTC ephemeral tokens
 ├── scripts/                # Utility scripts
 │   ├── combine-storeproc.sh        # Combine stored procedures into single file
@@ -280,10 +290,18 @@ Cardy/
 
 ### Card Issuer Flow
 1. **Registration**: Sign up, email verification, admin approval (role: 'cardIssuer').
-2. **Card Creation**: Upload image (crop to 2:3), set name/description, enable AI with instructions/knowledge base.
-3. **Content Management**: Hierarchical items (exhibits > artifacts), markdown content, images, per-item AI knowledge.
-4. **Batch Issuance**: Create batch, generate QR codes, Stripe payment ($2/card), optional print request.
-5. **Analytics**: View engagement metrics per card/batch.
+2. **Credit Purchase**: Buy credits via Stripe (1 credit = $1 USD) through the Credit Management page (`/cms/credits`).
+3. **Card Creation**: Upload image (crop to 2:3), set name/description, enable AI with instructions/knowledge base.
+4. **Content Management**: Hierarchical items (exhibits > artifacts), markdown content, images, per-item AI knowledge.
+5. **Batch Issuance**: 
+   - **Credit-Based System** (Current): Navigate to card > Issue Batch dialog shows credit balance and required credits (2 credits/card)
+   - If sufficient credits: Instant batch creation, cards generated immediately, no Stripe redirect
+   - If insufficient credits: Dialog shows warning with "Purchase Credits" button redirecting to `/cms/credits`
+   - Uses `issue_card_batch_with_credits()` stored procedure
+   - Credits consumed atomically with batch creation (transaction-safe)
+6. **Credit Management**: Monitor balance, view transaction history, purchase additional credits as needed.
+7. **Print Requests**: After batch creation, optionally request physical card printing with shipping details.
+8. **Analytics**: View engagement metrics per card/batch.
 
 ### Visitor (Mobile) Flow
 1. **QR Scan**: Loads `PublicCardView` with issued card ID (or preview mode).
@@ -297,12 +315,45 @@ Cardy/
 
 ### Admin Flow
 1. **User Management**: Verify businesses, assign roles ('admin' or 'cardIssuer').
-2. **Batch Oversight**: Monitor issuances, payments, print requests (statuses: pending, paid, shipped).
-3. **Audit Logs**: Track operations (via RPC logging).
-4. **Content Moderation**: Review/approve cards.
+2. **Credit Management**: Monitor all credit purchases, consumptions, and transactions. Adjust user credits for refunds or corrections.
+   - **UI Pattern**: Follows Batch Management pattern (filters in table header, action buttons, dialogs)
+   - **Action Buttons**: View Purchases, View Consumptions, View Transactions, Adjust Credits
+   - **On-Demand Loading**: Dialog data fetched when opened, not preloaded
+   - **Server-Side Operations**: All pagination, sorting, filtering done on server
+   - **Search**: Debounced 500ms, searches by email or name
+   - **Security**: Transaction locking prevents race conditions, negative balance prevented
+3. **Batch Oversight**: Monitor issuances, credit consumption, print requests (statuses: pending, paid, shipped).
+4. **Credit Statistics**: View system-wide credit metrics (circulation, revenue, consumption, pending).
+5. **Audit Logs**: Track operations including credit transactions (via RPC logging).
+6. **Content Moderation**: Review/approve cards.
 
-### Payments & Printing
-- **Stripe Integration**: Checkout sessions via Edge Function, webhooks for confirmation.
+### Payments & Credits
+- **Credit System**: Users purchase credits upfront (1 credit = $1 USD) via Stripe checkout.
+- **Batch Issuance**: 
+  - **Credit-Based Flow** (Current): Consumes 2 credits per card, instant generation upon credit consumption
+  - Uses `issue_card_batch_with_credits()` stored procedure which:
+    - Checks credit balance via `check_credit_balance()`
+    - Creates batch with `payment_method = 'credits'`, `payment_completed = true`
+    - Consumes credits via `consume_credits_for_batch()`
+    - Generates issued cards immediately
+    - All operations atomic (rollback on failure)
+  - UI Component: `CardIssuanceCheckout.vue` uses `useCreditStore().issueBatchWithCredits()`
+  - No Stripe redirect during batch creation - credits must be purchased first
+- **Stripe Integration**: Credit purchase checkout, webhooks for confirmation, automatic refund handling.
+  - **Webhook Security**: Stripe webhook signature verification in Deno requires `stripe.webhooks.constructEventAsync()` (async version) due to Deno's async crypto environment. The webhook function disables JWT verification (`verify_jwt = false` in `config.toml`) but enforces Stripe signature verification.
+- **Credit Management**: Real-time balance tracking, transaction history, consumption reports.
+  - **Admin Interface**: `AdminCreditManagement.vue` for admin oversight
+    - Statistics cards: Total circulation, revenue, purchased, consumed
+    - User table: Paginated list with search by email/name (server-side, debounced 500ms)
+    - Action buttons per user: View Purchases (green), View Consumptions (blue), View Transactions (gray), Adjust Credits (orange)
+    - Dialogs: On-demand data loading, show user info + paginated tables
+    - Adjust credits: Supports positive (add) or negative (deduct) with reason, prevents negative balance
+  - **Card Issuer Interface**: `CreditManagement.vue` for users to manage their own credits
+    - Balance overview: Current, purchased, consumed with monthly stats
+    - Purchase dialog: Select amount (10-10,000 credits), Stripe checkout integration
+    - Transaction history: Tabs for all transactions, purchases, consumptions
+  - **Security**: Transaction locking (`FOR UPDATE`) prevents race conditions, all operations logged
+  - **Audit Trail**: Every credit change recorded in `credit_transactions` with before/after balances
 - **Print Requests**: Optional physical cards, status tracking, contact fields.
 
 ### Internationalization
@@ -321,11 +372,11 @@ Cardy/
 ### Backend (Supabase)
 1. **Database**:
    - Combine stored procedures: `./scripts/combine-storeproc.sh`
-   - Manually execute SQL files in Supabase Dashboard SQL Editor:
-     1. `sql/schema.sql`
-     2. `sql/all_stored_procedures.sql`
-     3. `sql/policy.sql`
-     4. `sql/triggers.sql`
+   - Manually execute SQL files in Supabase Dashboard SQL Editor (in this exact order):
+     1. `sql/schema.sql` (includes all tables and credit system)
+     2. `sql/all_stored_procedures.sql` (generated from storeproc/ files)
+     3. `sql/policy.sql` (RLS policies)
+     4. `sql/triggers.sql` (database triggers)
 
 2. **Edge Functions Secrets** (must be set before deployment):
    - Configure: `./scripts/setup-production-secrets.sh`
@@ -357,11 +408,27 @@ Cardy/
 - **i18n**: Pipe syntax for plurals, no ICU. Update locales/en.json as base.
 - **Markdown**: Render with `marked` library, sanitize for `v-html`.
 - **Mobile Optimization**: Responsive Tailwind, touch-friendly, PWA-ready.
+- **Edge Functions Authentication**: When Edge Functions need to validate user authentication:
+  - Use service role client: `createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)`
+  - Extract JWT token from Authorization header: `req.headers.get('Authorization').replace('Bearer ', '')`
+  - Validate token: `supabaseAdmin.auth.getUser(token)` - this returns user info from the JWT
+  - Pass `user.id` explicitly to stored procedures when using service role (since `auth.uid()` returns NULL with service role)
+  - Stored procedures should accept optional `p_user_id` parameter: `COALESCE(p_user_id, auth.uid())`
 - **Common Issues**:
   - Role mismatches: Refresh session to sync DB metadata.
   - Audio permissions: Handle gracefully in WebRTC/STT.
   - CORS: Edge functions handle via `_shared/cors.ts`.
   - Large images: Compress with `browser-image-compression`.
+  - **Deno Stripe Webhooks**: Always use `stripe.webhooks.constructEventAsync()` (async version) for signature verification in Deno Edge Functions due to async crypto environment. Using the sync `constructEvent()` will fail.
+  - **Edge Function 401 Errors**: If Edge Functions return 401 Unauthorized, check that JWT tokens are being properly validated. Don't use `getUser()` without parameters - always pass the token explicitly when using service role client.
+  - **Edge Function Helper Functions**: In Deno Edge Functions, helper functions defined with `const` (function expressions) are not hoisted. Always define helper functions **before** they are called, or use function declarations (`function name() {}`) which are hoisted.
+  - **Legacy Batch Payment vs Credit System**: 
+    - **Current System** (Recommended): Credit-based batch issuance. Users purchase credits via `/cms/credits` → Use credits to create batches instantly via `CardIssuanceCheckout.vue` → No Stripe checkout during batch creation
+    - **Legacy System** (Deprecated): Direct batch payment via `create-checkout-session` Edge Function. Still functional for backward compatibility but not recommended for new implementations
+    - Migration: `CardIssuanceCheckout.vue` has been fully migrated to use `useCreditStore().issueBatchWithCredits()` instead of `createCheckoutSession()`
+  - **Credit Adjustment Errors**: If credit adjustment fails, check for: (1) User has `user_credits` record (auto-created), (2) Adjustment doesn't result in negative balance, (3) Admin has proper role in metadata, (4) Amount is not zero.
+  - **Admin Dialog Data**: When opening dialogs (purchases, consumptions, transactions), previous user's data may flash briefly. This is normal - new data loads on-demand when dialog opens.
+  - **Search Performance**: For user bases >10,000, consider implementing full-text search (tsvector) instead of LIKE queries for better performance.
 - **Testing**: Use local Supabase for dev, preview mode for unactivated cards.
 - **Security**: RLS policies enforce public read-only for cards, auth for dashboard.
 - **Performance**: Lazy-load routes, virtual scrolling for lists, WebRTC for low-latency AI.

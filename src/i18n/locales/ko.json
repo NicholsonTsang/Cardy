@@ -38,7 +38,8 @@
     "warning": "Warning",
     "info": "Info",
     "required": "Required",
-    "optional": "Optional"
+    "optional": "Optional",
+    "use": "사용"
   },
   
   "auth": {

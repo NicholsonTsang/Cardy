@@ -234,3 +234,83 @@ CREATE POLICY "Anonymous users can activate any card" ON issue_cards
 FOR UPDATE USING (
 TRUE
 );
+
+-- =================================================================
+-- CREDIT SYSTEM TABLE POLICIES
+-- =================================================================
+
+-- USER_CREDITS TABLE
+ALTER TABLE user_credits ENABLE ROW LEVEL SECURITY;
+
+-- SELECT: Users can read their own credits, admins can read all
+DROP POLICY IF EXISTS "Users read own credits" ON user_credits;
+CREATE POLICY "Users read own credits"
+ON user_credits FOR SELECT
+USING (
+    auth.uid() = user_id OR 
+    auth.jwt()->>'role' = 'admin'
+);
+
+-- MODIFICATIONS: Only through stored procedures (admin override)
+DROP POLICY IF EXISTS "Admin only modifications on user_credits" ON user_credits;
+CREATE POLICY "Admin only modifications on user_credits"
+ON user_credits FOR ALL
+USING (auth.jwt()->>'role' = 'admin')
+WITH CHECK (auth.jwt()->>'role' = 'admin');
+
+-- CREDIT_TRANSACTIONS TABLE
+ALTER TABLE credit_transactions ENABLE ROW LEVEL SECURITY;
+
+-- SELECT: Users can read their own transactions, admins can read all
+DROP POLICY IF EXISTS "Users read own transactions" ON credit_transactions;
+CREATE POLICY "Users read own transactions"
+ON credit_transactions FOR SELECT
+USING (
+    auth.uid() = user_id OR 
+    auth.jwt()->>'role' = 'admin'
+);
+
+-- MODIFICATIONS: Only through stored procedures (admin override)
+DROP POLICY IF EXISTS "Admin only modifications on credit_transactions" ON credit_transactions;
+CREATE POLICY "Admin only modifications on credit_transactions"
+ON credit_transactions FOR ALL
+USING (auth.jwt()->>'role' = 'admin')
+WITH CHECK (auth.jwt()->>'role' = 'admin');
+
+-- CREDIT_PURCHASES TABLE
+ALTER TABLE credit_purchases ENABLE ROW LEVEL SECURITY;
+
+-- SELECT: Users can read their own purchases, admins can read all
+DROP POLICY IF EXISTS "Users read own purchases" ON credit_purchases;
+CREATE POLICY "Users read own purchases"
+ON credit_purchases FOR SELECT
+USING (
+    auth.uid() = user_id OR 
+    auth.jwt()->>'role' = 'admin'
+);
+
+-- MODIFICATIONS: Only through stored procedures (admin override)
+DROP POLICY IF EXISTS "Admin only modifications on credit_purchases" ON credit_purchases;
+CREATE POLICY "Admin only modifications on credit_purchases"
+ON credit_purchases FOR ALL
+USING (auth.jwt()->>'role' = 'admin')
+WITH CHECK (auth.jwt()->>'role' = 'admin');
+
+-- CREDIT_CONSUMPTIONS TABLE
+ALTER TABLE credit_consumptions ENABLE ROW LEVEL SECURITY;
+
+-- SELECT: Users can read their own consumptions, admins can read all
+DROP POLICY IF EXISTS "Users read own consumptions" ON credit_consumptions;
+CREATE POLICY "Users read own consumptions"
+ON credit_consumptions FOR SELECT
+USING (
+    auth.uid() = user_id OR 
+    auth.jwt()->>'role' = 'admin'
+);
+
+-- MODIFICATIONS: Only through stored procedures (admin override)
+DROP POLICY IF EXISTS "Admin only modifications on credit_consumptions" ON credit_consumptions;
+CREATE POLICY "Admin only modifications on credit_consumptions"
+ON credit_consumptions FOR ALL
+USING (auth.jwt()->>'role' = 'admin')
+WITH CHECK (auth.jwt()->>'role' = 'admin');

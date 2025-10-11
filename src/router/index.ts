@@ -23,6 +23,12 @@ const router = createRouter({
           component: () => import('@/views/Dashboard/CardIssuer/MyCards.vue'),
           meta: { requiredRole: 'cardIssuer' }
         },
+        {
+          path: 'credits',
+          name: 'credits',
+          component: () => import('@/views/Dashboard/CardIssuer/CreditManagement.vue'),
+          meta: { requiredRole: 'cardIssuer' }
+        },
         
         // Admin Routes (now using the same DashboardLayout)
         {
@@ -41,6 +47,12 @@ const router = createRouter({
           path: 'admin/batches',
           name: 'admin-batches',
           component: () => import('@/views/Dashboard/Admin/BatchManagement.vue'),
+          meta: { requiredRole: 'admin' }
+        },
+        {
+          path: 'admin/credits',
+          name: 'admin-credits',
+          component: () => import('@/views/Dashboard/Admin/AdminCreditManagement.vue'),
           meta: { requiredRole: 'admin' }
         },
         {

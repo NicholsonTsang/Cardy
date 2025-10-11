@@ -151,7 +151,7 @@ BEGIN
     RETURNING id INTO v_content_item_id;
     
     -- Log operation
-    PERFORM log_operation('Created content item: ' || p_name || ' (ID: ' || v_content_item_id || ')');
+    PERFORM log_operation(format('Created content item: %s', p_name));
     
     RETURN v_content_item_id;
 END;
@@ -194,9 +194,9 @@ BEGIN
     WHERE id = p_content_item_id;
     
     -- Log operation
-    PERFORM log_operation('Updated content item: ' || COALESCE(p_name, v_item_name) || ' (ID: ' || p_content_item_id || ')');
+    PERFORM log_operation(format('Updated content item: %s', COALESCE(p_name, v_item_name)));
     
-    RETURN FOUND;
+    RETURN TRUE;
 END;
 $$;
 
@@ -253,9 +253,9 @@ BEGIN
     WHERE id = p_content_item_id;
     
     -- Log operation
-    PERFORM log_operation('Reordered content item to position ' || p_new_sort_order || ' (ID: ' || p_content_item_id || ')');
+    PERFORM log_operation(format('Reordered content item to position %s', p_new_sort_order));
     
-    RETURN FOUND;
+    RETURN TRUE;
 END;
 $$;
 
@@ -280,8 +280,8 @@ BEGIN
     DELETE FROM content_items WHERE id = p_content_item_id;
     
     -- Log operation
-    PERFORM log_operation('Deleted content item: ' || v_item_name || ' (ID: ' || p_content_item_id || ')');
-    
-    RETURN FOUND;
+    PERFORM log_operation(format('Deleted content item: %s', v_item_name));
+
+    RETURN TRUE;
 END;
 $$; 

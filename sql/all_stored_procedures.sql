@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Sun Oct  5 13:18:46 CST 2025
+-- Generated: Sat Oct 11 17:11:44 HKT 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -367,7 +367,7 @@ BEGIN
     RETURNING id INTO v_card_id;
     
     -- Log operation
-    PERFORM log_operation('Created card: ' || p_name || ' (ID: ' || v_card_id || ')');
+    PERFORM log_operation(format('Created card: %s', p_name));
     
     RETURN v_card_id;
 END;
@@ -515,9 +515,9 @@ END IF;
     WHERE id = p_card_id AND user_id = auth.uid();
     
     -- Log operation
-    PERFORM log_operation('Updated card: ' || COALESCE(p_name, v_old_record.name) || ' (ID: ' || p_card_id || ')');
+    PERFORM log_operation(format('Updated card: %s', COALESCE(p_name, v_old_record.name)));
     
-    RETURN FOUND;
+    RETURN TRUE;
 END;
 $$;
 
@@ -552,9 +552,9 @@ BEGIN
     DELETE FROM cards WHERE id = p_card_id AND user_id = auth.uid();
     
     -- Log operation
-    PERFORM log_operation('Deleted card: ' || v_card_record.name || ' (ID: ' || p_card_id || ')');
-    
-    RETURN FOUND;
+    PERFORM log_operation(format('Deleted card: %s', v_card_record.name));
+
+    RETURN TRUE;
 END;
 $$; 
 
@@ -720,7 +720,7 @@ BEGIN
     RETURNING id INTO v_content_item_id;
     
     -- Log operation
-    PERFORM log_operation('Created content item: ' || p_name || ' (ID: ' || v_content_item_id || ')');
+    PERFORM log_operation(format('Created content item: %s', p_name));
     
     RETURN v_content_item_id;
 END;
@@ -763,9 +763,9 @@ BEGIN
     WHERE id = p_content_item_id;
     
     -- Log operation
-    PERFORM log_operation('Updated content item: ' || COALESCE(p_name, v_item_name) || ' (ID: ' || p_content_item_id || ')');
+    PERFORM log_operation(format('Updated content item: %s', COALESCE(p_name, v_item_name)));
     
-    RETURN FOUND;
+    RETURN TRUE;
 END;
 $$;
 
@@ -822,9 +822,9 @@ BEGIN
     WHERE id = p_content_item_id;
     
     -- Log operation
-    PERFORM log_operation('Reordered content item to position ' || p_new_sort_order || ' (ID: ' || p_content_item_id || ')');
+    PERFORM log_operation(format('Reordered content item to position %s', p_new_sort_order));
     
-    RETURN FOUND;
+    RETURN TRUE;
 END;
 $$;
 
@@ -849,9 +849,9 @@ BEGIN
     DELETE FROM content_items WHERE id = p_content_item_id;
     
     -- Log operation
-    PERFORM log_operation('Deleted content item: ' || v_item_name || ' (ID: ' || p_content_item_id || ')');
-    
-    RETURN FOUND;
+    PERFORM log_operation(format('Deleted content item: %s', v_item_name));
+
+    RETURN TRUE;
 END;
 $$; 
 
@@ -859,6 +859,7 @@ $$;
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS get_next_batch_number CASCADE;
 DROP FUNCTION IF EXISTS issue_card_batch CASCADE;
+DROP FUNCTION IF EXISTS issue_card_batch_with_credits CASCADE;
 DROP FUNCTION IF EXISTS get_card_batches CASCADE;
 DROP FUNCTION IF EXISTS get_issued_cards_with_batch CASCADE;
 DROP FUNCTION IF EXISTS toggle_card_batch_disabled_status CASCADE;
@@ -895,7 +896,8 @@ BEGIN
 END;
 $$;
 
--- Create a new card batch and issue cards
+-- Create a new card batch and issue cards (Legacy - Stripe payment)
+-- This function is kept for backward compatibility
 CREATE OR REPLACE FUNCTION issue_card_batch(
     p_card_id UUID,
     p_quantity INTEGER
@@ -959,7 +961,133 @@ BEGIN
     -- OR when admin waives payment via admin_waive_batch_payment()
     
     -- Log operation
-    PERFORM log_operation('Issued batch: ' || p_quantity || ' cards for card ' || p_card_id);
+    PERFORM log_operation(format('Issued batch "%s" with %s cards', v_batch_name, p_quantity));
+    
+    RETURN v_batch_id;
+END;
+$$;
+
+-- Issue card batch using credits (New credit system)
+CREATE OR REPLACE FUNCTION issue_card_batch_with_credits(
+    p_card_id UUID,
+    p_quantity INTEGER,
+    p_print_request BOOLEAN DEFAULT FALSE
+) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_batch_id UUID;
+    v_batch_number INTEGER;
+    v_batch_name TEXT;
+    v_card_owner_id UUID;
+    v_credits_per_card DECIMAL := 2.00;
+    v_total_credits DECIMAL;
+    v_consumption_result JSONB;
+    i INTEGER;
+BEGIN
+    -- Validate inputs
+    IF p_quantity <= 0 OR p_quantity > 1000 THEN
+        RAISE EXCEPTION 'Quantity must be between 1 and 1000';
+    END IF;
+    
+    -- Check if the user owns the card
+    SELECT user_id INTO v_card_owner_id
+    FROM cards
+    WHERE id = p_card_id;
+    
+    IF v_card_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Card not found.';
+    END IF;
+
+    IF v_card_owner_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to issue cards for this card.';
+    END IF;
+    
+    v_total_credits := p_quantity * v_credits_per_card;
+    
+    -- Check credit balance
+    IF NOT check_credit_balance(v_total_credits) THEN
+        RAISE EXCEPTION 'Insufficient credits. Required: %, Please purchase more credits.', v_total_credits;
+    END IF;
+    
+    -- Get next batch number
+    SELECT get_next_batch_number(p_card_id) INTO v_batch_number;
+    v_batch_name := 'batch-' || v_batch_number;
+    
+    -- Create the batch with credits payment
+    INSERT INTO card_batches (
+        card_id,
+        batch_name,
+        batch_number,
+        cards_count,
+        created_by,
+        payment_required,
+        payment_completed,
+        payment_amount_cents,
+        payment_waived,
+        cards_generated,
+        payment_method,
+        credit_cost
+    ) VALUES (
+        p_card_id,
+        v_batch_name,
+        v_batch_number,
+        p_quantity,
+        auth.uid(),
+        FALSE, -- No payment required (using credits)
+        TRUE,  -- Payment completed (via credits)
+        0,     -- No Stripe payment
+        FALSE, -- Not waived
+        TRUE,  -- Cards will be generated immediately
+        'credits',
+        v_total_credits
+    )
+    RETURNING id INTO v_batch_id;
+    
+    -- Consume credits
+    SELECT consume_credits_for_batch(v_batch_id, p_quantity) INTO v_consumption_result;
+    
+    IF NOT (v_consumption_result->>'success')::boolean THEN
+        -- Rollback batch creation if credit consumption fails
+        DELETE FROM card_batches WHERE id = v_batch_id;
+        RAISE EXCEPTION 'Failed to consume credits for batch';
+    END IF;
+    
+    -- Generate the issued cards immediately (since payment is done via credits)
+    FOR i IN 1..p_quantity LOOP
+        INSERT INTO issue_cards (
+            card_id,
+            batch_id,
+            active,
+            issue_at
+        ) VALUES (
+            p_card_id,
+            v_batch_id,
+            false,
+            NOW()
+        );
+    END LOOP;
+    
+    -- Update batch to mark cards as generated
+    UPDATE card_batches 
+    SET 
+        cards_generated_at = NOW(),
+        payment_completed_at = NOW()
+    WHERE id = v_batch_id;
+    
+    -- Create print request if requested
+    IF p_print_request THEN
+        INSERT INTO print_requests (
+            batch_id,
+            status,
+            created_by
+        ) VALUES (
+            v_batch_id,
+            'SUBMITTED',
+            auth.uid()
+        );
+    END IF;
+    
+    -- Log operation
+    PERFORM log_operation(format('Issued batch "%s" with %s cards using credits', v_batch_name, p_quantity));
     
     RETURN v_batch_id;
 END;
@@ -1139,7 +1267,7 @@ BEGIN
     WHERE id = p_card_id AND active = false;
     
     -- Log operation
-    PERFORM log_operation('Activated issued card (ID: ' || p_card_id || ')');
+    PERFORM log_operation('Activated issued card');
     
     RETURN FOUND;
 END;
@@ -1195,7 +1323,7 @@ BEGIN
     DELETE FROM issue_cards WHERE id = p_issued_card_id;
     
     -- Log operation
-    PERFORM log_operation('Deleted issued card (ID: ' || p_issued_card_id || ')');
+    PERFORM log_operation('Deleted issued card');
     
     RETURN FOUND;
 END;
@@ -1269,7 +1397,7 @@ BEGIN
     WHERE id = p_batch_id;
     
     -- Log operation
-    PERFORM log_operation('Generated ' || v_batch_record.cards_count || ' cards for batch: ' || v_batch_record.batch_name || ' (ID: ' || p_batch_id || ')');
+    PERFORM log_operation(format('Generated %s cards for batch "%s"', v_batch_record.cards_count, v_batch_record.batch_name));
     
     RETURN p_batch_id;
 END;
@@ -1459,7 +1587,7 @@ BEGIN
     RETURNING id INTO v_print_request_id;
 
     -- Log operation
-    PERFORM log_operation('Requested card printing for batch ' || p_batch_id || ' (Request ID: ' || v_print_request_id || ')');
+    PERFORM log_operation('Submitted print request');
 
     RETURN v_print_request_id;
 END;
@@ -1559,9 +1687,9 @@ BEGIN
     WHERE id = p_request_id;
 
     -- Log operation
-    PERFORM log_operation('Withdrew print request for batch: ' || v_batch_name || ' (Request ID: ' || p_request_id || ')');
+    PERFORM log_operation(format('Withdrew print request for batch "%s"', v_batch_name));
     
-    RETURN FOUND;
+    RETURN TRUE;
 END;
 $$; 
 
@@ -1628,17 +1756,14 @@ BEGIN
     -- If the card is not active, activate it automatically (regardless of owner status)
     -- This ensures all first-time accesses are tracked, including owner previews
     IF NOT v_is_card_active THEN
-        UPDATE issue_cards
-        SET 
-            active = true,
-            active_at = NOW(),
-            activated_by = auth.uid() -- Set to current user ID if authenticated, NULL if not
-        WHERE id = p_issue_card_id AND active = false;
-        
-        -- Log operation (only if user is authenticated)
-        IF auth.uid() IS NOT NULL THEN
-            PERFORM log_operation('Auto-activated issued card on first access (ID: ' || p_issue_card_id || ')');
-        END IF;
+        BEGIN
+            UPDATE issue_cards SET active = true, activated_at = NOW() WHERE id = p_issue_card_id;
+            -- Log the auto-activation
+            PERFORM log_operation('Card auto-activated on first access');
+        EXCEPTION
+            WHEN others THEN
+                -- Log any error during activation but don't fail the main query
+        END;
         
         v_is_card_active := TRUE; -- Mark as active for current request
     END IF;
@@ -2726,18 +2851,9 @@ BEGIN
     WHERE id = p_target_user_id;
 
     -- Log role change
-    PERFORM log_admin_action(
-        auth.uid(),
-        'ROLE_CHANGE',
-        'User role changed from ' || current_role || ' to ' || p_new_role || ' for ' || target_user_email || ': ' || p_reason,
-        p_target_user_id,
-        jsonb_build_object(
-            'target_email', target_user_email,
-            'from_role', current_role,
-            'to_role', p_new_role,
-            'is_admin_promotion', (p_new_role = 'admin'),
-            'is_admin_demotion', (current_role = 'admin' AND p_new_role != 'admin')
-        )
+    PERFORM log_operation(
+        format('Changed user role from %s to %s for user: %s', 
+            COALESCE(current_role, 'none'), p_new_role, target_user_email)
     );
     
     RETURN FOUND;
@@ -2852,17 +2968,8 @@ BEGIN
         updated_at = NOW()
     WHERE user_id = p_user_id;
 
-    -- Log the verification reset
-    PERFORM log_admin_action(
-        auth.uid(),
-        'VERIFICATION_RESET',
-        'Verification status reset for user ' || v_user_email,
-        p_user_id,
-        jsonb_build_object(
-            'target_email', v_user_email,
-            'reset_reason', 'admin_initiated'
-        )
-    );
+    -- Log operation
+    PERFORM log_operation(format('Reset verification for user: %s', v_user_email));
     
     RETURN FOUND;
 END;
@@ -2940,17 +3047,7 @@ BEGIN
     END IF;
 
     -- Log the manual verification
-    PERFORM log_admin_action(
-        auth.uid(),
-        'MANUAL_VERIFICATION',
-        'Manual verification approved for user ' || v_user_email || ': ' || p_reason,
-        p_user_id,
-        jsonb_build_object(
-            'target_email', v_user_email,
-            'approval_method', 'admin_override',
-            'previous_status', COALESCE(v_current_status, 'NOT_SUBMITTED')
-        )
-    );
+    PERFORM log_operation(format('Manually approved verification for user: %s', v_user_email));
     
     RETURN TRUE;
 END;
@@ -3353,6 +3450,913 @@ BEGIN
 END;
 $$;
 
+-- File: admin_credit_management.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS admin_get_credit_purchases CASCADE;
+DROP FUNCTION IF EXISTS admin_get_credit_consumptions CASCADE;
+DROP FUNCTION IF EXISTS admin_get_credit_transactions CASCADE;
+DROP FUNCTION IF EXISTS admin_get_user_credits CASCADE;
+DROP FUNCTION IF EXISTS admin_adjust_user_credits CASCADE;
+DROP FUNCTION IF EXISTS admin_get_credit_statistics CASCADE;
+
+-- Admin Credit Management Stored Procedures
+-- Admin functions for credit system auditing and management
+
+-- Admin: Get all credit purchases
+CREATE OR REPLACE FUNCTION admin_get_credit_purchases(
+    p_limit INTEGER DEFAULT 50,
+    p_offset INTEGER DEFAULT 0,
+    p_user_id UUID DEFAULT NULL,
+    p_status VARCHAR DEFAULT NULL
+)
+RETURNS TABLE (
+    id UUID,
+    user_id UUID,
+    user_email TEXT,
+    user_name TEXT,
+    amount_usd DECIMAL,
+    credits_amount DECIMAL,
+    status VARCHAR,
+    stripe_session_id VARCHAR,
+    payment_method JSONB,
+    receipt_url TEXT,
+    created_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ
+) AS $$
+DECLARE
+    v_user_id UUID;
+    v_role VARCHAR;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_role
+    FROM auth.users
+    WHERE auth.users.id = v_user_id;
+
+    IF v_role != 'admin' THEN
+        RAISE EXCEPTION 'Unauthorized: Admin access required';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        cp.id,
+        cp.user_id,
+        u.email::TEXT AS user_email,
+        COALESCE(u.raw_user_meta_data->>'full_name', u.email)::TEXT AS user_name,
+        cp.amount_usd,
+        cp.credits_amount,
+        cp.status,
+        cp.stripe_session_id,
+        cp.payment_method,
+        cp.receipt_url,
+        cp.created_at,
+        cp.completed_at
+    FROM credit_purchases cp
+    JOIN auth.users u ON u.id = cp.user_id
+    WHERE (p_user_id IS NULL OR cp.user_id = p_user_id)
+        AND (p_status IS NULL OR cp.status = p_status)
+    ORDER BY cp.created_at DESC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin: Get all credit consumptions
+CREATE OR REPLACE FUNCTION admin_get_credit_consumptions(
+    p_limit INTEGER DEFAULT 50,
+    p_offset INTEGER DEFAULT 0,
+    p_user_id UUID DEFAULT NULL,
+    p_date_from TIMESTAMPTZ DEFAULT NULL,
+    p_date_to TIMESTAMPTZ DEFAULT NULL
+)
+RETURNS TABLE (
+    id UUID,
+    user_id UUID,
+    user_email TEXT,
+    user_name TEXT,
+    batch_id UUID,
+    batch_name TEXT,
+    card_id UUID,
+    card_name TEXT,
+    consumption_type VARCHAR,
+    quantity INTEGER,
+    credits_per_unit DECIMAL,
+    total_credits DECIMAL,
+    description TEXT,
+    created_at TIMESTAMPTZ
+) AS $$
+DECLARE
+    v_user_id UUID;
+    v_role VARCHAR;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_role
+    FROM auth.users
+    WHERE auth.users.id = v_user_id;
+
+    IF v_role != 'admin' THEN
+        RAISE EXCEPTION 'Unauthorized: Admin access required';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        cc.id,
+        cc.user_id,
+        u.email::TEXT AS user_email,
+        COALESCE(u.raw_user_meta_data->>'full_name', u.email)::TEXT AS user_name,
+        cc.batch_id,
+        b.batch_name AS batch_name,
+        cc.card_id,
+        c.name AS card_name,
+        cc.consumption_type,
+        cc.quantity,
+        cc.credits_per_unit,
+        cc.total_credits,
+        cc.description,
+        cc.created_at
+    FROM credit_consumptions cc
+    JOIN auth.users u ON u.id = cc.user_id
+    LEFT JOIN card_batches b ON b.id = cc.batch_id
+    LEFT JOIN cards c ON c.id = cc.card_id
+    WHERE (p_user_id IS NULL OR cc.user_id = p_user_id)
+        AND (p_date_from IS NULL OR cc.created_at >= p_date_from)
+        AND (p_date_to IS NULL OR cc.created_at <= p_date_to)
+    ORDER BY cc.created_at DESC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin: Get all credit transactions
+CREATE OR REPLACE FUNCTION admin_get_credit_transactions(
+    p_limit INTEGER DEFAULT 50,
+    p_offset INTEGER DEFAULT 0,
+    p_user_id UUID DEFAULT NULL,
+    p_type VARCHAR DEFAULT NULL
+)
+RETURNS TABLE (
+    id UUID,
+    user_id UUID,
+    user_email TEXT,
+    user_name TEXT,
+    type VARCHAR,
+    amount DECIMAL,
+    balance_before DECIMAL,
+    balance_after DECIMAL,
+    reference_type VARCHAR,
+    reference_id UUID,
+    description TEXT,
+    metadata JSONB,
+    created_at TIMESTAMPTZ
+) AS $$
+DECLARE
+    v_user_id UUID;
+    v_role VARCHAR;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_role
+    FROM auth.users
+    WHERE auth.users.id = v_user_id;
+
+    IF v_role != 'admin' THEN
+        RAISE EXCEPTION 'Unauthorized: Admin access required';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        ct.id,
+        ct.user_id,
+        u.email::TEXT AS user_email,
+        COALESCE(u.raw_user_meta_data->>'full_name', u.email)::TEXT AS user_name,
+        ct.type,
+        ct.amount,
+        ct.balance_before,
+        ct.balance_after,
+        ct.reference_type,
+        ct.reference_id,
+        ct.description,
+        ct.metadata,
+        ct.created_at
+    FROM credit_transactions ct
+    JOIN auth.users u ON u.id = ct.user_id
+    WHERE (p_user_id IS NULL OR ct.user_id = p_user_id)
+        AND (p_type IS NULL OR ct.type = p_type)
+    ORDER BY ct.created_at DESC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin: Get user credit balances with search and pagination
+CREATE OR REPLACE FUNCTION admin_get_user_credits(
+    p_limit INTEGER DEFAULT 20,
+    p_offset INTEGER DEFAULT 0,
+    p_search TEXT DEFAULT NULL,
+    p_sort_field TEXT DEFAULT 'balance',
+    p_sort_order TEXT DEFAULT 'DESC'
+)
+RETURNS TABLE (
+    user_id UUID,
+    user_email TEXT,
+    user_name TEXT,
+    balance DECIMAL,
+    total_purchased DECIMAL,
+    total_consumed DECIMAL,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ,
+    total_count BIGINT
+) AS $$
+DECLARE
+    v_user_id UUID;
+    v_role VARCHAR;
+    v_total_count BIGINT;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_role
+    FROM auth.users
+    WHERE auth.users.id = v_user_id;
+
+    IF v_role != 'admin' THEN
+        RAISE EXCEPTION 'Unauthorized: Admin access required';
+    END IF;
+
+    -- Get total count for pagination
+    SELECT COUNT(*) INTO v_total_count
+    FROM user_credits uc
+    JOIN auth.users u ON u.id = uc.user_id
+    WHERE (p_search IS NULL OR p_search = '' OR 
+           LOWER(u.email) LIKE '%' || LOWER(p_search) || '%' OR
+           LOWER(COALESCE(u.raw_user_meta_data->>'full_name', '')) LIKE '%' || LOWER(p_search) || '%');
+
+    -- Return paginated results with total count
+    RETURN QUERY EXECUTE format(
+        'SELECT 
+            uc.user_id,
+            u.email::TEXT AS user_email,
+            COALESCE(u.raw_user_meta_data->>''full_name'', u.email)::TEXT AS user_name,
+            uc.balance,
+            uc.total_purchased,
+            uc.total_consumed,
+            uc.created_at,
+            uc.updated_at,
+            $1 AS total_count
+        FROM user_credits uc
+        JOIN auth.users u ON u.id = uc.user_id
+        WHERE ($2 IS NULL OR $2 = '''' OR 
+               LOWER(u.email) LIKE ''%%'' || LOWER($2) || ''%%'' OR
+               LOWER(COALESCE(u.raw_user_meta_data->>''full_name'', '''')) LIKE ''%%'' || LOWER($2) || ''%%'')
+        ORDER BY %s %s
+        LIMIT $3
+        OFFSET $4',
+        CASE 
+            WHEN p_sort_field IN ('user_email', 'user_name') THEN 'u.email'
+            WHEN p_sort_field IN ('balance', 'total_purchased', 'total_consumed', 'created_at', 'updated_at') THEN 'uc.' || p_sort_field
+            ELSE 'uc.balance'
+        END,
+        CASE WHEN UPPER(p_sort_order) = 'ASC' THEN 'ASC' ELSE 'DESC' END
+    )
+    USING v_total_count, p_search, p_limit, p_offset;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin: Adjust user credits (for refunds, corrections, etc.)
+CREATE OR REPLACE FUNCTION admin_adjust_user_credits(
+    p_target_user_id UUID,
+    p_amount DECIMAL,
+    p_reason TEXT
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_admin_id UUID;
+    v_role VARCHAR;
+    v_current_balance DECIMAL;
+    v_new_balance DECIMAL;
+    v_transaction_id UUID;
+    v_adjustment_type VARCHAR;
+BEGIN
+    v_admin_id := auth.uid();
+    IF v_admin_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_role
+    FROM auth.users
+    WHERE auth.users.id = v_admin_id;
+
+    IF v_role != 'admin' THEN
+        RAISE EXCEPTION 'Unauthorized: Admin access required';
+    END IF;
+
+    -- Initialize credits if not exists
+    INSERT INTO user_credits (user_id, balance)
+    VALUES (p_target_user_id, 0)
+    ON CONFLICT (user_id) DO NOTHING;
+
+    -- Lock the user credits row for update
+    SELECT balance INTO v_current_balance
+    FROM user_credits
+    WHERE user_id = p_target_user_id
+    FOR UPDATE;
+
+    v_new_balance := v_current_balance + p_amount;
+
+    IF v_new_balance < 0 THEN
+        RAISE EXCEPTION 'Adjustment would result in negative balance';
+    END IF;
+
+    -- Update user credits
+    UPDATE user_credits
+    SET 
+        balance = v_new_balance,
+        total_purchased = CASE 
+            WHEN p_amount > 0 THEN total_purchased + p_amount
+            ELSE total_purchased
+        END,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = p_target_user_id;
+
+    -- Determine adjustment type
+    IF p_amount > 0 THEN
+        v_adjustment_type := 'adjustment';
+    ELSIF p_amount < 0 THEN
+        v_adjustment_type := 'consumption';
+    ELSE
+        RAISE EXCEPTION 'Adjustment amount cannot be zero';
+    END IF;
+
+    -- Record transaction
+    INSERT INTO credit_transactions (
+        user_id, type, amount, balance_before, balance_after,
+        reference_type, description, metadata
+    ) VALUES (
+        p_target_user_id, v_adjustment_type, ABS(p_amount), 
+        v_current_balance, v_new_balance,
+        'admin_adjustment', p_reason,
+        jsonb_build_object('admin_id', v_admin_id, 'admin_action', true)
+    ) RETURNING id INTO v_transaction_id;
+
+    -- Log the operation
+    PERFORM log_operation(
+        format('Admin adjusted credits for user %s: %s%s credits - %s',
+            p_target_user_id,
+            CASE WHEN p_amount > 0 THEN '+' ELSE '' END,
+            p_amount, p_reason)
+    );
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'transaction_id', v_transaction_id,
+        'amount_adjusted', p_amount,
+        'new_balance', v_new_balance,
+        'previous_balance', v_current_balance
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Admin: Get credit system statistics
+CREATE OR REPLACE FUNCTION admin_get_credit_statistics()
+RETURNS JSONB AS $$
+DECLARE
+    v_user_id UUID;
+    v_role VARCHAR;
+    v_stats JSONB;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_role
+    FROM auth.users
+    WHERE auth.users.id = v_user_id;
+
+    IF v_role != 'admin' THEN
+        RAISE EXCEPTION 'Unauthorized: Admin access required';
+    END IF;
+
+    SELECT jsonb_build_object(
+        'total_credits_in_circulation', COALESCE(SUM(balance), 0),
+        'total_credits_purchased', COALESCE(SUM(total_purchased), 0),
+        'total_credits_consumed', COALESCE(SUM(total_consumed), 0),
+        'total_users_with_credits', COUNT(*),
+        'total_revenue_usd', (
+            SELECT COALESCE(SUM(amount_usd), 0)
+            FROM credit_purchases
+            WHERE status = 'completed'
+        ),
+        'monthly_purchases', (
+            SELECT COALESCE(SUM(amount_usd), 0)
+            FROM credit_purchases
+            WHERE status = 'completed'
+                AND created_at >= date_trunc('month', CURRENT_DATE)
+        ),
+        'monthly_consumption', (
+            SELECT COALESCE(SUM(total_credits), 0)
+            FROM credit_consumptions
+            WHERE created_at >= date_trunc('month', CURRENT_DATE)
+        ),
+        'pending_purchases', (
+            SELECT COUNT(*)
+            FROM credit_purchases
+            WHERE status = 'pending'
+        )
+    ) INTO v_stats
+    FROM user_credits;
+
+    RETURN v_stats;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+-- File: credit_management.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS initialize_user_credits CASCADE;
+DROP FUNCTION IF EXISTS get_user_credits CASCADE;
+DROP FUNCTION IF EXISTS check_credit_balance CASCADE;
+DROP FUNCTION IF EXISTS create_credit_purchase_record CASCADE;
+DROP FUNCTION IF EXISTS consume_credits_for_batch CASCADE;
+DROP FUNCTION IF EXISTS get_credit_transactions CASCADE;
+DROP FUNCTION IF EXISTS get_credit_purchases CASCADE;
+DROP FUNCTION IF EXISTS get_credit_consumptions CASCADE;
+DROP FUNCTION IF EXISTS create_credit_purchase CASCADE;
+DROP FUNCTION IF EXISTS get_credit_statistics CASCADE;
+
+-- Credit Management Stored Procedures
+-- Client-side functions for credit purchase, consumption, and management
+
+-- Initialize user credits (called when user first needs credits)
+CREATE OR REPLACE FUNCTION initialize_user_credits()
+RETURNS user_credits AS $$
+DECLARE
+    v_user_id UUID;
+    v_credits user_credits;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Insert or get existing credits record
+    INSERT INTO user_credits (user_id, balance, total_purchased, total_consumed)
+    VALUES (v_user_id, 0, 0, 0)
+    ON CONFLICT (user_id) DO NOTHING
+    RETURNING * INTO v_credits;
+
+    IF v_credits.id IS NULL THEN
+        SELECT * INTO v_credits FROM user_credits WHERE user_id = v_user_id;
+    END IF;
+
+    RETURN v_credits;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get user credit balance
+CREATE OR REPLACE FUNCTION get_user_credits()
+RETURNS TABLE (
+    balance DECIMAL,
+    total_purchased DECIMAL,
+    total_consumed DECIMAL,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Initialize credits if not exists
+    PERFORM initialize_user_credits();
+
+    RETURN QUERY
+    SELECT 
+        uc.balance,
+        uc.total_purchased,
+        uc.total_consumed,
+        uc.created_at,
+        uc.updated_at
+    FROM user_credits uc
+    WHERE uc.user_id = v_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Check if user has sufficient credits
+CREATE OR REPLACE FUNCTION check_credit_balance(p_required_credits DECIMAL)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_user_id UUID;
+    v_balance DECIMAL;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    SELECT balance INTO v_balance
+    FROM user_credits
+    WHERE user_id = v_user_id;
+
+    IF v_balance IS NULL THEN
+        -- Initialize credits if not exists
+        PERFORM initialize_user_credits();
+        v_balance := 0;
+    END IF;
+
+    RETURN v_balance >= p_required_credits;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create a pending credit purchase record
+CREATE OR REPLACE FUNCTION create_credit_purchase_record(
+    p_stripe_session_id VARCHAR,
+    p_amount_usd DECIMAL,
+    p_credits_amount DECIMAL,
+    p_metadata JSONB DEFAULT NULL,
+    p_user_id UUID DEFAULT NULL
+)
+RETURNS UUID AS $$
+DECLARE
+    v_user_id UUID;
+    v_purchase_id UUID;
+BEGIN
+    -- Use provided user_id or fall back to auth.uid()
+    v_user_id := COALESCE(p_user_id, auth.uid());
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Insert pending purchase record
+    INSERT INTO credit_purchases (
+        user_id,
+        stripe_session_id,
+        amount_usd,
+        credits_amount,
+        status,
+        metadata
+    ) VALUES (
+        v_user_id,
+        p_stripe_session_id,
+        p_amount_usd,
+        p_credits_amount,
+        'pending',
+        p_metadata
+    )
+    RETURNING id INTO v_purchase_id;
+
+    -- Log operation
+    PERFORM log_operation(
+        format('Credit purchase initiated: %s credits ($%s USD) - Session: %s', 
+            p_credits_amount, p_amount_usd, p_stripe_session_id)
+    );
+
+    RETURN v_purchase_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Consume credits for batch issuance
+CREATE OR REPLACE FUNCTION consume_credits_for_batch(
+    p_batch_id UUID,
+    p_card_count INTEGER
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_user_id UUID;
+    v_credits_per_card DECIMAL := 2.00; -- 2 credits per card
+    v_total_credits DECIMAL;
+    v_current_balance DECIMAL;
+    v_new_balance DECIMAL;
+    v_consumption_id UUID;
+    v_transaction_id UUID;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    v_total_credits := p_card_count * v_credits_per_card;
+
+    -- Lock the user credits row for update
+    SELECT balance INTO v_current_balance
+    FROM user_credits
+    WHERE user_id = v_user_id
+    FOR UPDATE;
+
+    IF v_current_balance IS NULL OR v_current_balance < v_total_credits THEN
+        RAISE EXCEPTION 'Insufficient credits. Required: %, Available: %', 
+            v_total_credits, COALESCE(v_current_balance, 0);
+    END IF;
+
+    v_new_balance := v_current_balance - v_total_credits;
+
+    -- Update user credits
+    UPDATE user_credits
+    SET 
+        balance = v_new_balance,
+        total_consumed = total_consumed + v_total_credits,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = v_user_id;
+
+    -- Record consumption
+    INSERT INTO credit_consumptions (
+        user_id, batch_id, consumption_type, quantity, 
+        credits_per_unit, total_credits, description
+    ) VALUES (
+        v_user_id, p_batch_id, 'batch_issuance', p_card_count,
+        v_credits_per_card, v_total_credits,
+        format('Batch issuance: %s cards', p_card_count)
+    ) RETURNING id INTO v_consumption_id;
+
+    -- Record transaction
+    INSERT INTO credit_transactions (
+        user_id, type, amount, balance_before, balance_after,
+        reference_type, reference_id, description
+    ) VALUES (
+        v_user_id, 'consumption', v_total_credits, v_current_balance, v_new_balance,
+        'batch_issuance', p_batch_id,
+        format('Batch issuance: %s cards @ %s credits each', p_card_count, v_credits_per_card)
+    ) RETURNING id INTO v_transaction_id;
+
+    -- Update batch with credit cost and payment method
+    UPDATE card_batches
+    SET 
+        credit_cost = v_total_credits,
+        payment_method = 'credits'
+    WHERE id = p_batch_id;
+
+    -- Log the operation
+    PERFORM log_operation(
+        format('Consumed %s credits for batch issuance: %s cards (Batch ID: %s)',
+            v_total_credits, p_card_count, p_batch_id)
+    );
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'consumption_id', v_consumption_id,
+        'transaction_id', v_transaction_id,
+        'credits_consumed', v_total_credits,
+        'new_balance', v_new_balance
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get credit transaction history
+CREATE OR REPLACE FUNCTION get_credit_transactions(
+    p_limit INTEGER DEFAULT 50,
+    p_offset INTEGER DEFAULT 0,
+    p_type VARCHAR DEFAULT NULL
+)
+RETURNS TABLE (
+    id UUID,
+    type VARCHAR,
+    amount DECIMAL,
+    balance_before DECIMAL,
+    balance_after DECIMAL,
+    reference_type VARCHAR,
+    reference_id UUID,
+    description TEXT,
+    metadata JSONB,
+    created_at TIMESTAMPTZ
+) AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        ct.id,
+        ct.type,
+        ct.amount,
+        ct.balance_before,
+        ct.balance_after,
+        ct.reference_type,
+        ct.reference_id,
+        ct.description,
+        ct.metadata,
+        ct.created_at
+    FROM credit_transactions ct
+    WHERE ct.user_id = v_user_id
+        AND (p_type IS NULL OR ct.type = p_type)
+    ORDER BY ct.created_at DESC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get credit purchase history
+CREATE OR REPLACE FUNCTION get_credit_purchases(
+    p_limit INTEGER DEFAULT 50,
+    p_offset INTEGER DEFAULT 0
+)
+RETURNS TABLE (
+    id UUID,
+    amount_usd DECIMAL,
+    credits_amount DECIMAL,
+    status VARCHAR,
+    payment_method JSONB,
+    receipt_url TEXT,
+    created_at TIMESTAMPTZ,
+    completed_at TIMESTAMPTZ
+) AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        cp.id,
+        cp.amount_usd,
+        cp.credits_amount,
+        cp.status,
+        cp.payment_method,
+        cp.receipt_url,
+        cp.created_at,
+        cp.completed_at
+    FROM credit_purchases cp
+    WHERE cp.user_id = v_user_id
+    ORDER BY cp.created_at DESC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get credit consumption history
+CREATE OR REPLACE FUNCTION get_credit_consumptions(
+    p_limit INTEGER DEFAULT 50,
+    p_offset INTEGER DEFAULT 0
+)
+RETURNS TABLE (
+    id UUID,
+    batch_id UUID,
+    card_id UUID,
+    consumption_type VARCHAR,
+    quantity INTEGER,
+    credits_per_unit DECIMAL,
+    total_credits DECIMAL,
+    description TEXT,
+    created_at TIMESTAMPTZ,
+    batch_name TEXT,
+    card_name TEXT
+) AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        cc.id,
+        cc.batch_id,
+        cc.card_id,
+        cc.consumption_type,
+        cc.quantity,
+        cc.credits_per_unit,
+        cc.total_credits,
+        cc.description,
+        cc.created_at,
+        b.batch_name AS batch_name,
+        c.name AS card_name
+    FROM credit_consumptions cc
+    LEFT JOIN card_batches b ON b.id = cc.batch_id
+    LEFT JOIN cards c ON c.id = cc.card_id
+    WHERE cc.user_id = v_user_id
+    ORDER BY cc.created_at DESC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create credit purchase record (called from Edge Function after Stripe checkout)
+CREATE OR REPLACE FUNCTION create_credit_purchase(
+    p_stripe_session_id VARCHAR,
+    p_amount_usd DECIMAL,
+    p_credits_amount DECIMAL,
+    p_metadata JSONB DEFAULT NULL
+)
+RETURNS UUID AS $$
+DECLARE
+    v_user_id UUID;
+    v_purchase_id UUID;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    INSERT INTO credit_purchases (
+        user_id, stripe_session_id, amount_usd, credits_amount, 
+        status, metadata
+    ) VALUES (
+        v_user_id, p_stripe_session_id, p_amount_usd, p_credits_amount,
+        'pending', p_metadata
+    ) RETURNING id INTO v_purchase_id;
+
+    -- Log the operation
+    PERFORM log_operation(
+        format('Created credit purchase: %s credits ($%s USD) - Session: %s',
+            p_credits_amount, p_amount_usd, p_stripe_session_id)
+    );
+
+    RETURN v_purchase_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get credit statistics for dashboard
+CREATE OR REPLACE FUNCTION get_credit_statistics()
+RETURNS JSONB AS $$
+DECLARE
+    v_user_id UUID;
+    v_stats JSONB;
+BEGIN
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    SELECT jsonb_build_object(
+        'current_balance', COALESCE(uc.balance, 0),
+        'total_purchased', COALESCE(uc.total_purchased, 0),
+        'total_consumed', COALESCE(uc.total_consumed, 0),
+        'recent_transactions', (
+            SELECT jsonb_agg(
+                jsonb_build_object(
+                    'id', ct.id,
+                    'type', ct.type,
+                    'amount', ct.amount,
+                    'description', ct.description,
+                    'created_at', ct.created_at
+                ) ORDER BY ct.created_at DESC
+            )
+            FROM (
+                SELECT * FROM credit_transactions
+                WHERE user_id = v_user_id
+                ORDER BY created_at DESC
+                LIMIT 5
+            ) ct
+        ),
+        'monthly_consumption', (
+            SELECT COALESCE(SUM(total_credits), 0)
+            FROM credit_consumptions
+            WHERE user_id = v_user_id
+                AND created_at >= date_trunc('month', CURRENT_DATE)
+        ),
+        'monthly_purchases', (
+            SELECT COALESCE(SUM(credits_amount), 0)
+            FROM credit_purchases
+            WHERE user_id = v_user_id
+                AND status = 'completed'
+                AND created_at >= date_trunc('month', CURRENT_DATE)
+        )
+    ) INTO v_stats
+    FROM user_credits uc
+    WHERE uc.user_id = v_user_id;
+
+    RETURN COALESCE(v_stats, jsonb_build_object(
+        'current_balance', 0,
+        'total_purchased', 0,
+        'total_consumed', 0,
+        'recent_transactions', '[]'::jsonb,
+        'monthly_consumption', 0,
+        'monthly_purchases', 0
+    ));
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+
+
 -- =================================================================
 -- SERVER-SIDE PROCEDURES
 -- =================================================================
@@ -3435,7 +4439,10 @@ BEGIN
     ) RETURNING id INTO v_payment_id;
     
     -- Log operation
-    PERFORM log_operation('Created batch payment for batch ' || p_batch_id || ' (Payment ID: ' || v_payment_id || ', Amount: $' || (p_amount_cents::DECIMAL / 100) || ')');
+    PERFORM log_operation(
+        format('Batch payment created: $%s for batch %s', 
+            (p_amount_cents / 100.0)::numeric(10,2), p_batch_id)
+    );
     
     RETURN v_payment_id;
 END;
@@ -3541,7 +4548,10 @@ BEGIN
     PERFORM generate_batch_cards(v_payment_record.batch_id);
     
     -- Log operation
-    PERFORM log_operation('Confirmed batch payment via Stripe (Batch ID: ' || v_payment_record.batch_id || ', Amount: $' || (v_payment_record.amount_cents::DECIMAL / 100) || ')');
+    PERFORM log_operation(
+        format('Batch payment confirmed: $%s for batch %s', 
+            (v_payment_record.amount_cents / 100.0)::numeric(10,2), v_payment_record.batch_id)
+    );
     
     RETURN v_payment_record.batch_id;
 END;
@@ -3642,7 +4652,10 @@ BEGIN
     RETURNING id INTO v_payment_id;
     
     -- Log operation
-    PERFORM log_operation('Created pending batch payment for card ' || p_card_id || ' (' || p_cards_count || ' cards, Payment ID: ' || v_payment_id || ')');
+    PERFORM log_operation(
+        format('Pending batch payment created: $%s for %s cards', 
+            (p_amount_cents / 100.0)::numeric(10,2), p_cards_count)
+    );
     
     RETURN v_payment_id;
 END;
@@ -3720,11 +4733,204 @@ BEGIN
     PERFORM generate_batch_cards(v_batch_id);
     
     -- Log operation
-    PERFORM log_operation('Confirmed pending batch payment and created batch: ' || v_generated_batch_name || ' (Batch ID: ' || v_batch_id || ', ' || v_payment_record.cards_count || ' cards)');
+    PERFORM log_operation(
+        format('Pending batch payment confirmed: batch "%s" with %s cards created', 
+            v_generated_batch_name, v_payment_record.cards_count)
+    );
     
     RETURN v_batch_id;
 END;
 $$;
 
  
+
+-- File: credit_purchase_completion.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS complete_credit_purchase CASCADE;
+DROP FUNCTION IF EXISTS refund_credit_purchase CASCADE;
+
+-- Server-side Credit Purchase Completion
+-- Called by Edge Function after successful Stripe payment
+
+-- Complete credit purchase after Stripe payment
+CREATE OR REPLACE FUNCTION complete_credit_purchase(
+    p_stripe_session_id VARCHAR,
+    p_stripe_payment_intent_id VARCHAR DEFAULT NULL,
+    p_receipt_url TEXT DEFAULT NULL,
+    p_payment_method JSONB DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_purchase_id UUID;
+    v_user_id UUID;
+    v_credits_amount DECIMAL;
+    v_current_balance DECIMAL;
+    v_new_balance DECIMAL;
+    v_transaction_id UUID;
+BEGIN
+    -- Get the pending purchase record
+    SELECT id, user_id, credits_amount
+    INTO v_purchase_id, v_user_id, v_credits_amount
+    FROM credit_purchases
+    WHERE stripe_session_id = p_stripe_session_id
+        AND status = 'pending';
+
+    IF v_purchase_id IS NULL THEN
+        RAISE EXCEPTION 'Credit purchase not found or already processed: %', p_stripe_session_id;
+    END IF;
+
+    -- Initialize credits if not exists
+    INSERT INTO user_credits (user_id, balance, total_purchased, total_consumed)
+    VALUES (v_user_id, 0, 0, 0)
+    ON CONFLICT (user_id) DO NOTHING;
+
+    -- Lock the user credits row for update
+    SELECT balance INTO v_current_balance
+    FROM user_credits
+    WHERE user_id = v_user_id
+    FOR UPDATE;
+
+    v_new_balance := v_current_balance + v_credits_amount;
+
+    -- Update user credits
+    UPDATE user_credits
+    SET 
+        balance = v_new_balance,
+        total_purchased = total_purchased + v_credits_amount,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = v_user_id;
+
+    -- Update purchase record
+    UPDATE credit_purchases
+    SET 
+        status = 'completed',
+        stripe_payment_intent_id = p_stripe_payment_intent_id,
+        receipt_url = p_receipt_url,
+        payment_method = p_payment_method,
+        completed_at = CURRENT_TIMESTAMP
+    WHERE id = v_purchase_id;
+
+    -- Record transaction
+    INSERT INTO credit_transactions (
+        user_id, type, amount, balance_before, balance_after,
+        reference_type, reference_id, description, metadata
+    ) VALUES (
+        v_user_id, 'purchase', v_credits_amount, v_current_balance, v_new_balance,
+        'stripe_purchase', v_purchase_id,
+        format('Credit purchase: %s credits', v_credits_amount),
+        jsonb_build_object(
+            'stripe_session_id', p_stripe_session_id,
+            'stripe_payment_intent_id', p_stripe_payment_intent_id
+        )
+    ) RETURNING id INTO v_transaction_id;
+
+    -- Note: This is called by webhooks without auth context, so we don't log to operations_log
+    -- The credit_transactions table serves as the complete audit log for these operations
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'purchase_id', v_purchase_id,
+        'transaction_id', v_transaction_id,
+        'credits_added', v_credits_amount,
+        'new_balance', v_new_balance,
+        'user_id', v_user_id
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Refund credit purchase
+CREATE OR REPLACE FUNCTION refund_credit_purchase(
+    p_purchase_id UUID,
+    p_refund_amount DECIMAL,
+    p_reason TEXT DEFAULT 'Customer requested refund'
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_user_id UUID;
+    v_credits_amount DECIMAL;
+    v_current_balance DECIMAL;
+    v_new_balance DECIMAL;
+    v_transaction_id UUID;
+    v_purchase_status VARCHAR;
+BEGIN
+    -- Get the purchase record
+    SELECT user_id, credits_amount, status
+    INTO v_user_id, v_credits_amount, v_purchase_status
+    FROM credit_purchases
+    WHERE id = p_purchase_id;
+
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Credit purchase not found: %', p_purchase_id;
+    END IF;
+
+    IF v_purchase_status != 'completed' THEN
+        RAISE EXCEPTION 'Cannot refund purchase with status: %', v_purchase_status;
+    END IF;
+
+    IF p_refund_amount > v_credits_amount THEN
+        RAISE EXCEPTION 'Refund amount exceeds original purchase amount';
+    END IF;
+
+    -- Lock the user credits row for update
+    SELECT balance INTO v_current_balance
+    FROM user_credits
+    WHERE user_id = v_user_id
+    FOR UPDATE;
+
+    IF v_current_balance < p_refund_amount THEN
+        RAISE EXCEPTION 'Insufficient credits for refund. Current balance: %, Refund amount: %', 
+            v_current_balance, p_refund_amount;
+    END IF;
+
+    v_new_balance := v_current_balance - p_refund_amount;
+
+    -- Update user credits
+    UPDATE user_credits
+    SET 
+        balance = v_new_balance,
+        total_purchased = total_purchased - p_refund_amount,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = v_user_id;
+
+    -- Update purchase record
+    UPDATE credit_purchases
+    SET 
+        status = CASE 
+            WHEN p_refund_amount = credits_amount THEN 'refunded'
+            ELSE 'completed' -- Partial refund
+        END,
+        metadata = COALESCE(metadata, '{}'::jsonb) || jsonb_build_object(
+            'refund_amount', p_refund_amount,
+            'refund_reason', p_reason,
+            'refund_at', CURRENT_TIMESTAMP
+        )
+    WHERE id = p_purchase_id;
+
+    -- Record transaction
+    INSERT INTO credit_transactions (
+        user_id, type, amount, balance_before, balance_after,
+        reference_type, reference_id, description, metadata
+    ) VALUES (
+        v_user_id, 'refund', p_refund_amount, v_current_balance, v_new_balance,
+        'stripe_refund', p_purchase_id,
+        format('Credit refund: %s credits - %s', p_refund_amount, p_reason),
+        jsonb_build_object(
+            'original_purchase_id', p_purchase_id,
+            'refund_reason', p_reason
+        )
+    ) RETURNING id INTO v_transaction_id;
+
+    -- Note: This is called by webhooks without auth context, so we don't log to operations_log  
+    -- The credit_transactions table serves as the complete audit log for these operations
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'purchase_id', p_purchase_id,
+        'transaction_id', v_transaction_id,
+        'credits_refunded', p_refund_amount,
+        'new_balance', v_new_balance
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 

@@ -80,7 +80,7 @@ BEGIN
     RETURNING id INTO v_print_request_id;
 
     -- Log operation
-    PERFORM log_operation('Requested card printing for batch ' || p_batch_id || ' (Request ID: ' || v_print_request_id || ')');
+    PERFORM log_operation('Submitted print request');
 
     RETURN v_print_request_id;
 END;
@@ -180,8 +180,8 @@ BEGIN
     WHERE id = p_request_id;
 
     -- Log operation
-    PERFORM log_operation('Withdrew print request for batch: ' || v_batch_name || ' (Request ID: ' || p_request_id || ')');
+    PERFORM log_operation(format('Withdrew print request for batch "%s"', v_batch_name));
     
-    RETURN FOUND;
+    RETURN TRUE;
 END;
 $$; 

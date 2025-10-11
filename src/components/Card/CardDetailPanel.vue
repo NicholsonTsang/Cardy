@@ -91,6 +91,8 @@
                                 v-if="index === 3" 
                                 :cardId="selectedCard.id"
                                 :cardName="selectedCard.name"
+                                :selectedBatchId="selectedBatchId"
+                                @batch-changed="$emit('batch-changed', $event)"
                                 :key="selectedCard.id + '-access-qr'" 
                             />
                             <!-- Preview Tab -->
@@ -146,10 +148,15 @@ const props = defineProps({
     updateCardFn: {
         type: Function,
         default: null
+    },
+    selectedBatchId: {
+        type: String,
+        default: null
     }
 });
 
 const emit = defineEmits([
+    'batch-changed',
     'update:activeTab',
     'update-card',
     'cancel-edit',

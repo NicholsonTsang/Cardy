@@ -22,8 +22,11 @@
     "view": "View",
     "actions": "Actions",
     "status": "Status",
+    "type": "类型",
     "date": "Date",
     "name": "Name",
+    "card": "卡片",
+    "user": "用户",
     "description": "Description",
     "email": "Email",
     "password": "Password",
@@ -214,15 +217,72 @@
   },
 
   "messages": {
-    "save_success": "Saved successfully",
-    "delete_success": "Deleted successfully",
-    "update_success": "Updated successfully",
-    "create_success": "Created successfully",
-    "operation_failed": "Operation failed",
-    "confirm_delete": "Are you sure you want to delete this?",
-    "no_data_available": "No data available",
-    "loading_data": "Loading data...",
-    "network_error": "Network error. Please try again."
-  }
+    "save_success": "保存成功",
+    "delete_success": "删除成功",
+    "update_success": "更新成功",
+    "create_success": "创建成功",
+    "operation_failed": "操作失败",
+    "confirm_delete": "确定要删除吗？",
+    "no_data_available": "暂无数据",
+    "loading_data": "加载中...",
+    "network_error": "网络错误，请重试"
+  },
+
+  "credits": {
+    "title": "积分管理",
+    "description": "购买和管理您的卡片发行积分",
+    "balance": "余额",
+    "credits": "积分",
+    "currentBalance": "当前余额",
+    "availableCredits": "可用积分",
+    "totalPurchased": "累计购买",
+    "totalConsumed": "累计消耗",
+    "monthlyPurchases": "本月购买",
+    "monthlyConsumption": "本月消耗",
+    "purchaseCredits": "购买积分",
+    "selectAmount": "选择数量",
+    "customAmount": "自定义数量",
+    "enterAmount": "输入数量",
+    "totalToPay": "支付总额",
+    "youWillReceive": "您将获得",
+    "proceedToPayment": "前往支付",
+    "redirectingToPayment": "正在跳转到支付页面",
+    "redirectingToPaymentDetail": "您将被重定向到 Stripe 进行安全支付",
+    "purchaseError": "创建支付会话失败",
+    "recentTransactions": "最近交易",
+    "purchaseHistory": "购买历史",
+    "consumptionHistory": "消耗历史",
+    "amount": "金额",
+    "balanceAfter": "余额",
+    "creditsAmount": "积分数量",
+    "amountUSD": "金额 (USD)",
+    "receipt": "收据",
+    "viewReceipt": "查看收据",
+    "completedAt": "完成时间",
+    "totalCredits": "总积分",
+    "type": {
+      "purchase": "购买",
+      "consumption": "消耗",
+      "refund": "退款",
+      "adjustment": "调整"
+    },
+    "status": {
+      "pending": "待处理",
+      "completed": "已完成",
+      "failed": "失败",
+      "refunded": "已退款"
+    }
+  },
+
+  "batch": {
+    "batch": "批次",
+    "quantity": "数量"
+  },
+
+  "file_analyzed": "文件分析完成",
+  "file_analyzed_desc": "找到 {count} 个内容项目。",
+  "file_analyzed_desc_with_images": "找到 {count} 个内容项目，包含 {images} 张内嵌图片。",
+  "validation_issues": "发现验证问题",
+  "validation_issues_desc": "导入前请修正文件中的 {errors} 个错误。"
 }
 

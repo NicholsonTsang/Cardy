@@ -48,10 +48,12 @@
                         :loading="isLoading"
                         :updateCardFn="handleCardUpdate"
                         v-model:activeTab="activeTabString"
+                        :selectedBatchId="selectedBatchId"
                         @update-card="handleCardUpdate"
                         @cancel-edit="handleCardCancel"
                         @delete-card="triggerDeleteConfirmation"
                         @card-imported="handleCardImported"
+                        @batch-changed="handleBatchChange"
                     />
                 </div>
             </div>
@@ -89,6 +91,7 @@ const router = useRouter();
 // Component state
 const search = ref('');
 const selectedCardId = ref(null);
+const selectedBatchId = ref(null);
 const showAddCardDialog = ref(false);
 const cardCreateEditRef = ref(null);
 const activeTab = ref(0);
@@ -140,7 +143,7 @@ const activeTabString = computed({
     set: (value) => {
         const tabIndex = parseInt(value);
         activeTab.value = tabIndex;
-        updateURL(null, tabIndex);
+        updateURL(null, tabIndex, null);
     }
 });
 
@@ -161,7 +164,7 @@ watch([selectedCardId, cards], () => {
 watch(
     () => route.query,
     (newQuery, oldQuery) => {
-        if (newQuery.cardId !== oldQuery.cardId || newQuery.tab !== oldQuery.tab) {
+        if (newQuery.cardId !== oldQuery.cardId || newQuery.tab !== oldQuery.tab || newQuery.batchId !== oldQuery.batchId) {
             initializeFromURL();
         }
     }
@@ -179,7 +182,14 @@ watch(
 // Methods
 const handleSelectCard = (cardId) => {
     selectedCardId.value = cardId;
-    updateURL(cardId, activeTab.value);
+    // Clear batch selection when switching cards
+    selectedBatchId.value = null;
+    updateURL(cardId, activeTab.value, null);
+};
+
+const handleBatchChange = (batchId) => {
+    selectedBatchId.value = batchId;
+    updateURL(null, activeTab.value, batchId);
 };
 
 const handlePageChange = (event) => {
@@ -191,8 +201,9 @@ const clearDateFilters = () => {
     selectedMonth.value = null;
 };
 
-const updateURL = (cardId = null, tab = 0) => {
+const updateURL = (cardId = null, tab = 0, batchId = null) => {
     const currentCardId = cardId || (selectedCardId.value !== null ? selectedCardId.value : null);
+    const currentBatchId = batchId !== null ? batchId : selectedBatchId.value;
     const query = {};
     
     if (currentCardId) {
@@ -203,7 +214,12 @@ const updateURL = (cardId = null, tab = 0) => {
         query.tab = getTabName(tab);
     }
     
-    if (route.query.cardId !== query.cardId || route.query.tab !== query.tab) {
+    // Only include batchId if we're on the access tab
+    if (currentBatchId && tab === 3) {
+        query.batchId = currentBatchId;
+    }
+    
+    if (route.query.cardId !== query.cardId || route.query.tab !== query.tab || route.query.batchId !== query.batchId) {
         router.replace({ 
             name: route.name, 
             query: query 
@@ -236,6 +252,11 @@ const initializeFromURL = () => {
                 router.replace({ name: route.name, query: {} });
             }
         }
+    }
+    
+    // Initialize batchId from URL if on access tab
+    if (route.query.batchId && activeTab.value === 3) {
+        selectedBatchId.value = route.query.batchId;
     }
 };
 

@@ -20,6 +20,13 @@
 
         <!-- Right Side: Main Navigation Menu -->
         <div class="flex items-center space-x-4">
+          <!-- Credit Balance Display (for Card Issuers) -->
+          <div v-if="isAuthenticated && userRole === 'cardIssuer'" class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg">
+            <i class="pi pi-wallet text-blue-600"></i>
+            <span class="text-sm font-medium text-gray-700">{{ $t('credits.balance') }}:</span>
+            <span class="text-sm font-bold text-blue-600">{{ creditBalance }}</span>
+          </div>
+          
           <!-- Dashboard Language Selector -->
           <DashboardLanguageSelector />
           
@@ -82,10 +89,11 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useCreditStore } from '@/stores/credits'
 import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import { useToast } from 'primevue/usetoast'
@@ -94,10 +102,19 @@ import DashboardLanguageSelector from '@/components/DashboardLanguageSelector.vu
 const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
+const creditStore = useCreditStore()
 const toast = useToast()
 
 // Refs for popup menus
 const mainMenu = ref()
+
+// Credit balance for card issuers
+const creditBalance = computed(() => {
+  if (userRole.value === 'cardIssuer') {
+    return creditStore.formattedBalance
+  }
+  return '0.00'
+})
 
 // Computed properties
 const isAuthenticated = computed(() => {
@@ -140,10 +157,22 @@ const getUserRoleFromSession = () => {
 watch(isAuthenticated, (newVal) => {
   if (newVal) {
     getUserRoleFromSession()
+    // Fetch credit balance if user is a card issuer
+    if (userRole.value === 'cardIssuer') {
+      creditStore.fetchCreditBalance()
+    }
   } else {
     userRole.value = null
+    creditStore.clearStore()
   }
 }, { immediate: true })
+
+// Watch for role changes to fetch credit balance
+watch(userRole, (newRole) => {
+  if (newRole === 'cardIssuer' && isAuthenticated.value) {
+    creditStore.fetchCreditBalance()
+  }
+})
 const userEmail = computed(() => {
   if (!authStore.isLoggedIn()) {
     return ''
@@ -170,6 +199,11 @@ const cardIssuerMenuItems = computed(() => [
     label: t('dashboard.my_cards'),
     icon: 'pi pi-folder',
     command: () => router.push('/cms/mycards')
+  },
+  {
+    label: t('credits.title'),
+    icon: 'pi pi-wallet',
+    command: () => router.push('/cms/credits')
   }
 ])
 
@@ -188,6 +222,11 @@ const adminMenuItems = computed(() => [
     label: t('header.batch_management'),
     icon: 'pi pi-box',
     command: () => router.push('/cms/admin/batches')
+  },
+  {
+    label: t('admin.credits.title'),
+    icon: 'pi pi-wallet',
+    command: () => router.push('/cms/admin/credits')
   },
   {
     label: t('admin.print_requests'),

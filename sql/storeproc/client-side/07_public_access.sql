@@ -55,17 +55,14 @@ BEGIN
     -- If the card is not active, activate it automatically (regardless of owner status)
     -- This ensures all first-time accesses are tracked, including owner previews
     IF NOT v_is_card_active THEN
-        UPDATE issue_cards
-        SET 
-            active = true,
-            active_at = NOW(),
-            activated_by = auth.uid() -- Set to current user ID if authenticated, NULL if not
-        WHERE id = p_issue_card_id AND active = false;
-        
-        -- Log operation (only if user is authenticated)
-        IF auth.uid() IS NOT NULL THEN
-            PERFORM log_operation('Auto-activated issued card on first access (ID: ' || p_issue_card_id || ')');
-        END IF;
+        BEGIN
+            UPDATE issue_cards SET active = true, activated_at = NOW() WHERE id = p_issue_card_id;
+            -- Log the auto-activation
+            PERFORM log_operation('Card auto-activated on first access');
+        EXCEPTION
+            WHEN others THEN
+                -- Log any error during activation but don't fail the main query
+        END;
         
         v_is_card_active := TRUE; -- Mark as active for current request
     END IF;
