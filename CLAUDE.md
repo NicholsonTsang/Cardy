@@ -95,13 +95,33 @@ CardStudio is a comprehensive **digital souvenir and exhibition platform** that 
 
 For local development, Supabase migrations run automatically on `supabase start`.
 
-For production:
+For production deployment:
 1. Combine stored procedures: `./scripts/combine-storeproc.sh`
 2. Navigate to Supabase Dashboard > SQL Editor
 3. Execute `sql/schema.sql`
 4. Execute `sql/all_stored_procedures.sql`
 5. Execute `sql/policy.sql`
 6. Execute `sql/triggers.sql`
+
+**Database Update Workflow:**
+
+When database schema or stored procedures need updates:
+
+1. **Edit Source Files**:
+   - Modify `sql/schema.sql` for schema changes (tables, enums, indexes)
+   - Modify files in `sql/storeproc/client-side/` for client procedures
+   - Modify files in `sql/storeproc/server-side/` for server procedures
+
+2. **Generate Combined File**:
+   - Run `./scripts/combine-storeproc.sh`
+   - This generates/updates `sql/all_stored_procedures.sql` from individual files
+
+3. **Manual Deployment** (user responsibility):
+   - Copy SQL from modified files
+   - Execute in Supabase Dashboard > SQL Editor
+   - No migration scripts needed - manual deployment only
+
+**Note**: `sql/all_stored_procedures.sql` is a GENERATED file. Always edit the source files in `sql/storeproc/`, not the generated file.
 
 ## Key Commands
 
@@ -121,12 +141,15 @@ supabase db reset           # Reset local database (runs migrations)
 supabase gen types typescript --local > src/types/supabase.ts  # Generate TypeScript types
 
 # Database Deployment (Manual via Supabase Dashboard)
-# 1. Combine stored procedures: ./scripts/combine-storeproc.sh
-# 2. Navigate to SQL Editor in Supabase Dashboard
-# 3. Copy contents of sql/schema.sql and execute
-# 4. Copy contents of sql/all_stored_procedures.sql and execute
-# 5. Copy contents of sql/policy.sql and execute
-# 6. Copy contents of sql/triggers.sql and execute
+# When updating database schema or stored procedures:
+# 1. Edit source files in sql/schema.sql or sql/storeproc/
+# 2. Run: ./scripts/combine-storeproc.sh (generates all_stored_procedures.sql)
+# 3. Navigate to Supabase Dashboard > SQL Editor
+# 4. Manually copy and execute SQL files in order:
+#    - sql/schema.sql
+#    - sql/all_stored_procedures.sql
+#    - sql/policy.sql
+#    - sql/triggers.sql
 
 # Edge Functions
 npx supabase functions serve                    # Run all functions locally
@@ -196,11 +219,11 @@ Cardy/
 │   └── main.ts             # App entry
 ├── sql/                    # Database
 │   ├── schema.sql          # Tables, enums, indexes
-│   ├── all_stored_procedures.sql  # All RPC functions
-│   ├── storeproc/          # Modular: client-side/ (auth, card, content, etc.), server-side/ (payments)
+│   ├── all_stored_procedures.sql  # GENERATED - All RPC functions (do not edit directly)
+│   ├── storeproc/          # Source files: client-side/ (auth, card, content), server-side/ (payments)
 │   ├── policy.sql          # RLS policies
 │   ├── triggers.sql        # Triggers
-│   └── migrations/         # Versioned changes
+│   └── migrations/         # Versioned changes (for reference)
 ├── supabase/               # Supabase config
 │   ├── config.toml
 │   └── functions/          # Edge Functions (Deno)
@@ -298,8 +321,11 @@ Cardy/
 ### Backend (Supabase)
 1. **Database**:
    - Combine stored procedures: `./scripts/combine-storeproc.sh`
-   - Run schema/stored procs/policies/triggers in SQL Editor
-   - Apply migrations from `sql/migrations/`
+   - Manually execute SQL files in Supabase Dashboard SQL Editor:
+     1. `sql/schema.sql`
+     2. `sql/all_stored_procedures.sql`
+     3. `sql/policy.sql`
+     4. `sql/triggers.sql`
 
 2. **Edge Functions Secrets** (must be set before deployment):
    - Configure: `./scripts/setup-production-secrets.sh`
@@ -322,6 +348,7 @@ Cardy/
 ## Notes and Best Practices
 
 - **Database Access**: **NEVER** use `supabase.from()`. All database operations are handled via `supabase.rpc()` calling stored procedures (e.g., `get_public_card_content`, `create_card`, `update_content_item`). This pattern ensures security and centralizes business logic. Direct table access is prohibited.
+- **Database Updates**: When updating stored procedures, edit source files in `sql/storeproc/`, run `./scripts/combine-storeproc.sh`, then manually execute the generated `sql/all_stored_procedures.sql` in Supabase Dashboard. Do NOT write migration scripts - user handles manual deployment.
 - **Role Handling**: Supabase Auth with custom roles stored in `raw_user_meta_data.role`. Router guards check 'admin' vs 'cardIssuer'. After role changes, users must refresh their session to sync metadata.
 - **Image Handling**: All cards use 2:3 aspect ratio. Images cropped via `vue-advanced-cropper`. Both original and cropped versions stored in Supabase Storage buckets. Crop parameters saved to enable re-cropping.
 - **AI Costs**: Use `gpt-4o-mini` for chat mode, `gpt-realtime-mini-2025-10-06` for voice mode (realtime). Implement safeguards: session limits, inactivity timeouts, daily caps.
