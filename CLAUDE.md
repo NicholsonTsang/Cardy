@@ -344,29 +344,28 @@ I scanned the repository's markdown documents and consolidated the most importan
   - Purpose: Centralized environment variable guidance for all Supabase Edge Functions (chat-with-audio, generate-tts-audio, create-checkout-session, etc.).
   - Action: Relevant secrets and deployment checklist have been summarized into the Setup & Deployment and Environment Variables sections above.
 
-## Suggested archival (review before action)
+## Archived files (moved to `docs_archive/`)
 
-These files mostly contain implementation details, bugfix notes, or duplicates of the core docs consolidated above. I recommend archiving them to `docs_archive/` unless you prefer to keep them in the repo:
+I archived a curated set of implementation and deployment documents into `docs_archive/` to reduce clutter while preserving full content and git history. Originals were removed from the repository root and the archived copies are committed under `docs_archive/`.
 
-- REALTIME_AUDIO_FULL_IMPLEMENTATION.md
-- AI_STREAMING_IMPLEMENTATION.md
-- AI_TEXT_TTS_IMPLEMENTATION.md
-- AI_ASSISTANT_DEPLOYMENT_GUIDE.md
-- AI_ASSISTANT_IMPLEMENTATION_COMPLETE.md
-- REALTIME_CONNECTION_RACE_CONDITION_FIX.md
-- REALTIME_COST_SAFEGUARDS.md
-- OPENAI_RELAY_IMPLEMENTATION_SUMMARY.md
-- OPENAI_RELAY_SERVER_SETUP.md
-- openai-relay-server/* (entire directory — keep only if deploying relay)
-- AI_ASSISTANT_10_LANGUAGES.md
-- EDGE_FUNCTIONS_CONFIG.md
-- ENVIRONMENT_VARIABLES_GUIDE.md
-- DEPLOY_AI_ASSISTANT.md
-- STREAMING_QUICK_START.md
-- STREAMING_IMPLEMENTATION_PLAN.md
+Archived files (now in `docs_archive/`):
 
-If you approve, I'll create `docs_archive/` and move the listed files (and any other small auxiliary `.md` files you choose) into it. I will not delete anything without your explicit confirmation.
+- `REALTIME_AUDIO_FULL_IMPLEMENTATION.md`
+- `AI_STREAMING_IMPLEMENTATION.md`
+- `AI_TEXT_TTS_IMPLEMENTATION.md`
+- `AI_ASSISTANT_DEPLOYMENT_GUIDE.md`
+- `AI_ASSISTANT_IMPLEMENTATION_COMPLETE.md`
+- `AI_ASSISTANT_REVAMP.md`
+- `AI_ASSISTANT_10_LANGUAGES.md`
+- `EDGE_FUNCTIONS_CONFIG.md`
+- `OPENAI_RELAY_IMPLEMENTATION_SUMMARY.md`
+- `OPENAI_RELAY_SERVER_SETUP.md`
+- `STREAMING_QUICK_START.md`
+
+Also preserved in the repo (not archived) is the `openai-relay-server/` directory — keep it if you intend to deploy the relay, otherwise I can move it into `docs_archive/` as well.
+
+If you want additional files archived or want any archived file restored to the root, tell me which ones and I'll perform the change.
 
 ---
 
-For next steps, tell me whether to (A) archive the suggested files, (B) archive a different selection, or (C) keep everything as-is.
+Next actions: (A) archive more files, (B) restore specific archived files, or (C) finish — tell me which.
