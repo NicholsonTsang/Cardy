@@ -204,7 +204,11 @@ Cardy/
 │       ├── generate-tts-audio/  # TTS
 │       ├── openai-realtime-token/  # Realtime tokens
 │       └── ...             # Others: process-payment, openai-realtime-relay
-├── scripts/                # Deployment scripts
+├── scripts/                # Utility scripts
+│   ├── deploy-edge-functions.sh    # Deploy all Edge Functions
+│   ├── combine-storeproc.sh        # Combine stored procedures
+│   ├── setup-production-secrets.sh # Configure production secrets
+│   └── check-functions.sh          # Validate Edge Functions
 ├── .env.example            # Env template
 ├── package.json            # Dependencies: Vue, PrimeVue, Supabase, Stripe, OpenAI integrations
 └── ...                     # Config: tailwind.config.js, vite.config.ts, tsconfig.json
@@ -254,7 +258,7 @@ Cardy/
 
 ### Visitor (Mobile) Flow
 1. **QR Scan**: Loads `PublicCardView` with issued card ID (or preview mode).
-2. **Card Overview**: View card image/description, select language (10 options: en, zh-HK, zh-CN, es, fr, etc.).
+2. **Card Overview**: View card image/description, select language (10 options: en, zh-Hant (Traditional Chinese), zh-Hans (Simplified Chinese), ja, ko, es, fr, ru, ar, th).
 3. **Content Navigation**: Browse top-level items, drill into details with sub-items.
 4. **AI Interaction**:
    - **Chat Mode**: Text input or voice recording → Whisper STT → ChatGPT response → TTS audio.
@@ -273,9 +277,10 @@ Cardy/
 - **Print Requests**: Optional physical cards, status tracking, contact fields.
 
 ### Internationalization
-- 10 languages via vue-i18n.
-- Separate stores: `useMobileLanguageStore` (visitor), `useDashboardLanguageStore` (web).
-- Pluralization with pipe syntax.
+- 10 languages via vue-i18n: English (en), Traditional Chinese (zh-Hant), Simplified Chinese (zh-Hans), Japanese (ja), Korean (ko), Spanish (es), French (fr), Russian (ru), Arabic (ar), Thai (th).
+- Separate language stores: Mobile client uses `useMobileLanguageStore`, Dashboard uses `useDashboardLanguageStore`.
+- Pluralization with pipe syntax (e.g., `{count} card | {count} cards`).
+- RTL support for Arabic included in CSS.
 
 ## Deployment
 
@@ -302,11 +307,11 @@ Cardy/
 
 ## Notes and Best Practices
 
-- **Database Access**: **NEVER** use `supabase.from()`. All ops via `supabase.rpc()` (e.g., `get_public_card_content`).
-- **Role Handling**: Supabase Auth with custom roles in `raw_user_meta_data`. Guards in router check 'admin' vs 'cardIssuer'.
-- **Image Handling**: 2:3 aspect, crop via `vue-advanced-cropper`. Store original/cropped in Supabase Storage.
-- **AI Costs**: Use `gpt-4o-mini` for chat, `gpt-realtime-mini` for voice. Implement safeguards (session limits).
-- **Error Handling**: Use PrimeVue Toast (`useToast`) for user feedback. Log errors to console/audit.
+- **Database Access**: **NEVER** use `supabase.from()`. All database operations are handled via `supabase.rpc()` calling stored procedures (e.g., `get_public_card_content`, `create_card`, `update_content_item`). This pattern ensures security and centralizes business logic. Direct table access is prohibited.
+- **Role Handling**: Supabase Auth with custom roles stored in `raw_user_meta_data.role`. Router guards check 'admin' vs 'cardIssuer'. After role changes, users must refresh their session to sync metadata.
+- **Image Handling**: All cards use 2:3 aspect ratio. Images cropped via `vue-advanced-cropper`. Both original and cropped versions stored in Supabase Storage buckets. Crop parameters saved to enable re-cropping.
+- **AI Costs**: Use `gpt-4o-mini` for chat mode, `gpt-realtime-mini-2025-10-06` for voice mode (realtime). Implement safeguards: session limits, inactivity timeouts, daily caps.
+- **Error Handling**: Use PrimeVue Toast (`useToast`) for user feedback. Log errors to browser console and operations log (via stored procedures).
 - **Component Size**: Keep <400 lines; extract to composables.
 - **i18n**: Pipe syntax for plurals, no ICU. Update locales/en.json as base.
 - **Markdown**: Render with `marked` library, sanitize for `v-html`.
@@ -320,7 +325,7 @@ Cardy/
 - **Security**: RLS policies enforce public read-only for cards, auth for dashboard.
 - **Performance**: Lazy-load routes, virtual scrolling for lists, WebRTC for low-latency AI.
 
-For updates, scan .md files like `AI_ASSISTANT_COMPLETE_SPEC.md`, `FUNCTIONAL_ROADMAP.md` for feature details.
+For additional technical details, see files in `docs_archive/` (all implementation docs have been archived there).
 
 ## Consolidated documentation (scanned)
 
@@ -369,3 +374,39 @@ If you want additional files archived or want any archived file restored to the 
 ---
 
 Next actions: (A) archive more files, (B) restore specific archived files, or (C) finish — tell me which.
+
+## Deep archive summaries (high-level highlights extracted from `docs_archive/`)
+
+- **Realtime & Relay**:
+  - Realtime mode uses WebRTC + ephemeral tokens for low-latency voice (model: `gpt-realtime-mini-2025-10-06`). Prefer direct WebRTC connection when possible; use the relay (`openai-relay-server/` or Supabase Edge Function `openai-realtime-relay`) for regions where OpenAI is blocked. Relay supports Docker/Railway/AWS, requires `VITE_OPENAI_RELAY_URL`, TLS, CORS, health checks, and connection limits. Set `OPENAI_REALTIME_MODEL` in Supabase secrets. See `docs_archive/OPENAI_RELAY_SERVER_SETUP.md` and `docs_archive/OPENAI_RELAY_IMPLEMENTATION_SUMMARY.md`.
+
+- **AI Assistant Modes**:
+  - Two main modes: Chat Completion (text-first, cheaper) and Realtime (voice, low-latency). Recommended production flow: Text + TTS (STT → text generation → TTS) for cost/UX, plus text streaming (SSE) for faster perceived responses. See `docs_archive/AI_TEXT_TTS_IMPLEMENTATION.md` and `AI_STREAMING_IMPLEMENTATION.md`.
+
+- **Edge Functions & Secrets**:
+  - Central config in `supabase/config.toml` for local dev; use `supabase secrets set` in production. Required secrets: `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`. Optional overrides: `OPENAI_AUDIO_MODEL`, `OPENAI_TTS_VOICE`, `OPENAI_MAX_TOKENS`, `OPENAI_AUDIO_FORMAT`. See `docs_archive/EDGE_FUNCTIONS_CONFIG.md`.
+
+- **Internationalization (i18n)**:
+  - Platform supports 10 languages: `en` (English), `zh-Hant` (Traditional Chinese), `zh-Hans` (Simplified Chinese), `ja` (Japanese), `ko` (Korean), `es` (Spanish), `fr` (French), `ru` (Russian), `ar` (Arabic), `th` (Thai). AI assistant provides localized welcome messages and RTL handling for Arabic. Keep mobile and dashboard language stores separate (`useMobileLanguageStore` and `useDashboardLanguageStore`). See `docs_archive/AI_ASSISTANT_10_LANGUAGES.md`.
+
+- **Deployment & Ops**:
+  - Frontend: `npm run build` → deploy `dist/`. Edge Functions: `npx supabase functions deploy`. Always set secrets before deploy, add monitoring (health, logs, metrics), run browser compatibility tests (Safari/iOS). See `docs_archive/AI_ASSISTANT_DEPLOYMENT_GUIDE.md` and `docs_archive/REALTIME_AUDIO_FULL_IMPLEMENTATION.md`.
+
+- **Cost & Safeguards**:
+  - Realtime voice sessions are costlier (~$0.90 per 5-min session) than chat/text. Implement session timeouts, daily caps, and cost-monitoring; default to Text+TTS for public usage. See archived cost analysis files.
+
+- **Security & Best Practices**:
+  - Use ephemeral tokens for realtime, rotate API keys, never commit secrets, enforce RLS and CORS, and use HTTPS/WSS in production. See `docs_archive/EDGE_FUNCTIONS_CONFIG.md` and relay docs.
+
+- **Testing & Compatibility**:
+  - Test on Chrome, Firefox, Safari (desktop + iOS) and mobile browsers; verify microphone permissions, audio autoplay policies, and graceful fallbacks (text-only mode).
+
+- **Where to find full details**:
+  - All archived docs are in `docs_archive/`. Use the file names listed earlier in this document to jump to full guides, checklists, scripts, and config examples.
+
+---
+
+Next steps (pick one):
+- A: Archive additional files (specify filenames or patterns).
+- B: Restore specific archived files back to repo root (specify filenames).
+- C: Finalize and run a quick linter / smoke-check.
