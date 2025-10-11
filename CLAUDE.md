@@ -96,11 +96,12 @@ CardStudio is a comprehensive **digital souvenir and exhibition platform** that 
 For local development, Supabase migrations run automatically on `supabase start`.
 
 For production:
-1. Navigate to Supabase Dashboard > SQL Editor
-2. Execute `sql/schema.sql`
-3. Execute `sql/all_stored_procedures.sql`
-4. Execute `sql/policy.sql`
-5. Execute `sql/triggers.sql`
+1. Combine stored procedures: `./scripts/combine-storeproc.sh`
+2. Navigate to Supabase Dashboard > SQL Editor
+3. Execute `sql/schema.sql`
+4. Execute `sql/all_stored_procedures.sql`
+5. Execute `sql/policy.sql`
+6. Execute `sql/triggers.sql`
 
 ## Key Commands
 
@@ -120,22 +121,27 @@ supabase db reset           # Reset local database (runs migrations)
 supabase gen types typescript --local > src/types/supabase.ts  # Generate TypeScript types
 
 # Database Deployment (Manual via Supabase Dashboard)
-# 1. Navigate to SQL Editor in Supabase Dashboard
-# 2. Copy contents of sql/schema.sql and execute
-# 3. Copy contents of sql/all_stored_procedures.sql and execute
-# 4. Copy contents of sql/policy.sql and execute
-# 5. Copy contents of sql/triggers.sql and execute
+# 1. Combine stored procedures: ./scripts/combine-storeproc.sh
+# 2. Navigate to SQL Editor in Supabase Dashboard
+# 3. Copy contents of sql/schema.sql and execute
+# 4. Copy contents of sql/all_stored_procedures.sql and execute
+# 5. Copy contents of sql/policy.sql and execute
+# 6. Copy contents of sql/triggers.sql and execute
 
 # Edge Functions
 npx supabase functions serve                    # Run all functions locally
 npx supabase functions serve <function-name>    # Run specific function locally
-npx supabase functions deploy <function-name>   # Deploy specific function
-./scripts/deploy-edge-functions.sh              # Deploy all functions at once
 
-# Edge Function Secrets (Production)
+# Edge Function Secrets (Production - set BEFORE deployment)
+./scripts/setup-production-secrets.sh           # Interactive setup script
+# Or manually:
 npx supabase secrets set OPENAI_API_KEY=sk-...
 npx supabase secrets set STRIPE_SECRET_KEY=sk_live_...
 npx supabase secrets set OPENAI_REALTIME_MODEL=gpt-realtime-mini-2025-10-06
+
+# Edge Function Deployment (AFTER secrets are set)
+./scripts/deploy-edge-functions.sh              # Deploy all functions at once
+npx supabase functions deploy <function-name>   # Deploy specific function
 
 # View Edge Function Logs
 npx supabase functions logs <function-name>     # View logs for specific function
@@ -206,10 +212,10 @@ Cardy/
 │       ├── handle-checkout-success/  # Stripe webhook
 │       └── openai-realtime-token/  # WebRTC ephemeral tokens
 ├── scripts/                # Utility scripts
-│   ├── deploy-edge-functions.sh    # Deploy all Edge Functions
-│   ├── combine-storeproc.sh        # Combine stored procedures
-│   ├── setup-production-secrets.sh # Configure production secrets
-│   └── check-functions.sh          # Validate Edge Functions
+│   ├── combine-storeproc.sh        # Combine stored procedures into single file
+│   ├── setup-production-secrets.sh # Interactive production secrets setup
+│   ├── deploy-edge-functions.sh    # Deploy all Edge Functions at once
+│   └── check-functions.sh          # Validate Edge Functions before deploy
 ├── .env.example            # Env template
 ├── package.json            # Dependencies: Vue, PrimeVue, Supabase, Stripe, OpenAI integrations
 └── ...                     # Config: tailwind.config.js, vite.config.ts, tsconfig.json
@@ -291,19 +297,27 @@ Cardy/
 
 ### Backend (Supabase)
 1. **Database**:
-   - Run schema/stored procs/policies/triggers in SQL Editor.
-   - Apply migrations from `sql/migrations/`.
+   - Combine stored procedures: `./scripts/combine-storeproc.sh`
+   - Run schema/stored procs/policies/triggers in SQL Editor
+   - Apply migrations from `sql/migrations/`
 
-2. **Edge Functions**:
-   - `npx supabase functions deploy` for each, or script.
-   - Set secrets: OPENAI_API_KEY, STRIPE_SECRET_KEY, OPENAI_REALTIME_MODEL.
+2. **Edge Functions Secrets** (must be set before deployment):
+   - Configure: `./scripts/setup-production-secrets.sh`
+   - Or manually: `npx supabase secrets set OPENAI_API_KEY=sk-...`
+   - Required: `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`, `OPENAI_REALTIME_MODEL`
 
-3. **Storage Policies**: Included in `sql/policy.sql` for images.
+3. **Edge Functions Deployment**:
+   - Deploy all: `./scripts/deploy-edge-functions.sh`
+   - Or deploy individually: `npx supabase functions deploy <function-name>`
+
+4. **Storage Policies**: Included in `sql/policy.sql` for images
 
 ### Production Notes
-- Use production env vars.
-- Monitor Edge Function logs for API costs.
-- Test webhooks with Stripe CLI.
+- **Deployment Order**: Database → Secrets → Edge Functions → Frontend
+- Always set Edge Function secrets before deploying functions
+- Use production env vars for frontend build
+- Monitor Edge Function logs for API costs
+- Test webhooks with Stripe CLI locally before production
 
 ## Notes and Best Practices
 
@@ -367,18 +381,12 @@ Archived files (now in `docs_archive/`):
 - `OPENAI_RELAY_SERVER_SETUP.md`
 - `STREAMING_QUICK_START.md`
 
-Also preserved in the repo (not archived) is the `openai-relay-server/` directory — keep it if you intend to deploy the relay, otherwise I can move it into `docs_archive/` as well.
-
-If you want additional files archived or want any archived file restored to the root, tell me which ones and I'll perform the change.
-
----
-
-Next actions: (A) archive more files, (B) restore specific archived files, or (C) finish — tell me which.
+All implementation documentation has been consolidated and archived for reference.
 
 ## Deep archive summaries (high-level highlights extracted from `docs_archive/`)
 
 - **Realtime & Relay**:
-  - Realtime mode uses WebRTC + ephemeral tokens for low-latency voice (model: `gpt-realtime-mini-2025-10-06`). Direct WebRTC connection is used in production. Optional relay server implementation (`openai-relay-server/`) available for regions where OpenAI is blocked, but NOT deployed or active in current codebase. Set `OPENAI_REALTIME_MODEL` in Supabase secrets. See `docs_archive/OPENAI_RELAY_SERVER_SETUP.md` for relay setup if needed.
+  - Realtime mode uses WebRTC + ephemeral tokens for low-latency voice (model: `gpt-realtime-mini-2025-10-06`). Direct WebRTC connection is used in production. Set `OPENAI_REALTIME_MODEL` in Supabase secrets. See `docs_archive/REALTIME_AUDIO_FULL_IMPLEMENTATION.md` for implementation details.
 
 - **AI Assistant Modes**:
   - Two main modes: Chat Completion (text-first, cheaper) and Realtime (voice, low-latency). Recommended production flow: Text + TTS (STT → text generation → TTS) for cost/UX, plus text streaming (SSE) for faster perceived responses. See `docs_archive/AI_TEXT_TTS_IMPLEMENTATION.md` and `AI_STREAMING_IMPLEMENTATION.md`.
