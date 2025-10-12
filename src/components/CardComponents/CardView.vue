@@ -204,7 +204,7 @@
             </div>
 
             <!-- Multi-Language Translation Section - Full Width -->
-            <CardTranslationSection :card-id="cardProp.id" />
+            <CardTranslationSection ref="translationSectionRef" :card-id="cardProp.id" />
         </div>
 
         <!-- Edit Dialog -->
@@ -262,6 +262,7 @@ const emit = defineEmits(['edit', 'delete-requested', 'update-card']);
 
 const showEditDialog = ref(false);
 const editFormRef = ref(null);
+const translationSectionRef = ref(null);
 const isLoading = ref(false);
 
 // Language preview state
@@ -365,6 +366,12 @@ const handleSaveEdit = async () => {
             // Fallback to emit (but this won't work properly with MyDialog)
             await emit('update-card', payload);
         }
+        
+        // Refresh translation section to show updated original_language
+        if (translationSectionRef.value) {
+            translationSectionRef.value.loadTranslationStatus();
+        }
+        
         // Don't manually close dialog - MyDialog will close it automatically after success
     }
 };

@@ -5,7 +5,7 @@
         @click="showPurchaseDialog = true" 
         icon="pi pi-wallet" 
         :label="$t('credits.purchaseCredits')"
-        severity="success"
+        severity="primary"
         size="large"
       />
     </template>
@@ -442,7 +442,7 @@
             icon="pi pi-arrow-right"
             iconPos="right"
             size="large"
-            severity="success"
+            severity="primary"
           />
         </div>
       </template>

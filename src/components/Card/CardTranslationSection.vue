@@ -260,6 +260,11 @@ const getLanguageFlag = (languageCode: string): string => {
 onMounted(() => {
   loadTranslationStatus();
 });
+
+// Expose methods for parent component to call
+defineExpose({
+  loadTranslationStatus
+});
 </script>
 
 <style scoped>

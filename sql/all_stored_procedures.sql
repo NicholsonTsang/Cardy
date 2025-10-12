@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Sun Oct 12 16:16:07 HKT 2025
+-- Generated: Sun Oct 12 20:07:22 HKT 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -395,9 +395,15 @@ RETURNS TABLE (
     description TEXT,
     qr_code_position TEXT,
     image_url TEXT,
+    original_image_url TEXT,
+    crop_parameters JSONB,
     conversation_ai_enabled BOOLEAN,
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
+    translations JSONB,
+    original_language VARCHAR(10),
+    content_hash TEXT,
+    last_content_update TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -409,10 +415,16 @@ BEGIN
         c.name, 
         c.description, 
         c.qr_code_position::TEXT,
-        c.image_url, 
+        c.image_url,
+        c.original_image_url,
+        c.crop_parameters,
         c.conversation_ai_enabled,
         c.ai_instruction,
         c.ai_knowledge_base,
+        c.translations,
+        c.original_language,
+        c.content_hash,
+        c.last_content_update,
         c.created_at, 
         c.updated_at
     FROM cards c
@@ -4611,6 +4623,7 @@ CREATE OR REPLACE FUNCTION consume_credits_for_batch(
 RETURNS JSONB AS $$
 DECLARE
     v_user_id UUID;
+    v_card_id UUID;
     v_credits_per_card DECIMAL := 2.00; -- 2 credits per card
     v_total_credits DECIMAL;
     v_current_balance DECIMAL;
@@ -4624,6 +4637,15 @@ BEGIN
     END IF;
 
     v_total_credits := p_card_count * v_credits_per_card;
+
+    -- Get card_id from the batch
+    SELECT card_id INTO v_card_id
+    FROM card_batches
+    WHERE id = p_batch_id;
+
+    IF v_card_id IS NULL THEN
+        RAISE EXCEPTION 'Batch not found: %', p_batch_id;
+    END IF;
 
     -- Lock the user credits row for update
     SELECT balance INTO v_current_balance
@@ -4646,12 +4668,12 @@ BEGIN
         updated_at = CURRENT_TIMESTAMP
     WHERE user_id = v_user_id;
 
-    -- Record consumption
+    -- Record consumption (now includes card_id)
     INSERT INTO credit_consumptions (
-        user_id, batch_id, consumption_type, quantity, 
+        user_id, card_id, batch_id, consumption_type, quantity, 
         credits_per_unit, total_credits, description
     ) VALUES (
-        v_user_id, p_batch_id, 'batch_issuance', p_card_count,
+        v_user_id, v_card_id, p_batch_id, 'batch_issuance', p_card_count,
         v_credits_per_card, v_total_credits,
         format('Batch issuance: %s cards', p_card_count)
     ) RETURNING id INTO v_consumption_id;

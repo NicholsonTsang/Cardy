@@ -109,9 +109,15 @@ RETURNS TABLE (
     description TEXT,
     qr_code_position TEXT,
     image_url TEXT,
+    original_image_url TEXT,
+    crop_parameters JSONB,
     conversation_ai_enabled BOOLEAN,
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
+    translations JSONB,
+    original_language VARCHAR(10),
+    content_hash TEXT,
+    last_content_update TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -123,10 +129,16 @@ BEGIN
         c.name, 
         c.description, 
         c.qr_code_position::TEXT,
-        c.image_url, 
+        c.image_url,
+        c.original_image_url,
+        c.crop_parameters,
         c.conversation_ai_enabled,
         c.ai_instruction,
         c.ai_knowledge_base,
+        c.translations,
+        c.original_language,
+        c.content_hash,
+        c.last_content_update,
         c.created_at, 
         c.updated_at
     FROM cards c

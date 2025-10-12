@@ -369,13 +369,16 @@ const downloadCSV = () => {
 }
 
 // Watchers
-watch(() => props.selectedBatchId, (newBatchId) => {
+watch(() => props.selectedBatchId, async (newBatchId) => {
   // Update selected batch when prop changes from parent (URL change)
   if (newBatchId && selectedBatch.value !== newBatchId) {
+    // Reload batches first to ensure new batch is available (e.g., when navigating from Issue tab)
+    await loadBatches()
+    
     const batchExists = availableBatches.value.some(b => b.id === newBatchId)
     if (batchExists) {
       selectedBatch.value = newBatchId
-      loadIssuedCards(newBatchId)
+      await loadIssuedCards(newBatchId)
     }
   }
 })
@@ -399,6 +402,18 @@ onMounted(async () => {
     }
   } finally {
     loading.value = false
+  }
+})
+
+// Expose methods for parent component to call if needed
+defineExpose({
+  loadBatches,
+  refreshData: async () => {
+    await loadBatches()
+    // If a batch is already selected, reload its cards too
+    if (selectedBatch.value) {
+      await loadIssuedCards(selectedBatch.value)
+    }
   }
 })
 </script>

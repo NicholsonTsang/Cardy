@@ -193,7 +193,7 @@
                           size="small"
                           rounded
                           outlined
-                          severity="success"
+                          severity="primary"
                           @click="viewUserPurchases(data)"
                           v-tooltip.top="'View Purchases'"
                           class="action-btn"
