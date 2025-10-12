@@ -27,6 +27,17 @@
           </div>
         </div>
       </div>
+      
+      <!-- Clear Chat Button (after messages) -->
+      <div v-if="messages.length > 1" class="clear-chat-wrapper">
+        <button 
+          @click="$emit('clear-chat')"
+          class="clear-chat-button"
+        >
+          <i class="pi pi-trash" />
+          <span>{{ $t('mobile.clear_chat') }}</span>
+        </button>
+      </div>
     </div>
 
     <!-- Error Message -->
@@ -117,6 +128,7 @@ const emit = defineEmits<{
   (e: 'cancel-recording'): void
   (e: 'update-cancel-zone', value: boolean): void
   (e: 'play-audio', message: Message): void
+  (e: 'clear-chat'): void
 }>()
 
 const textInput = ref('')
@@ -166,6 +178,37 @@ watch(() => props.messages.length, async () => {
   flex-direction: column;
 }
 
+.clear-chat-wrapper {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+  padding-top: 0.75rem;
+}
+
+.clear-chat-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: #9ca3af;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.clear-chat-button:hover {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+.clear-chat-button i {
+  font-size: 0.75rem;
+}
+
 .error-banner {
   display: flex;
   align-items: center;
@@ -186,64 +229,80 @@ watch(() => props.messages.length, async () => {
 
 .input-container {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.5rem;
   align-items: center;
 }
 
 .text-input {
   flex: 1;
-  padding: 0.875rem 1rem;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
-  font-size: 1rem;
+  padding: 0.5rem 0.75rem;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
+  font-size: 0.9375rem;
   outline: none;
-  transition: border-color 0.2s;
+  transition: all 0.2s;
+  background: #f9fafb;
 }
 
 .text-input:focus {
   border-color: #3b82f6;
+  background: white;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
 
 .text-input:disabled {
   background: #f3f4f6;
   cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .input-icon-button {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
   color: #6b7280;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
 }
 
 .input-icon-button:hover:not(:disabled) {
-  background: #f9fafb;
-  border-color: #3b82f6;
-  color: #3b82f6;
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+}
+
+.input-icon-button:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .input-icon-button:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.input-icon-button.send-icon:not(:disabled) {
+.input-icon-button.send-icon {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   border-color: transparent;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
 }
 
 .input-icon-button.send-icon:hover:not(:disabled) {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
+  transform: translateY(-1px);
+}
+
+.input-icon-button.send-icon:disabled {
+  opacity: 0.5;
+  box-shadow: none;
 }
 
 /* Loading Indicator Styles (for non-streaming) */
@@ -339,6 +398,21 @@ watch(() => props.messages.length, async () => {
   
   .input-area {
     padding: 0.75rem;
+  }
+  
+  .input-container {
+    gap: 0.375rem;
+  }
+  
+  .text-input {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  .input-icon-button {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
   }
 }
 </style>

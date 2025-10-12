@@ -38,7 +38,7 @@
       class="input-icon-button"
       title="Switch to text input"
     >
-      <i class="pi pi-keyboard" />
+      <i class="pi pi-comment" />
     </button>
   </div>
 </template>
@@ -167,7 +167,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .voice-input-container {
   display: flex;
-  gap: 0.75rem;
+  gap: 0.5rem;
   align-items: center;
   width: 100%;
   position: relative;
@@ -251,24 +251,26 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.875rem 1.5rem;
+  padding: 0.5rem 1rem;
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
   color: white;
   border: none;
-  border-radius: 12px;
-  font-size: 1rem;
+  border-radius: 10px;
+  font-size: 0.9375rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  height: 40px;
 }
 
 .hold-talk-button:hover:not(:disabled) {
   background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
 }
 
 .hold-talk-button:disabled {
@@ -295,31 +297,45 @@ onBeforeUnmount(() => {
 }
 
 .input-icon-button {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 12px;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 10px;
   color: #6b7280;
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
 }
 
 .input-icon-button:hover {
-  background: #f9fafb;
-  border-color: #3b82f6;
-  color: #3b82f6;
+  background: #f3f4f6;
+  border-color: #9ca3af;
+  transform: translateY(-1px);
+}
+
+.input-icon-button:active {
+  transform: translateY(0);
 }
 
 @media (max-width: 640px) {
+  .voice-input-container {
+    gap: 0.375rem;
+  }
+  
   .hold-talk-button {
-    padding: 0.75rem 1rem;
-    font-size: 0.9375rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+  
+  .input-icon-button {
+    width: 36px;
+    height: 36px;
+    font-size: 1rem;
   }
 }
 </style>

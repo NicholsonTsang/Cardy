@@ -38,22 +38,49 @@
             <div class="w-full space-y-6">
                 <!-- Basic Information -->
                 <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-                    <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                        <i class="pi pi-info-circle text-blue-600"></i>
-                        {{ t('content.basic_information') }}
-                    </h3>
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
+                            <i class="pi pi-info-circle text-blue-600"></i>
+                            {{ t('content.basic_information') }}
+                        </h3>
+                        <!-- Language Preview Selector -->
+                        <Dropdown
+                            v-if="availableTranslations.length > 0"
+                            v-model="selectedPreviewLanguage"
+                            :options="languageOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            :placeholder="t('translation.previewLanguage')"
+                            class="w-48"
+                            size="small"
+                        >
+                            <template #value="slotProps">
+                                <div v-if="slotProps.value" class="flex items-center gap-2">
+                                    <span>{{ getLanguageFlag(slotProps.value) }}</span>
+                                    <span class="text-sm">{{ getLanguageName(slotProps.value) }}</span>
+                                </div>
+                                <span v-else class="text-sm">{{ slotProps.placeholder }}</span>
+                            </template>
+                            <template #option="slotProps">
+                                <div class="flex items-center gap-2">
+                                    <span>{{ getLanguageFlag(slotProps.option.value) }}</span>
+                                    <span>{{ slotProps.option.label }}</span>
+                                </div>
+                            </template>
+                        </Dropdown>
+                    </div>
                     <div class="space-y-4">
                         <div>
                             <h4 class="text-sm font-medium text-slate-700 mb-2">{{ t('common.name') }}</h4>
-                            <p class="text-base text-slate-900 font-medium">{{ contentItem?.name || t('content.no_name_provided') }}</p>
+                            <p class="text-base text-slate-900 font-medium">{{ displayedItemName }}</p>
                         </div>
 
                         <div>
                             <h4 class="text-sm font-medium text-slate-700 mb-2">{{ t('content.description') }}</h4>
                             <div class="bg-slate-50 rounded-lg p-4 border border-slate-200 prose prose-sm max-w-none">
                                 <div 
-                                    v-if="contentItem?.description || contentItem?.content"
-                                    v-html="renderMarkdown(contentItem?.description || contentItem?.content)"
+                                    v-if="displayedItemContent"
+                                    v-html="renderMarkdown(displayedItemContent)"
                                     class="text-sm text-slate-700 leading-relaxed"
                                 ></div>
                                 <p v-else class="text-sm text-slate-500 italic">{{ t('content.no_description_provided') }}</p>
@@ -87,16 +114,18 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
+import Dropdown from 'primevue/dropdown';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
 import { getContentAspectRatio } from '@/utils/cardConfig';
 import { marked } from 'marked';
+import { SUPPORTED_LANGUAGES } from '@/stores/translation';
 
 const { t } = useI18n();
 
-defineProps({
+const props = defineProps({
     contentItem: {
         type: Object,
         default: null
@@ -108,6 +137,73 @@ defineProps({
 });
 
 defineEmits(['edit']);
+
+// Language preview state
+const selectedPreviewLanguage = ref(null);
+
+// Parse translations from content item
+const availableTranslations = computed(() => {
+    if (!props.contentItem?.translations) return [];
+    return Object.keys(props.contentItem.translations);
+});
+
+// Generate language options for dropdown (using card's original language as reference)
+const languageOptions = computed(() => {
+    const options = [
+        {
+            label: `${t('translation.original')}`,
+            value: null
+        }
+    ];
+    
+    availableTranslations.value.forEach(langCode => {
+        options.push({
+            label: getLanguageName(langCode),
+            value: langCode
+        });
+    });
+    
+    return options;
+});
+
+// Get displayed content item name (original or translated)
+const displayedItemName = computed(() => {
+    if (!selectedPreviewLanguage.value || !props.contentItem?.translations?.[selectedPreviewLanguage.value]) {
+        return props.contentItem?.name || t('content.no_name_provided');
+    }
+    return props.contentItem.translations[selectedPreviewLanguage.value]?.name || props.contentItem?.name;
+});
+
+// Get displayed content item content (original or translated)
+const displayedItemContent = computed(() => {
+    const fallback = props.contentItem?.description || props.contentItem?.content || '';
+    if (!selectedPreviewLanguage.value || !props.contentItem?.translations?.[selectedPreviewLanguage.value]) {
+        return fallback;
+    }
+    // In content_items, translated content is stored in 'content' field
+    return props.contentItem.translations[selectedPreviewLanguage.value]?.content || fallback;
+});
+
+// Helper functions for language display
+const getLanguageName = (langCode) => {
+    return SUPPORTED_LANGUAGES[langCode] || langCode;
+};
+
+const getLanguageFlag = (langCode) => {
+    const flagMap = {
+        en: '🇬🇧',
+        'zh-Hant': '🇹🇼',
+        'zh-Hans': '🇨🇳',
+        ja: '🇯🇵',
+        ko: '🇰🇷',
+        es: '🇪🇸',
+        fr: '🇫🇷',
+        ru: '🇷🇺',
+        ar: '🇸🇦',
+        th: '🇹🇭',
+    };
+    return flagMap[langCode] || '🌐';
+};
 
 // Markdown rendering helper
 const renderMarkdown = (text) => {

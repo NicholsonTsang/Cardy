@@ -106,6 +106,7 @@
                   stripedRows
                   sortMode="single"
                   removableSort
+                  responsiveLayout="scroll"
                 >
                   <template #header>
                     <div class="flex flex-col gap-4">
@@ -140,8 +141,8 @@
                   </template>
 
                   <template #empty>
-                    <div class="text-center py-8">
-                      <i class="pi pi-inbox text-4xl text-slate-400 mb-4"></i>
+                    <div class="text-center py-12">
+                      <i class="pi pi-inbox text-6xl text-slate-400 mb-4"></i>
                       <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('admin.no_users_found') || 'No users found' }}</p>
                       <p class="text-slate-600">
                         {{ userFilter ? 'No users match your current filters.' : 'No users with credits yet.' }}
@@ -382,6 +383,15 @@
                       <span class="font-medium text-slate-900">{{ data.user_name }}</span>
                     </template>
                   </Column>
+                  <Column field="consumption_type" :header="$t('common.type')" sortable style="min-width: 180px">
+                    <template #body="{ data }">
+                      <Tag 
+                        :value="getConsumptionTypeLabel(data.consumption_type)" 
+                        :icon="getConsumptionTypeIcon(data.consumption_type)" 
+                        :severity="getConsumptionTypeSeverity(data.consumption_type)" 
+                      />
+                    </template>
+                  </Column>
                   <Column field="card_name" :header="$t('common.card')" style="min-width: 200px">
                     <template #body="{ data }">
                       <div class="flex items-center gap-2">
@@ -395,9 +405,12 @@
                       <span class="text-slate-600">{{ data.batch_name || '-' }}</span>
                     </template>
                   </Column>
-                  <Column field="quantity" :header="$t('batch.quantity')" style="min-width: 120px">
+                  <Column field="quantity" :header="$t('common.quantity')" sortable style="min-width: 140px">
                     <template #body="{ data }">
-                      <Chip :label="String(data.quantity)" icon="pi pi-hashtag" />
+                      <Chip 
+                        :label="`${data.quantity} ${getQuantityUnit(data.consumption_type)}`" 
+                        icon="pi pi-hashtag" 
+                      />
                     </template>
                   </Column>
                   <Column field="total_credits" :header="$t('admin.credits.creditsUsed')" sortable style="min-width: 140px">
@@ -770,6 +783,40 @@ function getPurchaseStatusIcon(status: string) {
     case 'failed': return 'pi-times-circle'
     case 'refunded': return 'pi-replay'
     default: return 'pi-circle'
+  }
+}
+
+function getConsumptionTypeLabel(type: string) {
+  const { t } = useI18n()
+  const key = `credits.consumptionType.${type}`
+  // Try to get translation, fallback to type or 'Unknown'
+  return t(key, type || 'Unknown')
+}
+
+function getConsumptionTypeIcon(type: string) {
+  switch (type) {
+    case 'batch_issuance': return 'pi-box'
+    case 'translation': return 'pi-language'
+    case 'single_card': return 'pi-id-card'
+    default: return 'pi-circle'
+  }
+}
+
+function getConsumptionTypeSeverity(type: string) {
+  switch (type) {
+    case 'batch_issuance': return 'info'
+    case 'translation': return 'success'
+    case 'single_card': return 'warn'
+    default: return undefined
+  }
+}
+
+function getQuantityUnit(type: string) {
+  switch (type) {
+    case 'batch_issuance': return 'cards'
+    case 'translation': return 'languages'
+    case 'single_card': return 'card'
+    default: return 'units'
   }
 }
 

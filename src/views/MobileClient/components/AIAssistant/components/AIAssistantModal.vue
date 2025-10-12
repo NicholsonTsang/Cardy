@@ -24,20 +24,22 @@
               <!-- Mode Switch Button -->
               <button 
                 @click="$emit('toggle-mode')" 
-                class="mode-switch-button"
+                class="action-button"
                 :class="{ 'active': conversationMode === 'realtime' }"
-                :title="conversationMode === 'realtime' ? 'Switch to Chat' : 'Switch to Live Call'"
+                :title="conversationMode === 'realtime' ? $t('mobile.switch_to_chat') : $t('mobile.switch_to_live_call')"
               >
                 <i :class="conversationMode === 'realtime' ? 'pi pi-comments' : 'pi pi-phone'" />
               </button>
-              <button @click="$emit('close')" class="close-button">
+              <button @click="$emit('close')" class="action-button close-button">
                 <i class="pi pi-times" />
               </button>
             </div>
           </div>
 
           <!-- Content -->
-          <slot />
+          <div class="modal-body">
+            <slot />
+          </div>
         </template>
       </div>
     </div>
@@ -147,10 +149,10 @@ defineEmits<{
 .header-actions {
   display: flex;
   gap: 0.5rem;
+  flex-shrink: 0;
 }
 
-.mode-switch-button,
-.close-button {
+.action-button {
   width: 36px;
   height: 36px;
   display: flex;
@@ -163,17 +165,30 @@ defineEmits<{
   font-size: 1.125rem;
   cursor: pointer;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
-.mode-switch-button:hover,
-.close-button:hover {
+.action-button:hover {
   background: #e5e7eb;
   color: #374151;
 }
 
-.mode-switch-button.active {
+.action-button.active {
   background: #dbeafe;
   color: #3b82f6;
+}
+
+.action-button.close-button:hover {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.modal-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 @media (max-width: 640px) {

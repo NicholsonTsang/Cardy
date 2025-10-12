@@ -259,7 +259,7 @@
                     <div class="text-center py-12">
                       <i class="pi pi-chart-bar text-6xl text-slate-400 mb-4"></i>
                       <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('messages.no_data_available') }}</p>
-                      <p class="text-slate-600">Credit consumption records will appear here after issuing batches</p>
+                      <p class="text-slate-600">Credit consumption records will appear here after issuing batches or translating cards</p>
                     </div>
                   </template>
                   
@@ -268,9 +268,13 @@
                       <span class="text-sm text-slate-600">{{ formatDate(data.created_at) }}</span>
                     </template>
                   </Column>
-                  <Column field="consumption_type" :header="$t('common.type')" style="min-width: 150px">
+                  <Column field="consumption_type" :header="$t('common.type')" sortable style="min-width: 180px">
                     <template #body="{ data }">
-                      <Tag value="Batch Issuance" icon="pi pi-box" severity="info" />
+                      <Tag 
+                        :value="getConsumptionTypeLabel(data.consumption_type)" 
+                        :icon="getConsumptionTypeIcon(data.consumption_type)" 
+                        :severity="getConsumptionTypeSeverity(data.consumption_type)" 
+                      />
                     </template>
                   </Column>
                   <Column field="card_name" :header="$t('common.card')" style="min-width: 200px">
@@ -286,9 +290,12 @@
                       <span class="text-slate-600">{{ data.batch_name || '-' }}</span>
                     </template>
                   </Column>
-                  <Column field="quantity" :header="$t('batch.quantity')" sortable style="min-width: 120px">
+                  <Column field="quantity" :header="$t('common.quantity')" sortable style="min-width: 140px">
                     <template #body="{ data }">
-                      <Chip :label="String(data.quantity)" icon="pi pi-hashtag" />
+                      <Chip 
+                        :label="`${data.quantity} ${getQuantityUnit(data.consumption_type)}`" 
+                        icon="pi pi-hashtag" 
+                      />
                     </template>
                   </Column>
                   <Column field="total_credits" :header="$t('credits.totalCredits')" sortable style="min-width: 140px">
@@ -536,6 +543,40 @@ function getPurchaseStatusIcon(status: string) {
     case 'failed': return 'pi-times-circle'
     case 'refunded': return 'pi-replay'
     default: return 'pi-circle'
+  }
+}
+
+function getConsumptionTypeLabel(type: string) {
+  const { t } = useI18n()
+  const key = `credits.consumptionType.${type}`
+  // Try to get translation, fallback to type or 'Unknown'
+  return t(key, type || 'Unknown')
+}
+
+function getConsumptionTypeIcon(type: string) {
+  switch (type) {
+    case 'batch_issuance': return 'pi-box'
+    case 'translation': return 'pi-language'
+    case 'single_card': return 'pi-id-card'
+    default: return 'pi-circle'
+  }
+}
+
+function getConsumptionTypeSeverity(type: string) {
+  switch (type) {
+    case 'batch_issuance': return 'info'
+    case 'translation': return 'success'
+    case 'single_card': return 'warn'
+    default: return undefined
+  }
+}
+
+function getQuantityUnit(type: string) {
+  switch (type) {
+    case 'batch_issuance': return 'cards'
+    case 'translation': return 'languages'
+    case 'single_card': return 'card'
+    default: return 'units'
   }
 }
 

@@ -110,6 +110,7 @@ DECLARE
     v_card_owner_id UUID;
     v_credits_per_card DECIMAL := 2.00;
     v_total_credits DECIMAL;
+    v_current_balance DECIMAL;
     v_consumption_result JSONB;
     i INTEGER;
 BEGIN
@@ -133,9 +134,11 @@ BEGIN
     
     v_total_credits := p_quantity * v_credits_per_card;
     
-    -- Check credit balance
-    IF NOT check_credit_balance(v_total_credits) THEN
-        RAISE EXCEPTION 'Insufficient credits. Required: %, Please purchase more credits.', v_total_credits;
+    -- Check credit balance (check_credit_balance returns the actual balance as DECIMAL)
+    v_current_balance := check_credit_balance(v_total_credits);
+    IF v_current_balance < v_total_credits THEN
+        RAISE EXCEPTION 'Insufficient credits. Required: %, Available: %. Please purchase more credits.', 
+            v_total_credits, v_current_balance;
     END IF;
     
     -- Get next batch number

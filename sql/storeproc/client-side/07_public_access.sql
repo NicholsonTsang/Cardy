@@ -4,7 +4,11 @@
 -- =================================================================
 
 -- Get public card content by issue card ID
-CREATE OR REPLACE FUNCTION get_public_card_content(p_issue_card_id UUID)
+-- Updated to support translations via p_language parameter
+CREATE OR REPLACE FUNCTION get_public_card_content(
+    p_issue_card_id UUID,
+    p_language VARCHAR(10) DEFAULT 'en'
+)
 RETURNS TABLE (
     card_name TEXT,
     card_description TEXT,
@@ -13,6 +17,8 @@ RETURNS TABLE (
     card_conversation_ai_enabled BOOLEAN,
     card_ai_instruction TEXT,
     card_ai_knowledge_base TEXT,
+    card_original_language VARCHAR(10),
+    card_has_translation BOOLEAN,
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -69,19 +75,23 @@ BEGIN
 
     RETURN QUERY
     SELECT 
-        c.name AS card_name,
-        c.description AS card_description,
+        -- Use translation if available, fallback to original
+        COALESCE(c.translations->p_language->>'name', c.name)::TEXT AS card_name,
+        COALESCE(c.translations->p_language->>'description', c.description)::TEXT AS card_description,
         c.image_url AS card_image_url,
         c.crop_parameters AS card_crop_parameters,
         c.conversation_ai_enabled AS card_conversation_ai_enabled,
         c.ai_instruction AS card_ai_instruction,
         c.ai_knowledge_base AS card_ai_knowledge_base,
+        c.original_language::VARCHAR(10) AS card_original_language,
+        (c.translations ? p_language)::BOOLEAN AS card_has_translation,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
-        ci.name AS content_item_name,
-        ci.content AS content_item_content,
+        COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
+        COALESCE(ci.translations->p_language->>'content', ci.content)::TEXT AS content_item_content,
         ci.image_url AS content_item_image_url,
-        ci.ai_knowledge_base AS content_item_ai_knowledge_base,
+        -- Note: ai_knowledge_base is translated but not exposed to mobile client
+        COALESCE(ci.translations->p_language->>'ai_knowledge_base', ci.ai_knowledge_base)::TEXT AS content_item_ai_knowledge_base,
         ci.sort_order AS content_item_sort_order,
         ci.crop_parameters,
         v_is_card_active AS is_activated -- Return the current/newly activated status
@@ -133,7 +143,11 @@ END;
 $$;
 
 -- Get card content for preview mode (card owner or admin)
-CREATE OR REPLACE FUNCTION get_card_preview_content(p_card_id UUID)
+-- Updated to support translations via p_language parameter
+CREATE OR REPLACE FUNCTION get_card_preview_content(
+    p_card_id UUID,
+    p_language VARCHAR(10) DEFAULT 'en'
+)
 RETURNS TABLE (
     card_name TEXT,
     card_description TEXT,
@@ -142,6 +156,8 @@ RETURNS TABLE (
     card_conversation_ai_enabled BOOLEAN,
     card_ai_instruction TEXT,
     card_ai_knowledge_base TEXT,
+    card_original_language VARCHAR(10),
+    card_has_translation BOOLEAN,
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -185,19 +201,22 @@ BEGIN
     -- Return card content directly (no issued card needed)
     RETURN QUERY
     SELECT 
-        c.name AS card_name,
-        c.description AS card_description,
+        -- Use translation if available, fallback to original
+        COALESCE(c.translations->p_language->>'name', c.name)::TEXT AS card_name,
+        COALESCE(c.translations->p_language->>'description', c.description)::TEXT AS card_description,
         c.image_url AS card_image_url,
         c.crop_parameters AS card_crop_parameters,
         c.conversation_ai_enabled AS card_conversation_ai_enabled,
         c.ai_instruction AS card_ai_instruction,
         c.ai_knowledge_base AS card_ai_knowledge_base,
+        c.original_language::VARCHAR(10) AS card_original_language,
+        (c.translations ? p_language)::BOOLEAN AS card_has_translation,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
-        ci.name AS content_item_name,
-        ci.content AS content_item_content,
+        COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
+        COALESCE(ci.translations->p_language->>'content', ci.content)::TEXT AS content_item_content,
         ci.image_url AS content_item_image_url,
-        ci.ai_knowledge_base AS content_item_ai_knowledge_base,
+        COALESCE(ci.translations->p_language->>'ai_knowledge_base', ci.ai_knowledge_base)::TEXT AS content_item_ai_knowledge_base,
         ci.sort_order AS content_item_sort_order,
         ci.crop_parameters,
         TRUE AS is_preview -- Indicate this is preview mode

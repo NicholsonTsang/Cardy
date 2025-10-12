@@ -19,6 +19,8 @@ export interface PublicCardData {
     card_conversation_ai_enabled: boolean;
     card_ai_instruction: string;
     card_ai_knowledge_base: string;
+    card_original_language: string;
+    card_has_translation: boolean;
     content_items: PublicContentItem[];
     is_activated: boolean;
 }
@@ -31,6 +33,8 @@ interface RawRpcResponseItem {
     card_conversation_ai_enabled: boolean;
     card_ai_instruction: string;
     card_ai_knowledge_base: string;
+    card_original_language: string;
+    card_has_translation: boolean;
     content_item_id: string | null; // Can be null if card has no content
     content_item_parent_id: string | null;
     content_item_name: string | null;
@@ -46,14 +50,15 @@ export const usePublicCardStore = defineStore('publicCard', () => {
     const isLoading = ref(false);
     const error = ref<string | null>(null);
 
-    const fetchPublicCard = async (issueCardId: string) => {
+    const fetchPublicCard = async (issueCardId: string, language: string = 'en') => {
         isLoading.value = true;
         error.value = null;
         cardData.value = null;
 
         try {
             const { data, error: rpcError } = await supabase.rpc('get_public_card_content', {
-                p_issue_card_id: issueCardId
+                p_issue_card_id: issueCardId,
+                p_language: language
             });
 
             if (rpcError) {
@@ -72,6 +77,8 @@ export const usePublicCardStore = defineStore('publicCard', () => {
                         card_conversation_ai_enabled: data[0].card_conversation_ai_enabled,
                         card_ai_instruction: data[0].card_ai_instruction,
                         card_ai_knowledge_base: data[0].card_ai_knowledge_base,
+                        card_original_language: data[0].card_original_language || 'en',
+                        card_has_translation: data[0].card_has_translation || false,
                         is_activated: data[0].is_activated,
                         content_items: [],
                     };
@@ -107,6 +114,8 @@ export const usePublicCardStore = defineStore('publicCard', () => {
                 card_conversation_ai_enabled: firstRecord.card_conversation_ai_enabled,
                 card_ai_instruction: firstRecord.card_ai_instruction,
                 card_ai_knowledge_base: firstRecord.card_ai_knowledge_base,
+                card_original_language: firstRecord.card_original_language || 'en',
+                card_has_translation: firstRecord.card_has_translation || false,
                 is_activated: firstRecord.is_activated,
                 content_items: contentItems,
             };

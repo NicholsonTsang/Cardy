@@ -16,6 +16,9 @@ RETURNS TABLE (
     crop_parameters JSONB,
     ai_knowledge_base TEXT,
     sort_order INTEGER,
+    translations JSONB,
+    content_hash TEXT,
+    last_content_update TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -32,6 +35,9 @@ BEGIN
         ci.crop_parameters,
         ci.ai_knowledge_base,
         ci.sort_order,
+        ci.translations,
+        ci.content_hash,
+        ci.last_content_update,
         ci.created_at,
         ci.updated_at
     FROM content_items ci
@@ -44,6 +50,7 @@ BEGIN
         ci.created_at ASC;
 END;
 $$;
+GRANT EXECUTE ON FUNCTION get_card_content_items(UUID) TO authenticated;
 
 -- Get a content item by ID (updated with ordering)
 CREATE OR REPLACE FUNCTION get_content_item_by_id(p_content_item_id UUID)
@@ -58,6 +65,9 @@ RETURNS TABLE (
     crop_parameters JSONB,
     ai_knowledge_base TEXT,
     sort_order INTEGER,
+    translations JSONB,
+    content_hash TEXT,
+    last_content_update TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -74,6 +84,9 @@ BEGIN
         ci.crop_parameters,
         ci.ai_knowledge_base,
         ci.sort_order,
+        ci.translations,
+        ci.content_hash,
+        ci.last_content_update,
         ci.created_at,
         ci.updated_at
     FROM content_items ci
@@ -81,6 +94,7 @@ BEGIN
     WHERE ci.id = p_content_item_id AND c.user_id = auth.uid();
 END;
 $$;
+GRANT EXECUTE ON FUNCTION get_content_item_by_id(UUID) TO authenticated;
 
 -- Create a new content item (updated with ordering)
 CREATE OR REPLACE FUNCTION create_content_item(

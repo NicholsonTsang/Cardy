@@ -162,13 +162,13 @@
 
           <Column field="created_at" :header="$t('admin.registered') || 'Registered'" sortable :style="{ width: '140px', minWidth: '140px' }">
             <template #body="{ data }">
-              <span class="text-slate-600 text-xs whitespace-nowrap">{{ formatDate(data.created_at) }}</span>
+              <span class="text-sm text-slate-600 whitespace-nowrap">{{ formatDate(data.created_at) }}</span>
             </template>
           </Column>
 
           <Column field="last_sign_in_at" :header="$t('admin.last_sign_in') || 'Last Sign In'" sortable :style="{ width: '140px', minWidth: '140px' }">
             <template #body="{ data }">
-              <span class="text-slate-600 text-xs whitespace-nowrap">
+              <span class="text-sm text-slate-600 whitespace-nowrap">
                 {{ data.last_sign_in_at ? formatDate(data.last_sign_in_at) : ($t('admin.never') || 'Never') }}
               </span>
             </template>

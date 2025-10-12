@@ -61,14 +61,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
+import { useMobileLanguageStore } from '@/stores/language'
 import ProgressSpinner from 'primevue/progressspinner'
 import Button from 'primevue/button'
 
 const { t } = useI18n()
+const mobileLanguageStore = useMobileLanguageStore()
 
 // Child Components - We'll create these next
 import MobileHeader from './components/MobileHeader.vue'
@@ -161,7 +163,8 @@ async function fetchCardData() {
       const cardId = route.params.card_id as string
       
       const result = await supabase.rpc('get_card_preview_content', {
-        p_card_id: cardId
+        p_card_id: cardId,
+        p_language: mobileLanguageStore.selectedLanguage.code
       })
       
       data = result.data
@@ -171,7 +174,8 @@ async function fetchCardData() {
       const issueCardId = route.params.issue_card_id as string
 
       const result = await supabase.rpc('get_public_card_content', {
-        p_issue_card_id: issueCardId
+        p_issue_card_id: issueCardId,
+        p_language: mobileLanguageStore.selectedLanguage.code
       })
       
       data = result.data
@@ -252,6 +256,12 @@ function handleRetry() {
 
 // Lifecycle
 onMounted(() => {
+  fetchCardData()
+})
+
+// Watch for language changes and reload content
+watch(() => mobileLanguageStore.selectedLanguage.code, () => {
+  console.log('📱 Language changed to:', mobileLanguageStore.selectedLanguage.code)
   fetchCardData()
 })
 </script>

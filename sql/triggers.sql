@@ -59,4 +59,81 @@ CREATE TRIGGER on_auth_user_created
 -- (often `supabase_auth_admin` or a similar role) must have permissions to run the trigger function, 
 -- and the function itself needs appropriate permissions (SECURITY DEFINER) if it modifies tables like auth.users.
 -- The `SECURITY DEFINER` on `handle_new_user` and granting execute to `supabase_auth_admin` addresses this. 
--- (Function and its grant moved to sql/schemaStoreProc.sql) 
+-- (Function and its grant moved to sql/schemaStoreProc.sql)
+
+-- =================================================================
+-- TRANSLATION CONTENT HASH TRIGGERS
+-- =================================================================
+-- These triggers automatically calculate content_hash on INSERT and UPDATE
+-- to enable translation freshness detection
+-- =================================================================
+
+-- Trigger function for cards table
+CREATE OR REPLACE FUNCTION update_card_content_hash()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- On INSERT: Always calculate hash
+  IF TG_OP = 'INSERT' THEN
+    NEW.content_hash := md5(COALESCE(NEW.name, '') || '|' || COALESCE(NEW.description, ''));
+    NEW.last_content_update := NOW();
+  -- On UPDATE: Only recalculate if name or description changed
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF (NEW.name IS DISTINCT FROM OLD.name) OR 
+       (NEW.description IS DISTINCT FROM OLD.description) THEN
+      NEW.content_hash := md5(COALESCE(NEW.name, '') || '|' || COALESCE(NEW.description, ''));
+      NEW.last_content_update := NOW();
+      -- Note: We don't clear translations here - they're marked as outdated via hash comparison
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Drop existing trigger if exists
+DROP TRIGGER IF EXISTS trigger_update_card_content_hash ON cards;
+
+-- Create trigger for cards (both INSERT and UPDATE)
+CREATE TRIGGER trigger_update_card_content_hash
+  BEFORE INSERT OR UPDATE ON cards
+  FOR EACH ROW
+  EXECUTE FUNCTION update_card_content_hash();
+
+-- Trigger function for content_items table
+CREATE OR REPLACE FUNCTION update_content_item_content_hash()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- On INSERT: Always calculate hash
+  IF TG_OP = 'INSERT' THEN
+    NEW.content_hash := md5(
+      COALESCE(NEW.name, '') || '|' || 
+      COALESCE(NEW.content, '') || '|' ||
+      COALESCE(NEW.ai_knowledge_base, '')
+    );
+    NEW.last_content_update := NOW();
+  -- On UPDATE: Only recalculate if any translatable field changed
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF (NEW.name IS DISTINCT FROM OLD.name) OR 
+       (NEW.content IS DISTINCT FROM OLD.content) OR
+       (NEW.ai_knowledge_base IS DISTINCT FROM OLD.ai_knowledge_base) THEN
+      NEW.content_hash := md5(
+        COALESCE(NEW.name, '') || '|' || 
+        COALESCE(NEW.content, '') || '|' ||
+        COALESCE(NEW.ai_knowledge_base, '')
+      );
+      NEW.last_content_update := NOW();
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Drop existing trigger if exists
+DROP TRIGGER IF EXISTS trigger_update_content_item_content_hash ON content_items;
+
+-- Create trigger for content_items (both INSERT and UPDATE)
+CREATE TRIGGER trigger_update_content_item_content_hash
+  BEFORE INSERT OR UPDATE ON content_items
+  FOR EACH ROW
+  EXECUTE FUNCTION update_content_item_content_hash();

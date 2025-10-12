@@ -219,6 +219,41 @@
                                 </div>
                             </div>
 
+                            <!-- Original Language Selector -->
+                            <div>
+                                <label for="originalLanguage" class="block text-sm font-medium text-slate-700 mb-2">
+                                    {{ $t('dashboard.originalLanguage') }} *
+                                    <i class="pi pi-info-circle text-slate-400 text-xs ml-1 cursor-help" 
+                                       v-tooltip.right="{
+                                           value: $t('dashboard.originalLanguageTooltip'),
+                                           class: 'max-w-sm'
+                                       }"></i>
+                                </label>
+                                <Dropdown
+                                    id="originalLanguage"
+                                    v-model="formData.original_language"
+                                    :options="languageOptions"
+                                    optionLabel="label"
+                                    optionValue="value"
+                                    :placeholder="$t('dashboard.selectLanguage')"
+                                    class="w-full"
+                                >
+                                    <template #value="slotProps">
+                                        <div v-if="slotProps.value" class="flex items-center gap-2">
+                                            <span>{{ getLanguageFlag(slotProps.value) }}</span>
+                                            <span>{{ SUPPORTED_LANGUAGES[slotProps.value] }}</span>
+                                        </div>
+                                        <span v-else>{{ slotProps.placeholder }}</span>
+                                    </template>
+                                    <template #option="slotProps">
+                                        <div class="flex items-center gap-2">
+                                            <span>{{ slotProps.option.flag }}</span>
+                                            <span>{{ slotProps.option.label }}</span>
+                                        </div>
+                                    </template>
+                                </Dropdown>
+                            </div>
+
                         </div>
                     </div>
                     
@@ -344,6 +379,7 @@ import ImageCropper from '@/components/ImageCropper.vue';
 import MyDialog from '@/components/MyDialog.vue';
 import { MdEditor } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
+import { SUPPORTED_LANGUAGES } from '@/stores/translation';
 
 const props = defineProps({
     cardProp: {
@@ -376,12 +412,39 @@ const formData = reactive({
     id: null,
     name: '',
     description: '',
+    original_language: 'en', // Default to English
     qr_code_position: 'BR',
     ai_instruction: '',
     ai_knowledge_base: '',
     conversation_ai_enabled: false,
     cropParameters: null
 });
+
+// Language options for dropdown
+const languageOptions = computed(() => {
+    return Object.entries(SUPPORTED_LANGUAGES).map(([code, name]) => ({
+        value: code,
+        label: name,
+        flag: getLanguageFlag(code)
+    }));
+});
+
+// Helper function to get language flag
+const getLanguageFlag = (langCode) => {
+    const flagMap = {
+        en: '🇬🇧',
+        'zh-Hant': '🇹🇼',
+        'zh-Hans': '🇨🇳',
+        ja: '🇯🇵',
+        ko: '🇰🇷',
+        es: '🇪🇸',
+        fr: '🇫🇷',
+        ru: '🇷🇺',
+        ar: '🇸🇦',
+        th: '🇹🇭',
+    };
+    return flagMap[langCode] || '🌐';
+};
 
 // Word count computed properties
 const aiInstructionWordCount = computed(() => {
@@ -481,6 +544,7 @@ const initializeForm = () => {
         formData.id = props.cardProp.id;
         formData.name = props.cardProp.name || '';
         formData.description = props.cardProp.description || '';
+        formData.original_language = props.cardProp.original_language || 'en';
         formData.qr_code_position = props.cardProp.qr_code_position || 'BR';
         formData.ai_instruction = props.cardProp.ai_instruction || '';
         formData.ai_knowledge_base = props.cardProp.ai_knowledge_base || '';
@@ -511,6 +575,7 @@ const resetForm = () => {
     formData.id = null;
     formData.name = '';
     formData.description = '';
+    formData.original_language = 'en';
     formData.qr_code_position = 'BR';
     formData.ai_instruction = '';
     formData.ai_knowledge_base = '';

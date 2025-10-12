@@ -36,6 +36,7 @@
         @cancel-recording="cancelVoiceRecording"
         @update-cancel-zone="voiceRecording.isCancelZone.value = $event"
         @play-audio="playMessageAudio"
+        @clear-chat="clearChat"
       />
 
       <!-- Realtime Mode -->
@@ -96,12 +97,14 @@ const systemInstructions = computed(() => {
   const languageName = languageStore.selectedLanguage.name
   const languageCode = languageStore.selectedLanguage.code
   
-  // Language-specific emphasis
+  // Language-specific emphasis with voice preference for Chinese
   let languageNote = ''
-  if (languageCode === 'zh-HK') {
-    languageNote = '\n⚠️ CRITICAL: You MUST speak in CANTONESE (廣東話), NOT Mandarin. Use Cantonese vocabulary, grammar, and expressions.'
-  } else if (languageCode === 'zh-CN') {
-    languageNote = '\n⚠️ CRITICAL: You MUST speak in MANDARIN (普通話), NOT Cantonese. Use Mandarin vocabulary, grammar, and expressions.'
+  if (languageStore.isChinese(languageCode)) {
+    if (languageStore.chineseVoice === 'cantonese') {
+      languageNote = '\n⚠️ CRITICAL: You MUST speak in CANTONESE (廣東話), NOT Mandarin. Use Cantonese vocabulary, grammar, and expressions. Respond naturally as a native Cantonese speaker.'
+    } else {
+      languageNote = '\n⚠️ CRITICAL: You MUST speak in MANDARIN (普通話), NOT Cantonese. Use Mandarin vocabulary, grammar, and expressions. Respond naturally as a native Mandarin speaker.'
+    }
   } else {
     languageNote = `\n⚠️ CRITICAL: You MUST speak EXCLUSIVELY in ${languageName}. Never use any other language.`
   }
@@ -137,8 +140,12 @@ You are speaking with someone interested in: ${props.contentItemName}. Provide e
 
 const welcomeMessages: Record<string, string> = {
   'en': `Hi! I'm your AI assistant for "${props.contentItemName}". Feel free to ask me anything about this exhibit!`,
-  'zh-HK': `你好！我係「${props.contentItemName}」嘅AI助手。有咩想知都可以問我！`,
-  'zh-CN': `你好！我是「${props.contentItemName}」的AI助手。有什么想知道的都可以问我！`,
+  'zh-Hans-cantonese': `你好！我係「${props.contentItemName}」嘅AI助手。有咩想知都可以问我！`,  // Simplified + Cantonese
+  'zh-Hans-mandarin': `你好！我是「${props.contentItemName}」的AI助手。有什么想知道的都可以问我！`,  // Simplified + Mandarin
+  'zh-Hant-cantonese': `你好！我係「${props.contentItemName}」嘅AI助手。有咩想知都可以問我！`,  // Traditional + Cantonese
+  'zh-Hant-mandarin': `你好！我是「${props.contentItemName}」的AI助手。有什麼想知道的都可以問我！`,  // Traditional + Mandarin
+  'zh-Hans': `你好！我是「${props.contentItemName}」的AI助手。有什么想知道的都可以问我！`,  // Fallback
+  'zh-Hant': `你好！我是「${props.contentItemName}」的AI助手。有什麼想知道的都可以問我！`,  // Fallback
   'ja': `こんにちは！「${props.contentItemName}」のAIアシスタントです。この展示について何でも聞いてください！`,
   'ko': `안녕하세요! "${props.contentItemName}"의 AI 어시스턴트입니다. 이 전시에 대해 무엇이든 물어보세요!`,
   'es': `¡Hola! Soy tu asistente de IA para "${props.contentItemName}". ¡Pregúntame lo que quieras sobre esta exhibición!`,
@@ -187,8 +194,11 @@ function openModal() {
   messages.value = []
   firstAudioPlayed.value = false
   
-  // Add welcome message using global language
-  const welcomeText = welcomeMessages[languageStore.selectedLanguage.code] || welcomeMessages['en']
+  // Add welcome message using voice-aware language code (with fallback)
+  const voiceAwareCode = languageStore.getVoiceAwareLanguageCode()
+  const welcomeText = welcomeMessages[voiceAwareCode] || 
+                     welcomeMessages[languageStore.selectedLanguage.code] || 
+                     welcomeMessages['en']
   messages.value = [{
     id: Date.now().toString(),
     role: 'assistant',
@@ -223,7 +233,10 @@ function toggleConversationMode() {
       disconnectRealtime()
     }
     // Add welcome message back
-    const welcomeText = welcomeMessages[languageStore.selectedLanguage.code] || welcomeMessages['en']
+    const voiceAwareCode = languageStore.getVoiceAwareLanguageCode()
+    const welcomeText = welcomeMessages[voiceAwareCode] || 
+                       welcomeMessages[languageStore.selectedLanguage.code] || 
+                       welcomeMessages['en']
     messages.value = [{
       id: Date.now().toString(),
       role: 'assistant',
@@ -231,6 +244,30 @@ function toggleConversationMode() {
       timestamp: new Date()
     }]
   }
+}
+
+function clearChat() {
+  // Clear messages and reset to welcome message
+  const voiceAwareCode = languageStore.getVoiceAwareLanguageCode()
+  const welcomeText = welcomeMessages[voiceAwareCode] || 
+                     welcomeMessages[languageStore.selectedLanguage.code] || 
+                     welcomeMessages['en']
+  messages.value = [{
+    id: Date.now().toString(),
+    role: 'assistant',
+    content: welcomeText,
+    timestamp: new Date()
+  }]
+  
+  // Reset audio state
+  firstAudioPlayed.value = false
+  
+  // Stop any ongoing recording
+  if (voiceRecording.isRecording.value) {
+    voiceRecording.cancelRecording()
+  }
+  
+  console.log('Chat cleared')
 }
 
 // ============================================================================
@@ -314,7 +351,7 @@ async function stopVoiceRecording() {
       audioBlob,
       messages.value,
       systemInstructions.value,
-      languageStore.selectedLanguage.code
+      languageStore.getVoiceAwareLanguageCode()
     )
     
     // Add user message with transcription
@@ -347,7 +384,7 @@ function cancelVoiceRecording() {
 
 async function playMessageAudio(message: Message) {
   firstAudioPlayed.value = true
-  await chatCompletion.playMessageAudio(message, languageStore.selectedLanguage.code)
+  await chatCompletion.playMessageAudio(message, languageStore.getVoiceAwareLanguageCode())
 }
 
 // ============================================================================
@@ -355,9 +392,11 @@ async function playMessageAudio(message: Message) {
 // ============================================================================
 
 async function connectRealtime() {
+  const voiceAwareCode = languageStore.getVoiceAwareLanguageCode()
   console.log('🚀 ========== CONNECTING TO REALTIME API ==========')
   console.log('🌍 Selected Language Object:', languageStore.selectedLanguage)
-  console.log('🔤 Language Code:', languageStore.selectedLanguage.code)
+  console.log('🔤 Text Language Code:', languageStore.selectedLanguage.code)
+  console.log('🎤 Voice-Aware Language Code:', voiceAwareCode)
   console.log('📛 Language Name:', languageStore.selectedLanguage.name)
   console.log('📋 System Instructions Preview (first 500 chars):')
   console.log(systemInstructions.value.substring(0, 500) + '...')
@@ -389,7 +428,7 @@ async function connectRealtime() {
     
     // Connect via WebRTC
     await realtimeConnection.connect(
-      languageStore.selectedLanguage.code,
+      voiceAwareCode,
       systemInstructions.value
     )
     

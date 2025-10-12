@@ -53,6 +53,13 @@ serve(async (req) => {
           return new Response(JSON.stringify({ received: true }), { status: 200 })
         }
 
+        // SECURITY: Extract user ID from session metadata
+        const userId = session.metadata?.user_id
+        if (!userId) {
+          console.error('User ID not found in session metadata')
+          throw new Error('User ID not found in session metadata')
+        }
+
         // Get the full session with payment intent
         const fullSession = await stripe.checkout.sessions.retrieve(session.id, {
           expand: ['payment_intent']
@@ -64,10 +71,15 @@ serve(async (req) => {
           const paymentIntent = fullSession.payment_intent as Stripe.PaymentIntent
           const receiptUrl = paymentIntent?.charges?.data?.[0]?.receipt_url || null
 
-          // Complete the credit purchase
+          // SECURITY: Get actual amount paid from Stripe
+          const amountPaidCents = session.amount_total
+
+          // Complete the credit purchase with full validation
           const { error } = await supabase.rpc('complete_credit_purchase', {
+            p_user_id: userId,  // For user validation
             p_stripe_session_id: session.id,
             p_stripe_payment_intent_id: paymentIntent?.id || null,
+            p_amount_paid_cents: amountPaidCents,  // For amount verification
             p_receipt_url: receiptUrl,
             p_payment_method: {
               type: paymentIntent?.payment_method_types?.[0] || 'card'
@@ -79,7 +91,7 @@ serve(async (req) => {
             throw error
           }
 
-          console.log(`Credit purchase completed: ${creditAmount} credits for session ${session.id}`)
+          console.log(`Credit purchase completed: ${creditAmount} credits for session ${session.id}, user ${userId}`)
         }
         break
       }
@@ -92,7 +104,7 @@ serve(async (req) => {
           // First, find the purchase by stripe payment intent ID
           const { data: purchases, error: findError } = await supabase
             .from('credit_purchases')
-            .select('id, credits_amount')
+            .select('id, user_id, credits_amount')
             .eq('stripe_payment_intent_id', charge.payment_intent)
             .single()
 
@@ -103,8 +115,9 @@ serve(async (req) => {
             const refundAmountCents = charge.amount_refunded
             const refundCredits = refundAmountCents / 100 // 1 credit = $1
 
-            // Process the refund
+            // SECURITY: Process the refund with user validation
             const { error: refundError } = await supabase.rpc('refund_credit_purchase', {
+              p_user_id: purchases.user_id,  // For user validation
               p_purchase_id: purchases.id,
               p_refund_amount: refundCredits,
               p_reason: 'Stripe refund processed'
@@ -115,7 +128,7 @@ serve(async (req) => {
               throw refundError
             }
 
-            console.log(`Credit refund processed: ${refundCredits} credits for purchase ${purchases.id}`)
+            console.log(`Credit refund processed: ${refundCredits} credits for purchase ${purchases.id}, user ${purchases.user_id}`)
           }
         }
         break

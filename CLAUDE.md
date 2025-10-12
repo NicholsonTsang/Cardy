@@ -15,9 +15,10 @@ CardStudio is a comprehensive **digital souvenir and exhibition platform** that 
 
 **Core Value Proposition:**
 -   **Interactive Digital Souvenirs**: Physical cards with QR codes link to rich multimedia content about exhibits and locations.
--   **Credit-Based System**: Institutions purchase credits (1 credit = $1 USD) and consume 2 credits per card when creating batches.
+-   **Credit-Based System**: Institutions purchase credits (1 credit = $1 USD) and consume 2 credits per card when creating batches, 1 credit per language for AI translations.
 -   **Advanced AI Voice Conversations**: Real-time voice-based AI using OpenAI Realtime API for natural conversations about exhibits.
--   **Multi-Language Support**: AI guidance available in 10 languages.
+-   **Multi-Language Support**: AI guidance and content available in multiple languages with GPT-4.1-nano powered translations. **Active languages: English (en) and Traditional Chinese (zh-Hant)**.
+-   **AI-Powered Translation**: One-click translation of card content to multiple languages using GPT-4.1-nano, with automatic outdated detection. 10 language options available but only en/zh-Hant actively maintained.
 -   **Professional Souvenir Printing**: High-quality physical souvenir cards with global shipping.
 
 ### Target Markets
@@ -189,6 +190,7 @@ Cardy/
 │   │   ├── CardComponents/ # Core card UI: Card.vue, CardAccessQR.vue, CardCreateEditForm.vue
 │   │   ├── CardContent/    # Content editing: CardContent.vue, CardContentCreateEditForm.vue
 │   │   ├── Layout/         # Layouts: AppHeader.vue, PageWrapper.vue
+│   │   ├── CreditConfirmationDialog.vue  # Reusable credit confirmation (see README)
 │   │   ├── DashboardLanguageSelector.vue
 │   │   ├── ImageCropper.vue
 │   │   └── ...             # Other: EmptyState.vue, MyDialog.vue, etc.
@@ -219,7 +221,7 @@ Cardy/
 │   │               ├── components/  # UI: AIAssistantModal.vue, ChatInterface.vue, RealtimeInterface.vue
 │   │               ├── composables/ # Logic: useChatCompletion.ts, useRealtimeConnection.ts, useVoiceRecording.ts, useWebRTCConnection.ts
 │   │               └── types/       # Types
-│   ├── i18n/               # Internationalization: locales/en.json (10 languages), index.ts
+│   ├── i18n/               # Internationalization: locales/en.json, zh-Hant.json (actively maintained), + 8 placeholder languages
 │   ├── router/             # Vue Router: index.ts with guards for auth/roles
 │   └── main.ts             # App entry
 ├── sql/                    # Database
@@ -243,6 +245,7 @@ Cardy/
 │       ├── handle-checkout-success/  # Stripe webhook (legacy)
 │       ├── handle-credit-purchase-success/  # Credit purchase completion
 │       ├── stripe-credit-webhook/  # Credit system webhook
+│       ├── translate-card-content/  # AI-powered translation (GPT-4)
 │       └── openai-realtime-token/  # WebRTC ephemeral tokens
 ├── scripts/                # Utility scripts
 │   ├── combine-storeproc.sh        # Combine stored procedures into single file
@@ -258,11 +261,18 @@ Cardy/
 
 ### Dashboard Components (Web)
 - **AppHeader.vue**: Navigation bar with user menu, role-based items (admin vs cardIssuer), language selector.
-- **MyCards.vue**: Card issuer dashboard listing cards, create/edit/delete actions.
+- **MyCards.vue**: Card issuer dashboard listing cards, create/edit/delete actions. Manages URL parameters (cardId, tab, batchId) for deep linking.
 - **AdminDashboard.vue**: Admin overview with metrics, links to management pages.
 - **BatchManagement.vue**: Admin batch issuance, payment tracking.
 - **UserManagement.vue**: Admin user verification, role assignment.
-- **CardCreateEditForm.vue**: Form for card creation/editing with image cropper, AI setup.
+- **CardCreateEditForm.vue**: Form for card creation/editing with image cropper, AI setup, and **original language selector** (dropdown with flag emojis and tooltip explaining importance for AI translation).
+- **CardView.vue**: Card detail viewer with **translation preview** functionality - displays card name/description in selected language with language dropdown selector.
+- **CardContentView.vue**: Content item detail viewer with **translation preview** functionality - displays item name/content in selected language with language dropdown selector.
+- **CardIssuanceCheckout.vue**: Batch creation with credit confirmation, success dialog, and navigation to Access tab with batchId.
+- **CardAccessQR.vue**: QR code generation and management, supports URL-based batch filtering via batchId parameter.
+- **CreditConfirmationDialog.vue**: Reusable dialog for credit usage confirmation with balance tracking and warnings (used by batch issuance and translation).
+- **CardTranslationSection.vue**: Multi-language support section in General tab with **status indicators** (Original, Translated, Outdated counts), visual badges for language status, and "Manage Translations" button. Full-width layout for optimal information display.
+- **TranslationDialog.vue**: Multi-step translation dialog with **smart status indicators** (up-to-date, outdated, not translated) using icons and tooltips, **credit confirmation integration** before translation, Step 1: Language selection, Step 2: Progress tracking, Step 3: Success confirmation.
 - **ImageCropper.vue**: Custom cropper for 2:3 aspect ratio cards.
 
 ### Mobile Client Components
@@ -274,10 +284,11 @@ Cardy/
 - **MobileAIAssistant.vue**: Wrapper for AI modal, toggles chat/realtime modes.
 
 ### AI Assistant Components
-- **AIAssistantModal.vue**: Full-screen modal container.
+- **AIAssistantModal.vue**: Full-screen modal container with header actions (clear chat, mode toggle, close).
 - **ChatInterface.vue**: Text/voice chat UI, message bubbles, recording waveform, audio play.
 - **RealtimeInterface.vue**: Live call UI with connection status, waveform, transcripts.
 - **VoiceInputButton.vue**: Recording button with visual feedback.
+- **Clear Chat Button**: Trash icon in modal header (chat mode only) to clear conversation history while keeping modal open.
 
 ### Composables (AI Logic)
 - **useChatCompletion.ts**: Handles OpenAI Chat API calls via Edge Functions (`chat-with-audio`, `chat-with-audio-stream`), streaming, TTS via `generate-tts-audio`.
@@ -291,22 +302,55 @@ Cardy/
 ### Card Issuer Flow
 1. **Registration**: Sign up, email verification, admin approval (role: 'cardIssuer').
 2. **Credit Purchase**: Buy credits via Stripe (1 credit = $1 USD) through the Credit Management page (`/cms/credits`).
-3. **Card Creation**: Upload image (crop to 2:3), set name/description, enable AI with instructions/knowledge base.
+3. **Card Creation**: Upload image (crop to 2:3), set name/description, **select original language** (dropdown with language options, **actively maintained: en, zh-Hant**), enable AI with instructions/knowledge base.
 4. **Content Management**: Hierarchical items (exhibits > artifacts), markdown content, images, per-item AI knowledge.
-5. **Batch Issuance**: 
+5. **Translation Management** (Integrated in General Tab):
+   - **Access**: Navigate to card > General tab > Scroll to "Multi-Language Support" section
+   - **Compact View**: Shows translation status summary:
+     - Original language
+     - Translated languages count (with up-to-date/outdated indicators)
+     - Language tags with status badges
+   - **Important Warnings** (shown before first translation):
+     - Finish preparing all content first (card details + content items)
+     - Each language costs 1 credit and covers entire card
+     - Uses GPT-4.1-nano for high-quality museum & cultural content translation
+   - **Translate Actions**: Click "Manage Translations" button to open dialog
+   - **Translation Dialog**:
+     - **Smart Status Indicators**: Languages marked as "Up to Date" (cannot re-translate), "Outdated" (update recommended), or "Not Translated" (available)
+     - **Visual Cues**: Small icons with tooltips, color-coded borders (green for up-to-date, amber for outdated, gray for new)
+     - **Credit Confirmation**: Shows confirmation dialog before translation with cost breakdown and balance check
+     - Multi-select languages with quick filters (All, Popular, Outdated)
+     - Real-time progress tracking
+     - Success confirmation with credit summary
+   - **Cost**: 1 credit per language per card (covers card name/description + all content item names/content)
+   - **Process**: Uses GPT-4.1-nano for efficient, high-quality, context-aware translation preserving markdown
+   - **Note**: AI knowledge base remains in original language for consistency
+   - **Limits**: Supports cards up to ~60,000 tokens (~45,000 words). Larger cards will receive an error message
+   - **Performance**: Small cards (<10 items) translate in ~30s, large cards (>20 items) may take 1-2 minutes per language
+   - **Automatic Freshness Detection**: Content hash tracking marks translations as outdated when original edited
+   - **Translation Storage**: JSONB columns with timestamps and hashes for version tracking
+6. **Translation Preview**: 
+   - **Card View**: Language dropdown in "Basic Information" section to preview translated card name and description
+   - **Content View**: Language dropdown in content item details to preview translated item name and content
+   - **Fallback**: If translation unavailable for selected language, displays original language content
+   - **Use Case**: Review translations before publishing to visitors, verify translation quality
+7. **Batch Issuance**: 
    - **Credit-Based System** (Current): Navigate to card > Issue Batch dialog shows credit balance and required credits (2 credits/card)
    - If sufficient credits: Instant batch creation, cards generated immediately, no Stripe redirect
    - If insufficient credits: Dialog shows warning with "Purchase Credits" button redirecting to `/cms/credits`
    - Uses `issue_card_batch_with_credits()` stored procedure
    - Credits consumed atomically with batch creation (transaction-safe)
-6. **Credit Management**: Monitor balance, view transaction history, purchase additional credits as needed.
-7. **Print Requests**: After batch creation, optionally request physical card printing with shipping details.
-8. **Analytics**: View engagement metrics per card/batch.
+8. **Credit Management**: Monitor balance, view transaction history, purchase additional credits for batch issuance and translations.
+9. **Print Requests**: After batch creation, optionally request physical card printing with shipping details.
+10. **Analytics**: View engagement metrics per card/batch.
 
 ### Visitor (Mobile) Flow
 1. **QR Scan**: Loads `PublicCardView` with issued card ID (or preview mode).
-2. **Card Overview**: View card image/description, select language (10 options: en, zh-Hant (Traditional Chinese), zh-Hans (Simplified Chinese), ja, ko, es, fr, ru, ar, th).
+2. **Card Overview**: View card image/description, select language. **Actively maintained: en (English), zh-Hant (Traditional Chinese)**. Other 8 languages (zh-Hans, ja, ko, es, fr, ru, ar, th) have incomplete translations and fall back to English for missing keys.
 3. **Content Navigation**: Browse top-level items, drill into details with sub-items.
+   - **Automatic Translation Display**: If content is translated to the selected language, it's automatically displayed
+   - **Fallback**: If translation unavailable, shows original language content
+   - **Real-time Updates**: Language changes trigger immediate content reload with translated versions
 4. **AI Interaction**:
    - **Chat Mode**: Text input or voice recording → Whisper STT → ChatGPT response → TTS audio.
    - **Realtime Mode**: Live voice call via WebRTC to OpenAI Realtime API, low-latency bidirectional audio.
@@ -329,6 +373,9 @@ Cardy/
 
 ### Payments & Credits
 - **Credit System**: Users purchase credits upfront (1 credit = $1 USD) via Stripe checkout.
+- **Credit Usage**:
+  - **Batch Issuance**: 2 credits per card
+  - **Translation** (NEW): 1 credit per language per card (covers all content: card + all items)
 - **Batch Issuance**: 
   - **Credit-Based Flow** (Current): Consumes 2 credits per card, instant generation upon credit consumption
   - Uses `issue_card_batch_with_credits()` stored procedure which:
@@ -339,9 +386,21 @@ Cardy/
     - All operations atomic (rollback on failure)
   - UI Component: `CardIssuanceCheckout.vue` uses `useCreditStore().issueBatchWithCredits()`
   - No Stripe redirect during batch creation - credits must be purchased first
+- **Translation System** (NEW):
+  - **Credit Flow**: Consumes 1 credit per language, instant translation via GPT-4
+  - Uses `translate-card-content` Edge Function which:
+    - Validates user authentication and card ownership
+    - Checks credit balance via `check_credit_balance()`
+    - Calls GPT-4 with specialized prompts for museum/cultural content
+    - Stores translations via `store_card_translations()` stored procedure
+    - Consumes credits atomically with translation storage
+    - Records audit trail in `translation_history` table
+  - **Translation Storage**: JSONB columns in `cards` and `content_items` tables
+  - **Freshness Tracking**: Automatic content hash updates trigger outdated status
+  - **UI Component**: `TranslationManagement.vue` with `TranslationDialog.vue` for multi-step workflow
 - **Stripe Integration**: Credit purchase checkout, webhooks for confirmation, automatic refund handling.
   - **Webhook Security**: Stripe webhook signature verification in Deno requires `stripe.webhooks.constructEventAsync()` (async version) due to Deno's async crypto environment. The webhook function disables JWT verification (`verify_jwt = false` in `config.toml`) but enforces Stripe signature verification.
-- **Credit Management**: Real-time balance tracking, transaction history, consumption reports.
+- **Credit Management**: Real-time balance tracking, transaction history, consumption reports (includes both batch issuance and translations).
   - **Admin Interface**: `AdminCreditManagement.vue` for admin oversight
     - Statistics cards: Total circulation, revenue, purchased, consumed
     - User table: Paginated list with search by email/name (server-side, debounced 500ms)
@@ -357,10 +416,23 @@ Cardy/
 - **Print Requests**: Optional physical cards, status tracking, contact fields.
 
 ### Internationalization
-- 10 languages via vue-i18n: English (en), Traditional Chinese (zh-Hant), Simplified Chinese (zh-Hans), Japanese (ja), Korean (ko), Spanish (es), French (fr), Russian (ru), Arabic (ar), Thai (th).
-- Separate language stores: Mobile client uses `useMobileLanguageStore`, Dashboard uses `useDashboardLanguageStore`.
-- Pluralization with pipe syntax (e.g., `{count} card | {count} cards`).
-- RTL support for Arabic included in CSS.
+- **Active Languages**: Only **English (en)** and **Traditional Chinese (zh-Hant)** are actively maintained and fully translated.
+- **Placeholder Languages**: Other language files (zh-Hans, ja, ko, es, fr, ru, ar, th) exist for future expansion but are NOT maintained. They contain partial/outdated translations and will fall back to English for missing keys.
+- **Language Infrastructure**: 10 language files exist via vue-i18n, but only en and zh-Hant should be updated when adding new features.
+- **Language Stores**: Mobile client uses `useMobileLanguageStore`, Dashboard uses `useDashboardLanguageStore` (separate stores for different contexts).
+- **Chinese Voice Selection** (Mobile Client Only):
+  - **Text vs Voice Separation**: Chinese text script (Simplified/Traditional) is independent of voice dialect (Mandarin/Cantonese)
+  - **Language Codes**: `zh-Hans` (Simplified), `zh-Hant` (Traditional) instead of legacy `zh-CN`, `zh-HK`
+  - **Voice Preferences**: Users can select `mandarin` or `cantonese` voice via `ChineseVoiceSelector` component
+  - **Smart Defaults**: Simplified defaults to Mandarin, Traditional defaults to Cantonese
+  - **Voice-Aware Language Codes**: `getVoiceAwareLanguageCode()` returns combined codes like `zh-Hans-mandarin` or `zh-Hant-cantonese` for AI systems
+  - **AI Integration**: Voice preference affects both TTS (Text-to-Speech) and Realtime API, enforced through system instructions
+  - **Components**: `ChineseVoiceSelector.vue` in `MobileHeader.vue`, only visible when Chinese language selected
+  - **Important**: `zh-Hans` remains a placeholder language with incomplete translations. While it's used for text script differentiation in Chinese voice selection, Dashboard UI for Simplified Chinese users will fall back to English for missing keys. This is expected behavior.
+  - See `CHINESE_VOICE_SELECTION_FEATURE.md` for full implementation details
+- **Pluralization**: Use pipe syntax (e.g., `{count} card | {count} cards`). **Important**: Use format `Singular text | Plural text` without parentheses. In Composition API mode (`legacy: false`), parentheses around pluralized sections will break the parser.
+- **RTL Support**: Arabic RTL CSS exists but translations are incomplete/not maintained.
+- **Console Warnings**: i18n fallback warnings for placeholder languages (zh-Hans, ko, ja, etc.) are expected and can be ignored. These occur when Dashboard UI elements don't have translations in placeholder locales.
 
 ## Deployment
 
@@ -398,22 +470,237 @@ Cardy/
 
 ## Notes and Best Practices
 
-- **Database Access**: **NEVER** use `supabase.from()`. All database operations are handled via `supabase.rpc()` calling stored procedures (e.g., `get_public_card_content`, `create_card`, `update_content_item`). This pattern ensures security and centralizes business logic. Direct table access is prohibited.
+- **Database Access**: **NEVER** use `supabase.from()`. All database operations are handled via `supabase.rpc()` calling stored procedures (e.g., `get_public_card_content`, `create_card`, `update_content_item`, `get_card_translation_status`, `store_card_translations`). This pattern ensures security and centralizes business logic. Direct table access is prohibited.
 - **Database Updates**: When updating stored procedures, edit source files in `sql/storeproc/`, run `./scripts/combine-storeproc.sh`, then manually execute the generated `sql/all_stored_procedures.sql` in Supabase Dashboard. Do NOT write migration scripts - user handles manual deployment.
+
+### 🔐 Stored Procedure Security Model
+
+**Folder Structure**: Separate folders enforce security patterns
+- `sql/storeproc/client-side/` - Called from frontend or Edge Functions with user JWT
+- `sql/storeproc/server-side/` - Called from Edge Functions with SERVICE_ROLE_KEY
+
+#### Client-Side Pattern (`client-side/` folder)
+**When to use**: Frontend calls, Edge Function uses ANON_KEY + User JWT
+```sql
+CREATE OR REPLACE FUNCTION my_client_function(p_card_id UUID)
+RETURNS JSONB SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID := auth.uid();  -- ✅ Gets user from JWT
+BEGIN
+    IF v_user_id IS NULL THEN RAISE EXCEPTION 'Not authenticated'; END IF;
+    -- Verify ownership
+    IF NOT EXISTS (SELECT 1 FROM cards WHERE id = p_card_id AND user_id = v_user_id) THEN
+        RAISE EXCEPTION 'Unauthorized';
+    END IF;
+    -- Business logic...
+END;
+$$ LANGUAGE plpgsql;
+GRANT EXECUTE ON FUNCTION my_client_function(UUID) TO authenticated;
+```
+
+**Characteristics**:
+- ✅ Uses `auth.uid()` to get user from JWT
+- ✅ PostgreSQL executes as `authenticated` role
+- ✅ GRANT TO authenticated
+- ✅ RLS policies apply
+- ❌ Never accept `p_user_id` parameter (security risk!)
+
+#### Server-Side Pattern (`server-side/` folder)
+**When to use**: Edge Function uses SERVICE_ROLE_KEY, webhooks, privileged operations
+```sql
+CREATE OR REPLACE FUNCTION my_server_function(
+    p_user_id UUID,  -- ✅ Explicit parameter (REQUIRED!)
+    p_card_id UUID
+)
+RETURNS JSONB SECURITY DEFINER AS $$
+DECLARE
+    v_card_owner UUID;
+BEGIN
+    -- Validate user exists
+    IF NOT EXISTS (SELECT 1 FROM auth.users WHERE id = p_user_id) THEN
+        RAISE EXCEPTION 'Invalid user ID';
+    END IF;
+    -- Verify ownership against parameter
+    SELECT user_id INTO v_card_owner FROM cards WHERE id = p_card_id;
+    IF v_card_owner != p_user_id THEN RAISE EXCEPTION 'Unauthorized'; END IF;
+    -- Privileged business logic...
+END;
+$$ LANGUAGE plpgsql;
+GRANT EXECUTE ON FUNCTION my_server_function(UUID, UUID) TO service_role;
+```
+
+**Characteristics**:
+- ✅ Accepts explicit `p_user_id UUID` parameter
+- ✅ PostgreSQL executes as `service_role` role
+- ✅ GRANT TO service_role ONLY
+- ✅ Can bypass RLS with SECURITY DEFINER
+- ❌ `auth.uid()` returns NULL (no JWT context)
+- ✅ Examples: `store_card_translations`, `complete_credit_purchase`
+
+**Edge Function Pattern for Server-Side**:
+```typescript
+// Edge Function using SERVICE_ROLE_KEY
+const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+// Validate JWT manually
+const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+if (error || !user) throw new Error('Unauthorized');
+// Call with explicit user ID
+await supabaseAdmin.rpc('my_server_function', {
+  p_user_id: user.id,  // Explicit parameter
+  p_card_id: cardId
+});
+```
+
+**Security Rules**:
+- Client-side procedures: NEVER accept `p_user_id` parameter, ALWAYS use `auth.uid()`
+- Server-side procedures: ALWAYS accept `p_user_id` parameter, NEVER use `auth.uid()`
+- Folder location immediately indicates security pattern
+- See: `sql/storeproc/client-side/README.md` and `sql/storeproc/server-side/README.md`
+
+#### Dual-Use Pattern (Exception)
+Some credit management functions in `client-side/credit_management.sql` use a **dual-use pattern** with `COALESCE(p_user_id, auth.uid())`:
+- Can be called from **frontend** (without `p_user_id`, uses `auth.uid()`)
+- Can be called from **Edge Functions** (with explicit `p_user_id` parameter)
+- Have `GRANT TO authenticated, service_role` for both use cases
+
+**Dual-use functions**:
+- `check_credit_balance()` - Called by frontend and `translate-card-content`
+- `create_credit_purchase_record()` - Called by frontend and `create-credit-checkout-session`
+- `consume_credits()` - Called by frontend and server-side `store_card_translations()`
+
+**Pattern**:
+```sql
+CREATE OR REPLACE FUNCTION check_credit_balance(
+    p_required_credits DECIMAL,
+    p_user_id UUID DEFAULT NULL  -- Optional for dual-use
+)
+RETURNS DECIMAL AS $$
+DECLARE
+    v_user_id UUID;
+BEGIN
+    v_user_id := COALESCE(p_user_id, auth.uid());  -- Dual-use pattern
+    -- Rest of function...
+END;
+$$ LANGUAGE plpgsql;
+GRANT EXECUTE TO authenticated, service_role;  -- Both roles
+```
+
+**When to use**: Only for utility functions that genuinely need to work in both contexts. Prefer pure client-side or server-side patterns for clarity.
+
+#### Stored Procedure Requirements ⚠️
+
+**CRITICAL**: Every stored procedure MUST have explicit GRANT statements:
+
+```sql
+-- Client-side functions
+GRANT EXECUTE ON FUNCTION my_function(...) TO authenticated;
+
+-- Server-side functions
+GRANT EXECUTE ON FUNCTION my_function(...) TO service_role;
+
+-- Dual-use functions
+GRANT EXECUTE ON FUNCTION my_function(...) TO authenticated, service_role;
+```
+
+**Common Errors**:
+- ❌ Missing GRANT → "permission denied for function"
+- ❌ Wrong role in GRANT → Function not callable from intended context
+- ❌ Wrong function signature in GRANT → Grant doesn't apply
+
+**Verification**: After deploying stored procedures, verify grants:
+```sql
+SELECT 
+    p.proname as function_name,
+    array_agg(pr.rolname) as granted_to
+FROM pg_proc p
+LEFT JOIN pg_proc_acl_explode(p.proacl) acl ON true
+LEFT JOIN pg_roles pr ON acl.grantee = pr.oid
+WHERE p.proname = 'your_function_name'
+GROUP BY p.proname;
+```
+
+**log_operation Usage**: When logging operations, use single text parameter:
+```sql
+-- ✅ CORRECT
+PERFORM log_operation('Created card: ' || p_name);
+PERFORM log_operation(format('Consumed %s credits', p_amount));
+
+-- ❌ WRONG (function only accepts 1 parameter)
+PERFORM log_operation(user_id, 'action', 'table', record_id, metadata);
+```
+
 - **Role Handling**: Supabase Auth with custom roles stored in `raw_user_meta_data.role`. Router guards check 'admin' vs 'cardIssuer'. After role changes, users must refresh their session to sync metadata.
 - **Image Handling**: All cards use 2:3 aspect ratio. Images cropped via `vue-advanced-cropper`. Both original and cropped versions stored in Supabase Storage buckets. Crop parameters saved to enable re-cropping.
-- **AI Costs**: Use `gpt-4o-mini` for chat mode, `gpt-realtime-mini-2025-10-06` for voice mode (realtime). Implement safeguards: session limits, inactivity timeouts, daily caps.
+- **AI Costs**: Use `gpt-4o-mini` for chat mode, `gpt-realtime-mini-2025-10-06` for voice mode (realtime), `gpt-4.1-nano-2025-04-14` for translations. Implement safeguards: session limits, inactivity timeouts, daily caps.
+- **Translation Management**: 
+  - **Storage**: Use JSONB columns for storing translations (flexible, no schema changes for new languages)
+  - **Original Language**: Users select original language during card creation (`original_language` field, defaults to 'en'). This field is used by AI translation system and displayed in UI.
+  - **Content Hash Tracking**: Automatically detects when originals become outdated
+    - **Critical**: Content hash MUST be calculated on INSERT via triggers. The `update_card_content_hash()` and `update_content_item_content_hash()` trigger functions handle both INSERT and UPDATE operations to ensure hash is never NULL. See `TRANSLATION_FRESHNESS_BUG_FIX.md` for details.
+  - **Translation Process**:
+    - All translation operations are atomic with credit consumption (rollback on failure)
+    - **Credit Confirmation**: Uses `CreditConfirmationDialog` to confirm credit usage before translation (1 credit per language)
+    - GPT-4.1-nano prompts are specialized for museum/cultural/tourism content with markdown preservation
+    - Translation freshness is checked by comparing stored content_hash with current content_hash
+  - **Status Indicators**: 
+    - **Up to Date**: Translation matches current content (green badge, cannot re-translate)
+    - **Outdated**: Content changed since last translation (amber badge, update recommended)
+    - **Not Translated**: No translation exists yet (gray, available for translation)
+  - **Translation Preview**: 
+    - Card view and content view have language dropdowns to preview translated content
+    - Displays translated card name, description, content item name, and content
+    - Falls back to original language if translation unavailable
+    - Updated stored procedures (`get_user_cards`, `get_card_content_items`, `get_content_item_by_id`) return translation data
+  - **Mobile Client**: Automatically displays translated content when available, falls back to original
+  - **State Management**: Translation store (`useTranslationStore`) manages state for status, history, and operations
 - **Error Handling**: Use PrimeVue Toast (`useToast`) for user feedback. Log errors to browser console and operations log (via stored procedures).
 - **Component Size**: Keep <400 lines; extract to composables.
-- **i18n**: Pipe syntax for plurals, no ICU. Update locales/en.json as base.
+- **i18n**: Pipe syntax for plurals, no ICU. **Always update both locales/en.json AND locales/zh-Hant.json when adding new keys**. Other language files are placeholders and not maintained.
 - **Markdown**: Render with `marked` library, sanitize for `v-html`.
 - **Mobile Optimization**: Responsive Tailwind, touch-friendly, PWA-ready.
-- **Edge Functions Authentication**: When Edge Functions need to validate user authentication:
-  - Use service role client: `createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)`
-  - Extract JWT token from Authorization header: `req.headers.get('Authorization').replace('Bearer ', '')`
-  - Validate token: `supabaseAdmin.auth.getUser(token)` - this returns user info from the JWT
-  - Pass `user.id` explicitly to stored procedures when using service role (since `auth.uid()` returns NULL with service role)
-  - Stored procedures should accept optional `p_user_id` parameter: `COALESCE(p_user_id, auth.uid())`
+- **Design Consistency**: AI Assistant input bar follows compact, modern design principles: 40px buttons (36px on mobile), 1.5px borders, 10px radius, subtle shadows and animations for professional polish. See `INPUT_BAR_DESIGN_IMPROVEMENT.md` for full design system.
+- **Reusable Dialogs**: For common confirmation patterns (credit usage, destructive actions), create reusable components with props for customization. Example: `CreditConfirmationDialog.vue` with `creditsToConsume`, `currentBalance`, `itemCount` props, and `confirm`/`cancel` events. See `src/components/README_CreditConfirmationDialog.md` for API reference.
+- **URL Parameters for State**: Use URL query parameters to maintain application state for shareable/bookmarkable views. Pattern: Read from `route.query` on mount, emit events to parent on change, parent updates URL via `router.replace()`. Example: `batchId` parameter in Access tab (`/cms/mycards?cardId=...&tab=access&batchId=...`) enables direct linking to specific batch QR codes.
+- **Navigation Consistency**: All "view" actions for the same resource should navigate to the same destination. Example: Batch "View Cards" buttons (table, success dialog, info button) all route to `/cms/mycards?cardId=...&tab=access&batchId=...` for consistent UX.
+- **Button Design Consistency**: Use consistent visual language for action buttons: gradient (primary actions), filled (status indicators), blue outlined (information/navigation), gray outlined (secondary). Avoid mixing styles unless intentional visual hierarchy is needed.
+- **Admin DataTable Design Pattern**: All admin tables should follow this consistent structure for visual harmony:
+  ```vue
+  <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+    <div class="px-6 py-4 border-b border-slate-200">
+      <h2 class="text-lg font-semibold text-slate-900">Title</h2>
+      <p class="text-sm text-slate-600 mt-1">Description</p>
+    </div>
+    <div class="p-6">
+      <DataTable
+        showGridlines
+        responsiveLayout="scroll"
+        :rows="10"
+        :rowsPerPageOptions="[10, 20, 50]"
+      >
+        <!-- Column definitions with style="min-width: XXXpx" -->
+        <!-- Empty state with py-12, text-6xl icon -->
+        <!-- Loading state with ProgressSpinner 50×50px -->
+      </DataTable>
+    </div>
+  </div>
+  ```
+  Key elements: `shadow-lg` (not shadow-soft), padding wrapper (`p-6`) around table, no striped rows, consistent empty/loading states, proper column min-widths.
+- **Edge Functions Authentication**: 
+  - **Client-side calls**: Always use the user's JWT token from `supabase.auth.getSession()`, never the anon key:
+    ```typescript
+    const { data: { session } } = await supabase.auth.getSession()
+    const token = session?.access_token
+    fetch(`${supabaseUrl}/functions/v1/my-function`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+    ```
+  - **Edge Function validation**: When Edge Functions need to validate user authentication:
+    - Use service role client: `createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)`
+    - Extract JWT token from Authorization header: `req.headers.get('Authorization').replace('Bearer ', '')`
+    - Validate token: `supabaseAdmin.auth.getUser(token)` - this returns user info from the JWT
+    - Pass `user.id` explicitly to stored procedures when using service role (since `auth.uid()` returns NULL with service role)
+    - Stored procedures should accept optional `p_user_id` parameter: `COALESCE(p_user_id, auth.uid())`
 - **Common Issues**:
   - Role mismatches: Refresh session to sync DB metadata.
   - Audio permissions: Handle gracefully in WebRTC/STT.
@@ -421,7 +708,11 @@ Cardy/
   - Large images: Compress with `browser-image-compression`.
   - **Deno Stripe Webhooks**: Always use `stripe.webhooks.constructEventAsync()` (async version) for signature verification in Deno Edge Functions due to async crypto environment. Using the sync `constructEvent()` will fail.
   - **Edge Function 401 Errors**: If Edge Functions return 401 Unauthorized, check that JWT tokens are being properly validated. Don't use `getUser()` without parameters - always pass the token explicitly when using service role client.
+  - **Edge Function Connection Closed (ERR_CONNECTION_CLOSED)**: If Edge Function calls fail with connection closed error, verify you're using the user's JWT token (`session?.access_token`) in the Authorization header, NOT the anon key. The anon key should only be used for public/unauthenticated endpoints.
   - **Edge Function Helper Functions**: In Deno Edge Functions, helper functions defined with `const` (function expressions) are not hoisted. Always define helper functions **before** they are called, or use function declarations (`function name() {}`) which are hoisted.
+  - **Translation Shows "Outdated" Immediately**: If translations show as outdated right after creation, this is due to NULL `content_hash` values. The fix is to ensure triggers calculate hash on INSERT, not just UPDATE. See `TRANSLATION_FRESHNESS_BUG_FIX.md` and deploy `DEPLOY_TRANSLATION_HASH_FIX.sql`. Cards translated before the fix will need re-translation.
+  - **Translation Button Pluralization**: If button text displays literally (with pipe character), check pluralization format. Use `Singular | Plural` format without parentheses. Example: `Translate {count} Language | Translate {count} Languages` (correct) vs `Translate ({count} language | {count} languages)` (incorrect - breaks parser in Composition API mode).
+  - **Translation Preview Not Showing**: If language dropdown doesn't appear in CardView or ContentView, ensure stored procedures return translation fields. Update `get_user_cards`, `get_card_content_items`, and `get_content_item_by_id` to include `translations`, `original_language`, `content_hash`, and `last_content_update` in SELECT and RETURNS TABLE.
   - **Legacy Batch Payment vs Credit System**: 
     - **Current System** (Recommended): Credit-based batch issuance. Users purchase credits via `/cms/credits` → Use credits to create batches instantly via `CardIssuanceCheckout.vue` → No Stripe checkout during batch creation
     - **Legacy System** (Deprecated): Direct batch payment via `create-checkout-session` Edge Function. Still functional for backward compatibility but not recommended for new implementations
@@ -429,6 +720,14 @@ Cardy/
   - **Credit Adjustment Errors**: If credit adjustment fails, check for: (1) User has `user_credits` record (auto-created), (2) Adjustment doesn't result in negative balance, (3) Admin has proper role in metadata, (4) Amount is not zero.
   - **Admin Dialog Data**: When opening dialogs (purchases, consumptions, transactions), previous user's data may flash briefly. This is normal - new data loads on-demand when dialog opens.
   - **Search Performance**: For user bases >10,000, consider implementing full-text search (tsvector) instead of LIKE queries for better performance.
+  - **Stored Procedure Deployment Errors**:
+    - **Missing GRANT statements**: Always add GRANT statements after creating functions. Without them, functions cannot be called and will fail with "permission denied". Run verification query to check grants after deployment.
+    - **Wrong function names in GRANT**: Ensure GRANT statement matches exact function name (e.g., `get_credit_statistics` not `get_user_credit_stats`). Check actual function names with `SELECT proname FROM pg_proc WHERE proname LIKE '%credit%';`
+    - **Wrong log_operation signature**: `log_operation()` accepts only 1 TEXT parameter. Use `format()` to create descriptive log messages. Common mistake: passing multiple parameters like `log_operation(user_id, action, table, record_id, metadata)` - this will fail.
+    - **After deployment checklist**: (1) Verify GRANT statements applied, (2) Test function calls from frontend, (3) Test function calls from Edge Functions (if dual-use), (4) Check Supabase logs for errors.
+  - **Batch Issuance Credit Check Error**: If batch creation fails with "argument of NOT must be type boolean, not type numeric", check that `check_credit_balance()` is used correctly. This function returns DECIMAL (the actual balance), not BOOLEAN. Correct usage: `v_balance := check_credit_balance(required); IF v_balance < required THEN ...` not `IF NOT check_credit_balance(required) THEN ...`
+  - **AI Chat Input Bar Disappearing**: If the input bar disappears when chat messages overflow, ensure modal slot content has proper flex constraints. Wrap slot in a container with `flex: 1`, `overflow: hidden`, and `min-height: 0` (critical for nested flex layouts to allow shrinking). See `AI_CHAT_INPUT_BAR_FIX.md` for detailed explanation.
+  - **Realtime API CORS Error (ERR_CONNECTION_CLOSED)**: If Realtime voice calls fail with CORS error "No 'Access-Control-Allow-Origin' header", this is because the `model` parameter is missing from the API endpoint URL. OpenAI's Realtime API requires `?model=xxx` when using ephemeral tokens. Fix: Add `VITE_OPENAI_REALTIME_MODEL=gpt-realtime-mini-2025-10-06` to `.env.local` and ensure it matches the Supabase Edge Function's `OPENAI_REALTIME_MODEL` secret. Both frontend and backend must use the same model. See `REALTIME_CORS_FIX.md` for full details.
 - **Testing**: Use local Supabase for dev, preview mode for unactivated cards.
 - **Security**: RLS policies enforce public read-only for cards, auth for dashboard.
 - **Performance**: Lazy-load routes, virtual scrolling for lists, WebRTC for low-latency AI.
@@ -489,7 +788,8 @@ All implementation documentation has been consolidated and archived for referenc
   - Central config in `supabase/config.toml` for local dev; use `supabase secrets set` in production. Required secrets: `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`. Optional overrides: `OPENAI_AUDIO_MODEL`, `OPENAI_TTS_VOICE`, `OPENAI_MAX_TOKENS`, `OPENAI_AUDIO_FORMAT`. See `docs_archive/EDGE_FUNCTIONS_CONFIG.md`.
 
 - **Internationalization (i18n)**:
-  - Platform supports 10 languages: `en` (English), `zh-Hant` (Traditional Chinese), `zh-Hans` (Simplified Chinese), `ja` (Japanese), `ko` (Korean), `es` (Spanish), `fr` (French), `ru` (Russian), `ar` (Arabic), `th` (Thai). AI assistant provides localized welcome messages and RTL handling for Arabic. Keep mobile and dashboard language stores separate (`useMobileLanguageStore` and `useDashboardLanguageStore`). See `docs_archive/AI_ASSISTANT_10_LANGUAGES.md`.
+  - **Active Languages**: Only `en` (English) and `zh-Hant` (Traditional Chinese) are actively maintained. Other 8 language files exist as placeholders for future expansion but contain incomplete translations.
+  - Platform has 10 language options: `en`, `zh-Hant`, `zh-Hans`, `ja`, `ko`, `es`, `fr`, `ru`, `ar`, `th`. AI assistant provides localized welcome messages for active languages. Keep mobile and dashboard language stores separate (`useMobileLanguageStore` and `useDashboardLanguageStore`). See `docs_archive/AI_ASSISTANT_10_LANGUAGES.md`.
 
 - **Deployment & Ops**:
   - Frontend: `npm run build` → deploy `dist/`. Edge Functions: `npx supabase functions deploy`. Always set secrets before deploy, add monitoring (health, logs, metrics), run browser compatibility tests (Safari/iOS). See `docs_archive/AI_ASSISTANT_DEPLOYMENT_GUIDE.md` and `docs_archive/REALTIME_AUDIO_FULL_IMPLEMENTATION.md`.

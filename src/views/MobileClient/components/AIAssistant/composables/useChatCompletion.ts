@@ -11,17 +11,22 @@ export function useChatCompletion() {
 
   // Voice configuration by language (TTS API)
   // Supported voices: 'alloy', 'echo', 'fable', 'onyx', 'nova', 'shimmer'
+  // For Chinese, voice is determined by voice preference (mandarin/cantonese), not text script
   const voiceMap: Record<string, string> = {
-    'en': 'alloy',      // English - Neutral, versatile
-    'zh-HK': 'nova',    // Cantonese - Female, energetic
-    'zh-CN': 'nova',    // Mandarin - Female, clear tones
-    'ja': 'shimmer',    // Japanese - Female, soft
-    'ko': 'nova',       // Korean - Female, energetic
-    'th': 'shimmer',    // Thai - Female, calming
-    'es': 'echo',       // Spanish - Male, clear
-    'fr': 'fable',      // French - Male, warm
-    'ru': 'onyx',       // Russian - Male, authoritative
-    'ar': 'onyx'        // Arabic - Male, professional
+    'en': 'alloy',                // English - Neutral, versatile
+    'zh-Hans-mandarin': 'nova',   // Simplified + Mandarin
+    'zh-Hans-cantonese': 'nova',  // Simplified + Cantonese (same voice, different language)
+    'zh-Hant-mandarin': 'nova',   // Traditional + Mandarin
+    'zh-Hant-cantonese': 'nova',  // Traditional + Cantonese
+    'zh-Hans': 'nova',            // Fallback for Simplified
+    'zh-Hant': 'nova',            // Fallback for Traditional
+    'ja': 'shimmer',              // Japanese - Female, soft
+    'ko': 'nova',                 // Korean - Female, energetic
+    'th': 'shimmer',              // Thai - Female, calming
+    'es': 'echo',                 // Spanish - Male, clear
+    'fr': 'fable',                // French - Male, warm
+    'ru': 'onyx',                 // Russian - Male, authoritative
+    'ar': 'onyx'                  // Arabic - Male, professional
   }
 
   // Get AI response with text input
@@ -192,14 +197,21 @@ export function useChatCompletion() {
     message.audioLoading = true
 
     try {
+      // Get the auth token
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+      
+      if (!token) {
+        throw new Error('No authentication token available')
+      }
+
       // Use fetch to get binary audio data directly
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-      const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string
       
       const response = await fetch(`${supabaseUrl}/functions/v1/generate-tts-audio`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${supabaseAnonKey}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

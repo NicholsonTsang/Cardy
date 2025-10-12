@@ -16,6 +16,10 @@ RETURNS TABLE (
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
     qr_code_position TEXT,
+    translations JSONB,
+    original_language VARCHAR(10),
+    content_hash TEXT,
+    last_content_update TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -32,6 +36,10 @@ BEGIN
         c.ai_instruction,
         c.ai_knowledge_base,
         c.qr_code_position::TEXT,
+        c.translations,
+        c.original_language,
+        c.content_hash,
+        c.last_content_update,
         c.created_at,
         c.updated_at
     FROM cards c
@@ -39,6 +47,7 @@ BEGIN
     ORDER BY c.created_at DESC;
 END;
 $$;
+GRANT EXECUTE ON FUNCTION get_user_cards() TO authenticated;
 
 -- Create a new card (more secure)
 CREATE OR REPLACE FUNCTION create_card(
@@ -50,7 +59,8 @@ CREATE OR REPLACE FUNCTION create_card(
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
     p_ai_instruction TEXT DEFAULT '',
     p_ai_knowledge_base TEXT DEFAULT '',
-    p_qr_code_position TEXT DEFAULT 'BR'
+    p_qr_code_position TEXT DEFAULT 'BR',
+    p_original_language VARCHAR(10) DEFAULT 'en'
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -65,7 +75,8 @@ BEGIN
         conversation_ai_enabled,
         ai_instruction,
         ai_knowledge_base,
-        qr_code_position
+        qr_code_position,
+        original_language
     ) VALUES (
         auth.uid(),
         p_name,
@@ -76,7 +87,8 @@ BEGIN
         p_conversation_ai_enabled,
         p_ai_instruction,
         p_ai_knowledge_base,
-        p_qr_code_position::"QRCodePosition"
+        p_qr_code_position::"QRCodePosition",
+        p_original_language
     )
     RETURNING id INTO v_card_id;
     
@@ -86,6 +98,7 @@ BEGIN
     RETURN v_card_id;
 END;
 $$;
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 CREATE OR REPLACE FUNCTION get_card_by_id(p_card_id UUID)
@@ -133,7 +146,8 @@ CREATE OR REPLACE FUNCTION update_card(
     p_conversation_ai_enabled BOOLEAN DEFAULT NULL,
     p_ai_instruction TEXT DEFAULT NULL,
     p_ai_knowledge_base TEXT DEFAULT NULL,
-    p_qr_code_position TEXT DEFAULT NULL
+    p_qr_code_position TEXT DEFAULT NULL,
+    p_original_language VARCHAR(10) DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_old_record RECORD;
@@ -152,6 +166,7 @@ BEGIN
         ai_instruction,
         ai_knowledge_base,
         qr_code_position,
+        original_language,
         user_id,
         updated_at
     INTO v_old_record
@@ -208,6 +223,11 @@ BEGIN
         has_changes := TRUE;
     END IF;
     
+    IF p_original_language IS NOT NULL AND p_original_language != v_old_record.original_language THEN
+        v_changes_made := v_changes_made || jsonb_build_object('original_language', jsonb_build_object('from', v_old_record.original_language, 'to', p_original_language));
+        has_changes := TRUE;
+    END IF;
+    
     -- Only proceed if there are actual changes
     IF NOT has_changes THEN
         RETURN TRUE; -- No changes to make
@@ -225,6 +245,7 @@ END IF;
         ai_instruction = COALESCE(p_ai_instruction, ai_instruction),
         ai_knowledge_base = COALESCE(p_ai_knowledge_base, ai_knowledge_base),
         qr_code_position = COALESCE(p_qr_code_position::"QRCodePosition", qr_code_position),
+        original_language = COALESCE(p_original_language, original_language),
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
     
@@ -234,6 +255,7 @@ END IF;
     RETURN TRUE;
 END;
 $$;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)

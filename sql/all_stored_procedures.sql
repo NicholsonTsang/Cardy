@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Sat Oct 11 17:11:44 HKT 2025
+-- Generated: Sun Oct 12 16:16:07 HKT 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -302,6 +302,10 @@ RETURNS TABLE (
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
     qr_code_position TEXT,
+    translations JSONB,
+    original_language VARCHAR(10),
+    content_hash TEXT,
+    last_content_update TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -318,6 +322,10 @@ BEGIN
         c.ai_instruction,
         c.ai_knowledge_base,
         c.qr_code_position::TEXT,
+        c.translations,
+        c.original_language,
+        c.content_hash,
+        c.last_content_update,
         c.created_at,
         c.updated_at
     FROM cards c
@@ -325,6 +333,7 @@ BEGIN
     ORDER BY c.created_at DESC;
 END;
 $$;
+GRANT EXECUTE ON FUNCTION get_user_cards() TO authenticated;
 
 -- Create a new card (more secure)
 CREATE OR REPLACE FUNCTION create_card(
@@ -336,7 +345,8 @@ CREATE OR REPLACE FUNCTION create_card(
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
     p_ai_instruction TEXT DEFAULT '',
     p_ai_knowledge_base TEXT DEFAULT '',
-    p_qr_code_position TEXT DEFAULT 'BR'
+    p_qr_code_position TEXT DEFAULT 'BR',
+    p_original_language VARCHAR(10) DEFAULT 'en'
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -351,7 +361,8 @@ BEGIN
         conversation_ai_enabled,
         ai_instruction,
         ai_knowledge_base,
-        qr_code_position
+        qr_code_position,
+        original_language
     ) VALUES (
         auth.uid(),
         p_name,
@@ -362,7 +373,8 @@ BEGIN
         p_conversation_ai_enabled,
         p_ai_instruction,
         p_ai_knowledge_base,
-        p_qr_code_position::"QRCodePosition"
+        p_qr_code_position::"QRCodePosition",
+        p_original_language
     )
     RETURNING id INTO v_card_id;
     
@@ -372,6 +384,7 @@ BEGIN
     RETURN v_card_id;
 END;
 $$;
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 CREATE OR REPLACE FUNCTION get_card_by_id(p_card_id UUID)
@@ -419,7 +432,8 @@ CREATE OR REPLACE FUNCTION update_card(
     p_conversation_ai_enabled BOOLEAN DEFAULT NULL,
     p_ai_instruction TEXT DEFAULT NULL,
     p_ai_knowledge_base TEXT DEFAULT NULL,
-    p_qr_code_position TEXT DEFAULT NULL
+    p_qr_code_position TEXT DEFAULT NULL,
+    p_original_language VARCHAR(10) DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_old_record RECORD;
@@ -438,6 +452,7 @@ BEGIN
         ai_instruction,
         ai_knowledge_base,
         qr_code_position,
+        original_language,
         user_id,
         updated_at
     INTO v_old_record
@@ -494,6 +509,11 @@ BEGIN
         has_changes := TRUE;
     END IF;
     
+    IF p_original_language IS NOT NULL AND p_original_language != v_old_record.original_language THEN
+        v_changes_made := v_changes_made || jsonb_build_object('original_language', jsonb_build_object('from', v_old_record.original_language, 'to', p_original_language));
+        has_changes := TRUE;
+    END IF;
+    
     -- Only proceed if there are actual changes
     IF NOT has_changes THEN
         RETURN TRUE; -- No changes to make
@@ -511,6 +531,7 @@ END IF;
         ai_instruction = COALESCE(p_ai_instruction, ai_instruction),
         ai_knowledge_base = COALESCE(p_ai_knowledge_base, ai_knowledge_base),
         qr_code_position = COALESCE(p_qr_code_position::"QRCodePosition", qr_code_position),
+        original_language = COALESCE(p_original_language, original_language),
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
     
@@ -520,6 +541,7 @@ END IF;
     RETURN TRUE;
 END;
 $$;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
@@ -585,6 +607,9 @@ RETURNS TABLE (
     crop_parameters JSONB,
     ai_knowledge_base TEXT,
     sort_order INTEGER,
+    translations JSONB,
+    content_hash TEXT,
+    last_content_update TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -601,6 +626,9 @@ BEGIN
         ci.crop_parameters,
         ci.ai_knowledge_base,
         ci.sort_order,
+        ci.translations,
+        ci.content_hash,
+        ci.last_content_update,
         ci.created_at,
         ci.updated_at
     FROM content_items ci
@@ -613,6 +641,7 @@ BEGIN
         ci.created_at ASC;
 END;
 $$;
+GRANT EXECUTE ON FUNCTION get_card_content_items(UUID) TO authenticated;
 
 -- Get a content item by ID (updated with ordering)
 CREATE OR REPLACE FUNCTION get_content_item_by_id(p_content_item_id UUID)
@@ -627,6 +656,9 @@ RETURNS TABLE (
     crop_parameters JSONB,
     ai_knowledge_base TEXT,
     sort_order INTEGER,
+    translations JSONB,
+    content_hash TEXT,
+    last_content_update TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -643,6 +675,9 @@ BEGIN
         ci.crop_parameters,
         ci.ai_knowledge_base,
         ci.sort_order,
+        ci.translations,
+        ci.content_hash,
+        ci.last_content_update,
         ci.created_at,
         ci.updated_at
     FROM content_items ci
@@ -650,6 +685,7 @@ BEGIN
     WHERE ci.id = p_content_item_id AND c.user_id = auth.uid();
 END;
 $$;
+GRANT EXECUTE ON FUNCTION get_content_item_by_id(UUID) TO authenticated;
 
 -- Create a new content item (updated with ordering)
 CREATE OR REPLACE FUNCTION create_content_item(
@@ -980,6 +1016,7 @@ DECLARE
     v_card_owner_id UUID;
     v_credits_per_card DECIMAL := 2.00;
     v_total_credits DECIMAL;
+    v_current_balance DECIMAL;
     v_consumption_result JSONB;
     i INTEGER;
 BEGIN
@@ -1003,9 +1040,11 @@ BEGIN
     
     v_total_credits := p_quantity * v_credits_per_card;
     
-    -- Check credit balance
-    IF NOT check_credit_balance(v_total_credits) THEN
-        RAISE EXCEPTION 'Insufficient credits. Required: %, Please purchase more credits.', v_total_credits;
+    -- Check credit balance (check_credit_balance returns the actual balance as DECIMAL)
+    v_current_balance := check_credit_balance(v_total_credits);
+    IF v_current_balance < v_total_credits THEN
+        RAISE EXCEPTION 'Insufficient credits. Required: %, Available: %. Please purchase more credits.', 
+            v_total_credits, v_current_balance;
     END IF;
     
     -- Get next batch number
@@ -1705,7 +1744,11 @@ DROP FUNCTION IF EXISTS get_card_preview_content CASCADE;
 -- =================================================================
 
 -- Get public card content by issue card ID
-CREATE OR REPLACE FUNCTION get_public_card_content(p_issue_card_id UUID)
+-- Updated to support translations via p_language parameter
+CREATE OR REPLACE FUNCTION get_public_card_content(
+    p_issue_card_id UUID,
+    p_language VARCHAR(10) DEFAULT 'en'
+)
 RETURNS TABLE (
     card_name TEXT,
     card_description TEXT,
@@ -1714,6 +1757,8 @@ RETURNS TABLE (
     card_conversation_ai_enabled BOOLEAN,
     card_ai_instruction TEXT,
     card_ai_knowledge_base TEXT,
+    card_original_language VARCHAR(10),
+    card_has_translation BOOLEAN,
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -1770,19 +1815,23 @@ BEGIN
 
     RETURN QUERY
     SELECT 
-        c.name AS card_name,
-        c.description AS card_description,
+        -- Use translation if available, fallback to original
+        COALESCE(c.translations->p_language->>'name', c.name)::TEXT AS card_name,
+        COALESCE(c.translations->p_language->>'description', c.description)::TEXT AS card_description,
         c.image_url AS card_image_url,
         c.crop_parameters AS card_crop_parameters,
         c.conversation_ai_enabled AS card_conversation_ai_enabled,
         c.ai_instruction AS card_ai_instruction,
         c.ai_knowledge_base AS card_ai_knowledge_base,
+        c.original_language::VARCHAR(10) AS card_original_language,
+        (c.translations ? p_language)::BOOLEAN AS card_has_translation,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
-        ci.name AS content_item_name,
-        ci.content AS content_item_content,
+        COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
+        COALESCE(ci.translations->p_language->>'content', ci.content)::TEXT AS content_item_content,
         ci.image_url AS content_item_image_url,
-        ci.ai_knowledge_base AS content_item_ai_knowledge_base,
+        -- Note: ai_knowledge_base is translated but not exposed to mobile client
+        COALESCE(ci.translations->p_language->>'ai_knowledge_base', ci.ai_knowledge_base)::TEXT AS content_item_ai_knowledge_base,
         ci.sort_order AS content_item_sort_order,
         ci.crop_parameters,
         v_is_card_active AS is_activated -- Return the current/newly activated status
@@ -1834,7 +1883,11 @@ END;
 $$;
 
 -- Get card content for preview mode (card owner or admin)
-CREATE OR REPLACE FUNCTION get_card_preview_content(p_card_id UUID)
+-- Updated to support translations via p_language parameter
+CREATE OR REPLACE FUNCTION get_card_preview_content(
+    p_card_id UUID,
+    p_language VARCHAR(10) DEFAULT 'en'
+)
 RETURNS TABLE (
     card_name TEXT,
     card_description TEXT,
@@ -1843,6 +1896,8 @@ RETURNS TABLE (
     card_conversation_ai_enabled BOOLEAN,
     card_ai_instruction TEXT,
     card_ai_knowledge_base TEXT,
+    card_original_language VARCHAR(10),
+    card_has_translation BOOLEAN,
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -1886,19 +1941,22 @@ BEGIN
     -- Return card content directly (no issued card needed)
     RETURN QUERY
     SELECT 
-        c.name AS card_name,
-        c.description AS card_description,
+        -- Use translation if available, fallback to original
+        COALESCE(c.translations->p_language->>'name', c.name)::TEXT AS card_name,
+        COALESCE(c.translations->p_language->>'description', c.description)::TEXT AS card_description,
         c.image_url AS card_image_url,
         c.crop_parameters AS card_crop_parameters,
         c.conversation_ai_enabled AS card_conversation_ai_enabled,
         c.ai_instruction AS card_ai_instruction,
         c.ai_knowledge_base AS card_ai_knowledge_base,
+        c.original_language::VARCHAR(10) AS card_original_language,
+        (c.translations ? p_language)::BOOLEAN AS card_has_translation,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
-        ci.name AS content_item_name,
-        ci.content AS content_item_content,
+        COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
+        COALESCE(ci.translations->p_language->>'content', ci.content)::TEXT AS content_item_content,
         ci.image_url AS content_item_image_url,
-        ci.ai_knowledge_base AS content_item_ai_knowledge_base,
+        COALESCE(ci.translations->p_language->>'ai_knowledge_base', ci.ai_knowledge_base)::TEXT AS content_item_ai_knowledge_base,
         ci.sort_order AS content_item_sort_order,
         ci.crop_parameters,
         TRUE AS is_preview -- Indicate this is preview mode
@@ -3450,6 +3508,433 @@ BEGIN
 END;
 $$;
 
+-- File: 12_translation_management.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_card_translation_status CASCADE;
+DROP FUNCTION IF EXISTS get_card_translations CASCADE;
+DROP FUNCTION IF EXISTS delete_card_translation CASCADE;
+DROP FUNCTION IF EXISTS get_translation_history CASCADE;
+DROP FUNCTION IF EXISTS get_outdated_translations CASCADE;
+
+-- =====================================================================
+-- TRANSLATION MANAGEMENT STORED PROCEDURES
+-- =====================================================================
+-- These procedures handle AI-powered multi-language translation
+-- for card content. Translation costs 1 credit per language.
+--
+-- Client-side procedures (called from dashboard frontend):
+-- - get_card_translation_status: Get translation status for all languages
+-- - get_card_translations: Get full translations for a card
+-- - store_card_translations: Store GPT-translated content (called by Edge Function)
+-- - delete_card_translation: Remove a specific language translation
+-- - get_translation_history: Get audit trail of translations
+-- =====================================================================
+
+-- =====================================================================
+-- 1. Get Translation Status for a Card
+-- =====================================================================
+-- Returns status of translations for all supported languages
+-- Status types: 'original', 'up_to_date', 'outdated', 'not_translated'
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION get_card_translation_status(p_card_id UUID)
+RETURNS TABLE (
+  language VARCHAR(10),
+  language_name TEXT,
+  status VARCHAR(20),
+  translated_at TIMESTAMPTZ,
+  needs_update BOOLEAN,
+  content_fields_count INTEGER
+) 
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_card_owner UUID;
+  v_original_language VARCHAR(10);
+  v_content_hash TEXT;
+  v_content_items_count INTEGER;
+BEGIN
+  -- Get current user
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: No authenticated user';
+  END IF;
+
+  -- Verify card ownership
+  SELECT c.user_id, c.original_language, c.content_hash
+  INTO v_card_owner, v_original_language, v_content_hash
+  FROM cards c
+  WHERE c.id = p_card_id;
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Card not found';
+  END IF;
+
+  IF v_card_owner != v_user_id THEN
+    -- Allow admins to view any card
+    IF NOT EXISTS (
+      SELECT 1 FROM auth.users 
+      WHERE id = v_user_id 
+      AND raw_user_meta_data->>'role' = 'admin'
+    ) THEN
+      RAISE EXCEPTION 'Unauthorized: Card does not belong to user';
+    END IF;
+  END IF;
+
+  -- Get content items count
+  SELECT COUNT(*) INTO v_content_items_count
+  FROM content_items ci
+  WHERE ci.card_id = p_card_id;
+
+  -- Return translation status for all supported languages
+  RETURN QUERY
+  WITH supported_languages AS (
+    SELECT 
+      unnest(ARRAY['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko', 'es', 'fr', 'ru', 'ar', 'th']) AS lang,
+      unnest(ARRAY[
+        'English', 
+        'Traditional Chinese', 
+        'Simplified Chinese', 
+        'Japanese', 
+        'Korean', 
+        'Spanish', 
+        'French', 
+        'Russian', 
+        'Arabic', 
+        'Thai'
+      ]) AS lang_name
+  ),
+  card_info AS (
+    SELECT 
+      c.original_language, 
+      c.translations, 
+      c.content_hash
+    FROM cards c
+    WHERE c.id = p_card_id
+  ),
+  content_items_status AS (
+    -- Compute per-language freshness across all content items.
+    -- Treat the no-content-items case as up-to-date (TRUE).
+    SELECT
+      sl.lang AS lang,
+      CASE 
+        WHEN COUNT(ci.id) = 0 THEN TRUE
+        ELSE bool_and(
+          ci.translations ? sl.lang AND
+          ci.translations->sl.lang->>'content_hash' = ci.content_hash
+        )
+      END AS all_items_translated
+    FROM supported_languages sl
+    LEFT JOIN content_items ci
+      ON ci.card_id = p_card_id
+    GROUP BY sl.lang
+  )
+  SELECT 
+    sl.lang::VARCHAR(10),
+    sl.lang_name::TEXT,
+    CASE 
+      WHEN sl.lang = ci.original_language THEN 'original'
+      WHEN ci.translations ? sl.lang THEN
+        CASE
+          WHEN ci.translations->sl.lang->>'content_hash' = ci.content_hash 
+               AND COALESCE(cis.all_items_translated, TRUE)
+          THEN 'up_to_date'
+          ELSE 'outdated'
+        END
+      ELSE 'not_translated'
+    END::VARCHAR(20),
+    (ci.translations->sl.lang->>'translated_at')::TIMESTAMPTZ,
+    CASE 
+      WHEN sl.lang != ci.original_language AND 
+           (NOT (ci.translations ? sl.lang) OR 
+            ci.translations->sl.lang->>'content_hash' != ci.content_hash OR
+            NOT COALESCE(cis.all_items_translated, TRUE))
+      THEN TRUE
+      ELSE FALSE
+    END::BOOLEAN,
+    (2 + v_content_items_count * 3)::INTEGER -- 2 card fields + N items × 3 fields each
+  FROM supported_languages sl
+  CROSS JOIN card_info ci
+  LEFT JOIN content_items_status cis ON cis.lang = sl.lang;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- 2. Get Full Translations for a Card
+-- =====================================================================
+-- Returns all translations for a card and its content items
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION get_card_translations(
+  p_card_id UUID,
+  p_language VARCHAR(10) DEFAULT NULL -- If NULL, return all languages
+)
+RETURNS JSONB
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_card_owner UUID;
+  v_result JSONB;
+BEGIN
+  -- Get current user
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: No authenticated user';
+  END IF;
+
+  -- Verify card ownership
+  SELECT user_id INTO v_card_owner FROM cards WHERE id = p_card_id;
+  
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Card not found';
+  END IF;
+
+  IF v_card_owner != v_user_id THEN
+    -- Allow admins to view any card
+    IF NOT EXISTS (
+      SELECT 1 FROM auth.users 
+      WHERE id = v_user_id 
+      AND raw_user_meta_data->>'role' = 'admin'
+    ) THEN
+      RAISE EXCEPTION 'Unauthorized: Card does not belong to user';
+    END IF;
+  END IF;
+
+  -- Build result
+  SELECT jsonb_build_object(
+    'card', jsonb_build_object(
+      'id', c.id,
+      'name', c.name,
+      'description', c.description,
+      'original_language', c.original_language,
+      'content_hash', c.content_hash,
+      'translations', CASE 
+        WHEN p_language IS NULL THEN c.translations
+        ELSE jsonb_build_object(p_language, c.translations->p_language)
+      END
+    ),
+    'content_items', (
+      SELECT COALESCE(jsonb_agg(
+        jsonb_build_object(
+          'id', ci.id,
+          'name', ci.name,
+          'content', ci.content,
+          'ai_knowledge_base', ci.ai_knowledge_base,
+          'content_hash', ci.content_hash,
+          'translations', CASE 
+            WHEN p_language IS NULL THEN ci.translations
+            ELSE jsonb_build_object(p_language, ci.translations->p_language)
+          END
+        ) ORDER BY ci.sort_order
+      ), '[]'::jsonb)
+      FROM content_items ci
+      WHERE ci.card_id = p_card_id
+    )
+  ) INTO v_result
+  FROM cards c
+  WHERE c.id = p_card_id;
+
+  RETURN v_result;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- 3. Store Card Translations (Called by Edge Function)
+-- =====================================================================
+-- Stores GPT-generated translations for a card and its content items
+-- This is called by the Edge Function after successful translation
+-- =====================================================================
+
+-- NOTE: store_card_translations has been moved to server-side/translation_management.sql
+-- This function is called by Edge Functions and requires service_role permissions
+
+-- =====================================================================
+-- 4. Delete Card Translation
+-- =====================================================================
+-- Removes a specific language translation from a card
+-- Does not refund credits
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION delete_card_translation(
+  p_card_id UUID,
+  p_language VARCHAR(10)
+)
+RETURNS JSONB
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_card_owner UUID;
+BEGIN
+  -- Get current user
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: No authenticated user';
+  END IF;
+
+  -- Verify card ownership
+  SELECT user_id INTO v_card_owner FROM cards WHERE id = p_card_id;
+  
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Card not found';
+  END IF;
+
+  IF v_card_owner != v_user_id THEN
+    RAISE EXCEPTION 'Unauthorized: Card does not belong to user';
+  END IF;
+
+  -- Remove translation from card
+  UPDATE cards
+  SET translations = translations - p_language
+  WHERE id = p_card_id;
+
+  -- Remove translations from all content items
+  UPDATE content_items
+  SET translations = translations - p_language
+  WHERE card_id = p_card_id;
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'card_id', p_card_id,
+    'deleted_language', p_language
+  );
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- 5. Get Translation History
+-- =====================================================================
+-- Returns audit trail of translation operations for a card
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION get_translation_history(
+  p_card_id UUID,
+  p_limit INTEGER DEFAULT 50,
+  p_offset INTEGER DEFAULT 0
+)
+RETURNS TABLE (
+  id UUID,
+  card_id UUID,
+  target_languages TEXT[],
+  credit_cost DECIMAL,
+  translated_by UUID,
+  translator_email TEXT,
+  translated_at TIMESTAMPTZ,
+  status VARCHAR,
+  error_message TEXT,
+  metadata JSONB
+)
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_card_owner UUID;
+BEGIN
+  -- Get current user
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: No authenticated user';
+  END IF;
+
+  -- Verify card ownership or admin
+  SELECT c.user_id INTO v_card_owner FROM cards c WHERE c.id = p_card_id;
+  
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Card not found';
+  END IF;
+
+  IF v_card_owner != v_user_id THEN
+    -- Allow admins to view any card
+    IF NOT EXISTS (
+      SELECT 1 FROM auth.users 
+      WHERE id = v_user_id 
+      AND raw_user_meta_data->>'role' = 'admin'
+    ) THEN
+      RAISE EXCEPTION 'Unauthorized: Card does not belong to user';
+    END IF;
+  END IF;
+
+  -- Return translation history
+  RETURN QUERY
+  SELECT 
+    th.id,
+    th.card_id,
+    th.target_languages,
+    th.credit_cost,
+    th.translated_by,
+    au.email::TEXT AS translator_email,
+    th.translated_at,
+    th.status::VARCHAR,
+    th.error_message,
+    th.metadata
+  FROM translation_history th
+  LEFT JOIN auth.users au ON au.id = th.translated_by
+  WHERE th.card_id = p_card_id
+  ORDER BY th.translated_at DESC
+  LIMIT p_limit
+  OFFSET p_offset;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- 6. Get Outdated Translations for a Card
+-- =====================================================================
+-- Returns list of languages that need re-translation
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION get_outdated_translations(p_card_id UUID)
+RETURNS TABLE (
+  language VARCHAR(10),
+  last_translated_at TIMESTAMPTZ
+)
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_card_owner UUID;
+BEGIN
+  -- Get current user
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Unauthorized: No authenticated user';
+  END IF;
+
+  -- Verify card ownership
+  SELECT user_id INTO v_card_owner FROM cards WHERE id = p_card_id;
+  
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Card not found';
+  END IF;
+
+  IF v_card_owner != v_user_id THEN
+    RAISE EXCEPTION 'Unauthorized: Card does not belong to user';
+  END IF;
+
+  -- Return outdated translations from the status function
+  RETURN QUERY
+  SELECT 
+    ts.language::VARCHAR(10),
+    ts.translated_at
+  FROM get_card_translation_status(p_card_id) ts
+  WHERE ts.status = 'outdated';
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- Grant permissions
+-- =====================================================================
+
+GRANT EXECUTE ON FUNCTION get_card_translation_status(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_card_translations(UUID, VARCHAR) TO authenticated;
+GRANT EXECUTE ON FUNCTION store_card_translations(UUID, UUID, TEXT[], JSONB, JSONB, DECIMAL) TO service_role;
+GRANT EXECUTE ON FUNCTION delete_card_translation(UUID, VARCHAR) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_translation_history(UUID, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_outdated_translations(UUID) TO authenticated;
+
+
+
 -- File: admin_credit_management.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS admin_get_credit_purchases CASCADE;
@@ -3895,6 +4380,7 @@ DROP FUNCTION IF EXISTS initialize_user_credits CASCADE;
 DROP FUNCTION IF EXISTS get_user_credits CASCADE;
 DROP FUNCTION IF EXISTS check_credit_balance CASCADE;
 DROP FUNCTION IF EXISTS create_credit_purchase_record CASCADE;
+DROP FUNCTION IF EXISTS consume_credits CASCADE;
 DROP FUNCTION IF EXISTS consume_credits_for_batch CASCADE;
 DROP FUNCTION IF EXISTS get_credit_transactions CASCADE;
 DROP FUNCTION IF EXISTS get_credit_purchases CASCADE;
@@ -3964,13 +4450,17 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Check if user has sufficient credits
-CREATE OR REPLACE FUNCTION check_credit_balance(p_required_credits DECIMAL)
-RETURNS BOOLEAN AS $$
+CREATE OR REPLACE FUNCTION check_credit_balance(
+    p_required_credits DECIMAL,
+    p_user_id UUID DEFAULT NULL
+)
+RETURNS DECIMAL AS $$
 DECLARE
     v_user_id UUID;
     v_balance DECIMAL;
 BEGIN
-    v_user_id := auth.uid();
+    -- Use provided user_id or fall back to auth.uid()
+    v_user_id := COALESCE(p_user_id, auth.uid());
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
@@ -3985,7 +4475,8 @@ BEGIN
         v_balance := 0;
     END IF;
 
-    RETURN v_balance >= p_required_credits;
+    -- Return the actual balance (not a boolean check)
+    RETURN v_balance;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -4033,6 +4524,82 @@ BEGIN
     );
 
     RETURN v_purchase_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Generic function to consume credits
+CREATE OR REPLACE FUNCTION consume_credits(
+    p_credits_to_consume DECIMAL,
+    p_user_id UUID DEFAULT NULL,
+    p_consumption_type VARCHAR DEFAULT 'other',
+    p_metadata JSONB DEFAULT '{}'::jsonb
+)
+RETURNS VOID AS $$
+DECLARE
+    v_user_id UUID;
+    v_current_balance DECIMAL;
+    v_new_balance DECIMAL;
+    v_consumption_id UUID;
+    v_transaction_id UUID;
+BEGIN
+    -- Use provided user_id or fall back to auth.uid()
+    v_user_id := COALESCE(p_user_id, auth.uid());
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Lock the user credits row for update
+    SELECT balance INTO v_current_balance
+    FROM user_credits
+    WHERE user_id = v_user_id
+    FOR UPDATE;
+
+    IF v_current_balance IS NULL OR v_current_balance < p_credits_to_consume THEN
+        RAISE EXCEPTION 'Insufficient credits. Required: %, Available: %', 
+            p_credits_to_consume, COALESCE(v_current_balance, 0);
+    END IF;
+
+    v_new_balance := v_current_balance - p_credits_to_consume;
+
+    -- Update user credits
+    UPDATE user_credits
+    SET 
+        balance = v_new_balance,
+        total_consumed = total_consumed + p_credits_to_consume,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = v_user_id;
+
+    -- Record consumption (card_id from metadata if available)
+    INSERT INTO credit_consumptions (
+        user_id, card_id, consumption_type, quantity, 
+        credits_per_unit, total_credits, description
+    ) VALUES (
+        v_user_id, 
+        (p_metadata->>'card_id')::UUID,
+        p_consumption_type, 
+        (p_metadata->>'language_count')::INTEGER,
+        1.00, -- 1 credit per language for translations
+        p_credits_to_consume,
+        format('%s: %s credits', p_consumption_type, p_credits_to_consume)
+    ) RETURNING id INTO v_consumption_id;
+
+    -- Record transaction
+    INSERT INTO credit_transactions (
+        user_id, type, amount, balance_before, balance_after,
+        reference_type, reference_id, description, metadata
+    ) VALUES (
+        v_user_id, 'consumption', -p_credits_to_consume,
+        v_current_balance, v_new_balance,
+        p_consumption_type, v_consumption_id,
+        format('Credit consumption: %s', p_consumption_type),
+        p_metadata
+    ) RETURNING id INTO v_transaction_id;
+
+    -- Log operation
+    PERFORM log_operation(
+        format('Credit consumption: %s credits for %s - New balance: %s (Transaction ID: %s)',
+            p_credits_to_consume, p_consumption_type, v_new_balance, v_transaction_id)
+    );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -4355,394 +4922,49 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- =====================================================================
+-- GRANT PERMISSIONS
+-- =====================================================================
+-- NOTE: Some functions use a "dual-use pattern" with COALESCE(p_user_id, auth.uid())
+-- These can be called from:
+--   - Frontend: Without p_user_id, uses auth.uid() from JWT
+--   - Edge Functions: With explicit p_user_id parameter using SERVICE_ROLE_KEY
+-- =====================================================================
+
+-- Dual-use functions (called from frontend AND Edge Functions with SERVICE_ROLE_KEY)
+GRANT EXECUTE ON FUNCTION check_credit_balance(DECIMAL, UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION consume_credits(DECIMAL, UUID, VARCHAR, JSONB) TO authenticated, service_role;
+
+-- Client-only functions
+GRANT EXECUTE ON FUNCTION initialize_user_credits() TO authenticated;
+GRANT EXECUTE ON FUNCTION get_credit_statistics() TO authenticated;
+GRANT EXECUTE ON FUNCTION get_user_credits() TO authenticated;
+
+-- Add documentation comments
+COMMENT ON FUNCTION check_credit_balance(DECIMAL, UUID) IS 
+  'DUAL-USE PATTERN: Accepts optional p_user_id (for Edge Functions with SERVICE_ROLE_KEY) or falls back to auth.uid() (for frontend with user JWT). Granted to both authenticated and service_role roles.';
+  
+COMMENT ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) IS 
+  'DUAL-USE PATTERN: Accepts optional p_user_id (for Edge Functions with SERVICE_ROLE_KEY) or falls back to auth.uid() (for frontend with user JWT). Granted to both authenticated and service_role roles. Called by create-credit-checkout-session Edge Function.';
+  
+COMMENT ON FUNCTION consume_credits(DECIMAL, UUID, VARCHAR, JSONB) IS 
+  'DUAL-USE PATTERN: Accepts optional p_user_id (for server-side stored procedures) or falls back to auth.uid() (for direct frontend calls). Granted to both authenticated and service_role roles.';
+
+COMMENT ON FUNCTION initialize_user_credits() IS 
+  'CLIENT-ONLY: Uses auth.uid() from user JWT. Creates initial credit record for authenticated user.';
+
+COMMENT ON FUNCTION get_credit_statistics() IS 
+  'CLIENT-ONLY: Uses auth.uid() from user JWT. Returns credit statistics for authenticated user including balance, purchases, consumptions.';
+
+COMMENT ON FUNCTION get_user_credits() IS 
+  'CLIENT-ONLY: Uses auth.uid() from user JWT. Returns current credit balance for authenticated user.';
+
 
 
 -- =================================================================
 -- SERVER-SIDE PROCEDURES
 -- =================================================================
-
--- File: 05_payment_management.sql
--- -----------------------------------------------------------------
-DROP FUNCTION IF EXISTS create_batch_checkout_payment CASCADE;
-DROP FUNCTION IF EXISTS get_batch_for_checkout CASCADE;
-DROP FUNCTION IF EXISTS get_existing_batch_payment CASCADE;
-DROP FUNCTION IF EXISTS confirm_batch_payment_by_session CASCADE;
-DROP FUNCTION IF EXISTS create_pending_batch_payment CASCADE;
-DROP FUNCTION IF EXISTS confirm_pending_batch_payment CASCADE;
-
--- =================================================================
--- PAYMENT MANAGEMENT FUNCTIONS (SERVER-SIDE)
--- Functions called by Edge Functions for Stripe Checkout processing
--- =================================================================
-
--- Create Stripe checkout session payment record
-CREATE OR REPLACE FUNCTION create_batch_checkout_payment(
-    p_batch_id UUID,
-    p_stripe_payment_intent_id TEXT,
-    p_stripe_checkout_session_id TEXT,
-    p_amount_cents INTEGER,
-    p_metadata JSONB DEFAULT '{}'::jsonb
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_batch_owner_id UUID;
-    v_batch_payment_amount INTEGER;
-    v_payment_id UUID;
-BEGIN
-    -- Verify batch ownership and get expected amount
-    SELECT cb.created_by, cb.payment_amount_cents 
-    INTO v_batch_owner_id, v_batch_payment_amount
-    FROM card_batches cb 
-    WHERE cb.id = p_batch_id;
-    
-    IF v_batch_owner_id IS NULL THEN
-        RAISE EXCEPTION 'Batch not found.';
-    END IF;
-    
-    IF v_batch_owner_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to create payment for this batch.';
-    END IF;
-    
-    -- Verify amount matches expected
-    IF p_amount_cents != v_batch_payment_amount THEN
-        RAISE EXCEPTION 'Payment amount mismatch. Expected: %, Provided: %', v_batch_payment_amount, p_amount_cents;
-    END IF;
-    
-    -- Check if payment already exists for this batch
-    IF EXISTS (SELECT 1 FROM batch_payments WHERE batch_id = p_batch_id) THEN
-        RAISE EXCEPTION 'Payment already exists for this batch.';
-    END IF;
-    
-    -- Validate required checkout session ID
-    IF p_stripe_checkout_session_id IS NULL THEN
-        RAISE EXCEPTION 'Checkout session ID is required.';
-    END IF;
-    
-    -- Create payment record for checkout session
-    INSERT INTO batch_payments (
-        batch_id,
-        user_id,
-        stripe_payment_intent_id,
-        stripe_checkout_session_id,
-        amount_cents,
-        currency,
-        payment_status,
-        metadata
-    ) VALUES (
-        p_batch_id,
-        auth.uid(),
-        p_stripe_payment_intent_id, -- Can be null in test mode
-        p_stripe_checkout_session_id,
-        p_amount_cents,
-        'usd',
-        'pending',
-        p_metadata
-    ) RETURNING id INTO v_payment_id;
-    
-    -- Log operation
-    PERFORM log_operation(
-        format('Batch payment created: $%s for batch %s', 
-            (p_amount_cents / 100.0)::numeric(10,2), p_batch_id)
-    );
-    
-    RETURN v_payment_id;
-END;
-$$;
-
-
--- Get batch information for checkout session
-CREATE OR REPLACE FUNCTION get_batch_for_checkout(p_batch_id UUID)
-RETURNS TABLE (
-    id UUID,
-    card_id UUID,
-    created_by UUID,
-    batch_name TEXT,
-    card_name TEXT,
-    card_description TEXT,
-    card_image_url TEXT
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        cb.id,
-        cb.card_id,
-        cb.created_by,
-        cb.batch_name,
-        c.name as card_name,
-        c.description as card_description,
-        c.image_url as card_image_url
-    FROM card_batches cb
-    JOIN cards c ON cb.card_id = c.id
-    WHERE cb.id = p_batch_id 
-    AND cb.created_by = auth.uid();
-END;
-$$;
-
--- Check existing payment for batch
-CREATE OR REPLACE FUNCTION get_existing_batch_payment(p_batch_id UUID)
-RETURNS TABLE (
-    id UUID,
-    payment_status TEXT,
-    stripe_checkout_session_id TEXT,
-    amount_cents INTEGER,
-    created_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        bp.id,
-        bp.payment_status,
-        bp.stripe_checkout_session_id,
-        bp.amount_cents,
-        bp.created_at
-    FROM batch_payments bp
-    WHERE bp.batch_id = p_batch_id 
-    AND bp.user_id = auth.uid()
-    ORDER BY bp.created_at DESC
-    LIMIT 1;
-END;
-$$;
-
--- Confirm batch payment by checkout session ID (alternative method)
-CREATE OR REPLACE FUNCTION confirm_batch_payment_by_session(
-    p_stripe_checkout_session_id TEXT,
-    p_payment_method TEXT DEFAULT NULL
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_payment_record RECORD;
-    v_batch_record RECORD;
-BEGIN
-    -- Get payment and batch information by checkout session ID
-    SELECT bp.*, cb.card_id, cb.cards_count 
-    INTO v_payment_record
-    FROM batch_payments bp
-    JOIN card_batches cb ON bp.batch_id = cb.id
-    WHERE bp.stripe_checkout_session_id = p_stripe_checkout_session_id
-    AND bp.user_id = auth.uid();
-    
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Payment not found or not authorized.';
-    END IF;
-    
-    -- Check if already confirmed
-    IF v_payment_record.payment_status = 'succeeded' THEN
-        RAISE EXCEPTION 'Payment already confirmed.';
-    END IF;
-    
-    -- Update payment status
-    UPDATE batch_payments 
-    SET 
-        payment_status = 'succeeded',
-        payment_method = p_payment_method,
-        updated_at = NOW()
-    WHERE stripe_checkout_session_id = p_stripe_checkout_session_id;
-    
-    -- Update batch payment status
-    UPDATE card_batches 
-    SET 
-        payment_completed = TRUE,
-        payment_completed_at = NOW(),
-        updated_at = NOW()
-    WHERE id = v_payment_record.batch_id;
-    
-    -- Generate cards using the new function
-    PERFORM generate_batch_cards(v_payment_record.batch_id);
-    
-    -- Log operation
-    PERFORM log_operation(
-        format('Batch payment confirmed: $%s for batch %s', 
-            (v_payment_record.amount_cents / 100.0)::numeric(10,2), v_payment_record.batch_id)
-    );
-    
-    RETURN v_payment_record.batch_id;
-END;
-$$;
-
--- =================================================================
--- PENDING BATCH PAYMENT FUNCTIONS (PAYMENT-FIRST FLOW)
--- Functions for handling payments before batch creation
--- =================================================================
-
--- Create payment record for pending batch (payment-first flow)
--- Parameters ordered to match Supabase's expected alphabetical order
-CREATE OR REPLACE FUNCTION create_pending_batch_payment(
-    p_amount_cents INTEGER,
-    p_batch_name TEXT,
-    p_card_id UUID,
-    p_cards_count INTEGER,
-    p_metadata JSONB,
-    p_stripe_checkout_session_id TEXT,
-    p_stripe_payment_intent_id TEXT
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_card_owner_id UUID;
-    v_payment_id UUID;
-    v_expected_amount INTEGER;
-    v_batch_name TEXT;
-    v_next_batch_number INTEGER;
-BEGIN
-    -- Verify card ownership
-    SELECT user_id INTO v_card_owner_id
-    FROM cards 
-    WHERE id = p_card_id;
-    
-    IF v_card_owner_id IS NULL THEN
-        RAISE EXCEPTION 'Card not found.';
-    END IF;
-    
-    IF v_card_owner_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to create payment for this card.';
-    END IF;
-    
-    -- Calculate expected amount ($2 per card = 200 cents per card)
-    v_expected_amount := p_cards_count * 200;
-    
-    -- Verify amount matches expected
-    IF p_amount_cents != v_expected_amount THEN
-        RAISE EXCEPTION 'Payment amount mismatch. Expected: %, Provided: %', v_expected_amount, p_amount_cents;
-    END IF;
-    
-    -- Validate required checkout session ID
-    IF p_stripe_checkout_session_id IS NULL THEN
-        RAISE EXCEPTION 'Checkout session ID is required.';
-    END IF;
-    
-    -- Check if payment already exists for this session
-    IF EXISTS (SELECT 1 FROM batch_payments WHERE stripe_checkout_session_id = p_stripe_checkout_session_id) THEN
-        RAISE EXCEPTION 'Payment already exists for this checkout session.';
-    END IF;
-    
-    -- Generate batch name if not provided
-    IF p_batch_name IS NULL OR TRIM(p_batch_name) = '' THEN
-        SELECT get_next_batch_number(p_card_id) INTO v_next_batch_number;
-        v_batch_name := 'batch-' || v_next_batch_number;
-    ELSE
-        v_batch_name := p_batch_name;
-    END IF;
-    
-    -- Create pending payment record
-    INSERT INTO batch_payments (
-        batch_id,        -- NULL for pending batch
-        card_id,
-        user_id,
-        stripe_checkout_session_id,
-        stripe_payment_intent_id,
-        amount_cents,
-        currency,
-        payment_status,
-        batch_name,
-        cards_count,
-        metadata,
-        created_at,
-        updated_at
-    ) VALUES (
-        NULL,            -- No batch exists yet
-        p_card_id,
-        auth.uid(),
-        p_stripe_checkout_session_id,
-        p_stripe_payment_intent_id,
-        p_amount_cents,
-        'usd',
-        'pending',
-        v_batch_name,
-        p_cards_count,
-        p_metadata,
-        NOW(),
-        NOW()
-    )
-    RETURNING id INTO v_payment_id;
-    
-    -- Log operation
-    PERFORM log_operation(
-        format('Pending batch payment created: $%s for %s cards', 
-            (p_amount_cents / 100.0)::numeric(10,2), p_cards_count)
-    );
-    
-    RETURN v_payment_id;
-END;
-$$;
-
--- Confirm pending batch payment and create batch (payment-first flow)
-CREATE OR REPLACE FUNCTION confirm_pending_batch_payment(
-    p_stripe_checkout_session_id TEXT,
-    p_payment_method TEXT DEFAULT NULL
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_payment_record RECORD;
-    v_batch_id UUID;
-    v_batch_number INTEGER;
-    v_generated_batch_name TEXT;
-BEGIN
-    -- Get pending payment record
-    SELECT * INTO v_payment_record
-    FROM batch_payments 
-    WHERE stripe_checkout_session_id = p_stripe_checkout_session_id
-    AND user_id = auth.uid()
-    AND batch_id IS NULL;  -- Must be pending payment
-    
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Pending payment not found or not authorized.';
-    END IF;
-    
-    -- Check if already confirmed
-    IF v_payment_record.payment_status = 'succeeded' THEN
-        RAISE EXCEPTION 'Payment already confirmed.';
-    END IF;
-    
-    -- Get next batch number for this card
-    SELECT get_next_batch_number(v_payment_record.card_id) INTO v_batch_number;
-    v_generated_batch_name := 'batch-' || v_batch_number;
-    
-    -- Create the batch now that payment is confirmed
-    INSERT INTO card_batches (
-        card_id,
-        batch_name,
-        batch_number,
-        cards_count,
-        created_by,
-        payment_required,
-        payment_completed,
-        payment_amount_cents,
-        payment_completed_at,
-        payment_waived,
-        cards_generated
-    ) VALUES (
-        v_payment_record.card_id,
-        v_generated_batch_name,
-        v_batch_number,
-        v_payment_record.cards_count,
-        auth.uid(),
-        TRUE,
-        TRUE,  -- Payment already confirmed
-        v_payment_record.amount_cents,
-        NOW(),
-        FALSE,
-        FALSE  -- Cards not generated yet
-    )
-    RETURNING id INTO v_batch_id;
-    
-    -- Update payment record to link to the new batch
-    UPDATE batch_payments 
-    SET 
-        batch_id = v_batch_id,
-        payment_status = 'succeeded',
-        payment_method = p_payment_method,
-        updated_at = NOW()
-    WHERE stripe_checkout_session_id = p_stripe_checkout_session_id;
-    
-    -- Generate cards for the new batch
-    PERFORM generate_batch_cards(v_batch_id);
-    
-    -- Log operation
-    PERFORM log_operation(
-        format('Pending batch payment confirmed: batch "%s" with %s cards created', 
-            v_generated_batch_name, v_payment_record.cards_count)
-    );
-    
-    RETURN v_batch_id;
-END;
-$$;
-
- 
 
 -- File: credit_purchase_completion.sql
 -- -----------------------------------------------------------------
@@ -4753,30 +4975,54 @@ DROP FUNCTION IF EXISTS refund_credit_purchase CASCADE;
 -- Called by Edge Function after successful Stripe payment
 
 -- Complete credit purchase after Stripe payment
+-- SECURITY: Validates user ID and payment amount to prevent fraud
 CREATE OR REPLACE FUNCTION complete_credit_purchase(
+    p_user_id UUID,  -- User ID from webhook metadata for validation
     p_stripe_session_id VARCHAR,
     p_stripe_payment_intent_id VARCHAR DEFAULT NULL,
+    p_amount_paid_cents INTEGER DEFAULT NULL,  -- Actual amount paid from Stripe
     p_receipt_url TEXT DEFAULT NULL,
     p_payment_method JSONB DEFAULT NULL
 )
 RETURNS JSONB AS $$
 DECLARE
     v_purchase_id UUID;
-    v_user_id UUID;
+    v_user_id_from_db UUID;
     v_credits_amount DECIMAL;
+    v_expected_amount_cents INTEGER;
+    v_purchase_status VARCHAR;
     v_current_balance DECIMAL;
     v_new_balance DECIMAL;
     v_transaction_id UUID;
 BEGIN
-    -- Get the pending purchase record
-    SELECT id, user_id, credits_amount
-    INTO v_purchase_id, v_user_id, v_credits_amount
+    -- Lock and get the pending purchase record (prevents race conditions)
+    SELECT id, user_id, credits_amount, status
+    INTO v_purchase_id, v_user_id_from_db, v_credits_amount, v_purchase_status
     FROM credit_purchases
     WHERE stripe_session_id = p_stripe_session_id
-        AND status = 'pending';
+    FOR UPDATE;  -- Lock to prevent concurrent processing
 
     IF v_purchase_id IS NULL THEN
-        RAISE EXCEPTION 'Credit purchase not found or already processed: %', p_stripe_session_id;
+        RAISE EXCEPTION 'Credit purchase not found: %', p_stripe_session_id;
+    END IF;
+
+    -- SECURITY: Verify user ID matches (prevent user A completing user B's purchase)
+    IF v_user_id_from_db != p_user_id THEN
+        RAISE EXCEPTION 'User ID mismatch. Expected: %, Provided: %', v_user_id_from_db, p_user_id;
+    END IF;
+
+    -- SECURITY: Check if already processed (prevent duplicate processing)
+    IF v_purchase_status != 'pending' THEN
+        RAISE EXCEPTION 'Purchase already processed with status: %', v_purchase_status;
+    END IF;
+
+    -- SECURITY: Verify payment amount (1 credit = $1 = 100 cents)
+    IF p_amount_paid_cents IS NOT NULL THEN
+        v_expected_amount_cents := (v_credits_amount * 100)::INTEGER;
+        IF p_amount_paid_cents != v_expected_amount_cents THEN
+            RAISE EXCEPTION 'Amount mismatch. Expected: % cents (% credits), Paid: % cents', 
+                v_expected_amount_cents, v_credits_amount, p_amount_paid_cents;
+        END IF;
     END IF;
 
     -- Initialize credits if not exists
@@ -4839,28 +5085,36 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Refund credit purchase
+-- SECURITY: Validates user ID to prevent unauthorized refunds
 CREATE OR REPLACE FUNCTION refund_credit_purchase(
+    p_user_id UUID,  -- User ID for authorization validation
     p_purchase_id UUID,
     p_refund_amount DECIMAL,
     p_reason TEXT DEFAULT 'Customer requested refund'
 )
 RETURNS JSONB AS $$
 DECLARE
-    v_user_id UUID;
+    v_user_id_from_db UUID;
     v_credits_amount DECIMAL;
     v_current_balance DECIMAL;
     v_new_balance DECIMAL;
     v_transaction_id UUID;
     v_purchase_status VARCHAR;
 BEGIN
-    -- Get the purchase record
+    -- Lock and get the purchase record (prevents race conditions)
     SELECT user_id, credits_amount, status
-    INTO v_user_id, v_credits_amount, v_purchase_status
+    INTO v_user_id_from_db, v_credits_amount, v_purchase_status
     FROM credit_purchases
-    WHERE id = p_purchase_id;
+    WHERE id = p_purchase_id
+    FOR UPDATE;  -- Lock to prevent concurrent refunds
 
-    IF v_user_id IS NULL THEN
+    IF v_user_id_from_db IS NULL THEN
         RAISE EXCEPTION 'Credit purchase not found: %', p_purchase_id;
+    END IF;
+
+    -- SECURITY: Verify user ID matches (prevent refunding other users' purchases)
+    IF v_user_id_from_db != p_user_id THEN
+        RAISE EXCEPTION 'User ID mismatch. Expected: %, Provided: %', v_user_id_from_db, p_user_id;
     END IF;
 
     IF v_purchase_status != 'completed' THEN
@@ -4932,5 +5186,141 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execution permissions to service_role only (called by webhooks)
+GRANT EXECUTE ON FUNCTION complete_credit_purchase(UUID, VARCHAR, VARCHAR, INTEGER, TEXT, JSONB) TO service_role;
+GRANT EXECUTE ON FUNCTION refund_credit_purchase(UUID, UUID, DECIMAL, TEXT) TO service_role;
+
+
+-- File: translation_management.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS store_card_translations CASCADE;
+
+-- =====================================================================
+-- SERVER-SIDE TRANSLATION STORED PROCEDURES
+-- =====================================================================
+-- These procedures are called by Edge Functions and require service_role permissions
+-- =====================================================================
+
+-- Store translated content from Edge Function
+-- This function is called after GPT-4 has translated the content
+CREATE OR REPLACE FUNCTION store_card_translations(
+  p_user_id UUID, -- Explicit user ID from Edge Function
+  p_card_id UUID,
+  p_target_languages TEXT[],
+  p_card_translations JSONB, -- {"zh-Hans": {"name": "...", "description": "..."}, ...}
+  p_content_items_translations JSONB, -- {"item_id_1": {"zh-Hans": {"name": "...", "content": "..."}}, ...}
+  p_credit_cost DECIMAL
+)
+RETURNS JSONB
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_card_owner UUID;
+  v_current_balance DECIMAL;
+  v_translation_history_id UUID;
+  v_content_hash TEXT;
+  v_item_id UUID;
+  v_item_translations JSONB;
+  v_item_hash TEXT;
+  v_result JSONB;
+BEGIN
+  -- Verify card ownership
+  SELECT user_id INTO v_card_owner FROM cards WHERE id = p_card_id;
+  
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Card not found';
+  END IF;
+
+  IF v_card_owner != p_user_id THEN
+    RAISE EXCEPTION 'Unauthorized: Card does not belong to user';
+  END IF;
+
+  -- Check credit balance
+  SELECT check_credit_balance(p_credit_cost, p_user_id) INTO v_current_balance;
+
+  -- Start transaction for atomic operation
+  -- Get current card content hash
+  SELECT content_hash INTO v_content_hash FROM cards WHERE id = p_card_id;
+
+  -- Update card translations (merge with existing)
+  UPDATE cards
+  SET 
+    translations = translations || p_card_translations,
+    updated_at = NOW()
+  WHERE id = p_card_id;
+
+  -- Update content items translations
+  FOR v_item_id, v_item_translations IN
+    SELECT key::UUID, value
+    FROM jsonb_each(p_content_items_translations)
+  LOOP
+    -- Get item content hash
+    SELECT content_hash INTO v_item_hash 
+    FROM content_items 
+    WHERE id = v_item_id;
+
+    -- Update item translations
+    UPDATE content_items
+    SET 
+      translations = translations || v_item_translations,
+      updated_at = NOW()
+    WHERE id = v_item_id;
+  END LOOP;
+
+  -- Consume credits
+  PERFORM consume_credits(
+    p_credit_cost,
+    p_user_id,
+    'translation',
+    jsonb_build_object(
+      'card_id', p_card_id,
+      'languages', p_target_languages,
+      'language_count', array_length(p_target_languages, 1)
+    )
+  );
+
+  -- Log to translation history
+  INSERT INTO translation_history (
+    card_id, 
+    target_languages, 
+    credit_cost, 
+    translated_by,
+    status,
+    metadata
+  )
+  VALUES (
+    p_card_id, 
+    p_target_languages, 
+    p_credit_cost, 
+    p_user_id,
+    'completed',
+    jsonb_build_object(
+      'model', 'gpt-4.1-nano',
+      'language_count', array_length(p_target_languages, 1)
+    )
+  )
+  RETURNING id INTO v_translation_history_id;
+
+  -- Build result
+  v_result := jsonb_build_object(
+    'success', true,
+    'card_id', p_card_id,
+    'translated_languages', p_target_languages,
+    'credits_used', p_credit_cost,
+    'remaining_balance', v_current_balance - p_credit_cost,
+    'translation_history_id', v_translation_history_id
+  );
+
+  RETURN v_result;
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Failed to store translations: %', SQLERRM;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Grant execution permission to service_role only
+GRANT EXECUTE ON FUNCTION store_card_translations(UUID, UUID, TEXT[], JSONB, JSONB, DECIMAL) TO service_role;
+
 
 

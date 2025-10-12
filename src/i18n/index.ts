@@ -11,16 +11,44 @@ import ar from './locales/ar.json'
 import th from './locales/th.json'
 
 // Get saved locale from localStorage or default to English
-const savedLocale = localStorage.getItem('userLocale') || 'en'
+const rawSavedLocale = localStorage.getItem('userLocale') || 'en'
+
+// Normalize legacy locale codes on init
+function normalizeLocaleInit(locale: string): string {
+  const localeMap: Record<string, string> = {
+    'zh': 'zh-Hans',
+    'zh-CN': 'zh-Hans',
+    'zh-HK': 'zh-Hant',
+    'zh-TW': 'zh-Hant',
+    'zh-SG': 'zh-Hans',
+  }
+  return localeMap[locale] || locale
+}
+
+const savedLocale = normalizeLocaleInit(rawSavedLocale)
+
+// Update localStorage if we normalized it
+if (savedLocale !== rawSavedLocale) {
+  localStorage.setItem('userLocale', savedLocale)
+  console.log(`🔄 Migrated locale from '${rawSavedLocale}' to '${savedLocale}'`)
+}
 
 const i18n = createI18n({
   legacy: false, // Use Composition API mode
   locale: savedLocale,
-  fallbackLocale: 'en',
+  fallbackLocale: {
+    'zh': ['zh-Hans', 'zh-Hant', 'en'],  // Fallback for legacy 'zh' locale
+    'zh-CN': ['zh-Hans', 'en'],          // Legacy code fallback
+    'zh-HK': ['zh-Hant', 'en'],          // Legacy code fallback
+    'default': ['en']                    // Default fallback for all other locales
+  },
   messages: {
     en,
     'zh-Hant': zhHant,
     'zh-Hans': zhHans,
+    'zh': zhHans,        // Alias 'zh' to Simplified Chinese for compatibility
+    'zh-CN': zhHans,     // Legacy locale alias
+    'zh-HK': zhHant,     // Legacy locale alias
     ja,
     ko,
     es,
@@ -40,6 +68,18 @@ const i18n = createI18n({
       long: { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }
     },
     'zh-Hans': {
+      short: { year: 'numeric', month: 'short', day: 'numeric' },
+      long: { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }
+    },
+    'zh': {  // Legacy alias
+      short: { year: 'numeric', month: 'short', day: 'numeric' },
+      long: { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }
+    },
+    'zh-CN': {  // Legacy alias
+      short: { year: 'numeric', month: 'short', day: 'numeric' },
+      long: { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }
+    },
+    'zh-HK': {  // Legacy alias
       short: { year: 'numeric', month: 'short', day: 'numeric' },
       long: { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }
     },
@@ -76,6 +116,9 @@ const i18n = createI18n({
     en: { currency: { style: 'currency', currency: 'USD' } },
     'zh-Hant': { currency: { style: 'currency', currency: 'HKD' } },
     'zh-Hans': { currency: { style: 'currency', currency: 'CNY' } },
+    'zh': { currency: { style: 'currency', currency: 'CNY' } },      // Legacy alias
+    'zh-CN': { currency: { style: 'currency', currency: 'CNY' } },   // Legacy alias
+    'zh-HK': { currency: { style: 'currency', currency: 'HKD' } },   // Legacy alias
     ja: { currency: { style: 'currency', currency: 'JPY' } },
     ko: { currency: { style: 'currency', currency: 'KRW' } },
     es: { currency: { style: 'currency', currency: 'EUR' } },
@@ -88,18 +131,33 @@ const i18n = createI18n({
 
 export default i18n
 
+// Helper function to normalize legacy locale codes
+function normalizeLocale(locale: string): string {
+  const localeMap: Record<string, string> = {
+    'zh': 'zh-Hans',      // Generic Chinese → Simplified
+    'zh-CN': 'zh-Hans',   // Mainland Chinese → Simplified
+    'zh-HK': 'zh-Hant',   // Hong Kong Chinese → Traditional
+    'zh-TW': 'zh-Hant',   // Taiwan Chinese → Traditional
+    'zh-SG': 'zh-Hans',   // Singapore Chinese → Simplified
+  }
+  return localeMap[locale] || locale
+}
+
 // Helper function to change locale
 export function setLocale(locale: string) {
-  i18n.global.locale.value = locale
-  localStorage.setItem('userLocale', locale)
+  // Normalize legacy locale codes
+  const normalizedLocale = normalizeLocale(locale)
+  
+  i18n.global.locale.value = normalizedLocale
+  localStorage.setItem('userLocale', normalizedLocale)
   
   // Set document direction for RTL languages
-  if (locale === 'ar') {
+  if (normalizedLocale === 'ar') {
     document.documentElement.setAttribute('dir', 'rtl')
-    document.documentElement.setAttribute('lang', locale)
+    document.documentElement.setAttribute('lang', normalizedLocale)
   } else {
     document.documentElement.setAttribute('dir', 'ltr')
-    document.documentElement.setAttribute('lang', locale)
+    document.documentElement.setAttribute('lang', normalizedLocale)
   }
 }
 

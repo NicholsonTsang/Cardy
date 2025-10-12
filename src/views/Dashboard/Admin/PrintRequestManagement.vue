@@ -68,14 +68,21 @@
         :rows="20"
         :rowsPerPageOptions="[10, 20, 50]"
         responsiveLayout="scroll"
+        showGridlines
+        stripedRows
         class="border-0"
         dataKey="id"
       >
         <template #empty>
-          <div class="text-center py-8">
-            <i class="pi pi-inbox text-4xl text-slate-400 mb-4"></i>
+          <div class="text-center py-12">
+            <i class="pi pi-inbox text-6xl text-slate-400 mb-4"></i>
             <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('admin.no_requests_found') }}</p>
             <p class="text-slate-600">{{ $t('admin.no_requests_match_filters') }}</p>
+          </div>
+        </template>
+        <template #loading>
+          <div class="flex items-center justify-center py-12">
+            <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
           </div>
         </template>
         
@@ -266,6 +273,7 @@ import Column from 'primevue/column'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Dialog from 'primevue/dialog'
+import ProgressSpinner from 'primevue/progressspinner'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
 
 const toast = useToast()

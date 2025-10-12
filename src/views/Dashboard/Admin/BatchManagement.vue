@@ -14,20 +14,22 @@
     <div class="space-y-6">
 
     <!-- All Batches -->
-    <div class="bg-white rounded-xl shadow-soft border border-slate-200 overflow-hidden">
+    <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
       <div class="px-6 py-4 border-b border-slate-200">
         <h2 class="text-lg font-semibold text-slate-900">{{ $t('batches.card_batches') }}</h2>
         <p class="text-sm text-slate-600 mt-1">{{ $t('admin.view_all_batches') }}</p>
       </div>
-
-      <DataTable 
+      
+      <div class="p-6">
+        <DataTable 
         :value="batchesStore.allBatches" 
         :loading="batchesStore.isLoadingAllBatches"
         paginator 
-        :rows="25"
+        :rows="10"
+        :rowsPerPageOptions="[10, 20, 50]"
         dataKey="id"
         showGridlines
-        stripedRows
+        responsiveLayout="scroll"
       >
         <template #header>
           <div class="flex flex-col gap-4">
@@ -76,7 +78,7 @@
           </div>
         </template>
 
-        <Column field="batch_number" header="Batch #" sortable>
+        <Column field="batch_number" header="Batch #" sortable style="min-width: 140px">
           <template #body="{ data }">
             <span class="font-mono text-sm font-medium text-slate-900">
               #{{ data.batch_number.toString().padStart(6, '0') }}
@@ -84,29 +86,28 @@
           </template>
         </Column>
 
-        <Column field="user_email" :header="$t('admin.user_email')" sortable>
+        <Column field="user_email" :header="$t('admin.user_email')" sortable style="min-width: 250px">
           <template #body="{ data }">
-            <span class="text-slate-900">{{ data.user_email }}</span>
+            <span class="font-medium text-slate-900">{{ data.user_email }}</span>
           </template>
         </Column>
         
-        <Column field="payment_status" :header="$t('batches.payment_status')" sortable>
+        <Column field="payment_status" :header="$t('batches.payment_status')" sortable style="min-width: 140px">
           <template #body="{ data }">
             <Tag
               :value="data.payment_status"
               :severity="getPaymentStatusSeverity(data.payment_status)"
-              class="text-xs"
             />
           </template>
         </Column>
 
-        <Column field="cards_count" :header="$t('batches.total_cards')" sortable>
+        <Column field="cards_count" :header="$t('batches.total_cards')" sortable style="min-width: 130px">
           <template #body="{ data }">
             <span class="font-medium text-slate-900">{{ data.cards_count }}</span>
           </template>
         </Column>
 
-        <Column field="created_at" :header="$t('dashboard.created')" sortable>
+        <Column field="created_at" :header="$t('dashboard.created')" sortable style="min-width: 180px">
           <template #body="{ data }">
             <span class="text-sm text-slate-600">
               {{ formatDate(data.created_at) }}
@@ -115,13 +116,19 @@
         </Column>
 
         <template #empty>
-          <div class="text-center py-8">
-            <i class="pi pi-inbox text-4xl text-slate-400 mb-4"></i>
+          <div class="text-center py-12">
+            <i class="pi pi-inbox text-6xl text-slate-400 mb-4"></i>
             <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('batches.no_batches_found') }}</p>
             <p class="text-slate-600">{{ $t('admin.no_batches_match_filters') || 'No batches match your current filters.' }}</p>
           </div>
         </template>
+        <template #loading>
+          <div class="flex items-center justify-center py-12">
+            <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="4" />
+          </div>
+        </template>
       </DataTable>
+      </div>
     </div>
     </div>
   </PageWrapper>
@@ -140,6 +147,7 @@ import Column from 'primevue/column';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
+import ProgressSpinner from 'primevue/progressspinner';
 import PageWrapper from '@/components/Layout/PageWrapper.vue';
 
 const { t } = useI18n();

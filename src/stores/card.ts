@@ -16,6 +16,10 @@ export interface Card {
     conversation_ai_enabled: boolean;
     ai_instruction: string; // AI role and guidelines (max 100 words)
     ai_knowledge_base: string; // Background knowledge for AI (max 2000 words)
+    translations?: Record<string, any>; // JSONB translations by language code
+    original_language?: string; // Original language code (e.g., 'en')
+    content_hash?: string; // MD5 hash for detecting content changes
+    last_content_update?: string; // Timestamp of last content update
     created_at: string;
     updated_at: string;
 }

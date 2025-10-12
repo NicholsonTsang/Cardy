@@ -7,12 +7,16 @@
       <h1 class="header-title">{{ title }}</h1>
       <p v-if="subtitle" class="header-subtitle">{{ subtitle }}</p>
     </div>
-    <LanguageSelector />
+    <div class="language-controls">
+      <ChineseVoiceSelector />
+      <LanguageSelector />
+    </div>
   </header>
 </template>
 
 <script setup lang="ts">
 import LanguageSelector from './LanguageSelector.vue'
+import ChineseVoiceSelector from './ChineseVoiceSelector.vue'
 
 interface Props {
   title: string
@@ -88,5 +92,12 @@ function handleBack() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.language-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 </style>

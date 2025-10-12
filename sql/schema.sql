@@ -63,6 +63,11 @@ CREATE TABLE cards (
     conversation_ai_enabled BOOLEAN DEFAULT false,
     ai_instruction TEXT DEFAULT '' NOT NULL, -- AI role and guidelines (max 100 words) - defines AI's role, personality, and restrictions
     ai_knowledge_base TEXT DEFAULT '' NOT NULL, -- Background knowledge for AI conversations (max 2000 words) - detailed domain knowledge, facts, specifications
+    -- Translation system columns
+    translations JSONB DEFAULT '{}'::JSONB, -- AI-powered translations: {"zh-Hans": {"name": "...", "description": "...", "translated_at": "...", "content_hash": "..."}}
+    original_language VARCHAR(10) DEFAULT 'en', -- ISO 639-1 language code
+    content_hash TEXT, -- MD5 hash for detecting content changes
+    last_content_update TIMESTAMPTZ DEFAULT NOW(), -- Last update to translatable fields
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -72,6 +77,12 @@ CREATE INDEX IF NOT EXISTS idx_cards_user_id ON cards(user_id);
 
 -- Add GIN index for crop_parameters JSONB column for efficient querying
 CREATE INDEX IF NOT EXISTS idx_cards_crop_parameters ON cards USING GIN (crop_parameters);
+
+-- Add GIN index for translations JSONB column
+CREATE INDEX IF NOT EXISTS idx_cards_translations ON cards USING GIN (translations);
+
+-- Add index for original_language for analytics
+CREATE INDEX IF NOT EXISTS idx_cards_original_language ON cards(original_language);
 
 -- Content items table
 CREATE TABLE content_items (
@@ -85,6 +96,10 @@ CREATE TABLE content_items (
     crop_parameters JSONB, -- JSON object containing crop parameters for dynamic image cropping (position, zoom, dimensions, etc.)
     ai_knowledge_base TEXT DEFAULT '' NOT NULL, -- Content-specific knowledge for AI (max 500 words)
     sort_order INTEGER DEFAULT 0,
+    -- Translation system columns
+    translations JSONB DEFAULT '{}'::JSONB, -- AI-powered translations: {"zh-Hans": {"name": "...", "content": "...", "ai_knowledge_base": "...", "translated_at": "...", "content_hash": "..."}}
+    content_hash TEXT, -- MD5 hash for detecting content changes
+    last_content_update TIMESTAMPTZ DEFAULT NOW(), -- Last update to translatable fields
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     CONSTRAINT content_items_parent_not_self CHECK (parent_id != id)
@@ -96,6 +111,9 @@ CREATE INDEX IF NOT EXISTS idx_content_items_sort_order ON content_items(card_id
 
 -- Add GIN index for crop_parameters JSONB column for efficient querying
 CREATE INDEX IF NOT EXISTS idx_content_items_crop_parameters ON content_items USING GIN (crop_parameters);
+
+-- Add GIN index for translations JSONB column
+CREATE INDEX IF NOT EXISTS idx_content_items_translations ON content_items USING GIN (translations);
 
 -- Card batches table
 CREATE TABLE card_batches (
@@ -310,12 +328,25 @@ CREATE TABLE IF NOT EXISTS credit_consumptions (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     batch_id UUID REFERENCES card_batches(id) ON DELETE SET NULL,
     card_id UUID REFERENCES cards(id) ON DELETE SET NULL,
-    consumption_type VARCHAR(50) NOT NULL DEFAULT 'batch_issuance', -- 'batch_issuance', 'single_card', etc.
-    quantity INTEGER NOT NULL DEFAULT 1, -- Number of cards
-    credits_per_unit DECIMAL(10, 2) NOT NULL DEFAULT 2.00, -- Credits per card
+    consumption_type VARCHAR(50) NOT NULL DEFAULT 'batch_issuance', -- 'batch_issuance', 'single_card', 'translation', etc.
+    quantity INTEGER NOT NULL DEFAULT 1, -- Number of cards or languages
+    credits_per_unit DECIMAL(10, 2) NOT NULL DEFAULT 2.00, -- Credits per card (2.00) or per language (1.00)
     total_credits DECIMAL(10, 2) NOT NULL,
     description TEXT,
     created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Translation History Table (Track AI-powered translations)
+CREATE TABLE IF NOT EXISTS translation_history (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+    target_languages TEXT[] NOT NULL, -- Array of language codes translated (e.g., ['zh-Hans', 'ja', 'ko'])
+    credit_cost DECIMAL(10, 2) NOT NULL, -- Total credits consumed (1 credit per language)
+    translated_by UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    translated_at TIMESTAMPTZ DEFAULT NOW(),
+    status VARCHAR(20) DEFAULT 'completed' CHECK (status IN ('pending', 'processing', 'completed', 'failed', 'partial')),
+    error_message TEXT, -- Error details if translation fails
+    metadata JSONB DEFAULT '{}'::JSONB -- Additional metadata (model used, token count, etc.)
 );
 
 -- Add credit cost columns to card_batches table (if not exists)
@@ -336,6 +367,10 @@ DROP INDEX IF EXISTS idx_credit_purchases_created_at;
 DROP INDEX IF EXISTS idx_credit_consumptions_user_id;
 DROP INDEX IF EXISTS idx_credit_consumptions_batch_id;
 DROP INDEX IF EXISTS idx_credit_consumptions_created_at;
+DROP INDEX IF EXISTS idx_translation_history_card_id;
+DROP INDEX IF EXISTS idx_translation_history_user_id;
+DROP INDEX IF EXISTS idx_translation_history_created_at;
+DROP INDEX IF EXISTS idx_translation_history_status;
 
 CREATE INDEX idx_user_credits_user_id ON user_credits(user_id);
 CREATE INDEX idx_credit_transactions_user_id ON credit_transactions(user_id);
@@ -347,6 +382,10 @@ CREATE INDEX idx_credit_purchases_created_at ON credit_purchases(created_at DESC
 CREATE INDEX idx_credit_consumptions_user_id ON credit_consumptions(user_id);
 CREATE INDEX idx_credit_consumptions_batch_id ON credit_consumptions(batch_id);
 CREATE INDEX idx_credit_consumptions_created_at ON credit_consumptions(created_at DESC);
+CREATE INDEX idx_translation_history_card_id ON translation_history(card_id);
+CREATE INDEX idx_translation_history_user_id ON translation_history(translated_by);
+CREATE INDEX idx_translation_history_created_at ON translation_history(translated_at DESC);
+CREATE INDEX idx_translation_history_status ON translation_history(status);
 
 -- Trigger to update user_credits updated_at
 CREATE OR REPLACE FUNCTION update_user_credits_updated_at()

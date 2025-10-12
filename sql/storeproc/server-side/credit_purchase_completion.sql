@@ -2,30 +2,54 @@
 -- Called by Edge Function after successful Stripe payment
 
 -- Complete credit purchase after Stripe payment
+-- SECURITY: Validates user ID and payment amount to prevent fraud
 CREATE OR REPLACE FUNCTION complete_credit_purchase(
+    p_user_id UUID,  -- User ID from webhook metadata for validation
     p_stripe_session_id VARCHAR,
     p_stripe_payment_intent_id VARCHAR DEFAULT NULL,
+    p_amount_paid_cents INTEGER DEFAULT NULL,  -- Actual amount paid from Stripe
     p_receipt_url TEXT DEFAULT NULL,
     p_payment_method JSONB DEFAULT NULL
 )
 RETURNS JSONB AS $$
 DECLARE
     v_purchase_id UUID;
-    v_user_id UUID;
+    v_user_id_from_db UUID;
     v_credits_amount DECIMAL;
+    v_expected_amount_cents INTEGER;
+    v_purchase_status VARCHAR;
     v_current_balance DECIMAL;
     v_new_balance DECIMAL;
     v_transaction_id UUID;
 BEGIN
-    -- Get the pending purchase record
-    SELECT id, user_id, credits_amount
-    INTO v_purchase_id, v_user_id, v_credits_amount
+    -- Lock and get the pending purchase record (prevents race conditions)
+    SELECT id, user_id, credits_amount, status
+    INTO v_purchase_id, v_user_id_from_db, v_credits_amount, v_purchase_status
     FROM credit_purchases
     WHERE stripe_session_id = p_stripe_session_id
-        AND status = 'pending';
+    FOR UPDATE;  -- Lock to prevent concurrent processing
 
     IF v_purchase_id IS NULL THEN
-        RAISE EXCEPTION 'Credit purchase not found or already processed: %', p_stripe_session_id;
+        RAISE EXCEPTION 'Credit purchase not found: %', p_stripe_session_id;
+    END IF;
+
+    -- SECURITY: Verify user ID matches (prevent user A completing user B's purchase)
+    IF v_user_id_from_db != p_user_id THEN
+        RAISE EXCEPTION 'User ID mismatch. Expected: %, Provided: %', v_user_id_from_db, p_user_id;
+    END IF;
+
+    -- SECURITY: Check if already processed (prevent duplicate processing)
+    IF v_purchase_status != 'pending' THEN
+        RAISE EXCEPTION 'Purchase already processed with status: %', v_purchase_status;
+    END IF;
+
+    -- SECURITY: Verify payment amount (1 credit = $1 = 100 cents)
+    IF p_amount_paid_cents IS NOT NULL THEN
+        v_expected_amount_cents := (v_credits_amount * 100)::INTEGER;
+        IF p_amount_paid_cents != v_expected_amount_cents THEN
+            RAISE EXCEPTION 'Amount mismatch. Expected: % cents (% credits), Paid: % cents', 
+                v_expected_amount_cents, v_credits_amount, p_amount_paid_cents;
+        END IF;
     END IF;
 
     -- Initialize credits if not exists
@@ -88,28 +112,36 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Refund credit purchase
+-- SECURITY: Validates user ID to prevent unauthorized refunds
 CREATE OR REPLACE FUNCTION refund_credit_purchase(
+    p_user_id UUID,  -- User ID for authorization validation
     p_purchase_id UUID,
     p_refund_amount DECIMAL,
     p_reason TEXT DEFAULT 'Customer requested refund'
 )
 RETURNS JSONB AS $$
 DECLARE
-    v_user_id UUID;
+    v_user_id_from_db UUID;
     v_credits_amount DECIMAL;
     v_current_balance DECIMAL;
     v_new_balance DECIMAL;
     v_transaction_id UUID;
     v_purchase_status VARCHAR;
 BEGIN
-    -- Get the purchase record
+    -- Lock and get the purchase record (prevents race conditions)
     SELECT user_id, credits_amount, status
-    INTO v_user_id, v_credits_amount, v_purchase_status
+    INTO v_user_id_from_db, v_credits_amount, v_purchase_status
     FROM credit_purchases
-    WHERE id = p_purchase_id;
+    WHERE id = p_purchase_id
+    FOR UPDATE;  -- Lock to prevent concurrent refunds
 
-    IF v_user_id IS NULL THEN
+    IF v_user_id_from_db IS NULL THEN
         RAISE EXCEPTION 'Credit purchase not found: %', p_purchase_id;
+    END IF;
+
+    -- SECURITY: Verify user ID matches (prevent refunding other users' purchases)
+    IF v_user_id_from_db != p_user_id THEN
+        RAISE EXCEPTION 'User ID mismatch. Expected: %, Provided: %', v_user_id_from_db, p_user_id;
     END IF;
 
     IF v_purchase_status != 'completed' THEN
@@ -181,3 +213,7 @@ BEGIN
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execution permissions to service_role only (called by webhooks)
+GRANT EXECUTE ON FUNCTION complete_credit_purchase(UUID, VARCHAR, VARCHAR, INTEGER, TEXT, JSONB) TO service_role;
+GRANT EXECUTE ON FUNCTION refund_credit_purchase(UUID, UUID, DECIMAL, TEXT) TO service_role;

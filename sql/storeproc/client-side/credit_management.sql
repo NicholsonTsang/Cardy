@@ -60,13 +60,17 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Check if user has sufficient credits
-CREATE OR REPLACE FUNCTION check_credit_balance(p_required_credits DECIMAL)
-RETURNS BOOLEAN AS $$
+CREATE OR REPLACE FUNCTION check_credit_balance(
+    p_required_credits DECIMAL,
+    p_user_id UUID DEFAULT NULL
+)
+RETURNS DECIMAL AS $$
 DECLARE
     v_user_id UUID;
     v_balance DECIMAL;
 BEGIN
-    v_user_id := auth.uid();
+    -- Use provided user_id or fall back to auth.uid()
+    v_user_id := COALESCE(p_user_id, auth.uid());
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
@@ -81,7 +85,8 @@ BEGIN
         v_balance := 0;
     END IF;
 
-    RETURN v_balance >= p_required_credits;
+    -- Return the actual balance (not a boolean check)
+    RETURN v_balance;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -129,6 +134,82 @@ BEGIN
     );
 
     RETURN v_purchase_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Generic function to consume credits
+CREATE OR REPLACE FUNCTION consume_credits(
+    p_credits_to_consume DECIMAL,
+    p_user_id UUID DEFAULT NULL,
+    p_consumption_type VARCHAR DEFAULT 'other',
+    p_metadata JSONB DEFAULT '{}'::jsonb
+)
+RETURNS VOID AS $$
+DECLARE
+    v_user_id UUID;
+    v_current_balance DECIMAL;
+    v_new_balance DECIMAL;
+    v_consumption_id UUID;
+    v_transaction_id UUID;
+BEGIN
+    -- Use provided user_id or fall back to auth.uid()
+    v_user_id := COALESCE(p_user_id, auth.uid());
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+
+    -- Lock the user credits row for update
+    SELECT balance INTO v_current_balance
+    FROM user_credits
+    WHERE user_id = v_user_id
+    FOR UPDATE;
+
+    IF v_current_balance IS NULL OR v_current_balance < p_credits_to_consume THEN
+        RAISE EXCEPTION 'Insufficient credits. Required: %, Available: %', 
+            p_credits_to_consume, COALESCE(v_current_balance, 0);
+    END IF;
+
+    v_new_balance := v_current_balance - p_credits_to_consume;
+
+    -- Update user credits
+    UPDATE user_credits
+    SET 
+        balance = v_new_balance,
+        total_consumed = total_consumed + p_credits_to_consume,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = v_user_id;
+
+    -- Record consumption (card_id from metadata if available)
+    INSERT INTO credit_consumptions (
+        user_id, card_id, consumption_type, quantity, 
+        credits_per_unit, total_credits, description
+    ) VALUES (
+        v_user_id, 
+        (p_metadata->>'card_id')::UUID,
+        p_consumption_type, 
+        (p_metadata->>'language_count')::INTEGER,
+        1.00, -- 1 credit per language for translations
+        p_credits_to_consume,
+        format('%s: %s credits', p_consumption_type, p_credits_to_consume)
+    ) RETURNING id INTO v_consumption_id;
+
+    -- Record transaction
+    INSERT INTO credit_transactions (
+        user_id, type, amount, balance_before, balance_after,
+        reference_type, reference_id, description, metadata
+    ) VALUES (
+        v_user_id, 'consumption', -p_credits_to_consume,
+        v_current_balance, v_new_balance,
+        p_consumption_type, v_consumption_id,
+        format('Credit consumption: %s', p_consumption_type),
+        p_metadata
+    ) RETURNING id INTO v_transaction_id;
+
+    -- Log operation
+    PERFORM log_operation(
+        format('Credit consumption: %s credits for %s - New balance: %s (Transaction ID: %s)',
+            p_credits_to_consume, p_consumption_type, v_new_balance, v_transaction_id)
+    );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -450,4 +531,42 @@ BEGIN
     ));
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =====================================================================
+-- GRANT PERMISSIONS
+-- =====================================================================
+-- NOTE: Some functions use a "dual-use pattern" with COALESCE(p_user_id, auth.uid())
+-- These can be called from:
+--   - Frontend: Without p_user_id, uses auth.uid() from JWT
+--   - Edge Functions: With explicit p_user_id parameter using SERVICE_ROLE_KEY
+-- =====================================================================
+
+-- Dual-use functions (called from frontend AND Edge Functions with SERVICE_ROLE_KEY)
+GRANT EXECUTE ON FUNCTION check_credit_balance(DECIMAL, UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) TO authenticated, service_role;
+GRANT EXECUTE ON FUNCTION consume_credits(DECIMAL, UUID, VARCHAR, JSONB) TO authenticated, service_role;
+
+-- Client-only functions
+GRANT EXECUTE ON FUNCTION initialize_user_credits() TO authenticated;
+GRANT EXECUTE ON FUNCTION get_credit_statistics() TO authenticated;
+GRANT EXECUTE ON FUNCTION get_user_credits() TO authenticated;
+
+-- Add documentation comments
+COMMENT ON FUNCTION check_credit_balance(DECIMAL, UUID) IS 
+  'DUAL-USE PATTERN: Accepts optional p_user_id (for Edge Functions with SERVICE_ROLE_KEY) or falls back to auth.uid() (for frontend with user JWT). Granted to both authenticated and service_role roles.';
+  
+COMMENT ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) IS 
+  'DUAL-USE PATTERN: Accepts optional p_user_id (for Edge Functions with SERVICE_ROLE_KEY) or falls back to auth.uid() (for frontend with user JWT). Granted to both authenticated and service_role roles. Called by create-credit-checkout-session Edge Function.';
+  
+COMMENT ON FUNCTION consume_credits(DECIMAL, UUID, VARCHAR, JSONB) IS 
+  'DUAL-USE PATTERN: Accepts optional p_user_id (for server-side stored procedures) or falls back to auth.uid() (for direct frontend calls). Granted to both authenticated and service_role roles.';
+
+COMMENT ON FUNCTION initialize_user_credits() IS 
+  'CLIENT-ONLY: Uses auth.uid() from user JWT. Creates initial credit record for authenticated user.';
+
+COMMENT ON FUNCTION get_credit_statistics() IS 
+  'CLIENT-ONLY: Uses auth.uid() from user JWT. Returns credit statistics for authenticated user including balance, purchases, consumptions.';
+
+COMMENT ON FUNCTION get_user_credits() IS 
+  'CLIENT-ONLY: Uses auth.uid() from user JWT. Returns current credit balance for authenticated user.';
 

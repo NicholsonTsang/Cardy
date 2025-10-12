@@ -19,17 +19,20 @@ export function useWebRTCConnection() {
   
   // Voice configuration by language (Realtime API)
   // Supported voices: 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse', 'marin', 'cedar'
+  // For Chinese, voice is determined by voice preference (mandarin/cantonese), not text script
   const voiceMap: Record<string, string> = {
-    'en': 'alloy',      // English - Neutral, versatile
-    'zh-HK': 'coral',   // Cantonese - Female, friendly
-    'zh-CN': 'coral',   // Mandarin - Female, natural
-    'ja': 'shimmer',    // Japanese - Female, soft
-    'ko': 'coral',      // Korean - Female, conversational
-    'th': 'shimmer',    // Thai - Female, calming
-    'es': 'echo',       // Spanish - Male, clear
-    'fr': 'ballad',     // French - Female, warm
-    'ru': 'sage',       // Russian - Male, calm
-    'ar': 'sage'        // Arabic - Male, respectful
+    'en': 'alloy',                // English - Neutral, versatile
+    'zh-Hans-mandarin': 'coral',  // Simplified + Mandarin
+    'zh-Hans-cantonese': 'coral', // Simplified + Cantonese (same voice, different language instructions)
+    'zh-Hant-mandarin': 'coral',  // Traditional + Mandarin
+    'zh-Hant-cantonese': 'coral', // Traditional + Cantonese
+    'ja': 'shimmer',              // Japanese - Female, soft
+    'ko': 'coral',                // Korean - Female, conversational
+    'th': 'shimmer',              // Thai - Female, calming
+    'es': 'echo',                 // Spanish - Male, clear
+    'fr': 'ballad',               // French - Female, warm
+    'ru': 'sage',                 // Russian - Male, calm
+    'ar': 'sage'                  // Arabic - Male, respectful
   }
   
   // Get ephemeral token from Edge Function
@@ -97,8 +100,12 @@ export function useWebRTCConnection() {
         // Language name mapping for explicit instructions
         const languageNames: Record<string, string> = {
           'en': 'English',
-          'zh-HK': 'Cantonese (廣東話)',
-          'zh-CN': 'Mandarin Chinese (普通話)',
+          'zh-Hans-mandarin': 'Mandarin Chinese (普通話) - Simplified Script',
+          'zh-Hans-cantonese': 'Cantonese (廣東話) - Simplified Script',
+          'zh-Hant-mandarin': 'Mandarin Chinese (普通話) - Traditional Script',
+          'zh-Hant-cantonese': 'Cantonese (廣東話) - Traditional Script',
+          'zh-Hans': 'Chinese (Simplified)',  // Fallback
+          'zh-Hant': 'Chinese (Traditional)', // Fallback
           'ja': 'Japanese (日本語)',
           'ko': 'Korean (한국어)',
           'th': 'Thai (ภาษาไทย)',
@@ -202,8 +209,12 @@ export function useWebRTCConnection() {
       const offer = await pc.value.createOffer()
       await pc.value.setLocalDescription(offer)
       
-      // Send offer to OpenAI
-      const response = await fetch('https://api.openai.com/v1/realtime', {
+      // Get model from environment (must match what was used for ephemeral token)
+      const model = import.meta.env.VITE_OPENAI_REALTIME_MODEL || 'gpt-realtime-mini-2025-10-06'
+      console.log('🎯 Using Realtime model:', model)
+      
+      // Send offer to OpenAI (with model parameter required for ephemeral tokens)
+      const response = await fetch(`https://api.openai.com/v1/realtime?model=${model}`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${ephemeralToken}`,

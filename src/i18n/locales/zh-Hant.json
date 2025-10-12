@@ -30,6 +30,7 @@
     "name": "名稱",
     "card": "卡片",
     "user": "用戶",
+    "quantity": "數量",
     "description": "描述",
     "email": "電郵",
     "password": "密碼",
@@ -303,7 +304,15 @@
     "sub_item_description_placeholder": "描述此子項目、其重要性、詳細資訊以及訪客應該了解的任何有趣資訊...",
     "content_item_description_placeholder": "描述此內容項目、其背景、重要性以及訪客可以期待學到什麼...",
     "sub_item_ai_placeholder": "提供此子項目的內容特定知識。包括事實、規格、歷史細節或背景資訊...",
-    "content_item_ai_placeholder": "提供此內容項目的內容特定知識。包括事實、規格、歷史細節或背景資訊..."
+    "content_item_ai_placeholder": "提供此內容項目的內容特定知識。包括事實、規格、歷史細節或背景資訊...",
+    "sub_item": "子項目",
+    "content_item": "內容項目",
+    "sub_item_image": "子項目圖片",
+    "basic_information": "基本資訊",
+    "description": "描述",
+    "no_name_provided": "未提供名稱",
+    "no_description_provided": "未提供描述",
+    "ai_knowledge_info": "此內容特定知識可幫助 AI 提供有關此{type}的準確和詳細回應。"
   },
 
   "batches": {
@@ -377,7 +386,18 @@
     "ai_knowledge_info": "此內容特定知識可幫助 AI 提供有關此{type}的準確和詳細回應。",
     "request_physical_printing": "申請實體卡片印刷",
     "print_request_status": "印刷請求狀態",
-    "batch_details": "批次詳情"
+    "batch_details": "批次詳情",
+    "confirm_credit_usage": "確認信用額度使用",
+    "batch_creation_action_description": "為訪客創建一批新的數位卡片以供分發",
+    "cards_to_create": "要創建的卡片數量",
+    "confirm_and_create_batch": "是的，消耗信用額度並創建批次",
+    "order_physical_cards": "訂購實體卡片",
+    "print_request_description": "申請專業印刷及運送服務",
+    "good_to_know": "溫馨提示",
+    "cards_active_immediately": "所有卡片立即啟用並可掃描",
+    "download_qr_anytime": "您可以隨時從批次檢視下載二維碼",
+    "print_request_optional": "實體卡片印刷為可選項目 - 數位卡片可獨立運作",
+    "view_batch_summary": "批次摘要及快速操作"
   },
 
   "admin": {
@@ -556,7 +576,6 @@
       "systemOverview": "系統總覽",
       "totalInCirculation": "流通總額",
       "totalRevenue": "總收入",
-      "totalConsumed": "總消耗",
       "usersWithCredits": "擁有積分的用戶",
       "monthlyPurchases": "本月購買",
       "monthlyConsumption": "本月消耗",
@@ -603,6 +622,8 @@
     "ai_assistant": "AI 助手",
     "language_selection": "語言選擇",
     "select_language": "選擇您的偏好語言",
+    "select_chinese_voice": "選擇中文語音",
+    "chinese_voice_description": "選擇AI語音回覆使用的中文方言",
     "start_conversation": "開始對話",
     "type_message": "輸入訊息...",
     "hold_to_record": "按住錄音",
@@ -636,6 +657,9 @@
     "start_live_call": "開始即時通話",
     "end_call": "結束通話",
     "speak_naturally": "自然說話 - AI 將即時回應",
+    "clear_chat": "清除對話",
+    "switch_to_chat": "切換到聊天模式",
+    "switch_to_live_call": "切換到即時通話",
     "related_content": "相關內容",
     "tap_to_explore": "點擊探索",
     "items": "項目",
@@ -877,6 +901,11 @@
       "refund": "退款",
       "adjustment": "調整"
     },
+    "consumptionType": {
+      "batch_issuance": "批次發行",
+      "translation": "翻譯",
+      "single_card": "單張卡片"
+    },
     "status": {
       "pending": "待處理",
       "completed": "已完成",
@@ -888,6 +917,80 @@
   "batch": {
     "batch": "批次",
     "quantity": "數量"
+  },
+
+  "translation": {
+    "title": "翻譯",
+    "subtitle": "管理您卡片內容的 AI 翻譯",
+    "sectionTitle": "多語言支援",
+    "sectionSubtitle": "翻譯您的卡片以接觸國際訪客",
+    "manageTranslations": "管理翻譯",
+    "translateNew": "翻譯新語言",
+    "updateOutdated": "更新過時翻譯",
+    "noData": "沒有可用的翻譯資料",
+    "fields": "欄位",
+    "languages": "語言",
+    "previewLanguage": "預覽翻譯",
+    "original": "原文",
+    "beforeYouStart": "⚠️ 開始之前：",
+    "warningFinishContent": "請先完成所有內容準備（卡片詳情 + 內容項目）",
+    "warningCost": "每種語言需消耗 1 個信用額度，涵蓋整張卡片",
+    "warningQuality": "使用 GPT-4.1-nano 進行高品質博物館及文化內容翻譯",
+    "noTranslationsYet": "尚未有翻譯",
+    "clickButtonToStart": "點擊「管理翻譯」開始翻譯您的內容",
+    "availableIn": "可用語言",
+    "needsUpdate": "需要更新",
+    "outdatedTooltip": "內容自翻譯後已更改 - 建議更新",
+    "outdatedBoxTooltip": "當原始內容編輯時，翻譯會標記為過時。重新翻譯以保持最新。",
+    "stats": {
+      "original": "原始語言",
+      "upToDate": "最新",
+      "outdated": "過時",
+      "total": "已翻譯總數",
+      "translated": "已翻譯"
+    },
+    "table": {
+      "language": "語言",
+      "status": "狀態",
+      "lastUpdated": "最後更新",
+      "fields": "欄位",
+      "actions": "操作"
+    },
+    "status": {
+      "original": "原文",
+      "up_to_date": "最新",
+      "outdated": "過時",
+      "not_translated": "未翻譯"
+    },
+    "actions": {
+      "translate": "翻譯",
+      "update": "更新"
+    },
+    "time": {
+      "justNow": "剛剛",
+      "hoursAgo": "{hours} 小時前",
+      "daysAgo": "{days} 天前",
+      "monthsAgo": "{months} 個月前"
+    },
+    "dialog": {
+      "title": "翻譯卡片內容",
+      "selectLanguages": "選擇語言",
+      "selectAtLeastOne": "請選擇至少一種語言",
+      "translating": "翻譯中...",
+      "success": "翻譯成功！",
+      "failed": "翻譯失敗",
+      "close": "關閉",
+      "translate": "翻譯 {count} 種語言 | 翻譯 {count} 種語言",
+      "translationProgress": "翻譯進度",
+      "translatedCount": "已翻譯 {completed} / {total} 種語言",
+      "creditActionDescription": "將卡片內容翻譯為 {count} 種選定語言。每種語言翻譯需消耗 1 個信用額度，涵蓋所有卡片詳情和內容項目。",
+      "creditConfirmQuestion": "是否繼續翻譯？",
+      "confirmTranslate": "確認並翻譯",
+      "languagesToTranslate": "要翻譯的語言",
+      "creditPerLanguage": "每種語言信用額度",
+      "outdatedTooltip": "內容已更改 - 建議更新",
+      "upToDateTooltip": "已翻譯且為最新"
+    }
   }
 }
 
