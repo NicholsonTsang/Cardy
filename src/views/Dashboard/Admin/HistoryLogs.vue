@@ -109,32 +109,70 @@
                 <div class="flex-shrink-0">
                   <div :class="[
                     'w-8 h-8 rounded-full flex items-center justify-center',
+                    // User Management
                     activity.action_type === 'USER_REGISTRATION' ? 'bg-green-100 text-green-600' :
+                    activity.action_type === 'ROLE_CHANGE' ? 'bg-red-100 text-red-600' :
+                    activity.action_type === 'VERIFICATION_REVIEW' ? 'bg-teal-100 text-teal-600' :
+                    activity.action_type === 'VERIFICATION_RESET' ? 'bg-cyan-100 text-cyan-600' :
+                    activity.action_type === 'MANUAL_VERIFICATION' ? 'bg-emerald-100 text-emerald-600' :
+                    // Card Management
                     activity.action_type === 'CARD_CREATION' ? 'bg-blue-100 text-blue-600' :
                     activity.action_type === 'CARD_UPDATE' ? 'bg-amber-100 text-amber-600' :
                     activity.action_type === 'CARD_DELETION' ? 'bg-red-100 text-red-600' :
-                    activity.action_type === 'BATCH_STATUS_CHANGE' ? 'bg-orange-100 text-orange-600' :
+                    activity.action_type === 'CARD_ACTIVATION' ? 'bg-lime-100 text-lime-600' :
                     activity.action_type === 'CARD_GENERATION' ? 'bg-purple-100 text-purple-600' :
-                    activity.action_type === 'VERIFICATION_REVIEW' ? 'bg-teal-100 text-teal-600' :
+                    // Content Management
+                    activity.action_type === 'CONTENT_ITEM_CREATION' ? 'bg-sky-100 text-sky-600' :
+                    activity.action_type === 'CONTENT_ITEM_UPDATE' ? 'bg-yellow-100 text-yellow-600' :
+                    activity.action_type === 'CONTENT_ITEM_DELETION' ? 'bg-rose-100 text-rose-600' :
+                    // Batch Management
+                    activity.action_type === 'BATCH_ISSUANCE' ? 'bg-indigo-100 text-indigo-600' :
+                    activity.action_type === 'BATCH_STATUS_CHANGE' ? 'bg-orange-100 text-orange-600' :
+                    activity.action_type === 'FREE_BATCH_ISSUANCE' ? 'bg-violet-100 text-violet-600' :
+                    // Credit Management
+                    activity.action_type === 'CREDIT_ADJUSTMENT' ? 'bg-amber-100 text-amber-600' :
+                    activity.action_type === 'CREDIT_PURCHASE' ? 'bg-green-100 text-green-600' :
+                    activity.action_type === 'CREDIT_CONSUMPTION' ? 'bg-pink-100 text-pink-600' :
+                    // Print Requests
+                    activity.action_type === 'PRINT_REQUEST_SUBMISSION' ? 'bg-blue-100 text-blue-600' :
                     activity.action_type === 'PRINT_REQUEST_UPDATE' ? 'bg-blue-100 text-blue-600' :
                     activity.action_type === 'PRINT_REQUEST_WITHDRAWAL' ? 'bg-gray-100 text-gray-600' :
+                    // Legacy
                     activity.action_type === 'PAYMENT_WAIVER' ? 'bg-yellow-100 text-yellow-600' :
-                    activity.action_type === 'ROLE_CHANGE' ? 'bg-red-100 text-red-600' :
                     'bg-slate-100 text-slate-600'
                   ]">
                     <i :class="[
                       'text-sm',
+                      // User Management
                       activity.action_type === 'USER_REGISTRATION' ? 'pi pi-user-plus' :
+                      activity.action_type === 'ROLE_CHANGE' ? 'pi pi-users' :
+                      activity.action_type === 'VERIFICATION_REVIEW' ? 'pi pi-shield' :
+                      activity.action_type === 'VERIFICATION_RESET' ? 'pi pi-refresh' :
+                      activity.action_type === 'MANUAL_VERIFICATION' ? 'pi pi-check-circle' :
+                      // Card Management
                       activity.action_type === 'CARD_CREATION' ? 'pi pi-plus-circle' :
                       activity.action_type === 'CARD_UPDATE' ? 'pi pi-pencil' :
                       activity.action_type === 'CARD_DELETION' ? 'pi pi-trash' :
-                      activity.action_type === 'BATCH_STATUS_CHANGE' ? 'pi pi-refresh' :
+                      activity.action_type === 'CARD_ACTIVATION' ? 'pi pi-check' :
                       activity.action_type === 'CARD_GENERATION' ? 'pi pi-cog' :
-                      activity.action_type === 'VERIFICATION_REVIEW' ? 'pi pi-shield' :
+                      // Content Management
+                      activity.action_type === 'CONTENT_ITEM_CREATION' ? 'pi pi-file-plus' :
+                      activity.action_type === 'CONTENT_ITEM_UPDATE' ? 'pi pi-file-edit' :
+                      activity.action_type === 'CONTENT_ITEM_DELETION' ? 'pi pi-file-minus' :
+                      // Batch Management
+                      activity.action_type === 'BATCH_ISSUANCE' ? 'pi pi-box' :
+                      activity.action_type === 'BATCH_STATUS_CHANGE' ? 'pi pi-refresh' :
+                      activity.action_type === 'FREE_BATCH_ISSUANCE' ? 'pi pi-gift' :
+                      // Credit Management
+                      activity.action_type === 'CREDIT_ADJUSTMENT' ? 'pi pi-dollar' :
+                      activity.action_type === 'CREDIT_PURCHASE' ? 'pi pi-shopping-cart' :
+                      activity.action_type === 'CREDIT_CONSUMPTION' ? 'pi pi-wallet' :
+                      // Print Requests
+                      activity.action_type === 'PRINT_REQUEST_SUBMISSION' ? 'pi pi-send' :
                       activity.action_type === 'PRINT_REQUEST_UPDATE' ? 'pi pi-print' :
                       activity.action_type === 'PRINT_REQUEST_WITHDRAWAL' ? 'pi pi-times-circle' :
+                      // Legacy
                       activity.action_type === 'PAYMENT_WAIVER' ? 'pi pi-credit-card' :
-                      activity.action_type === 'ROLE_CHANGE' ? 'pi pi-users' :
                       'pi pi-history'
                     ]"></i>
                   </div>
@@ -220,19 +258,37 @@ const activityPagination = ref({
   total: 0
 })
 
-const activityTypes = [
-  { label: 'All Activities', value: null },
-  { label: 'User Registration', value: ACTION_TYPES.USER_REGISTRATION },
-  { label: 'Card Creation', value: ACTION_TYPES.CARD_CREATION },
-  { label: 'Card Updates', value: ACTION_TYPES.CARD_UPDATE },
-  { label: 'Card Deletions', value: ACTION_TYPES.CARD_DELETION },
-  { label: 'Batch Status Changes', value: ACTION_TYPES.BATCH_STATUS_CHANGE },
-  { label: 'Card Generation', value: ACTION_TYPES.CARD_GENERATION },
-  { label: 'Verification Reviews', value: ACTION_TYPES.VERIFICATION_REVIEW },
-  { label: 'Print Request Updates', value: ACTION_TYPES.PRINT_REQUEST_UPDATE },
-  { label: 'Print Request Withdrawals', value: ACTION_TYPES.PRINT_REQUEST_WITHDRAWAL },
-  { label: 'Role Changes', value: ACTION_TYPES.ROLE_CHANGE }
-]
+const activityTypes = computed(() => [
+  { label: t('admin.activity_types.all_activities'), value: null },
+  // User Management
+  { label: t('admin.activity_types.user_registration'), value: ACTION_TYPES.USER_REGISTRATION },
+  { label: t('admin.activity_types.role_changes'), value: ACTION_TYPES.ROLE_CHANGE },
+  { label: t('admin.activity_types.verification_reviews'), value: ACTION_TYPES.VERIFICATION_REVIEW },
+  { label: t('admin.activity_types.verification_resets'), value: ACTION_TYPES.VERIFICATION_RESET },
+  { label: t('admin.activity_types.manual_verifications'), value: ACTION_TYPES.MANUAL_VERIFICATION },
+  // Card Management
+  { label: t('admin.activity_types.card_creation'), value: ACTION_TYPES.CARD_CREATION },
+  { label: t('admin.activity_types.card_updates'), value: ACTION_TYPES.CARD_UPDATE },
+  { label: t('admin.activity_types.card_deletions'), value: ACTION_TYPES.CARD_DELETION },
+  { label: t('admin.activity_types.card_activations'), value: ACTION_TYPES.CARD_ACTIVATION },
+  { label: t('admin.activity_types.card_generation'), value: ACTION_TYPES.CARD_GENERATION },
+  // Content Management
+  { label: t('admin.activity_types.content_item_creation'), value: ACTION_TYPES.CONTENT_ITEM_CREATION },
+  { label: t('admin.activity_types.content_item_updates'), value: ACTION_TYPES.CONTENT_ITEM_UPDATE },
+  { label: t('admin.activity_types.content_item_deletions'), value: ACTION_TYPES.CONTENT_ITEM_DELETION },
+  // Batch Management
+  { label: t('admin.activity_types.batch_issuance'), value: ACTION_TYPES.BATCH_ISSUANCE },
+  { label: t('admin.activity_types.batch_status_changes'), value: ACTION_TYPES.BATCH_STATUS_CHANGE },
+  { label: t('admin.activity_types.free_batch_issuance'), value: ACTION_TYPES.FREE_BATCH_ISSUANCE },
+  // Credit Management
+  { label: t('admin.activity_types.credit_adjustments'), value: ACTION_TYPES.CREDIT_ADJUSTMENT },
+  { label: t('admin.activity_types.credit_purchases'), value: ACTION_TYPES.CREDIT_PURCHASE },
+  { label: t('admin.activity_types.credit_consumption'), value: ACTION_TYPES.CREDIT_CONSUMPTION },
+  // Print Requests
+  { label: t('admin.activity_types.print_request_submissions'), value: ACTION_TYPES.PRINT_REQUEST_SUBMISSION },
+  { label: t('admin.activity_types.print_request_updates'), value: ACTION_TYPES.PRINT_REQUEST_UPDATE },
+  { label: t('admin.activity_types.print_request_withdrawals'), value: ACTION_TYPES.PRINT_REQUEST_WITHDRAWAL }
+])
 
 const recentActivity = ref([])
 const isLoadingActivity = ref(false)

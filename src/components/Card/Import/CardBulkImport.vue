@@ -885,6 +885,17 @@ async function importDataToDatabase(importData) {
       }
 
       importStatus.value = 'Creating card...';
+      
+      // Parse translations JSON if provided
+      let translationsData = null;
+      if (importData.cardData.translations_json) {
+        try {
+          translationsData = JSON.parse(importData.cardData.translations_json);
+        } catch (e) {
+          console.warn('Failed to parse card translations JSON:', e);
+        }
+      }
+      
       const { data, error } = await supabase.rpc('create_card', {
         p_name: importData.cardData.name,
         p_description: importData.cardData.description,
@@ -894,13 +905,27 @@ async function importDataToDatabase(importData) {
         p_qr_code_position: qrPosition,
         p_image_url: cardImageUrl,
         p_original_image_url: cardOriginalImageUrl,
-        p_crop_parameters: cardCropParams
+        p_crop_parameters: cardCropParams,
+        p_original_language: importData.cardData.original_language || 'en'
       })
       
       if (error) throw error
       
       const cardId = data; // data is directly the UUID
       results.cardsCreated = 1;
+      
+      // Update card with translations if provided
+      if (translationsData && Object.keys(translationsData).length > 0) {
+        importStatus.value = 'Restoring translations...';
+        const { error: translationsError } = await supabase.rpc('update_card_translations_bulk', {
+          p_card_id: cardId,
+          p_translations: translationsData
+        });
+        if (translationsError) {
+          console.warn('Failed to restore card translations:', translationsError);
+          results.warnings++;
+        }
+      }
       
       // Import content items
       if (importData.contentItems.length > 0) {
@@ -985,6 +1010,25 @@ async function importDataToDatabase(importData) {
             parentMap.set(item.name, newItemId);
             results.contentCreated++;
             
+            // Update content item with translations if provided
+            if (item.translations_json) {
+              try {
+                const itemTranslations = JSON.parse(item.translations_json);
+                if (Object.keys(itemTranslations).length > 0) {
+                  const { error: itemTransError } = await supabase.rpc('update_content_item_translations_bulk', {
+                    p_content_item_id: newItemId,
+                    p_translations: itemTranslations
+                  });
+                  if (itemTransError) {
+                    console.warn(`Failed to restore translations for "${item.name}":`, itemTransError);
+                    results.warnings++;
+                  }
+                }
+              } catch (e) {
+                console.warn(`Failed to parse translations for "${item.name}":`, e);
+              }
+            }
+            
           } catch (err) {
             results.errors.push(`Content item "${item.name}": ${err.message}`);
           }
@@ -1057,7 +1101,7 @@ async function importDataToDatabase(importData) {
             }
 
             importStatus.value = `Creating sub-item "${item.name}"...`;
-            const { error: contentError } = await supabase.rpc('create_content_item', {
+            const { data: subItemData, error: contentError } = await supabase.rpc('create_content_item', {
               p_card_id: cardId,
               p_parent_id: parentId,
               p_name: item.name,
@@ -1070,7 +1114,27 @@ async function importDataToDatabase(importData) {
             
             if (contentError) throw contentError;
             
+            const subItemId = subItemData; // data is directly the UUID
             results.contentCreated++;
+            
+            // Update content item with translations if provided
+            if (item.translations_json) {
+              try {
+                const itemTranslations = JSON.parse(item.translations_json);
+                if (Object.keys(itemTranslations).length > 0) {
+                  const { error: itemTransError } = await supabase.rpc('update_content_item_translations_bulk', {
+                    p_content_item_id: subItemId,
+                    p_translations: itemTranslations
+                  });
+                  if (itemTransError) {
+                    console.warn(`Failed to restore translations for "${item.name}":`, itemTransError);
+                    results.warnings++;
+                  }
+                }
+              } catch (e) {
+                console.warn(`Failed to parse translations for "${item.name}":`, e);
+              }
+            }
 
           } catch (err) {
             results.errors.push(`Content item "${item.name}": ${err.message}`);

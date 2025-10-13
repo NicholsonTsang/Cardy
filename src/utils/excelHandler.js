@@ -130,7 +130,7 @@ async function createCardSheet(workbook, cardData, options) {
     if (h.includes('AI')) return `${EXCEL_CONFIG.ICONS.AI} ${h}*`;
     if (h.includes('Image')) return `${EXCEL_CONFIG.ICONS.IMAGE} ${h}`;
     if (h === 'Name') return `${h}*`;
-    if (h.includes('Mode') || h.includes('Position')) return `${h}*`;
+    if (h.includes('Mode') || h.includes('Position') || h.includes('Language')) return `${h}*`;
     return h;
   });
   const headerRow = worksheet.getRow(EXCEL_CONFIG.CARD_SHEET.HEADERS_ROW);
@@ -144,10 +144,12 @@ async function createCardSheet(workbook, cardData, options) {
     'Brief description of card purpose',
     'AI instructions (e.g., "You are a helpful guide...")',
     'Background knowledge for AI conversations',
+    'Original content language (en, zh-Hant, etc.)',
     'Select true/false from dropdown',
     'Select QR position: TL/TR/BL/BR',
     'Paste image or leave blank',
-    'Auto-generated crop data (do not edit)'
+    'Auto-generated crop data (do not edit)',
+    'Translation data in JSON format (auto-managed)'
   ];
   const descriptionRow = worksheet.getRow(EXCEL_CONFIG.CARD_SHEET.DESCRIPTIONS_ROW);
   descriptionRow.values = descriptions;
@@ -161,10 +163,12 @@ async function createCardSheet(workbook, cardData, options) {
     cardData.description || '',
     cardData.ai_instruction || '',
     cardData.ai_knowledge_base || '',
+    cardData.original_language || 'en',
     cardData.conversation_ai_enabled,
     cardData.qr_code_position || 'BR',
     '', // Placeholder for image
-    cardData.crop_parameters ? JSON.stringify(cardData.crop_parameters) : '' // Hidden crop parameters
+    cardData.crop_parameters ? JSON.stringify(cardData.crop_parameters) : '', // Hidden crop parameters
+    cardData.translations ? JSON.stringify(cardData.translations) : '{}' // Hidden translations data
   ];
   
   // Apply text wrapping for all cells
@@ -188,7 +192,7 @@ async function createCardSheet(workbook, cardData, options) {
   // Embed card image with proper sizing (use original image if available, otherwise use cropped)
   const imageToEmbed = cardData.original_image_url || cardData.image_url;
   if (imageToEmbed) {
-    await embedImages(workbook, worksheet, [imageToEmbed], EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW, 7);
+    await embedImages(workbook, worksheet, [imageToEmbed], EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW, 8);
   }
   
   // Professional column widths (same as template)
@@ -197,19 +201,22 @@ async function createCardSheet(workbook, cardData, options) {
     { width: 40 }, // Description
     { width: 30 }, // AI Instruction
     { width: 45 }, // AI Knowledge Base
+    { width: 15 }, // Original Language
     { width: 15 }, // AI Enabled
     { width: 15 }, // QR Position
     { width: 25 }, // Card Image
-    { width: 0 }   // Crop Data (hidden)
+    { width: 0 },  // Crop Data (hidden)
+    { width: 0 }   // Translations (hidden)
   ];
   
   // Add helpful cell comments (same as template)
   dataRow.getCell(1).note = 'This will be the main title displayed on your card';
   dataRow.getCell(3).note = 'Define the AI\'s role, personality, and restrictions (max 100 words)';
   dataRow.getCell(4).note = 'Provide detailed background knowledge for the AI (max 2000 words)';
-  dataRow.getCell(5).note = 'Enable voice conversations with visitors';
-  dataRow.getCell(6).note = 'Where QR code appears on physical card';
-  dataRow.getCell(7).note = 'Right-click and paste image, or drag and drop';
+  dataRow.getCell(5).note = 'ISO 639-1 language code (en, zh-Hant, zh-Hans, ja, ko, etc.)';
+  dataRow.getCell(6).note = 'Enable voice conversations with visitors';
+  dataRow.getCell(7).note = 'Where QR code appears on physical card';
+  dataRow.getCell(8).note = 'Right-click and paste image, or drag and drop';
   
   // Freeze headers
   worksheet.views = [{ state: 'frozen', ySplit: EXCEL_CONFIG.CARD_SHEET.DESCRIPTIONS_ROW }];
@@ -261,7 +268,8 @@ async function createContentSheet(workbook, contentItems) {
     'Layer 1 = Main items, Layer 2 = Sub-items',
     'Cell reference for parent (e.g., A5)',
     'Paste image or provide URL',
-    'Auto-generated crop data (do not edit)'
+    'Auto-generated crop data (do not edit)',
+    'Translation data in JSON format (auto-managed)'
   ];
   const descriptionRow = worksheet.getRow(EXCEL_CONFIG.CONTENT_SHEET.DESCRIPTIONS_ROW);
   descriptionRow.values = descriptions;
@@ -294,7 +302,8 @@ async function createContentSheet(workbook, contentItems) {
       layer,
       parentReference,
       '', // Placeholder for image
-      item.crop_parameters ? JSON.stringify(item.crop_parameters) : '' // Hidden crop parameters
+      item.crop_parameters ? JSON.stringify(item.crop_parameters) : '', // Hidden crop parameters
+      item.translations ? JSON.stringify(item.translations) : '{}' // Hidden translations data
     ];
     
     // Apply text wrapping for all cells
@@ -317,7 +326,7 @@ async function createContentSheet(workbook, contentItems) {
     // Embed images with proper sizing (use original image if available, otherwise use cropped)
     const contentImageToEmbed = item.original_image_url || item.image_url;
     if (contentImageToEmbed) {
-      await embedImages(workbook, worksheet, [contentImageToEmbed], rowNum, 7);
+      await embedImages(workbook, worksheet, [contentImageToEmbed], rowNum, 7); // Column G (Image)
     }
     
     // Add helpful comments for guidance (same as template)
@@ -340,7 +349,8 @@ async function createContentSheet(workbook, contentItems) {
     { width: 12 }, // Layer
     { width: 18 }, // Parent Reference
     { width: 25 }, // Image
-    { width: 0 }   // Crop Data (hidden)
+    { width: 0 },  // Crop Data (hidden)
+    { width: 0 }   // Translations (hidden)
   ];
   
   // No summary section for consistency with template
@@ -378,7 +388,7 @@ async function createTemplateCardSheet(workbook) {
     if (h.includes('AI')) return `${EXCEL_CONFIG.ICONS.AI} ${h}*`;
     if (h.includes('Image')) return `${EXCEL_CONFIG.ICONS.IMAGE} ${h}`;
     if (h === 'Name') return `${h}*`;
-    if (h.includes('Mode') || h.includes('Position')) return `${h}*`;
+    if (h.includes('Mode') || h.includes('Position') || h.includes('Language')) return `${h}*`;
     return h;
   });
   const headerRow = worksheet.getRow(EXCEL_CONFIG.CARD_SHEET.HEADERS_ROW);
@@ -392,10 +402,12 @@ async function createTemplateCardSheet(workbook) {
     'Brief description of card purpose',
     'AI instructions (e.g., "You are a helpful guide...")',
     'Background knowledge for AI conversations',
+    'Original content language (en, zh-Hant, etc.)',
     'Select true/false from dropdown',
     'Select QR position: TL/TR/BL/BR',
     'Paste image or leave blank',
-    'Auto-generated crop data (do not edit)'
+    'Auto-generated crop data (do not edit)',
+    'Translation data in JSON format (auto-managed)'
   ];
   const descriptionRow = worksheet.getRow(EXCEL_CONFIG.CARD_SHEET.DESCRIPTIONS_ROW);
   descriptionRow.values = descriptions;
@@ -408,10 +420,12 @@ async function createTemplateCardSheet(workbook) {
     '', // Description
     '', // AI Instruction
     '', // AI Knowledge Base
+    '', // Original Language
     '', // AI Enabled
     '', // QR Position
     '', // Card Image
-    '' // Crop Data (hidden)
+    '', // Crop Data (hidden)
+    ''  // Translations (hidden)
   ];
   
   const dataRow = worksheet.getRow(EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW);
@@ -434,9 +448,10 @@ async function createTemplateCardSheet(workbook) {
   dataRow.getCell(1).note = 'This will be the main title displayed on your card';
   dataRow.getCell(3).note = 'Define the AI\'s role, personality, and restrictions (max 100 words)';
   dataRow.getCell(4).note = 'Provide detailed background knowledge for the AI (max 2000 words)';
-  dataRow.getCell(5).note = 'Enable voice conversations with visitors';
-  dataRow.getCell(6).note = 'Where QR code appears on physical card';
-  dataRow.getCell(7).note = 'Right-click and paste image, or drag and drop';
+  dataRow.getCell(5).note = 'ISO 639-1 language code (en, zh-Hant, zh-Hans, ja, ko, etc.)';
+  dataRow.getCell(6).note = 'Enable voice conversations with visitors';
+  dataRow.getCell(7).note = 'Where QR code appears on physical card';
+  dataRow.getCell(8).note = 'Right-click and paste image, or drag and drop';
   
   dataRow.height = 35; // Larger row for better readability
   
@@ -446,10 +461,12 @@ async function createTemplateCardSheet(workbook) {
     { width: 40 }, // Description
     { width: 30 }, // AI Instruction
     { width: 45 }, // AI Knowledge Base
+    { width: 15 }, // Original Language
     { width: 15 }, // AI Enabled
     { width: 15 }, // QR Position
     { width: 25 }, // Card Image
-    { width: 0 }   // Crop Data (hidden)
+    { width: 0 },  // Crop Data (hidden)
+    { width: 0 }   // Translations (hidden)
   ];
   
   // Freeze headers for easy navigation
@@ -493,11 +510,13 @@ async function createTemplateContentSheet(workbook) {
   const descriptions = [
     'Descriptive title for exhibit/artifact',
     'Main content text visitors will see',
-    'AI context keywords (history, art, science)',
+    'AI knowledge for this specific content (max 500 words)',
     'Auto-generated from row order',
     'Layer 1 = Main items, Layer 2 = Sub-items',
     'Cell reference for parent (e.g., A5)',
-    'Paste image or provide URL'
+    'Paste image or provide URL',
+    'Auto-generated crop data (do not edit)',
+    'Translation data in JSON format (auto-managed)'
   ];
   const descriptionRow = worksheet.getRow(EXCEL_CONFIG.CONTENT_SHEET.DESCRIPTIONS_ROW);
   descriptionRow.values = descriptions;
@@ -512,7 +531,7 @@ async function createTemplateContentSheet(workbook) {
     const row = worksheet.getRow(rowNum);
     
     // Empty data row
-    row.values = ['', '', '', '', '', '', ''];
+    row.values = ['', '', '', '', '', '', '', '', '']; // 9 columns including hidden ones
     
     // Apply text wrapping for all cells
     row.eachCell((cell) => {
@@ -543,11 +562,13 @@ async function createTemplateContentSheet(workbook) {
   worksheet.columns = [
     { width: 30 }, // Name
     { width: 50 }, // Content
-    { width: 35 }, // AI Metadata
+    { width: 35 }, // AI Knowledge Base
     { width: 12 }, // Sort Order
     { width: 12 }, // Layer
     { width: 18 }, // Parent Reference
-    { width: 25 }  // Image
+    { width: 25 }, // Image
+    { width: 0 },  // Crop Data (hidden)
+    { width: 0 }   // Translations (hidden)
   ];
   
   // Freeze headers for easy navigation
@@ -586,9 +607,11 @@ async function parseCardSheet(worksheet, result) {
         'Description': 'description',
         'AI Instruction': 'ai_instruction',
         'AI Knowledge Base': 'ai_knowledge_base',
+        'Original Language': 'original_language',
         'AI Enabled': 'conversation_ai_enabled',
         'QR Position': 'qr_code_position',
-        'Crop Data': 'crop_parameters_json'
+        'Crop Data': 'crop_parameters_json',
+        'Translations': 'translations_json'
       };
       
       const dbField = fieldMapping[cleanHeader];
@@ -624,7 +647,7 @@ async function parseCardSheet(worksheet, result) {
     
     // Extract card image if embedded
     const cardImageRow = EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW;
-    const cardImageCol = 7; // Column G (Card Image)
+    const cardImageCol = 8; // Column H (Card Image)
     const extractedImages = await extractImagesFromRow(worksheet, cardImageRow, cardImageCol);
     if (extractedImages.length > 0) {
       result.images = result.images || new Map();
@@ -655,7 +678,8 @@ async function parseContentSheet(worksheet, result) {
     layer: 5,          // Column E
     parent_reference: 6, // Column F
     image: 7,          // Column G
-    crop_data: 8       // Column H (hidden)
+    crop_data: 8,      // Column H (hidden)
+    translations: 9    // Column I (hidden)
   };
 
   try {
@@ -676,7 +700,8 @@ async function parseContentSheet(worksheet, result) {
         layer: layerValue,
         parent_reference: parentRefValue,
         image_url: worksheet.getCell(currentRowNum, colMap.image).value?.toString() || '',
-        crop_parameters_json: worksheet.getCell(currentRowNum, colMap.crop_data).value?.toString() || ''
+        crop_parameters_json: worksheet.getCell(currentRowNum, colMap.crop_data).value?.toString() || '',
+        translations_json: worksheet.getCell(currentRowNum, colMap.translations).value?.toString() || '{}'
       };
       
       // Convert parent reference from cell format (A6) to parent name

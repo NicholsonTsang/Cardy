@@ -304,7 +304,12 @@ Cardy/
 2. **Credit Purchase**: Buy credits via Stripe (1 credit = $1 USD) through the Credit Management page (`/cms/credits`).
 3. **Card Creation**: Upload image (crop to 2:3), set name/description, **select original language** (dropdown with language options, **actively maintained: en, zh-Hant**), enable AI with instructions/knowledge base.
 4. **Content Management**: Hierarchical items (exhibits > artifacts), markdown content, images, per-item AI knowledge.
-5. **Translation Management** (Integrated in General Tab):
+5. **Export/Import**: 
+   - **Export**: Download cards as Excel files with embedded images and all content items. Preserves hierarchy, AI settings, and crop parameters.
+   - **Import**: Upload Excel files to create/update cards. Supports bulk operations, validation preview, and automatic image processing.
+   - **Template**: Download pre-formatted Excel template for easy card creation.
+   - **Example**: Load pre-built museum card example to learn the format.
+6. **Translation Management** (Integrated in General Tab):
    - **Access**: Navigate to card > General tab > Scroll to "Multi-Language Support" section
    - **Compact View**: Shows translation status summary:
      - Original language
@@ -329,20 +334,20 @@ Cardy/
    - **Performance**: Small cards (<10 items) translate in ~30s, large cards (>20 items) may take 1-2 minutes per language
    - **Automatic Freshness Detection**: Content hash tracking marks translations as outdated when original edited
    - **Translation Storage**: JSONB columns with timestamps and hashes for version tracking
-6. **Translation Preview**: 
+7. **Translation Preview**: 
    - **Card View**: Language dropdown in "Basic Information" section to preview translated card name and description
    - **Content View**: Language dropdown in content item details to preview translated item name and content
    - **Fallback**: If translation unavailable for selected language, displays original language content
    - **Use Case**: Review translations before publishing to visitors, verify translation quality
-7. **Batch Issuance**: 
+8. **Batch Issuance**: 
    - **Credit-Based System** (Current): Navigate to card > Issue Batch dialog shows credit balance and required credits (2 credits/card)
    - If sufficient credits: Instant batch creation, cards generated immediately, no Stripe redirect
    - If insufficient credits: Dialog shows warning with "Purchase Credits" button redirecting to `/cms/credits`
    - Uses `issue_card_batch_with_credits()` stored procedure
    - Credits consumed atomically with batch creation (transaction-safe)
-8. **Credit Management**: Monitor balance, view transaction history, purchase additional credits for batch issuance and translations.
-9. **Print Requests**: After batch creation, optionally request physical card printing with shipping details.
-10. **Analytics**: View engagement metrics per card/batch.
+9. **Credit Management**: Monitor balance, view transaction history, purchase additional credits for batch issuance and translations.
+10. **Print Requests**: After batch creation, optionally request physical card printing with shipping details.
+11. **Analytics**: View engagement metrics per card/batch.
 
 ### Visitor (Mobile) Flow
 1. **QR Scan**: Loads `PublicCardView` with issued card ID (or preview mode).
@@ -632,6 +637,7 @@ PERFORM log_operation(user_id, 'action', 'table', record_id, metadata);
 
 - **Role Handling**: Supabase Auth with custom roles stored in `raw_user_meta_data.role`. Router guards check 'admin' vs 'cardIssuer'. After role changes, users must refresh their session to sync metadata.
 - **Image Handling**: All cards use 2:3 aspect ratio. Images cropped via `vue-advanced-cropper`. Both original and cropped versions stored in Supabase Storage buckets. Crop parameters saved to enable re-cropping.
+- **Export/Import**: Cards can be exported to Excel with embedded images (not URLs). Export uses original images with crop parameters in hidden columns. Import applies crop parameters to regenerate cropped versions. Uses ExcelJS for robust Excel handling. Parent-child relationships preserved via cell references (e.g., A5 for parent at row 5). Validation includes word count limits: AI instruction (100 words), card knowledge base (2000 words), content knowledge base (500 words). **COMPLETE DATA PRESERVATION**: Exports now include `original_language` and `translations` JSONB data, ensuring 100% data integrity through export/import cycles. Translations automatically restored on import via bulk update stored procedures.
 - **AI Costs**: Use `gpt-4o-mini` for chat mode, `gpt-realtime-mini-2025-10-06` for voice mode (realtime), `gpt-4.1-nano-2025-04-14` for translations. Implement safeguards: session limits, inactivity timeouts, daily caps.
 - **Translation Management**: 
   - **Storage**: Use JSONB columns for storing translations (flexible, no schema changes for new languages)
@@ -755,6 +761,49 @@ I scanned the repository's markdown documents and consolidated the most importan
 - **Edge Functions configuration (EDGE_FUNCTIONS_CONFIG.md)**
   - Purpose: Centralized environment variable guidance for all Supabase Edge Functions (chat-with-audio, generate-tts-audio, create-checkout-session, etc.).
   - Action: Relevant secrets and deployment checklist have been summarized into the Setup & Deployment and Environment Variables sections above.
+
+## Landing Page Design
+
+The landing page (`src/views/Public/LandingPage.vue`) has been completely redesigned with comprehensive marketing content while maintaining perfect design consistency with the existing component system:
+
+**Design Principles:**
+- **Color Consistency**: Uses the same blue-purple-slate gradient system as dashboard components
+- **Typography**: Consistent font sizing (`text-3xl`, `text-4xl`, `text-5xl`) and weights (`font-bold`, `font-black`)
+- **Shadows**: Uses `shadow-lg`, `shadow-xl`, `shadow-2xl` matching the app's shadow system
+- **Border Radius**: Consistent `rounded-xl`, `rounded-2xl`, `rounded-3xl` throughout
+- **Spacing**: Standard section padding (`py-20`, `max-w-7xl mx-auto px-4 sm:px-6 lg:px-8`)
+
+**Sections Included:**
+1. **Hero Section**: Full-width with parallax animations, gradient background, dual CTAs
+2. **About Section**: Company introduction with icon grid for application scenarios
+3. **Demo Section**: Interactive QR card demo (kept from original design for user experience testing)
+4. **How It Works**: 4-step visitor journey with connecting lines and icons
+5. **Key Features**: 6 feature cards highlighting platform capabilities
+6. **Versatile Applications**: Carousel showing 8 use cases (museums, trade shows, hotels, etc.)
+7. **Benefits Section**: Two-column layout for venue and visitor benefits
+8. **Sustainability Impact**: Environmental metrics comparison (traditional vs CardStudio)
+9. **Pricing Section**: Transparent $2/card pricing with feature checklist
+10. **Collaboration Models**: 3 partnership options (Client, Regional Partner, Software License)
+11. **FAQ Section**: Accordion-style Q&A addressing common questions
+12. **Contact Section**: Multi-channel contact info with clear CTAs
+13. **Footer**: Brand info, quick links, contact details
+
+**Key Features:**
+- Fully responsive design (mobile-first approach)
+- Smooth scroll animations and transitions
+- Interactive elements (hover effects, carousels, accordions)
+- Consistent gradient CTAs matching existing buttons
+- Environment variable support for contact info and demo card configuration
+- Backup file created at `LandingPage.backup.vue` for safety
+
+**Environment Variables Used:**
+- `VITE_SAMPLE_QR_URL`: Demo card QR code URL
+- `VITE_DEMO_CARD_TITLE`: Demo card title
+- `VITE_DEMO_CARD_SUBTITLE`: Demo card subtitle
+- `VITE_DEFAULT_CARD_IMAGE_URL`: Demo card image
+- `VITE_CONTACT_EMAIL`: Contact email address
+- `VITE_CONTACT_WHATSAPP_URL`: WhatsApp chat link
+- `VITE_CONTACT_PHONE`: Contact phone number (displayed in WhatsApp section)
 
 ## Archived files (moved to `docs_archive/`)
 

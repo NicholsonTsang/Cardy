@@ -24,19 +24,80 @@ export interface AuditLogFilters {
   search_query: string | null;
 }
 
-// Action types matching stored procedures
+// Action types for UI (constants)
 export const ACTION_TYPES = {
+  // User Management
   USER_REGISTRATION: 'USER_REGISTRATION',
+  ROLE_CHANGE: 'ROLE_CHANGE',
+  VERIFICATION_REVIEW: 'VERIFICATION_REVIEW',
+  VERIFICATION_RESET: 'VERIFICATION_RESET',
+  MANUAL_VERIFICATION: 'MANUAL_VERIFICATION',
+  
+  // Card Management
   CARD_CREATION: 'CARD_CREATION',
   CARD_UPDATE: 'CARD_UPDATE', 
   CARD_DELETION: 'CARD_DELETION',
-  BATCH_STATUS_CHANGE: 'BATCH_STATUS_CHANGE',
+  CARD_ACTIVATION: 'CARD_ACTIVATION',
   CARD_GENERATION: 'CARD_GENERATION',
-  VERIFICATION_REVIEW: 'VERIFICATION_REVIEW',
+  
+  // Content Management
+  CONTENT_ITEM_CREATION: 'CONTENT_ITEM_CREATION',
+  CONTENT_ITEM_UPDATE: 'CONTENT_ITEM_UPDATE',
+  CONTENT_ITEM_DELETION: 'CONTENT_ITEM_DELETION',
+  
+  // Batch Management
+  BATCH_ISSUANCE: 'BATCH_ISSUANCE',
+  BATCH_STATUS_CHANGE: 'BATCH_STATUS_CHANGE',
+  FREE_BATCH_ISSUANCE: 'FREE_BATCH_ISSUANCE',
+  
+  // Credit Management
+  CREDIT_ADJUSTMENT: 'CREDIT_ADJUSTMENT',
+  CREDIT_PURCHASE: 'CREDIT_PURCHASE',
+  CREDIT_CONSUMPTION: 'CREDIT_CONSUMPTION',
+  
+  // Print Requests
+  PRINT_REQUEST_SUBMISSION: 'PRINT_REQUEST_SUBMISSION',
   PRINT_REQUEST_UPDATE: 'PRINT_REQUEST_UPDATE',
-  PRINT_REQUEST_WITHDRAWAL: 'PRINT_REQUEST_WITHDRAWAL',
-  ROLE_CHANGE: 'ROLE_CHANGE'
+  PRINT_REQUEST_WITHDRAWAL: 'PRINT_REQUEST_WITHDRAWAL'
 } as const
+
+// Map ACTION_TYPES to actual search keywords in operation logs
+// This is needed because logs store descriptive text, not action type constants
+export const ACTION_TYPE_SEARCH_KEYWORDS: Record<string, string> = {
+  // User Management - no mapping needed (legacy format uses these directly)
+  USER_REGISTRATION: 'USER_REGISTRATION',
+  ROLE_CHANGE: 'Changed user role',
+  VERIFICATION_REVIEW: 'VERIFICATION_REVIEW',
+  VERIFICATION_RESET: 'Reset verification',
+  MANUAL_VERIFICATION: 'Manually approved verification',
+  
+  // Card Management
+  CARD_CREATION: 'Created card:',
+  CARD_UPDATE: 'Updated card:',
+  CARD_DELETION: 'Deleted card:',
+  CARD_ACTIVATION: 'activated',  // Matches "Activated issued card" and "Card auto-activated"
+  CARD_GENERATION: 'Generated',  // Matches "Generated X cards for batch"
+  
+  // Content Management
+  CONTENT_ITEM_CREATION: 'Created content item:',
+  CONTENT_ITEM_UPDATE: 'Updated content item:',
+  CONTENT_ITEM_DELETION: 'Deleted content item:',
+  
+  // Batch Management
+  BATCH_ISSUANCE: 'Issued batch',
+  BATCH_STATUS_CHANGE: 'BATCH_STATUS_CHANGE',
+  FREE_BATCH_ISSUANCE: 'Admin issued free batch',
+  
+  // Credit Management
+  CREDIT_ADJUSTMENT: 'Admin adjusted credits',
+  CREDIT_PURCHASE: 'Credit purchase',
+  CREDIT_CONSUMPTION: 'Credit consumption',
+  
+  // Print Requests
+  PRINT_REQUEST_SUBMISSION: 'Submitted print request',
+  PRINT_REQUEST_UPDATE: 'Updated print request',
+  PRINT_REQUEST_WITHDRAWAL: 'Withdrew print request'
+}
 
 export const useAuditLogStore = defineStore('auditLog', () => {
   // State
@@ -51,13 +112,20 @@ export const useAuditLogStore = defineStore('auditLog', () => {
     error.value = null
     
     try {
+      // Convert action_type to search keyword if provided
+      let searchQuery = filters.search_query || null
+      if (filters.action_type && !filters.search_query) {
+        // Map the action type constant to actual search keyword in logs
+        searchQuery = ACTION_TYPE_SEARCH_KEYWORDS[filters.action_type] || filters.action_type
+      }
+      
       // Use new operations_log system instead of old admin_audit_log
       const { data, error: fetchError } = await supabase.rpc('get_operations_log', {
         p_limit: limit,
         p_offset: offset,
         p_user_id: filters.admin_user_id || filters.target_user_id || null,
         p_user_role: null, // Get all roles
-        p_search_query: filters.search_query || filters.action_type || null, // Support both search patterns
+        p_search_query: searchQuery,
         p_start_date: filters.start_date?.toISOString() || null,
         p_end_date: filters.end_date?.toISOString() || null
       })
