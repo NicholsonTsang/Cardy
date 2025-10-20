@@ -47,15 +47,15 @@
               icon="pi pi-download"
               @click="downloadAllQRCodes"
               outlined
-              disabled
-              v-tooltip.top="$t('batches.feature_coming_soon')"
-              class="border-slate-300 text-slate-400"
+              severity="secondary"
+              class="border-blue-600 text-blue-600 hover:bg-blue-50"
             />
             <Button 
               :label="$t('batches.download_csv')" 
               icon="pi pi-file-excel"
               @click="downloadCSV"
               outlined
+              severity="success"
               class="border-green-600 text-green-600 hover:bg-green-50"
             />
           </div>
@@ -162,6 +162,7 @@ import Button from 'primevue/button'
 import Dropdown from 'primevue/dropdown'
 import QrCode from 'qrcode.vue'
 import * as QRCodeLib from 'qrcode'
+import JSZip from 'jszip'
 import { supabase } from '@/lib/supabase'
 
 const { t } = useI18n()
@@ -321,9 +322,117 @@ const downloadSingleQR = async (issueCardId, cardNumber) => {
 }
 
 const downloadAllQRCodes = async () => {
-  // Implementation for downloading all QR codes as a ZIP file
-  // Feature not yet implemented - button should be disabled with tooltip
-  console.log('Bulk QR download - feature coming soon')
+  if (!filteredCards.value.length) {
+    toast.add({
+      severity: 'warn',
+      summary: t('messages.no_cards'),
+      detail: t('batches.no_cards_to_download'),
+      life: 3000
+    })
+    return
+  }
+
+  try {
+    toast.add({
+      severity: 'info',
+      summary: t('batches.generating_qr_codes'),
+      detail: t('batches.please_wait_generating', { count: filteredCards.value.length }),
+      life: 3000
+    })
+
+    const zip = new JSZip()
+    const qrFolder = zip.folder('qr_codes')
+    
+    // Generate QR codes for all filtered cards
+    for (let i = 0; i < filteredCards.value.length; i++) {
+      const card = filteredCards.value[i]
+      const cardNumber = i + 1
+      const url = getCardURL(card.id)
+      
+      // Generate QR code as data URL (browser-compatible)
+      const qrDataURL = await QRCodeLib.toDataURL(url, { 
+        width: 512,
+        margin: 2,
+        errorCorrectionLevel: 'M'
+      })
+      
+      // Convert data URL to Blob
+      const response = await fetch(qrDataURL)
+      const blob = await response.blob()
+      
+      // Add to ZIP with card number and status
+      const fileName = `card_${String(cardNumber).padStart(3, '0')}_${card.active ? 'active' : 'inactive'}.png`
+      qrFolder.file(fileName, blob)
+    }
+    
+    // Generate README with card information
+    const readmeContent = generateReadmeContent()
+    zip.file('README.txt', readmeContent)
+    
+    // Generate the ZIP file
+    const zipBlob = await zip.generateAsync({ type: 'blob' })
+    
+    // Trigger download
+    const link = document.createElement('a')
+    link.href = window.URL.createObjectURL(zipBlob)
+    const timestamp = new Date().toISOString().split('T')[0]
+    link.download = `${props.cardName}_${selectedBatchData.value?.batch_name || 'batch'}_qr_codes_${timestamp}.zip`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(link.href)
+    
+    toast.add({
+      severity: 'success',
+      summary: t('messages.download_complete'),
+      detail: t('batches.qr_codes_downloaded', { count: filteredCards.value.length }),
+      life: 3000
+    })
+  } catch (err) {
+    console.error('Error generating QR codes ZIP:', err)
+    toast.add({
+      severity: 'error',
+      summary: t('messages.download_failed'),
+      detail: t('batches.failed_to_generate_qr_zip'),
+      life: 5000
+    })
+  }
+}
+
+const generateReadmeContent = () => {
+  const batch = selectedBatchData.value
+  const cards = filteredCards.value
+  
+  return `${props.cardName} - QR Codes
+${'='.repeat(50)}
+
+Batch Information:
+- Batch Name: ${batch.batch_name}
+- Total Cards: ${cards.length}
+- Active Cards: ${cards.filter(c => c.active).length}
+- Inactive Cards: ${cards.filter(c => !c.active).length}
+- Generated: ${new Date().toLocaleString()}
+
+QR Code Files:
+${cards.map((card, i) => {
+  const num = String(i + 1).padStart(3, '0')
+  const status = card.active ? 'Active' : 'Inactive'
+  const url = getCardURL(card.id)
+  return `- card_${num}_${card.active ? 'active' : 'inactive'}.png
+  Card ID: ${card.id}
+  Status: ${status}
+  URL: ${url}`
+}).join('\n\n')}
+
+${'='.repeat(50)}
+How to Use:
+1. Each QR code file is named with its card number and status
+2. Scan any QR code to access the digital card
+3. Active cards are immediately accessible
+4. Inactive cards can be activated via admin panel
+
+For support, contact your CardStudio administrator.
+`
 }
 
 const downloadCSV = () => {
@@ -332,14 +441,12 @@ const downloadCSV = () => {
       t('batches.csv_card_number'),
       t('batches.csv_issue_card_id'),
       t('batches.csv_status'),
-      t('batches.csv_qr_code_url'),
-      t('batches.csv_access_url')
+      t('batches.csv_card_url')
     ]
     const rows = issuedCards.value.map((card, index) => [
       index + 1,
       card.id,
       card.active ? t('common.active') : t('common.inactive'),
-      getCardURL(card.id),
       getCardURL(card.id)
     ])
     

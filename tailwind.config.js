@@ -4,6 +4,9 @@ export default {
   darkMode: 'media', // or 'class'
   theme: {
     extend: {
+      screens: {
+        'xs': '475px', // Extra small devices (larger phones)
+      },
       fontFamily: {
         sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
       },

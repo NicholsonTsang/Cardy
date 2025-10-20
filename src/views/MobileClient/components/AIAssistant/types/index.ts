@@ -24,8 +24,12 @@ export interface Message {
 export interface CardData {
   card_name: string
   card_description: string
-  ai_instruction?: string
-  ai_knowledge_base?: string
+  card_image_url: string
+  conversation_ai_enabled: boolean
+  ai_instruction: string
+  ai_knowledge_base: string
+  ai_prompt?: string  // Legacy field, mapped from ai_instruction
+  is_activated: boolean
 }
 
 export interface AIAssistantProps {

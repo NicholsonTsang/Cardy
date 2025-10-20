@@ -212,7 +212,7 @@
       :current-balance="creditStore.balance"
       :loading="creatingBatch"
       :action-description="$t('batches.batch_creation_action_description')"
-      :item-count="newBatch.cardCount"
+      :item-count="batchQuantity"
       :credits-per-item="2"
       :item-label="$t('batches.cards_to_create')"
       :confirm-label="$t('batches.confirm_and_create_batch')"
@@ -232,21 +232,37 @@
       <div class="space-y-6">
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('batches.cards') }}</label>
-          <InputNumber 
-            v-model="newBatch.cardCount"
+          <input
+            v-model.number="batchQuantity"
+            type="number"
             :min="1"
             :max="1000"
             :placeholder="$t('batches.enter_number_of_cards')"
-            class="w-full"
-            @input="updateCreditEstimate"
+            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            :class="{
+              'border-red-500 ring-2 ring-red-200': showValidationError,
+              'border-slate-300': !showValidationError
+            }"
           />
-          <div class="flex items-center justify-between mt-2 text-sm">
-            <span class="text-slate-500">
-              {{ $t('batches.credits_required') }}: <strong>{{ requiredCredits }}</strong> {{ $t('batches.credits') }}
-            </span>
-            <span :class="hasEnoughCredits ? 'text-blue-600 font-medium' : 'text-orange-600 font-medium'">
-              {{ $t('batches.your_balance') }}: {{ creditStore.formattedBalance }} {{ $t('batches.credits') }}
-            </span>
+          <div class="mt-2 space-y-1">
+            <!-- Validation Error - Show when invalid -->
+            <div v-if="showValidationError" class="text-xs text-red-600 font-semibold flex items-center gap-1">
+              <i class="pi pi-exclamation-circle"></i>
+              {{ $t('batches.quantity_below_minimum', { min: minBatchQuantity }) }}
+            </div>
+            <!-- Minimum info - Show when empty or valid -->
+            <div v-else class="text-xs text-slate-500">
+              {{ $t('batches.minimum_batch_size', { count: minBatchQuantity }) }}
+            </div>
+            <!-- Credit calculation -->
+            <div class="flex items-center justify-between text-sm mt-2">
+              <span class="text-slate-500">
+                {{ $t('batches.credits_required') }}: <strong class="text-slate-900">{{ requiredCredits }}</strong> {{ $t('batches.credits') }}
+              </span>
+              <span :class="hasEnoughCredits ? 'text-blue-600 font-medium' : 'text-orange-600 font-medium'">
+                {{ $t('batches.your_balance') }}: {{ creditStore.formattedBalance }} {{ $t('batches.credits') }}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -276,7 +292,7 @@
         </div>
 
         <!-- Insufficient Credits Warning -->
-        <div v-if="!hasEnoughCredits" class="bg-orange-50 border border-orange-200 rounded-lg p-4">
+        <div v-if="!hasEnoughCredits && isQuantityValid" class="bg-orange-50 border border-orange-200 rounded-lg p-4">
           <div class="flex items-start gap-3">
             <i class="pi pi-exclamation-triangle text-orange-600 text-lg mt-0.5"></i>
             <div>
@@ -314,50 +330,56 @@
             outlined 
             @click="showCreateBatchDialog = false"
           />
+          <!-- Primary action button - always visible, disabled when invalid -->
           <Button 
-            v-if="hasEnoughCredits"
-            :label="$t('batches.proceed_to_confirm')" 
-            icon="pi pi-arrow-right"
-            @click="showConfirmationDialog"
-            :disabled="!newBatch.cardCount || !currentCard"
-            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0"
-          />
-          <Button 
-            v-else
-            :label="$t('batches.purchase_credits')" 
-            icon="pi pi-shopping-cart"
-            @click="navigateToCreditPurchase"
-            class="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 border-0"
+            :label="hasEnoughCredits ? $t('batches.proceed_to_confirm') : $t('batches.purchase_credits')" 
+            :icon="hasEnoughCredits ? 'pi pi-arrow-right' : 'pi pi-shopping-cart'"
+            @click="hasEnoughCredits ? showConfirmationDialog() : navigateToCreditPurchase()"
+            :disabled="!isQuantityValid || !batchQuantity || !currentCard"
+            :class="[
+              hasEnoughCredits 
+                ? 'bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0' 
+                : 'bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 border-0',
+              (!isQuantityValid || !batchQuantity) ? 'opacity-50 cursor-not-allowed' : ''
+            ]"
           />
         </div>
       </template>
     </Dialog>
 
-    <!-- Success Message -->
-    <div v-if="showSuccessMessage" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4">
-      <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full mx-4 overflow-hidden">
-        <!-- Success Header -->
-        <div class="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-center">
-          <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-            <i class="pi pi-check text-blue-600 text-4xl"></i>
+    <!-- Success Message Dialog -->
+    <Dialog
+      v-model:visible="showSuccessMessage"
+      modal
+      :closable="false"
+      :breakpoints="{ '960px': '90vw', '640px': '95vw' }"
+      :style="{ width: '600px' }"
+      class="batch-success-dialog"
+      appendTo="body"
+    >
+      <template #header>
+        <div class="w-full bg-gradient-to-r from-blue-600 to-purple-600 px-4 sm:px-6 py-4 sm:py-6 text-center">
+          <div class="w-12 h-12 sm:w-16 sm:h-16 bg-white rounded-full flex items-center justify-center mx-auto mb-2 sm:mb-3 shadow-lg">
+            <i class="pi pi-check text-blue-600 text-2xl sm:text-3xl"></i>
           </div>
-          <h3 class="text-2xl font-bold text-white mb-2">{{ $t('batches.batch_created_success') }}</h3>
-          <p class="text-blue-100">
+          <h3 class="text-lg sm:text-xl font-bold text-white mb-1 sm:mb-2">{{ $t('batches.batch_created_success') }}</h3>
+          <p class="text-blue-100 text-xs sm:text-sm">
             {{ $t('batches.cards_ready_for_distribution', { count: successfulBatch?.cards_count || 0 }) }}
           </p>
         </div>
+      </template>
 
-        <!-- Content -->
-        <div class="p-6">
+      <!-- Content (Scrollable) -->
+      <div class="px-3 py-4 sm:p-4 overflow-y-auto max-h-[60vh] sm:max-h-[50vh]">
           <!-- Batch Info Card -->
-          <div class="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
-            <div class="flex items-center justify-between mb-3">
-              <h4 class="font-semibold text-slate-900">{{ $t('batches.batch_details') }}</h4>
-              <span class="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium">
+          <div class="bg-slate-50 rounded-lg p-2.5 sm:p-3 mb-3 sm:mb-4 border border-slate-200">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+              <h4 class="font-semibold text-slate-900 text-xs sm:text-sm">{{ $t('batches.batch_details') }}</h4>
+              <span class="px-2 sm:px-3 py-0.5 sm:py-1 bg-blue-100 text-blue-700 rounded-full text-xs sm:text-sm font-medium self-start">
                 {{ successfulBatch?.batch_name }}
               </span>
             </div>
-            <div class="grid grid-cols-2 gap-4 text-sm">
+            <div class="grid grid-cols-2 gap-3 sm:gap-4 text-xs sm:text-sm">
               <div>
                 <span class="text-slate-600">{{ $t('batches.total_cards') }}:</span>
                 <p class="font-semibold text-slate-900">{{ successfulBatch?.cards_count }}</p>
@@ -370,87 +392,88 @@
           </div>
 
           <!-- Quick Actions -->
-          <div class="space-y-4 mb-6">
-            <h4 class="font-semibold text-slate-900 flex items-center gap-2">
-              <i class="pi pi-bolt text-orange-500"></i>
+          <div class="space-y-2 sm:space-y-3 mb-3 sm:mb-4">
+            <h4 class="font-semibold text-slate-900 flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm">
+              <i class="pi pi-bolt text-orange-500 text-sm sm:text-base"></i>
               {{ $t('batches.quick_actions') }}
             </h4>
             
             <!-- Action Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="grid grid-cols-1 gap-2">
               <!-- View Cards -->
               <button
                 @click="closeSuccessMessage"
-                class="group relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 border-2 border-blue-300 rounded-lg p-4 text-left transition-all duration-200 hover:shadow-lg"
+                class="group relative overflow-hidden bg-gradient-to-br from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 border-2 border-blue-300 rounded-lg p-2.5 sm:p-3 text-left transition-all duration-200 hover:shadow-lg"
               >
-                <div class="flex items-start gap-3">
-                  <div class="p-2 bg-blue-500 rounded-lg text-white group-hover:scale-110 transition-transform">
-                    <i class="pi pi-eye text-xl"></i>
+                <div class="flex items-center gap-2 sm:gap-3">
+                  <div class="p-1.5 sm:p-2 bg-blue-500 rounded-lg text-white group-hover:scale-110 transition-transform flex-shrink-0">
+                    <i class="pi pi-eye text-base sm:text-lg"></i>
                   </div>
-                  <div class="flex-1">
-                    <h5 class="font-semibold text-blue-900 mb-1">{{ $t('batches.view_digital_cards') }}</h5>
-                    <p class="text-sm text-blue-700">{{ $t('batches.view_cards_description') }}</p>
+                  <div class="flex-1 min-w-0">
+                    <h5 class="font-semibold text-blue-900 mb-0.5 text-xs sm:text-sm">{{ $t('batches.view_digital_cards') }}</h5>
+                    <p class="text-[10px] sm:text-xs text-blue-700 line-clamp-1">{{ $t('batches.view_cards_description') }}</p>
                   </div>
-                  <i class="pi pi-arrow-right text-blue-600 group-hover:translate-x-1 transition-transform"></i>
+                  <i class="pi pi-arrow-right text-blue-600 group-hover:translate-x-1 transition-transform text-xs sm:text-sm flex-shrink-0"></i>
                 </div>
               </button>
 
               <!-- Request Printing -->
               <button
                 @click="handleSuccessPrintRequest"
-                class="group relative overflow-hidden bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border-2 border-purple-300 rounded-lg p-4 text-left transition-all duration-200 hover:shadow-lg"
+                class="group relative overflow-hidden bg-gradient-to-br from-purple-50 to-purple-100 hover:from-purple-100 hover:to-purple-200 border-2 border-purple-300 rounded-lg p-2.5 sm:p-3 text-left transition-all duration-200 hover:shadow-lg"
               >
-                <div class="flex items-start gap-3">
-                  <div class="p-2 bg-purple-500 rounded-lg text-white group-hover:scale-110 transition-transform">
-                    <i class="pi pi-print text-xl"></i>
+                <div class="flex items-center gap-2 sm:gap-3">
+                  <div class="p-1.5 sm:p-2 bg-purple-500 rounded-lg text-white group-hover:scale-110 transition-transform flex-shrink-0">
+                    <i class="pi pi-print text-base sm:text-lg"></i>
                   </div>
-                  <div class="flex-1">
-                    <h5 class="font-semibold text-purple-900 mb-1">{{ $t('batches.order_physical_cards') }}</h5>
-                    <p class="text-sm text-purple-700">{{ $t('batches.print_request_description') }}</p>
+                  <div class="flex-1 min-w-0">
+                    <h5 class="font-semibold text-purple-900 mb-0.5 text-xs sm:text-sm">{{ $t('batches.order_physical_cards') }}</h5>
+                    <p class="text-[10px] sm:text-xs text-purple-700 line-clamp-1">{{ $t('batches.print_request_description') }}</p>
                   </div>
-                  <i class="pi pi-arrow-right text-purple-600 group-hover:translate-x-1 transition-transform"></i>
+                  <i class="pi pi-arrow-right text-purple-600 group-hover:translate-x-1 transition-transform text-xs sm:text-sm flex-shrink-0"></i>
                 </div>
               </button>
             </div>
           </div>
 
           <!-- Additional Info -->
-          <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <div class="flex items-start gap-3">
-              <i class="pi pi-info-circle text-blue-600 text-lg mt-0.5"></i>
-              <div>
-                <h5 class="font-medium text-blue-900 mb-2">{{ $t('batches.good_to_know') }}</h5>
-                <ul class="text-sm text-blue-800 space-y-1.5">
-                  <li class="flex items-start gap-2">
-                    <i class="pi pi-check-circle text-blue-600 text-xs mt-1"></i>
+          <div class="bg-blue-50 border border-blue-200 rounded-lg p-2.5 sm:p-3">
+            <div class="flex items-start gap-1.5 sm:gap-2">
+              <i class="pi pi-info-circle text-blue-600 mt-0.5 text-sm sm:text-base flex-shrink-0"></i>
+              <div class="flex-1 min-w-0">
+                <h5 class="font-medium text-blue-900 mb-1 sm:mb-1.5 text-xs sm:text-sm">{{ $t('batches.good_to_know') }}</h5>
+                <ul class="text-[10px] sm:text-xs text-blue-800 space-y-0.5 sm:space-y-1">
+                  <li class="flex items-start gap-1.5 sm:gap-2">
+                    <i class="pi pi-check-circle text-blue-600 text-[10px] sm:text-xs mt-0.5 flex-shrink-0"></i>
                     <span>{{ $t('batches.cards_active_immediately') }}</span>
                   </li>
-                  <li class="flex items-start gap-2">
-                    <i class="pi pi-check-circle text-blue-600 text-xs mt-1"></i>
+                  <li class="flex items-start gap-1.5 sm:gap-2">
+                    <i class="pi pi-check-circle text-blue-600 text-[10px] sm:text-xs mt-0.5 flex-shrink-0"></i>
                     <span>{{ $t('batches.download_qr_anytime') }}</span>
                   </li>
-                  <li class="flex items-start gap-2">
-                    <i class="pi pi-check-circle text-blue-600 text-xs mt-1"></i>
+                  <li class="flex items-start gap-1.5 sm:gap-2">
+                    <i class="pi pi-check-circle text-blue-600 text-[10px] sm:text-xs mt-0.5 flex-shrink-0"></i>
                     <span>{{ $t('batches.print_request_optional') }}</span>
                   </li>
                 </ul>
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="bg-slate-50 px-6 py-4 border-t border-slate-200 flex justify-center">
-          <button 
-            @click="showSuccessMessage = false"
-            class="text-slate-600 hover:text-slate-900 text-sm font-medium transition-colors flex items-center gap-2"
-          >
-            <i class="pi pi-times-circle"></i>
-            {{ $t('common.close') }}
-          </button>
-        </div>
       </div>
-    </div>
+
+      <template #footer>
+        <div class="flex justify-center px-3 sm:px-0">
+          <Button 
+            :label="$t('common.close')"
+            icon="pi pi-times-circle"
+            @click="showSuccessMessage = false"
+            outlined
+            size="small"
+            class="border-slate-600 text-slate-600 hover:bg-slate-50 w-full sm:w-auto"
+          />
+        </div>
+      </template>
+    </Dialog>
 
     <!-- Batch Details Dialog -->
     <Dialog 
@@ -938,7 +961,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
@@ -947,7 +970,6 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
-import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
 import { supabase } from '@/lib/supabase'
@@ -968,6 +990,9 @@ const props = defineProps({
     required: true
   }
 })
+
+// Emits
+const emit = defineEmits(['batch-created'])
 
 // State
 const batches = ref([])
@@ -1008,10 +1033,16 @@ const printRequestForm = ref({
   }
 })
 
-// New batch form
-const newBatch = ref({
-  cardCount: 50
-})
+// Get minimum batch quantity from environment variable (default: 100)
+const minBatchQuantity = Number(import.meta.env.VITE_BATCH_MIN_QUANTITY) || 100
+
+// Batch quantity - separate reactive ref for better reactivity
+const batchQuantity = ref(minBatchQuantity)
+
+// New batch form (legacy compatibility)
+const newBatch = computed(() => ({
+  cardCount: batchQuantity.value
+}))
 
 // Default placeholder image
 import cardPlaceholder from '@/assets/images/card-placeholder.jpg'
@@ -1026,12 +1057,33 @@ const readyToPrintBatches = computed(() => {
 })
 
 const requiredCredits = computed(() => {
-  return (newBatch.value.cardCount || 0) * 2
+  return (batchQuantity.value || 0) * 2
 })
 
 const hasEnoughCredits = computed(() => {
   return creditStore.balance >= requiredCredits.value
 })
+
+const isQuantityValid = computed(() => {
+  const count = Number(batchQuantity.value)
+  return count > 0 && count >= minBatchQuantity
+})
+
+// Visual feedback computed property
+const showValidationError = computed(() => {
+  const count = Number(batchQuantity.value)
+  return count > 0 && count < minBatchQuantity
+})
+
+// Watch for reactive updates on quantity changes
+watch(batchQuantity, (newValue, oldValue) => {
+  console.log('🔄 Quantity changed:', { 
+    oldValue, 
+    newValue, 
+    isValid: isQuantityValid.value,
+    showError: showValidationError.value
+  })
+}, { immediate: true })
 
 // Methods
 const loadData = async () => {
@@ -1221,7 +1273,7 @@ const confirmAndCreateBatch = async () => {
     // Issue batch using credits - instant creation
     const batchId = await creditStore.issueBatchWithCredits(
       props.cardId, 
-      newBatch.value.cardCount,
+      batchQuantity.value,
       false // print request handled separately
     )
 
@@ -1229,12 +1281,10 @@ const confirmAndCreateBatch = async () => {
     showCreditConfirmDialog.value = false
     
     // Store card count for success message before resetting
-    const createdCardCount = newBatch.value.cardCount
+    const createdCardCount = batchQuantity.value
     
     // Reset form
-    newBatch.value = {
-      cardCount: 50
-    }
+    batchQuantity.value = minBatchQuantity
 
     // Show success message
     toast.add({
@@ -1255,6 +1305,9 @@ const confirmAndCreateBatch = async () => {
       successfulBatch.value = newBatchData
       showSuccessMessage.value = true
     }
+
+    // Emit event to notify parent that batch was created
+    emit('batch-created', batchId)
 
   } catch (error) {
     console.error('Error creating batch:', error)
@@ -1286,11 +1339,6 @@ const confirmAndCreateBatch = async () => {
   } finally {
     creatingBatch.value = false
   }
-}
-
-const updateCreditEstimate = () => {
-  // Recalculate required credits when card count changes
-  // Computed properties will automatically update
 }
 
 const navigateToCreditPurchase = () => {
@@ -1740,6 +1788,14 @@ onMounted(async () => {
 }
 
 /* Line clamp utility for description text */
+.line-clamp-1 {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -1767,5 +1823,34 @@ onMounted(async () => {
 
 .p-datatable .p-datatable-tbody > tr:hover {
   background: #f8fafc;
+}
+
+/* Batch Success Dialog Custom Styling */
+:deep(.batch-success-dialog) {
+  overflow: hidden;
+}
+
+:deep(.batch-success-dialog .p-dialog-header) {
+  padding: 0 !important;
+  border-bottom: none !important;
+  overflow: hidden;
+}
+
+:deep(.batch-success-dialog .p-dialog-content) {
+  padding: 0 !important;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+:deep(.batch-success-dialog .p-dialog-footer) {
+  padding: 0.75rem 1rem !important;
+  border-top: 1px solid #e2e8f0;
+}
+
+/* Mobile optimizations */
+@media (max-width: 640px) {
+  :deep(.batch-success-dialog .p-dialog-footer) {
+    padding: 0.625rem 0.75rem !important;
+  }
 }
 </style>

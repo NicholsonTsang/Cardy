@@ -9,7 +9,6 @@ interface ImportMetaEnv {
   // Stripe Configuration (Frontend)
   readonly VITE_STRIPE_PUBLISHABLE_KEY: string
   readonly VITE_STRIPE_SUCCESS_URL: string
-  readonly VITE_STRIPE_CANCEL_URL: string
   
   // Landing Page Demo Card
   readonly VITE_DEFAULT_CARD_IMAGE_URL: string

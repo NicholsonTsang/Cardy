@@ -123,8 +123,8 @@ ${props.contentItemKnowledgeBase}` : ''}
 ${props.parentContentKnowledgeBase ? `Parent Content Context (for broader understanding):
 ${props.parentContentKnowledgeBase}` : ''}
 
-${props.cardData.ai_prompt ? `Special Instructions from the Card Creator:
-${props.cardData.ai_prompt}` : ''}
+${props.cardData.ai_instruction ? `Special Instructions from the Card Creator:
+${props.cardData.ai_instruction}` : ''}
 
 Communication Guidelines:${languageNote}
 - Be conversational and friendly
@@ -157,7 +157,7 @@ const welcomeMessages: Record<string, string> = {
 
 // Computed property for realtime status text
 const realtimeStatusText = computed(() => {
-  switch (realtimeConnection.status) {
+  switch (realtimeConnection.status.value) {
     case 'connecting':
       return 'Connecting...'
     case 'connected':
@@ -447,7 +447,7 @@ function disconnectRealtime() {
   console.log('Disconnecting realtime...')
   realtimeConnection.disconnect()
   costSafeguards.removeSafeguards()
-  inactivityTimer.stopTimer()
+  inactivityTimer.clearTimer()
   
   // Add goodbye message
   if (messages.value.length > 0) {

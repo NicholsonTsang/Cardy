@@ -18,12 +18,6 @@
               <i class="pi pi-image" />
             </div>
           </div>
-          
-          <!-- Status Indicator -->
-          <div class="status-indicator" :class="card.is_activated ? 'active' : 'pending'">
-            <div class="status-dot"></div>
-            <span>{{ card.is_activated ? t('common.active') : t('mobile.activating') }}</span>
-          </div>
         </div>
       </div>
     </div>
@@ -66,6 +60,7 @@
     <!-- Language Selector Modal -->
     <LanguageSelectorModal
       v-if="showLanguageSelector"
+      :available-languages="availableLanguages"
       @select="handleLanguageSelect"
       @close="showLanguageSelector = false"
     />
@@ -91,9 +86,11 @@ interface Props {
     card_image_url: string
     crop_parameters?: any
     conversation_ai_enabled: boolean
-    ai_prompt: string
+    ai_instruction?: string
+    ai_knowledge_base?: string
     is_activated: boolean
   }
+  availableLanguages?: string[] // Languages available for this card
 }
 
 const props = defineProps<Props>()
@@ -104,7 +101,7 @@ const emit = defineEmits<{
 // Render markdown description
 const renderedDescription = computed(() => {
   if (!props.card.card_description) return ''
-  return marked(props.card.card_description)
+  return marked.parse(props.card.card_description) as string
 })
 
 function handleExplore() {
@@ -252,65 +249,6 @@ onMounted(() => {
   background: linear-gradient(135deg, #e0e7ff, #ddd6fe);
   color: rgba(99, 102, 241, 0.3);
   font-size: 4rem;
-}
-
-/* Status Indicator */
-.status-indicator {
-  position: absolute;
-  top: -0.625rem;
-  right: -0.625rem;
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 1rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-  animation: slideIn 0.5s ease-out 0.3s both;
-  z-index: 10;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateX(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-.status-indicator.active {
-  background: linear-gradient(135deg, rgba(16, 185, 129, 0.95), rgba(5, 150, 105, 0.95));
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.status-indicator.pending {
-  background: linear-gradient(135deg, rgba(245, 158, 11, 0.95), rgba(217, 119, 6, 0.95));
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.status-dot {
-  width: 0.5rem;
-  height: 0.5rem;
-  border-radius: 50%;
-  background: currentColor;
-  animation: blink 2s ease-in-out infinite;
-}
-
-@keyframes blink {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.3;
-  }
 }
 
 /* Info Panel */
@@ -616,18 +554,13 @@ onMounted(() => {
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
   .card-spotlight,
-  .info-panel,
-  .status-indicator {
+  .info-panel {
     animation: none;
   }
   
   .spotlight-glow {
     animation: none;
     opacity: 0.5;
-  }
-  
-  .status-dot {
-    animation: none;
   }
   
   .language-chip:hover,

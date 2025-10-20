@@ -61,7 +61,8 @@ interface ContentItem {
   content_item_name: string
   content_item_content: string
   content_item_image_url: string
-  content_item_ai_metadata: string
+  content_item_ai_knowledge_base: string
+  content_item_ai_metadata?: string
   content_item_sort_order: number
   crop_parameters?: any
 }

@@ -149,7 +149,8 @@ async function createCardSheet(workbook, cardData, options) {
     'Select QR position: TL/TR/BL/BR',
     'Paste image or leave blank',
     'Auto-generated crop data (do not edit)',
-    'Translation data in JSON format (auto-managed)'
+    'Translation data in JSON format (auto-managed)',
+    'Content hash for translation tracking (auto-managed)'
   ];
   const descriptionRow = worksheet.getRow(EXCEL_CONFIG.CARD_SHEET.DESCRIPTIONS_ROW);
   descriptionRow.values = descriptions;
@@ -168,7 +169,8 @@ async function createCardSheet(workbook, cardData, options) {
     cardData.qr_code_position || 'BR',
     '', // Placeholder for image
     cardData.crop_parameters ? JSON.stringify(cardData.crop_parameters) : '', // Hidden crop parameters
-    cardData.translations ? JSON.stringify(cardData.translations) : '{}' // Hidden translations data
+    cardData.translations ? JSON.stringify(cardData.translations) : '{}', // Hidden translations data
+    cardData.content_hash || '' // Hidden content hash for import preservation
   ];
   
   // Apply text wrapping for all cells
@@ -206,7 +208,8 @@ async function createCardSheet(workbook, cardData, options) {
     { width: 15 }, // QR Position
     { width: 25 }, // Card Image
     { width: 0 },  // Crop Data (hidden)
-    { width: 0 }   // Translations (hidden)
+    { width: 0 },  // Translations (hidden)
+    { width: 0 }   // Content Hash (hidden)
   ];
   
   // Add helpful cell comments (same as template)
@@ -269,7 +272,8 @@ async function createContentSheet(workbook, contentItems) {
     'Cell reference for parent (e.g., A5)',
     'Paste image or provide URL',
     'Auto-generated crop data (do not edit)',
-    'Translation data in JSON format (auto-managed)'
+    'Translation data in JSON format (auto-managed)',
+    'Content hash for translation tracking (auto-managed)'
   ];
   const descriptionRow = worksheet.getRow(EXCEL_CONFIG.CONTENT_SHEET.DESCRIPTIONS_ROW);
   descriptionRow.values = descriptions;
@@ -303,7 +307,8 @@ async function createContentSheet(workbook, contentItems) {
       parentReference,
       '', // Placeholder for image
       item.crop_parameters ? JSON.stringify(item.crop_parameters) : '', // Hidden crop parameters
-      item.translations ? JSON.stringify(item.translations) : '{}' // Hidden translations data
+      item.translations ? JSON.stringify(item.translations) : '{}', // Hidden translations data
+      item.content_hash || '' // Hidden content hash for import preservation
     ];
     
     // Apply text wrapping for all cells
@@ -350,7 +355,8 @@ async function createContentSheet(workbook, contentItems) {
     { width: 18 }, // Parent Reference
     { width: 25 }, // Image
     { width: 0 },  // Crop Data (hidden)
-    { width: 0 }   // Translations (hidden)
+    { width: 0 },  // Translations (hidden)
+    { width: 0 }   // Content Hash (hidden)
   ];
   
   // No summary section for consistency with template
@@ -407,7 +413,8 @@ async function createTemplateCardSheet(workbook) {
     'Select QR position: TL/TR/BL/BR',
     'Paste image or leave blank',
     'Auto-generated crop data (do not edit)',
-    'Translation data in JSON format (auto-managed)'
+    'Translation data in JSON format (auto-managed)',
+    'Content hash for translation tracking (auto-managed)'
   ];
   const descriptionRow = worksheet.getRow(EXCEL_CONFIG.CARD_SHEET.DESCRIPTIONS_ROW);
   descriptionRow.values = descriptions;
@@ -425,7 +432,8 @@ async function createTemplateCardSheet(workbook) {
     '', // QR Position
     '', // Card Image
     '', // Crop Data (hidden)
-    ''  // Translations (hidden)
+    '', // Translations (hidden)
+    ''  // Content Hash (hidden)
   ];
   
   const dataRow = worksheet.getRow(EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW);
@@ -466,7 +474,8 @@ async function createTemplateCardSheet(workbook) {
     { width: 15 }, // QR Position
     { width: 25 }, // Card Image
     { width: 0 },  // Crop Data (hidden)
-    { width: 0 }   // Translations (hidden)
+    { width: 0 },  // Translations (hidden)
+    { width: 0 }   // Content Hash (hidden)
   ];
   
   // Freeze headers for easy navigation
@@ -516,7 +525,8 @@ async function createTemplateContentSheet(workbook) {
     'Cell reference for parent (e.g., A5)',
     'Paste image or provide URL',
     'Auto-generated crop data (do not edit)',
-    'Translation data in JSON format (auto-managed)'
+    'Translation data in JSON format (auto-managed)',
+    'Content hash for translation tracking (auto-managed)'
   ];
   const descriptionRow = worksheet.getRow(EXCEL_CONFIG.CONTENT_SHEET.DESCRIPTIONS_ROW);
   descriptionRow.values = descriptions;
@@ -531,7 +541,7 @@ async function createTemplateContentSheet(workbook) {
     const row = worksheet.getRow(rowNum);
     
     // Empty data row
-    row.values = ['', '', '', '', '', '', '', '', '']; // 9 columns including hidden ones
+    row.values = ['', '', '', '', '', '', '', '', '', '']; // 10 columns including hidden ones
     
     // Apply text wrapping for all cells
     row.eachCell((cell) => {
@@ -568,7 +578,8 @@ async function createTemplateContentSheet(workbook) {
     { width: 18 }, // Parent Reference
     { width: 25 }, // Image
     { width: 0 },  // Crop Data (hidden)
-    { width: 0 }   // Translations (hidden)
+    { width: 0 },  // Translations (hidden)
+    { width: 0 }   // Content Hash (hidden)
   ];
   
   // Freeze headers for easy navigation
@@ -611,7 +622,8 @@ async function parseCardSheet(worksheet, result) {
         'AI Enabled': 'conversation_ai_enabled',
         'QR Position': 'qr_code_position',
         'Crop Data': 'crop_parameters_json',
-        'Translations': 'translations_json'
+        'Translations': 'translations_json',
+        'Content Hash': 'content_hash'
       };
       
       const dbField = fieldMapping[cleanHeader];
@@ -679,7 +691,8 @@ async function parseContentSheet(worksheet, result) {
     parent_reference: 6, // Column F
     image: 7,          // Column G
     crop_data: 8,      // Column H (hidden)
-    translations: 9    // Column I (hidden)
+    translations: 9,   // Column I (hidden)
+    content_hash: 10   // Column J (hidden)
   };
 
   try {
@@ -701,7 +714,8 @@ async function parseContentSheet(worksheet, result) {
         parent_reference: parentRefValue,
         image_url: worksheet.getCell(currentRowNum, colMap.image).value?.toString() || '',
         crop_parameters_json: worksheet.getCell(currentRowNum, colMap.crop_data).value?.toString() || '',
-        translations_json: worksheet.getCell(currentRowNum, colMap.translations).value?.toString() || '{}'
+        translations_json: worksheet.getCell(currentRowNum, colMap.translations).value?.toString() || '{}',
+        content_hash: worksheet.getCell(currentRowNum, colMap.content_hash).value?.toString() || ''
       };
       
       // Convert parent reference from cell format (A6) to parent name

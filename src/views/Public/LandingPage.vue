@@ -1,92 +1,31 @@
 <template>
   <div class="min-h-screen bg-white">
-    <!-- Scroll Progress Bar -->
-    <div class="fixed top-0 left-0 right-0 h-1 bg-gray-200 z-[60]">
-      <div class="h-full bg-gradient-to-r from-blue-600 to-purple-600 transition-all duration-300 ease-out"
-           :style="{ width: scrollProgress + '%' }"></div>
-          </div>
-          
-    <!-- Premium Navigation Bar -->
-    <nav class="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
-         :class="scrolled ? 'bg-white/95 backdrop-blur-xl shadow-lg border-b border-slate-200' : 'bg-white/80 backdrop-blur-md border-b border-white/20'">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between items-center h-20">
-          <!-- Logo -->
-          <div class="flex items-center gap-3 cursor-pointer" @click="router.push('/')">
-            <div class="w-11 h-11 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform">
-              <i class="pi pi-id-card text-white text-xl"></i>
-              </div>
-            <div>
-              <div class="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">CardStudio</div>
-              <div class="text-[10px] text-slate-500 -mt-1 hidden sm:block">AI-Powered Souvenirs</div>
-              </div>
-            </div>
-
-          <!-- Desktop Navigation - Shows at lg (1024px) and above -->
-          <div class="hidden lg:flex items-center gap-10">
-            <a @click="scrollToAbout" class="text-slate-600 hover:text-blue-600 font-medium cursor-pointer transition-all hover:scale-105">
-              About
-            </a>
-            <a @click="scrollToDemo" class="text-slate-600 hover:text-blue-600 font-medium cursor-pointer transition-all hover:scale-105">
-              Demo
-            </a>
-            <a @click="scrollToPricing" class="text-slate-600 hover:text-blue-600 font-medium cursor-pointer transition-all hover:scale-105">
-              Pricing
-            </a>
-            <a @click="scrollToContact" class="text-slate-600 hover:text-blue-600 font-medium cursor-pointer transition-all hover:scale-105">
-              Contact
-            </a>
-              </div>
-
-          <!-- CTA Buttons & Mobile Menu Toggle -->
-          <div class="flex items-center gap-3">
-            <!-- Sign In - Shows at lg (1024px) and above -->
-            <Button 
-              @click="router.push('/login')"
-              class="hidden lg:inline-flex text-slate-700 hover:text-blue-600 border-0 bg-transparent font-semibold transition-colors"
-            >
-              Sign In
-            </Button>
-            
-            <!-- Start Free Trial - Always visible -->
-            <Button 
-              @click="router.push('/signup')"
-              class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-6 py-2.5 font-semibold shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-            >
-              <span class="hidden sm:inline">Start Free Trial</span>
-              <span class="sm:hidden">Start Free</span>
-            </Button>
-
-            <!-- Mobile Menu Button - Shows ONLY when nav links are hidden (below lg/1024px) -->
-            <Button 
-              icon="pi pi-bars"
-              @click="mobileMenuOpen = !mobileMenuOpen"
-              class="p-button-text text-slate-700 hover:text-blue-600 block lg:!hidden"
-            />
-              </div>
-            </div>
-              </div>
-    </nav>
+    <!-- Unified Header Component -->
+    <UnifiedHeader 
+      mode="landing"
+      @scroll-to="scrollToSection"
+      @toggle-mobile-menu="mobileMenuOpen = !mobileMenuOpen"
+    />
 
     <!-- Mobile Menu -->
     <transition name="slide-down">
-      <div v-if="mobileMenuOpen" class="fixed top-20 left-0 right-0 bg-white backdrop-blur-xl border-b border-slate-200 shadow-xl z-40 lg:hidden">
+      <div v-if="mobileMenuOpen" class="fixed top-16 left-0 right-0 bg-white backdrop-blur-xl border-b border-slate-200 shadow-xl z-40 lg:hidden">
         <div class="px-6 py-6 space-y-1">
-          <a @click="scrollToAbout; mobileMenuOpen = false" 
+          <a @click="scrollToSection('about')" 
              class="block text-slate-700 hover:text-white hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 font-medium py-3 px-4 rounded-xl transition-all cursor-pointer">
-            About
+            {{ $t('landing.nav.about') }}
           </a>
-          <a @click="scrollToDemo; mobileMenuOpen = false" 
+          <a @click="scrollToSection('demo')" 
              class="block text-slate-700 hover:text-white hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 font-medium py-3 px-4 rounded-xl transition-all cursor-pointer">
-            Demo
+            {{ $t('landing.nav.demo') }}
           </a>
-          <a @click="scrollToPricing; mobileMenuOpen = false" 
+          <a @click="scrollToSection('pricing')" 
              class="block text-slate-700 hover:text-white hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 font-medium py-3 px-4 rounded-xl transition-all cursor-pointer">
-            Pricing
+            {{ $t('landing.nav.pricing') }}
           </a>
-          <a @click="scrollToContact; mobileMenuOpen = false" 
+          <a @click="scrollToSection('contact')" 
              class="block text-slate-700 hover:text-white hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 font-medium py-3 px-4 rounded-xl transition-all cursor-pointer">
-            Contact
+            {{ $t('landing.nav.contact') }}
           </a>
           
           <div class="pt-4 space-y-3">
@@ -94,397 +33,244 @@
               @click="router.push('/login'); mobileMenuOpen = false"
               class="w-full bg-slate-100 text-slate-700 hover:bg-slate-200 border-0 py-3 font-semibold rounded-xl"
             >
-              Sign In
+              {{ $t('landing.nav.sign_in') }}
             </Button>
             <Button 
               @click="router.push('/signup'); mobileMenuOpen = false"
               class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-3 font-semibold shadow-lg rounded-xl"
             >
-              Start Free Trial
+              {{ $t('landing.nav.start_free_trial') }}
             </Button>
-              </div>
-            </div>
           </div>
+        </div>
+      </div>
     </transition>
     
-    <!-- Hero Section - Premium Design -->
+    <!-- Hero Section -->
     <section class="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950 pt-20">
       <!-- Animated gradient mesh background -->
       <div class="absolute inset-0">
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(120,180,255,0.15),transparent_50%)]"></div>
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(180,120,255,0.15),transparent_50%)]"></div>
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(255,120,180,0.1),transparent_50%)]"></div>
-        </div>
+      </div>
 
-      <!-- Floating orbs with better animation -->
+      <!-- Floating orbs with animation -->
       <div class="absolute inset-0 overflow-hidden">
         <div class="floating-orb absolute top-20 left-10 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl"></div>
         <div class="floating-orb-delayed absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"></div>
         <div class="floating-orb-slow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] bg-cyan-500/10 rounded-full blur-3xl"></div>
-          </div>
-          
-      <!-- Grid pattern overlay -->
-      <div class="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-20"></div>
+      </div>
       
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
         <div class="text-center">
-          <!-- Premium badge -->
-          <div class="inline-flex items-center gap-2 bg-white/10 backdrop-blur-xl border border-white/20 text-white px-4 py-2 rounded-full text-sm font-medium mb-8 animate-fade-in">
-            <div class="w-2 h-2 bg-gradient-to-r from-green-400 to-emerald-400 rounded-full animate-pulse"></div>
-            <span>Trusted by 500+ Museums Worldwide</span>
-              </div>
-              
-          <h1 class="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black mb-8 leading-tight tracking-tight text-white animate-fade-in-up">
-            Transform Visits Into
-            <br class="hidden sm:block" />
-            <span class="relative">
-              <span class="bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 bg-clip-text text-transparent animate-gradient bg-300%">
-                Unforgettable Experiences
-                </span>
-              <svg class="absolute -bottom-2 left-0 w-full" height="8" viewBox="0 0 100 8" preserveAspectRatio="none">
-                <path d="M0,7 Q25,0 50,7 T100,7" stroke="url(#gradient)" strokeWidth="2" fill="none" opacity="0.5"/>
-                <defs>
-                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#facc15" />
-                    <stop offset="50%" stopColor="#f97316" />
-                    <stop offset="100%" stopColor="#ec4899" />
-                  </linearGradient>
-                </defs>
-              </svg>
-            </span>
+          <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black mb-8 leading-tight text-white animate-fade-in-up">
+            {{ $t('landing.hero.title_line1') }}<br class="hidden sm:block" />
+            <span class="bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 bg-clip-text text-transparent">
+              {{ $t('landing.hero.title_line2') }}
+            </span><br class="hidden sm:block" />
+            {{ $t('landing.hero.title_line3') }}
           </h1>
           
-          <p class="text-xl sm:text-2xl lg:text-3xl text-blue-100/90 max-w-4xl mx-auto mb-12 leading-relaxed font-light animate-fade-in-up animation-delay-200">
-            AI-powered souvenir cards with 
-            <span class="font-semibold text-white">10+ language support</span> that create 
-            <span class="font-semibold text-white">personalized digital adventures</span> for visitors worldwide.
-            No apps. No friction. Just magic.
+          <p class="text-xl sm:text-2xl text-blue-100/90 max-w-4xl mx-auto mb-12 leading-relaxed font-light animate-fade-in-up animation-delay-200">
+            {{ $t('landing.hero.subtitle_part1') }}
+            <span class="font-semibold text-white">{{ $t('landing.hero.subtitle_highlight') }}</span> {{ $t('landing.hero.subtitle_part2') }}
           </p>
           
           <div class="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16 animate-fade-in-up animation-delay-400">
-                <Button 
+            <Button 
               @click="scrollToContact"
               class="bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 border-0 px-10 py-5 text-lg font-bold text-white shadow-2xl hover:shadow-orange-500/25 transition-all transform hover:scale-105"
             >
               <i class="pi pi-rocket mr-2"></i>
-              <span>Start Your Pilot Program</span>
+              <span>{{ $t('landing.hero.cta_pilot') }}</span>
             </Button>
-                <Button 
-              @click="scrollToDemo"
+            <Button 
+              @click="scrollToSection('about')"
               class="group border-2 border-white/30 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-10 py-5 text-lg font-semibold text-white hover:border-white/50 transition-all transform hover:scale-105"
             >
-              <i class="pi pi-play-circle mr-2"></i>
-              <span>Watch 2-Min Demo</span>
+              <span>{{ $t('landing.hero.cta_learn') }}</span>
+              <i class="pi pi-arrow-down ml-2"></i>
             </Button>
-              </div>
-              
-          <!-- Trust indicators -->
-          <div class="flex flex-wrap justify-center gap-8 items-center text-sm text-white/70 animate-fade-in animation-delay-600">
-                <div class="flex items-center gap-2">
-              <i class="pi pi-shield text-emerald-400 text-base"></i>
-              <span>Enterprise Security</span>
-                </div>
-                <div class="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20">
-              <i class="pi pi-globe text-blue-400 text-base"></i>
-              <span class="font-semibold text-white">10+ Languages | AI + Content</span>
-                </div>
-                <div class="flex items-center gap-2">
-              <i class="pi pi-bolt text-yellow-400 text-base"></i>
-              <span>Setup in Minutes</span>
-                </div>
-                <div class="flex items-center gap-2">
-              <i class="pi pi-chart-line text-purple-400 text-base"></i>
-              <span>Real-time Analytics</span>
-                </div>
-              </div>
-            </div>
+          </div>
+        </div>
 
         <!-- Scroll indicator -->
         <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
           <div class="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
             <div class="w-1 h-3 bg-white/60 rounded-full mt-2 animate-scroll"></div>
-                  </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Stats Bar - Social Proof with Animation -->
-    <section id="stats-section" class="bg-white border-y border-slate-200 py-8">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
-          <div class="text-center animate-on-scroll">
-            <div class="text-4xl font-black bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              {{ animatedStats.venues }}+
-                    </div>
-            <div class="text-sm text-slate-600 mt-1">Museums & Venues</div>
-                  </div>
-          <div class="text-center animate-on-scroll" style="animation-delay: 100ms">
-            <div class="text-4xl font-black bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-              {{ (animatedStats.cards / 1000000).toFixed(1) }}M+
-                </div>
-            <div class="text-sm text-slate-600 mt-1">Cards Issued</div>
-                  </div>
-          <div class="text-center animate-on-scroll" style="animation-delay: 200ms">
-            <div class="text-4xl font-black bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              {{ animatedStats.satisfaction }}%
-                </div>
-            <div class="text-sm text-slate-600 mt-1">Visitor Satisfaction</div>
-              </div>
-          <div class="text-center animate-on-scroll" style="animation-delay: 300ms">
-            <div class="text-4xl font-black bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-              {{ animatedStats.support }}/7
-            </div>
-            <div class="text-sm text-slate-600 mt-1">Global Support</div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- About Section - Refined Design -->
+    <!-- About Section -->
     <section id="about" class="py-32 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden">
-      <!-- Background decoration -->
       <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-full blur-3xl"></div>
       <div class="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-br from-emerald-100/50 to-cyan-100/50 rounded-full blur-3xl"></div>
       
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div class="text-center mb-20">
-          <div class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 text-blue-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6">
-            <i class="pi pi-sparkles"></i>
-            <span>Revolutionary Platform</span>
-            </div>
-          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6 leading-tight">
-            The Bridge Between
-            <br />
-            <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-              Physical & Digital Worlds
-            </span>
-            </h2>
+          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
+            {{ $t('landing.about.title') }} <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">{{ $t('landing.about.title_highlight') }}</span>
+          </h2>
           <p class="text-xl text-slate-600 max-w-3xl mx-auto">
-            Combine collectible cards with 
-            <span class="font-semibold text-slate-900">AI-powered multilingual experiences</span> 
-            to reach global audiences and create memories that last forever
+            {{ $t('landing.about.intro') }}
           </p>
         </div>
         
-        <!-- Bento Grid Layout with Animation -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <!-- Main Feature Card -->
-          <div class="lg:col-span-2 group animate-on-scroll">
-            <div class="bg-gradient-to-br from-blue-600 to-purple-600 rounded-3xl p-10 h-full text-white relative overflow-hidden transform transition-all duration-500 hover:scale-[1.02] hover:shadow-2xl">
-              <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl"></div>
-              <div class="relative">
-                <div class="w-16 h-16 bg-white/20 backdrop-blur-xl rounded-2xl flex items-center justify-center mb-6">
-                  <i class="pi pi-microchip-ai text-3xl"></i>
-                </div>
-                <h3 class="text-3xl font-bold mb-4">Global Reach in 10+ Languages</h3>
-                <p class="text-lg text-white/90 mb-6 leading-relaxed">
-                  <span class="font-semibold">AI Voice Assistant</span> in 10+ languages for natural conversations. 
-                  <span class="font-semibold">One-click content translation</span> to adapt your digital content for global audiences. 
-                  Your visitors can ask questions, explore stories, and discover hidden details—all in their native language.
-                </p>
-                <div class="flex flex-wrap gap-4">
-                  <div class="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <i class="pi pi-microphone text-sm"></i>
-                    <span class="text-sm font-medium">AI Voice (10+ Languages)</span>
-              </div>
-                  <div class="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <i class="pi pi-language text-sm"></i>
-                    <span class="text-sm font-medium">Content Translation</span>
-                </div>
-                  <div class="flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-                    <i class="pi pi-globe text-sm"></i>
-                    <span class="text-sm font-medium">Global Audiences</span>
-                </div>
-              </div>
-              </div>
-            </div>
-              </div>
-              
-          <!-- Side Features -->
-          <div class="space-y-8">
-            <div class="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-slate-200 group hover:-translate-y-1 animate-on-scroll" style="animation-delay: 100ms">
-              <div class="w-14 h-14 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <i class="pi pi-qrcode text-emerald-600 text-2xl"></i>
-                </div>
-              <h3 class="text-xl font-bold text-slate-900 mb-3">Instant Access</h3>
-              <p class="text-slate-600 leading-relaxed">
-                No app downloads. No sign-ups. Visitors scan and instantly access rich content.
-              </p>
-              </div>
-              
-            <div class="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border border-slate-200 group hover:-translate-y-1 animate-on-scroll" style="animation-delay: 200ms">
-              <div class="w-14 h-14 bg-gradient-to-br from-orange-100 to-pink-100 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                <i class="pi pi-heart text-orange-600 text-2xl"></i>
-            </div>
-              <h3 class="text-xl font-bold text-slate-900 mb-3">Collectible Keepsakes</h3>
-              <p class="text-slate-600 leading-relaxed">
-                Beautiful physical cards that visitors treasure, driving repeat visits and word-of-mouth.
-              </p>
-          </div>
-        </div>
+        <div class="max-w-4xl mx-auto space-y-6 mb-12">
+          <p class="text-lg text-slate-700 text-center leading-relaxed">
+            {{ $t('landing.about.description1') }}
+          </p>
+          <p class="text-lg text-slate-700 text-center leading-relaxed">
+            {{ $t('landing.about.description2') }}
+          </p>
+          <p class="text-lg text-slate-700 text-center leading-relaxed font-semibold">
+            {{ $t('landing.about.description3') }}
+          </p>
         </div>
 
+        <div class="text-center">
+          <Button 
+            @click="scrollToSection('demo')"
+            class="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white bg-transparent px-8 py-3 font-semibold rounded-xl transition-all"
+          >
+            {{ $t('landing.about.cta') }}
+          </Button>
+        </div>
       </div>
     </section>
 
-    <!-- Demo Section - Interactive Showcase -->
+    <!-- Promotion & Solution Showcase Video Section -->
     <section id="demo" class="py-32 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950 relative overflow-hidden">
-      <!-- Animated background -->
       <div class="absolute inset-0">
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(120,180,255,0.1),transparent_70%)]"></div>
-          </div>
+      </div>
       
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div class="text-center mb-20">
-          <div class="inline-flex items-center gap-2 bg-emerald-500/20 backdrop-blur-xl border border-emerald-400/30 text-emerald-300 px-5 py-2.5 rounded-full text-sm font-semibold mb-6">
-            <div class="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-            <span>Live Demo Available</span>
-          </div>
+        <div class="text-center mb-16">
           <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6">
-            Experience the
-            <span class="bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">
-              Magic
-            </span>
+            {{ $t('landing.demo.title') }} <span class="bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">{{ $t('landing.demo.title_highlight') }}</span>
           </h2>
           <p class="text-xl text-blue-100/80 max-w-3xl mx-auto">
-            See how CardStudio transforms a simple card scan into an unforgettable journey
+            {{ $t('landing.demo.subtitle') }}
           </p>
         </div>
         
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-          <!-- Demo Card - Enhanced Design -->
-          <div class="relative mx-auto lg:mx-0 animate-on-scroll">
-            <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur-3xl opacity-50"></div>
-            <div class="relative bg-white rounded-3xl p-6 shadow-2xl max-w-sm transform hover:scale-105 transition-all duration-500">
-              <div class="aspect-[2/3] bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl overflow-hidden relative group">
-                <img 
-                  :src="demoCardImageUrl" 
-                  alt="Interactive Experience Demo" 
-                  class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                />
-                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+        <div class="max-w-5xl mx-auto">
+          <!-- Video Placeholder -->
+          <div class="relative bg-slate-900/50 backdrop-blur rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
+            <div class="aspect-video flex items-center justify-center bg-gradient-to-br from-blue-600/20 to-purple-600/20">
+              <div class="text-center">
+                <div class="w-24 h-24 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform cursor-pointer">
+                  <i class="pi pi-play text-white text-4xl"></i>
+                </div>
+                <p class="text-white text-lg font-semibold">{{ $t('landing.demo.video_coming_soon') }}</p>
+                <p class="text-blue-200 text-sm mt-2">{{ $t('landing.demo.video_description') }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Demo Card Preview -->
+          <div class="grid md:grid-cols-2 gap-8 mt-16">
+            <div class="relative mx-auto animate-on-scroll">
+              <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur-3xl opacity-50"></div>
+              <div class="relative bg-white rounded-3xl p-6 shadow-2xl max-w-sm transform hover:scale-105 transition-all duration-500">
+                <div class="aspect-[2/3] bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl overflow-hidden relative group">
+                  <img 
+                    :src="demoCardImageUrl" 
+                    :alt="$t('landing.demo.card_title')"
+                    class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                  />
+                  <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                  
+                  <div class="absolute bottom-4 left-4 right-4 text-white">
+                    <h3 class="text-2xl font-bold mb-2">{{ demoCardTitle }}</h3>
+                    <p class="text-sm opacity-90">{{ demoCardSubtitle }}</p>
+                  </div>
+                  
+                  <div class="absolute top-4 right-4">
+                    <div class="relative">
+                      <div class="absolute inset-0 bg-white rounded-xl blur-xl opacity-50"></div>
+                      <div class="relative bg-white rounded-xl p-2 shadow-2xl">
+                        <QrCode :value="sampleQrUrl" :size="48" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 
-                <!-- Card Content -->
-                <div class="absolute bottom-4 left-4 right-4 text-white">
-                  <h3 class="text-2xl font-bold mb-2">{{ demoCardTitle }}</h3>
-                  <p class="text-sm opacity-90">{{ demoCardSubtitle }}</p>
+                <div class="mt-6 text-center">
+                  <Button 
+                    :label="$t('landing.demo.try_live_demo')"
+                    icon="pi pi-external-link"
+                    @click="openDemoCard"
+                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-3 font-semibold shadow-lg hover:shadow-xl transition-all"
+                  />
+                </div>
               </div>
-              
-                <!-- QR Code with glow effect -->
-                <div class="absolute top-4 right-4">
-                  <div class="relative">
-                    <div class="absolute inset-0 bg-white rounded-xl blur-xl opacity-50"></div>
-                    <div class="relative bg-white rounded-xl p-2 shadow-2xl">
-                      <QrCode :value="sampleQrUrl" :size="48" />
             </div>
-            </div>
-          </div>
 
-                <!-- Scan indicator -->
-                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                  <div class="bg-black/60 backdrop-blur-sm rounded-full px-6 py-3 flex items-center gap-2">
-                    <i class="pi pi-qrcode text-white"></i>
-                    <span class="text-white font-semibold">Scan to Try</span>
-                </div>
-                </div>
-              </div>
+            <div class="space-y-6 animate-on-scroll" style="animation-delay: 200ms">
+              <h3 class="text-3xl font-bold text-white mb-8">{{ $t('landing.demo.experience_features') }}</h3>
               
-              <div class="mt-6 text-center">
-                <Button 
-                  label="Try Live Demo" 
-                  icon="pi pi-external-link"
-                  @click="openDemoCard"
-                  class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-3 font-semibold shadow-lg hover:shadow-xl transition-all"
-                />
-            </div>
-            </div>
-          </div>
-
-          <!-- Features List -->
-          <div class="space-y-6 animate-on-scroll" style="animation-delay: 200ms">
-            <h3 class="text-3xl font-bold text-white mb-8">What Visitors Experience</h3>
-            
-            <div v-for="(feature, index) in demoFeatures" :key="index" 
-                 class="flex gap-4 group">
-              <div class="w-12 h-12 bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                <i :class="`pi ${feature.icon} text-blue-400 text-xl`"></i>
+              <div v-for="(feature, index) in demoFeatures" :key="index" class="flex gap-4">
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
+                  <i :class="`pi ${feature.icon} text-blue-400 text-xl`"></i>
                 </div>
-              <div>
-                <h4 class="text-lg font-semibold text-white mb-1">{{ feature.title }}</h4>
-                <p class="text-blue-100/70 leading-relaxed">{{ feature.description }}</p>
+                <div>
+                  <h4 class="text-lg font-semibold text-white mb-1">{{ feature.title }}</h4>
+                  <p class="text-blue-100/70 leading-relaxed">{{ feature.description }}</p>
+                </div>
               </div>
-              </div>
-              
-            <div class="pt-8">
-              <Button 
-                label="Create Your First Card" 
-                icon="pi pi-arrow-right"
-                iconPos="right"
-                @click="handleOrganizerDemo"
-                class="bg-white text-blue-900 hover:bg-blue-50 border-0 px-8 py-4 font-bold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105"
-              />
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- How It Works - Visual Journey -->
+    <!-- How CardStudio Works -->
     <section class="py-32 bg-white relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-20">
-          <div class="inline-flex items-center gap-2 bg-gradient-to-r from-violet-50 to-purple-50 border border-violet-200 text-violet-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6">
-            <i class="pi pi-route"></i>
-            <span>Visitor Journey</span>
-          </div>
           <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            Four Simple Steps to
-            <span class="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">
-              Delight
-            </span>
+            How CardStudio <span class="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">Works</span>
           </h2>
+          <p class="text-xl text-slate-600 max-w-3xl mx-auto">
+            Simple, seamless, and engaging—follow the visitor journey in just 4 steps.
+          </p>
         </div>
         
         <!-- Steps with connecting line -->
         <div class="relative">
-          <!-- Connecting line for desktop -->
           <div class="hidden lg:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200"></div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div v-for="(step, index) in howItWorksSteps" :key="index" 
-                 class="relative group">
+            <div v-for="(step, index) in howItWorksSteps" :key="index" class="relative group">
               <div class="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-500 border-2 border-slate-200 hover:border-purple-300 h-full">
-                <!-- Step number -->
                 <div class="absolute -top-4 left-8 w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg">
                   {{ index + 1 }}
-          </div>
+                </div>
 
                 <div class="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center mb-6 mx-auto group-hover:scale-110 transition-transform">
                   <i :class="`pi ${step.icon} text-purple-600 text-3xl`"></i>
-          </div>
+                </div>
 
                 <h3 class="text-xl font-bold text-slate-900 mb-3 text-center">{{ step.title }}</h3>
                 <p class="text-slate-600 leading-relaxed text-center">{{ step.description }}</p>
+              </div>
             </div>
           </div>
-            </div>
         </div>
       </div>
     </section>
 
-    <!-- Key Features - Premium Cards -->
+    <!-- Key Features -->
     <section class="py-32 bg-gradient-to-b from-slate-50 to-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-20">
-          <div class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 text-amber-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6">
-            <i class="pi pi-star-fill"></i>
-            <span>Platform Features</span>
-          </div>
           <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            Everything You Need to
-            <span class="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">
-              Succeed
-            </span>
+            Why Choose <span class="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">CardStudio</span>
           </h2>
         </div>
         
@@ -496,58 +282,200 @@
             <div class="relative bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-200 h-full">
               <div class="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <i :class="`pi ${feature.icon} text-blue-600 text-2xl`"></i>
-                </div>
+              </div>
               <h3 class="text-xl font-bold text-slate-900 mb-3">{{ feature.title }}</h3>
               <p class="text-slate-600 leading-relaxed">{{ feature.description }}</p>
-              </div>
-              </div>
             </div>
           </div>
+        </div>
+      </div>
     </section>
 
-    <!-- Applications Carousel - Modern Design -->
+    <!-- Versatile Applications Carousel -->
     <section class="py-32 bg-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-20">
-          <div class="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 text-emerald-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6">
-            <i class="pi pi-globe"></i>
-            <span>Use Cases</span>
-                </div>
           <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            Trusted Across
-            <span class="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-              Industries
-            </span>
+            Where CardStudio <span class="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Shines</span>
           </h2>
-          </div>
+          <p class="text-xl text-slate-600 max-w-3xl mx-auto">
+            CardStudio transforms venues into interactive destinations—driving engagement and connections. Swipe to explore:
+          </p>
+        </div>
 
         <Carousel :value="applications" :numVisible="3" :numScroll="1" :responsiveOptions="carouselResponsiveOptions" 
-                  :circular="true" :autoplayInterval="4000" class="custom-carousel">
+                  :circular="true" :autoplayInterval="5000" class="custom-carousel">
           <template #item="slotProps">
             <div class="p-4">
-              <div class="bg-gradient-to-br from-white to-slate-50 rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-slate-200">
+              <div class="bg-gradient-to-br from-white to-slate-50 rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-slate-200 h-full">
                 <div class="p-8">
                   <div class="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center mb-6 mx-auto">
                     <i :class="`pi ${slotProps.data.icon} text-emerald-600 text-3xl`"></i>
-                </div>
+                  </div>
                   <h3 class="text-2xl font-bold text-slate-900 mb-2 text-center">{{ slotProps.data.name }}</h3>
                   <p class="text-sm font-semibold text-emerald-600 mb-4 text-center">{{ slotProps.data.role }}</p>
+                  <div class="mb-4">
+                    <p class="text-xs text-slate-500 font-semibold mb-2">Alternatives for:</p>
+                    <p class="text-sm text-slate-600 italic">{{ slotProps.data.alternatives }}</p>
+                  </div>
                   <ul class="space-y-3">
-                    <li v-for="(benefit, idx) in slotProps.data.benefits.slice(0, 2)" :key="idx" 
+                    <li v-for="(benefit, idx) in slotProps.data.benefits" :key="idx" 
                         class="flex items-start gap-2 text-sm text-slate-600">
                       <i class="pi pi-check-circle text-emerald-500 mt-0.5 flex-shrink-0"></i>
                       <span>{{ benefit }}</span>
                     </li>
                   </ul>
-              </div>
+                </div>
               </div>
             </div>
           </template>
         </Carousel>
+
+        <div class="text-center mt-12">
+          <Button 
+            @click="scrollToContact"
+            class="border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white bg-transparent px-8 py-3 font-semibold rounded-xl transition-all"
+          >
+            Find Your Fit – Contact Us for a Pilot
+          </Button>
+        </div>
       </div>
     </section>
 
-    <!-- Pricing Section - Premium Design -->
+    <!-- Benefits Section -->
+    <section class="py-32 bg-gradient-to-b from-slate-50 to-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-20">
+          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
+            Real <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Benefits</span>
+          </h2>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-12">
+          <!-- For Venues -->
+          <div class="bg-white rounded-3xl p-10 shadow-xl border border-slate-200">
+            <h3 class="text-3xl font-bold text-slate-900 mb-8 text-center">For Venues</h3>
+            <ul class="space-y-6">
+              <li v-for="(benefit, index) in venueBenefits" :key="index" 
+                  class="flex items-start gap-4 group">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <i class="pi pi-check text-blue-600 text-lg"></i>
+                </div>
+                <p class="text-lg text-slate-700 leading-relaxed">{{ benefit }}</p>
+              </li>
+            </ul>
+          </div>
+
+          <!-- For Visitors -->
+          <div class="bg-white rounded-3xl p-10 shadow-xl border border-slate-200">
+            <h3 class="text-3xl font-bold text-slate-900 mb-8 text-center">For Visitors</h3>
+            <ul class="space-y-6">
+              <li v-for="(benefit, index) in visitorBenefits" :key="index" 
+                  class="flex items-start gap-4 group">
+                <div class="w-10 h-10 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                  <i class="pi pi-check text-emerald-600 text-lg"></i>
+                </div>
+                <p class="text-lg text-slate-700 leading-relaxed">{{ benefit }}</p>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Sustainability Impact -->
+    <section class="py-32 bg-gradient-to-br from-emerald-50 to-teal-50">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-20">
+          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
+            Innovation Meets <span class="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Responsibility</span>
+          </h2>
+        </div>
+
+        <div class="grid lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
+          <!-- Traditional Way -->
+          <div class="bg-white rounded-3xl p-10 shadow-xl border-2 border-slate-200">
+            <h3 class="text-2xl font-bold text-slate-900 mb-8 text-center">Traditional Materials</h3>
+            <div class="space-y-6">
+              <div class="flex items-center gap-4">
+                <div class="text-4xl">📄</div>
+                <div>
+                  <p class="font-semibold text-slate-900">10,000 brochures or leaflet printed</p>
+                  <p class="text-sm text-slate-600">Per 10,000 visitors annually</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="text-4xl">🗑️</div>
+                <div>
+                  <p class="font-semibold text-slate-900">95% discarded within 24 hours</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="text-4xl">🌳</div>
+                <div>
+                  <p class="font-semibold text-red-600">500kg of paper waste</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CardStudio Way -->
+          <div class="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-3xl p-10 shadow-2xl text-white">
+            <h3 class="text-2xl font-bold mb-8 text-center">With CardStudio</h3>
+            <div class="space-y-6">
+              <div class="flex items-center gap-4">
+                <div class="text-4xl">🎴</div>
+                <div>
+                  <p class="font-semibold">10,000 collectible cards</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="text-4xl">💚</div>
+                <div>
+                  <p class="font-semibold">80% kept as keepsakes</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="text-4xl">♻️</div>
+                <div>
+                  <p class="font-semibold text-yellow-300">95% reduction in paper waste</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-4">
+                <div class="text-4xl">📱</div>
+                <div>
+                  <p class="font-semibold">Digital content = zero ongoing waste</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-16 bg-white rounded-3xl p-10 shadow-xl border border-emerald-200 max-w-4xl mx-auto">
+          <h3 class="text-2xl font-bold text-slate-900 mb-6 text-center">Your Impact</h3>
+          <div class="grid md:grid-cols-2 gap-6">
+            <div class="flex items-start gap-3">
+              <i class="pi pi-check-circle text-emerald-600 text-xl mt-1"></i>
+              <p class="text-slate-700">Meet ESG sustainability mandates</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <i class="pi pi-check-circle text-emerald-600 text-xl mt-1"></i>
+              <p class="text-slate-700">Reduce printing costs by 70-80%</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <i class="pi pi-check-circle text-emerald-600 text-xl mt-1"></i>
+              <p class="text-slate-700">Position as environmental leader</p>
+            </div>
+            <div class="flex items-start gap-3">
+              <i class="pi pi-check-circle text-emerald-600 text-xl mt-1"></i>
+              <p class="text-slate-700">Appeal to eco-conscious visitors</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Simple Pricing -->
     <section id="pricing" class="py-32 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950 relative overflow-hidden">
       <div class="absolute inset-0">
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(120,180,255,0.15),transparent_50%)]"></div>
@@ -556,16 +484,12 @@
       
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div class="text-center mb-20">
-          <div class="inline-flex items-center gap-2 bg-blue-500/20 backdrop-blur-xl border border-blue-400/30 text-blue-300 px-5 py-2.5 rounded-full text-sm font-semibold mb-6">
-            <i class="pi pi-dollar"></i>
-            <span>Simple, Transparent Pricing</span>
-          </div>
           <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6">
-            Pay Only for What You
-            <span class="bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
-              Create
-            </span>
+            Simple <span class="bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">Pricing</span>
           </h2>
+          <p class="text-xl text-blue-100/80 max-w-3xl mx-auto">
+            Transparent Pay-Per-Card Pricing
+          </p>
         </div>
 
         <div class="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden">
@@ -574,13 +498,41 @@
               <div class="flex items-baseline justify-center gap-2 mb-2">
                 <span class="text-6xl lg:text-7xl font-black text-white">$2</span>
                 <span class="text-2xl text-blue-300">USD</span>
-                </div>
+              </div>
               <p class="text-xl text-blue-200">per card</p>
-                  </div>
-                </div>
+            </div>
+          </div>
 
           <div class="p-8 lg:p-12">
-            <div class="grid lg:grid-cols-2 gap-12">
+            <div class="grid lg:grid-cols-2 gap-12 mb-8">
+              <div>
+                <h3 class="text-2xl font-bold text-white mb-6">Pricing Details</h3>
+                <div class="space-y-4 text-blue-100">
+                  <div class="bg-white/5 rounded-xl p-4">
+                    <div class="flex justify-between items-center">
+                      <span>Cost to you</span>
+                      <span class="font-bold text-white">$2.00 per card</span>
+                    </div>
+                  </div>
+                  <div class="bg-white/5 rounded-xl p-4">
+                    <div class="flex justify-between items-center">
+                      <span>Suggested retail</span>
+                      <span class="font-bold text-white">$3-7 USD</span>
+                    </div>
+                  </div>
+                  <div class="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/20">
+                    <div class="flex justify-between items-center">
+                      <span>Your profit margin</span>
+                      <span class="font-bold text-emerald-400">$1-5 per card</span>
+                    </div>
+                  </div>
+                  <div class="text-sm text-blue-300 pt-4">
+                    <i class="pi pi-info-circle mr-2"></i>
+                    Alternative: Complimentary model (free to visitors, $2 cost to you)
+                  </div>
+                </div>
+              </div>
+
               <div>
                 <h3 class="text-2xl font-bold text-white mb-6">Everything Included</h3>
                 <ul class="space-y-4">
@@ -588,66 +540,193 @@
                       class="flex items-center gap-3 text-blue-100">
                     <div class="w-6 h-6 bg-emerald-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                       <i class="pi pi-check text-emerald-400 text-sm"></i>
-                  </div>
+                    </div>
                     <span>{{ feature }}</span>
                   </li>
                 </ul>
               </div>
+            </div>
 
-              <div>
-                <h3 class="text-2xl font-bold text-white mb-6">Pricing Details</h3>
-                <div class="space-y-4 text-blue-100">
-                  <div class="bg-white/5 rounded-xl p-4">
-                    <div class="flex justify-between items-center">
-                      <span>Your cost</span>
-                      <span class="font-bold text-white">$2.00 per card</span>
-                  </div>
-                  </div>
-                  <div class="bg-white/5 rounded-xl p-4">
-                    <div class="flex justify-between items-center">
-                      <span>Suggested retail</span>
-                      <span class="font-bold text-white">$3-7 USD</span>
-                  </div>
-                  </div>
-                  <div class="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/20">
-                    <div class="flex justify-between items-center">
-                      <span>Your profit</span>
-                      <span class="font-bold text-emerald-400">$1-5 per card</span>
-                  </div>
-                  </div>
-                  <div class="text-sm text-blue-300 pt-4">
-                    <i class="pi pi-info-circle mr-2"></i>
-                    Minimum order: 100 cards
-                  </div>
+            <div class="bg-white/5 rounded-xl p-6 mb-8">
+              <div class="flex items-center justify-between">
+                <div>
+                  <p class="text-white font-semibold mb-1">Minimum Order</p>
+                  <p class="text-blue-200 text-sm">{{ minBatchQuantity }} cards per order</p>
                 </div>
+                <div class="text-4xl">📦</div>
               </div>
             </div>
 
-            <div class="mt-12 text-center">
-                  <Button 
-                label="Start Your Pilot Program" 
-                    icon="pi pi-arrow-right"
-                    iconPos="right"
+            <div class="text-center">
+              <Button 
+                label="Contact Us for a Pilot"
+                icon="pi pi-arrow-right"
+                iconPos="right"
                 @click="scrollToContact"
                 class="bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 text-white border-0 px-10 py-5 text-lg font-bold shadow-2xl hover:shadow-orange-500/25 transition-all transform hover:scale-105"
               />
-              <p class="text-blue-300 text-sm mt-4">No monthly fees • No setup costs • Pay as you grow</p>
+              <p class="text-blue-300 text-sm mt-4">No monthly subscriptions • No setup fees • No hidden costs</p>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- FAQ Section - Clean Design -->
+    <!-- Collaboration Models -->
+    <section class="py-32 bg-white">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-20">
+          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
+            Partner with <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">CardStudio</span>
+          </h2>
+          <p class="text-xl text-slate-600 max-w-3xl mx-auto">
+            Beyond buying cards - three ways to grow with CardStudio.
+          </p>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-8">
+          <!-- Become a Client -->
+          <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-blue-200 hover:border-blue-400">
+            <div class="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+              <i class="pi pi-shopping-cart text-white text-2xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-slate-900 mb-4 text-center">Become a Client</h3>
+            <p class="text-sm text-slate-600 mb-6 text-center">For: Venues, museums, attractions, events, conferences, hotels</p>
+            
+            <div class="mb-6">
+              <p class="font-semibold text-slate-900 mb-3">You Get:</p>
+              <ul class="space-y-2">
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-blue-600 mt-0.5"></i>
+                  <span>Free full platform access (Card Design Management, Digital Content Management, Cloud Hosting)</span>
+                </li>
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-blue-600 mt-0.5"></i>
+                  <span>Card printing logistic & shipping handled</span>
+                </li>
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-blue-600 mt-0.5"></i>
+                  <span>Technical support and training</span>
+                </li>
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-blue-600 mt-0.5"></i>
+                  <span>Focus on your contents and visitors. We handle the tech</span>
+                </li>
+              </ul>
+            </div>
+
+            <p class="text-sm font-semibold text-blue-600 mb-6 text-center">Best if: You want to enhance your visitor experience immediately.</p>
+
+            <Button 
+              label="Start Your Pilot"
+              @click="scrollToContact"
+              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-3 font-semibold rounded-xl shadow-lg"
+            />
+          </div>
+
+          <!-- Regional Partner -->
+          <div class="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-emerald-200 hover:border-emerald-400">
+            <div class="w-16 h-16 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+              <i class="pi pi-globe text-white text-2xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-slate-900 mb-4 text-center">Regional Partner</h3>
+            <p class="text-sm text-slate-600 mb-6 text-center">For: Agencies, consultants with venue networks</p>
+            
+            <div class="mb-6">
+              <p class="font-semibold text-slate-900 mb-3">You Get:</p>
+              <ul class="space-y-2">
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-emerald-600 mt-0.5"></i>
+                  <span>Represent CardStudio in your territory</span>
+                </li>
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-emerald-600 mt-0.5"></i>
+                  <span>Revenue share on clients you bring</span>
+                </li>
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-emerald-600 mt-0.5"></i>
+                  <span>Exclusive territory options available</span>
+                </li>
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-emerald-600 mt-0.5"></i>
+                  <span>Sales training, marketing support, co-branding</span>
+                </li>
+              </ul>
+            </div>
+
+            <p class="text-sm font-semibold text-emerald-600 mb-6 text-center">Best if: You have venue relationships and want recurring revenue.</p>
+
+            <Button 
+              label="Explore Partnership"
+              @click="scrollToContact"
+              class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-0 py-3 font-semibold rounded-xl shadow-lg"
+            />
+          </div>
+
+          <!-- Software License -->
+          <div class="bg-gradient-to-br from-orange-50 to-pink-50 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-orange-200 hover:border-orange-400">
+            <div class="w-16 h-16 bg-gradient-to-br from-orange-600 to-pink-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+              <i class="pi pi-code text-white text-2xl"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-slate-900 mb-4 text-center">Software License</h3>
+            <p class="text-sm text-slate-600 mb-6 text-center">For: Enterprises, large agencies, platform entrepreneurs</p>
+            
+            <div class="mb-6">
+              <p class="font-semibold text-slate-900 mb-3">You Get:</p>
+              <ul class="space-y-2">
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-orange-600 mt-0.5"></i>
+                  <span>Own the entire platform</span>
+                </li>
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-orange-600 mt-0.5"></i>
+                  <span>White-label under your brand</span>
+                </li>
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-orange-600 mt-0.5"></i>
+                  <span>Set your own pricing</span>
+                </li>
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-orange-600 mt-0.5"></i>
+                  <span>Keep 100% of your revenue</span>
+                </li>
+                <li class="flex items-start gap-2 text-sm text-slate-700">
+                  <i class="pi pi-check text-orange-600 mt-0.5"></i>
+                  <span>Serve unlimited clients</span>
+                </li>
+              </ul>
+            </div>
+
+            <p class="text-sm font-semibold text-orange-600 mb-6 text-center">Best if: You're building a scalable multi-client business.</p>
+
+            <Button 
+              label="Inquire About Licensing"
+              @click="scrollToContact"
+              class="w-full bg-gradient-to-r from-orange-600 to-pink-600 hover:from-orange-700 hover:to-pink-700 text-white border-0 py-3 font-semibold rounded-xl shadow-lg"
+            />
+          </div>
+        </div>
+
+        <div class="text-center mt-12">
+          <p class="text-lg text-slate-600 mb-6">
+            Not sure which fits? Schedule a strategy call to find your best path forward.
+          </p>
+          <Button 
+            label="Schedule a Call"
+            icon="pi pi-calendar"
+            @click="scrollToContact"
+            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-10 py-4 text-lg font-bold shadow-lg"
+          />
+        </div>
+      </div>
+    </section>
+
+    <!-- FAQ Section -->
     <section class="py-32 bg-gradient-to-b from-slate-50 to-white">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
-          <div class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200 text-blue-700 px-5 py-2.5 rounded-full text-sm font-semibold mb-6">
-            <i class="pi pi-question-circle"></i>
-            <span>FAQs</span>
-          </div>
           <h2 class="text-4xl sm:text-5xl font-black text-slate-900">
-            Got <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Questions?</span>
+            Frequently Asked <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Questions</span>
           </h2>
         </div>
         
@@ -664,141 +743,306 @@
             <transition name="collapse">
               <div v-if="openFaqIndex === index" 
                    class="px-8 pb-6">
-                <p class="text-slate-600 leading-relaxed">{{ faq.answer }}</p>
+                <p class="text-slate-600 leading-relaxed whitespace-pre-line">{{ faq.answer }}</p>
               </div>
             </transition>
           </div>
         </div>
+
+        <div class="text-center mt-12">
+          <p class="text-lg text-slate-600 mb-6">
+            Still have questions? Reach out via our Contact form.
+          </p>
+        </div>
       </div>
     </section>
 
-    <!-- Contact Section - Premium CTA -->
+    <!-- Contact Section with Form -->
     <section id="contact" class="py-32 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 relative overflow-hidden">
       <div class="absolute inset-0">
         <div class="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-10"></div>
       </div>
       
-      <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div class="text-center mb-16">
           <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6">
-            Ready to Transform Your
-            <br />
-            <span class="text-yellow-300">Visitor Experience?</span>
+            Get Started with<br />
+            <span class="text-yellow-300">CardStudio Today</span>
           </h2>
-          <p class="text-xl text-white/90 max-w-2xl mx-auto">
-            Join 500+ venues already creating unforgettable digital experiences with CardStudio
+          <p class="text-xl text-white/90 max-w-3xl mx-auto">
+            Ready to transform your visitor experience? Whether you're planning a pilot, exploring partnerships, or have questions—we're here to help.
           </p>
         </div>
         
         <div class="bg-white rounded-3xl p-8 lg:p-12 shadow-2xl">
-          <div class="grid md:grid-cols-2 gap-8 mb-8">
-            <a :href="`mailto:${contactEmail}`" 
-               class="group flex items-center gap-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl hover:shadow-lg transition-all duration-300 border border-blue-200">
-              <div class="w-14 h-14 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                <i class="pi pi-envelope text-white text-xl"></i>
-        </div>
-              <div>
-                <h4 class="font-semibold text-slate-900">Email Us</h4>
-                <p class="text-blue-600">{{ contactEmail }}</p>
-          </div>
-            </a>
-            
-            <a :href="contactWhatsApp" 
-               class="group flex items-center gap-4 p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl hover:shadow-lg transition-all duration-300 border border-emerald-200">
-              <div class="w-14 h-14 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                <i class="pi pi-whatsapp text-white text-xl"></i>
-            </div>
-          <div>
-                <h4 class="font-semibold text-slate-900">WhatsApp</h4>
-                <p class="text-emerald-600">{{ contactWhatsAppDisplay }}</p>
+          <!-- What You Can Do -->
+          <div class="mb-10">
+            <h3 class="text-2xl font-bold text-slate-900 mb-6">What You Can Do:</h3>
+            <div class="grid md:grid-cols-2 gap-4">
+              <div class="flex items-start gap-3">
+                <div class="text-2xl">🚀</div>
+                <div>
+                  <p class="font-semibold text-slate-900">Request a Pilot</p>
+                  <p class="text-sm text-slate-600">Test CardStudio at your venue with a customized trial program.</p>
+                </div>
               </div>
-            </a>
-        </div>
+              <div class="flex items-start gap-3">
+                <div class="text-2xl">💡</div>
+                <div>
+                  <p class="font-semibold text-slate-900">Request Information</p>
+                  <p class="text-sm text-slate-600">Learn more about pricing, features, and how CardStudio fits your needs.</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="text-2xl">🤝</div>
+                <div>
+                  <p class="font-semibold text-slate-900">Explore Partnerships</p>
+                  <p class="text-sm text-slate-600">Discover regional partner, licensing, or collaboration opportunities.</p>
+                </div>
+              </div>
+              <div class="flex items-start gap-3">
+                <div class="text-2xl">❓</div>
+                <div>
+                  <p class="font-semibold text-slate-900">Ask Questions</p>
+                  <p class="text-sm text-slate-600">Get expert answers about implementation, customization, or technical details.</p>
+                </div>
+              </div>
+            </div>
+          </div>
 
-          <div class="text-center">
-            <Button 
-              label="Start Your Free Pilot" 
-              icon="pi pi-rocket"
-              iconPos="right"
-              @click="router.push('/signup')"
-              class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-10 py-5 text-lg font-bold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105"
-            />
-            <p class="text-slate-500 text-sm mt-6">
+          <!-- Contact Form -->
+          <form @submit.prevent="handleSubmit" class="space-y-6">
+            <div class="grid md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">Full Name *</label>
+                <InputText 
+                  v-model="contactForm.fullName" 
+                  required 
+                  class="w-full"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">Organization/Venue Name *</label>
+                <InputText 
+                  v-model="contactForm.organizationName" 
+                  required 
+                  class="w-full"
+                  placeholder="Museum of History"
+                />
+              </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">Email *</label>
+                <InputText 
+                  v-model="contactForm.email" 
+                  type="email" 
+                  required 
+                  class="w-full"
+                  placeholder="john@example.com"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">Phone Number</label>
+                <InputText 
+                  v-model="contactForm.phone" 
+                  class="w-full"
+                  placeholder="+1 234 567 8900"
+                />
+              </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">Organization Type *</label>
+                <Dropdown 
+                  v-model="contactForm.organizationType" 
+                  :options="organizationTypes" 
+                  required 
+                  class="w-full"
+                  placeholder="Select type"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">Monthly Visitor Count *</label>
+                <Dropdown 
+                  v-model="contactForm.visitorCount" 
+                  :options="visitorCountOptions" 
+                  required 
+                  class="w-full"
+                  placeholder="Select range"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-slate-900 mb-2">Inquiry Type *</label>
+              <Dropdown 
+                v-model="contactForm.inquiryType" 
+                :options="inquiryTypes" 
+                required 
+                class="w-full"
+                placeholder="Select inquiry type"
+              />
+            </div>
+
+            <div>
+              <label class="block text-sm font-semibold text-slate-900 mb-2">Tell Us More About Your Needs</label>
+              <Textarea 
+                v-model="contactForm.message" 
+                rows="5" 
+                class="w-full"
+                placeholder="Share your goals, challenges, or specific questions. The more details you provide, the better we can assist you."
+              />
+            </div>
+
+            <div class="text-center">
+              <Button 
+                type="submit"
+                label="Submit Inquiry"
+                icon="pi pi-send"
+                iconPos="right"
+                :loading="submitting"
+                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-10 py-4 text-lg font-bold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105"
+              />
+            </div>
+          </form>
+
+          <!-- Alternative Contact Methods -->
+          <div class="mt-12 pt-12 border-t border-slate-200">
+            <h3 class="text-xl font-bold text-slate-900 mb-6 text-center">Alternative Contact Methods</h3>
+            <div class="grid md:grid-cols-2 gap-6">
+              <a :href="`mailto:${contactEmail}`" 
+                 class="flex items-center gap-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl hover:shadow-lg transition-all border border-blue-200">
+                <div class="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <i class="pi pi-envelope text-white text-lg"></i>
+                </div>
+                <div>
+                  <p class="font-semibold text-slate-900">Email</p>
+                  <p class="text-blue-600 text-sm">{{ contactEmail }}</p>
+                </div>
+              </a>
+              
+              <a :href="contactWhatsApp" target="_blank"
+                 class="flex items-center gap-4 p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl hover:shadow-lg transition-all border border-emerald-200">
+                <div class="w-12 h-12 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <i class="pi pi-whatsapp text-white text-lg"></i>
+                </div>
+                <div>
+                  <p class="font-semibold text-slate-900">WhatsApp</p>
+                  <p class="text-emerald-600 text-sm">{{ contactWhatsAppDisplay }}</p>
+                </div>
+              </a>
+            </div>
+          </div>
+
+          <div class="mt-8 text-center">
+            <p class="text-sm text-slate-500">
               <i class="pi pi-shield mr-2"></i>
-              Your information is secure and will only be used to respond to your inquiry
+              Your information is secure and will only be used to respond to your inquiry.
             </p>
           </div>
         </div>
       </div>
     </section>
 
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-white py-16">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="grid md:grid-cols-3 gap-12 mb-12">
+          <!-- Brand -->
+          <div>
+            <div class="flex items-center gap-3 mb-4">
+              <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
+                <i class="pi pi-id-card text-white text-xl"></i>
+              </div>
+              <span class="text-xl font-bold">CardStudio</span>
+            </div>
+            <p class="text-slate-400">
+              AI-Powered Interactive Souvenir Cards for Museums, Attractions, and Events Worldwide
+            </p>
+          </div>
+
+          <!-- Quick Links -->
+          <div>
+            <h4 class="font-bold text-lg mb-4">Quick Links</h4>
+            <ul class="space-y-2">
+              <li><a @click="scrollToSection('about')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">About</a></li>
+              <li><a @click="scrollToSection('demo')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">Demo</a></li>
+              <li><a @click="scrollToSection('pricing')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">Pricing</a></li>
+              <li><a @click="scrollToSection('contact')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">Contact</a></li>
+            </ul>
+          </div>
+
+          <!-- Contact Info -->
+          <div>
+            <h4 class="font-bold text-lg mb-4">Contact</h4>
+            <ul class="space-y-2">
+              <li class="flex items-center gap-2 text-slate-400">
+                <i class="pi pi-envelope"></i>
+                <a :href="`mailto:${contactEmail}`" class="hover:text-white transition-colors">{{ contactEmail }}</a>
+              </li>
+              <li class="flex items-center gap-2 text-slate-400">
+                <i class="pi pi-phone"></i>
+                <span>{{ contactWhatsAppDisplay }}</span>
+              </li>
+              <li class="flex items-center gap-2 text-slate-400">
+                <i class="pi pi-whatsapp"></i>
+                <a :href="contactWhatsApp" target="_blank" class="hover:text-white transition-colors">WhatsApp Chat</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="pt-8 border-t border-slate-800">
+          <div class="flex flex-col md:flex-row justify-between items-center gap-4">
+            <p class="text-slate-500 text-sm">© 2025 CardStudio. All rights reserved.</p>
+            <div class="flex gap-6 text-sm">
+              <a href="#" class="text-slate-400 hover:text-white transition-colors">Privacy Policy</a>
+              <a href="#" class="text-slate-400 hover:text-white transition-colors">Terms of Service</a>
+              <a :href="`mailto:${contactEmail}`" class="text-slate-400 hover:text-white transition-colors">Contact</a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </footer>
+
     <!-- Floating CTA Button -->
     <transition name="slide-up">
       <div v-if="showFloatingCTA" class="fixed bottom-8 right-8 z-50">
         <Button
-          @click="router.push('/signup')"
+          @click="scrollToContact"
           class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-6 py-3 font-semibold shadow-2xl hover:shadow-3xl transition-all transform hover:scale-110 pulse-glow rounded-full"
         >
           <i class="pi pi-rocket mr-2"></i>
           <span>Get Started</span>
         </Button>
-            </div>
-    </transition>
-
-    <!-- Footer - Minimal & Clean -->
-    <footer class="bg-slate-900 text-white py-16">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center">
-          <div class="flex justify-center mb-6">
-            <div class="flex items-center gap-3">
-              <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                <i class="pi pi-id-card text-white text-xl"></i>
-            </div>
-              <span class="text-xl font-bold">CardStudio</span>
-          </div>
-            </div>
-          <p class="text-slate-400 mb-8">Transforming visitor experiences through AI-powered digital souvenirs</p>
-          <div class="flex justify-center gap-6 text-sm">
-            <a href="#" class="text-slate-400 hover:text-white transition-colors">Privacy</a>
-            <a href="#" class="text-slate-400 hover:text-white transition-colors">Terms</a>
-            <a :href="`mailto:${contactEmail}`" class="text-slate-400 hover:text-white transition-colors">Contact</a>
-          </div>
-          <div class="mt-8 pt-8 border-t border-slate-800">
-            <p class="text-slate-500 text-sm">© 2025 CardStudio. All rights reserved.</p>
-        </div>
-        </div>
       </div>
-    </footer>
+    </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed, watchEffect } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import Carousel from 'primevue/carousel'
+import InputText from 'primevue/inputtext'
+import Textarea from 'primevue/textarea'
+import Dropdown from 'primevue/dropdown'
 import QrCode from 'qrcode.vue'
-import { useAuthStore } from '@/stores/auth'
 import { useToast } from 'primevue/usetoast'
+import UnifiedHeader from '@/components/Layout/UnifiedHeader.vue'
 
 const router = useRouter()
-const authStore = useAuthStore()
 const toast = useToast()
 
 // Navigation state
-const scrolled = ref(false)
 const mobileMenuOpen = ref(false)
-const scrollProgress = ref(0)
 const showFloatingCTA = ref(false)
-
-// Stats animation state
-const statsVisible = ref(false)
-const animatedStats = ref({
-  venues: 500,      // Default values shown immediately
-  cards: 2000000,
-  satisfaction: 95,
-  support: 24
-})
 
 // Sample QR code URL
 const sampleQrUrl = ref(import.meta.env.VITE_SAMPLE_QR_URL || `${window.location.origin}/c/demo-ancient-artifacts`)
@@ -812,6 +1056,7 @@ const demoCardImageUrl = import.meta.env.VITE_DEFAULT_CARD_IMAGE_URL || 'https:/
 const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || 'inquiry@cardstudio.org'
 const contactWhatsApp = import.meta.env.VITE_CONTACT_WHATSAPP_URL || 'https://wa.me/85255992159'
 const contactWhatsAppDisplay = import.meta.env.VITE_CONTACT_PHONE || '+852 5599 2159'
+const minBatchQuantity = import.meta.env.VITE_BATCH_MIN_QUANTITY || 100
 
 // FAQ functionality
 const openFaqIndex = ref(-1)
@@ -819,146 +1064,105 @@ const toggleFaq = (index) => {
   openFaqIndex.value = openFaqIndex.value === index ? -1 : index
 }
 
-// Optimized scroll handling with debounce
-let scrollTimeout = null
+// Contact form
+const contactForm = ref({
+  fullName: '',
+  organizationName: '',
+  email: '',
+  phone: '',
+  organizationType: null,
+  visitorCount: null,
+  inquiryType: null,
+  message: ''
+})
+
+const submitting = ref(false)
+
+const handleSubmit = async () => {
+  // Form validation
+  if (!contactForm.value.fullName || !contactForm.value.organizationName || !contactForm.value.email || 
+      !contactForm.value.organizationType || !contactForm.value.visitorCount || !contactForm.value.inquiryType) {
+    toast.add({
+      severity: 'warn',
+      summary: 'Missing Information',
+      detail: 'Please fill in all required fields',
+      life: 5000
+    })
+    return
+  }
+
+  submitting.value = true
+  
+  // Simulate form submission (replace with actual API call)
+  setTimeout(() => {
+    toast.add({
+      severity: 'success',
+      summary: 'Inquiry Sent',
+      detail: 'Thank you! We will contact you shortly.',
+      life: 5000
+    })
+    
+    // Reset form
+    contactForm.value = {
+      fullName: '',
+      organizationName: '',
+      email: '',
+      phone: '',
+      organizationType: null,
+      visitorCount: null,
+      inquiryType: null,
+      message: ''
+    }
+    
+    submitting.value = false
+  }, 1500)
+}
+
+// Scroll handling
 const handleScroll = () => {
-  // Immediate updates for critical UI
-  scrolled.value = window.scrollY > 10
   showFloatingCTA.value = window.scrollY > window.innerHeight * 0.8
-  
-  // Calculate scroll progress
-  const winScroll = document.body.scrollTop || document.documentElement.scrollTop
-  const height = document.documentElement.scrollHeight - document.documentElement.clientHeight
-  scrollProgress.value = (winScroll / height) * 100
-  
-  // Debounced operations
-  if (scrollTimeout) clearTimeout(scrollTimeout)
-  scrollTimeout = setTimeout(() => {
-    // Additional scroll-based operations
-  }, 100)
 }
 
 // Intersection Observer for animations
 const observeElements = () => {
-  // Add class to enable animations only when observer is ready
   document.documentElement.classList.add('js-animations-ready')
   
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add('animate-visible')
-        
-        // Trigger stats animation
-        if (entry.target.id === 'stats-section' && !statsVisible.value) {
-          statsVisible.value = true
-          animateStats()
-        }
       }
     })
   }, { 
     threshold: 0.1,
-    rootMargin: '50px' // Start animation slightly before element is visible
+    rootMargin: '50px'
   })
   
-  // Observe elements with animation
   const animateElements = document.querySelectorAll('.animate-on-scroll')
-  if (animateElements.length === 0) {
-    console.warn('No elements with .animate-on-scroll class found')
-  }
-  
   animateElements.forEach(el => {
     observer.observe(el)
   })
   
-  // Observe stats section
-  const statsSection = document.getElementById('stats-section')
-  if (statsSection) observer.observe(statsSection)
-  
   return observer
-}
-
-// Animate stats numbers
-const animateStats = () => {
-  // Skip if already animated or if values are already at target
-  if (statsVisible.value) return
-  
-  const targetValues = {
-    venues: 500,
-    cards: 2000000,
-    satisfaction: 95,
-    support: 24
-  }
-  
-  // Start from 0 for animation
-  animatedStats.value = {
-    venues: 0,
-    cards: 0,
-    satisfaction: 0,
-    support: 24 // This one doesn't animate
-  }
-  
-  const duration = 2000
-  const steps = 60
-  const interval = duration / steps
-  
-  let currentStep = 0
-  const timer = setInterval(() => {
-    currentStep++
-    const progress = currentStep / steps
-    const easeOut = 1 - Math.pow(1 - progress, 3)
-    
-    animatedStats.value = {
-      venues: Math.round(targetValues.venues * easeOut),
-      cards: Math.round(targetValues.cards * easeOut),
-      satisfaction: Math.round(targetValues.satisfaction * easeOut),
-      support: targetValues.support
-    }
-    
-    if (currentStep >= steps) {
-      clearInterval(timer)
-      // Ensure final values are exact
-      animatedStats.value = targetValues
-    }
-  }, interval)
 }
 
 onMounted(() => {
   window.addEventListener('scroll', handleScroll, { passive: true })
   
-  // Initialize intersection observer after DOM is fully ready
-    setTimeout(() => {
+  setTimeout(() => {
     observeElements()
-    
-    // Fallback: ensure all content is visible after 3 seconds if animations didn't trigger
-    setTimeout(() => {
-      document.querySelectorAll('.animate-on-scroll').forEach(el => {
-        if (!el.classList.contains('animate-visible')) {
-          el.classList.add('animate-visible')
-        }
-      })
-    }, 3000)
   }, 100)
-  
-  // Preload critical images
-  const images = [
-    import.meta.env.VITE_DEFAULT_CARD_IMAGE_URL || 'https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?w=400&h=600&fit=crop&crop=center'
-  ]
-  images.forEach(src => {
-    const img = new Image()
-    img.src = src
-  })
 })
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
-  if (scrollTimeout) clearTimeout(scrollTimeout)
 })
 
 // Navigation functions
 const scrollToSection = (sectionId) => {
   const element = document.getElementById(sectionId)
   if (element) {
-    const offset = 80 // Account for fixed nav
+    const offset = 80
     const elementPosition = element.getBoundingClientRect().top + window.scrollY
     window.scrollTo({
       top: elementPosition - offset,
@@ -968,74 +1172,37 @@ const scrollToSection = (sectionId) => {
   mobileMenuOpen.value = false
 }
 
-const scrollToAbout = () => scrollToSection('about')
-const scrollToDemo = () => scrollToSection('demo')
-const scrollToPricing = () => scrollToSection('pricing')
-const scrollToContact = () => scrollToSection('contact')
+const scrollToContact = () => {
+  scrollToSection('contact')
+}
 
 const openDemoCard = () => {
   window.location.href = sampleQrUrl.value
 }
 
-const handleOrganizerDemo = async () => {
-  if (!authStore.session?.user) {
-    toast.add({
-      severity: 'info',
-      summary: 'Get Started',
-      detail: 'Sign up to access the card issuer portal',
-      life: 5000
-    })
-    router.push('/signup')
-    return
-  }
-
-  const userRole = authStore.session.user.user_metadata?.role
-  if (userRole !== 'cardIssuer') {
-    toast.add({
-      severity: 'warn',
-      summary: 'Access Required',
-      detail: 'Please complete your organizer profile setup',
-      life: 5000
-    })
-    router.push('/signup')
-    return
-  }
-
-  router.push('/cms/mycards')
-}
-
 // Data
-const scenarios = ref([
-  { icon: 'pi-building', name: 'Museums' },
-  { icon: 'pi-map-marker', name: 'Tourist Sites' },
-  { icon: 'pi-star', name: 'Zoos' },
-  { icon: 'pi-calendar', name: 'Conferences' },
-  { icon: 'pi-briefcase', name: 'Trade Shows' },
-  { icon: 'pi-users', name: 'Events' },
-  { icon: 'pi-home', name: 'Hotels' },
-  { icon: 'pi-server', name: 'Restaurants' }
-])
+const { t } = useI18n()
 
 const demoFeatures = ref([
   {
     icon: 'pi-qrcode',
-    title: 'Instant Access',
-    description: 'One scan opens a world of content. No downloads, no sign-ups, just immediate engagement.'
+    title: t('landing.demo.features.qr_access_title'),
+    description: t('landing.demo.features.qr_access_desc')
   },
   {
     icon: 'pi-microphone',
-    title: 'Natural Conversations',
-    description: 'AI responds to voice questions in real-time, creating personalized experiences for every visitor.'
+    title: t('landing.demo.features.ai_voice_title'),
+    description: t('landing.demo.features.ai_voice_desc')
   },
   {
     icon: 'pi-globe',
-    title: 'Multi-Language Support',
-    description: 'Seamless switching between 10+ languages ensures every visitor feels welcomed.'
+    title: t('landing.demo.features.multilingual_title'),
+    description: t('landing.demo.features.multilingual_desc')
   },
   {
     icon: 'pi-heart',
-    title: 'Memorable Keepsake',
-    description: 'Beautiful physical cards that visitors treasure long after their visit ends.'
+    title: t('landing.demo.features.keepsakes_title'),
+    description: t('landing.demo.features.keepsakes_desc')
   }
 ])
 
@@ -1043,111 +1210,145 @@ const howItWorksSteps = ref([
   {
     icon: 'pi-shopping-cart',
     title: 'Purchase',
-    description: 'Visitors buy premium cards as souvenirs and interactive guides'
+    description: 'Visitors buy premium CardStudio cards as both souvenirs and interactive guides.'
   },
   {
     icon: 'pi-qrcode',
     title: 'Scan',
-    description: 'QR code instantly unlocks digital content and AI features'
+    description: 'Scan the QR code to instantly access the digital contents and AI guide—no app downloads required.'
   },
   {
     icon: 'pi-comments',
     title: 'Explore',
-    description: 'Engage with AI voice guide for personalized storytelling'
+    description: 'Engage through AI voice conversation and personalized storytelling for a guided adventure.'
   },
   {
     icon: 'pi-heart',
     title: 'Collect',
-    description: 'Cards become treasured keepsakes driving repeat visits'
+    description: 'Cards become treasured keepsakes, promoting repeat visits and lasting memories.'
   }
 ])
 
 const keyFeatures = ref([
   {
     icon: 'pi-id-card',
-    title: 'Premium Collectibles',
-    description: 'Beautiful QR-enabled cards that link to rich digital content, creating lasting souvenirs.'
+    title: 'Premium Collectible Souvenirs',
+    description: 'QR-enabled designs that link to tailored digital contents and AI guides—creating digital keepsakes that boost revenue and repeat visits.'
   },
   {
     icon: 'pi-microphone',
-    title: 'AI Voice in 10+ Languages',
-    description: 'Natural voice conversations in English, Chinese (Traditional & Simplified), Japanese, Korean, Spanish, French, Russian, Arabic, and Thai. Every visitor feels welcomed in their native language.'
-  },
-  {
-    icon: 'pi-language',
-    title: 'One-Click Content Translation',
-    description: 'Instantly translate ALL your digital content—card descriptions, exhibits, artifacts—to 10 languages with AI-powered precision. Create once, reach global audiences everywhere.'
+    title: 'Conversational AI Guide',
+    description: 'Real-time, AI voice conversation—natural, low-latency chats adapted to interests, age, and knowledge. Dynamic interactions that understand context and answer follow-up questions.'
   },
   {
     icon: 'pi-mobile',
-    title: 'No App Required',
-    description: 'Instant access via QR scan. No downloads, no friction, maximum adoption.'
+    title: 'Instant, No-App Access',
+    description: 'Scan QR on any smartphone—no downloads, no hassle for maximum adoption.'
+  },
+  {
+    icon: 'pi-language',
+    title: 'True Multilingual Support',
+    description: 'Natural conversations in multi languages: English, Mandarin, Cantonese, Japanese, Korean, Thai, Arabiya, Spanish, French, Russian, etc — for inclusive engagement. One content upload, serves global audiences.'
   },
   {
     icon: 'pi-bolt',
-    title: 'Zero Hardware',
-    description: 'Leverage visitors\' smartphones. No expensive equipment or maintenance needed.'
+    title: 'Zero Hardware Needed',
+    description: 'Leverages visitors\' devices—no venue setup or costly infrastructure required.'
   },
   {
     icon: 'pi-chart-bar',
-    title: 'Rich Analytics',
-    description: 'Real-time insights into visitor engagement, popular content, and usage patterns.'
+    title: 'Powerful Admin Dashboard',
+    description: 'Self-service platform for content management, real-time data, card issuance, printing, and optimization.'
   }
 ])
 
 const applications = ref([
   {
     icon: 'pi-building',
-    name: 'Museums',
-    role: 'AI Museum Docent',
+    name: 'Museums & Exhibitions',
+    role: 'Your personalized multi-language AI museum docent',
+    alternatives: 'Real person docents, audio guides, printed gallery guides, wall text translations',
     benefits: [
-      'Interactive artifact exploration',
-      'Personalized tour experiences'
+      'Bring artifacts and exhibits to life with deep-dive storytelling',
+      'Experience multilingual tours and accessibility features',
+      'Discover fascinating details based on your interests and questions'
     ]
   },
   {
     icon: 'pi-map-marker',
-    name: 'Tourist Sites',
-    role: 'AI Tour Guide',
+    name: 'Tourist Attractions & Landmarks',
+    role: 'Your personal AI tour guide',
+    alternatives: 'Printed brochures and static displays of landmark history',
     benefits: [
-      'Historical storytelling',
-      'Multi-language navigation'
+      'Transform landmark visits with rich historical context and cultural heritage insights',
+      'Navigate with confidence while discovering authentic narratives',
+      'Learn local stories behind iconic destinations'
     ]
   },
   {
     icon: 'pi-star',
-    name: 'Zoos',
-    role: 'AI Wildlife Expert',
+    name: 'Zoos & Aquariums',
+    role: 'Your interactive AI animal guide',
+    alternatives: 'Real person zoo guides, zoo guidebooks, and educational handouts',
     benefits: [
-      'Animal facts & conservation',
-      'Interactive education'
+      'Engage with species information and conservation stories',
+      'Check feeding schedules and animal facts',
+      'Inspire wonder and education through interactive conversations about wildlife and habitats'
     ]
   },
   {
     icon: 'pi-briefcase',
-    name: 'Trade Shows',
-    role: 'AI Product Assistant',
+    name: 'Trade Shows & Exhibition Centers',
+    role: 'Your AI product sales assistant',
+    alternatives: 'Product catalogs, brochures, business cards, and company profile leaflets',
     benefits: [
-      'Product demonstrations',
-      'Lead generation'
+      'Deliver dynamic product demonstrations and detailed company profiles',
+      'Provide comprehensive spec sheets and technical information',
+      'Boost exhibitor exposure and drive sales—all from a single premium card'
     ]
   },
   {
     icon: 'pi-calendar',
-    name: 'Conferences',
-    role: 'AI Event Coach',
+    name: 'Academic Conferences',
+    role: 'Your personal AI research assistant',
+    alternatives: 'Printed conference handouts and paper booklets',
     benefits: [
-      'Session summaries',
-      'Networking assistance'
+      'Get answers about research papers and speaker bios',
+      'Clarify complex concepts on demand',
+      'Turn conferences into interactive learning experiences'
+    ]
+  },
+  {
+    icon: 'pi-users',
+    name: 'Training and Events',
+    role: 'Your AI event coach',
+    alternatives: 'Event programs, training notes and handouts, and speaker bios',
+    benefits: [
+      'Access session summaries and speaker bios',
+      'Explore networking opportunities and key takeaways',
+      'Get instant AI explanations of complex topics on demand'
     ]
   },
   {
     icon: 'pi-home',
-    name: 'Hotels',
-    role: 'AI Concierge',
+    name: 'Hotels & Resorts',
+    role: 'Your personal AI concierge in your language',
+    alternatives: 'Welcome cards for guests, tour recommendation leaflets, in-room directories, service catalogs, restaurant menus',
     benefits: [
-      'Local recommendations',
-      'Service information'
+      'Discover personalized property amenities info and local attraction recommendations',
+      'Get dining suggestions and tailored guest services',
+      'Premium keepsakes that create memorable stays'
+    ]
+  },
+  {
+    icon: 'pi-server',
+    name: 'Restaurants & Fine Dining',
+    role: 'Your AI menu companion',
+    alternatives: 'Printed menus, multilingual menu cards, server explanations, dish description cards',
+    benefits: [
+      'Experience instant multi-language menu translations and immersive dish introductions',
+      'Learn about ingredients, preparation methods, chef stories, and wine pairings',
+      'Get dietary accommodations through natural conversations—elevating the dining experience for international guests'
     ]
   }
 ])
@@ -1170,55 +1371,112 @@ const carouselResponsiveOptions = ref([
   }
 ])
 
+const venueBenefits = ref([
+  'Boost engagement with interactive AI content',
+  'Attract global crowds with multilingual access',
+  'Build an innovative reputation',
+  'Meet ESG sustainability goals by reducing paper waste',
+  'Increase revenue via collectible sales and increase repeat visits',
+  'Easy rollout with enterprise-grade security and all time support'
+])
+
+const visitorBenefits = ref([
+  'Tailored stories at your pace and interest',
+  'Fun, educational experiences for all ages',
+  'Voice interaction in your language',
+  'Premium cards as memorable digital souvenirs',
+  'Easy access, no apps or setup'
+])
+
 const pricingFeatures = ref([
   'AI voice conversations',
   'Multi-language support',
-  'Content management dashboard',
+  'Design dashboard',
+  'Exhibits content management',
   'Real-time analytics',
   'QR code generation',
-  'Print & shipping management',
-  'Cloud hosting included',
-  '24/7 global support',
-  'Regular platform updates'
+  'Print management',
+  'Cloud hosting',
+  '24/7 support'
 ])
 
 const faqs = ref([
   {
-    question: 'How quickly can we get started?',
-    answer: 'You can launch your first CardStudio experience in minutes. Our self-service platform requires no technical setup - just sign up, design your cards, and start issuing them immediately.'
+    question: 'What is CardStudio?',
+    answer: 'CardStudio is an AI-powered platform that combines premium collectible cards with interactive voice guides, transforming visits into personalized digital adventures—no apps or hardware required.'
   },
   {
-    question: 'Do visitors need to download an app?',
-    answer: 'No! That\'s the beauty of CardStudio. Visitors simply scan the QR code with their phone camera and instantly access all features through their web browser. Zero friction, maximum engagement.'
+    question: 'How does it work for visitors?',
+    answer: 'Visitors buy or receive a QR-enabled card, scan it with their smartphone, and instantly access digital contents with AI-driven storytelling and conversations in their language. It\'s seamless and app-free.'
   },
   {
-    question: 'What languages are supported?',
-    answer: 'CardStudio supports 10 languages with one-click AI translation: English, Traditional Chinese, Simplified Chinese, Japanese, Korean, Spanish, French, Russian, Arabic, and Thai. AI voice conversations and content automatically adapt to each visitor\'s language preference.'
+    question: 'How do venues get started with CardStudio?',
+    answer: `Launch in minutes—from idea to live experience in 3 simple steps:
+
+Step 0: Register for CardStudio account.
+Step 1: Design & Configure—Use intuitive tools to create cards. Upload your card design and digital contents to your CardStudio account and easy setup.
+Step 2: Submit Your Card Order—Online submit the physical cards orders. Each card come with a different QR code to access the AI powered digital contents. We will handle the printing and shipping to your door.
+Step 3: Analyze & Optimize—Track engagement with real-time analytics, refine content, and scale effortlessly.`
   },
   {
-    question: 'How does the pricing work?',
-    answer: 'Simple and transparent: $2 per card with no monthly fees or hidden costs. Everything is included - AI features, hosting, analytics, and support. Most venues sell cards for $3-7, earning profit on each sale.'
+    question: 'What are the costs?',
+    answer: 'Transparent pay-per-card pricing: $2.00 per card. Suggested retail: $3-7 USD (your profit: $1-5 per card). Alternative: Complimentary model (free to visitors, $2 cost to you). No monthly subscriptions, setup fees, or hidden costs—everything included (AI chats, multilingual support, dashboard, analytics, QR generation, print management, hosting, and 24/7 support).'
   },
   {
-    question: 'Can we customize the card designs?',
-    answer: 'Absolutely! Use our intuitive design tools to create cards that match your brand. Upload custom artwork, add your logo, and craft unique experiences for different exhibits or events.'
+    question: 'Can we customize the cards and content?',
+    answer: 'Absolutely. Use our self-service tools for designs, manage digital contents, and AI interactions customization to match your venue need.'
   },
   {
-    question: 'What kind of analytics do you provide?',
-    answer: 'Real-time insights including visitor engagement, popular content, language preferences, peak usage times, and conversion metrics. Export reports for deeper analysis.'
+    question: 'How long does setup take?',
+    answer: 'Minutes—cloud-based with no technical setup or IT integration. Launch instantly.'
   },
   {
-    question: 'Is the platform secure?',
-    answer: 'Yes. CardStudio uses enterprise-grade security with encrypted data transmission, secure cloud hosting, and GDPR compliance. Your content and visitor data are always protected.'
+    question: 'What kind of support do you offer?',
+    answer: '24/7 access to our expert team, plus an intuitive dashboard for analytics and updates.'
   },
   {
-    question: 'What\'s the minimum order?',
-    answer: 'The minimum order is 100 cards. This ensures cost-effective production while giving you enough inventory to test and scale your program.'
+    question: 'How many days it takes for card printing and delivery?',
+    answer: 'Once you ordered CardStudio cards, we will get your card print within 4 working days. The shipping time depends from shipping address worldwide. Please expect around 5 – 10 days from the date of your card order to the date you receive the card.'
   },
   {
-    question: 'How long does shipping take?',
-    answer: 'Cards are printed within 4 business days and shipped globally. Typical delivery is 5-10 days total depending on your location.'
+    question: 'What is the minimum order quantity?',
+    answer: `The minimum order is ${minBatchQuantity} cards per order. This ensures cost-effective production. Each card comes with a unique QR code to access the digital contents and AI features.`
   }
+])
+
+const organizationTypes = ref([
+  'Museum',
+  'Art Gallery',
+  'Exhibition Center',
+  'Conference/Event Organizer',
+  'Tourist Attraction/Landmark',
+  'Zoo/Aquarium',
+  'Trade Show Organizer',
+  'Hotel/Resort',
+  'Restaurant/Fine Dining',
+  'Theme Park',
+  'Training/Education Provider',
+  'Agency/Consultant',
+  'Other'
+])
+
+const visitorCountOptions = ref([
+  'Under 1,000',
+  '1,000 - 5,000',
+  '5,000 - 10,000',
+  '10,000 - 50,000',
+  '50,000 - 100,000',
+  'Over 100,000'
+])
+
+const inquiryTypes = ref([
+  'Request a Pilot Program',
+  'General Information',
+  'Pricing & Plans',
+  'Partnership Opportunity',
+  'Software Licensing',
+  'Technical Questions',
+  'Other'
 ])
 </script>
 
@@ -1241,19 +1499,9 @@ const faqs = ref([
   50% { transform: translateY(-30px) scale(1.05); }
 }
 
-@keyframes gradient {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
-
 @keyframes scroll {
   0% { transform: translateY(0); }
   100% { transform: translateY(8px); }
-}
-
-@keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
 }
 
 @keyframes fade-in-up {
@@ -1279,20 +1527,8 @@ const faqs = ref([
   animation: float-slow 30s ease-in-out infinite;
 }
 
-.animate-gradient {
-  animation: gradient 8s ease infinite;
-}
-
-.bg-300\% {
-  background-size: 300% 300%;
-}
-
 .animate-scroll {
   animation: scroll 1.5s ease-in-out infinite;
-}
-
-.animate-fade-in {
-  animation: fade-in 0.6s ease-out forwards;
 }
 
 .animate-fade-in-up {
@@ -1307,11 +1543,18 @@ const faqs = ref([
   animation-delay: 400ms;
 }
 
-.animation-delay-600 {
-  animation-delay: 600ms;
+/* Slide transitions */
+.slide-down-enter-active,
+.slide-down-leave-active {
+  transition: all 0.3s ease;
 }
 
-/* Slide up transition for floating CTA */
+.slide-down-enter-from,
+.slide-down-leave-to {
+  transform: translateY(-10px);
+  opacity: 0;
+}
+
 .slide-up-enter-active,
 .slide-up-leave-active {
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1324,18 +1567,6 @@ const faqs = ref([
 
 .slide-up-leave-to {
   transform: translateY(100px);
-  opacity: 0;
-}
-
-/* Transitions */
-.slide-down-enter-active,
-.slide-down-leave-active {
-  transition: all 0.3s ease;
-}
-
-.slide-down-enter-from,
-.slide-down-leave-to {
-  transform: translateY(-10px);
   opacity: 0;
 }
 
@@ -1367,46 +1598,6 @@ const faqs = ref([
   transform: scale(1);
 }
 
-:deep(.custom-carousel .p-carousel-indicators) {
-  padding: 1rem;
-}
-
-:deep(.custom-carousel .p-carousel-indicator button) {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background-color: rgba(0, 0, 0, 0.2);
-  transition: all 0.3s ease;
-}
-
-:deep(.custom-carousel .p-carousel-indicator.p-highlight button) {
-  width: 24px;
-  border-radius: 4px;
-  background-color: #3b82f6;
-}
-
-/* Glassmorphism effect */
-.backdrop-blur-sm {
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-}
-
-.backdrop-blur-xl {
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-}
-
-/* Smooth scroll */
-html {
-  scroll-behavior: smooth;
-}
-
-/* Gradient text compatibility */
-.bg-clip-text {
-  -webkit-background-clip: text;
-  background-clip: text;
-}
-
 /* Performance optimizations */
 .animate-on-scroll {
   opacity: 1;
@@ -1414,7 +1605,6 @@ html {
   transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Only apply animation if JS is enabled and observer is working */
 .js-animations-ready .animate-on-scroll {
   opacity: 0;
   transform: translateY(30px);
@@ -1445,6 +1635,28 @@ html {
 
 .pulse-glow {
   animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Gradient text compatibility */
+.bg-clip-text {
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Glassmorphism effect */
+.backdrop-blur-sm {
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.backdrop-blur-xl {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
 }
 
 /* Reduced motion support */

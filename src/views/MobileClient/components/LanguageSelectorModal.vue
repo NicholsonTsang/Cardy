@@ -17,11 +17,16 @@
               :key="lang.code"
               @click="selectLanguage(lang)"
               class="language-option"
-              :class="{ active: languageStore.selectedLanguage.code === lang.code }"
+              :class="{ 
+                active: languageStore.selectedLanguage.code === lang.code,
+                disabled: !isLanguageAvailable(lang.code)
+              }"
+              :disabled="!isLanguageAvailable(lang.code)"
             >
-              <span class="flag">{{ lang.flag }}</span>
+              <span class="flag" :class="{ 'opacity-30': !isLanguageAvailable(lang.code) }">{{ lang.flag }}</span>
               <span class="name">{{ lang.name }}</span>
               <i v-if="languageStore.selectedLanguage.code === lang.code" class="pi pi-check" />
+              <i v-if="!isLanguageAvailable(lang.code)" class="pi pi-lock disabled-icon" />
             </button>
           </div>
         </div>
@@ -31,9 +36,15 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useMobileLanguageStore } from '@/stores/language'
 import type { Language } from '@/stores/language'
 
+interface Props {
+  availableLanguages?: string[] // Language codes available for this card
+}
+
+const props = defineProps<Props>()
 const languageStore = useMobileLanguageStore()
 
 const emit = defineEmits<{
@@ -41,7 +52,24 @@ const emit = defineEmits<{
   close: []
 }>()
 
+// Check if a language is available for this card
+const isLanguageAvailable = (langCode: string) => {
+  if (!props.availableLanguages || props.availableLanguages.length === 0) {
+    return true // If no restriction, all languages available
+  }
+  return props.availableLanguages.includes(langCode)
+}
+
 function selectLanguage(language: Language) {
+  // Don't allow selection of unavailable languages
+  if (!isLanguageAvailable(language.code)) {
+    return
+  }
+  
+  // Mark that user has manually selected a language
+  // This prevents the app from resetting to card's original language
+  sessionStorage.setItem('userSelectedLanguage', 'true')
+  
   languageStore.setLanguage(language)
   emit('select', language)
   emit('close')
@@ -153,6 +181,27 @@ function selectLanguage(language: Language) {
 .language-option.active {
   border-color: #3b82f6;
   background: linear-gradient(135deg, #eff6ff, #dbeafe);
+}
+
+.language-option.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f3f4f6;
+}
+
+.language-option.disabled:hover {
+  border-color: #e5e7eb;
+  background: #f3f4f6;
+  transform: none;
+  box-shadow: none;
+}
+
+.disabled-icon {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  color: #9ca3af;
+  font-size: 0.875rem;
 }
 
 .language-option .flag {

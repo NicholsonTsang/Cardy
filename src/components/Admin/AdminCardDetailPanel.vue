@@ -124,6 +124,7 @@ interface ContentItem {
   content: string | null
   image_url: string | null
   parent_id: string | null
+  ai_knowledge_base: string | null
   ai_metadata: string | null
 }
 
@@ -160,8 +161,8 @@ const tabs = computed(() => [
   { label: t('dashboard.preview'), icon: 'pi pi-mobile' }
 ])
 
-const handleTabChange = (value: string) => {
-  emit('update:activeTab', value)
+const handleTabChange = (value: string | number) => {
+  emit('update:activeTab', String(value))
 }
 </script>
 

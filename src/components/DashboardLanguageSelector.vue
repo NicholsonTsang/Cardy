@@ -7,7 +7,7 @@
       :title="$t('common.select_language')"
     >
       <span class="language-flag">{{ languageStore.selectedLanguage.flag }}</span>
-      <span class="language-code">{{ languageStore.selectedLanguage.code.toUpperCase() }}</span>
+      <span class="language-name">{{ languageStore.selectedLanguage.name }}</span>
       <i class="pi pi-chevron-down language-icon"></i>
     </button>
 
@@ -67,8 +67,8 @@ function selectLanguage(language: Language) {
 .language-button {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
+  gap: 0.375rem;
+  padding: 0.375rem 0.625rem;
   background: #f8fafc;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
@@ -77,6 +77,13 @@ function selectLanguage(language: Language) {
   transition: all 0.2s;
   font-size: 0.875rem;
   font-weight: 500;
+}
+
+@media (min-width: 640px) {
+  .language-button {
+    gap: 0.5rem;
+    padding: 0.5rem 0.875rem;
+  }
 }
 
 .language-button:hover {
@@ -90,15 +97,27 @@ function selectLanguage(language: Language) {
 }
 
 .language-flag {
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1;
 }
 
-.language-code {
+@media (min-width: 640px) {
+  .language-flag {
+    font-size: 1.125rem;
+  }
+}
+
+.language-name {
   font-weight: 600;
   font-size: 0.75rem;
   color: #475569;
-  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+@media (min-width: 640px) {
+  .language-name {
+    font-size: 0.8125rem;
+  }
 }
 
 .language-icon {

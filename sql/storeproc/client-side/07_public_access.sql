@@ -19,6 +19,7 @@ RETURNS TABLE (
     card_ai_knowledge_base TEXT,
     card_original_language VARCHAR(10),
     card_has_translation BOOLEAN,
+    card_available_languages TEXT[], -- Array of available language codes
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -85,6 +86,11 @@ BEGIN
         c.ai_knowledge_base AS card_ai_knowledge_base,
         c.original_language::VARCHAR(10) AS card_original_language,
         (c.translations ? p_language)::BOOLEAN AS card_has_translation,
+        -- Get array of available translation languages (original + translated languages)
+        (
+            ARRAY[c.original_language] || 
+            ARRAY(SELECT jsonb_object_keys(c.translations))
+        )::TEXT[] AS card_available_languages,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
@@ -158,6 +164,7 @@ RETURNS TABLE (
     card_ai_knowledge_base TEXT,
     card_original_language VARCHAR(10),
     card_has_translation BOOLEAN,
+    card_available_languages TEXT[], -- Array of available language codes
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -211,6 +218,11 @@ BEGIN
         c.ai_knowledge_base AS card_ai_knowledge_base,
         c.original_language::VARCHAR(10) AS card_original_language,
         (c.translations ? p_language)::BOOLEAN AS card_has_translation,
+        -- Get array of available translation languages (original + translated languages)
+        (
+            ARRAY[c.original_language] || 
+            ARRAY(SELECT jsonb_object_keys(c.translations))
+        )::TEXT[] AS card_available_languages,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,

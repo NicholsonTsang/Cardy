@@ -1,6 +1,6 @@
 <template>
   <div class="app-layout min-h-screen bg-slate-50">
-    <AppHeader />
+    <UnifiedHeader mode="dashboard" />
     
     <main class="main-content">
       <router-view />
@@ -9,7 +9,7 @@
 </template>
 
 <script setup>
-import AppHeader from '@/components/Layout/AppHeader.vue'
+import UnifiedHeader from '@/components/Layout/UnifiedHeader.vue'
 </script>
 
 <style scoped>

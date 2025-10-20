@@ -10,8 +10,54 @@ import ru from './locales/ru.json'
 import ar from './locales/ar.json'
 import th from './locales/th.json'
 
-// Get saved locale from localStorage or default to English
-const rawSavedLocale = localStorage.getItem('userLocale') || 'en'
+/**
+ * Detect browser language and return matching locale code
+ */
+function detectBrowserLocale(): string {
+  const browserLanguages = navigator.languages || [navigator.language]
+  const supportedLocales = ['en', 'zh-Hant', 'zh-Hans', 'ja', 'ko', 'th', 'es', 'fr', 'ru', 'ar']
+  
+  // Try exact match first
+  for (const browserLang of browserLanguages) {
+    const normalized = normalizeBrowserLocale(browserLang)
+    if (supportedLocales.includes(normalized)) {
+      console.log('🌐 Browser language detected:', normalized)
+      return normalized
+    }
+  }
+  
+  // Try partial match (e.g., 'zh' → 'zh-Hans')
+  for (const browserLang of browserLanguages) {
+    const baseLang = browserLang.toLowerCase().split('-')[0]
+    const match = supportedLocales.find(locale => locale.toLowerCase().startsWith(baseLang))
+    if (match) {
+      console.log('🌐 Browser language detected (partial match):', match)
+      return match
+    }
+  }
+  
+  console.log('🌐 No browser language match, defaulting to English')
+  return 'en'
+}
+
+/**
+ * Normalize browser locale codes to our format
+ */
+function normalizeBrowserLocale(browserLang: string): string {
+  const lang = browserLang.toLowerCase()
+  const localeMap: Record<string, string> = {
+    'zh': 'zh-Hans',
+    'zh-cn': 'zh-Hans',
+    'zh-sg': 'zh-Hans',
+    'zh-tw': 'zh-Hant',
+    'zh-hk': 'zh-Hant',
+    'zh-mo': 'zh-Hant',
+  }
+  return localeMap[lang] || browserLang
+}
+
+// Get saved locale from localStorage, or detect browser language, or default to English
+const rawSavedLocale = localStorage.getItem('userLocale') || detectBrowserLocale()
 
 // Normalize legacy locale codes on init
 function normalizeLocaleInit(locale: string): string {
@@ -148,7 +194,8 @@ export function setLocale(locale: string) {
   // Normalize legacy locale codes
   const normalizedLocale = normalizeLocale(locale)
   
-  i18n.global.locale.value = normalizedLocale
+  // Type assertion needed because normalizedLocale can include legacy codes
+  i18n.global.locale.value = normalizedLocale as any
   localStorage.setItem('userLocale', normalizedLocale)
   
   // Set document direction for RTL languages

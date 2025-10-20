@@ -33,7 +33,7 @@ export const CHINESE_VOICE_OPTIONS: ChineseVoiceOption[] = [
   }
 ]
 
-// Available languages (shared by both stores)
+// Available languages for mobile client (all 10 languages for visitors worldwide)
 export const AVAILABLE_LANGUAGES: Language[] = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
   { code: 'zh-Hans', name: '简体中文', flag: '🇨🇳' },  // Simplified Chinese
@@ -47,18 +47,111 @@ export const AVAILABLE_LANGUAGES: Language[] = [
   { code: 'ar', name: 'العربية', flag: '🇸🇦' }
 ]
 
+// Available languages for dashboard (only English and Traditional Chinese for card issuers/admins)
+export const DASHBOARD_LANGUAGES: Language[] = [
+  { code: 'en', name: 'English', flag: '🇺🇸' },
+  { code: 'zh-Hant', name: '繁體中文', flag: '🇭🇰' }   // Traditional Chinese
+]
+
+/**
+ * Detect browser language and map to supported language
+ * Returns the best matching language or English as fallback
+ * @param availableLanguages - List of languages to match against (defaults to all languages)
+ */
+export function detectBrowserLanguage(availableLanguages: Language[] = AVAILABLE_LANGUAGES): Language {
+  // Get browser languages in order of preference
+  const browserLanguages = navigator.languages || [navigator.language]
+  
+  console.log('🌐 Browser languages:', browserLanguages)
+  
+  // Try to find exact match first
+  for (const browserLang of browserLanguages) {
+    const normalizedBrowserLang = normalizeBrowserLanguage(browserLang)
+    const exactMatch = availableLanguages.find(
+      lang => lang.code.toLowerCase() === normalizedBrowserLang.toLowerCase()
+    )
+    if (exactMatch) {
+      console.log('✅ Exact language match found:', exactMatch.code, exactMatch.name)
+      return exactMatch
+    }
+  }
+  
+  // Try to find partial match (e.g., 'zh' matches 'zh-Hans' or 'zh-Hant')
+  for (const browserLang of browserLanguages) {
+    const baseLang = browserLang.toLowerCase().split('-')[0]
+    const partialMatch = availableLanguages.find(
+      lang => lang.code.toLowerCase().startsWith(baseLang)
+    )
+    if (partialMatch) {
+      console.log('✅ Partial language match found:', partialMatch.code, partialMatch.name)
+      return partialMatch
+    }
+  }
+  
+  // Default to English (first language in the list)
+  console.log('ℹ️ No language match found, defaulting to English')
+  return availableLanguages[0]
+}
+
+/**
+ * Normalize browser language codes to our supported format
+ */
+function normalizeBrowserLanguage(browserLang: string): string {
+  const lang = browserLang.toLowerCase()
+  
+  // Map browser language codes to our format
+  const languageMap: Record<string, string> = {
+    'zh': 'zh-Hans',        // Generic Chinese → Simplified
+    'zh-cn': 'zh-Hans',     // Mainland China → Simplified
+    'zh-sg': 'zh-Hans',     // Singapore → Simplified
+    'zh-tw': 'zh-Hant',     // Taiwan → Traditional
+    'zh-hk': 'zh-Hant',     // Hong Kong → Traditional
+    'zh-mo': 'zh-Hant',     // Macau → Traditional
+  }
+  
+  return languageMap[lang] || browserLang
+}
+
 /**
  * Mobile Client Language Store
  * For end-users viewing cards (QR code scanners)
  * Used in: Card Overview, Content Detail, AI Assistant
+ * 
+ * NOTE: Unlike dashboard, mobile client defaults to card's original language
+ * (set by PublicCardView), NOT browser language. This ensures visitors see
+ * content in the language intended by the card creator.
  */
 export const useMobileLanguageStore = defineStore('mobileLanguage', () => {
-  // Selected language (default to English)
-  const selectedLanguage = ref<Language>(AVAILABLE_LANGUAGES[0])
+  // Get initial language: saved preference > English default
+  // (Card's original language will be set by PublicCardView after loading)
+  function getInitialLanguage(): Language {
+    // Check if user manually selected a language in this session
+    const userSelectedLanguage = sessionStorage.getItem('userSelectedLanguage') === 'true'
+    
+    if (userSelectedLanguage) {
+      const savedLocale = localStorage.getItem('userLocale')
+      if (savedLocale) {
+        const savedLang = AVAILABLE_LANGUAGES.find(lang => lang.code === savedLocale)
+        if (savedLang) {
+          console.log('📱 Mobile client loaded user-selected language:', savedLocale)
+          return savedLang
+        }
+      }
+    }
+    
+    // Default to English - card will set original language after loading
+    console.log('📱 Mobile client initialized with English (will be set to card original language)')
+    return AVAILABLE_LANGUAGES[0] // English
+  }
+
+  const initialLanguage = getInitialLanguage()
+  const selectedLanguage = ref<Language>(initialLanguage)
   
   // Chinese voice preference (only relevant for Chinese languages)
   // Default to Mandarin for simplified, Cantonese for traditional
-  const chineseVoice = ref<ChineseVoice>('mandarin')
+  const chineseVoice = ref<ChineseVoice>(
+    initialLanguage.code === 'zh-Hant' ? 'cantonese' : 'mandarin'
+  )
 
   // Helper function to check if language is Chinese
   function isChinese(languageCode: string): boolean {
@@ -126,10 +219,29 @@ export const useMobileLanguageStore = defineStore('mobileLanguage', () => {
  * Dashboard Language Store
  * For card issuers managing their cards in CMS
  * Used in: Dashboard, Card Management, Admin Panel
+ * Supports: English and Traditional Chinese only
  */
 export const useDashboardLanguageStore = defineStore('dashboardLanguage', () => {
-  // Selected language (default to English)
-  const selectedLanguage = ref<Language>(AVAILABLE_LANGUAGES[0])
+  // Get initial language: saved preference > browser detection > English fallback
+  function getInitialLanguage(): Language {
+    const savedLocale = localStorage.getItem('userLocale')
+    if (savedLocale) {
+      const savedLang = DASHBOARD_LANGUAGES.find(lang => lang.code === savedLocale)
+      if (savedLang) {
+        console.log('🖥️ Dashboard loaded saved language:', savedLocale)
+        return savedLang
+      }
+    }
+    
+    // No saved preference, detect browser language (only from dashboard languages)
+    const detected = detectBrowserLanguage(DASHBOARD_LANGUAGES)
+    setLocale(detected.code)
+    console.log('🖥️ Dashboard initialized with browser language:', detected.code)
+    return detected
+  }
+
+  const initialLanguage = getInitialLanguage()
+  const selectedLanguage = ref<Language>(initialLanguage)
 
   // Set language and update i18n locale
   function setLanguage(language: Language, updateI18n = true) {
@@ -145,13 +257,6 @@ export const useDashboardLanguageStore = defineStore('dashboardLanguage', () => 
         'zh-Hant': 'zh-Hant',  // Traditional Chinese
         'zh-HK': 'zh-Hant',    // Legacy mapping for backward compatibility
         'zh-CN': 'zh-Hans',    // Legacy mapping for backward compatibility
-        'ja': 'ja',
-        'ko': 'ko',
-        'th': 'th',
-        'es': 'es',
-        'fr': 'fr',
-        'ru': 'ru',
-        'ar': 'ar'
       }
       const locale = localeMap[language.code] || 'en'
       setLocale(locale)
@@ -161,11 +266,11 @@ export const useDashboardLanguageStore = defineStore('dashboardLanguage', () => 
 
   // Get language by code
   function getLanguageByCode(code: string): Language | undefined {
-    return AVAILABLE_LANGUAGES.find(lang => lang.code === code)
+    return DASHBOARD_LANGUAGES.find(lang => lang.code === code)
   }
 
   return {
-    languages: AVAILABLE_LANGUAGES,
+    languages: DASHBOARD_LANGUAGES,
     selectedLanguage,
     setLanguage,
     getLanguageByCode

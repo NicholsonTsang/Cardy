@@ -8,11 +8,11 @@
 -- USER FILES BUCKET CONFIGURATION
 -- =================================================================
 
--- Create the user-files bucket if it doesn't exist
+-- Create the userfiles bucket if it doesn't exist
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES (
-    'user-files',
-    'user-files',
+    'userfiles',
+    'userfiles',
     true, -- Public access for viewing (controlled by RLS)
     52428800, -- 50MB file size limit
     ARRAY[
@@ -51,7 +51,7 @@ CREATE POLICY "Users can upload to their own folder"
 ON storage.objects FOR INSERT
 WITH CHECK (
     auth.uid()::text = (storage.foldername(name))[1] AND
-    bucket_id = 'user-files'
+    bucket_id = 'userfiles'
 );
 
 -- Policy for updating files: Users can update their own files only
@@ -110,7 +110,7 @@ SECURITY DEFINER
 AS $$
 BEGIN
     -- Ensure user ID in path matches authenticated user
-    IF NEW.bucket_id = 'user-files' THEN
+    IF NEW.bucket_id = 'userfiles' THEN
         IF auth.uid()::text != (storage.foldername(NEW.name))[1] THEN
             RAISE EXCEPTION 'File path must start with your user ID';
         END IF;

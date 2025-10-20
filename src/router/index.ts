@@ -127,14 +127,8 @@ const router = createRouter({
     },
     {
       path: '/',
-      component: AppLayout,
-      children: [
-        {
-          path: '',
-          name: 'landing',
-          component: () => import('@/views/Public/LandingPage.vue')
-        }
-      ]
+      name: 'landing',
+      component: () => import('@/views/Public/LandingPage.vue')
     },
     // Catch-all for any other routes
     {

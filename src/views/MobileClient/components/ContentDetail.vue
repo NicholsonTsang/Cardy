@@ -101,6 +101,7 @@ interface ContentItem {
   content_item_content: string
   content_item_image_url: string
   content_item_ai_knowledge_base: string
+  content_item_ai_metadata?: string
   content_item_sort_order: number
   crop_parameters?: any
 }
@@ -135,7 +136,8 @@ const emit = defineEmits<{
 // Markdown rendering helper
 function renderMarkdown(text: string): string {
   if (!text) return ''
-  return marked(text)
+  // Use marked.parse() for synchronous string return
+  return marked.parse(text) as string
 }
 
 function handleSelect(item: ContentItem) {

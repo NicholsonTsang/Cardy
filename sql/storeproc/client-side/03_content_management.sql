@@ -97,6 +97,7 @@ $$;
 GRANT EXECUTE ON FUNCTION get_content_item_by_id(UUID) TO authenticated;
 
 -- Create a new content item (updated with ordering)
+-- Modified to accept optional content_hash and translations for import
 CREATE OR REPLACE FUNCTION create_content_item(
     p_card_id UUID,
     p_name TEXT,
@@ -105,7 +106,9 @@ CREATE OR REPLACE FUNCTION create_content_item(
     p_image_url TEXT DEFAULT NULL,
     p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
-    p_ai_knowledge_base TEXT DEFAULT ''
+    p_ai_knowledge_base TEXT DEFAULT '',
+    p_content_hash TEXT DEFAULT NULL,  -- For import: preserve original hash
+    p_translations JSONB DEFAULT NULL  -- For import: restore translations
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_content_item_id UUID;
@@ -150,7 +153,9 @@ BEGIN
         original_image_url,
         crop_parameters,
         ai_knowledge_base,
-        sort_order
+        sort_order,
+        content_hash,  -- May be NULL (trigger calculates) or provided (import)
+        translations   -- May be NULL (normal) or provided (import)
     ) VALUES (
         p_card_id,
         p_parent_id,
@@ -160,16 +165,23 @@ BEGIN
         p_original_image_url,
         p_crop_parameters,
         p_ai_knowledge_base,
-        v_next_sort_order
+        v_next_sort_order,
+        p_content_hash,  -- Trigger will calculate if NULL
+        COALESCE(p_translations, '{}'::JSONB)  -- Default to empty object
     )
     RETURNING id INTO v_content_item_id;
     
     -- Log operation
-    PERFORM log_operation(format('Created content item: %s', p_name));
+    IF p_translations IS NOT NULL AND p_translations != '{}'::JSONB THEN
+        PERFORM log_operation(format('Imported content item with translations: %s', p_name));
+    ELSE
+        PERFORM log_operation(format('Created content item: %s', p_name));
+    END IF;
     
     RETURN v_content_item_id;
 END;
 $$;
+GRANT EXECUTE ON FUNCTION create_content_item(UUID, TEXT, UUID, TEXT, TEXT, TEXT, JSONB, TEXT, TEXT, JSONB) TO authenticated;
 
 -- Update an existing content item (updated with ordering)
 CREATE OR REPLACE FUNCTION update_content_item(

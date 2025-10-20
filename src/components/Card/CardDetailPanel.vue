@@ -84,16 +84,17 @@
                             <CardIssuanceCheckout 
                                 v-if="index === 2" 
                                 :cardId="selectedCard.id" 
-                                :key="selectedCard.id + '-issurance'" 
+                                :key="selectedCard.id + '-issurance'"
+                                @batch-created="handleBatchCreated"
                             />
                             <!-- QR & Access Tab -->
                             <CardAccessQR 
-                                v-if="index === 3" 
+                                v-if="index === 3"
                                 :cardId="selectedCard.id"
                                 :cardName="selectedCard.name"
                                 :selectedBatchId="selectedBatchId"
                                 @batch-changed="$emit('batch-changed', $event)"
-                                :key="selectedCard.id + '-access-qr'" 
+                                :key="`${selectedCard.id}-access-qr-${accessQRRefreshKey}`" 
                             />
                             <!-- Preview Tab -->
                             <MobilePreview 
@@ -182,8 +183,17 @@ function handleExportCancel() {
 // Counter to force MobilePreview refresh when tab is clicked
 const mobilePreviewRefreshKey = ref(0);
 
+// Counter to force CardAccessQR refresh when batch is created
+const accessQRRefreshKey = ref(0);
+
 // Export dialog state
 const showExportDialog = ref(false);
+
+// Handle batch created event from CardIssuanceCheckout
+const handleBatchCreated = async (batchId) => {
+    // Increment key to force CardAccessQR to remount with fresh data
+    accessQRRefreshKey.value++;
+};
 
 const tabs = computed(() => [
     { label: t('dashboard.general'), icon: 'pi pi-cog' },

@@ -34,6 +34,7 @@
         <CardOverview 
           v-if="isCardView"
           :card="cardData"
+          :available-languages="availableLanguages"
           @explore="openContentList"
         />
 
@@ -52,7 +53,7 @@
           :content="selectedContent"
           :sub-items="subContent"
           :card="cardData"
-          :parent-item="parentOfSelected"
+          :parent-item="parentOfSelected || null"
           @select="selectContent"
         />
       </transition>
@@ -85,7 +86,9 @@ interface CardData {
   card_image_url: string
   crop_parameters?: any
   conversation_ai_enabled: boolean
-  ai_prompt: string
+  ai_instruction: string
+  ai_knowledge_base: string
+  ai_prompt: string  // For backward compatibility with AI Assistant
   is_activated: boolean
   is_preview?: boolean
 }
@@ -96,7 +99,8 @@ interface ContentItem {
   content_item_name: string
   content_item_content: string
   content_item_image_url: string
-  content_item_ai_metadata: string
+  content_item_ai_knowledge_base: string
+  content_item_ai_metadata?: string
   content_item_sort_order: number
   crop_parameters?: any
 }
@@ -111,6 +115,7 @@ const isLoading = ref(true)
 const error = ref<string | null>(null)
 const cardData = ref<CardData | null>(null)
 const contentItems = ref<ContentItem[]>([])
+const availableLanguages = ref<string[]>([]) // Languages available for this card
 const currentView = ref<ViewType>('card')
 const selectedContent = ref<ContentItem | null>(null)
 const navigationStack = ref<Array<{ view: ViewType; content: ContentItem | null }>>([])
@@ -197,8 +202,38 @@ async function fetchCardData() {
       conversation_ai_enabled: firstRow.card_conversation_ai_enabled,
       ai_instruction: firstRow.card_ai_instruction,
       ai_knowledge_base: firstRow.card_ai_knowledge_base,
+      ai_prompt: firstRow.card_ai_instruction, // For backward compatibility with AI Assistant
       is_activated: isPreviewMode.value ? true : firstRow.is_activated, // Always activated in preview mode
       is_preview: isPreviewMode.value || firstRow.is_preview || false
+    }
+
+    // Extract available languages for this card
+    availableLanguages.value = firstRow.card_available_languages || [firstRow.card_original_language || 'en']
+
+    // Set mobile client language to card's original language on first load
+    // (unless user has already manually selected a language for this session)
+    const cardOriginalLang = firstRow.card_original_language || 'en'
+    const hasUserSelectedLanguage = sessionStorage.getItem('userSelectedLanguage') === 'true'
+    
+    if (!hasUserSelectedLanguage) {
+      // Check if we need to switch to card's original language
+      if (mobileLanguageStore.selectedLanguage.code !== cardOriginalLang) {
+        const originalLanguage = mobileLanguageStore.getLanguageByCode(cardOriginalLang)
+        if (originalLanguage) {
+          console.log('📱 Setting mobile language to card original language:', cardOriginalLang)
+          // Set isFirstLoad to false BEFORE setting language to prevent double-fetch
+          isFirstLoad.value = false
+          mobileLanguageStore.setLanguage(originalLanguage)
+          // This will trigger the watcher and re-fetch with correct language
+          return // Exit early, watcher will re-fetch with correct language
+        }
+      } else {
+        // Language already matches, mark as loaded
+        isFirstLoad.value = false
+      }
+    } else {
+      // User has manually selected language, mark as loaded
+      isFirstLoad.value = false
     }
 
     // Process content items
@@ -254,15 +289,31 @@ function handleRetry() {
   fetchCardData()
 }
 
+// Track if this is the first load
+const isFirstLoad = ref(true)
+
 // Lifecycle
 onMounted(() => {
   fetchCardData()
 })
 
 // Watch for language changes and reload content
-watch(() => mobileLanguageStore.selectedLanguage.code, () => {
+watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
   console.log('📱 Language changed to:', mobileLanguageStore.selectedLanguage.code)
-  fetchCardData()
+  
+  // Store the currently selected content ID to restore selection after reload
+  const currentContentId = selectedContent.value?.content_item_id
+  
+  // Re-fetch data with new language
+  await fetchCardData()
+  
+  // If user was viewing a content detail, update selectedContent to the refreshed version
+  if (currentContentId && contentItems.value.length > 0) {
+    const updatedContent = contentItems.value.find(item => item.content_item_id === currentContentId)
+    if (updatedContent) {
+      selectedContent.value = updatedContent
+    }
+  }
 })
 </script>
 

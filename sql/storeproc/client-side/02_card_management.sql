@@ -50,6 +50,7 @@ $$;
 GRANT EXECUTE ON FUNCTION get_user_cards() TO authenticated;
 
 -- Create a new card (more secure)
+-- Modified to accept optional content_hash and translations for import
 CREATE OR REPLACE FUNCTION create_card(
     p_name TEXT,
     p_description TEXT,
@@ -60,7 +61,9 @@ CREATE OR REPLACE FUNCTION create_card(
     p_ai_instruction TEXT DEFAULT '',
     p_ai_knowledge_base TEXT DEFAULT '',
     p_qr_code_position TEXT DEFAULT 'BR',
-    p_original_language VARCHAR(10) DEFAULT 'en'
+    p_original_language VARCHAR(10) DEFAULT 'en',
+    p_content_hash TEXT DEFAULT NULL,  -- For import: preserve original hash
+    p_translations JSONB DEFAULT NULL  -- For import: restore translations
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -76,7 +79,9 @@ BEGIN
         ai_instruction,
         ai_knowledge_base,
         qr_code_position,
-        original_language
+        original_language,
+        content_hash,  -- May be NULL (trigger calculates) or provided (import)
+        translations   -- May be NULL (normal) or provided (import)
     ) VALUES (
         auth.uid(),
         p_name,
@@ -88,17 +93,23 @@ BEGIN
         p_ai_instruction,
         p_ai_knowledge_base,
         p_qr_code_position::"QRCodePosition",
-        p_original_language
+        p_original_language,
+        p_content_hash,  -- Trigger will calculate if NULL
+        COALESCE(p_translations, '{}'::JSONB)  -- Default to empty object
     )
     RETURNING id INTO v_card_id;
     
     -- Log operation
-    PERFORM log_operation(format('Created card: %s', p_name));
+    IF p_translations IS NOT NULL AND p_translations != '{}'::JSONB THEN
+        PERFORM log_operation(format('Imported card with translations: %s', p_name));
+    ELSE
+        PERFORM log_operation(format('Created card: %s', p_name));
+    END IF;
     
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 CREATE OR REPLACE FUNCTION get_card_by_id(p_card_id UUID)

@@ -69,19 +69,24 @@ CREATE TRIGGER on_auth_user_created
 -- =================================================================
 
 -- Trigger function for cards table
+-- Modified to allow hash override during import: only calculates if NULL
 CREATE OR REPLACE FUNCTION update_card_content_hash()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- On INSERT: Always calculate hash
+  -- On INSERT: Only calculate hash if not already provided
   IF TG_OP = 'INSERT' THEN
-    NEW.content_hash := md5(COALESCE(NEW.name, '') || '|' || COALESCE(NEW.description, ''));
-    NEW.last_content_update := NOW();
-  -- On UPDATE: Only recalculate if name or description changed
-  ELSIF TG_OP = 'UPDATE' THEN
-    IF (NEW.name IS DISTINCT FROM OLD.name) OR 
-       (NEW.description IS DISTINCT FROM OLD.description) THEN
+    IF NEW.content_hash IS NULL THEN
       NEW.content_hash := md5(COALESCE(NEW.name, '') || '|' || COALESCE(NEW.description, ''));
       NEW.last_content_update := NOW();
+    END IF;
+  -- On UPDATE: Only recalculate if name or description changed AND hash wasn't manually set
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF (NEW.name IS DISTINCT FROM OLD.name OR NEW.description IS DISTINCT FROM OLD.description) THEN
+      -- Only recalculate if hash hasn't been manually updated
+      IF NEW.content_hash = OLD.content_hash THEN
+        NEW.content_hash := md5(COALESCE(NEW.name, '') || '|' || COALESCE(NEW.description, ''));
+        NEW.last_content_update := NOW();
+      END IF;
       -- Note: We don't clear translations here - they're marked as outdated via hash comparison
     END IF;
   END IF;
@@ -100,28 +105,34 @@ CREATE TRIGGER trigger_update_card_content_hash
   EXECUTE FUNCTION update_card_content_hash();
 
 -- Trigger function for content_items table
+-- Modified to allow hash override during import: only calculates if NULL
 CREATE OR REPLACE FUNCTION update_content_item_content_hash()
 RETURNS TRIGGER AS $$
 BEGIN
-  -- On INSERT: Always calculate hash
+  -- On INSERT: Only calculate hash if not already provided
   IF TG_OP = 'INSERT' THEN
-    NEW.content_hash := md5(
-      COALESCE(NEW.name, '') || '|' || 
-      COALESCE(NEW.content, '') || '|' ||
-      COALESCE(NEW.ai_knowledge_base, '')
-    );
-    NEW.last_content_update := NOW();
-  -- On UPDATE: Only recalculate if any translatable field changed
-  ELSIF TG_OP = 'UPDATE' THEN
-    IF (NEW.name IS DISTINCT FROM OLD.name) OR 
-       (NEW.content IS DISTINCT FROM OLD.content) OR
-       (NEW.ai_knowledge_base IS DISTINCT FROM OLD.ai_knowledge_base) THEN
+    IF NEW.content_hash IS NULL THEN
       NEW.content_hash := md5(
         COALESCE(NEW.name, '') || '|' || 
         COALESCE(NEW.content, '') || '|' ||
         COALESCE(NEW.ai_knowledge_base, '')
       );
       NEW.last_content_update := NOW();
+    END IF;
+  -- On UPDATE: Only recalculate if any translatable field changed AND hash wasn't manually set
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF (NEW.name IS DISTINCT FROM OLD.name OR 
+        NEW.content IS DISTINCT FROM OLD.content OR
+        NEW.ai_knowledge_base IS DISTINCT FROM OLD.ai_knowledge_base) THEN
+      -- Only recalculate if hash hasn't been manually updated
+      IF NEW.content_hash = OLD.content_hash THEN
+        NEW.content_hash := md5(
+          COALESCE(NEW.name, '') || '|' || 
+          COALESCE(NEW.content, '') || '|' ||
+          COALESCE(NEW.ai_knowledge_base, '')
+        );
+        NEW.last_content_update := NOW();
+      END IF;
     END IF;
   END IF;
   

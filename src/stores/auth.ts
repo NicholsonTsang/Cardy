@@ -35,6 +35,19 @@ export const useAuthStore = defineStore('auth', () => {
     if (event === 'SIGNED_OUT') {
       router.push('/login')
     }
+    
+    // Handle password recovery - redirect to reset password page only if not already there
+    if (event === 'PASSWORD_RECOVERY') {
+      console.log('Password recovery event detected')
+      // Only redirect if not already on reset-password page
+      // This prevents losing the hash parameters (access_token, etc.)
+      if (router.currentRoute.value.path !== '/reset-password') {
+        console.log('Redirecting to reset-password page')
+        router.push('/reset-password')
+      } else {
+        console.log('Already on reset-password page, keeping hash parameters')
+      }
+    }
     // Remove automatic redirect - let router guard handle it
   })
 

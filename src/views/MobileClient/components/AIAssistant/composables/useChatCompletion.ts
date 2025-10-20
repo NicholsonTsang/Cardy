@@ -39,13 +39,11 @@ export function useChatCompletion() {
     error.value = null
 
     try {
-      // Get the function URL from Supabase
-      const { data: { url } } = await supabase.auth.getSession()
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-audio-stream`
-      
       // Get the auth token
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
+      
+      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-audio-stream`
 
       // Use fetch to handle SSE streaming properly
       const response = await fetch(functionUrl, {

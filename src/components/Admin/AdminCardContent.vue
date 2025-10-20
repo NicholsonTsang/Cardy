@@ -124,7 +124,8 @@ const props = defineProps<Props>()
 // Markdown rendering helper
 const renderMarkdown = (text: string | null): string => {
   if (!text) return ''
-  return marked(text)
+  // Use marked.parse() for synchronous string return
+  return marked.parse(text) as string
 }
 
 const parentContentItems = computed(() => {

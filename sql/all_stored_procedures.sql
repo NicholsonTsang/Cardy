@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Sun Oct 12 20:07:22 HKT 2025
+-- Generated: Fri Oct 17 00:37:20 HKT 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -336,6 +336,7 @@ $$;
 GRANT EXECUTE ON FUNCTION get_user_cards() TO authenticated;
 
 -- Create a new card (more secure)
+-- Modified to accept optional content_hash and translations for import
 CREATE OR REPLACE FUNCTION create_card(
     p_name TEXT,
     p_description TEXT,
@@ -346,7 +347,9 @@ CREATE OR REPLACE FUNCTION create_card(
     p_ai_instruction TEXT DEFAULT '',
     p_ai_knowledge_base TEXT DEFAULT '',
     p_qr_code_position TEXT DEFAULT 'BR',
-    p_original_language VARCHAR(10) DEFAULT 'en'
+    p_original_language VARCHAR(10) DEFAULT 'en',
+    p_content_hash TEXT DEFAULT NULL,  -- For import: preserve original hash
+    p_translations JSONB DEFAULT NULL  -- For import: restore translations
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -362,7 +365,9 @@ BEGIN
         ai_instruction,
         ai_knowledge_base,
         qr_code_position,
-        original_language
+        original_language,
+        content_hash,  -- May be NULL (trigger calculates) or provided (import)
+        translations   -- May be NULL (normal) or provided (import)
     ) VALUES (
         auth.uid(),
         p_name,
@@ -374,17 +379,23 @@ BEGIN
         p_ai_instruction,
         p_ai_knowledge_base,
         p_qr_code_position::"QRCodePosition",
-        p_original_language
+        p_original_language,
+        p_content_hash,  -- Trigger will calculate if NULL
+        COALESCE(p_translations, '{}'::JSONB)  -- Default to empty object
     )
     RETURNING id INTO v_card_id;
     
     -- Log operation
-    PERFORM log_operation(format('Created card: %s', p_name));
+    IF p_translations IS NOT NULL AND p_translations != '{}'::JSONB THEN
+        PERFORM log_operation(format('Imported card with translations: %s', p_name));
+    ELSE
+        PERFORM log_operation(format('Created card: %s', p_name));
+    END IF;
     
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 CREATE OR REPLACE FUNCTION get_card_by_id(p_card_id UUID)
@@ -700,6 +711,7 @@ $$;
 GRANT EXECUTE ON FUNCTION get_content_item_by_id(UUID) TO authenticated;
 
 -- Create a new content item (updated with ordering)
+-- Modified to accept optional content_hash and translations for import
 CREATE OR REPLACE FUNCTION create_content_item(
     p_card_id UUID,
     p_name TEXT,
@@ -708,7 +720,9 @@ CREATE OR REPLACE FUNCTION create_content_item(
     p_image_url TEXT DEFAULT NULL,
     p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
-    p_ai_knowledge_base TEXT DEFAULT ''
+    p_ai_knowledge_base TEXT DEFAULT '',
+    p_content_hash TEXT DEFAULT NULL,  -- For import: preserve original hash
+    p_translations JSONB DEFAULT NULL  -- For import: restore translations
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_content_item_id UUID;
@@ -753,7 +767,9 @@ BEGIN
         original_image_url,
         crop_parameters,
         ai_knowledge_base,
-        sort_order
+        sort_order,
+        content_hash,  -- May be NULL (trigger calculates) or provided (import)
+        translations   -- May be NULL (normal) or provided (import)
     ) VALUES (
         p_card_id,
         p_parent_id,
@@ -763,16 +779,23 @@ BEGIN
         p_original_image_url,
         p_crop_parameters,
         p_ai_knowledge_base,
-        v_next_sort_order
+        v_next_sort_order,
+        p_content_hash,  -- Trigger will calculate if NULL
+        COALESCE(p_translations, '{}'::JSONB)  -- Default to empty object
     )
     RETURNING id INTO v_content_item_id;
     
     -- Log operation
-    PERFORM log_operation(format('Created content item: %s', p_name));
+    IF p_translations IS NOT NULL AND p_translations != '{}'::JSONB THEN
+        PERFORM log_operation(format('Imported content item with translations: %s', p_name));
+    ELSE
+        PERFORM log_operation(format('Created content item: %s', p_name));
+    END IF;
     
     RETURN v_content_item_id;
 END;
 $$;
+GRANT EXECUTE ON FUNCTION create_content_item(UUID, TEXT, UUID, TEXT, TEXT, TEXT, JSONB, TEXT, TEXT, JSONB) TO authenticated;
 
 -- Update an existing content item (updated with ordering)
 CREATE OR REPLACE FUNCTION update_content_item(
@@ -1771,6 +1794,7 @@ RETURNS TABLE (
     card_ai_knowledge_base TEXT,
     card_original_language VARCHAR(10),
     card_has_translation BOOLEAN,
+    card_available_languages TEXT[], -- Array of available language codes
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -1837,6 +1861,11 @@ BEGIN
         c.ai_knowledge_base AS card_ai_knowledge_base,
         c.original_language::VARCHAR(10) AS card_original_language,
         (c.translations ? p_language)::BOOLEAN AS card_has_translation,
+        -- Get array of available translation languages (original + translated languages)
+        (
+            ARRAY[c.original_language] || 
+            ARRAY(SELECT jsonb_object_keys(c.translations))
+        )::TEXT[] AS card_available_languages,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
@@ -1910,6 +1939,7 @@ RETURNS TABLE (
     card_ai_knowledge_base TEXT,
     card_original_language VARCHAR(10),
     card_has_translation BOOLEAN,
+    card_available_languages TEXT[], -- Array of available language codes
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -1963,6 +1993,11 @@ BEGIN
         c.ai_knowledge_base AS card_ai_knowledge_base,
         c.original_language::VARCHAR(10) AS card_original_language,
         (c.translations ? p_language)::BOOLEAN AS card_has_translation,
+        -- Get array of available translation languages (original + translated languages)
+        (
+            ARRAY[c.original_language] || 
+            ARRAY(SELECT jsonb_object_keys(c.translations))
+        )::TEXT[] AS card_available_languages,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
@@ -2303,11 +2338,12 @@ BEGIN
         (SELECT COUNT(*) FROM print_requests WHERE status = 'SUBMITTED') as print_requests_submitted,
         (SELECT COUNT(*) FROM print_requests WHERE status = 'PROCESSING') as print_requests_processing,
         (SELECT COUNT(*) FROM print_requests WHERE status = 'SHIPPED') as print_requests_shipping,
-        -- Revenue metrics
-        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded' AND created_at >= CURRENT_DATE) as daily_revenue_cents,
-        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_revenue_cents,
-        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_revenue_cents,
-        (SELECT COALESCE(SUM(amount_cents), 0) FROM batch_payments WHERE payment_status = 'succeeded') as total_revenue_cents,
+        -- Revenue metrics (based on credit purchases, not legacy batch payments)
+        -- Note: amount_usd is in dollars, so multiply by 100 to get cents for consistency with old system
+        (SELECT COALESCE(SUM(amount_usd * 100), 0)::BIGINT FROM credit_purchases WHERE status = 'completed' AND created_at >= CURRENT_DATE) as daily_revenue_cents,
+        (SELECT COALESCE(SUM(amount_usd * 100), 0)::BIGINT FROM credit_purchases WHERE status = 'completed' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_revenue_cents,
+        (SELECT COALESCE(SUM(amount_usd * 100), 0)::BIGINT FROM credit_purchases WHERE status = 'completed' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_revenue_cents,
+        (SELECT COALESCE(SUM(amount_usd * 100), 0)::BIGINT FROM credit_purchases WHERE status = 'completed') as total_revenue_cents,
         -- Growth metrics
         (SELECT COUNT(*) FROM auth.users WHERE created_at >= CURRENT_DATE) as daily_new_users,
         (SELECT COUNT(*) FROM auth.users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_new_users,
@@ -3527,6 +3563,11 @@ DROP FUNCTION IF EXISTS get_card_translations CASCADE;
 DROP FUNCTION IF EXISTS delete_card_translation CASCADE;
 DROP FUNCTION IF EXISTS get_translation_history CASCADE;
 DROP FUNCTION IF EXISTS get_outdated_translations CASCADE;
+DROP FUNCTION IF EXISTS update_card_translations_bulk CASCADE;
+DROP FUNCTION IF EXISTS update_content_item_translations_bulk CASCADE;
+DROP FUNCTION IF EXISTS recalculate_card_translation_hashes CASCADE;
+DROP FUNCTION IF EXISTS recalculate_content_item_translation_hashes CASCADE;
+DROP FUNCTION IF EXISTS recalculate_all_translation_hashes CASCADE;
 
 -- =====================================================================
 -- TRANSLATION MANAGEMENT STORED PROCEDURES
@@ -3935,6 +3976,279 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- =====================================================================
+-- 7. Bulk Update Card Translations (For Import)
+-- =====================================================================
+-- Updates card translations JSONB in bulk during import
+-- Used to restore translations from exported Excel files
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION update_card_translations_bulk(
+    p_card_id UUID,
+    p_translations JSONB
+) RETURNS VOID 
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_owner UUID;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Verify ownership
+    SELECT user_id INTO v_card_owner FROM cards WHERE id = p_card_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Card not found';
+    END IF;
+    
+    IF v_card_owner != v_user_id THEN
+        RAISE EXCEPTION 'Unauthorized: Card does not belong to user';
+    END IF;
+    
+    UPDATE public.cards
+    SET translations = p_translations,
+        updated_at = NOW()
+    WHERE id = p_card_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- 8. Bulk Update Content Item Translations (For Import)
+-- =====================================================================
+-- Updates content item translations JSONB in bulk during import
+-- Used to restore translations from exported Excel files
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION update_content_item_translations_bulk(
+    p_content_item_id UUID,
+    p_translations JSONB
+) RETURNS VOID 
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_id UUID;
+    v_card_owner UUID;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Get card_id and verify ownership
+    SELECT ci.card_id INTO v_card_id
+    FROM content_items ci
+    WHERE ci.id = p_content_item_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Content item not found';
+    END IF;
+    
+    SELECT user_id INTO v_card_owner FROM cards WHERE id = v_card_id;
+    
+    IF v_card_owner != v_user_id THEN
+        RAISE EXCEPTION 'Unauthorized: Content item does not belong to user';
+    END IF;
+    
+    UPDATE public.content_items
+    SET translations = p_translations,
+        updated_at = NOW()
+    WHERE id = p_content_item_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- 9. Recalculate Card Translation Hashes (For Import)
+-- =====================================================================
+-- After importing translations, recalculates the content_hash inside
+-- each translation to match the newly imported card's content_hash.
+-- This prevents translations from appearing "Outdated" after import.
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION recalculate_card_translation_hashes(
+    p_card_id UUID
+) RETURNS VOID 
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_current_hash TEXT;
+    v_translations JSONB;
+    v_lang_code TEXT;
+    v_updated_translations JSONB := '{}'::JSONB;
+    v_translation_obj JSONB;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Verify ownership
+    IF NOT EXISTS (
+        SELECT 1 FROM cards 
+        WHERE id = p_card_id AND user_id = v_user_id
+    ) THEN
+        RAISE EXCEPTION 'Unauthorized: Card not found or access denied';
+    END IF;
+    
+    -- Get current card content hash
+    SELECT content_hash, translations 
+    INTO v_current_hash, v_translations 
+    FROM cards 
+    WHERE id = p_card_id;
+    
+    -- If no content hash yet, calculate it
+    IF v_current_hash IS NULL THEN
+        v_current_hash := md5(
+            COALESCE((SELECT name FROM cards WHERE id = p_card_id), '') || 
+            COALESCE((SELECT description FROM cards WHERE id = p_card_id), '')
+        );
+        
+        UPDATE cards SET content_hash = v_current_hash WHERE id = p_card_id;
+    END IF;
+    
+    -- Update each translation's content_hash to match current card
+    IF v_translations IS NOT NULL AND v_translations != '{}'::JSONB THEN
+        FOR v_lang_code IN SELECT jsonb_object_keys(v_translations)
+        LOOP
+            v_translation_obj := v_translations->v_lang_code;
+            
+            -- Update the content_hash within this translation
+            v_updated_translations := v_updated_translations || 
+                jsonb_build_object(
+                    v_lang_code,
+                    v_translation_obj || jsonb_build_object('content_hash', v_current_hash)
+                );
+        END LOOP;
+        
+        -- Update card with recalculated hashes
+        UPDATE cards 
+        SET translations = v_updated_translations,
+            updated_at = NOW()
+        WHERE id = p_card_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- 10. Recalculate Content Item Translation Hashes (For Import)
+-- =====================================================================
+-- After importing translations, recalculates the content_hash inside
+-- each translation to match the newly imported content item's content_hash.
+-- This prevents translations from appearing "Outdated" after import.
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION recalculate_content_item_translation_hashes(
+    p_content_item_id UUID
+) RETURNS VOID 
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_id UUID;
+    v_current_hash TEXT;
+    v_translations JSONB;
+    v_lang_code TEXT;
+    v_updated_translations JSONB := '{}'::JSONB;
+    v_translation_obj JSONB;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Get card_id and verify ownership
+    SELECT card_id INTO v_card_id
+    FROM content_items
+    WHERE id = p_content_item_id;
+    
+    IF v_card_id IS NULL THEN
+        RAISE EXCEPTION 'Content item not found';
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM cards 
+        WHERE id = v_card_id AND user_id = v_user_id
+    ) THEN
+        RAISE EXCEPTION 'Unauthorized: Access denied';
+    END IF;
+    
+    -- Get current content item hash
+    SELECT content_hash, translations 
+    INTO v_current_hash, v_translations 
+    FROM content_items 
+    WHERE id = p_content_item_id;
+    
+    -- If no content hash yet, calculate it
+    IF v_current_hash IS NULL THEN
+        v_current_hash := md5(
+            COALESCE((SELECT name FROM content_items WHERE id = p_content_item_id), '') || 
+            COALESCE((SELECT content FROM content_items WHERE id = p_content_item_id), '')
+        );
+        
+        UPDATE content_items SET content_hash = v_current_hash WHERE id = p_content_item_id;
+    END IF;
+    
+    -- Update each translation's content_hash to match current content
+    IF v_translations IS NOT NULL AND v_translations != '{}'::JSONB THEN
+        FOR v_lang_code IN SELECT jsonb_object_keys(v_translations)
+        LOOP
+            v_translation_obj := v_translations->v_lang_code;
+            
+            -- Update the content_hash within this translation
+            v_updated_translations := v_updated_translations || 
+                jsonb_build_object(
+                    v_lang_code,
+                    v_translation_obj || jsonb_build_object('content_hash', v_current_hash)
+                );
+        END LOOP;
+        
+        -- Update content item with recalculated hashes
+        UPDATE content_items 
+        SET translations = v_updated_translations,
+            updated_at = NOW()
+        WHERE id = p_content_item_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- 11. Recalculate All Translation Hashes (Batch Operation)
+-- =====================================================================
+-- Recalculates translation hashes for a card and all its content items
+-- Used after bulk import to ensure all translations show correct status
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION recalculate_all_translation_hashes(
+    p_card_id UUID
+) RETURNS VOID 
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_content_item_id UUID;
+BEGIN
+    -- Recalculate card translation hashes
+    PERFORM recalculate_card_translation_hashes(p_card_id);
+    
+    -- Recalculate all content item translation hashes
+    FOR v_content_item_id IN 
+        SELECT id FROM content_items WHERE card_id = p_card_id
+    LOOP
+        PERFORM recalculate_content_item_translation_hashes(v_content_item_id);
+    END LOOP;
+    
+    PERFORM log_operation(format('Recalculated all translation hashes for card: %s', p_card_id));
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
 -- Grant permissions
 -- =====================================================================
 
@@ -3944,6 +4258,11 @@ GRANT EXECUTE ON FUNCTION store_card_translations(UUID, UUID, TEXT[], JSONB, JSO
 GRANT EXECUTE ON FUNCTION delete_card_translation(UUID, VARCHAR) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_translation_history(UUID, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_outdated_translations(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card_translations_bulk(UUID, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_content_item_translations_bulk(UUID, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION recalculate_card_translation_hashes(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION recalculate_content_item_translation_hashes(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION recalculate_all_translation_hashes(UUID) TO authenticated;
 
 
 

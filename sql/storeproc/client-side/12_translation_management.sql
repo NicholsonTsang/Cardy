@@ -405,6 +405,279 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- =====================================================================
+-- 7. Bulk Update Card Translations (For Import)
+-- =====================================================================
+-- Updates card translations JSONB in bulk during import
+-- Used to restore translations from exported Excel files
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION update_card_translations_bulk(
+    p_card_id UUID,
+    p_translations JSONB
+) RETURNS VOID 
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_owner UUID;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Verify ownership
+    SELECT user_id INTO v_card_owner FROM cards WHERE id = p_card_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Card not found';
+    END IF;
+    
+    IF v_card_owner != v_user_id THEN
+        RAISE EXCEPTION 'Unauthorized: Card does not belong to user';
+    END IF;
+    
+    UPDATE public.cards
+    SET translations = p_translations,
+        updated_at = NOW()
+    WHERE id = p_card_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- 8. Bulk Update Content Item Translations (For Import)
+-- =====================================================================
+-- Updates content item translations JSONB in bulk during import
+-- Used to restore translations from exported Excel files
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION update_content_item_translations_bulk(
+    p_content_item_id UUID,
+    p_translations JSONB
+) RETURNS VOID 
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_id UUID;
+    v_card_owner UUID;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Get card_id and verify ownership
+    SELECT ci.card_id INTO v_card_id
+    FROM content_items ci
+    WHERE ci.id = p_content_item_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Content item not found';
+    END IF;
+    
+    SELECT user_id INTO v_card_owner FROM cards WHERE id = v_card_id;
+    
+    IF v_card_owner != v_user_id THEN
+        RAISE EXCEPTION 'Unauthorized: Content item does not belong to user';
+    END IF;
+    
+    UPDATE public.content_items
+    SET translations = p_translations,
+        updated_at = NOW()
+    WHERE id = p_content_item_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- 9. Recalculate Card Translation Hashes (For Import)
+-- =====================================================================
+-- After importing translations, recalculates the content_hash inside
+-- each translation to match the newly imported card's content_hash.
+-- This prevents translations from appearing "Outdated" after import.
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION recalculate_card_translation_hashes(
+    p_card_id UUID
+) RETURNS VOID 
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_current_hash TEXT;
+    v_translations JSONB;
+    v_lang_code TEXT;
+    v_updated_translations JSONB := '{}'::JSONB;
+    v_translation_obj JSONB;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Verify ownership
+    IF NOT EXISTS (
+        SELECT 1 FROM cards 
+        WHERE id = p_card_id AND user_id = v_user_id
+    ) THEN
+        RAISE EXCEPTION 'Unauthorized: Card not found or access denied';
+    END IF;
+    
+    -- Get current card content hash
+    SELECT content_hash, translations 
+    INTO v_current_hash, v_translations 
+    FROM cards 
+    WHERE id = p_card_id;
+    
+    -- If no content hash yet, calculate it
+    IF v_current_hash IS NULL THEN
+        v_current_hash := md5(
+            COALESCE((SELECT name FROM cards WHERE id = p_card_id), '') || 
+            COALESCE((SELECT description FROM cards WHERE id = p_card_id), '')
+        );
+        
+        UPDATE cards SET content_hash = v_current_hash WHERE id = p_card_id;
+    END IF;
+    
+    -- Update each translation's content_hash to match current card
+    IF v_translations IS NOT NULL AND v_translations != '{}'::JSONB THEN
+        FOR v_lang_code IN SELECT jsonb_object_keys(v_translations)
+        LOOP
+            v_translation_obj := v_translations->v_lang_code;
+            
+            -- Update the content_hash within this translation
+            v_updated_translations := v_updated_translations || 
+                jsonb_build_object(
+                    v_lang_code,
+                    v_translation_obj || jsonb_build_object('content_hash', v_current_hash)
+                );
+        END LOOP;
+        
+        -- Update card with recalculated hashes
+        UPDATE cards 
+        SET translations = v_updated_translations,
+            updated_at = NOW()
+        WHERE id = p_card_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- 10. Recalculate Content Item Translation Hashes (For Import)
+-- =====================================================================
+-- After importing translations, recalculates the content_hash inside
+-- each translation to match the newly imported content item's content_hash.
+-- This prevents translations from appearing "Outdated" after import.
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION recalculate_content_item_translation_hashes(
+    p_content_item_id UUID
+) RETURNS VOID 
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_id UUID;
+    v_current_hash TEXT;
+    v_translations JSONB;
+    v_lang_code TEXT;
+    v_updated_translations JSONB := '{}'::JSONB;
+    v_translation_obj JSONB;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Get card_id and verify ownership
+    SELECT card_id INTO v_card_id
+    FROM content_items
+    WHERE id = p_content_item_id;
+    
+    IF v_card_id IS NULL THEN
+        RAISE EXCEPTION 'Content item not found';
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM cards 
+        WHERE id = v_card_id AND user_id = v_user_id
+    ) THEN
+        RAISE EXCEPTION 'Unauthorized: Access denied';
+    END IF;
+    
+    -- Get current content item hash
+    SELECT content_hash, translations 
+    INTO v_current_hash, v_translations 
+    FROM content_items 
+    WHERE id = p_content_item_id;
+    
+    -- If no content hash yet, calculate it
+    IF v_current_hash IS NULL THEN
+        v_current_hash := md5(
+            COALESCE((SELECT name FROM content_items WHERE id = p_content_item_id), '') || 
+            COALESCE((SELECT content FROM content_items WHERE id = p_content_item_id), '')
+        );
+        
+        UPDATE content_items SET content_hash = v_current_hash WHERE id = p_content_item_id;
+    END IF;
+    
+    -- Update each translation's content_hash to match current content
+    IF v_translations IS NOT NULL AND v_translations != '{}'::JSONB THEN
+        FOR v_lang_code IN SELECT jsonb_object_keys(v_translations)
+        LOOP
+            v_translation_obj := v_translations->v_lang_code;
+            
+            -- Update the content_hash within this translation
+            v_updated_translations := v_updated_translations || 
+                jsonb_build_object(
+                    v_lang_code,
+                    v_translation_obj || jsonb_build_object('content_hash', v_current_hash)
+                );
+        END LOOP;
+        
+        -- Update content item with recalculated hashes
+        UPDATE content_items 
+        SET translations = v_updated_translations,
+            updated_at = NOW()
+        WHERE id = p_content_item_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- 11. Recalculate All Translation Hashes (Batch Operation)
+-- =====================================================================
+-- Recalculates translation hashes for a card and all its content items
+-- Used after bulk import to ensure all translations show correct status
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION recalculate_all_translation_hashes(
+    p_card_id UUID
+) RETURNS VOID 
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_content_item_id UUID;
+BEGIN
+    -- Recalculate card translation hashes
+    PERFORM recalculate_card_translation_hashes(p_card_id);
+    
+    -- Recalculate all content item translation hashes
+    FOR v_content_item_id IN 
+        SELECT id FROM content_items WHERE card_id = p_card_id
+    LOOP
+        PERFORM recalculate_content_item_translation_hashes(v_content_item_id);
+    END LOOP;
+    
+    PERFORM log_operation(format('Recalculated all translation hashes for card: %s', p_card_id));
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
 -- Grant permissions
 -- =====================================================================
 
@@ -414,4 +687,9 @@ GRANT EXECUTE ON FUNCTION store_card_translations(UUID, UUID, TEXT[], JSONB, JSO
 GRANT EXECUTE ON FUNCTION delete_card_translation(UUID, VARCHAR) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_translation_history(UUID, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_outdated_translations(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card_translations_bulk(UUID, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_content_item_translations_bulk(UUID, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION recalculate_card_translation_hashes(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION recalculate_content_item_translation_hashes(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION recalculate_all_translation_hashes(UUID) TO authenticated;
 

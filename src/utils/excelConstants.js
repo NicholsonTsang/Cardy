@@ -20,8 +20,8 @@ export const EXCEL_CONFIG = {
     DATA_START_ROW: 5
   },
   COLUMNS: {
-    CARD: ['Name', 'Description', 'AI Instruction', 'AI Knowledge Base', 'Original Language', 'AI Enabled', 'QR Position', 'Card Image', 'Crop Data', 'Translations'],
-    CONTENT: ['Name', 'Content', 'AI Knowledge Base', 'Sort Order', 'Layer', 'Parent Reference', 'Image', 'Crop Data', 'Translations']
+    CARD: ['Name', 'Description', 'AI Instruction', 'AI Knowledge Base', 'Original Language', 'AI Enabled', 'QR Position', 'Card Image', 'Crop Data', 'Translations', 'Content Hash'],
+    CONTENT: ['Name', 'Content', 'AI Knowledge Base', 'Sort Order', 'Layer', 'Parent Reference', 'Image', 'Crop Data', 'Translations', 'Content Hash']
   },
   COLORS: {
     // CardStudio blue theme

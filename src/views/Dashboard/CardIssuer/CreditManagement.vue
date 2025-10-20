@@ -343,12 +343,9 @@
       <div class="space-y-6 py-4">
         <!-- Popular Amounts -->
         <div>
-          <div class="flex items-center justify-between mb-4">
-            <label class="text-sm font-semibold text-slate-700">
-              {{ $t('credits.selectAmount') }}
-            </label>
-            <Chip label="Popular" icon="pi pi-star-fill" class="bg-yellow-100 text-yellow-700" />
-          </div>
+          <label class="block text-sm font-semibold text-slate-700 mb-4">
+            {{ $t('credits.selectAmount') }}
+          </label>
           <div class="grid grid-cols-3 gap-3">
             <div
               v-for="amount in creditAmounts"
@@ -413,12 +410,12 @@
             <Divider />
             <div class="flex items-center justify-between">
               <span class="text-lg font-semibold text-slate-900">{{ $t('credits.totalToPay') }}</span>
-              <span class="text-3xl font-bold text-green-600">${{ selectedAmount }}.00</span>
+              <span class="text-3xl font-bold text-blue-600">${{ selectedAmount }}.00</span>
             </div>
-            <div class="mt-4 p-3 bg-blue-50 rounded-lg flex items-start gap-2">
-              <i class="pi pi-info-circle text-blue-600 mt-1"></i>
-              <p class="text-sm text-blue-800">
-                Secure payment via Stripe. You'll be redirected to complete your purchase.
+            <div class="mt-4 p-3 bg-blue-50 rounded-lg flex items-start gap-3">
+              <i class="pi pi-shield text-blue-600 mt-0.5 flex-shrink-0"></i>
+              <p class="text-sm text-blue-800 leading-relaxed">
+                <strong>Secure Payment:</strong> All transactions are processed through Stripe, a trusted third-party payment gateway used by millions worldwide. Your payment information is encrypted and never stored on our servers.
               </p>
             </div>
           </div>
@@ -643,7 +640,7 @@ async function proceedToPayment() {
 }
 
 .summary-card {
-  @apply p-6 rounded-lg border-2 border-green-200 bg-gradient-to-br from-green-50 to-blue-50;
+  @apply p-6 rounded-lg border-2 border-blue-200 bg-gradient-to-br from-blue-50 to-slate-50;
   animation: slideIn 0.3s ease-out;
 }
 

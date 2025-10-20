@@ -189,7 +189,7 @@ Cardy/
 │   │   ├── Card/           # Card management: CardDetailPanel.vue, CardListPanel.vue, ImportExport.vue
 │   │   ├── CardComponents/ # Core card UI: Card.vue, CardAccessQR.vue, CardCreateEditForm.vue
 │   │   ├── CardContent/    # Content editing: CardContent.vue, CardContentCreateEditForm.vue
-│   │   ├── Layout/         # Layouts: AppHeader.vue, PageWrapper.vue
+│   │   ├── Layout/         # Layouts: UnifiedHeader.vue (shared header for landing/dashboard), PageWrapper.vue
 │   │   ├── CreditConfirmationDialog.vue  # Reusable credit confirmation (see README)
 │   │   ├── DashboardLanguageSelector.vue
 │   │   ├── ImageCropper.vue
@@ -260,7 +260,7 @@ Cardy/
 ## Components Explanation
 
 ### Dashboard Components (Web)
-- **AppHeader.vue**: Navigation bar with user menu, role-based items (admin vs cardIssuer), language selector.
+- **UnifiedHeader.vue**: Shared navigation bar for landing page and dashboard. In landing mode, shows navigation links + Sign In/Sign Up. In dashboard mode, shows user menu with role-based items (admin vs cardIssuer), credit balance, and language selector. Provides consistent branding across the platform.
 - **MyCards.vue**: Card issuer dashboard listing cards, create/edit/delete actions. Manages URL parameters (cardId, tab, batchId) for deep linking.
 - **AdminDashboard.vue**: Admin overview with metrics, links to management pages.
 - **BatchManagement.vue**: Admin batch issuance, payment tracking.
@@ -269,7 +269,7 @@ Cardy/
 - **CardView.vue**: Card detail viewer with **translation preview** functionality - displays card name/description in selected language with language dropdown selector.
 - **CardContentView.vue**: Content item detail viewer with **translation preview** functionality - displays item name/content in selected language with language dropdown selector.
 - **CardIssuanceCheckout.vue**: Batch creation with credit confirmation, success dialog, and navigation to Access tab with batchId.
-- **CardAccessQR.vue**: QR code generation and management, supports URL-based batch filtering via batchId parameter.
+- **CardAccessQR.vue**: QR code generation and management with **bulk download features**: Download all QR codes as ZIP file (with README), download CSV with card URLs. Supports URL-based batch filtering via batchId parameter.
 - **CreditConfirmationDialog.vue**: Reusable dialog for credit usage confirmation with balance tracking and warnings (used by batch issuance and translation).
 - **CardTranslationSection.vue**: Multi-language support section in General tab with **status indicators** (Original, Translated, Outdated counts), visual badges for language status, and "Manage Translations" button. Full-width layout for optimal information display.
 - **TranslationDialog.vue**: Multi-step translation dialog with **smart status indicators** (up-to-date, outdated, not translated) using icons and tooltips, **credit confirmation integration** before translation, Step 1: Language selection, Step 2: Progress tracking, Step 3: Success confirmation.
@@ -305,8 +305,9 @@ Cardy/
 3. **Card Creation**: Upload image (crop to 2:3), set name/description, **select original language** (dropdown with language options, **actively maintained: en, zh-Hant**), enable AI with instructions/knowledge base.
 4. **Content Management**: Hierarchical items (exhibits > artifacts), markdown content, images, per-item AI knowledge.
 5. **Export/Import**: 
-   - **Export**: Download cards as Excel files with embedded images and all content items. Preserves hierarchy, AI settings, and crop parameters.
-   - **Import**: Upload Excel files to create/update cards. Supports bulk operations, validation preview, and automatic image processing.
+   - **Export**: Download cards as Excel files with embedded images and all content items. Preserves hierarchy, AI settings, crop parameters, translations, and content hashes in hidden columns.
+   - **Import**: Upload Excel files to create/update cards. **1-step process** - translations and hashes preserved automatically! Supports bulk operations, validation preview, and automatic image processing.
+   - **Complete Data Preservation**: Exports include `original_language`, `translations` JSONB, and `content_hash` in hidden Excel columns. Import restores everything in a single RPC call per entity.
    - **Template**: Download pre-formatted Excel template for easy card creation.
    - **Example**: Load pre-built museum card example to learn the format.
 6. **Translation Management** (Integrated in General Tab):
@@ -329,9 +330,14 @@ Cardy/
      - Success confirmation with credit summary
    - **Cost**: 1 credit per language per card (covers card name/description + all content item names/content)
    - **Process**: Uses GPT-4.1-nano for efficient, high-quality, context-aware translation preserving markdown
+   - **Parallel Execution**: All selected languages translate **simultaneously** (not sequentially) for 3-10x speed improvement
    - **Note**: AI knowledge base remains in original language for consistency
    - **Limits**: Supports cards up to ~60,000 tokens (~45,000 words). Larger cards will receive an error message
-   - **Performance**: Small cards (<10 items) translate in ~30s, large cards (>20 items) may take 1-2 minutes per language
+   - **Performance** (with parallel translation):
+     - **Single language**: ~30s (same as before)
+     - **3 languages**: ~30s (was ~90s sequential) - **3x faster**
+     - **5 languages**: ~30s (was ~150s sequential) - **5x faster**
+     - **10 languages**: ~30-40s (was ~300s sequential) - **7-10x faster**
    - **Automatic Freshness Detection**: Content hash tracking marks translations as outdated when original edited
    - **Translation Storage**: JSONB columns with timestamps and hashes for version tracking
 7. **Translation Preview**: 
@@ -341,13 +347,31 @@ Cardy/
    - **Use Case**: Review translations before publishing to visitors, verify translation quality
 8. **Batch Issuance**: 
    - **Credit-Based System** (Current): Navigate to card > Issue Batch dialog shows credit balance and required credits (2 credits/card)
+   - **Minimum Batch Size**: Configurable via `.env` variable `VITE_BATCH_MIN_QUANTITY` (default: 100 cards). Frontend validation with user feedback:
+     - Input field accepts any positive number (no auto-correction to minimum)
+     - Red border and inline error message when quantity is below minimum
+     - Proceed button is disabled until valid quantity is entered
+     - Users can see their input and understand the validation requirement
+     - Ensures economical production and sustainable business model
    - If sufficient credits: Instant batch creation, cards generated immediately, no Stripe redirect
    - If insufficient credits: Dialog shows warning with "Purchase Credits" button redirecting to `/cms/credits`
    - Uses `issue_card_batch_with_credits()` stored procedure
    - Credits consumed atomically with batch creation (transaction-safe)
-9. **Credit Management**: Monitor balance, view transaction history, purchase additional credits for batch issuance and translations.
-10. **Print Requests**: After batch creation, optionally request physical card printing with shipping details.
-11. **Analytics**: View engagement metrics per card/batch.
+9. **QR Code Download & Distribution**:
+   - **Access**: Navigate to card > QR & Access tab
+   - **Batch Selection**: Choose from paid batches with generated cards
+   - **Download All QR Codes**: Bulk download as ZIP file containing:
+     - All QR codes as high-quality PNG images (512x512px)
+     - Organized in `qr_codes/` folder
+     - File naming: `card_XXX_active.png` or `card_XXX_inactive.png`
+     - README.txt with batch info, card list, URLs, and usage instructions
+     - ZIP naming: `{cardName}_{batchName}_qr_codes_{date}.zip`
+   - **Download CSV**: Export card list with IDs, status, and URLs for spreadsheet management
+   - **Filter Support**: Download respects active/inactive filter settings
+   - **Individual Actions**: Copy URL, download single QR code, open card preview
+10. **Credit Management**: Monitor balance, view transaction history, purchase additional credits for batch issuance and translations.
+11. **Print Requests**: After batch creation, optionally request physical card printing with shipping details.
+12. **Analytics**: View engagement metrics per card/batch.
 
 ### Visitor (Mobile) Flow
 1. **QR Scan**: Loads `PublicCardView` with issued card ID (or preview mode).
@@ -393,16 +417,19 @@ Cardy/
   - No Stripe redirect during batch creation - credits must be purchased first
 - **Translation System** (NEW):
   - **Credit Flow**: Consumes 1 credit per language, instant translation via GPT-4
+  - **Parallel Translation**: All selected languages are translated **simultaneously** using `Promise.all()` for massive performance improvements (3-10x faster than sequential)
   - Uses `translate-card-content` Edge Function which:
     - Validates user authentication and card ownership
     - Checks credit balance via `check_credit_balance()`
-    - Calls GPT-4 with specialized prompts for museum/cultural content
+    - **Translates all languages in parallel** (not sequential) - 5 languages complete in ~30s instead of ~150s
+    - Calls GPT-4.1-nano with specialized prompts for museum/cultural content
     - Stores translations via `store_card_translations()` stored procedure
     - Consumes credits atomically with translation storage
     - Records audit trail in `translation_history` table
   - **Translation Storage**: JSONB columns in `cards` and `content_items` tables
   - **Freshness Tracking**: Automatic content hash updates trigger outdated status
   - **UI Component**: `TranslationManagement.vue` with `TranslationDialog.vue` for multi-step workflow
+  - **Performance**: See `PARALLEL_TRANSLATION_IMPROVEMENT.md` for detailed performance metrics and implementation
 - **Stripe Integration**: Credit purchase checkout, webhooks for confirmation, automatic refund handling.
   - **Webhook Security**: Stripe webhook signature verification in Deno requires `stripe.webhooks.constructEventAsync()` (async version) due to Deno's async crypto environment. The webhook function disables JWT verification (`verify_jwt = false` in `config.toml`) but enforces Stripe signature verification.
 - **Credit Management**: Real-time balance tracking, transaction history, consumption reports (includes both batch issuance and translations).
@@ -425,6 +452,8 @@ Cardy/
 - **Placeholder Languages**: Other language files (zh-Hans, ja, ko, es, fr, ru, ar, th) exist for future expansion but are NOT maintained. They contain partial/outdated translations and will fall back to English for missing keys.
 - **Language Infrastructure**: 10 language files exist via vue-i18n, but only en and zh-Hant should be updated when adding new features.
 - **Language Stores**: Mobile client uses `useMobileLanguageStore`, Dashboard uses `useDashboardLanguageStore` (separate stores for different contexts).
+- **Dashboard Languages**: Dashboard language selector shows only **2 languages** (en, zh-Hant) for card issuers/admins. Simplified Chinese has been removed from dashboard to focus on actively maintained languages.
+- **Mobile Client Languages**: Mobile language selector shows **all 10 languages** for visitors worldwide (en, zh-Hans, zh-Hant, ja, ko, th, es, fr, ru, ar).
 - **Chinese Voice Selection** (Mobile Client Only):
   - **Text vs Voice Separation**: Chinese text script (Simplified/Traditional) is independent of voice dialect (Mandarin/Cantonese)
   - **Language Codes**: `zh-Hans` (Simplified), `zh-Hant` (Traditional) instead of legacy `zh-CN`, `zh-HK`
@@ -441,37 +470,41 @@ Cardy/
 
 ## Deployment
 
-### Frontend
-1. Build: `npm run build`
-2. Deploy `dist/` to static host (Vercel, Netlify, etc.).
-3. Set env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
+**📋 For complete deployment instructions, see [DEPLOYMENT_COMPLETE_GUIDE.md](DEPLOYMENT_COMPLETE_GUIDE.md)**
 
-### Backend (Supabase)
-1. **Database**:
+The deployment guide includes:
+- Environment variables configuration (.env setup)
+- Supabase bucket setup (Storage configuration)
+- Authentication configuration (password reset redirect URLs)
+- Edge Functions deployment (secrets + deployment)
+- Database SQL deployment (schema, stored procedures, triggers, policies)
+- Post-deployment verification checklist
+- Monitoring and troubleshooting
+
+### Quick Reference
+
+**Frontend**:
+1. Build: `npm run build:production`
+2. Deploy `dist/` to static host (Vercel, Netlify, etc.)
+3. Set env vars: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `VITE_STRIPE_PUBLISHABLE_KEY`, etc.
+
+**Backend (Supabase)**:
+1. **Database** (execute in Supabase Dashboard SQL Editor):
    - Combine stored procedures: `./scripts/combine-storeproc.sh`
-   - Manually execute SQL files in Supabase Dashboard SQL Editor (in this exact order):
-     1. `sql/schema.sql` (includes all tables and credit system)
-     2. `sql/all_stored_procedures.sql` (generated from storeproc/ files)
-     3. `sql/policy.sql` (RLS policies)
-     4. `sql/triggers.sql` (database triggers)
+   - Execute in order: `schema.sql` → `all_stored_procedures.sql` → `policy.sql` → `triggers.sql`
 
-2. **Edge Functions Secrets** (must be set before deployment):
-   - Configure: `./scripts/setup-production-secrets.sh`
-   - Or manually: `npx supabase secrets set OPENAI_API_KEY=sk-...`
-   - Required: `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`, `OPENAI_REALTIME_MODEL`
+2. **Edge Functions**:
+   - Set secrets: `./scripts/setup-production-secrets.sh`
+   - Deploy: `./scripts/deploy-edge-functions.sh`
+   - Required secrets: `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`, `OPENAI_REALTIME_MODEL`, `STRIPE_WEBHOOK_SECRET`
 
-3. **Edge Functions Deployment**:
-   - Deploy all: `./scripts/deploy-edge-functions.sh`
-   - Or deploy individually: `npx supabase functions deploy <function-name>`
+3. **Storage**: Create public bucket: `userfiles` (app organizes files in folders: `{user_id}/card-images/` and `{user_id}/content-images/`)
 
-4. **Storage Policies**: Included in `sql/policy.sql` for images
+4. **Authentication**: 
+   - Configure redirect URLs in Supabase Dashboard > Authentication > URL Configuration
+   - Add `/reset-password` to whitelist for password reset functionality
 
-### Production Notes
-- **Deployment Order**: Database → Secrets → Edge Functions → Frontend
-- Always set Edge Function secrets before deploying functions
-- Use production env vars for frontend build
-- Monitor Edge Function logs for API costs
-- Test webhooks with Stripe CLI locally before production
+**Deployment Order**: Database → Secrets → Edge Functions → Storage → Frontend → Stripe Webhooks
 
 ## Notes and Best Practices
 
@@ -637,13 +670,14 @@ PERFORM log_operation(user_id, 'action', 'table', record_id, metadata);
 
 - **Role Handling**: Supabase Auth with custom roles stored in `raw_user_meta_data.role`. Router guards check 'admin' vs 'cardIssuer'. After role changes, users must refresh their session to sync metadata.
 - **Image Handling**: All cards use 2:3 aspect ratio. Images cropped via `vue-advanced-cropper`. Both original and cropped versions stored in Supabase Storage buckets. Crop parameters saved to enable re-cropping.
-- **Export/Import**: Cards can be exported to Excel with embedded images (not URLs). Export uses original images with crop parameters in hidden columns. Import applies crop parameters to regenerate cropped versions. Uses ExcelJS for robust Excel handling. Parent-child relationships preserved via cell references (e.g., A5 for parent at row 5). Validation includes word count limits: AI instruction (100 words), card knowledge base (2000 words), content knowledge base (500 words). **COMPLETE DATA PRESERVATION**: Exports now include `original_language` and `translations` JSONB data, ensuring 100% data integrity through export/import cycles. Translations automatically restored on import via bulk update stored procedures.
+- **Export/Import**: Cards can be exported to Excel with embedded images (not URLs). Export uses original images with crop parameters in hidden columns. Import applies crop parameters to regenerate cropped versions. Uses ExcelJS for robust Excel handling. Parent-child relationships preserved via cell references (e.g., A5 for parent at row 5). Validation includes word count limits: AI instruction (100 words), card knowledge base (2000 words), content knowledge base (500 words). **COMPLETE DATA PRESERVATION**: Exports include `original_language`, `translations` JSONB, and `content_hash` in hidden Excel columns, ensuring 100% data integrity. **1-STEP IMPORT**: Translations and content hashes preserved automatically during import via enhanced stored procedures (`create_card`, `create_content_item`) that accept optional `p_content_hash` and `p_translations` parameters. Hash triggers skip calculation when hash provided (import), ensuring translations immediately show "Up to Date" status without recalculation.
 - **AI Costs**: Use `gpt-4o-mini` for chat mode, `gpt-realtime-mini-2025-10-06` for voice mode (realtime), `gpt-4.1-nano-2025-04-14` for translations. Implement safeguards: session limits, inactivity timeouts, daily caps.
 - **Translation Management**: 
   - **Storage**: Use JSONB columns for storing translations (flexible, no schema changes for new languages)
   - **Original Language**: Users select original language during card creation (`original_language` field, defaults to 'en'). This field is used by AI translation system and displayed in UI.
   - **Content Hash Tracking**: Automatically detects when originals become outdated
-    - **Critical**: Content hash MUST be calculated on INSERT via triggers. The `update_card_content_hash()` and `update_content_item_content_hash()` trigger functions handle both INSERT and UPDATE operations to ensure hash is never NULL. See `TRANSLATION_FRESHNESS_BUG_FIX.md` for details.
+    - **Smart Triggers**: The `update_card_content_hash()` and `update_content_item_content_hash()` trigger functions calculate hash on INSERT only if NULL, allowing import to preserve original hashes. On UPDATE, recalculates only if content changed AND hash wasn't manually updated.
+    - **Import Preservation**: During import, hash is provided via `p_content_hash` parameter, trigger skips calculation, ensuring perfect translation freshness after import.
   - **Translation Process**:
     - All translation operations are atomic with credit consumption (rollback on failure)
     - **Credit Confirmation**: Uses `CreditConfirmationDialog` to confirm credit usage before translation (1 credit per language)
@@ -719,6 +753,9 @@ PERFORM log_operation(user_id, 'action', 'table', record_id, metadata);
   - **Translation Shows "Outdated" Immediately**: If translations show as outdated right after creation, this is due to NULL `content_hash` values. The fix is to ensure triggers calculate hash on INSERT, not just UPDATE. See `TRANSLATION_FRESHNESS_BUG_FIX.md` and deploy `DEPLOY_TRANSLATION_HASH_FIX.sql`. Cards translated before the fix will need re-translation.
   - **Translation Button Pluralization**: If button text displays literally (with pipe character), check pluralization format. Use `Singular | Plural` format without parentheses. Example: `Translate {count} Language | Translate {count} Languages` (correct) vs `Translate ({count} language | {count} languages)` (incorrect - breaks parser in Composition API mode).
   - **Translation Preview Not Showing**: If language dropdown doesn't appear in CardView or ContentView, ensure stored procedures return translation fields. Update `get_user_cards`, `get_card_content_items`, and `get_content_item_by_id` to include `translations`, `original_language`, `content_hash`, and `last_content_update` in SELECT and RETURNS TABLE.
+  - **Export/Import Translation Preservation**: When exporting/importing cards, translations ARE preserved in hidden Excel columns. However, after import, translations may appear "Outdated" due to content hash mismatch. **Solution deployed**: Import process now automatically calls `recalculate_all_translation_hashes()` immediately after creating the card and all content items. This synchronizes the embedded translation hashes (from the old exported card) with the newly created card's content hashes, ensuring translations show "Up to Date" after import. See `CardBulkImport.vue` line ~1134 and `sql/storeproc/client-side/12_translation_management.sql` for implementation.
+  - **Translations Not Showing "Outdated" After Content Update**: If you update card content (name/description) or content item content but translations don't show as "Outdated", the database triggers are missing or not deployed. These triggers (`trigger_update_card_content_hash` and `trigger_update_content_item_content_hash`) automatically update the `content_hash` field when content changes, which is essential for translation freshness detection. **Solution**: Deploy `sql/triggers.sql` to your database (triggers are already correctly defined in source files). Verify triggers exist with `SELECT tgname FROM pg_trigger WHERE tgname LIKE '%content_hash%';` Frontend refresh mechanism is already in place in `CardView.vue` line 371-372. See `DEPLOY_TRANSLATION_FIXES.md` for deployment guide.
+  - **Outdated Languages Not Retranslating**: If you select outdated languages for re-translation but the edge function doesn't process them, this was a bug in the edge function logic. **Fixed**: Edge function now correctly filters languages, charges only for languages actually translated, and returns early if all selected languages are up-to-date. Deploy fix: `npx supabase functions deploy translate-card-content`. See `TRANSLATION_OUTDATED_RETRANSLATION_FIX.md` for details.
   - **Legacy Batch Payment vs Credit System**: 
     - **Current System** (Recommended): Credit-based batch issuance. Users purchase credits via `/cms/credits` → Use credits to create batches instantly via `CardIssuanceCheckout.vue` → No Stripe checkout during batch creation
     - **Legacy System** (Deprecated): Direct batch payment via `create-checkout-session` Edge Function. Still functional for backward compatibility but not recommended for new implementations
@@ -734,6 +771,7 @@ PERFORM log_operation(user_id, 'action', 'table', record_id, metadata);
   - **Batch Issuance Credit Check Error**: If batch creation fails with "argument of NOT must be type boolean, not type numeric", check that `check_credit_balance()` is used correctly. This function returns DECIMAL (the actual balance), not BOOLEAN. Correct usage: `v_balance := check_credit_balance(required); IF v_balance < required THEN ...` not `IF NOT check_credit_balance(required) THEN ...`
   - **AI Chat Input Bar Disappearing**: If the input bar disappears when chat messages overflow, ensure modal slot content has proper flex constraints. Wrap slot in a container with `flex: 1`, `overflow: hidden`, and `min-height: 0` (critical for nested flex layouts to allow shrinking). See `AI_CHAT_INPUT_BAR_FIX.md` for detailed explanation.
   - **Realtime API CORS Error (ERR_CONNECTION_CLOSED)**: If Realtime voice calls fail with CORS error "No 'Access-Control-Allow-Origin' header", this is because the `model` parameter is missing from the API endpoint URL. OpenAI's Realtime API requires `?model=xxx` when using ephemeral tokens. Fix: Add `VITE_OPENAI_REALTIME_MODEL=gpt-realtime-mini-2025-10-06` to `.env.local` and ensure it matches the Supabase Edge Function's `OPENAI_REALTIME_MODEL` secret. Both frontend and backend must use the same model. See `REALTIME_CORS_FIX.md` for full details.
+  - **Password Reset Not Working**: If password reset emails don't redirect users to the reset page, the issue is missing Supabase redirect URL configuration. Fix: (1) Add `PASSWORD_RECOVERY` event handler in auth store to redirect to `/reset-password`, (2) Configure redirect URLs in Supabase Dashboard → Authentication → URL Configuration → Add `http://localhost:5173/reset-password` (dev) and `https://your-domain.com/reset-password` (prod) to whitelist. The auth store sends reset emails with `redirectTo: ${window.location.origin}/reset-password` but Supabase won't redirect unless the URL is whitelisted. See `PASSWORD_RESET_FIX.md` for full details.
 - **Testing**: Use local Supabase for dev, preview mode for unactivated cards.
 - **Security**: RLS policies enforce public read-only for cards, auth for dashboard.
 - **Performance**: Lazy-load routes, virtual scrolling for lists, WebRTC for low-latency AI.
@@ -764,7 +802,7 @@ I scanned the repository's markdown documents and consolidated the most importan
 
 ## Landing Page Design
 
-The landing page (`src/views/Public/LandingPage.vue`) has been completely redesigned with comprehensive marketing content while maintaining perfect design consistency with the existing component system:
+The landing page (`src/views/Public/LandingPage.vue`) has been completely redesigned with comprehensive marketing content while maintaining perfect design consistency with the existing component system. **The landing page now uses the UnifiedHeader component** (`src/components/Layout/UnifiedHeader.vue`), which is shared with the dashboard to provide consistent branding and user experience across the platform.
 
 **Design Principles:**
 - **Color Consistency**: Uses the same blue-purple-slate gradient system as dashboard components
@@ -804,6 +842,7 @@ The landing page (`src/views/Public/LandingPage.vue`) has been completely redesi
 - `VITE_CONTACT_EMAIL`: Contact email address
 - `VITE_CONTACT_WHATSAPP_URL`: WhatsApp chat link
 - `VITE_CONTACT_PHONE`: Contact phone number (displayed in WhatsApp section)
+- `VITE_BATCH_MIN_QUANTITY`: Minimum number of cards per batch (default: 100)
 
 ## Archived files (moved to `docs_archive/`)
 

@@ -886,7 +886,7 @@ async function importDataToDatabase(importData) {
 
       importStatus.value = 'Creating card...';
       
-      // Parse translations JSON if provided
+      // Parse translations JSON if provided (for 1-step import)
       let translationsData = null;
       if (importData.cardData.translations_json) {
         try {
@@ -896,6 +896,7 @@ async function importDataToDatabase(importData) {
         }
       }
       
+      // 1-STEP IMPORT: Pass translations and hash directly to create_card
       const { data, error } = await supabase.rpc('create_card', {
         p_name: importData.cardData.name,
         p_description: importData.cardData.description,
@@ -906,7 +907,9 @@ async function importDataToDatabase(importData) {
         p_image_url: cardImageUrl,
         p_original_image_url: cardOriginalImageUrl,
         p_crop_parameters: cardCropParams,
-        p_original_language: importData.cardData.original_language || 'en'
+        p_original_language: importData.cardData.original_language || 'en',
+        p_content_hash: importData.cardData.content_hash || null,  // Preserve original hash
+        p_translations: translationsData  // Import with translations (hashes already match!)
       })
       
       if (error) throw error
@@ -914,18 +917,7 @@ async function importDataToDatabase(importData) {
       const cardId = data; // data is directly the UUID
       results.cardsCreated = 1;
       
-      // Update card with translations if provided
-      if (translationsData && Object.keys(translationsData).length > 0) {
-        importStatus.value = 'Restoring translations...';
-        const { error: translationsError } = await supabase.rpc('update_card_translations_bulk', {
-          p_card_id: cardId,
-          p_translations: translationsData
-        });
-        if (translationsError) {
-          console.warn('Failed to restore card translations:', translationsError);
-          results.warnings++;
-        }
-      }
+      // No need for hash recalculation! Translations imported with matching hashes ✅
       
       // Import content items
       if (importData.contentItems.length > 0) {
@@ -992,7 +984,18 @@ async function importDataToDatabase(importData) {
               }
             }
 
+            // Parse translations for 1-step import
+            let itemTranslations = null;
+            if (item.translations_json) {
+              try {
+                itemTranslations = JSON.parse(item.translations_json);
+              } catch (e) {
+                console.warn(`Failed to parse translations for "${item.name}":`, e);
+              }
+            }
+            
             importStatus.value = `Creating content item "${item.name}"...`;
+            // 1-STEP IMPORT: Pass translations and hash directly
             const { data: contentData, error: contentError } = await supabase.rpc('create_content_item', {
               p_card_id: cardId,
               p_parent_id: null,
@@ -1001,7 +1004,9 @@ async function importDataToDatabase(importData) {
               p_ai_knowledge_base: item.ai_knowledge_base || '',
               p_image_url: contentImageUrl,
               p_original_image_url: contentOriginalImageUrl,
-              p_crop_parameters: contentCropParams
+              p_crop_parameters: contentCropParams,
+              p_content_hash: item.content_hash || null,  // Preserve original hash
+              p_translations: itemTranslations  // Import with translations (hashes already match!)
             });
             
             if (contentError) throw contentError;
@@ -1010,24 +1015,7 @@ async function importDataToDatabase(importData) {
             parentMap.set(item.name, newItemId);
             results.contentCreated++;
             
-            // Update content item with translations if provided
-            if (item.translations_json) {
-              try {
-                const itemTranslations = JSON.parse(item.translations_json);
-                if (Object.keys(itemTranslations).length > 0) {
-                  const { error: itemTransError } = await supabase.rpc('update_content_item_translations_bulk', {
-                    p_content_item_id: newItemId,
-                    p_translations: itemTranslations
-                  });
-                  if (itemTransError) {
-                    console.warn(`Failed to restore translations for "${item.name}":`, itemTransError);
-                    results.warnings++;
-                  }
-                }
-              } catch (e) {
-                console.warn(`Failed to parse translations for "${item.name}":`, e);
-              }
-            }
+            // No need for hash recalculation! Translations imported with matching hashes ✅
             
           } catch (err) {
             results.errors.push(`Content item "${item.name}": ${err.message}`);
@@ -1100,7 +1088,18 @@ async function importDataToDatabase(importData) {
               }
             }
 
+            // Parse translations for 1-step import
+            let subItemTranslations = null;
+            if (item.translations_json) {
+              try {
+                subItemTranslations = JSON.parse(item.translations_json);
+              } catch (e) {
+                console.warn(`Failed to parse translations for "${item.name}":`, e);
+              }
+            }
+            
             importStatus.value = `Creating sub-item "${item.name}"...`;
+            // 1-STEP IMPORT: Pass translations and hash directly
             const { data: subItemData, error: contentError } = await supabase.rpc('create_content_item', {
               p_card_id: cardId,
               p_parent_id: parentId,
@@ -1109,7 +1108,9 @@ async function importDataToDatabase(importData) {
               p_ai_knowledge_base: item.ai_knowledge_base || '',
               p_image_url: contentImageUrl,
               p_original_image_url: contentOriginalImageUrl,
-              p_crop_parameters: contentCropParams
+              p_crop_parameters: contentCropParams,
+              p_content_hash: item.content_hash || null,  // Preserve original hash
+              p_translations: subItemTranslations  // Import with translations (hashes already match!)
             });
             
             if (contentError) throw contentError;
@@ -1117,29 +1118,33 @@ async function importDataToDatabase(importData) {
             const subItemId = subItemData; // data is directly the UUID
             results.contentCreated++;
             
-            // Update content item with translations if provided
-            if (item.translations_json) {
-              try {
-                const itemTranslations = JSON.parse(item.translations_json);
-                if (Object.keys(itemTranslations).length > 0) {
-                  const { error: itemTransError } = await supabase.rpc('update_content_item_translations_bulk', {
-                    p_content_item_id: subItemId,
-                    p_translations: itemTranslations
-                  });
-                  if (itemTransError) {
-                    console.warn(`Failed to restore translations for "${item.name}":`, itemTransError);
-                    results.warnings++;
-                  }
-                }
-              } catch (e) {
-                console.warn(`Failed to parse translations for "${item.name}":`, e);
-              }
-            }
+            // No need for hash recalculation! Translations imported with matching hashes ✅
 
           } catch (err) {
             results.errors.push(`Content item "${item.name}": ${err.message}`);
           }
         }
+      }
+      
+      // CRITICAL: Recalculate all translation hashes to sync with newly created card
+      // When importing, translations contain hashes from the OLD card
+      // We need to update them to match the NEW card's content hashes
+      try {
+        importStatus.value = 'Synchronizing translation hashes...';
+        const { error: hashError } = await supabase.rpc('recalculate_all_translation_hashes', {
+          p_card_id: cardId
+        });
+        
+        if (hashError) {
+          console.warn('Failed to recalculate translation hashes:', hashError);
+          results.warnings++;
+          results.errors.push(`Warning: Translation freshness may not be accurate. Please re-translate if needed.`);
+        } else {
+          console.log('✓ Translation hashes synchronized successfully');
+        }
+      } catch (hashRecalcError) {
+        console.warn('Failed to recalculate translation hashes:', hashRecalcError);
+        results.warnings++;
       }
     }
     

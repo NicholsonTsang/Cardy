@@ -54,12 +54,12 @@
           class="flex items-center p-3 border rounded-lg transition-all"
           :class="{
             // Selected state
-            'border-blue-400 bg-blue-50': selectedLanguages.includes(lang.language),
+            'border-blue-400 bg-blue-50': selectedLanguages.includes(lang.language as LanguageCode),
             
             // Unselected states
-            'border-amber-300 bg-amber-50/30 hover:bg-amber-50 cursor-pointer': lang.status === 'outdated' && !selectedLanguages.includes(lang.language),
-            'border-slate-200 bg-white hover:bg-slate-50 cursor-pointer': lang.status === 'not_translated' && !selectedLanguages.includes(lang.language),
-            'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed': lang.status === 'up_to_date' && !selectedLanguages.includes(lang.language),
+            'border-amber-300 bg-amber-50/30 hover:bg-amber-50 cursor-pointer': lang.status === 'outdated' && !selectedLanguages.includes(lang.language as LanguageCode),
+            'border-slate-200 bg-white hover:bg-slate-50 cursor-pointer': lang.status === 'not_translated' && !selectedLanguages.includes(lang.language as LanguageCode),
+            'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed': lang.status === 'up_to_date' && !selectedLanguages.includes(lang.language as LanguageCode),
           }"
           @click="lang.status !== 'up_to_date' && toggleLanguage(lang.language)"
         >
@@ -174,44 +174,50 @@
           {{ $t('translation.dialog.translatingMessage', { count: selectedLanguages.length }) }}
         </p>
 
-        <!-- Progress List -->
+        <!-- Progress List - Parallel Execution -->
         <div class="text-left max-w-md mx-auto space-y-2">
           <div
             v-for="(lang, index) in selectedLanguages"
             :key="lang"
-            class="flex items-center gap-3 p-2 rounded"
+            class="flex items-center gap-3 p-2 rounded transition-all duration-300"
             :class="{
-              'bg-green-50': index < translationProgress,
-              'bg-blue-50': index === translationProgress,
-              'bg-gray-50': index > translationProgress,
+              'bg-green-50': translationProgress >= selectedLanguages.length,
+              'bg-blue-50 animate-pulse': translationProgress < selectedLanguages.length,
             }"
           >
             <i
-              class="pi text-lg"
+              class="pi text-lg transition-all duration-300"
               :class="{
-                'pi-check-circle text-green-600': index < translationProgress,
-                'pi-spin pi-spinner text-blue-600': index === translationProgress,
-                'pi-circle text-gray-400': index > translationProgress,
+                'pi-check-circle text-green-600': translationProgress >= selectedLanguages.length,
+                'pi-spin pi-spinner text-blue-600': translationProgress < selectedLanguages.length,
               }"
             ></i>
             <span class="flex-1">{{ getLanguageName(lang) }}</span>
             <span
-              class="text-sm"
+              class="text-sm transition-all duration-300"
               :class="{
-                'text-green-600 font-medium': index < translationProgress,
-                'text-blue-600': index === translationProgress,
-                'text-gray-400': index > translationProgress,
+                'text-green-600 font-medium': translationProgress >= selectedLanguages.length,
+                'text-blue-600 font-medium': translationProgress < selectedLanguages.length,
               }"
             >
               {{
-                index < translationProgress
+                translationProgress >= selectedLanguages.length
                   ? $t('translation.dialog.complete')
-                  : index === translationProgress
-                  ? $t('translation.dialog.translating')
-                  : $t('translation.dialog.pending')
+                  : $t('translation.dialog.translating')
               }}
             </span>
           </div>
+        </div>
+
+        <!-- Parallel Execution Indicator -->
+        <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
+          <div class="flex items-center gap-2 text-blue-800">
+            <i class="pi pi-bolt text-blue-600"></i>
+            <span class="font-medium">{{ $t('translation.dialog.parallelExecution') }}</span>
+          </div>
+          <p class="text-blue-700 mt-1 text-xs">
+            {{ $t('translation.dialog.parallelExecutionMessage', { count: selectedLanguages.length }) }}
+          </p>
         </div>
 
         <!-- Overall Progress -->
@@ -397,22 +403,31 @@ const overallProgress = computed(() => {
 });
 
 const estimatedTimeRemaining = computed(() => {
-  const remaining = selectedLanguages.value.length - translationProgress.value;
-  const secondsPerLanguage = 30;
-  const totalSeconds = remaining * secondsPerLanguage;
+  // With parallel execution, all languages translate simultaneously
+  // Time is roughly the same regardless of language count (~30-40 seconds)
+  if (translationProgress.value >= selectedLanguages.value.length) {
+    return t('translation.dialog.seconds', { seconds: 0 });
+  }
   
-  if (totalSeconds < 60) return t('translation.dialog.seconds', { seconds: totalSeconds });
-  const minutes = Math.ceil(totalSeconds / 60);
+  // Estimate based on parallel execution
+  const baseTime = 30; // Base translation time
+  const overhead = Math.min(selectedLanguages.value.length * 0.5, 10); // Small overhead for many languages
+  const estimatedTotal = Math.ceil(baseTime + overhead);
+  
+  if (estimatedTotal < 60) {
+    return t('translation.dialog.seconds', { seconds: estimatedTotal });
+  }
+  const minutes = Math.ceil(estimatedTotal / 60);
   return t('translation.dialog.minutes', { minutes });
 });
 
 // Methods
-const toggleLanguage = (lang: LanguageCode) => {
-  const index = selectedLanguages.value.indexOf(lang);
+const toggleLanguage = (lang: string) => {
+  const index = selectedLanguages.value.indexOf(lang as LanguageCode);
   if (index > -1) {
     selectedLanguages.value.splice(index, 1);
   } else {
-    selectedLanguages.value.push(lang);
+    selectedLanguages.value.push(lang as LanguageCode);
   }
 };
 

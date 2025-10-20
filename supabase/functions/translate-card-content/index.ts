@@ -160,8 +160,99 @@ serve(async (req) => {
       console.warn(`Large translation detected: ${estimatedOutputTokens} estimated output tokens`);
     }
 
-    // Calculate credit cost (1 credit per language)
-    const creditCost = targetLanguages.length;
+    // Filter languages that need translation (skip up-to-date unless force retranslate)
+    console.log('=== TRANSLATION FILTER DEBUG ===');
+    console.log('Target languages requested:', targetLanguages);
+    console.log('Force retranslate:', forceRetranslate);
+    console.log('Card current hash:', cardData.content_hash);
+    console.log('Card translations:', cardData.translations);
+    console.log('Content items count:', contentItems?.length || 0);
+    
+    const languagesToTranslate = targetLanguages.filter(targetLang => {
+      console.log(`\n--- Checking language: ${targetLang} ---`);
+      
+      if (forceRetranslate) {
+        console.log(`${targetLang}: INCLUDE (forceRetranslate=true)`);
+        return true;
+      }
+      
+      // Check if card translation exists
+      if (!cardData.translations || !cardData.translations[targetLang]) {
+        console.log(`${targetLang}: INCLUDE (no existing card translation)`);
+        return true;
+      }
+      
+      // Check card-level hash
+      const cardExistingHash = cardData.translations[targetLang].content_hash;
+      console.log(`${targetLang}: Card has existing translation`);
+      console.log(`${targetLang}: Card stored hash = ${cardExistingHash}`);
+      console.log(`${targetLang}: Card current hash = ${cardData.content_hash}`);
+      
+      const cardHashMatches = cardExistingHash === cardData.content_hash;
+      console.log(`${targetLang}: Card hashes match? ${cardHashMatches}`);
+      
+      if (!cardHashMatches) {
+        console.log(`${targetLang}: INCLUDE (card outdated - hash mismatch)`);
+        return true;
+      }
+      
+      // Check content items - ALL items must be up-to-date
+      if (contentItems && contentItems.length > 0) {
+        const outdatedItems = contentItems.filter(item => {
+          // Check if this item has translation for this language
+          if (!item.translations || !item.translations[targetLang]) {
+            return true; // Missing translation = outdated
+          }
+          
+          const itemStoredHash = item.translations[targetLang].content_hash;
+          const itemCurrentHash = item.content_hash;
+          const itemHashMatches = itemStoredHash === itemCurrentHash;
+          
+          if (!itemHashMatches) {
+            console.log(`${targetLang}: Content item ${item.id} outdated (${itemStoredHash} != ${itemCurrentHash})`);
+          }
+          
+          return !itemHashMatches; // Return true if outdated
+        });
+        
+        if (outdatedItems.length > 0) {
+          console.log(`${targetLang}: INCLUDE (${outdatedItems.length} content item(s) outdated or missing translation)`);
+          return true;
+        }
+      }
+      
+      // Both card and all content items are up-to-date
+      console.log(`${targetLang}: SKIP (fully up-to-date - card and all content items match)`);
+      return false;
+    });
+    
+    console.log('\n=== FILTER RESULT ===');
+    console.log('Languages to translate:', languagesToTranslate);
+    console.log('Count:', languagesToTranslate.length);
+    console.log('=== END DEBUG ===\n');
+
+    // If no languages need translation, return early
+    if (languagesToTranslate.length === 0) {
+      console.log('All selected languages are already up-to-date');
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'All selected languages are already up-to-date',
+          translated_languages: [],
+          credits_used: 0,
+          remaining_balance: 0,
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200,
+        }
+      );
+    }
+
+    console.log(`Translating ${languagesToTranslate.length} languages in parallel...`);
+
+    // Calculate credit cost (1 credit per language that needs translation)
+    const creditCost = languagesToTranslate.length;
 
     // Check if user has sufficient credits (via stored procedure)
     const { data: balanceCheck, error: balanceError } = await supabaseAdmin.rpc(
@@ -181,20 +272,11 @@ serve(async (req) => {
     const cardTranslations: Record<string, any> = {};
     const contentItemsTranslations: Record<string, any> = {};
 
-    // Translate for each target language
-    for (const targetLang of targetLanguages) {
-      console.log(`Translating to ${SUPPORTED_LANGUAGES[targetLang]}...`);
+    // Translate all languages in parallel using Promise.all
+    const translationPromises = languagesToTranslate.map(async (targetLang) => {
+      console.log(`Starting translation to ${SUPPORTED_LANGUAGES[targetLang]}...`);
 
-      // Check if translation already exists and is up-to-date (unless force retranslate)
-      if (!forceRetranslate && cardData.translations && cardData.translations[targetLang]) {
-        const existingHash = cardData.translations[targetLang].content_hash;
-        if (existingHash === cardData.content_hash) {
-          console.log(`Translation for ${targetLang} is up-to-date, skipping...`);
-          continue;
-        }
-      }
-
-      // Call GPT-5-nano for translation with retry mechanism
+      // Call GPT-4-nano for translation with retry mechanism
       const translationResponse = await retryWithBackoff(
         () => translateWithGPT4(
           {
@@ -212,6 +294,16 @@ serve(async (req) => {
         1000 // Start with 1s delay (then 2s, then 4s)
       );
 
+      console.log(`Completed translation to ${SUPPORTED_LANGUAGES[targetLang]}`);
+      
+      return { targetLang, translationResponse };
+    });
+
+    // Wait for all translations to complete
+    const translationResults = await Promise.all(translationPromises);
+
+    // Process all translation results
+    for (const { targetLang, translationResponse } of translationResults) {
       // Store card translation
       cardTranslations[targetLang] = {
         name: translationResponse.card.name,
@@ -239,15 +331,16 @@ serve(async (req) => {
     }
 
     // Store translations via stored procedure
+    // Only pass languages that were actually translated
     const { data: result, error: storeError } = await supabaseAdmin.rpc(
       'store_card_translations',
       {
         p_user_id: user.id,
         p_card_id: cardId,
-        p_target_languages: targetLanguages,
+        p_target_languages: languagesToTranslate, // Use filtered list, not all selected languages
         p_card_translations: cardTranslations,
         p_content_items_translations: contentItemsTranslations,
-        p_credit_cost: creditCost,
+        p_credit_cost: languagesToTranslate.length, // Charge only for languages actually translated
       }
     );
 
@@ -287,7 +380,7 @@ async function retryWithBackoff<T>(
   maxRetries: number = 3,
   baseDelay: number = 1000
 ): Promise<T> {
-  let lastError: Error;
+  let lastError: Error = new Error('Unknown error');
   
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
