@@ -25,6 +25,7 @@
                 <div class="lg:col-span-1">
                     <CardListPanel
                         :cards="cards"
+                        :loading="isLoading"
                         @cards-imported="handleBulkImport"
                         :filteredCards="filteredCards"
                         :selectedCardId="selectedCardId"

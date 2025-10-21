@@ -213,6 +213,7 @@
                                         :htmlPreview="true"
                                         :codeTheme="'atom'"
                                         :previewTheme="'default'"
+                                        :onHtmlChanged="handleMarkdownHtmlChanged"
                                         placeholder="Describe your card's purpose and content using Markdown..."
                                         :style="{ height: '200px' }"
                                     />
@@ -501,6 +502,12 @@ const markdownToolbars = ref([
     'htmlPreview',
     'catalog'
 ]);
+
+// Handle markdown HTML preview to add target="_blank" to links
+const handleMarkdownHtmlChanged = (html) => {
+    // Post-process the HTML to add target="_blank" and rel="noopener noreferrer" to links
+    return html.replace(/<a href=/g, '<a target="_blank" rel="noopener noreferrer" href=');
+};
 
 const qrCodePositions = computed(() => [
     { name: t('dashboard.top_left'), code: 'TL' },
@@ -979,4 +986,19 @@ defineExpose({
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
 }
 
+/* Markdown editor preview link styling - 2 line truncation */
+:deep(.md-editor-preview-wrapper) a {
+    color: #3b82f6 !important;
+    text-decoration: underline;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+}
+
+:deep(.md-editor-preview-wrapper) a:hover {
+    color: #1d4ed8 !important;
+}
 </style>

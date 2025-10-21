@@ -95,8 +95,16 @@
             />
         </div>
 
+        <!-- Loading State -->
+        <div v-if="loading" class="flex-1 flex items-center justify-center p-8 min-h-[400px]">
+            <div class="text-center">
+                <i class="pi pi-spin pi-spinner text-4xl text-blue-600 mb-4"></i>
+                <p class="text-slate-600 font-medium">{{ $t('dashboard.loading_cards') }}</p>
+            </div>
+        </div>
+
         <!-- Optimized Empty State -->
-        <div v-if="cards.length === 0 && !searchQuery" class="flex-1 flex flex-col justify-center p-4 text-center min-h-[400px]">
+        <div v-else-if="cards.length === 0 && !searchQuery" class="flex-1 flex flex-col justify-center p-4 text-center min-h-[400px]">
             <!-- Compact Header -->
             <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="pi pi-id-card text-2xl text-slate-400"></i>
@@ -126,7 +134,7 @@
         </div>
 
         <!-- Cards List -->
-        <div v-if="cards.length > 0" class="flex-1 overflow-y-auto">
+        <div v-else-if="cards.length > 0" class="flex-1 overflow-y-auto">
             <div class="p-2 space-y-2">
                 <CardListItem
                     v-for="card in paginatedCards" 
@@ -199,6 +207,10 @@ const props = defineProps({
     itemsPerPage: {
         type: Number,
         default: 10
+    },
+    loading: {
+        type: Boolean,
+        default: false
     }
 });
 

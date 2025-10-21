@@ -120,7 +120,7 @@ import Button from 'primevue/button';
 import Dropdown from 'primevue/dropdown';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
 import { getContentAspectRatio } from '@/utils/cardConfig';
-import { marked } from 'marked';
+import { renderMarkdown } from '@/utils/markdownRenderer';
 import { SUPPORTED_LANGUAGES } from '@/stores/translation';
 
 const { t } = useI18n();
@@ -205,12 +205,6 @@ const getLanguageFlag = (langCode) => {
     return flagMap[langCode] || '🌐';
 };
 
-// Markdown rendering helper
-const renderMarkdown = (text) => {
-    if (!text) return '';
-    return marked(text);
-};
-
 // Set up CSS custom property for content aspect ratio
 onMounted(() => {
     const aspectRatio = getContentAspectRatio();
@@ -224,5 +218,21 @@ onMounted(() => {
     aspect-ratio: var(--content-aspect-ratio, 4/3);
     width: 100%;
     background-color: white;
+}
+
+/* Markdown prose link styling - 2 line truncation */
+.prose :deep(a) {
+    color: #3b82f6 !important;
+    text-decoration: underline;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+}
+
+.prose :deep(a:hover) {
+    color: #1d4ed8 !important;
 }
 </style> 

@@ -90,7 +90,7 @@ import { onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { MobileAIAssistant } from './AIAssistant'
 import { getContentAspectRatio } from '@/utils/cardConfig'
-import { marked } from 'marked'
+import { renderMarkdown } from '@/utils/markdownRenderer'
 
 const { t } = useI18n()
 
@@ -132,13 +132,6 @@ const parentKnowledgeBase = computed(() => {
 const emit = defineEmits<{
   select: [item: ContentItem]
 }>()
-
-// Markdown rendering helper
-function renderMarkdown(text: string): string {
-  if (!text) return ''
-  // Use marked.parse() for synchronous string return
-  return marked.parse(text) as string
-}
 
 function handleSelect(item: ContentItem) {
   emit('select', item)
@@ -238,6 +231,12 @@ onMounted(() => {
 .content-description :deep(a) {
   color: #60a5fa;
   text-decoration: underline;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 .ai-section {

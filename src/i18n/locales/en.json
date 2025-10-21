@@ -183,6 +183,7 @@
     "clear_date_filters": "Clear Date Filters",
     "no_cards_yet": "No Cards Yet",
     "start_creating": "Start by creating your first card design",
+    "loading_cards": "Loading cards...",
     "no_results_found": "No Results Found",
     "no_cards_match_search": "No cards match your search criteria.",
     "try_example_import": "Try Example Import",

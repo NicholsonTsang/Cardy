@@ -697,7 +697,7 @@ PERFORM log_operation(user_id, 'action', 'table', record_id, metadata);
 - **Error Handling**: Use PrimeVue Toast (`useToast`) for user feedback. Log errors to browser console and operations log (via stored procedures).
 - **Component Size**: Keep <400 lines; extract to composables.
 - **i18n**: Pipe syntax for plurals, no ICU. **Always update both locales/en.json AND locales/zh-Hant.json when adding new keys**. Other language files are placeholders and not maintained.
-- **Markdown**: Render with `marked` library, sanitize for `v-html`.
+- **Markdown**: Render with `marked` library using `@/utils/markdownRenderer`. All links automatically open in new tabs with `target="_blank"` and `rel="noopener noreferrer"` for security. Use `renderMarkdown(text)` utility function instead of calling `marked.parse()` directly.
 - **Mobile Optimization**: Responsive Tailwind, touch-friendly, PWA-ready.
 - **Design Consistency**: AI Assistant input bar follows compact, modern design principles: 40px buttons (36px on mobile), 1.5px borders, 10px radius, subtle shadows and animations for professional polish. See `INPUT_BAR_DESIGN_IMPROVEMENT.md` for full design system.
 - **Reusable Dialogs**: For common confirmation patterns (credit usage, destructive actions), create reusable components with props for customization. Example: `CreditConfirmationDialog.vue` with `creditsToConsume`, `currentBalance`, `itemCount` props, and `confirm`/`cancel` events. See `src/components/README_CreditConfirmationDialog.md` for API reference.

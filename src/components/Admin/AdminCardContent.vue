@@ -100,7 +100,7 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Tag from 'primevue/tag'
-import { marked } from 'marked'
+import { renderMarkdown } from '@/utils/markdownRenderer'
 
 const { t } = useI18n()
 
@@ -121,13 +121,6 @@ interface Props {
 
 const props = defineProps<Props>()
 
-// Markdown rendering helper
-const renderMarkdown = (text: string | null): string => {
-  if (!text) return ''
-  // Use marked.parse() for synchronous string return
-  return marked.parse(text) as string
-}
-
 const parentContentItems = computed(() => {
   return props.content.filter(item => !item.parent_id)
 })
@@ -137,3 +130,20 @@ const getSubItems = (parentId: string) => {
 }
 </script>
 
+<style scoped>
+/* Markdown prose link styling - 2 line truncation */
+.prose :deep(a) {
+  color: #3b82f6 !important;
+  text-decoration: underline;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
+}
+
+.prose :deep(a:hover) {
+  color: #1d4ed8 !important;
+}
+</style>

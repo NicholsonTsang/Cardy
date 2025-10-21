@@ -140,6 +140,7 @@
                                     language="en-US"
                                     :toolbars="markdownToolbars"
                                     :placeholder="getDescriptionPlaceholder()"
+                                    :onHtmlChanged="handleMarkdownHtmlChanged"
                                     style="height: 300px;"
                                 />
                             </div>
@@ -337,6 +338,12 @@ const markdownToolbars = ref([
     'htmlPreview',
     'catalog'
 ]);
+
+// Handle markdown HTML preview to add target="_blank" to links
+const handleMarkdownHtmlChanged = (html) => {
+    // Post-process the HTML to add target="_blank" and rel="noopener noreferrer" to links
+    return html.replace(/<a href=/g, '<a target="_blank" rel="noopener noreferrer" href=');
+};
 
 // Initialize form data when contentItem changes
 watch(() => props.contentItem, (newVal) => {
@@ -698,4 +705,19 @@ defineExpose({
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
 }
 
+/* Markdown editor preview link styling - 2 line truncation */
+:deep(.md-editor-preview-wrapper) a {
+    color: #3b82f6 !important;
+    text-decoration: underline;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
+}
+
+:deep(.md-editor-preview-wrapper) a:hover {
+    color: #1d4ed8 !important;
+}
 </style> 

@@ -242,7 +242,7 @@ import CardCreateEditForm from './CardCreateEditForm.vue';
 import CardTranslationSection from '@/components/Card/CardTranslationSection.vue';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
 import { getCardAspectRatio } from '@/utils/cardConfig';
-import { marked } from 'marked';
+import { renderMarkdown } from '@/utils/markdownRenderer';
 import { SUPPORTED_LANGUAGES } from '@/stores/translation';
 
 const { t } = useI18n();
@@ -417,20 +417,6 @@ const getQrCodePositionClass = (position) => {
     return classes[position] || 'bottom-2 right-2'; // Default to bottom-right
 };
 
-// Render markdown to HTML
-const renderMarkdown = (markdown) => {
-    if (!markdown) return '';
-    
-    // Configure marked for security and styling
-    marked.setOptions({
-        breaks: true,
-        gfm: true,
-        sanitize: false // We trust our own content, but you might want to sanitize in production
-    });
-    
-    return marked(markdown);
-};
-
 // Set up CSS custom property for aspect ratio
 onMounted(() => {
     const aspectRatio = getCardAspectRatio();
@@ -540,11 +526,17 @@ onMounted(() => {
 }
 
 .prose a {
-    color: #3b82f6;
+    color: #3b82f6 !important;
     text-decoration: underline;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    word-break: break-word;
 }
 
 .prose a:hover {
-    color: #1d4ed8;
+    color: #1d4ed8 !important;
 }
 </style>

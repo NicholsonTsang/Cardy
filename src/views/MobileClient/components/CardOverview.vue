@@ -70,7 +70,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { marked } from 'marked'
+import { renderMarkdown } from '@/utils/markdownRenderer'
 import { getCardAspectRatio } from '@/utils/cardConfig'
 import { useMobileLanguageStore } from '@/stores/language'
 import LanguageSelectorModal from './LanguageSelectorModal.vue'
@@ -101,7 +101,7 @@ const emit = defineEmits<{
 // Render markdown description
 const renderedDescription = computed(() => {
   if (!props.card.card_description) return ''
-  return marked.parse(props.card.card_description) as string
+  return renderMarkdown(props.card.card_description)
 })
 
 function handleExplore() {
@@ -376,6 +376,12 @@ onMounted(() => {
 .markdown-content :deep(a) {
   color: #93c5fd;
   text-decoration: underline;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: break-word;
 }
 
 .markdown-content :deep(ul),

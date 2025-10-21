@@ -180,6 +180,7 @@
     "clear_date_filters": "清除日期篩選",
     "no_cards_yet": "尚無卡片",
     "start_creating": "開始建立您的第一張卡片設計",
+    "loading_cards": "載入卡片中...",
     "no_results_found": "找不到結果",
     "no_cards_match_search": "沒有符合您搜尋條件的卡片。",
     "try_example_import": "試用範例匯入",
