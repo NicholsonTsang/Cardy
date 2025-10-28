@@ -50,56 +50,28 @@ npm run dev
 
 Now Realtime Mode should work!
 
-## Production Deployment via SSH
+## Production Deployment
 
-See [DEPLOYMENT_SSH.md](./DEPLOYMENT_SSH.md) for complete production deployment guide.
+### Option 1: Docker (Recommended - Easiest!)
 
-### Quick SSH Deployment Steps
+**Why Docker**: Simpler, self-contained, no dependency management
 
 ```bash
 # 1. SSH to your server
 ssh user@your-server-ip
 
-# 2. Install Node.js 18
-curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-sudo apt install -y nodejs
+# 2. Install Docker (if not already installed)
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
 
-# 3. Create app directory
-sudo mkdir -p /opt/openai-relay
-sudo chown $USER:$USER /opt/openai-relay
-
-# 4. Upload code (from your local machine)
+# 3. Upload code
 cd /path/to/Cardy
-rsync -avz --exclude 'node_modules' --exclude 'dist' \
-  openai-relay-server/ user@your-server-ip:/opt/openai-relay/
+rsync -avz openai-relay-server/ user@your-server-ip:/opt/openai-relay/
 
-# 5. On server: Install and build
+# 4. On server: Build and run
 cd /opt/openai-relay
-npm install
-npm run build
-
-# 6. Configure environment
-cp .env.example .env
-nano .env  # Add OPENAI_API_KEY and ALLOWED_ORIGINS
-
-# 7. Install PM2 and start
-sudo npm install -g pm2
-pm2 start ecosystem.config.js
-pm2 startup  # Follow the instructions
-pm2 save
-
-# 8. Install Nginx (optional, for SSL)
-sudo apt install -y nginx
-# See DEPLOYMENT_SSH.md for Nginx configuration
-```
-
-## Docker Deployment
-
-```bash
-# Build image
 docker build -t openai-relay:latest .
 
-# Run container
 docker run -d \
   --name openai-relay \
   -p 8080:8080 \
@@ -110,7 +82,41 @@ docker run -d \
 
 # Check logs
 docker logs -f openai-relay
+
+# Done! ✅
 ```
+
+### Option 2: PM2 (Alternative)
+
+**Why PM2**: If you prefer running directly on host without Docker
+
+```bash
+# 1. SSH to your server
+ssh user@your-server-ip
+
+# 2. Install Node.js 18
+curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+sudo apt install -y nodejs
+
+# 3. Upload code
+rsync -avz --exclude 'node_modules' --exclude 'dist' \
+  openai-relay-server/ user@your-server-ip:/opt/openai-relay/
+
+# 4. On server: Install and build
+cd /opt/openai-relay
+npm install
+npm run build
+cp .env.example .env
+nano .env  # Add OPENAI_API_KEY and ALLOWED_ORIGINS
+
+# 5. Start with PM2
+sudo npm install -g pm2
+pm2 start ecosystem.config.js
+pm2 startup
+pm2 save
+```
+
+**See [DEPLOYMENT_SSH.md](./DEPLOYMENT_SSH.md) for complete step-by-step guides for both options.**
 
 ## Common Issues
 

@@ -55,7 +55,7 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.text({ type: 'application/sdp' }));
 
 // Health check endpoint
-app.get('/health', (req: Request, res: Response) => {
+app.get('/health', (_req: Request, res: Response) => {
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -125,7 +125,7 @@ app.post('/offer', async (req: Request, res: Response) => {
     console.log(`✅ Successfully relayed offer (${duration}ms)`);
     
     // Return the SDP answer to the client
-    res.json({
+    return res.json({
       sdp: answerSdp,
       relayed: true,
       duration
@@ -134,7 +134,7 @@ app.post('/offer', async (req: Request, res: Response) => {
   } catch (error: any) {
     console.error('❌ Relay error:', error);
     
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Relay server error',
       message: error.message || 'Internal server error'
     });
@@ -142,7 +142,7 @@ app.post('/offer', async (req: Request, res: Response) => {
 });
 
 // Error handling middleware
-app.use((err: Error, req: Request, res: Response, next: any) => {
+app.use((err: Error, _req: Request, res: Response, _next: any) => {
   console.error('❌ Unhandled error:', err);
   res.status(500).json({
     error: 'Internal server error',

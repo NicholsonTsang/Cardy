@@ -97,7 +97,43 @@ Relay WebRTC SDP offer to OpenAI.
 
 ## Deployment Options
 
-### Option 1: PM2 (Process Manager) - Recommended
+### Option 1: Docker - Recommended (Easiest!)
+
+Docker provides the simplest deployment with automatic restarts and isolation.
+
+```bash
+# Build image
+docker build -t openai-relay:latest .
+
+# Run container
+docker run -d \
+  --name openai-relay \
+  -p 8080:8080 \
+  -e OPENAI_API_KEY=your_key_here \
+  -e ALLOWED_ORIGINS=https://your-domain.com \
+  --restart unless-stopped \
+  openai-relay:latest
+
+# View logs
+docker logs -f openai-relay
+
+# Stop container
+docker stop openai-relay
+
+# Restart container
+docker restart openai-relay
+```
+
+**Why Docker**:
+- ✅ Simpler setup - no Node.js installation needed
+- ✅ Self-contained - includes all dependencies
+- ✅ Auto-restart built-in
+- ✅ Easy updates - just rebuild image
+- ✅ Isolated environment
+
+### Option 2: PM2 (Process Manager)
+
+If you prefer running directly on the host without Docker, use PM2.
 
 PM2 provides automatic restarts, monitoring, and log management.
 
@@ -133,32 +169,9 @@ pm2 startup
 pm2 save
 ```
 
-### Option 2: Docker
-
-```bash
-# Build image
-docker build -t openai-relay:latest .
-
-# Run container
-docker run -d \
-  --name openai-relay \
-  -p 8080:8080 \
-  -e OPENAI_API_KEY=your_key_here \
-  -e ALLOWED_ORIGINS=https://your-domain.com \
-  --restart unless-stopped \
-  openai-relay:latest
-
-# View logs
-docker logs -f openai-relay
-
-# Stop container
-docker stop openai-relay
-
-# Remove container
-docker rm openai-relay
-```
-
 ### Option 3: Systemd Service
+
+If you prefer a native Linux service without Docker or PM2:
 
 Create `/etc/systemd/system/openai-relay.service`:
 
