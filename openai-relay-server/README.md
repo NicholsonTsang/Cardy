@@ -207,16 +207,19 @@ See [DEPLOYMENT_SSH.md](./DEPLOYMENT_SSH.md) for detailed step-by-step SSH deplo
 
 ### 1. CORS Configuration
 
-Always specify exact origins in production:
+**Development** - Allow all origins for easy testing:
+```bash
+ALLOWED_ORIGINS=*
+```
+
+**Production** - Specify exact origins for security:
 ```bash
 ALLOWED_ORIGINS=https://your-app.com,https://admin.your-app.com
 ```
 
-Never use `*` in production:
-```bash
-# ❌ Don't do this in production
-ALLOWED_ORIGINS=*
-```
+⚠️ Never use `*` in production for public-facing servers (security risk).
+
+**For detailed CORS configuration, see [CORS_CONFIGURATION.md](./CORS_CONFIGURATION.md)**
 
 ### 2. API Key Protection
 
