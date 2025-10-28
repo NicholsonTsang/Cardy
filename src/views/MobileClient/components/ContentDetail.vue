@@ -146,8 +146,14 @@ onMounted(() => {
 
 <style scoped>
 .content-detail {
-  padding: 5rem 1rem 2rem;
+  padding-top: calc(5rem + env(safe-area-inset-top)); /* Account for header + notch */
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
   min-height: 100vh;
+  min-height: var(--viewport-height, 100vh); /* Dynamic viewport */
+  min-height: 100dvh;
+  -webkit-text-size-adjust: 100%; /* Prevent text scaling */
 }
 
 /* Main Content */
@@ -202,7 +208,7 @@ onMounted(() => {
 }
 
 .content-description {
-  font-size: 0.875rem;
+  font-size: 16px; /* Minimum 16px to prevent iOS zoom on tap */
   color: rgba(255, 255, 255, 0.9);
   line-height: 1.6;
   margin: 0;
@@ -274,6 +280,9 @@ onMounted(() => {
   padding: 0.75rem;
   cursor: pointer;
   transition: all 0.2s;
+  min-height: 44px; /* iOS touch target */
+  touch-action: manipulation; /* Disable double-tap zoom */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .sub-item-card:active {
@@ -314,7 +323,7 @@ onMounted(() => {
 }
 
 .sub-item-title {
-  font-size: 0.875rem;
+  font-size: 16px; /* Minimum 16px for tappable card */
   font-weight: 600;
   color: white;
   margin: 0;

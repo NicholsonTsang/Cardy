@@ -374,3 +374,4 @@ The landing page now uses the same clean, professional header design as the dash
 The result is a more polished, professional platform that provides a better user experience from landing page to dashboard.
 
 
+

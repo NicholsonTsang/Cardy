@@ -360,3 +360,4 @@ The new landing page follows these principles:
 The new landing page is ready for deployment and provides a comprehensive, professional presentation of CardStudio's value proposition.
 
 
+

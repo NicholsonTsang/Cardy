@@ -89,6 +89,7 @@ function selectLanguage(language: Language) {
   padding: 1rem;
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
+  touch-action: none; /* Prevent background interaction */
 }
 
 .modal-content {
@@ -97,10 +98,12 @@ function selectLanguage(language: Language) {
   width: 100%;
   max-width: 500px;
   max-height: 80vh;
+  max-height: calc(var(--viewport-height, 100vh) * 0.8); /* Dynamic viewport */
   overflow: hidden;
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+  touch-action: pan-y; /* Allow vertical scrolling */
 }
 
 .modal-header {
@@ -149,7 +152,10 @@ function selectLanguage(language: Language) {
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 1rem;
   max-height: calc(80vh - 100px);
+  max-height: calc(var(--viewport-height, 100vh) * 0.8 - 100px); /* Dynamic viewport */
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
+  overscroll-behavior: contain; /* Prevent pull-to-refresh */
   background: #f9fafb;
 }
 
@@ -165,6 +171,9 @@ function selectLanguage(language: Language) {
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
+  min-height: 44px; /* iOS touch target */
+  touch-action: manipulation; /* Disable double-tap zoom */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .language-option:hover {
@@ -211,7 +220,7 @@ function selectLanguage(language: Language) {
 }
 
 .language-option .name {
-  font-size: 0.875rem;
+  font-size: 16px; /* Minimum 16px to prevent iOS zoom */
   font-weight: 600;
   color: #1f2937;
   text-align: center;
@@ -276,6 +285,7 @@ function selectLanguage(language: Language) {
   .modal-content {
     border-radius: 20px 20px 0 0;
     max-height: 90vh;
+    max-height: calc(var(--viewport-height, 100vh) * 0.9); /* Dynamic viewport */
     align-self: flex-end;
     width: 100%;
   }
@@ -283,6 +293,7 @@ function selectLanguage(language: Language) {
   .language-grid {
     grid-template-columns: repeat(2, 1fr);
     padding: 1rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom)); /* Safe area for home indicator */
   }
   
   .language-option {

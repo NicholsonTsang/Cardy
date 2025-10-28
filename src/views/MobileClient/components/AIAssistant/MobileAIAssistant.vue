@@ -46,6 +46,7 @@
         :is-speaking="realtimeConnection.isSpeaking.value"
         :status="realtimeConnection.status.value"
         :status-text="realtimeStatusText"
+        :error="connectionError"
         :messages="messages"
         @connect="connectRealtime"
         @disconnect="disconnectRealtime"
@@ -88,6 +89,7 @@ const messages = ref<Message[]>([])
 const inputMode = ref<'text' | 'voice'>('text')
 const loadingStatus = ref('')
 const firstAudioPlayed = ref(false)
+const connectionError = ref<string | null>(null)
 
 // ============================================================================
 // COMPUTED
@@ -193,6 +195,7 @@ function openModal() {
   document.body.style.overflow = 'hidden'
   messages.value = []
   firstAudioPlayed.value = false
+  connectionError.value = null // Clear any previous errors
   
   // Add welcome message using voice-aware language code (with fallback)
   const voiceAwareCode = languageStore.getVoiceAwareLanguageCode()
@@ -227,11 +230,13 @@ function toggleConversationMode() {
   if (conversationMode.value === 'chat-completion') {
     conversationMode.value = 'realtime'
     messages.value = [] // Clear messages
+    connectionError.value = null // Clear errors when switching
   } else {
     conversationMode.value = 'chat-completion'
     if (realtimeConnection.isConnected.value) {
       disconnectRealtime()
     }
+    connectionError.value = null // Clear errors
     // Add welcome message back
     const voiceAwareCode = languageStore.getVoiceAwareLanguageCode()
     const welcomeText = welcomeMessages[voiceAwareCode] || 
@@ -402,6 +407,9 @@ async function connectRealtime() {
   console.log(systemInstructions.value.substring(0, 500) + '...')
   console.log('🚀 ===============================================')
   
+  // Clear any previous errors
+  connectionError.value = null
+  
   try {
     // Set up transcript callbacks before connecting
     realtimeConnection.onUserTranscript((text: string) => {
@@ -437,8 +445,29 @@ async function connectRealtime() {
     
     // Cost safeguards
     costSafeguards.addSafeguards()
+    
+    // Clear error on success
+    connectionError.value = null
   } catch (err: any) {
     console.error('❌ Realtime connection error:', err)
+    
+    // Set error message for display
+    if (err.message?.includes('Relay server required') || err.message?.includes('VITE_OPENAI_RELAY_URL')) {
+      connectionError.value = 'Realtime voice mode requires additional setup. Please use Chat Mode instead (text or voice recording).'
+    } else if (err.message?.includes('microphone') || err.message?.includes('getUserMedia')) {
+      connectionError.value = 'Microphone access denied. Please allow microphone permissions in your browser settings and try again.'
+    } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
+      connectionError.value = 'Network error. Please check your internet connection and try again.'
+    } else if (err.message?.includes('OpenAI')) {
+      connectionError.value = 'Failed to connect to AI service. Please try again in a moment.'
+    } else if (err.message?.includes('CORS')) {
+      connectionError.value = 'Connection blocked. Please use Chat Mode instead (text or voice recording).'
+    } else if (err.message) {
+      connectionError.value = `Connection failed: ${err.message}`
+    } else {
+      connectionError.value = 'Failed to start live call. Please try Chat Mode instead.'
+    }
+    
     await realtimeConnection.disconnect()
   }
 }

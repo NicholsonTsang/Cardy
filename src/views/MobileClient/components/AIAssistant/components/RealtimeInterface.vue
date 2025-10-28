@@ -7,6 +7,17 @@
         <span class="status-text">{{ statusText }}</span>
       </div>
     </div>
+    
+    <!-- Error Warning (separate, more visible) -->
+    <div v-if="error" class="connection-error-warning">
+      <div class="error-icon">
+        <i class="pi pi-exclamation-triangle"></i>
+      </div>
+      <div class="error-content">
+        <h4 class="error-title">Connection Failed</h4>
+        <p class="error-message">{{ error }}</p>
+      </div>
+    </div>
 
     <!-- Main Realtime UI -->
     <div class="realtime-content">
@@ -98,6 +109,7 @@ const props = defineProps<{
   isSpeaking: boolean
   status: 'disconnected' | 'connecting' | 'connected' | 'error'
   statusText: string
+  error?: string | null
   messages: Message[]
 }>()
 
@@ -196,12 +208,74 @@ watch(streamingProgressKey, async () => {
   color: #374151;
 }
 
+/* Connection Error Warning */
+.connection-error-warning {
+  display: flex;
+  gap: 1rem;
+  margin: 1rem 1.5rem;
+  padding: 1rem 1.25rem;
+  background: #fee2e2;
+  border: 2px solid #fca5a5;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.error-icon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fef2f2;
+  border-radius: 50%;
+}
+
+.error-icon i {
+  font-size: 1.5rem;
+  color: #dc2626;
+}
+
+.error-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.error-title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #991b1b;
+}
+
+.error-message {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #7f1d1d;
+}
+
 .realtime-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   padding: 2rem 1.5rem;
   overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  overscroll-behavior: contain; /* Prevent pull-to-refresh */
 }
 
 .realtime-avatar-section {
@@ -363,6 +437,7 @@ watch(streamingProgressKey, async () => {
   padding: 1.5rem;
   background: white;
   border-top: 1px solid #e5e7eb;
+  flex-shrink: 0; /* Prevent controls from being compressed */
 }
 
 .realtime-connect-button {
@@ -437,6 +512,11 @@ watch(streamingProgressKey, async () => {
 @media (max-width: 640px) {
   .realtime-content {
     padding: 1.5rem 1rem;
+  }
+  
+  .realtime-controls {
+    /* Account for iPhone home indicator */
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
   }
   
   .avatar-circle {

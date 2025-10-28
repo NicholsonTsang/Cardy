@@ -47,10 +47,11 @@
 </template>
 
 <script setup lang="ts">
+import { watch, onMounted, onUnmounted, ref } from 'vue'
 import LanguageSelector from './LanguageSelector.vue'
 import type { ConversationMode, Language } from '../types'
 
-defineProps<{
+const props = defineProps<{
   isOpen: boolean
   showLanguageSelection: boolean
   conversationMode: ConversationMode
@@ -62,6 +63,59 @@ defineEmits<{
   (e: 'select-language', language: Language): void
   (e: 'toggle-mode'): void
 }>()
+
+const visualViewportHeight = ref<number | null>(null)
+
+// Update modal height when keyboard appears/disappears
+function updateVisualViewport() {
+  if (typeof window === 'undefined') return
+  
+  // Use Visual Viewport API to get actual visible height (excluding keyboard)
+  if (window.visualViewport) {
+    const height = window.visualViewport.height
+    visualViewportHeight.value = height
+    document.documentElement.style.setProperty('--visual-viewport-height', `${height}px`)
+  }
+}
+
+// Prevent body scroll when modal is open on mobile
+watch(() => props.isOpen, (isOpen) => {
+  if (typeof window === 'undefined') return
+  
+  if (isOpen) {
+    // Store current scroll position
+    const scrollY = window.scrollY
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.width = '100%'
+    
+    // Initial viewport height setup
+    updateVisualViewport()
+  } else {
+    // Restore scroll position
+    const scrollY = document.body.style.top
+    document.body.style.position = ''
+    document.body.style.top = ''
+    document.body.style.width = ''
+    window.scrollTo(0, parseInt(scrollY || '0') * -1)
+  }
+})
+
+// Listen for keyboard show/hide via Visual Viewport
+onMounted(() => {
+  if (typeof window !== 'undefined' && window.visualViewport) {
+    window.visualViewport.addEventListener('resize', updateVisualViewport)
+    window.visualViewport.addEventListener('scroll', updateVisualViewport)
+    updateVisualViewport()
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined' && window.visualViewport) {
+    window.visualViewport.removeEventListener('resize', updateVisualViewport)
+    window.visualViewport.removeEventListener('scroll', updateVisualViewport)
+  }
+})
 </script>
 
 <style scoped>
@@ -194,13 +248,38 @@ defineEmits<{
 @media (max-width: 640px) {
   .modal-overlay {
     padding: 0;
+    align-items: stretch;
+    /* Prevent overscroll/bounce on iOS */
+    overflow: hidden;
+    touch-action: none;
   }
   
   .modal-content {
     max-width: 100%;
-    max-height: 100vh;
+    max-height: none;
     border-radius: 0;
-    height: 100vh;
+    /* Use visual viewport height to adapt to keyboard */
+    height: var(--visual-viewport-height, var(--viewport-height, 100vh));
+    min-height: -webkit-fill-available; /* iOS Safari fallback */
+    /* Enable internal scrolling */
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
+    /* Smooth transition when keyboard appears */
+    transition: height 0.3s ease-out;
+  }
+  
+  .modal-header {
+    /* Ensure header doesn't get hidden by notch */
+    padding-top: max(1.25rem, env(safe-area-inset-top));
+    flex-shrink: 0; /* Never compress header */
+  }
+  
+  .modal-body {
+    /* Account for iPhone home indicator */
+    padding-bottom: env(safe-area-inset-bottom);
+    /* Allow body to shrink when keyboard appears */
+    flex: 1 1 auto;
+    min-height: 0;
   }
 }
 </style>

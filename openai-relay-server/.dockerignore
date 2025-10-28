@@ -1,0 +1,36 @@
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build
+dist/
+
+# Environment
+.env
+.env.*
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Logs
+logs/
+*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PM2
+ecosystem.config.js
+

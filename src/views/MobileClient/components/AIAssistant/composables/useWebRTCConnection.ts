@@ -62,6 +62,27 @@ export function useWebRTCConnection() {
     error.value = null
     
     try {
+      // IMPORTANT: OpenAI Realtime API with WebRTC requires a relay server for browser connections
+      // The direct HTTP POST approach doesn't work due to CORS restrictions
+      const relayUrl = import.meta.env.VITE_OPENAI_RELAY_URL
+      
+      if (!relayUrl) {
+        const errorMessage = [
+          'OpenAI Realtime API requires a relay server for browser connections.',
+          'Direct connections are blocked by CORS policy.',
+          '',
+          'To fix this:',
+          '1. Set up a relay server (see openai-relay-server/ directory)',
+          '2. Add VITE_OPENAI_RELAY_URL to your .env.local file',
+          '',
+          'For local development, you can use Chat Mode (text + TTS) instead,',
+          'which works without a relay server.'
+        ].join('\n')
+        
+        console.error('❌ ' + errorMessage)
+        throw new Error('Relay server required. Please configure VITE_OPENAI_RELAY_URL in your .env.local file.')
+      }
+      
       // Get ephemeral token
       const ephemeralToken = await getEphemeralToken(language)
       console.log('🔑 Got ephemeral token')
@@ -213,28 +234,36 @@ export function useWebRTCConnection() {
       const model = import.meta.env.VITE_OPENAI_REALTIME_MODEL || 'gpt-realtime-mini-2025-10-06'
       console.log('🎯 Using Realtime model:', model)
       
-      // Send offer to OpenAI (with model parameter required for ephemeral tokens)
-      const response = await fetch(`https://api.openai.com/v1/realtime?model=${model}`, {
+      // Use relay server to proxy the WebRTC connection
+      console.log('🌐 Connecting through relay server:', relayUrl)
+      const response = await fetch(`${relayUrl}/offer`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${ephemeralToken}`,
-          'Content-Type': 'application/sdp'
+          'Content-Type': 'application/json'
         },
-        body: offer.sdp
+        body: JSON.stringify({
+          sdp: offer.sdp,
+          model,
+          token: ephemeralToken
+        })
       })
       
       if (!response.ok) {
-        throw new Error(`OpenAI connection failed: ${response.statusText}`)
+        const errorText = await response.text()
+        throw new Error(`Relay server connection failed: ${response.statusText}. ${errorText}`)
       }
       
+      // Get SDP answer from relay
+      const responseData = await response.json()
+      const answerSdp = responseData.sdp
+      
       // Set remote description
-      const answer = await response.text()
       await pc.value.setRemoteDescription({
         type: 'answer',
-        sdp: answer
+        sdp: answerSdp
       })
       
-      console.log('✅ WebRTC connection established')
+      console.log('✅ WebRTC connection established through relay')
       
     } catch (err: any) {
       console.error('Connection failed:', err)

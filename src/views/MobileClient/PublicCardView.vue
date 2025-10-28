@@ -320,10 +320,14 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
 <style scoped>
 /* Base Container */
 .mobile-card-container {
-  
+  min-height: 100vh;
+  min-height: var(--viewport-height, 100vh); /* Use dynamic viewport height */
+  min-height: 100dvh;
   background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
   position: relative;
   overflow: hidden;
+  -webkit-text-size-adjust: 100%; /* Prevent text size adjustment */
+  touch-action: manipulation; /* Disable double-tap zoom */
 }
 
 /* Loading State */
@@ -333,6 +337,7 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: var(--viewport-height, 100vh); /* Use dynamic viewport height */
   min-height: 100dvh;
   gap: 1rem;
 }
@@ -354,6 +359,7 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  min-height: var(--viewport-height, 100vh); /* Use dynamic viewport height */
   min-height: 100dvh;
   padding: 1.5rem;
   text-align: center;
@@ -390,6 +396,7 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
 .content-wrapper {
   position: relative;
   min-height: 100vh;
+  min-height: var(--viewport-height, 100vh); /* Use dynamic viewport height */
   min-height: 100dvh;
 }
 
@@ -416,8 +423,9 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
   }
   
   button {
-    min-height: 44px;
+    min-height: 44px; /* iOS recommended touch target */
     min-width: 44px;
+    touch-action: manipulation; /* Disable double-tap zoom on buttons */
   }
 }
 </style>

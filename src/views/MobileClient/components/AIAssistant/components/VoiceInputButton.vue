@@ -24,12 +24,35 @@
       @touchend.prevent="handleRecordEnd"
       @touchmove.prevent="handleTouchMove"
       class="hold-talk-button"
-      :class="{ recording: isRecording, canceling: isCancelZone }"
+      :class="{ 
+        recording: isRecording, 
+        holding: isHolding,
+        canceling: isCancelZone 
+      }"
       :disabled="disabled"
       ref="recordButton"
     >
+      <!-- Hold progress indicator -->
+      <div v-if="isHolding" class="hold-progress-ring">
+        <svg class="progress-svg" viewBox="0 0 40 40">
+          <circle 
+            class="progress-background"
+            cx="20" 
+            cy="20" 
+            r="18"
+          />
+          <circle 
+            class="progress-fill"
+            cx="20" 
+            cy="20" 
+            r="18"
+            :style="{ strokeDashoffset: progressDashOffset }"
+          />
+        </svg>
+      </div>
+      
       <i class="pi pi-microphone"></i>
-      <span>Hold to talk</span>
+      <span>{{ isHolding ? 'Keep holding...' : 'Hold to talk' }}</span>
     </button>
     
     <!-- Switch to Text Button -->
@@ -66,27 +89,91 @@ const recordButton = ref<HTMLButtonElement | null>(null)
 const waveformCanvas = ref<HTMLCanvasElement | null>(null)
 const animationFrame = ref<number | null>(null)
 
+// Hold delay state
+const HOLD_DELAY_MS = 500 // 500ms hold required before recording starts
+const isHolding = ref(false)
+const holdProgress = ref(0)
+const holdTimer = ref<number | null>(null)
+const holdStartTime = ref(0)
+
 const formattedDuration = computed(() => {
   const seconds = Math.floor(props.recordingDuration / 1000)
   const milliseconds = Math.floor((props.recordingDuration % 1000) / 100)
   return `${seconds}.${milliseconds}s`
 })
 
-// Handle recording start
+// Progress ring calculation
+const progressDashOffset = computed(() => {
+  const circumference = 2 * Math.PI * 18 // radius = 18
+  const offset = circumference - (holdProgress.value / 100) * circumference
+  return offset
+})
+
+// Handle recording start (with hold delay)
 function handleRecordStart(e: MouseEvent | TouchEvent) {
   e.preventDefault()
-  emit('start-recording')
+  
+  // Start hold timer
+  isHolding.value = true
+  holdProgress.value = 0
+  holdStartTime.value = Date.now()
+  
+  // Animate hold progress
+  const animateHold = () => {
+    const elapsed = Date.now() - holdStartTime.value
+    holdProgress.value = Math.min((elapsed / HOLD_DELAY_MS) * 100, 100)
+    
+    if (elapsed >= HOLD_DELAY_MS && isHolding.value) {
+      // Hold complete! Start recording
+      isHolding.value = false
+      holdProgress.value = 100
+      emit('start-recording')
+      
+      // Add haptic feedback if available
+      if ('vibrate' in navigator) {
+        navigator.vibrate(50)
+      }
+    } else if (isHolding.value) {
+      // Continue animation
+      holdTimer.value = requestAnimationFrame(animateHold)
+    }
+  }
+  
+  holdTimer.value = requestAnimationFrame(animateHold)
 }
 
 // Handle recording end
 function handleRecordEnd(e: MouseEvent | TouchEvent) {
   e.preventDefault()
-  emit('stop-recording')
+  
+  // If still holding (not yet recording), cancel
+  if (isHolding.value) {
+    cancelHold()
+    return
+  }
+  
+  // If recording, stop recording
+  if (props.isRecording) {
+    emit('stop-recording')
+  }
+}
+
+// Cancel hold (user released before delay completed)
+function cancelHold() {
+  isHolding.value = false
+  holdProgress.value = 0
+  
+  if (holdTimer.value) {
+    cancelAnimationFrame(holdTimer.value)
+    holdTimer.value = null
+  }
 }
 
 // Handle mouse leave (cancel)
 function handleMouseLeave() {
-  if (props.isRecording) {
+  if (isHolding.value) {
+    cancelHold()
+  } else if (props.isRecording) {
     emit('cancel-recording')
   }
 }
@@ -160,6 +247,9 @@ onMounted(() => {
 onBeforeUnmount(() => {
   if (animationFrame.value) {
     cancelAnimationFrame(animationFrame.value)
+  }
+  if (holdTimer.value) {
+    cancelAnimationFrame(holdTimer.value)
   }
 })
 </script>
@@ -265,6 +355,8 @@ onBeforeUnmount(() => {
   touch-action: none;
   box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
   height: 40px;
+  position: relative;
+  overflow: visible;
 }
 
 .hold-talk-button:hover:not(:disabled) {
@@ -292,8 +384,45 @@ onBeforeUnmount(() => {
   }
 }
 
+.hold-talk-button.holding {
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  transform: scale(1.05);
+}
+
 .hold-talk-button.canceling {
   background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+}
+
+/* Hold progress ring */
+.hold-progress-ring {
+  position: absolute;
+  top: 50%;
+  left: 1rem;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  pointer-events: none;
+}
+
+.progress-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.progress-background {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.2);
+  stroke-width: 3;
+}
+
+.progress-fill {
+  fill: none;
+  stroke: white;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 113.1; /* 2 * π * 18 */
+  transition: stroke-dashoffset 0.05s linear;
 }
 
 .input-icon-button {

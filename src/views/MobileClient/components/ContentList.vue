@@ -98,8 +98,14 @@ onMounted(() => {
 
 <style scoped>
 .content-list {
-  padding: 5rem 1rem 2rem;
+  padding-top: calc(5rem + env(safe-area-inset-top)); /* Account for header + notch */
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: max(2rem, env(safe-area-inset-bottom));
   min-height: 100vh;
+  min-height: var(--viewport-height, 100vh); /* Dynamic viewport */
+  min-height: 100dvh;
+  -webkit-text-size-adjust: 100%; /* Prevent text scaling */
 }
 
 .content-grid {
@@ -118,6 +124,8 @@ onMounted(() => {
   overflow: hidden;
   cursor: pointer;
   transition: all 0.2s;
+  touch-action: manipulation; /* Disable double-tap zoom */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .content-card:active {
@@ -184,7 +192,7 @@ onMounted(() => {
 }
 
 .item-description {
-  font-size: 0.875rem;
+  font-size: 16px; /* Minimum 16px to prevent iOS zoom on tap */
   color: rgba(255, 255, 255, 0.7);
   margin: 0;
   margin-bottom: 0.75rem;

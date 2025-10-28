@@ -123,6 +123,7 @@ onMounted(() => {
 /* Base Container */
 .card-overview {
   min-height: 100vh;
+  min-height: var(--viewport-height, 100vh); /* Use dynamic viewport height */
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
@@ -130,6 +131,8 @@ onMounted(() => {
   position: relative;
   overflow: hidden;
   isolation: isolate;
+  -webkit-text-size-adjust: 100%; /* Prevent text size adjustment */
+  touch-action: manipulation; /* Disable double-tap zoom */
 }
 
 /* Hero Section */
@@ -257,7 +260,7 @@ onMounted(() => {
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 58, 138, 0.95) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   padding: 1.5rem 1rem 2rem;
-  margin-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: max(2rem, env(safe-area-inset-bottom)); /* Account for home indicator */
   animation: slideUp 0.5s ease-out 0.2s both;
   z-index: 2;
 }
@@ -291,7 +294,7 @@ onMounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 9999px;
   color: white;
-  font-size: 0.8125rem;
+  font-size: 16px; /* Minimum 16px to prevent iOS zoom */
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -299,6 +302,7 @@ onMounted(() => {
   -webkit-backdrop-filter: blur(8px);
   margin: 0 auto 0.75rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
 }
 
 .language-chip:hover {
@@ -347,7 +351,7 @@ onMounted(() => {
 }
 
 .card-description {
-  font-size: 0.9375rem;
+  font-size: 16px; /* Minimum 16px to prevent iOS zoom */
   color: rgba(255, 255, 255, 0.85);
   line-height: 1.6;
   margin: 0;
@@ -454,7 +458,7 @@ onMounted(() => {
   border: none;
   border-radius: 1rem;
   color: white;
-  font-size: 1.0625rem;
+  font-size: 17px; /* 17px for buttons is Apple's recommended size */
   font-weight: 700;
   overflow: hidden;
   cursor: pointer;
@@ -462,6 +466,8 @@ onMounted(() => {
   box-shadow: 
     0 0 0 1px rgba(255, 255, 255, 0.1),
     0 8px 16px rgba(0, 0, 0, 0.2);
+  -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
+  touch-action: manipulation; /* Disable double-tap zoom */
 }
 
 .button-label {
@@ -502,7 +508,7 @@ onMounted(() => {
   border: 1px solid rgba(59, 130, 246, 0.3);
   border-radius: 0.75rem;
   color: #93c5fd;
-  font-size: 0.8125rem;
+  font-size: 16px; /* Minimum 16px to prevent iOS zoom */
   font-weight: 500;
 }
 
@@ -526,7 +532,7 @@ onMounted(() => {
   }
   
   .card-description {
-    font-size: 1rem;
+    font-size: 17px; /* Keep ≥16px on larger screens too */
   }
   
   .description-wrapper {
@@ -539,7 +545,7 @@ onMounted(() => {
   
   .language-chip {
     padding: 0.625rem 1.25rem;
-    font-size: 0.875rem;
+    font-size: 16px; /* Keep ≥16px on larger screens */
   }
   
   .language-chip-icon {

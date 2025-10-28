@@ -39,9 +39,10 @@ export function useChatCompletion() {
     error.value = null
 
     try {
-      // Get the auth token
+      // Get the auth token (optional for public access)
+      // For public visitors (QR code scanners), session will be null
       const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY
       
       const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-audio-stream`
 
@@ -195,13 +196,10 @@ export function useChatCompletion() {
     message.audioLoading = true
 
     try {
-      // Get the auth token
+      // Get the auth token (optional for public access)
+      // For public visitors (QR code scanners), use anon key instead
       const { data: { session } } = await supabase.auth.getSession()
-      const token = session?.access_token
-      
-      if (!token) {
-        throw new Error('No authentication token available')
-      }
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY
 
       // Use fetch to get binary audio data directly
       const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string

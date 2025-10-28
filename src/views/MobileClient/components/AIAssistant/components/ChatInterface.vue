@@ -47,7 +47,7 @@
     </div>
 
     <!-- Input Area -->
-    <div class="input-area">
+    <div ref="inputAreaRef" class="input-area">
       <div class="input-container">
         <!-- Text Mode -->
         <template v-if="inputMode === 'text'">
@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import MessageBubble from './MessageBubble.vue'
 import VoiceInputButton from './VoiceInputButton.vue'
@@ -133,6 +133,7 @@ const emit = defineEmits<{
 
 const textInput = ref('')
 const messagesContainer = ref<HTMLDivElement | null>(null)
+const inputAreaRef = ref<HTMLDivElement | null>(null)
 
 const hasStreaming = computed(() => 
   props.messages.some(m => m.isStreaming)
@@ -153,11 +154,32 @@ function handleSendText() {
   }
 }
 
-// Auto-scroll to bottom
-watch(() => props.messages.length, async () => {
+// Auto-scroll to bottom when messages change
+async function scrollToBottom() {
   await nextTick()
   if (messagesContainer.value) {
     messagesContainer.value.scrollTop = messagesContainer.value.scrollHeight
+  }
+}
+
+// Scroll to bottom when messages change
+watch(() => props.messages.length, scrollToBottom)
+
+// Scroll when keyboard appears (visual viewport changes)
+function handleViewportResize() {
+  // Small delay to let layout settle
+  setTimeout(scrollToBottom, 100)
+}
+
+onMounted(() => {
+  if (typeof window !== 'undefined' && window.visualViewport) {
+    window.visualViewport.addEventListener('resize', handleViewportResize)
+  }
+})
+
+onUnmounted(() => {
+  if (typeof window !== 'undefined' && window.visualViewport) {
+    window.visualViewport.removeEventListener('resize', handleViewportResize)
   }
 })
 </script>
@@ -168,14 +190,20 @@ watch(() => props.messages.length, async () => {
   flex-direction: column;
   height: 100%;
   background: #f9fafb;
+  /* Important: Allow container to be flexible */
+  min-height: 0;
 }
 
 .messages-container {
-  flex: 1;
+  flex: 1 1 auto; /* Allow shrinking when keyboard appears */
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 1.5rem;
   display: flex;
   flex-direction: column;
+  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
+  overscroll-behavior: contain; /* Prevent pull-to-refresh inside messages */
+  min-height: 0; /* Critical: Allow flex item to shrink below content size */
 }
 
 .clear-chat-wrapper {
@@ -225,6 +253,11 @@ watch(() => props.messages.length, async () => {
   padding: 1rem;
   background: white;
   border-top: 1px solid #e5e7eb;
+  flex-shrink: 0; /* Never compress - always visible */
+  flex-grow: 0; /* Never grow */
+  /* Ensure input area stays at bottom */
+  position: relative;
+  z-index: 10;
 }
 
 .input-container {
@@ -238,7 +271,7 @@ watch(() => props.messages.length, async () => {
   padding: 0.5rem 0.75rem;
   border: 1.5px solid #e5e7eb;
   border-radius: 10px;
-  font-size: 0.9375rem;
+  font-size: 16px; /* Minimum 16px to prevent iOS zoom */
   outline: none;
   transition: all 0.2s;
   background: #f9fafb;
@@ -392,12 +425,28 @@ watch(() => props.messages.length, async () => {
 }
 
 @media (max-width: 640px) {
+  .chat-container {
+    /* Ensure container uses full height efficiently */
+    max-height: 100%;
+  }
+  
   .messages-container {
     padding: 1rem;
+    /* Ensure messages can scroll even when keyboard is visible */
+    overflow-y: scroll;
+    /* iOS: Prevent elastic scrolling at boundaries */
+    overscroll-behavior-y: contain;
   }
   
   .input-area {
     padding: 0.75rem;
+    /* Account for iPhone home indicator */
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+    /* Ensure input area is always visible and at bottom */
+    position: sticky;
+    bottom: 0;
+    background: white;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
   }
   
   .input-container {
@@ -406,7 +455,8 @@ watch(() => props.messages.length, async () => {
   
   .text-input {
     padding: 0.5rem 0.75rem;
-    font-size: 0.875rem;
+    font-size: 16px; /* Keep 16px on mobile to prevent zoom */
+    min-height: 40px;
   }
   
   .input-icon-button {

@@ -45,14 +45,18 @@ function handleBack() {
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   padding: 1rem;
+  padding-top: max(1rem, env(safe-area-inset-top)); /* Account for notch */
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  -webkit-text-size-adjust: 100%; /* Prevent text scaling */
 }
 
 .back-button {
   width: 2.5rem;
   height: 2.5rem;
+  min-width: 44px; /* iOS recommended touch target */
+  min-height: 44px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.1);
   border: none;
@@ -62,6 +66,8 @@ function handleBack() {
   justify-content: center;
   transition: all 0.2s;
   flex-shrink: 0;
+  touch-action: manipulation; /* Disable double-tap zoom */
+  -webkit-tap-highlight-color: transparent;
 }
 
 .back-button:active {
@@ -85,7 +91,7 @@ function handleBack() {
 }
 
 .header-subtitle {
-  font-size: 0.75rem;
+  font-size: 14px; /* Slightly smaller but not triggering zoom (non-interactive) */
   color: rgba(255, 255, 255, 0.7);
   margin: 0;
   margin-top: 0.125rem;

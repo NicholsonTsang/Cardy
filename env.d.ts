@@ -33,6 +33,10 @@ interface ImportMetaEnv {
   // AI Configuration
   readonly VITE_DEFAULT_AI_INSTRUCTION: string
   readonly VITE_OPENAI_REALTIME_MODEL: string
+  readonly VITE_OPENAI_RELAY_URL?: string
+  
+  // Batch Configuration
+  readonly VITE_BATCH_MIN_QUANTITY: string
 }
 
 interface ImportMeta {
