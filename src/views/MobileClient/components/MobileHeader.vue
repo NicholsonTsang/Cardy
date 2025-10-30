@@ -12,7 +12,8 @@
       <UnifiedLanguageModal 
         v-model="showLanguageModal"
         :show-trigger="true"
-        :track-selection="false"
+        :track-selection="true"
+        @select="handleLanguageSelect"
       />
     </div>
   </header>
@@ -37,6 +38,12 @@ const showLanguageModal = ref(false)
 
 function handleBack() {
   emit('back')
+}
+
+function handleLanguageSelect() {
+  // Language is already updated in the store by UnifiedLanguageModal
+  // Just close the modal
+  showLanguageModal.value = false
 }
 </script>
 

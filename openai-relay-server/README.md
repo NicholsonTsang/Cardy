@@ -99,13 +99,21 @@ Relay WebRTC SDP offer to OpenAI.
 
 ### 🚀 Quick Deploy (Production)
 
-**Want to deploy quickly?** Follow our **[Quick Deployment Guide](./DEPLOY_QUICK.md)** - get HTTPS relay server running in **under 15 minutes**!
+Choose your deployment platform:
+
+| Platform | Best For | Setup Time | Guide |
+|----------|----------|------------|-------|
+| **Google Cloud Run** | Serverless, auto-scaling | 5 min | [DEPLOY_CLOUD_RUN.md](./DEPLOY_CLOUD_RUN.md) ⭐ |
+| **VPS (SSH)** | Full control, traditional | 15 min | [DEPLOY_QUICK.md](./DEPLOY_QUICK.md) |
+
+**Recommended:** Cloud Run for hassle-free deployment with automatic HTTPS and scaling!
 
 ### 📚 Deployment Guides
 
 | Guide | Use Case | Time | Link |
 |-------|----------|------|------|
-| **Quick Deploy** | Fastest production setup with HTTPS | 15 min | [DEPLOY_QUICK.md](./DEPLOY_QUICK.md) |
+| **Cloud Run** | Google Cloud serverless deployment ⭐ | 5 min | [DEPLOY_CLOUD_RUN.md](./DEPLOY_CLOUD_RUN.md) |
+| **Quick Deploy** | VPS with HTTPS (Nginx + SSL) | 15 min | [DEPLOY_QUICK.md](./DEPLOY_QUICK.md) |
 | **Production Guide** | Complete production deployment | 30 min | [PRODUCTION_DEPLOYMENT_GUIDE.md](./PRODUCTION_DEPLOYMENT_GUIDE.md) |
 | **Docker Compose** | Docker Compose commands & tips | Reference | [DOCKER_COMPOSE_GUIDE.md](./DOCKER_COMPOSE_GUIDE.md) |
 | **SSH Deployment** | Step-by-step SSH deployment | 45 min | [DEPLOYMENT_SSH.md](./DEPLOYMENT_SSH.md) |

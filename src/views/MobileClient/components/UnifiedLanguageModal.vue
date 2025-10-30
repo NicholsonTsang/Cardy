@@ -283,8 +283,8 @@ function selectLanguage(language: Language) {
 .language-grid {
   padding: 1.5rem;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 1.25rem;
   max-height: calc(80vh - 100px);
   max-height: calc(var(--viewport-height, 100vh) * 0.8 - 100px); /* Dynamic viewport */
   overflow-y: auto;
@@ -299,15 +299,15 @@ function selectLanguage(language: Language) {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
-  padding: 1.25rem 1rem;
+  gap: 0.625rem;
+  padding: 1.5rem 1.25rem;
   border: 2px solid #e5e7eb;
   border-radius: 12px;
   background: white;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
-  min-height: 44px; /* iOS touch target */
+  min-height: 100px; /* Increased minimum height */
   touch-action: manipulation; /* Disable double-tap zoom */
   -webkit-tap-highlight-color: transparent;
 }
@@ -342,7 +342,7 @@ function selectLanguage(language: Language) {
 }
 
 .language-option .flag {
-  font-size: 2.5rem;
+  font-size: 3rem;
   line-height: 1;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
   transition: opacity 0.2s;
@@ -463,11 +463,11 @@ function selectLanguage(language: Language) {
   }
   
   .language-option {
-    padding: 1rem 0.75rem;
+    padding: 1.25rem 1rem;
   }
   
   .language-option .flag {
-    font-size: 2rem;
+    font-size: 2.5rem;
   }
   
   .modal-enter-from .modal-content,
