@@ -58,10 +58,10 @@ docker-compose config
 # 5. Start the service
 docker-compose up -d
 
-# 6. Check status (wait 30-40 seconds for health check)
+# 6. Check status
 docker-compose ps
 
-# Should show: Up X seconds (healthy)
+# Should show: Up X seconds
 
 # 7. Test health endpoint
 curl http://localhost:8080/health
@@ -76,31 +76,45 @@ curl http://localhost:8080/health
 - [ ] `git pull` completed successfully
 - [ ] `.env` file exists with all required variables
 - [ ] `docker-compose config` runs without errors
-- [ ] `docker-compose ps` shows container as "healthy"
-- [ ] `curl http://localhost:8080/health` returns 200 OK
+- [ ] `docker-compose ps` shows container as "Up"
+- [ ] `curl http://localhost:8080/health` returns 200 OK with JSON response
 
 ---
 
 ## 🔧 What Was Changed
 
-### docker-compose.yml Updates
+### docker-compose.yml Updates (For Old Docker Compose Compatibility)
 
-1. **Removed version key** (line 1):
+1. **Changed version to '2'** (maximum compatibility):
    ```yaml
-   # Before: version: '3.8'
-   # After: (removed completely)
+   # Before: version: '3.8' (or no version)
+   # After:  version: '2'
    ```
 
-2. **Simplified environment variables** (lines 17, 21):
+2. **Changed environment syntax** (key: value format):
    ```yaml
-   # Before: NODE_ENV=${NODE_ENV:-production}
-   # After:  NODE_ENV=${NODE_ENV}
+   # Before:
+   environment:
+     - NODE_ENV=${NODE_ENV:-production}
+     - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
    
-   # Before: ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
-   # After:  ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
+   # After:
+   environment:
+     NODE_ENV: ${NODE_ENV}
+     ALLOWED_ORIGINS: ${ALLOWED_ORIGINS}
    ```
 
-**Why:** The `${VAR:-default}` syntax isn't supported in older Docker Compose versions. Default values are now in `.env.example`.
+3. **Simplified resource limits** (v2 compatible):
+   ```yaml
+   # Before: deploy.resources (v3 syntax)
+   # After: mem_limit, cpu_shares (v2 syntax)
+   ```
+
+4. **Removed healthcheck** (not supported in older versions):
+   - Health checks removed for compatibility
+   - Monitor manually with: `curl http://localhost:8080/health`
+
+**Why:** Maximum compatibility with Docker Compose v1.5+ (older versions on CentOS, Ubuntu 16.04, etc.)
 
 ---
 
@@ -129,13 +143,13 @@ docker-compose logs --tail=50
 # - Network issues
 ```
 
-### Container Shows "unhealthy"
+### Container not running
 
 ```bash
-# Wait 30-40 seconds for health check to pass
+# Check if container is up
 docker-compose ps
 
-# If still unhealthy after 1 minute:
+# If not running or exited:
 docker-compose logs --tail=50
 ```
 
@@ -174,9 +188,9 @@ docker-compose down
 echo "Starting service..."
 docker-compose up -d
 
-# Wait for health check
-echo "Waiting for health check (30 seconds)..."
-sleep 30
+# Wait for container to start
+echo "Waiting for container to start (10 seconds)..."
+sleep 10
 
 # Check status
 docker-compose ps
@@ -194,10 +208,14 @@ echo "Next step: Update frontend VITE_OPENAI_RELAY_URL"
 
 ## 🎯 Next Steps After Deployment
 
-1. **Verify container is healthy**:
+1. **Verify container is running**:
    ```bash
    docker-compose ps
-   # Should show: healthy
+   # Should show: Up X seconds
+   
+   # Test health endpoint
+   curl http://localhost:8080/health
+   # Should return: {"status":"healthy",...}
    ```
 
 2. **Set up Nginx + SSL** (if not done yet):
