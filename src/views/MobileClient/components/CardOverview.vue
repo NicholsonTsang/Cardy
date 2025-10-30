@@ -58,11 +58,11 @@
     </div>
     
     <!-- Language Selector Modal -->
-    <LanguageSelectorModal
-      v-if="showLanguageSelector"
+    <UnifiedLanguageModal
+      v-model="showLanguageSelector"
       :available-languages="availableLanguages"
+      :track-selection="true"
       @select="handleLanguageSelect"
-      @close="showLanguageSelector = false"
     />
   </div>
 </template>
@@ -73,7 +73,7 @@ import { useI18n } from 'vue-i18n'
 import { renderMarkdown } from '@/utils/markdownRenderer'
 import { getCardAspectRatio } from '@/utils/cardConfig'
 import { useMobileLanguageStore } from '@/stores/language'
-import LanguageSelectorModal from './LanguageSelectorModal.vue'
+import UnifiedLanguageModal from './UnifiedLanguageModal.vue'
 
 const { t } = useI18n()
 const languageStore = useMobileLanguageStore()

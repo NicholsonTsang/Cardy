@@ -1,56 +1,83 @@
 <template>
-  <!-- Language Selection Modal -->
-  <Teleport to="body">
-    <Transition name="modal">
-      <div class="modal-overlay" @click="$emit('close')">
-        <div class="modal-content" @click.stop>
-          <div class="modal-header">
-            <h2>{{ $t('mobile.select_language') }}</h2>
-            <button @click="$emit('close')" class="close-button">
-              <i class="pi pi-times" />
-            </button>
-          </div>
+  <div class="unified-language-selector">
+    <!-- Optional Trigger Button (for header usage) -->
+    <slot name="trigger" :open="openModal">
+      <!-- Default trigger button (header style) -->
+      <button 
+        v-if="showTrigger"
+        @click="openModal" 
+        class="language-button" 
+        :title="$t('mobile.select_language')"
+      >
+        <span class="language-flag">{{ languageStore.selectedLanguage.flag }}</span>
+        <span class="language-code">{{ languageStore.selectedLanguage.code.toUpperCase() }}</span>
+      </button>
+    </slot>
 
-          <div class="language-grid">
-            <button
-              v-for="lang in languageStore.languages"
-              :key="lang.code"
-              @click="selectLanguage(lang)"
-              class="language-option"
-              :class="{ 
-                active: languageStore.selectedLanguage.code === lang.code,
-                disabled: !isLanguageAvailable(lang.code)
-              }"
-              :disabled="!isLanguageAvailable(lang.code)"
-            >
-              <span class="flag" :class="{ 'opacity-30': !isLanguageAvailable(lang.code) }">{{ lang.flag }}</span>
-              <span class="name">{{ lang.name }}</span>
-              <i v-if="languageStore.selectedLanguage.code === lang.code" class="pi pi-check" />
-              <i v-if="!isLanguageAvailable(lang.code)" class="pi pi-lock disabled-icon" />
-            </button>
+    <!-- Language Selection Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="modelValue" class="modal-overlay" @click="closeModal">
+          <div class="modal-content" @click.stop>
+            <div class="modal-header">
+              <h2>{{ $t('mobile.select_language') }}</h2>
+              <button @click="closeModal" class="close-button">
+                <i class="pi pi-times" />
+              </button>
+            </div>
+
+            <div class="language-grid">
+              <button
+                v-for="lang in languageStore.languages"
+                :key="lang.code"
+                @click="selectLanguage(lang)"
+                class="language-option"
+                :class="{ 
+                  active: languageStore.selectedLanguage.code === lang.code,
+                  disabled: !isLanguageAvailable(lang.code)
+                }"
+                :disabled="!isLanguageAvailable(lang.code)"
+              >
+                <span 
+                  class="flag" 
+                  :class="{ 'opacity-30': !isLanguageAvailable(lang.code) }"
+                >
+                  {{ lang.flag }}
+                </span>
+                <span class="name">{{ lang.name }}</span>
+                <i v-if="languageStore.selectedLanguage.code === lang.code" class="pi pi-check check-icon" />
+                <i v-if="!isLanguageAvailable(lang.code)" class="pi pi-lock disabled-icon" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </Transition>
-  </Teleport>
+      </Transition>
+    </Teleport>
+  </div>
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
 import { useMobileLanguageStore } from '@/stores/language'
 import type { Language } from '@/stores/language'
 
 interface Props {
-  availableLanguages?: string[] // Language codes available for this card
+  modelValue: boolean // v-model for open/close state
+  availableLanguages?: string[] // Optional: restrict to certain languages
+  showTrigger?: boolean // Show default trigger button (for header)
+  trackSelection?: boolean // Track user selection in sessionStorage
 }
 
-const props = defineProps<Props>()
-const languageStore = useMobileLanguageStore()
+const props = withDefaults(defineProps<Props>(), {
+  showTrigger: false,
+  trackSelection: true
+})
 
 const emit = defineEmits<{
+  'update:modelValue': [value: boolean]
   select: [language: Language]
-  close: []
 }>()
+
+const languageStore = useMobileLanguageStore()
 
 // Check if a language is available for this card
 const isLanguageAvailable = (langCode: string) => {
@@ -60,23 +87,78 @@ const isLanguageAvailable = (langCode: string) => {
   return props.availableLanguages.includes(langCode)
 }
 
+function openModal() {
+  emit('update:modelValue', true)
+}
+
+function closeModal() {
+  emit('update:modelValue', false)
+}
+
 function selectLanguage(language: Language) {
   // Don't allow selection of unavailable languages
   if (!isLanguageAvailable(language.code)) {
     return
   }
   
-  // Mark that user has manually selected a language
-  // This prevents the app from resetting to card's original language
-  sessionStorage.setItem('userSelectedLanguage', 'true')
+  // Track user selection (prevents auto-reset to card's original language)
+  if (props.trackSelection) {
+    sessionStorage.setItem('userSelectedLanguage', 'true')
+  }
   
+  // Update language in store
   languageStore.setLanguage(language)
+  
+  // Emit events
   emit('select', language)
-  emit('close')
+  closeModal()
 }
 </script>
 
 <style scoped>
+/* Component Container */
+.unified-language-selector {
+  position: relative;
+}
+
+/* Trigger Button (Header Style) */
+.language-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  color: white;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.875rem;
+  min-height: 44px; /* iOS touch target */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.language-button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.language-button:active {
+  transform: scale(0.98);
+}
+
+.language-flag {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.language-code {
+  font-weight: 600;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+}
+
 /* Modal Overlay */
 .modal-overlay {
   position: fixed;
@@ -113,6 +195,7 @@ function selectLanguage(language: Language) {
   padding: 1.5rem;
   border-bottom: 1px solid #e5e7eb;
   background: #f9fafb;
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .modal-header h2 {
@@ -134,6 +217,8 @@ function selectLanguage(language: Language) {
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.2s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .close-button:hover {
@@ -157,6 +242,8 @@ function selectLanguage(language: Language) {
   -webkit-overflow-scrolling: touch; /* Smooth iOS scrolling */
   overscroll-behavior: contain; /* Prevent pull-to-refresh */
   background: #f9fafb;
+  flex: 1; /* Allow grid to take remaining space */
+  min-height: 0; /* Important for flex children to scroll */
 }
 
 .language-option {
@@ -176,14 +263,14 @@ function selectLanguage(language: Language) {
   -webkit-tap-highlight-color: transparent;
 }
 
-.language-option:hover {
+.language-option:hover:not(.disabled) {
   border-color: #3b82f6;
   background: #eff6ff;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 
-.language-option:active {
+.language-option:active:not(.disabled) {
   transform: translateY(0);
 }
 
@@ -205,18 +292,11 @@ function selectLanguage(language: Language) {
   box-shadow: none;
 }
 
-.disabled-icon {
-  position: absolute;
-  top: 0.5rem;
-  right: 0.5rem;
-  color: #9ca3af;
-  font-size: 0.875rem;
-}
-
 .language-option .flag {
   font-size: 2.5rem;
   line-height: 1;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
+  transition: opacity 0.2s;
 }
 
 .language-option .name {
@@ -227,13 +307,21 @@ function selectLanguage(language: Language) {
   line-height: 1.3;
 }
 
-.language-option .pi-check {
+.check-icon {
   position: absolute;
   top: 0.5rem;
   right: 0.5rem;
   color: #3b82f6;
   font-size: 1rem;
   font-weight: bold;
+}
+
+.disabled-icon {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  color: #9ca3af;
+  font-size: 0.875rem;
 }
 
 /* Scrollbar Styling */
@@ -280,14 +368,41 @@ function selectLanguage(language: Language) {
 @media (max-width: 640px) {
   .modal-overlay {
     padding: 0;
+    align-items: flex-end;
   }
   
   .modal-content {
     border-radius: 20px 20px 0 0;
     max-height: 90vh;
     max-height: calc(var(--viewport-height, 100vh) * 0.9); /* Dynamic viewport */
-    align-self: flex-end;
     width: 100%;
+    max-width: 100%;
+  }
+  
+  .modal-header {
+    position: relative;
+    padding: 1.25rem 1.5rem;
+  }
+  
+  /* Pull handle indicator for mobile */
+  .modal-header::before {
+    content: '';
+    position: absolute;
+    top: 0.75rem;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 40px;
+    height: 4px;
+    background: #d1d5db;
+    border-radius: 2px;
+  }
+  
+  .modal-header h2 {
+    margin-top: 0.5rem;
+  }
+  
+  .close-button {
+    margin-top: 0.5rem;
   }
   
   .language-grid {
@@ -312,7 +427,23 @@ function selectLanguage(language: Language) {
   }
 }
 
-@media (min-width: 640px) {
+@media (min-width: 640px) and (max-width: 768px) {
+  .language-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (min-width: 768px) {
+  /* Remove pull handle on desktop */
+  .modal-header::before {
+    display: none;
+  }
+  
+  .modal-header h2,
+  .close-button {
+    margin-top: 0;
+  }
+  
   .language-grid {
     grid-template-columns: repeat(3, 1fr);
   }
@@ -324,7 +455,9 @@ function selectLanguage(language: Language) {
   .modal-leave-active,
   .modal-enter-active .modal-content,
   .modal-leave-active .modal-content,
-  .language-option {
+  .language-option,
+  .language-button,
+  .close-button {
     transition: none;
   }
   

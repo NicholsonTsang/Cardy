@@ -9,13 +9,18 @@
     </div>
     <div class="language-controls">
       <ChineseVoiceSelector />
-      <LanguageSelector />
+      <UnifiedLanguageModal 
+        v-model="showLanguageModal"
+        :show-trigger="true"
+        :track-selection="false"
+      />
     </div>
   </header>
 </template>
 
 <script setup lang="ts">
-import LanguageSelector from './LanguageSelector.vue'
+import { ref } from 'vue'
+import UnifiedLanguageModal from './UnifiedLanguageModal.vue'
 import ChineseVoiceSelector from './ChineseVoiceSelector.vue'
 
 interface Props {
@@ -27,6 +32,8 @@ defineProps<Props>()
 const emit = defineEmits<{
   back: []
 }>()
+
+const showLanguageModal = ref(false)
 
 function handleBack() {
   emit('back')
