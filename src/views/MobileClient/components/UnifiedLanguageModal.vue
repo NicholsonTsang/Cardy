@@ -57,6 +57,7 @@
 </template>
 
 <script setup lang="ts">
+import { watch, onUnmounted } from 'vue'
 import { useMobileLanguageStore } from '@/stores/language'
 import type { Language } from '@/stores/language'
 
@@ -78,6 +79,50 @@ const emit = defineEmits<{
 }>()
 
 const languageStore = useMobileLanguageStore()
+
+// Prevent body scroll when modal is open
+watch(() => props.modelValue, (isOpen) => {
+  if (typeof window === 'undefined') return
+  
+  if (isOpen) {
+    // Store current scroll position
+    const scrollY = window.scrollY
+    document.body.style.position = 'fixed'
+    document.body.style.top = `-${scrollY}px`
+    document.body.style.left = '0'
+    document.body.style.right = '0'
+    document.body.style.width = '100%'
+  } else {
+    // Restore scroll position
+    const scrollY = document.body.style.top
+    document.body.style.position = ''
+    document.body.style.top = ''
+    document.body.style.left = ''
+    document.body.style.right = ''
+    document.body.style.width = ''
+    if (scrollY) {
+      window.scrollTo(0, parseInt(scrollY || '0') * -1)
+    }
+  }
+})
+
+// Cleanup on unmount
+onUnmounted(() => {
+  if (typeof window === 'undefined') return
+  
+  // Restore body scroll if component unmounts while modal is open
+  if (props.modelValue) {
+    const scrollY = document.body.style.top
+    document.body.style.position = ''
+    document.body.style.top = ''
+    document.body.style.left = ''
+    document.body.style.right = ''
+    document.body.style.width = ''
+    if (scrollY) {
+      window.scrollTo(0, parseInt(scrollY || '0') * -1)
+    }
+  }
+})
 
 // Check if a language is available for this card
 const isLanguageAvailable = (langCode: string) => {
@@ -172,6 +217,8 @@ function selectLanguage(language: Language) {
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   touch-action: none; /* Prevent background interaction */
+  overflow: hidden; /* Prevent overflow scroll */
+  overscroll-behavior: contain; /* Contain scroll within modal */
 }
 
 .modal-content {
@@ -185,7 +232,9 @@ function selectLanguage(language: Language) {
   display: flex;
   flex-direction: column;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
-  touch-action: pan-y; /* Allow vertical scrolling */
+  touch-action: pan-y; /* Allow vertical scrolling within modal */
+  overscroll-behavior: contain; /* Prevent scroll chaining to body */
+  isolation: isolate; /* Create stacking context */
 }
 
 .modal-header {
