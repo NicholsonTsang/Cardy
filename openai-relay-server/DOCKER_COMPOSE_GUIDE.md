@@ -424,8 +424,7 @@ openai-relay-server/
 You can extend `docker-compose.yml` for multiple services:
 
 ```yaml
-version: '3.8'
-
+# Note: Modern Docker Compose (v2+) doesn't require version key
 services:
   openai-relay:
     # ... existing config ...
