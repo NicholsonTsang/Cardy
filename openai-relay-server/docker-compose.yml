@@ -14,11 +14,11 @@ services:
       
       # Server Configuration
       - PORT=8080
-      - NODE_ENV=${NODE_ENV:-production}
+      - NODE_ENV=${NODE_ENV}
       
       # CORS Configuration
       # Use * for development, specify exact origins for production
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
     
     # Optional: Persist logs
     volumes:
