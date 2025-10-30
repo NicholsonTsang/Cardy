@@ -150,9 +150,9 @@ export function useWebRTCConnection() {
             },
             turn_detection: { 
               type: 'server_vad',
-              threshold: 0.5,
-              prefix_padding_ms: 300,
-              silence_duration_ms: 500
+              threshold: parseFloat(import.meta.env.VITE_REALTIME_VAD_THRESHOLD) || 0.65,           // Higher = less sensitive to noise (range: 0.0-1.0, default: 0.65)
+              prefix_padding_ms: parseInt(import.meta.env.VITE_REALTIME_VAD_PREFIX_PADDING) || 300, // Audio before speech detection (default: 300ms)
+              silence_duration_ms: parseInt(import.meta.env.VITE_REALTIME_VAD_SILENCE_DURATION) || 800 // Silence required before ending turn (default: 800ms)
             },
             temperature: 0.8,
             max_response_output_tokens: 4096
