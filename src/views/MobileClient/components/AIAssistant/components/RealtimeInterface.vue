@@ -1,7 +1,7 @@
 <template>
   <div class="realtime-container">
-    <!-- Connection Status Banner -->
-    <div class="realtime-status-banner" :class="`status-${status}`">
+    <!-- Connection Status Banner (only show when not connected) -->
+    <div v-if="status !== 'connected'" class="realtime-status-banner" :class="`status-${status}`">
       <div class="status-indicator">
         <div class="status-dot"></div>
         <span class="status-text">{{ statusText }}</span>
@@ -87,11 +87,6 @@
           <i class="pi pi-phone" style="transform: rotate(135deg);" />
           <span>{{ $t('mobile.end_call') }}</span>
         </button>
-        
-        <div class="realtime-mode-info">
-          <i class="pi pi-info-circle" />
-          <span>{{ $t('mobile.speak_naturally') }}</span>
-        </div>
       </div>
     </div>
   </div>
@@ -391,7 +386,7 @@ watch(streamingProgressKey, async () => {
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  max-height: 300px;
+  min-height: 200px; /* Ensure minimum readable height */
 }
 
 .transcript-placeholder {
@@ -468,12 +463,6 @@ watch(streamingProgressKey, async () => {
   cursor: not-allowed;
 }
 
-.realtime-talk-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
 .realtime-disconnect-button {
   width: 100%;
   display: flex;
@@ -495,18 +484,6 @@ watch(streamingProgressKey, async () => {
   background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
   transform: translateY(-1px);
   box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3);
-}
-
-.realtime-mode-info {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background: #f9fafb;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  color: #6b7280;
 }
 
 @media (max-width: 640px) {

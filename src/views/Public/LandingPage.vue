@@ -31,13 +31,13 @@
           <div class="pt-4 space-y-3">
             <Button 
               @click="router.push('/login'); mobileMenuOpen = false"
-              class="w-full bg-slate-100 text-slate-700 hover:bg-slate-200 border-0 py-3 font-semibold rounded-xl"
+              class="w-full bg-slate-100 text-slate-700 hover:bg-slate-200 border-0 py-4 font-semibold rounded-xl min-h-[52px]"
             >
               {{ $t('landing.nav.sign_in') }}
             </Button>
             <Button 
               @click="router.push('/signup'); mobileMenuOpen = false"
-              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-3 font-semibold shadow-lg rounded-xl"
+              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 font-semibold shadow-lg rounded-xl min-h-[52px]"
             >
               {{ $t('landing.nav.start_free_trial') }}
             </Button>
@@ -62,9 +62,9 @@
         <div class="floating-orb-slow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] bg-cyan-500/10 rounded-full blur-3xl"></div>
       </div>
       
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 relative z-10">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 relative z-10">
         <div class="text-center">
-          <h1 class="text-5xl sm:text-6xl lg:text-7xl font-black mb-8 leading-tight text-white animate-fade-in-up">
+          <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-6 sm:mb-8 leading-tight text-white animate-fade-in-up">
             {{ $t('landing.hero.title_line1') }}<br class="hidden sm:block" />
             <span class="bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 bg-clip-text text-transparent">
               {{ $t('landing.hero.title_line2') }}
@@ -72,22 +72,22 @@
             {{ $t('landing.hero.title_line3') }}
           </h1>
           
-          <p class="text-xl sm:text-2xl text-blue-100/90 max-w-4xl mx-auto mb-12 leading-relaxed font-light animate-fade-in-up animation-delay-200">
+          <p class="text-lg sm:text-xl md:text-2xl text-blue-100/90 max-w-4xl mx-auto mb-10 sm:mb-12 leading-relaxed font-light animate-fade-in-up animation-delay-200 px-2">
             {{ $t('landing.hero.subtitle_part1') }}
             <span class="font-semibold text-white">{{ $t('landing.hero.subtitle_highlight') }}</span> {{ $t('landing.hero.subtitle_part2') }}
           </p>
           
-          <div class="flex flex-col sm:flex-row gap-6 justify-center items-center mb-16 animate-fade-in-up animation-delay-400">
+          <div class="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-stretch sm:items-center mb-16 animate-fade-in-up animation-delay-400 px-4 sm:px-0">
             <Button 
               @click="scrollToContact"
-              class="bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 border-0 px-10 py-5 text-lg font-bold text-white shadow-2xl hover:shadow-orange-500/25 transition-all transform hover:scale-105"
+              class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold text-white shadow-2xl hover:shadow-blue-500/25 transition-all transform hover:scale-105 min-h-[56px]"
             >
               <i class="pi pi-rocket mr-2"></i>
               <span>{{ $t('landing.hero.cta_pilot') }}</span>
             </Button>
             <Button 
               @click="scrollToSection('about')"
-              class="group border-2 border-white/30 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-10 py-5 text-lg font-semibold text-white hover:border-white/50 transition-all transform hover:scale-105"
+              class="group border-2 border-white/30 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-semibold text-white hover:border-white/50 transition-all transform hover:scale-105 min-h-[56px]"
             >
               <span>{{ $t('landing.hero.cta_learn') }}</span>
               <i class="pi pi-arrow-down ml-2"></i>
@@ -105,16 +105,16 @@
     </section>
 
     <!-- About Section -->
-    <section id="about" class="py-32 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden">
+    <section id="about" class="py-20 sm:py-32 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden">
       <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-full blur-3xl"></div>
       <div class="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-br from-emerald-100/50 to-cyan-100/50 rounded-full blur-3xl"></div>
       
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div class="text-center mb-20">
-          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
+        <div class="text-center mb-12 sm:mb-20">
+          <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 mb-4 sm:mb-6">
             {{ $t('landing.about.title') }} <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">{{ $t('landing.about.title_highlight') }}</span>
           </h2>
-          <p class="text-xl text-slate-600 max-w-3xl mx-auto">
+          <p class="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto px-2">
             {{ $t('landing.about.intro') }}
           </p>
         </div>
@@ -131,10 +131,10 @@
           </p>
         </div>
 
-        <div class="text-center">
+        <div class="text-center px-4">
           <Button 
             @click="scrollToSection('demo')"
-            class="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white bg-transparent px-8 py-3 font-semibold rounded-xl transition-all"
+            class="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white bg-transparent px-6 sm:px-8 py-3 sm:py-4 font-semibold rounded-xl transition-all min-h-[48px]"
           >
             {{ $t('landing.about.cta') }}
           </Button>
@@ -143,17 +143,17 @@
     </section>
 
     <!-- Promotion & Solution Showcase Video Section -->
-    <section id="demo" class="py-32 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950 relative overflow-hidden">
+    <section id="demo" class="py-20 sm:py-32 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950 relative overflow-hidden">
       <div class="absolute inset-0">
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(120,180,255,0.1),transparent_70%)]"></div>
       </div>
       
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div class="text-center mb-16">
-          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6">
+        <div class="text-center mb-12 sm:mb-16">
+          <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 sm:mb-6">
             {{ $t('landing.demo.title') }} <span class="bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 bg-clip-text text-transparent">{{ $t('landing.demo.title_highlight') }}</span>
           </h2>
-          <p class="text-xl text-blue-100/80 max-w-3xl mx-auto">
+          <p class="text-lg sm:text-xl text-blue-100/80 max-w-3xl mx-auto px-2">
             {{ $t('landing.demo.subtitle') }}
           </p>
         </div>
@@ -205,7 +205,7 @@
                     :label="$t('landing.demo.try_live_demo')"
                     icon="pi pi-external-link"
                     @click="openDemoCard"
-                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-3 font-semibold shadow-lg hover:shadow-xl transition-all"
+                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 font-semibold shadow-lg hover:shadow-xl transition-all min-h-[52px]"
                   />
                 </div>
               </div>
@@ -230,13 +230,13 @@
     </section>
 
     <!-- How CardStudio Works -->
-    <section class="py-32 bg-white relative overflow-hidden">
+    <section class="py-20 sm:py-32 bg-white relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-20">
-          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
+        <div class="text-center mb-12 sm:mb-20">
+          <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 mb-4 sm:mb-6">
             How CardStudio <span class="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">Works</span>
           </h2>
-          <p class="text-xl text-slate-600 max-w-3xl mx-auto">
+          <p class="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto px-2">
             Simple, seamless, and engaging—follow the visitor journey in just 4 steps.
           </p>
         </div>
@@ -331,10 +331,10 @@
           </template>
         </Carousel>
 
-        <div class="text-center mt-12">
+        <div class="text-center mt-12 px-4">
           <Button 
             @click="scrollToContact"
-            class="border-2 border-emerald-600 text-emerald-600 hover:bg-emerald-600 hover:text-white bg-transparent px-8 py-3 font-semibold rounded-xl transition-all"
+            class="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white bg-transparent px-6 sm:px-8 py-3 sm:py-4 font-semibold rounded-xl transition-all min-h-[48px]"
           >
             Find Your Fit – Contact Us for a Pilot
           </Button>
@@ -476,18 +476,18 @@
     </section>
 
     <!-- Simple Pricing -->
-    <section id="pricing" class="py-32 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950 relative overflow-hidden">
+    <section id="pricing" class="py-20 sm:py-32 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950 relative overflow-hidden">
       <div class="absolute inset-0">
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(120,180,255,0.15),transparent_50%)]"></div>
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(180,120,255,0.15),transparent_50%)]"></div>
       </div>
       
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div class="text-center mb-20">
-          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6">
+        <div class="text-center mb-12 sm:mb-20">
+          <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 sm:mb-6">
             Simple <span class="bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">Pricing</span>
           </h2>
-          <p class="text-xl text-blue-100/80 max-w-3xl mx-auto">
+          <p class="text-lg sm:text-xl text-blue-100/80 max-w-3xl mx-auto px-2">
             Transparent Pay-Per-Card Pricing
           </p>
         </div>
@@ -557,13 +557,13 @@
               </div>
             </div>
 
-            <div class="text-center">
+            <div class="text-center px-4">
               <Button 
                 label="Contact Us for a Pilot"
                 icon="pi pi-arrow-right"
                 iconPos="right"
                 @click="scrollToContact"
-                class="bg-gradient-to-r from-orange-500 to-pink-600 hover:from-orange-600 hover:to-pink-700 text-white border-0 px-10 py-5 text-lg font-bold shadow-2xl hover:shadow-orange-500/25 transition-all transform hover:scale-105"
+                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-2xl hover:shadow-blue-500/25 transition-all transform hover:scale-105 min-h-[56px]"
               />
               <p class="text-blue-300 text-sm mt-4">No monthly subscriptions • No setup fees • No hidden costs</p>
             </div>
@@ -620,7 +620,7 @@
             <Button 
               label="Start Your Pilot"
               @click="scrollToContact"
-              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-3 font-semibold rounded-xl shadow-lg"
+              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 font-semibold rounded-xl shadow-lg min-h-[52px]"
             />
           </div>
 
@@ -659,7 +659,7 @@
             <Button 
               label="Explore Partnership"
               @click="scrollToContact"
-              class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white border-0 py-3 font-semibold rounded-xl shadow-lg"
+              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 font-semibold rounded-xl shadow-lg min-h-[52px]"
             />
           </div>
 
@@ -702,20 +702,20 @@
             <Button 
               label="Inquire About Licensing"
               @click="scrollToContact"
-              class="w-full bg-gradient-to-r from-orange-600 to-pink-600 hover:from-orange-700 hover:to-pink-700 text-white border-0 py-3 font-semibold rounded-xl shadow-lg"
+              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 font-semibold rounded-xl shadow-lg min-h-[52px]"
             />
           </div>
         </div>
 
-        <div class="text-center mt-12">
-          <p class="text-lg text-slate-600 mb-6">
+        <div class="text-center mt-12 px-4">
+          <p class="text-base sm:text-lg text-slate-600 mb-6">
             Not sure which fits? Schedule a strategy call to find your best path forward.
           </p>
           <Button 
             label="Schedule a Call"
             icon="pi pi-calendar"
             @click="scrollToContact"
-            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-10 py-4 text-lg font-bold shadow-lg"
+            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 text-base sm:text-lg font-bold shadow-lg min-h-[52px]"
           />
         </div>
       </div>
@@ -758,18 +758,18 @@
     </section>
 
     <!-- Contact Section with Form -->
-    <section id="contact" class="py-32 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 relative overflow-hidden">
+    <section id="contact" class="py-20 sm:py-32 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 relative overflow-hidden">
       <div class="absolute inset-0">
         <div class="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-10"></div>
       </div>
       
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div class="text-center mb-16">
-          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-white mb-6">
+        <div class="text-center mb-12 sm:mb-16">
+          <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 sm:mb-6">
             Get Started with<br />
             <span class="text-yellow-300">CardStudio Today</span>
           </h2>
-          <p class="text-xl text-white/90 max-w-3xl mx-auto">
+          <p class="text-lg sm:text-xl text-white/90 max-w-3xl mx-auto px-2">
             Ready to transform your visitor experience? Whether you're planning a pilot, exploring partnerships, or have questions—we're here to help.
           </p>
         </div>
@@ -905,7 +905,7 @@
                 icon="pi pi-send"
                 iconPos="right"
                 :loading="submitting"
-                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-10 py-4 text-lg font-bold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105"
+                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 min-h-[56px]"
               />
             </div>
           </form>
@@ -1011,13 +1011,13 @@
 
     <!-- Floating CTA Button -->
     <transition name="slide-up">
-      <div v-if="showFloatingCTA" class="fixed bottom-8 right-8 z-50">
+      <div v-if="showFloatingCTA" class="fixed bottom-4 sm:bottom-8 right-4 sm:right-8 z-50">
         <Button
           @click="scrollToContact"
-          class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-6 py-3 font-semibold shadow-2xl hover:shadow-3xl transition-all transform hover:scale-110 pulse-glow rounded-full"
+          class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-5 sm:px-6 py-3 sm:py-4 font-semibold shadow-2xl hover:shadow-3xl transition-all transform hover:scale-110 pulse-glow rounded-full min-h-[52px]"
         >
           <i class="pi pi-rocket mr-2"></i>
-          <span>Get Started</span>
+          <span class="text-sm sm:text-base">Get Started</span>
         </Button>
       </div>
     </transition>
