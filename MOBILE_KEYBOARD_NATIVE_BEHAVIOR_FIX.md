@@ -488,3 +488,4 @@ Visual Viewport API + Flexbox + Auto-scroll = Native app behavior.
 
 The AI Assistant now behaves exactly like a native messaging app when handling the keyboard! 🚀
 
+

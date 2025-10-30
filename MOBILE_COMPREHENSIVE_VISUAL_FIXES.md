@@ -361,3 +361,4 @@ The mobile client now rivals native apps in terms of visual quality, touch respo
 **Quality**: ⭐⭐⭐⭐⭐ Production-ready
 **Testing**: Recommended on actual iPhone devices (8+, iOS 12+)
 
+

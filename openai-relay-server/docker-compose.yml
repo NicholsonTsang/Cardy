@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  openai-relay:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: openai-relay:latest
+    container_name: openai-relay
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      # OpenAI Configuration
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      
+      # Server Configuration
+      - PORT=8080
+      - NODE_ENV=${NODE_ENV:-production}
+      
+      # CORS Configuration
+      # Use * for development, specify exact origins for production
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-*}
+    
+    # Optional: Persist logs
+    volumes:
+      - ./logs:/app/logs
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health', (r) => {if(r.statusCode !== 200) throw new Error('Health check failed')})"]
+      interval: 30s
+      timeout: 10s
+      start_period: 40s
+      retries: 3
+    
+    # Resource limits (optional, adjust as needed)
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+
+

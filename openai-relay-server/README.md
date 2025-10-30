@@ -97,9 +97,55 @@ Relay WebRTC SDP offer to OpenAI.
 
 ## Deployment Options
 
-### Option 1: Docker - Recommended (Easiest!)
+### 🚀 Quick Deploy (Production)
 
-Docker provides the simplest deployment with automatic restarts and isolation.
+**Want to deploy quickly?** Follow our **[Quick Deployment Guide](./DEPLOY_QUICK.md)** - get HTTPS relay server running in **under 15 minutes**!
+
+### 📚 Deployment Guides
+
+| Guide | Use Case | Time | Link |
+|-------|----------|------|------|
+| **Quick Deploy** | Fastest production setup with HTTPS | 15 min | [DEPLOY_QUICK.md](./DEPLOY_QUICK.md) |
+| **Production Guide** | Complete production deployment | 30 min | [PRODUCTION_DEPLOYMENT_GUIDE.md](./PRODUCTION_DEPLOYMENT_GUIDE.md) |
+| **Docker Compose** | Docker Compose commands & tips | Reference | [DOCKER_COMPOSE_GUIDE.md](./DOCKER_COMPOSE_GUIDE.md) |
+| **SSH Deployment** | Step-by-step SSH deployment | 45 min | [DEPLOYMENT_SSH.md](./DEPLOYMENT_SSH.md) |
+
+### Option 1: Docker Compose - Recommended (Easiest!)
+
+Docker Compose provides the simplest deployment with configuration management.
+
+```bash
+# 1. Configure environment
+cp .env.example .env
+nano .env  # Add your OPENAI_API_KEY
+
+# 2. Start server (one command!)
+docker-compose up -d
+
+# 3. View logs
+docker-compose logs -f
+
+# 4. Check status
+docker-compose ps
+
+# Management commands
+docker-compose restart  # Restart
+docker-compose down     # Stop
+docker-compose up -d --build  # Update
+```
+
+**Why Docker Compose**:
+- ✅ **Simplest** - One command to start/stop
+- ✅ **Configuration** - Manage via .env file
+- ✅ **Auto-restart** - Built-in restart policy
+- ✅ **Easy updates** - `docker-compose up -d --build`
+- ✅ **Best for production** - Industry standard
+
+**See [DOCKER_COMPOSE_GUIDE.md](./DOCKER_COMPOSE_GUIDE.md) for complete guide**
+
+### Option 2: Docker (Manual)
+
+If you prefer manual Docker commands:
 
 ```bash
 # Build image
@@ -110,28 +156,15 @@ docker run -d \
   --name openai-relay \
   -p 8080:8080 \
   -e OPENAI_API_KEY=your_key_here \
-  -e ALLOWED_ORIGINS=https://your-domain.com \
+  -e ALLOWED_ORIGINS=* \
   --restart unless-stopped \
   openai-relay:latest
 
 # View logs
 docker logs -f openai-relay
-
-# Stop container
-docker stop openai-relay
-
-# Restart container
-docker restart openai-relay
 ```
 
-**Why Docker**:
-- ✅ Simpler setup - no Node.js installation needed
-- ✅ Self-contained - includes all dependencies
-- ✅ Auto-restart built-in
-- ✅ Easy updates - just rebuild image
-- ✅ Isolated environment
-
-### Option 2: PM2 (Process Manager)
+### Option 3: PM2 (Process Manager)
 
 If you prefer running directly on the host without Docker, use PM2.
 
@@ -169,7 +202,7 @@ pm2 startup
 pm2 save
 ```
 
-### Option 3: Systemd Service
+### Option 4: Systemd Service
 
 If you prefer a native Linux service without Docker or PM2:
 
@@ -203,9 +236,27 @@ sudo systemctl start openai-relay
 sudo systemctl status openai-relay
 ```
 
-## SSH Deployment Guide
+## 🧪 Verify Deployment
 
-See [DEPLOYMENT_SSH.md](./DEPLOYMENT_SSH.md) for detailed step-by-step SSH deployment instructions.
+After deployment, run the verification script:
+
+```bash
+./verify-deployment.sh
+```
+
+This checks:
+- ✅ Docker installation and service
+- ✅ Environment configuration
+- ✅ Container health status
+- ✅ Health endpoint response
+- ✅ SSL certificate (if configured)
+- ✅ Nginx configuration (if used)
+
+## Production Deployment Guides
+
+- **[Quick Deploy (15 min)](./DEPLOY_QUICK.md)** - Fastest way to production with HTTPS
+- **[Complete Production Guide](./PRODUCTION_DEPLOYMENT_GUIDE.md)** - Detailed deployment with monitoring
+- **[SSH Deployment](./DEPLOYMENT_SSH.md)** - Step-by-step SSH instructions
 
 ## Environment Variables
 

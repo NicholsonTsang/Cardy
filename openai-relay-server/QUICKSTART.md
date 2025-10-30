@@ -52,41 +52,67 @@ Now Realtime Mode should work!
 
 ## Production Deployment
 
-### Option 1: Docker (Recommended - Easiest!)
+### Option 1: Docker Compose (Recommended - Easiest!)
 
-**Why Docker**: Simpler, self-contained, no dependency management
+**Why Docker Compose**: One command to start everything!
 
 ```bash
 # 1. SSH to your server
 ssh user@your-server-ip
 
-# 2. Install Docker (if not already installed)
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh
+# 2. Install Docker & Docker Compose
+curl -fsSL https://get.docker.com | sh
+sudo apt install docker-compose-plugin
 
 # 3. Upload code
 cd /path/to/Cardy
-rsync -avz openai-relay-server/ user@your-server-ip:/opt/openai-relay/
+rsync -avz openai-relay-server/ user@your-server-ip:/opt/relay/
 
-# 4. On server: Build and run
-cd /opt/openai-relay
-docker build -t openai-relay:latest .
+# 4. On server: Configure and start
+cd /opt/relay
+cp .env.docker .env
+nano .env  # Add OPENAI_API_KEY
 
-docker run -d \
-  --name openai-relay \
-  -p 8080:8080 \
-  -e OPENAI_API_KEY=your_key_here \
-  -e ALLOWED_ORIGINS=https://your-domain.com \
-  --restart unless-stopped \
-  openai-relay:latest
+# 5. Start! (one command)
+docker-compose up -d
 
 # Check logs
-docker logs -f openai-relay
+docker-compose logs -f
 
 # Done! ✅
 ```
 
-### Option 2: PM2 (Alternative)
+**Management:**
+```bash
+docker-compose ps           # Status
+docker-compose logs -f      # Logs
+docker-compose restart      # Restart
+docker-compose down         # Stop
+docker-compose up -d --build # Update
+```
+
+### Option 2: Docker (Manual Commands)
+
+**Why Docker**: More control, manual management
+
+```bash
+# Upload code and install Docker
+ssh user@server
+curl -fsSL https://get.docker.com | sh
+cd /opt/relay
+
+# Build and run
+docker build -t relay .
+docker run -d --name relay -p 8080:8080 \
+  -e OPENAI_API_KEY=... -e ALLOWED_ORIGINS=* relay
+
+# Manage
+docker logs -f relay
+docker restart relay
+docker stop relay
+```
+
+### Option 3: PM2 (Alternative)
 
 **Why PM2**: If you prefer running directly on host without Docker
 
@@ -116,7 +142,8 @@ pm2 startup
 pm2 save
 ```
 
-**See [DEPLOYMENT_SSH.md](./DEPLOYMENT_SSH.md) for complete step-by-step guides for both options.**
+**See [DOCKER_COMPOSE_GUIDE.md](./DOCKER_COMPOSE_GUIDE.md) for complete Docker Compose guide**
+**See [DEPLOYMENT_SSH.md](./DEPLOYMENT_SSH.md) for complete step-by-step guides for all options.**
 
 ## Common Issues
 
