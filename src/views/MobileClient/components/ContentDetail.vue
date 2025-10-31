@@ -165,10 +165,12 @@ onMounted(() => {
 .hero-image {
   aspect-ratio: var(--content-aspect-ratio, 4/3);
   overflow: hidden;
+  margin-top: 1rem; /* Breathing room from header */
   margin-bottom: 1rem;
   background-color: white;
   position: relative;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 1rem; /* Match glass morphism design */
 }
 
 .image {
@@ -214,6 +216,47 @@ onMounted(() => {
   margin: 0;
   margin-bottom: 1rem;
   word-break: break-word;
+  
+  /* Scrollable container with max height */
+  max-height: 45vh; /* 45% of viewport - good balance for content visibility */
+  max-height: calc(var(--viewport-height, 100vh) * 0.45); /* Use dynamic viewport if available */
+  overflow-y: auto;
+  overflow-x: hidden;
+  
+  /* Smooth scrolling with momentum on iOS */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain; /* Prevent overscroll bounce affecting parent */
+  
+  /* Consistent styling with CardOverview and ContentList */
+  padding: 0.75rem;
+  padding-bottom: 1.5rem; /* Extra bottom padding for fade effect */
+  background: rgba(255, 255, 255, 0.1); /* Match other mobile components */
+  backdrop-filter: blur(8px); /* Glass morphism effect like other components */
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2); /* Match ContentList border */
+  border-radius: 1rem; /* Match ContentList radius */
+  
+  /* Scroll indicator shadow - shows there's more content below */
+  position: relative;
+}
+
+/* Fade indicator at bottom when content is scrollable */
+.content-description::after {
+  content: '';
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2.5rem;
+  background: linear-gradient(
+    to bottom, 
+    transparent 0%, 
+    rgba(30, 41, 59, 0.7) 50%,
+    rgba(30, 41, 59, 0.9) 100%
+  ); /* Darker gradient for better visibility with lighter background */
+  pointer-events: none; /* Don't block scrolling */
+  margin: 0 -0.75rem -1.5rem -0.75rem; /* Align with container padding */
+  border-radius: 0 0 1rem 1rem; /* Match parent border-radius */
 }
 
 .content-description :deep(p) {

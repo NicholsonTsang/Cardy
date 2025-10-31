@@ -1063,12 +1063,10 @@
       "cardstudio_reduction": "95% reduction in paper waste",
       "cardstudio_digital": "Digital content = zero ongoing waste",
       "impact_title": "Your Impact",
-      "impact_items": {
-        "esg": "Meet ESG sustainability mandates",
-        "cost": "Reduce printing costs by 70-80%",
-        "leader": "Position as environmental leader",
-        "appeal": "Appeal to eco-conscious visitors"
-      }
+      "impact_esg": "Meet ESG sustainability mandates",
+      "impact_cost": "Reduce printing costs by 70-80%",
+      "impact_leader": "Position as environmental leader",
+      "impact_appeal": "Appeal to eco-conscious visitors"
     },
     "pricing": {
       "title": "Simple",
@@ -1187,7 +1185,7 @@
         "organization": "Organization/Venue Name *",
         "organization_placeholder": "Museum of History",
         "email": "Email *",
-        "email_placeholder": "john@example.com",
+        "email_placeholder": "john{'@'}example.com",
         "phone": "Phone Number",
         "phone_placeholder": "+1 234 567 8900",
         "org_type": "Organization Type *",
@@ -1235,12 +1233,22 @@
       "alternative_title": "Alternative Contact Methods",
       "email_label": "Email",
       "whatsapp_label": "WhatsApp",
-      "security_note": "Your information is secure and will only be used to respond to your inquiry."
+      "security_note": "Your information is secure and will only be used to respond to your inquiry.",
+      "toast": {
+        "missing_info_title": "Missing Information",
+        "missing_info_detail": "Please fill in all required fields",
+        "inquiry_sent_title": "Inquiry Sent",
+        "inquiry_sent_detail": "Thank you! We will contact you shortly."
+      }
     },
     "footer": {
       "brand": "CardStudio",
       "description": "AI-Powered Interactive Souvenir Cards for Museums, Attractions, and Events Worldwide",
       "quick_links": "Quick Links",
+      "about": "About",
+      "demo": "Demo",
+      "pricing": "Pricing",
+      "contact": "Contact",
       "contact_title": "Contact",
       "phone": "Phone",
       "whatsapp_chat": "WhatsApp Chat",

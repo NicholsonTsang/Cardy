@@ -1052,12 +1052,10 @@
       "cardstudio_reduction": "紙張浪費減少 95%",
       "cardstudio_digital": "數位內容 = 零持續浪費",
       "impact_title": "您的影響",
-      "impact_items": {
-        "esg": "滿足 ESG 可持續發展要求",
-        "cost": "降低 70-80% 的印刷成本",
-        "leader": "定位為環境領導者",
-        "appeal": "吸引注重環保的訪客"
-      }
+      "impact_esg": "滿足 ESG 可持續發展要求",
+      "impact_cost": "降低 70-80% 的印刷成本",
+      "impact_leader": "定位為環境領導者",
+      "impact_appeal": "吸引注重環保的訪客"
     },
     "pricing": {
       "title": "簡單",
@@ -1176,7 +1174,7 @@
         "organization": "組織/場館名稱 *",
         "organization_placeholder": "歷史博物館",
         "email": "電子郵件 *",
-        "email_placeholder": "john@example.com",
+        "email_placeholder": "john{'@'}example.com",
         "phone": "電話號碼",
         "phone_placeholder": "+1 234 567 8900",
         "org_type": "組織類型 *",
@@ -1224,12 +1222,22 @@
       "alternative_title": "替代聯絡方式",
       "email_label": "電子郵件",
       "whatsapp_label": "WhatsApp",
-      "security_note": "您的資訊是安全的，僅用於回應您的詢問。"
+      "security_note": "您的資訊是安全的，僅用於回應您的詢問。",
+      "toast": {
+        "missing_info_title": "資訊缺失",
+        "missing_info_detail": "請填寫所有必填欄位",
+        "inquiry_sent_title": "詢問已發送",
+        "inquiry_sent_detail": "謝謝！我們將盡快與您聯繫。"
+      }
     },
     "footer": {
       "brand": "CardStudio",
       "description": "為全球博物館、景點和活動提供 AI 驅動的互動式紀念卡",
       "quick_links": "快速連結",
+      "about": "關於",
+      "demo": "演示",
+      "pricing": "定價",
+      "contact": "聯絡",
       "contact_title": "聯絡",
       "phone": "電話",
       "whatsapp_chat": "WhatsApp 聊天",

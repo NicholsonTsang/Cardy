@@ -31,13 +31,13 @@
           <div class="pt-4 space-y-3">
             <Button 
               @click="router.push('/login'); mobileMenuOpen = false"
-              class="w-full bg-slate-100 text-slate-700 hover:bg-slate-200 border-0 py-4 font-semibold rounded-xl min-h-[52px]"
+              class="w-full bg-slate-100 text-slate-700 hover:bg-slate-200 border-0 py-4 text-base font-semibold rounded-xl min-h-[52px]"
             >
               {{ $t('landing.nav.sign_in') }}
             </Button>
             <Button 
               @click="router.push('/signup'); mobileMenuOpen = false"
-              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 font-semibold shadow-lg rounded-xl min-h-[52px]"
+              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 text-base font-bold shadow-lg rounded-xl min-h-[52px]"
             >
               {{ $t('landing.nav.start_free_trial') }}
             </Button>
@@ -80,17 +80,15 @@
           <div class="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-stretch sm:items-center mb-16 animate-fade-in-up animation-delay-400 px-4 sm:px-0">
             <Button 
               @click="scrollToContact"
-              class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold text-white shadow-2xl hover:shadow-blue-500/25 transition-all transform hover:scale-105 min-h-[56px]"
+              class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold text-white shadow-2xl hover:shadow-blue-500/25 transition-all transform hover:scale-105 rounded-xl min-h-[56px]"
             >
-              <i class="pi pi-rocket mr-2"></i>
-              <span>{{ $t('landing.hero.cta_pilot') }}</span>
+              {{ $t('landing.hero.cta_pilot') }}
             </Button>
             <Button 
               @click="scrollToSection('about')"
-              class="group border-2 border-white/30 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-semibold text-white hover:border-white/50 transition-all transform hover:scale-105 min-h-[56px]"
+              class="group border-2 border-white/30 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-semibold text-white hover:border-white/50 transition-all transform hover:scale-105 rounded-xl min-h-[56px]"
             >
-              <span>{{ $t('landing.hero.cta_learn') }}</span>
-              <i class="pi pi-arrow-down ml-2"></i>
+              {{ $t('landing.hero.cta_learn') }}
             </Button>
           </div>
         </div>
@@ -134,7 +132,7 @@
         <div class="text-center px-4">
           <Button 
             @click="scrollToSection('demo')"
-            class="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white bg-transparent px-6 sm:px-8 py-3 sm:py-4 font-semibold rounded-xl transition-all min-h-[48px]"
+            class="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white bg-transparent px-6 sm:px-8 py-3 sm:py-4 text-base font-semibold rounded-xl transition-all min-h-[48px]"
           >
             {{ $t('landing.about.cta') }}
           </Button>
@@ -202,11 +200,11 @@
                 
                 <div class="mt-6 text-center">
                   <Button 
-                    :label="$t('landing.demo.try_live_demo')"
-                    icon="pi pi-external-link"
                     @click="openDemoCard"
-                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 font-semibold shadow-lg hover:shadow-xl transition-all min-h-[52px]"
-                  />
+                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 text-base font-bold shadow-lg hover:shadow-xl transition-all rounded-xl min-h-[52px]"
+                  >
+                    {{ $t('landing.demo.try_live_demo') }}
+                  </Button>
                 </div>
               </div>
             </div>
@@ -234,10 +232,10 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12 sm:mb-20">
           <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 mb-4 sm:mb-6">
-            How CardStudio <span class="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">Works</span>
+            {{ $t('landing.how_it_works.title') }} <span class="bg-gradient-to-r from-violet-600 to-purple-600 bg-clip-text text-transparent">{{ $t('landing.how_it_works.title_highlight') }}</span>
           </h2>
           <p class="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto px-2">
-            Simple, seamless, and engaging—follow the visitor journey in just 4 steps.
+            {{ $t('landing.how_it_works.subtitle') }}
           </p>
         </div>
         
@@ -247,11 +245,13 @@
           
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             <div v-for="(step, index) in howItWorksSteps" :key="index" class="relative group">
-              <div class="bg-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-500 border-2 border-slate-200 hover:border-purple-300 h-full">
-                <div class="absolute -top-4 left-8 w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg">
+              <!-- Card Content -->
+              <div class="relative bg-white rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all duration-500 border-2 border-slate-200 hover:border-purple-300 h-full">
+                <!-- Step Number Badge - Inside Top Left -->
+                <div class="absolute top-4 left-4 w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-base shadow-lg">
                   {{ index + 1 }}
                 </div>
-
+                
                 <div class="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center mb-6 mx-auto group-hover:scale-110 transition-transform">
                   <i :class="`pi ${step.icon} text-purple-600 text-3xl`"></i>
                 </div>
@@ -266,11 +266,11 @@
     </section>
 
     <!-- Key Features -->
-    <section class="py-32 bg-gradient-to-b from-slate-50 to-white">
+    <section class="py-20 sm:py-32 bg-gradient-to-b from-slate-50 to-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-20">
           <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            Why Choose <span class="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">CardStudio</span>
+            {{ $t('landing.features.title') }} <span class="bg-gradient-to-r from-amber-600 to-orange-600 bg-clip-text text-transparent">{{ $t('landing.features.title_highlight') }}</span>
           </h2>
         </div>
         
@@ -279,7 +279,7 @@
                class="group relative animate-on-scroll"
                :style="{ animationDelay: (index * 100) + 'ms' }">
             <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
-            <div class="relative bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-200 h-full">
+            <div class="relative bg-white rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200 h-full">
               <div class="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <i :class="`pi ${feature.icon} text-blue-600 text-2xl`"></i>
               </div>
@@ -292,22 +292,22 @@
     </section>
 
     <!-- Versatile Applications Carousel -->
-    <section class="py-32 bg-white">
+    <section class="py-20 sm:py-32 bg-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-20">
           <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            Where CardStudio <span class="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Shines</span>
+            {{ $t('landing.applications.title') }} <span class="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">{{ $t('landing.applications.title_highlight') }}</span>
           </h2>
           <p class="text-xl text-slate-600 max-w-3xl mx-auto">
-            CardStudio transforms venues into interactive destinations—driving engagement and connections. Swipe to explore:
+            {{ $t('landing.applications.subtitle') }}
           </p>
         </div>
 
-        <Carousel :value="applications" :numVisible="3" :numScroll="1" :responsiveOptions="carouselResponsiveOptions" 
+        <Carousel :value="applications.value" :numVisible="3" :numScroll="1" :responsiveOptions="carouselResponsiveOptions" 
                   :circular="true" :autoplayInterval="5000" class="custom-carousel">
           <template #item="slotProps">
             <div class="p-4">
-              <div class="bg-gradient-to-br from-white to-slate-50 rounded-3xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-2 border border-slate-200 h-full">
+              <div class="bg-gradient-to-br from-white to-slate-50 rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 border border-slate-200 h-full">
                 <div class="p-8">
                   <div class="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center mb-6 mx-auto">
                     <i :class="`pi ${slotProps.data.icon} text-emerald-600 text-3xl`"></i>
@@ -315,13 +315,13 @@
                   <h3 class="text-2xl font-bold text-slate-900 mb-2 text-center">{{ slotProps.data.name }}</h3>
                   <p class="text-sm font-semibold text-emerald-600 mb-4 text-center">{{ slotProps.data.role }}</p>
                   <div class="mb-4">
-                    <p class="text-xs text-slate-500 font-semibold mb-2">Alternatives for:</p>
+                    <p class="text-xs text-slate-500 font-semibold mb-2">{{ $t('landing.applications.alternatives_for') }}</p>
                     <p class="text-sm text-slate-600 italic">{{ slotProps.data.alternatives }}</p>
                   </div>
                   <ul class="space-y-3">
                     <li v-for="(benefit, idx) in slotProps.data.benefits" :key="idx" 
                         class="flex items-start gap-2 text-sm text-slate-600">
-                      <i class="pi pi-check-circle text-emerald-500 mt-0.5 flex-shrink-0"></i>
+                      <i class="pi pi-check-circle text-emerald-500 text-lg mt-0.5 flex-shrink-0"></i>
                       <span>{{ benefit }}</span>
                     </li>
                   </ul>
@@ -334,27 +334,27 @@
         <div class="text-center mt-12 px-4">
           <Button 
             @click="scrollToContact"
-            class="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white bg-transparent px-6 sm:px-8 py-3 sm:py-4 font-semibold rounded-xl transition-all min-h-[48px]"
+            class="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white bg-transparent px-6 sm:px-8 py-3 sm:py-4 text-base font-semibold rounded-xl transition-all min-h-[48px]"
           >
-            Find Your Fit – Contact Us for a Pilot
+            {{ $t('landing.applications.cta') }}
           </Button>
         </div>
       </div>
     </section>
 
     <!-- Benefits Section -->
-    <section class="py-32 bg-gradient-to-b from-slate-50 to-white">
+    <section class="py-20 sm:py-32 bg-gradient-to-b from-slate-50 to-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-20">
           <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            Real <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Benefits</span>
+            {{ $t('landing.benefits.title') }} <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{{ $t('landing.benefits.title_highlight') }}</span>
           </h2>
         </div>
 
         <div class="grid lg:grid-cols-2 gap-12">
           <!-- For Venues -->
-          <div class="bg-white rounded-3xl p-10 shadow-xl border border-slate-200">
-            <h3 class="text-3xl font-bold text-slate-900 mb-8 text-center">For Venues</h3>
+          <div class="bg-white rounded-3xl p-10 shadow-lg border border-slate-200">
+            <h3 class="text-3xl font-bold text-slate-900 mb-8 text-center">{{ $t('landing.benefits.venue_title') }}</h3>
             <ul class="space-y-6">
               <li v-for="(benefit, index) in venueBenefits" :key="index" 
                   class="flex items-start gap-4 group">
@@ -367,8 +367,8 @@
           </div>
 
           <!-- For Visitors -->
-          <div class="bg-white rounded-3xl p-10 shadow-xl border border-slate-200">
-            <h3 class="text-3xl font-bold text-slate-900 mb-8 text-center">For Visitors</h3>
+          <div class="bg-white rounded-3xl p-10 shadow-lg border border-slate-200">
+            <h3 class="text-3xl font-bold text-slate-900 mb-8 text-center">{{ $t('landing.benefits.visitor_title') }}</h3>
             <ul class="space-y-6">
               <li v-for="(benefit, index) in visitorBenefits" :key="index" 
                   class="flex items-start gap-4 group">
@@ -384,36 +384,36 @@
     </section>
 
     <!-- Sustainability Impact -->
-    <section class="py-32 bg-gradient-to-br from-emerald-50 to-teal-50">
+    <section class="py-20 sm:py-32 bg-gradient-to-br from-emerald-50 to-teal-50">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-20">
           <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            Innovation Meets <span class="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">Responsibility</span>
+            {{ $t('landing.sustainability.title') }} <span class="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">{{ $t('landing.sustainability.title_highlight') }}</span>
           </h2>
         </div>
 
         <div class="grid lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
           <!-- Traditional Way -->
-          <div class="bg-white rounded-3xl p-10 shadow-xl border-2 border-slate-200">
-            <h3 class="text-2xl font-bold text-slate-900 mb-8 text-center">Traditional Materials</h3>
+          <div class="bg-white rounded-3xl p-10 shadow-lg border-2 border-slate-200">
+            <h3 class="text-2xl font-bold text-slate-900 mb-8 text-center">{{ $t('landing.sustainability.traditional_title') }}</h3>
             <div class="space-y-6">
               <div class="flex items-center gap-4">
                 <div class="text-4xl">📄</div>
                 <div>
-                  <p class="font-semibold text-slate-900">10,000 brochures or leaflet printed</p>
-                  <p class="text-sm text-slate-600">Per 10,000 visitors annually</p>
+                  <p class="font-semibold text-slate-900">{{ $t('landing.sustainability.traditional_brochures') }}</p>
+                  <p class="text-sm text-slate-600">{{ $t('landing.sustainability.traditional_visitors') }}</p>
                 </div>
               </div>
               <div class="flex items-center gap-4">
                 <div class="text-4xl">🗑️</div>
                 <div>
-                  <p class="font-semibold text-slate-900">95% discarded within 24 hours</p>
+                  <p class="font-semibold text-slate-900">{{ $t('landing.sustainability.traditional_discarded') }}</p>
                 </div>
               </div>
               <div class="flex items-center gap-4">
                 <div class="text-4xl">🌳</div>
                 <div>
-                  <p class="font-semibold text-red-600">500kg of paper waste</p>
+                  <p class="font-semibold text-red-600">{{ $t('landing.sustainability.traditional_waste') }}</p>
                 </div>
               </div>
             </div>
@@ -421,54 +421,54 @@
 
           <!-- CardStudio Way -->
           <div class="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-3xl p-10 shadow-2xl text-white">
-            <h3 class="text-2xl font-bold mb-8 text-center">With CardStudio</h3>
+            <h3 class="text-2xl font-bold mb-8 text-center">{{ $t('landing.sustainability.cardstudio_title') }}</h3>
             <div class="space-y-6">
               <div class="flex items-center gap-4">
                 <div class="text-4xl">🎴</div>
                 <div>
-                  <p class="font-semibold">10,000 collectible cards</p>
+                  <p class="font-semibold">{{ $t('landing.sustainability.cardstudio_cards') }}</p>
                 </div>
               </div>
               <div class="flex items-center gap-4">
                 <div class="text-4xl">💚</div>
                 <div>
-                  <p class="font-semibold">80% kept as keepsakes</p>
+                  <p class="font-semibold">{{ $t('landing.sustainability.cardstudio_kept') }}</p>
                 </div>
               </div>
               <div class="flex items-center gap-4">
                 <div class="text-4xl">♻️</div>
                 <div>
-                  <p class="font-semibold text-yellow-300">95% reduction in paper waste</p>
+                  <p class="font-semibold text-yellow-300">{{ $t('landing.sustainability.cardstudio_reduction') }}</p>
                 </div>
               </div>
               <div class="flex items-center gap-4">
                 <div class="text-4xl">📱</div>
                 <div>
-                  <p class="font-semibold">Digital content = zero ongoing waste</p>
+                  <p class="font-semibold">{{ $t('landing.sustainability.cardstudio_digital') }}</p>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="mt-16 bg-white rounded-3xl p-10 shadow-xl border border-emerald-200 max-w-4xl mx-auto">
-          <h3 class="text-2xl font-bold text-slate-900 mb-6 text-center">Your Impact</h3>
+        <div class="mt-16 bg-white rounded-3xl p-10 shadow-lg border border-emerald-200 max-w-4xl mx-auto">
+          <h3 class="text-2xl font-bold text-slate-900 mb-6 text-center">{{ $t('landing.sustainability.impact_title') }}</h3>
           <div class="grid md:grid-cols-2 gap-6">
             <div class="flex items-start gap-3">
               <i class="pi pi-check-circle text-emerald-600 text-xl mt-1"></i>
-              <p class="text-slate-700">Meet ESG sustainability mandates</p>
+              <p class="text-slate-700">{{ $t('landing.sustainability.impact_esg') }}</p>
             </div>
             <div class="flex items-start gap-3">
               <i class="pi pi-check-circle text-emerald-600 text-xl mt-1"></i>
-              <p class="text-slate-700">Reduce printing costs by 70-80%</p>
+              <p class="text-slate-700">{{ $t('landing.sustainability.impact_cost') }}</p>
             </div>
             <div class="flex items-start gap-3">
               <i class="pi pi-check-circle text-emerald-600 text-xl mt-1"></i>
-              <p class="text-slate-700">Position as environmental leader</p>
+              <p class="text-slate-700">{{ $t('landing.sustainability.impact_leader') }}</p>
             </div>
             <div class="flex items-start gap-3">
               <i class="pi pi-check-circle text-emerald-600 text-xl mt-1"></i>
-              <p class="text-slate-700">Appeal to eco-conscious visitors</p>
+              <p class="text-slate-700">{{ $t('landing.sustainability.impact_appeal') }}</p>
             </div>
           </div>
         </div>
@@ -483,12 +483,12 @@
       </div>
       
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div class="text-center mb-12 sm:mb-20">
+          <div class="text-center mb-12 sm:mb-20">
           <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 sm:mb-6">
-            Simple <span class="bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">Pricing</span>
+            {{ $t('landing.pricing.title') }} <span class="bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">{{ $t('landing.pricing.title_highlight') }}</span>
           </h2>
           <p class="text-lg sm:text-xl text-blue-100/80 max-w-3xl mx-auto px-2">
-            Transparent Pay-Per-Card Pricing
+            {{ $t('landing.pricing.subtitle') }}
           </p>
         </div>
 
@@ -506,35 +506,35 @@
           <div class="p-8 lg:p-12">
             <div class="grid lg:grid-cols-2 gap-12 mb-8">
               <div>
-                <h3 class="text-2xl font-bold text-white mb-6">Pricing Details</h3>
+                <h3 class="text-2xl font-bold text-white mb-6">{{ $t('landing.pricing.details_title') }}</h3>
                 <div class="space-y-4 text-blue-100">
                   <div class="bg-white/5 rounded-xl p-4">
                     <div class="flex justify-between items-center">
-                      <span>Cost to you</span>
-                      <span class="font-bold text-white">$2.00 per card</span>
+                      <span>{{ $t('landing.pricing.cost_to_you') }}</span>
+                      <span class="font-bold text-white">{{ $t('landing.pricing.cost_value') }}</span>
                     </div>
                   </div>
                   <div class="bg-white/5 rounded-xl p-4">
                     <div class="flex justify-between items-center">
-                      <span>Suggested retail</span>
-                      <span class="font-bold text-white">$3-7 USD</span>
+                      <span>{{ $t('landing.pricing.suggested_retail') }}</span>
+                      <span class="font-bold text-white">{{ $t('landing.pricing.retail_value') }}</span>
                     </div>
                   </div>
                   <div class="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/20">
                     <div class="flex justify-between items-center">
-                      <span>Your profit margin</span>
-                      <span class="font-bold text-emerald-400">$1-5 per card</span>
+                      <span>{{ $t('landing.pricing.profit_margin') }}</span>
+                      <span class="font-bold text-emerald-400">{{ $t('landing.pricing.profit_value') }}</span>
                     </div>
                   </div>
                   <div class="text-sm text-blue-300 pt-4">
                     <i class="pi pi-info-circle mr-2"></i>
-                    Alternative: Complimentary model (free to visitors, $2 cost to you)
+                    {{ $t('landing.pricing.alternative_note') }}
                   </div>
                 </div>
               </div>
 
               <div>
-                <h3 class="text-2xl font-bold text-white mb-6">Everything Included</h3>
+                <h3 class="text-2xl font-bold text-white mb-6">{{ $t('landing.pricing.included_title') }}</h3>
                 <ul class="space-y-4">
                   <li v-for="feature in pricingFeatures" :key="feature" 
                       class="flex items-center gap-3 text-blue-100">
@@ -550,8 +550,8 @@
             <div class="bg-white/5 rounded-xl p-6 mb-8">
               <div class="flex items-center justify-between">
                 <div>
-                  <p class="text-white font-semibold mb-1">Minimum Order</p>
-                  <p class="text-blue-200 text-sm">{{ minBatchQuantity }} cards per order</p>
+                  <p class="text-white font-semibold mb-1">{{ $t('landing.pricing.minimum_order') }}</p>
+                  <p class="text-blue-200 text-sm">{{ $t('landing.pricing.minimum_cards', { count: minBatchQuantity }) }}</p>
                 </div>
                 <div class="text-4xl">📦</div>
               </div>
@@ -559,13 +559,12 @@
 
             <div class="text-center px-4">
               <Button 
-                label="Contact Us for a Pilot"
-                icon="pi pi-arrow-right"
-                iconPos="right"
                 @click="scrollToContact"
-                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-2xl hover:shadow-blue-500/25 transition-all transform hover:scale-105 min-h-[56px]"
-              />
-              <p class="text-blue-300 text-sm mt-4">No monthly subscriptions • No setup fees • No hidden costs</p>
+                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-2xl hover:shadow-blue-500/25 transition-all transform hover:scale-105 rounded-xl min-h-[56px]"
+              >
+                {{ $t('landing.pricing.cta') }}
+              </Button>
+              <p class="text-blue-300 text-sm mt-4">{{ $t('landing.pricing.footer_text') }}</p>
             </div>
           </div>
         </div>
@@ -573,160 +572,163 @@
     </section>
 
     <!-- Collaboration Models -->
-    <section class="py-32 bg-white">
+    <section class="py-20 sm:py-32 bg-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-20">
           <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            Partner with <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">CardStudio</span>
+            {{ $t('landing.collaboration.title') }} <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{{ $t('landing.collaboration.title_highlight') }}</span>
           </h2>
           <p class="text-xl text-slate-600 max-w-3xl mx-auto">
-            Beyond buying cards - three ways to grow with CardStudio.
+            {{ $t('landing.collaboration.subtitle') }}
           </p>
         </div>
 
         <div class="grid lg:grid-cols-3 gap-8">
           <!-- Become a Client -->
-          <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-blue-200 hover:border-blue-400">
+          <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-200 hover:border-blue-400">
             <div class="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
               <i class="pi pi-shopping-cart text-white text-2xl"></i>
             </div>
-            <h3 class="text-2xl font-bold text-slate-900 mb-4 text-center">Become a Client</h3>
-            <p class="text-sm text-slate-600 mb-6 text-center">For: Venues, museums, attractions, events, conferences, hotels</p>
+            <h3 class="text-2xl font-bold text-slate-900 mb-4 text-center">{{ $t('landing.collaboration.client.title') }}</h3>
+            <p class="text-sm text-slate-600 mb-6 text-center">{{ $t('landing.collaboration.client.for') }}</p>
             
             <div class="mb-6">
-              <p class="font-semibold text-slate-900 mb-3">You Get:</p>
+              <p class="font-semibold text-slate-900 mb-3">{{ $t('landing.collaboration.client.you_get') }}</p>
               <ul class="space-y-2">
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-blue-600 mt-0.5"></i>
-                  <span>Free full platform access (Card Design Management, Digital Content Management, Cloud Hosting)</span>
+                  <i class="pi pi-check text-blue-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.client.benefit1') }}</span>
                 </li>
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-blue-600 mt-0.5"></i>
-                  <span>Card printing logistic & shipping handled</span>
+                  <i class="pi pi-check text-blue-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.client.benefit2') }}</span>
                 </li>
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-blue-600 mt-0.5"></i>
-                  <span>Technical support and training</span>
+                  <i class="pi pi-check text-blue-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.client.benefit3') }}</span>
                 </li>
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-blue-600 mt-0.5"></i>
-                  <span>Focus on your contents and visitors. We handle the tech</span>
+                  <i class="pi pi-check text-blue-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.client.benefit4') }}</span>
                 </li>
               </ul>
             </div>
 
-            <p class="text-sm font-semibold text-blue-600 mb-6 text-center">Best if: You want to enhance your visitor experience immediately.</p>
+            <p class="text-sm font-semibold text-blue-600 mb-6 text-center">{{ $t('landing.collaboration.client.best_if') }}</p>
 
             <Button 
-              label="Start Your Pilot"
               @click="scrollToContact"
-              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 font-semibold rounded-xl shadow-lg min-h-[52px]"
-            />
+              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 text-base font-bold rounded-xl shadow-lg min-h-[52px]"
+            >
+              {{ $t('landing.collaboration.client.cta') }}
+            </Button>
           </div>
 
           <!-- Regional Partner -->
-          <div class="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-emerald-200 hover:border-emerald-400">
+          <div class="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-emerald-200 hover:border-emerald-400">
             <div class="w-16 h-16 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
               <i class="pi pi-globe text-white text-2xl"></i>
             </div>
-            <h3 class="text-2xl font-bold text-slate-900 mb-4 text-center">Regional Partner</h3>
-            <p class="text-sm text-slate-600 mb-6 text-center">For: Agencies, consultants with venue networks</p>
+            <h3 class="text-2xl font-bold text-slate-900 mb-4 text-center">{{ $t('landing.collaboration.partner.title') }}</h3>
+            <p class="text-sm text-slate-600 mb-6 text-center">{{ $t('landing.collaboration.partner.for') }}</p>
             
             <div class="mb-6">
-              <p class="font-semibold text-slate-900 mb-3">You Get:</p>
+              <p class="font-semibold text-slate-900 mb-3">{{ $t('landing.collaboration.partner.you_get') }}</p>
               <ul class="space-y-2">
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-emerald-600 mt-0.5"></i>
-                  <span>Represent CardStudio in your territory</span>
+                  <i class="pi pi-check text-emerald-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.partner.benefit1') }}</span>
                 </li>
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-emerald-600 mt-0.5"></i>
-                  <span>Revenue share on clients you bring</span>
+                  <i class="pi pi-check text-emerald-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.partner.benefit2') }}</span>
                 </li>
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-emerald-600 mt-0.5"></i>
-                  <span>Exclusive territory options available</span>
+                  <i class="pi pi-check text-emerald-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.partner.benefit3') }}</span>
                 </li>
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-emerald-600 mt-0.5"></i>
-                  <span>Sales training, marketing support, co-branding</span>
+                  <i class="pi pi-check text-emerald-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.partner.benefit4') }}</span>
                 </li>
               </ul>
             </div>
 
-            <p class="text-sm font-semibold text-emerald-600 mb-6 text-center">Best if: You have venue relationships and want recurring revenue.</p>
+            <p class="text-sm font-semibold text-emerald-600 mb-6 text-center">{{ $t('landing.collaboration.partner.best_if') }}</p>
 
             <Button 
-              label="Explore Partnership"
               @click="scrollToContact"
-              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 font-semibold rounded-xl shadow-lg min-h-[52px]"
-            />
+              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 text-base font-bold rounded-xl shadow-lg min-h-[52px]"
+            >
+              {{ $t('landing.collaboration.partner.cta') }}
+            </Button>
           </div>
 
           <!-- Software License -->
-          <div class="bg-gradient-to-br from-orange-50 to-pink-50 rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 border-2 border-orange-200 hover:border-orange-400">
+          <div class="bg-gradient-to-br from-orange-50 to-pink-50 rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-orange-200 hover:border-orange-400">
             <div class="w-16 h-16 bg-gradient-to-br from-orange-600 to-pink-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
               <i class="pi pi-code text-white text-2xl"></i>
             </div>
-            <h3 class="text-2xl font-bold text-slate-900 mb-4 text-center">Software License</h3>
-            <p class="text-sm text-slate-600 mb-6 text-center">For: Enterprises, large agencies, platform entrepreneurs</p>
+            <h3 class="text-2xl font-bold text-slate-900 mb-4 text-center">{{ $t('landing.collaboration.license.title') }}</h3>
+            <p class="text-sm text-slate-600 mb-6 text-center">{{ $t('landing.collaboration.license.for') }}</p>
             
             <div class="mb-6">
-              <p class="font-semibold text-slate-900 mb-3">You Get:</p>
+              <p class="font-semibold text-slate-900 mb-3">{{ $t('landing.collaboration.license.you_get') }}</p>
               <ul class="space-y-2">
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-orange-600 mt-0.5"></i>
-                  <span>Own the entire platform</span>
+                  <i class="pi pi-check text-orange-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.license.benefit1') }}</span>
                 </li>
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-orange-600 mt-0.5"></i>
-                  <span>White-label under your brand</span>
+                  <i class="pi pi-check text-orange-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.license.benefit2') }}</span>
                 </li>
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-orange-600 mt-0.5"></i>
-                  <span>Set your own pricing</span>
+                  <i class="pi pi-check text-orange-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.license.benefit3') }}</span>
                 </li>
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-orange-600 mt-0.5"></i>
-                  <span>Keep 100% of your revenue</span>
+                  <i class="pi pi-check text-orange-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.license.benefit4') }}</span>
                 </li>
                 <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-orange-600 mt-0.5"></i>
-                  <span>Serve unlimited clients</span>
+                  <i class="pi pi-check text-orange-600 text-lg mt-0.5"></i>
+                  <span>{{ $t('landing.collaboration.license.benefit5') }}</span>
                 </li>
               </ul>
             </div>
 
-            <p class="text-sm font-semibold text-orange-600 mb-6 text-center">Best if: You're building a scalable multi-client business.</p>
+            <p class="text-sm font-semibold text-orange-600 mb-6 text-center">{{ $t('landing.collaboration.license.best_if') }}</p>
 
             <Button 
-              label="Inquire About Licensing"
               @click="scrollToContact"
-              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 font-semibold rounded-xl shadow-lg min-h-[52px]"
-            />
+              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 text-base font-bold rounded-xl shadow-lg min-h-[52px]"
+            >
+              {{ $t('landing.collaboration.license.cta') }}
+            </Button>
           </div>
         </div>
 
         <div class="text-center mt-12 px-4">
           <p class="text-base sm:text-lg text-slate-600 mb-6">
-            Not sure which fits? Schedule a strategy call to find your best path forward.
+            {{ $t('landing.collaboration.not_sure') }}
           </p>
           <Button 
-            label="Schedule a Call"
-            icon="pi pi-calendar"
             @click="scrollToContact"
-            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 text-base sm:text-lg font-bold shadow-lg min-h-[52px]"
-          />
+            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 text-base sm:text-lg font-bold shadow-lg rounded-xl min-h-[52px]"
+          >
+            {{ $t('landing.collaboration.schedule_call') }}
+          </Button>
         </div>
       </div>
     </section>
 
     <!-- FAQ Section -->
-    <section class="py-32 bg-gradient-to-b from-slate-50 to-white">
+    <section class="py-20 sm:py-32 bg-gradient-to-b from-slate-50 to-white">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-16">
           <h2 class="text-4xl sm:text-5xl font-black text-slate-900">
-            Frequently Asked <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Questions</span>
+            {{ $t('landing.faq.title') }} <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{{ $t('landing.faq.title_highlight') }}</span>
           </h2>
         </div>
         
@@ -751,7 +753,7 @@
 
         <div class="text-center mt-12">
           <p class="text-lg text-slate-600 mb-6">
-            Still have questions? Reach out via our Contact form.
+            {{ $t('landing.faq.still_have_questions') }}
           </p>
         </div>
       </div>
@@ -766,45 +768,45 @@
       <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div class="text-center mb-12 sm:mb-16">
           <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 sm:mb-6">
-            Get Started with<br />
-            <span class="text-yellow-300">CardStudio Today</span>
+            {{ $t('landing.contact.title_line1') }}<br />
+            <span class="text-yellow-300">{{ $t('landing.contact.title_line2') }}</span>
           </h2>
           <p class="text-lg sm:text-xl text-white/90 max-w-3xl mx-auto px-2">
-            Ready to transform your visitor experience? Whether you're planning a pilot, exploring partnerships, or have questions—we're here to help.
+            {{ $t('landing.contact.subtitle') }}
           </p>
         </div>
         
         <div class="bg-white rounded-3xl p-8 lg:p-12 shadow-2xl">
           <!-- What You Can Do -->
           <div class="mb-10">
-            <h3 class="text-2xl font-bold text-slate-900 mb-6">What You Can Do:</h3>
+            <h3 class="text-2xl font-bold text-slate-900 mb-6">{{ $t('landing.contact.what_you_can_do') }}</h3>
             <div class="grid md:grid-cols-2 gap-4">
               <div class="flex items-start gap-3">
                 <div class="text-2xl">🚀</div>
                 <div>
-                  <p class="font-semibold text-slate-900">Request a Pilot</p>
-                  <p class="text-sm text-slate-600">Test CardStudio at your venue with a customized trial program.</p>
+                  <p class="font-semibold text-slate-900">{{ $t('landing.contact.actions.pilot_title') }}</p>
+                  <p class="text-sm text-slate-600">{{ $t('landing.contact.actions.pilot_desc') }}</p>
                 </div>
               </div>
               <div class="flex items-start gap-3">
                 <div class="text-2xl">💡</div>
                 <div>
-                  <p class="font-semibold text-slate-900">Request Information</p>
-                  <p class="text-sm text-slate-600">Learn more about pricing, features, and how CardStudio fits your needs.</p>
+                  <p class="font-semibold text-slate-900">{{ $t('landing.contact.actions.info_title') }}</p>
+                  <p class="text-sm text-slate-600">{{ $t('landing.contact.actions.info_desc') }}</p>
                 </div>
               </div>
               <div class="flex items-start gap-3">
                 <div class="text-2xl">🤝</div>
                 <div>
-                  <p class="font-semibold text-slate-900">Explore Partnerships</p>
-                  <p class="text-sm text-slate-600">Discover regional partner, licensing, or collaboration opportunities.</p>
+                  <p class="font-semibold text-slate-900">{{ $t('landing.contact.actions.partnership_title') }}</p>
+                  <p class="text-sm text-slate-600">{{ $t('landing.contact.actions.partnership_desc') }}</p>
                 </div>
               </div>
               <div class="flex items-start gap-3">
                 <div class="text-2xl">❓</div>
                 <div>
-                  <p class="font-semibold text-slate-900">Ask Questions</p>
-                  <p class="text-sm text-slate-600">Get expert answers about implementation, customization, or technical details.</p>
+                  <p class="font-semibold text-slate-900">{{ $t('landing.contact.actions.questions_title') }}</p>
+                  <p class="text-sm text-slate-600">{{ $t('landing.contact.actions.questions_desc') }}</p>
                 </div>
               </div>
             </div>
@@ -814,105 +816,104 @@
           <form @submit.prevent="handleSubmit" class="space-y-6">
             <div class="grid md:grid-cols-2 gap-6">
               <div>
-                <label class="block text-sm font-semibold text-slate-900 mb-2">Full Name *</label>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.full_name') }}</label>
                 <InputText 
                   v-model="contactForm.fullName" 
                   required 
                   class="w-full"
-                  placeholder="John Doe"
+                  :placeholder="$t('landing.contact.form.full_name_placeholder')"
                 />
               </div>
               <div>
-                <label class="block text-sm font-semibold text-slate-900 mb-2">Organization/Venue Name *</label>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.organization') }}</label>
                 <InputText 
                   v-model="contactForm.organizationName" 
                   required 
                   class="w-full"
-                  placeholder="Museum of History"
+                  :placeholder="$t('landing.contact.form.organization_placeholder')"
                 />
               </div>
             </div>
 
             <div class="grid md:grid-cols-2 gap-6">
               <div>
-                <label class="block text-sm font-semibold text-slate-900 mb-2">Email *</label>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.email') }}</label>
                 <InputText 
                   v-model="contactForm.email" 
                   type="email" 
                   required 
                   class="w-full"
-                  placeholder="john@example.com"
+                  :placeholder="$t('landing.contact.form.email_placeholder')"
                 />
               </div>
               <div>
-                <label class="block text-sm font-semibold text-slate-900 mb-2">Phone Number</label>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.phone') }}</label>
                 <InputText 
                   v-model="contactForm.phone" 
                   class="w-full"
-                  placeholder="+1 234 567 8900"
+                  :placeholder="$t('landing.contact.form.phone_placeholder')"
                 />
               </div>
             </div>
 
             <div class="grid md:grid-cols-2 gap-6">
               <div>
-                <label class="block text-sm font-semibold text-slate-900 mb-2">Organization Type *</label>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.org_type') }}</label>
                 <Dropdown 
                   v-model="contactForm.organizationType" 
-                  :options="organizationTypes" 
+                  :options="organizationTypes.value" 
                   required 
                   class="w-full"
-                  placeholder="Select type"
+                  :placeholder="$t('landing.contact.form.org_type_placeholder')"
                 />
               </div>
               <div>
-                <label class="block text-sm font-semibold text-slate-900 mb-2">Monthly Visitor Count *</label>
+                <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.visitor_count') }}</label>
                 <Dropdown 
                   v-model="contactForm.visitorCount" 
-                  :options="visitorCountOptions" 
+                  :options="visitorCountOptions.value" 
                   required 
                   class="w-full"
-                  placeholder="Select range"
+                  :placeholder="$t('landing.contact.form.visitor_count_placeholder')"
                 />
               </div>
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-slate-900 mb-2">Inquiry Type *</label>
+              <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.inquiry_type') }}</label>
               <Dropdown 
                 v-model="contactForm.inquiryType" 
-                :options="inquiryTypes" 
+                :options="inquiryTypes.value" 
                 required 
                 class="w-full"
-                placeholder="Select inquiry type"
+                :placeholder="$t('landing.contact.form.inquiry_type_placeholder')"
               />
             </div>
 
             <div>
-              <label class="block text-sm font-semibold text-slate-900 mb-2">Tell Us More About Your Needs</label>
+              <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.message') }}</label>
               <Textarea 
                 v-model="contactForm.message" 
                 rows="5" 
                 class="w-full"
-                placeholder="Share your goals, challenges, or specific questions. The more details you provide, the better we can assist you."
+                :placeholder="$t('landing.contact.form.message_placeholder')"
               />
             </div>
 
             <div class="text-center">
               <Button 
                 type="submit"
-                label="Submit Inquiry"
-                icon="pi pi-send"
-                iconPos="right"
                 :loading="submitting"
-                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 min-h-[56px]"
-              />
+                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 rounded-xl min-h-[56px]"
+              >
+                Submit Inquiry
+              </Button>
             </div>
           </form>
 
           <!-- Alternative Contact Methods -->
           <div class="mt-12 pt-12 border-t border-slate-200">
-            <h3 class="text-xl font-bold text-slate-900 mb-6 text-center">Alternative Contact Methods</h3>
+            <h3 class="text-xl font-bold text-slate-900 mb-6 text-center">{{ $t('landing.contact.alternative_title') }}</h3>
             <div class="grid md:grid-cols-2 gap-6">
               <a :href="`mailto:${contactEmail}`" 
                  class="flex items-center gap-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl hover:shadow-lg transition-all border border-blue-200">
@@ -920,7 +921,7 @@
                   <i class="pi pi-envelope text-white text-lg"></i>
                 </div>
                 <div>
-                  <p class="font-semibold text-slate-900">Email</p>
+                  <p class="font-semibold text-slate-900">{{ $t('landing.contact.email_label') }}</p>
                   <p class="text-blue-600 text-sm">{{ contactEmail }}</p>
                 </div>
               </a>
@@ -928,10 +929,10 @@
               <a :href="contactWhatsApp" target="_blank"
                  class="flex items-center gap-4 p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl hover:shadow-lg transition-all border border-emerald-200">
                 <div class="w-12 h-12 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <i class="pi pi-whatsapp text-white text-lg"></i>
+                  <i class="pi pi-comments text-white text-lg"></i>
                 </div>
                 <div>
-                  <p class="font-semibold text-slate-900">WhatsApp</p>
+                  <p class="font-semibold text-slate-900">{{ $t('landing.contact.whatsapp_label') }}</p>
                   <p class="text-emerald-600 text-sm">{{ contactWhatsAppDisplay }}</p>
                 </div>
               </a>
@@ -941,7 +942,7 @@
           <div class="mt-8 text-center">
             <p class="text-sm text-slate-500">
               <i class="pi pi-shield mr-2"></i>
-              Your information is secure and will only be used to respond to your inquiry.
+              {{ $t('landing.contact.security_note') }}
             </p>
           </div>
         </div>
@@ -961,24 +962,24 @@
               <span class="text-xl font-bold">CardStudio</span>
             </div>
             <p class="text-slate-400">
-              AI-Powered Interactive Souvenir Cards for Museums, Attractions, and Events Worldwide
+              {{ $t('landing.footer.description') }}
             </p>
           </div>
 
           <!-- Quick Links -->
           <div>
-            <h4 class="font-bold text-lg mb-4">Quick Links</h4>
+            <h4 class="font-bold text-lg mb-4">{{ $t('landing.footer.quick_links') }}</h4>
             <ul class="space-y-2">
-              <li><a @click="scrollToSection('about')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">About</a></li>
-              <li><a @click="scrollToSection('demo')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">Demo</a></li>
-              <li><a @click="scrollToSection('pricing')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">Pricing</a></li>
-              <li><a @click="scrollToSection('contact')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">Contact</a></li>
+              <li><a @click="scrollToSection('about')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.about') }}</a></li>
+              <li><a @click="scrollToSection('demo')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.demo') }}</a></li>
+              <li><a @click="scrollToSection('pricing')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.pricing') }}</a></li>
+              <li><a @click="scrollToSection('contact')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.contact') }}</a></li>
             </ul>
           </div>
 
           <!-- Contact Info -->
           <div>
-            <h4 class="font-bold text-lg mb-4">Contact</h4>
+            <h4 class="font-bold text-lg mb-4">{{ $t('landing.footer.contact_title') }}</h4>
             <ul class="space-y-2">
               <li class="flex items-center gap-2 text-slate-400">
                 <i class="pi pi-envelope"></i>
@@ -989,8 +990,8 @@
                 <span>{{ contactWhatsAppDisplay }}</span>
               </li>
               <li class="flex items-center gap-2 text-slate-400">
-                <i class="pi pi-whatsapp"></i>
-                <a :href="contactWhatsApp" target="_blank" class="hover:text-white transition-colors">WhatsApp Chat</a>
+                <i class="pi pi-comments"></i>
+                <a :href="contactWhatsApp" target="_blank" class="hover:text-white transition-colors">{{ $t('landing.footer.whatsapp_chat') }}</a>
               </li>
             </ul>
           </div>
@@ -998,34 +999,21 @@
 
         <div class="pt-8 border-t border-slate-800">
           <div class="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p class="text-slate-500 text-sm">© 2025 CardStudio. All rights reserved.</p>
+            <p class="text-slate-500 text-sm">{{ $t('landing.footer.copyright') }}</p>
             <div class="flex gap-6 text-sm">
-              <a href="#" class="text-slate-400 hover:text-white transition-colors">Privacy Policy</a>
-              <a href="#" class="text-slate-400 hover:text-white transition-colors">Terms of Service</a>
-              <a :href="`mailto:${contactEmail}`" class="text-slate-400 hover:text-white transition-colors">Contact</a>
+              <a href="#" class="text-slate-400 hover:text-white transition-colors">{{ $t('landing.footer.privacy') }}</a>
+              <a href="#" class="text-slate-400 hover:text-white transition-colors">{{ $t('landing.footer.terms') }}</a>
+              <a :href="`mailto:${contactEmail}`" class="text-slate-400 hover:text-white transition-colors">{{ $t('landing.footer.contact_link') }}</a>
             </div>
           </div>
         </div>
       </div>
     </footer>
-
-    <!-- Floating CTA Button -->
-    <transition name="slide-up">
-      <div v-if="showFloatingCTA" class="fixed bottom-4 sm:bottom-8 right-4 sm:right-8 z-50">
-        <Button
-          @click="scrollToContact"
-          class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-5 sm:px-6 py-3 sm:py-4 font-semibold shadow-2xl hover:shadow-3xl transition-all transform hover:scale-110 pulse-glow rounded-full min-h-[52px]"
-        >
-          <i class="pi pi-rocket mr-2"></i>
-          <span class="text-sm sm:text-base">Get Started</span>
-        </Button>
-      </div>
-    </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
@@ -1042,7 +1030,6 @@ const toast = useToast()
 
 // Navigation state
 const mobileMenuOpen = ref(false)
-const showFloatingCTA = ref(false)
 
 // Sample QR code URL
 const sampleQrUrl = ref(import.meta.env.VITE_SAMPLE_QR_URL || `${window.location.origin}/c/demo-ancient-artifacts`)
@@ -1084,8 +1071,8 @@ const handleSubmit = async () => {
       !contactForm.value.organizationType || !contactForm.value.visitorCount || !contactForm.value.inquiryType) {
     toast.add({
       severity: 'warn',
-      summary: 'Missing Information',
-      detail: 'Please fill in all required fields',
+      summary: t('landing.contact.toast.missing_info_title'),
+      detail: t('landing.contact.toast.missing_info_detail'),
       life: 5000
     })
     return
@@ -1097,8 +1084,8 @@ const handleSubmit = async () => {
   setTimeout(() => {
     toast.add({
       severity: 'success',
-      summary: 'Inquiry Sent',
-      detail: 'Thank you! We will contact you shortly.',
+      summary: t('landing.contact.toast.inquiry_sent_title'),
+      detail: t('landing.contact.toast.inquiry_sent_detail'),
       life: 5000
     })
     
@@ -1118,10 +1105,7 @@ const handleSubmit = async () => {
   }, 1500)
 }
 
-// Scroll handling
-const handleScroll = () => {
-  showFloatingCTA.value = window.scrollY > window.innerHeight * 0.8
-}
+// Scroll handling (reserved for future use)
 
 // Intersection Observer for animations
 const observeElements = () => {
@@ -1147,15 +1131,9 @@ const observeElements = () => {
 }
 
 onMounted(() => {
-  window.addEventListener('scroll', handleScroll, { passive: true })
-  
   setTimeout(() => {
     observeElements()
   }, 100)
-})
-
-onUnmounted(() => {
-  window.removeEventListener('scroll', handleScroll)
 })
 
 // Navigation functions
@@ -1183,7 +1161,7 @@ const openDemoCard = () => {
 // Data
 const { t } = useI18n()
 
-const demoFeatures = ref([
+const demoFeatures = computed(() => [
   {
     icon: 'pi-qrcode',
     title: t('landing.demo.features.qr_access_title'),
@@ -1206,149 +1184,149 @@ const demoFeatures = ref([
   }
 ])
 
-const howItWorksSteps = ref([
+const howItWorksSteps = computed(() => [
   {
     icon: 'pi-shopping-cart',
-    title: 'Purchase',
-    description: 'Visitors buy premium CardStudio cards as both souvenirs and interactive guides.'
+    title: t('landing.how_it_works.steps.purchase_title'),
+    description: t('landing.how_it_works.steps.purchase_desc')
   },
   {
     icon: 'pi-qrcode',
-    title: 'Scan',
-    description: 'Scan the QR code to instantly access the digital contents and AI guide—no app downloads required.'
+    title: t('landing.how_it_works.steps.scan_title'),
+    description: t('landing.how_it_works.steps.scan_desc')
   },
   {
     icon: 'pi-comments',
-    title: 'Explore',
-    description: 'Engage through AI voice conversation and personalized storytelling for a guided adventure.'
+    title: t('landing.how_it_works.steps.explore_title'),
+    description: t('landing.how_it_works.steps.explore_desc')
   },
   {
     icon: 'pi-heart',
-    title: 'Collect',
-    description: 'Cards become treasured keepsakes, promoting repeat visits and lasting memories.'
+    title: t('landing.how_it_works.steps.collect_title'),
+    description: t('landing.how_it_works.steps.collect_desc')
   }
 ])
 
-const keyFeatures = ref([
+const keyFeatures = computed(() => [
   {
     icon: 'pi-id-card',
-    title: 'Premium Collectible Souvenirs',
-    description: 'QR-enabled designs that link to tailored digital contents and AI guides—creating digital keepsakes that boost revenue and repeat visits.'
+    title: t('landing.features.features.collectible_title'),
+    description: t('landing.features.features.collectible_desc')
   },
   {
     icon: 'pi-microphone',
-    title: 'Conversational AI Guide',
-    description: 'Real-time, AI voice conversation—natural, low-latency chats adapted to interests, age, and knowledge. Dynamic interactions that understand context and answer follow-up questions.'
+    title: t('landing.features.features.ai_guide_title'),
+    description: t('landing.features.features.ai_guide_desc')
   },
   {
     icon: 'pi-mobile',
-    title: 'Instant, No-App Access',
-    description: 'Scan QR on any smartphone—no downloads, no hassle for maximum adoption.'
+    title: t('landing.features.features.no_app_title'),
+    description: t('landing.features.features.no_app_desc')
   },
   {
-    icon: 'pi-language',
-    title: 'True Multilingual Support',
-    description: 'Natural conversations in multi languages: English, Mandarin, Cantonese, Japanese, Korean, Thai, Arabiya, Spanish, French, Russian, etc — for inclusive engagement. One content upload, serves global audiences.'
+    icon: 'pi-globe',
+    title: t('landing.features.features.multilingual_title'),
+    description: t('landing.features.features.multilingual_desc')
   },
   {
     icon: 'pi-bolt',
-    title: 'Zero Hardware Needed',
-    description: 'Leverages visitors\' devices—no venue setup or costly infrastructure required.'
+    title: t('landing.features.features.no_hardware_title'),
+    description: t('landing.features.features.no_hardware_desc')
   },
   {
     icon: 'pi-chart-bar',
-    title: 'Powerful Admin Dashboard',
-    description: 'Self-service platform for content management, real-time data, card issuance, printing, and optimization.'
+    title: t('landing.features.features.dashboard_title'),
+    description: t('landing.features.features.dashboard_desc')
   }
 ])
 
-const applications = ref([
+const applications = computed(() => [
   {
     icon: 'pi-building',
-    name: 'Museums & Exhibitions',
-    role: 'Your personalized multi-language AI museum docent',
-    alternatives: 'Real person docents, audio guides, printed gallery guides, wall text translations',
+    name: t('landing.applications.apps.museums.name'),
+    role: t('landing.applications.apps.museums.role'),
+    alternatives: t('landing.applications.apps.museums.alternatives'),
     benefits: [
-      'Bring artifacts and exhibits to life with deep-dive storytelling',
-      'Experience multilingual tours and accessibility features',
-      'Discover fascinating details based on your interests and questions'
+      t('landing.applications.apps.museums.benefit1'),
+      t('landing.applications.apps.museums.benefit2'),
+      t('landing.applications.apps.museums.benefit3')
     ]
   },
   {
     icon: 'pi-map-marker',
-    name: 'Tourist Attractions & Landmarks',
-    role: 'Your personal AI tour guide',
-    alternatives: 'Printed brochures and static displays of landmark history',
+    name: t('landing.applications.apps.tourist.name'),
+    role: t('landing.applications.apps.tourist.role'),
+    alternatives: t('landing.applications.apps.tourist.alternatives'),
     benefits: [
-      'Transform landmark visits with rich historical context and cultural heritage insights',
-      'Navigate with confidence while discovering authentic narratives',
-      'Learn local stories behind iconic destinations'
+      t('landing.applications.apps.tourist.benefit1'),
+      t('landing.applications.apps.tourist.benefit2'),
+      t('landing.applications.apps.tourist.benefit3')
     ]
   },
   {
     icon: 'pi-star',
-    name: 'Zoos & Aquariums',
-    role: 'Your interactive AI animal guide',
-    alternatives: 'Real person zoo guides, zoo guidebooks, and educational handouts',
+    name: t('landing.applications.apps.zoos.name'),
+    role: t('landing.applications.apps.zoos.role'),
+    alternatives: t('landing.applications.apps.zoos.alternatives'),
     benefits: [
-      'Engage with species information and conservation stories',
-      'Check feeding schedules and animal facts',
-      'Inspire wonder and education through interactive conversations about wildlife and habitats'
+      t('landing.applications.apps.zoos.benefit1'),
+      t('landing.applications.apps.zoos.benefit2'),
+      t('landing.applications.apps.zoos.benefit3')
     ]
   },
   {
     icon: 'pi-briefcase',
-    name: 'Trade Shows & Exhibition Centers',
-    role: 'Your AI product sales assistant',
-    alternatives: 'Product catalogs, brochures, business cards, and company profile leaflets',
+    name: t('landing.applications.apps.trade_shows.name'),
+    role: t('landing.applications.apps.trade_shows.role'),
+    alternatives: t('landing.applications.apps.trade_shows.alternatives'),
     benefits: [
-      'Deliver dynamic product demonstrations and detailed company profiles',
-      'Provide comprehensive spec sheets and technical information',
-      'Boost exhibitor exposure and drive sales—all from a single premium card'
+      t('landing.applications.apps.trade_shows.benefit1'),
+      t('landing.applications.apps.trade_shows.benefit2'),
+      t('landing.applications.apps.trade_shows.benefit3')
     ]
   },
   {
     icon: 'pi-calendar',
-    name: 'Academic Conferences',
-    role: 'Your personal AI research assistant',
-    alternatives: 'Printed conference handouts and paper booklets',
+    name: t('landing.applications.apps.conferences.name'),
+    role: t('landing.applications.apps.conferences.role'),
+    alternatives: t('landing.applications.apps.conferences.alternatives'),
     benefits: [
-      'Get answers about research papers and speaker bios',
-      'Clarify complex concepts on demand',
-      'Turn conferences into interactive learning experiences'
+      t('landing.applications.apps.conferences.benefit1'),
+      t('landing.applications.apps.conferences.benefit2'),
+      t('landing.applications.apps.conferences.benefit3')
     ]
   },
   {
     icon: 'pi-users',
-    name: 'Training and Events',
-    role: 'Your AI event coach',
-    alternatives: 'Event programs, training notes and handouts, and speaker bios',
+    name: t('landing.applications.apps.training.name'),
+    role: t('landing.applications.apps.training.role'),
+    alternatives: t('landing.applications.apps.training.alternatives'),
     benefits: [
-      'Access session summaries and speaker bios',
-      'Explore networking opportunities and key takeaways',
-      'Get instant AI explanations of complex topics on demand'
+      t('landing.applications.apps.training.benefit1'),
+      t('landing.applications.apps.training.benefit2'),
+      t('landing.applications.apps.training.benefit3')
     ]
   },
   {
     icon: 'pi-home',
-    name: 'Hotels & Resorts',
-    role: 'Your personal AI concierge in your language',
-    alternatives: 'Welcome cards for guests, tour recommendation leaflets, in-room directories, service catalogs, restaurant menus',
+    name: t('landing.applications.apps.hotels.name'),
+    role: t('landing.applications.apps.hotels.role'),
+    alternatives: t('landing.applications.apps.hotels.alternatives'),
     benefits: [
-      'Discover personalized property amenities info and local attraction recommendations',
-      'Get dining suggestions and tailored guest services',
-      'Premium keepsakes that create memorable stays'
+      t('landing.applications.apps.hotels.benefit1'),
+      t('landing.applications.apps.hotels.benefit2'),
+      t('landing.applications.apps.hotels.benefit3')
     ]
   },
   {
     icon: 'pi-server',
-    name: 'Restaurants & Fine Dining',
-    role: 'Your AI menu companion',
-    alternatives: 'Printed menus, multilingual menu cards, server explanations, dish description cards',
+    name: t('landing.applications.apps.restaurants.name'),
+    role: t('landing.applications.apps.restaurants.role'),
+    alternatives: t('landing.applications.apps.restaurants.alternatives'),
     benefits: [
-      'Experience instant multi-language menu translations and immersive dish introductions',
-      'Learn about ingredients, preparation methods, chef stories, and wine pairings',
-      'Get dietary accommodations through natural conversations—elevating the dining experience for international guests'
+      t('landing.applications.apps.restaurants.benefit1'),
+      t('landing.applications.apps.restaurants.benefit2'),
+      t('landing.applications.apps.restaurants.benefit3')
     ]
   }
 ])
@@ -1371,112 +1349,107 @@ const carouselResponsiveOptions = ref([
   }
 ])
 
-const venueBenefits = ref([
-  'Boost engagement with interactive AI content',
-  'Attract global crowds with multilingual access',
-  'Build an innovative reputation',
-  'Meet ESG sustainability goals by reducing paper waste',
-  'Increase revenue via collectible sales and increase repeat visits',
-  'Easy rollout with enterprise-grade security and all time support'
+const venueBenefits = computed(() => [
+  t('landing.benefits.venue_benefits.engagement'),
+  t('landing.benefits.venue_benefits.global'),
+  t('landing.benefits.venue_benefits.reputation'),
+  t('landing.benefits.venue_benefits.sustainability'),
+  t('landing.benefits.venue_benefits.revenue'),
+  t('landing.benefits.venue_benefits.rollout')
 ])
 
-const visitorBenefits = ref([
-  'Tailored stories at your pace and interest',
-  'Fun, educational experiences for all ages',
-  'Voice interaction in your language',
-  'Premium cards as memorable digital souvenirs',
-  'Easy access, no apps or setup'
+const visitorBenefits = computed(() => [
+  t('landing.benefits.visitor_benefits.personalized'),
+  t('landing.benefits.visitor_benefits.educational'),
+  t('landing.benefits.visitor_benefits.language'),
+  t('landing.benefits.visitor_benefits.souvenir'),
+  t('landing.benefits.visitor_benefits.access')
 ])
 
-const pricingFeatures = ref([
-  'AI voice conversations',
-  'Multi-language support',
-  'Design dashboard',
-  'Exhibits content management',
-  'Real-time analytics',
-  'QR code generation',
-  'Print management',
-  'Cloud hosting',
-  '24/7 support'
+const pricingFeatures = computed(() => [
+  t('landing.pricing.features.ai_voice'),
+  t('landing.pricing.features.multilingual'),
+  t('landing.pricing.features.design_dashboard'),
+  t('landing.pricing.features.content_management'),
+  t('landing.pricing.features.analytics'),
+  t('landing.pricing.features.qr_generation'),
+  t('landing.pricing.features.print_management'),
+  t('landing.pricing.features.cloud_hosting'),
+  t('landing.pricing.features.support')
 ])
 
-const faqs = ref([
+const faqs = computed(() => [
   {
-    question: 'What is CardStudio?',
-    answer: 'CardStudio is an AI-powered platform that combines premium collectible cards with interactive voice guides, transforming visits into personalized digital adventures—no apps or hardware required.'
+    question: t('landing.faq.q1'),
+    answer: t('landing.faq.a1')
   },
   {
-    question: 'How does it work for visitors?',
-    answer: 'Visitors buy or receive a QR-enabled card, scan it with their smartphone, and instantly access digital contents with AI-driven storytelling and conversations in their language. It\'s seamless and app-free.'
+    question: t('landing.faq.q2'),
+    answer: t('landing.faq.a2')
   },
   {
-    question: 'How do venues get started with CardStudio?',
-    answer: `Launch in minutes—from idea to live experience in 3 simple steps:
-
-Step 0: Register for CardStudio account.
-Step 1: Design & Configure—Use intuitive tools to create cards. Upload your card design and digital contents to your CardStudio account and easy setup.
-Step 2: Submit Your Card Order—Online submit the physical cards orders. Each card come with a different QR code to access the AI powered digital contents. We will handle the printing and shipping to your door.
-Step 3: Analyze & Optimize—Track engagement with real-time analytics, refine content, and scale effortlessly.`
+    question: t('landing.faq.q3'),
+    answer: t('landing.faq.a3')
   },
   {
-    question: 'What are the costs?',
-    answer: 'Transparent pay-per-card pricing: $2.00 per card. Suggested retail: $3-7 USD (your profit: $1-5 per card). Alternative: Complimentary model (free to visitors, $2 cost to you). No monthly subscriptions, setup fees, or hidden costs—everything included (AI chats, multilingual support, dashboard, analytics, QR generation, print management, hosting, and 24/7 support).'
+    question: t('landing.faq.q4'),
+    answer: t('landing.faq.a4')
   },
   {
-    question: 'Can we customize the cards and content?',
-    answer: 'Absolutely. Use our self-service tools for designs, manage digital contents, and AI interactions customization to match your venue need.'
+    question: t('landing.faq.q5'),
+    answer: t('landing.faq.a5')
   },
   {
-    question: 'How long does setup take?',
-    answer: 'Minutes—cloud-based with no technical setup or IT integration. Launch instantly.'
+    question: t('landing.faq.q6'),
+    answer: t('landing.faq.a6')
   },
   {
-    question: 'What kind of support do you offer?',
-    answer: '24/7 access to our expert team, plus an intuitive dashboard for analytics and updates.'
+    question: t('landing.faq.q7'),
+    answer: t('landing.faq.a7')
   },
   {
-    question: 'How many days it takes for card printing and delivery?',
-    answer: 'Once you ordered CardStudio cards, we will get your card print within 4 working days. The shipping time depends from shipping address worldwide. Please expect around 5 – 10 days from the date of your card order to the date you receive the card.'
+    question: t('landing.faq.q8'),
+    answer: t('landing.faq.a8')
   },
   {
-    question: 'What is the minimum order quantity?',
-    answer: `The minimum order is ${minBatchQuantity} cards per order. This ensures cost-effective production. Each card comes with a unique QR code to access the digital contents and AI features.`
+    question: t('landing.faq.q9'),
+    answer: t('landing.faq.a9', { min: minBatchQuantity })
   }
 ])
 
-const organizationTypes = ref([
-  'Museum',
-  'Art Gallery',
-  'Exhibition Center',
-  'Conference/Event Organizer',
-  'Tourist Attraction/Landmark',
-  'Zoo/Aquarium',
-  'Trade Show Organizer',
-  'Hotel/Resort',
-  'Restaurant/Fine Dining',
-  'Theme Park',
-  'Training/Education Provider',
-  'Agency/Consultant',
-  'Other'
+const organizationTypes = computed(() => [
+  t('landing.contact.organization_types.museum'),
+  t('landing.contact.organization_types.gallery'),
+  t('landing.contact.organization_types.exhibition'),
+  t('landing.contact.organization_types.conference'),
+  t('landing.contact.organization_types.tourist'),
+  t('landing.contact.organization_types.zoo'),
+  t('landing.contact.organization_types.trade_show'),
+  t('landing.contact.organization_types.hotel'),
+  t('landing.contact.organization_types.restaurant'),
+  t('landing.contact.organization_types.theme_park'),
+  t('landing.contact.organization_types.training'),
+  t('landing.contact.organization_types.agency'),
+  t('landing.contact.organization_types.other')
 ])
 
-const visitorCountOptions = ref([
-  'Under 1,000',
-  '1,000 - 5,000',
-  '5,000 - 10,000',
-  '10,000 - 50,000',
-  '50,000 - 100,000',
-  'Over 100,000'
+const visitorCountOptions = computed(() => [
+  t('landing.contact.visitor_counts.under_1k'),
+  t('landing.contact.visitor_counts.1k_5k'),
+  t('landing.contact.visitor_counts.5k_10k'),
+  t('landing.contact.visitor_counts.10k_50k'),
+  t('landing.contact.visitor_counts.50k_100k'),
+  t('landing.contact.visitor_counts.over_100k')
 ])
 
-const inquiryTypes = ref([
-  'Request a Pilot Program',
-  'General Information',
-  'Pricing & Plans',
-  'Partnership Opportunity',
-  'Software Licensing',
-  'Technical Questions',
-  'Other'
+const inquiryTypes = computed(() => [
+  t('landing.contact.inquiry_types.pilot'),
+  t('landing.contact.inquiry_types.info'),
+  t('landing.contact.inquiry_types.pricing'),
+  t('landing.contact.inquiry_types.partnership'),
+  t('landing.contact.inquiry_types.licensing'),
+  t('landing.contact.inquiry_types.technical'),
+  t('landing.contact.inquiry_types.other')
 ])
 </script>
 
@@ -1555,21 +1528,6 @@ const inquiryTypes = ref([
   opacity: 0;
 }
 
-.slide-up-enter-active,
-.slide-up-leave-active {
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.slide-up-enter-from {
-  transform: translateY(100px);
-  opacity: 0;
-}
-
-.slide-up-leave-to {
-  transform: translateY(100px);
-  opacity: 0;
-}
-
 .collapse-enter-active,
 .collapse-leave-active {
   transition: all 0.3s ease;
@@ -1621,20 +1579,6 @@ const inquiryTypes = ref([
 .floating-orb-slow {
   will-change: transform;
   transform: translateZ(0);
-}
-
-/* Pulse animation for CTAs */
-@keyframes pulse-glow {
-  0%, 100% {
-    box-shadow: 0 0 20px rgba(59, 130, 246, 0.5);
-  }
-  50% {
-    box-shadow: 0 0 40px rgba(59, 130, 246, 0.8);
-  }
-}
-
-.pulse-glow {
-  animation: pulse-glow 2s ease-in-out infinite;
 }
 
 /* Gradient text compatibility */
