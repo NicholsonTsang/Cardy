@@ -167,9 +167,9 @@ export const useTranslationStore = defineStore('translation', {
           throw new Error('No active session');
         }
 
-        // Call Edge Function
+        // Call Backend API
         const response = await fetch(
-          `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/translate-card-content`,
+          `${import.meta.env.VITE_BACKEND_URL}/api/translations/translate-card`,
           {
             method: 'POST',
             headers: {

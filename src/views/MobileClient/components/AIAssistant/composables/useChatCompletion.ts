@@ -44,10 +44,10 @@ export function useChatCompletion() {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY
       
-      const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-with-audio-stream`
+      const backendUrl = `${import.meta.env.VITE_BACKEND_URL}/api/ai/chat/stream`
 
       // Use fetch to handle SSE streaming properly
-      const response = await fetch(functionUrl, {
+      const response = await fetch(backendUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -58,7 +58,7 @@ export function useChatCompletion() {
             role: m.role,
             content: m.content
           })),
-          systemInstructions
+          systemPrompt: systemInstructions
         })
       })
 
@@ -202,9 +202,7 @@ export function useChatCompletion() {
       const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY
 
       // Use fetch to get binary audio data directly
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string
-      
-      const response = await fetch(`${supabaseUrl}/functions/v1/generate-tts-audio`, {
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/ai/generate-tts`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

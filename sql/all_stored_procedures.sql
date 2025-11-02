@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Fri Oct 17 00:37:20 HKT 2025
+-- Generated: Sun Nov  2 17:27:53 HKT 2025
 
 -- Drop all existing functions first
 -- Simple version: Drop all CardStudio CMS functions
@@ -5368,13 +5368,13 @@ BEGIN
 
     -- Initialize credits if not exists
     INSERT INTO user_credits (user_id, balance, total_purchased, total_consumed)
-    VALUES (v_user_id, 0, 0, 0)
+    VALUES (p_user_id, 0, 0, 0)
     ON CONFLICT (user_id) DO NOTHING;
 
     -- Lock the user credits row for update
     SELECT balance INTO v_current_balance
     FROM user_credits
-    WHERE user_id = v_user_id
+    WHERE user_id = p_user_id
     FOR UPDATE;
 
     v_new_balance := v_current_balance + v_credits_amount;
@@ -5385,7 +5385,7 @@ BEGIN
         balance = v_new_balance,
         total_purchased = total_purchased + v_credits_amount,
         updated_at = CURRENT_TIMESTAMP
-    WHERE user_id = v_user_id;
+    WHERE user_id = p_user_id;
 
     -- Update purchase record
     UPDATE credit_purchases
@@ -5402,7 +5402,7 @@ BEGIN
         user_id, type, amount, balance_before, balance_after,
         reference_type, reference_id, description, metadata
     ) VALUES (
-        v_user_id, 'purchase', v_credits_amount, v_current_balance, v_new_balance,
+        p_user_id, 'purchase', v_credits_amount, v_current_balance, v_new_balance,
         'stripe_purchase', v_purchase_id,
         format('Credit purchase: %s credits', v_credits_amount),
         jsonb_build_object(
@@ -5420,7 +5420,7 @@ BEGIN
         'transaction_id', v_transaction_id,
         'credits_added', v_credits_amount,
         'new_balance', v_new_balance,
-        'user_id', v_user_id
+        'user_id', p_user_id
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -5469,7 +5469,7 @@ BEGIN
     -- Lock the user credits row for update
     SELECT balance INTO v_current_balance
     FROM user_credits
-    WHERE user_id = v_user_id
+    WHERE user_id = p_user_id
     FOR UPDATE;
 
     IF v_current_balance < p_refund_amount THEN
@@ -5485,7 +5485,7 @@ BEGIN
         balance = v_new_balance,
         total_purchased = total_purchased - p_refund_amount,
         updated_at = CURRENT_TIMESTAMP
-    WHERE user_id = v_user_id;
+    WHERE user_id = p_user_id;
 
     -- Update purchase record
     UPDATE credit_purchases
@@ -5506,7 +5506,7 @@ BEGIN
         user_id, type, amount, balance_before, balance_after,
         reference_type, reference_id, description, metadata
     ) VALUES (
-        v_user_id, 'refund', p_refund_amount, v_current_balance, v_new_balance,
+        p_user_id, 'refund', p_refund_amount, v_current_balance, v_new_balance,
         'stripe_refund', p_purchase_id,
         format('Credit refund: %s credits - %s', p_refund_amount, p_reason),
         jsonb_build_object(

@@ -88,30 +88,34 @@ export const createCreditPurchaseCheckout = async (creditAmount, metadata = {}) 
     // Build base URL for Stripe return
     const baseUrl = import.meta.env.VITE_STRIPE_SUCCESS_URL || `${window.location.origin}/cms/credits`
 
-    // Create checkout session via Edge Function
-    // Explicitly pass the authorization header to ensure it's included
-    const { data, error } = await supabase.functions.invoke('create-credit-checkout-session', {
+    // Create checkout session via Backend API
+    const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/payments/create-credit-checkout`, {
+      method: 'POST',
       headers: {
-        Authorization: `Bearer ${session.access_token}`
+        'Authorization': `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
       },
-      body: {
+      body: JSON.stringify({
         creditAmount,
         amountUsd: creditAmount, // 1 credit = $1 USD
         baseUrl,
         metadata
-      }
+      })
     })
 
-    if (error) {
-      console.error('Error creating credit checkout session:', error)
-      throw new Error(error.message || 'Failed to create checkout session')
+    if (!response.ok) {
+      const errorData = await response.json()
+      console.error('Error creating credit checkout session:', errorData)
+      throw new Error(errorData.message || errorData.error || 'Failed to create checkout session')
     }
+
+    const data = await response.json()
 
     if (!data?.sessionId) {
       throw new Error('No session ID returned from server')
     }
 
-    // Note: The Edge Function already created the purchase record in the database
+    // Note: The Backend API already created the purchase record in the database
     // No need to create it again here
 
     // Get Stripe instance
@@ -138,32 +142,28 @@ export const createCreditPurchaseCheckout = async (creditAmount, metadata = {}) 
 
 /**
  * Handle successful credit purchase checkout
- * @param {string} sessionId - Stripe checkout session ID
+ * @param {string} sessionId - Stripe checkout session ID (optional, for backward compatibility)
  * @returns {Promise<Object>} - Payment confirmation details
+ * 
+ * NOTE: Credit purchase completion is now handled automatically via Stripe webhooks.
+ * The webhook endpoint processes the 'checkout.session.completed' event and credits
+ * are added to the user's account automatically. This function is kept for backward
+ * compatibility and simply refreshes the credit balance.
  */
 export const handleCreditPurchaseSuccess = async (sessionId) => {
   try {
-    if (!sessionId) {
-      throw new Error('Session ID is required')
-    }
-
-    // Call Edge Function to process successful credit purchase
-    const { data, error } = await supabase.functions.invoke('handle-credit-purchase-success', {
-      body: { sessionId }
-    })
-
-    if (error) {
-      console.error('Error handling credit purchase success:', error)
-      throw new Error(error.message || 'Failed to process successful payment')
-    }
-
-    // Refresh credit balance
+    // Credit purchase is now handled by Stripe webhooks automatically
+    // Just refresh the credit balance to show the updated amount
     const creditStore = useCreditStore()
     await creditStore.fetchCreditBalance()
 
-    return data
+    return {
+      success: true,
+      message: 'Credit purchase processed successfully',
+      sessionId
+    }
   } catch (error) {
-    console.error('Credit purchase success handling error:', error)
+    console.error('Error refreshing credit balance:', error)
     throw error
   }
 }

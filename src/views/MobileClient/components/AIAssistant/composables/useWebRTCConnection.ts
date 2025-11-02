@@ -35,18 +35,31 @@ export function useWebRTCConnection() {
     'ar': 'sage'                  // Arabic - Male, respectful
   }
   
-  // Get ephemeral token from Edge Function
+  // Get ephemeral token from Backend API
   async function getEphemeralToken(language: string) {
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('openai-realtime-token', {
-        body: {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY
+
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URL}/api/ai/realtime-token`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
           sessionConfig: {
             voice: voiceMap[language] || 'alloy'
           }
-        }
+        })
       })
       
-      if (fnError) throw fnError
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to get ephemeral token')
+      }
+
+      const data = await response.json()
       if (!data.success) throw new Error(data.error)
       
       return data.client_secret
