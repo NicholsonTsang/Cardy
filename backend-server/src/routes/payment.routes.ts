@@ -49,8 +49,9 @@ router.post('/create-credit-checkout', authenticateUser, async (req: Request, re
 
     // Import Stripe dynamically
     const Stripe = (await import('stripe')).default;
+    const stripeApiVersion = process.env.STRIPE_API_VERSION || '2025-08-27.basil';
     const stripe = new Stripe(stripeKey, {
-      apiVersion: '2025-08-27.basil',
+      apiVersion: stripeApiVersion as any,
     });
 
     // Convert to cents for Stripe

@@ -3,7 +3,9 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
 import apiRoutes from './routes/index';
+import { initializeSocket } from './services/socket.service';
 
 // Load environment variables
 dotenv.config();
@@ -50,9 +52,11 @@ app.use(cors({
 }));
 
 // Rate limiting to prevent abuse
+const rateLimitWindow = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'); // Default: 15 minutes
+const rateLimitMax = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'); // Default: 100 requests
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  windowMs: rateLimitWindow,
+  max: rateLimitMax,
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
@@ -182,8 +186,12 @@ app.use((req: Request, res: Response) => {
   });
 });
 
+// Create HTTP server and attach Socket.IO
+const httpServer = createServer(app);
+initializeSocket(httpServer, allowedOrigins);
+
 // Start server
-const server = app.listen(PORT, () => {
+const server = httpServer.listen(PORT, () => {
   console.log('');
   console.log('🚀 CardStudio Backend Server');
   console.log('=====================================');
@@ -192,6 +200,7 @@ const server = app.listen(PORT, () => {
   console.log(`🔑 OpenAI API key: ${OPENAI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
   console.log(`🗄️  Supabase: ${SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? '✅ Configured' : '❌ Missing'}`);
   console.log(`🌐 Allowed origins: ${allowedOrigins.join(', ')}`);
+  console.log(`🔌 Socket.IO: ✅ Enabled`);
   console.log('');
   console.log('Available endpoints:');
   console.log('  Relay:');
@@ -205,6 +214,8 @@ const server = app.listen(PORT, () => {
   console.log(`    POST http://localhost:${PORT}/api/ai/generate-tts`);
   console.log(`    POST http://localhost:${PORT}/api/ai/realtime-token`);
   console.log(`    POST http://localhost:${PORT}/api/webhooks/stripe-credit`);
+  console.log('  WebSocket:');
+  console.log(`    WS   ws://localhost:${PORT}/socket.io/`);
   console.log('');
 });
 

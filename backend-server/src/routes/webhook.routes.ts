@@ -24,8 +24,9 @@ router.post('/stripe-credit', async (req: Request, res: Response) => {
 
     // Import Stripe
     const Stripe = (await import('stripe')).default;
+    const stripeApiVersion = process.env.STRIPE_API_VERSION || '2025-08-27.basil';
     const stripe = new Stripe(stripeKey, {
-      apiVersion: '2025-08-27.basil',
+      apiVersion: stripeApiVersion as any,
     });
 
     // Get signature from headers
