@@ -323,6 +323,7 @@ import CardContentCreateEditForm from './CardContentCreateEditForm.vue';
 import CroppedImageDisplay from '@/components/CroppedImageDisplay.vue';
 import { getContentAspectRatio } from '@/utils/cardConfig';
 import { useContentItemStore } from '@/stores/contentItem';
+import { useTranslationStore } from '@/stores/translation';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 
@@ -338,6 +339,7 @@ const props = defineProps({
 });
 
 const contentItemStore = useContentItemStore();
+const translationStore = useTranslationStore();
 const toast = useToast();
 const confirm = useConfirm();
 const { t } = useI18n();
@@ -459,6 +461,9 @@ const handleAddContentItem = async () => {
                 // Reload content items
                 await loadContentItems();
                 
+                // Refetch translation status (content hash changed)
+                await translationStore.fetchTranslationStatus(props.cardId);
+                
                 // Reset the form
                 cardContentCreateFormRef.value.resetForm();
                 return Promise.resolve();
@@ -496,6 +501,9 @@ const handleAddSubItem = async () => {
             if (result) {
                 // Reload content items
                 await loadContentItems();
+                
+                // Refetch translation status (content hash changed)
+                await translationStore.fetchTranslationStatus(props.cardId);
                 
                 // Reset the form
                 cardContentSubItemCreateFormRef.value.resetForm();
@@ -542,6 +550,9 @@ const handleEditContentItem = async () => {
                 // Reload content items
                 await loadContentItems();
                 
+                // Refetch translation status (content hash changed)
+                await translationStore.fetchTranslationStatus(props.cardId);
+                
                 // Clear editing item
                 editingContentItem.value = null;
                 return Promise.resolve();
@@ -585,6 +596,10 @@ const deleteContentItem = async (itemId) => {
         
         // Reload content items
         await loadContentItems();
+        
+        // Refetch translation status (content hash changed)
+        await translationStore.fetchTranslationStatus(props.cardId);
+        
         // Success feedback provided by visual removal from list
     } catch (error) {
         console.error('Error deleting content item:', error);

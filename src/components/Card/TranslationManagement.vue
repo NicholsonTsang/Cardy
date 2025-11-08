@@ -247,13 +247,11 @@ const handleUpdateOutdated = () => {
 };
 
 const handleTranslationSuccess = () => {
-  toast.add({
-    severity: 'success',
-    summary: t('translation.success.title'),
-    detail: t('translation.success.message'),
-    life: 5000,
-  });
-  loadTranslationStatus();
+  // Don't show toast here - real-time progress already shows completion
+  // Just reload status after translation completes
+  setTimeout(() => {
+    loadTranslationStatus();
+  }, 1000);
 };
 
 const confirmDelete = (translation: any) => {
@@ -269,12 +267,7 @@ const confirmDelete = (translation: any) => {
 const deleteTranslation = async (language: LanguageCode) => {
   try {
     await translationStore.deleteTranslation(props.cardId, language);
-    toast.add({
-      severity: 'success',
-      summary: t('translation.delete.success'),
-      detail: t('translation.delete.successMessage'),
-      life: 3000,
-    });
+    // No success toast needed - Table updates visually to show deletion
     loadTranslationStatus();
   } catch (error: any) {
     toast.add({
@@ -331,10 +324,15 @@ onMounted(() => {
   loadTranslationStatus();
 });
 
-// Watch for card ID changes
-watch(() => props.cardId, () => {
-  loadTranslationStatus();
-});
+// Watch for card ID changes and reload translation status
+watch(() => props.cardId, (newCardId, oldCardId) => {
+  if (newCardId && newCardId !== oldCardId) {
+    // Reset store state to clear previous card's data
+    translationStore.reset();
+    // Load new card's translation status
+    loadTranslationStatus();
+  }
+}, { immediate: false });
 </script>
 
 <style scoped>

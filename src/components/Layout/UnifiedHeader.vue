@@ -8,14 +8,12 @@
       <div class="flex justify-between items-center h-16">
         <!-- Logo -->
         <div class="flex items-center">
-          <router-link to="/" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <i class="pi pi-id-card text-white text-lg"></i>
-            </div>
-            <div class="hidden sm:block">
-              <h1 class="text-xl font-bold text-slate-900">CardStudio</h1>
-              <p class="text-xs text-slate-500 -mt-1">{{ $t('common.tagline') }}</p>
-            </div>
+          <router-link to="/" class="flex items-center hover:opacity-80 transition-opacity">
+            <img 
+              src="@/assets/fullLogo.png" 
+              alt="CardStudio Logo" 
+              class="h-16 sm:h-24 w-auto"
+            />
           </router-link>
         </div>
 
@@ -80,14 +78,12 @@
       <div class="flex items-center h-16">
         <!-- Logo (Left) -->
         <div class="flex items-center">
-          <router-link to="/" class="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity">
-            <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <i class="pi pi-id-card text-white text-lg"></i>
-            </div>
-            <div>
-              <h1 class="text-base sm:text-xl font-bold text-slate-900">CardStudio</h1>
-              <p class="text-[9px] sm:text-xs text-slate-500 -mt-0.5 sm:-mt-1">{{ $t('common.tagline') }}</p>
-            </div>
+          <router-link to="/" class="flex items-center hover:opacity-80 transition-opacity">
+            <img 
+              src="@/assets/fullLogo.png" 
+              alt="CardStudio Logo" 
+              class="h-16 sm:h-24 w-auto"
+            />
           </router-link>
         </div>
 

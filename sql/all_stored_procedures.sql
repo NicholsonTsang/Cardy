@@ -1,83 +1,6 @@
 -- Combined Stored Procedures
--- Generated: Sun Nov  2 17:27:53 HKT 2025
+-- Generated: Sun Nov  9 00:37:27 HKT 2025
 
--- Drop all existing functions first
--- Simple version: Drop all CardStudio CMS functions
--- Add this at the beginning of your deployment to ensure clean state
-
-DO $$
-DECLARE
-    r RECORD;
-BEGIN
-    -- Drop all functions that are likely from CardStudio CMS
-    FOR r IN 
-        SELECT format('DROP FUNCTION IF EXISTS %I(%s) CASCADE', 
-                     p.proname, 
-                     pg_get_function_identity_arguments(p.oid)) as drop_cmd
-        FROM pg_proc p
-        JOIN pg_namespace n ON p.pronamespace = n.oid
-        WHERE n.nspname = 'public'
-        AND p.prokind = 'f'
-        AND p.proname IN (
-            -- Card management functions
-            'create_card', 'update_card', 'delete_card', 'get_card_by_id',
-            'get_user_cards', 'duplicate_card',
-            
-            -- Content management functions
-            'create_content_item', 'update_content_item', 'delete_content_item',
-            'get_content_items', 'reorder_content_items', 'update_content_item_parent',
-            
-            -- User management functions
-            'get_or_create_user_profile', 'update_user_profile', 'get_user_profile_status',
-            'submit_user_verification', 'upload_verification_document',
-            
-            -- Batch management functions
-            'get_next_batch_number', 'issue_card_batch', 'get_card_batches',
-            'get_issued_cards_with_batch', 'toggle_card_batch_disabled_status',
-            'activate_issued_card', 'get_card_issuance_stats', 'delete_issued_card',
-            'generate_batch_cards',
-            
-            -- Payment management functions
-            'create_batch_payment', 'update_batch_payment_status', 'get_batch_payment_info',
-            'confirm_batch_payment', 'process_stripe_payment',
-            
-            -- Print request functions
-            'request_card_printing', 'get_print_requests_for_batch', 'withdraw_print_request',
-            'get_user_print_requests',
-            
-            -- Public access functions
-            'get_public_card_content', 'get_sample_issued_card_for_preview',
-            'get_card_preview_access',
-            
-            -- Admin functions
-            'admin_confirm_batch_payment', 'admin_waive_batch_payment',
-            'admin_update_user_role', 'admin_update_verification_status',
-            'admin_get_user_verification_details', 'admin_reset_user_verification',
-            'admin_get_platform_stats', 'admin_get_pending_verifications',
-            'admin_get_all_users', 'admin_update_print_request_status',
-            'admin_get_all_print_requests', 'admin_add_print_notes',
-            'admin_get_batch_details', 'admin_get_all_batches',
-            'admin_disable_batch', 'admin_generate_cards_for_batch',
-            'admin_get_user_by_email', 'admin_get_user_cards', 'admin_get_card_content',
-            'admin_get_card_batches', 'admin_get_batch_issued_cards',
-            
-            -- Logging functions
-            'log_operation', 'get_operations_log', 'get_operations_log_stats',
-            
-            -- Auth and utility functions
-            'handle_new_user', 'get_card_content_items', 'get_content_item_by_id',
-            'get_public_card_preview_content', 'create_batch_checkout_payment',
-            'confirm_batch_payment_by_session', 'create_pending_batch_payment',
-            'confirm_pending_batch_payment', 'get_card_preview_content',
-            'admin_get_system_stats_enhanced', 'admin_change_user_role',
-            'admin_manual_verification'
-        )
-    LOOP
-        EXECUTE r.drop_cmd;
-    END LOOP;
-    
-    RAISE NOTICE 'All CardStudio CMS functions dropped';
-END $$;
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
 -- =================================================================
@@ -5533,135 +5456,346 @@ GRANT EXECUTE ON FUNCTION complete_credit_purchase(UUID, VARCHAR, VARCHAR, INTEG
 GRANT EXECUTE ON FUNCTION refund_credit_purchase(UUID, UUID, DECIMAL, TEXT) TO service_role;
 
 
--- File: translation_management.sql
+-- File: translation_credit_consumption.sql
 -- -----------------------------------------------------------------
-DROP FUNCTION IF EXISTS store_card_translations CASCADE;
+DROP FUNCTION IF EXISTS consume_translation_credits CASCADE;
+DROP FUNCTION IF EXISTS record_translation_completion CASCADE;
 
 -- =====================================================================
--- SERVER-SIDE TRANSLATION STORED PROCEDURES
+-- TRANSLATION CREDIT CONSUMPTION (SERVER-SIDE)
 -- =====================================================================
--- These procedures are called by Edge Functions and require service_role permissions
+-- Server-side procedures for consuming credits during direct translations
+-- Called by backend Express server with service_role permissions
 -- =====================================================================
 
--- Store translated content from Edge Function
--- This function is called after GPT-4 has translated the content
-CREATE OR REPLACE FUNCTION store_card_translations(
-  p_user_id UUID, -- Explicit user ID from Edge Function
+-- =====================================================================
+-- 1. Consume Translation Credits
+-- =====================================================================
+-- Consumes credits for successful translations
+-- Called after each language is successfully translated
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION consume_translation_credits(
+  p_user_id UUID,
   p_card_id UUID,
-  p_target_languages TEXT[],
-  p_card_translations JSONB, -- {"zh-Hans": {"name": "...", "description": "..."}, ...}
-  p_content_items_translations JSONB, -- {"item_id_1": {"zh-Hans": {"name": "...", "content": "..."}}, ...}
-  p_credit_cost DECIMAL
+  p_language VARCHAR(10),
+  p_credit_cost DECIMAL DEFAULT 1.0
 )
 RETURNS JSONB
 SECURITY DEFINER
 AS $$
 DECLARE
-  v_card_owner UUID;
   v_current_balance DECIMAL;
-  v_translation_history_id UUID;
-  v_content_hash TEXT;
-  v_item_id UUID;
-  v_item_translations JSONB;
-  v_item_hash TEXT;
-  v_result JSONB;
+  v_new_balance DECIMAL;
+  v_card_name TEXT;
 BEGIN
-  -- Verify card ownership
-  SELECT user_id INTO v_card_owner FROM cards WHERE id = p_card_id;
-  
+  -- Get current balance
+  SELECT balance INTO v_current_balance
+  FROM user_credits
+  WHERE user_id = p_user_id;
+
   IF NOT FOUND THEN
-    RAISE EXCEPTION 'Card not found';
+    -- Create credit account with 0 balance
+    INSERT INTO user_credits (user_id, balance)
+    VALUES (p_user_id, 0)
+    RETURNING balance INTO v_current_balance;
   END IF;
 
-  IF v_card_owner != p_user_id THEN
-    RAISE EXCEPTION 'Unauthorized: Card does not belong to user';
+  -- Check if sufficient credits
+  IF v_current_balance < p_credit_cost THEN
+    RAISE EXCEPTION 'Insufficient credits. Required: %, Available: %', p_credit_cost, v_current_balance;
   END IF;
 
-  -- Check credit balance
-  SELECT check_credit_balance(p_credit_cost, p_user_id) INTO v_current_balance;
+  -- Calculate new balance
+  v_new_balance := v_current_balance - p_credit_cost;
 
-  -- Start transaction for atomic operation
-  -- Get current card content hash
-  SELECT content_hash INTO v_content_hash FROM cards WHERE id = p_card_id;
-
-  -- Update card translations (merge with existing)
-  UPDATE cards
-  SET 
-    translations = translations || p_card_translations,
-    updated_at = NOW()
-  WHERE id = p_card_id;
-
-  -- Update content items translations
-  FOR v_item_id, v_item_translations IN
-    SELECT key::UUID, value
-    FROM jsonb_each(p_content_items_translations)
-  LOOP
-    -- Get item content hash
-    SELECT content_hash INTO v_item_hash 
-    FROM content_items 
-    WHERE id = v_item_id;
-
-    -- Update item translations
-    UPDATE content_items
-    SET 
-      translations = translations || v_item_translations,
+  -- Update user balance
+  UPDATE user_credits
+  SET balance = v_new_balance,
       updated_at = NOW()
-    WHERE id = v_item_id;
-  END LOOP;
+  WHERE user_id = p_user_id;
 
-  -- Consume credits
-  PERFORM consume_credits(
-    p_credit_cost,
+  -- Log credit consumption
+  INSERT INTO credit_transactions (
+    user_id,
+    type,
+    amount,
+    balance_before,
+    balance_after,
+    description,
+    metadata
+  ) VALUES (
     p_user_id,
-    'translation',
+    'consumption',
+    p_credit_cost,
+    v_current_balance,
+    v_new_balance,
+    format('Translation to %s', p_language),
     jsonb_build_object(
       'card_id', p_card_id,
-      'languages', p_target_languages,
-      'language_count', array_length(p_target_languages, 1)
+      'language', p_language,
+      'consumption_type', 'translation'
     )
   );
 
-  -- Log to translation history
-  INSERT INTO translation_history (
-    card_id, 
-    target_languages, 
-    credit_cost, 
-    translated_by,
-    status,
+  -- Log credit consumption detail
+  SELECT name INTO v_card_name FROM cards WHERE id = p_card_id;
+  
+  INSERT INTO credit_consumptions (
+    user_id,
+    consumption_type,
+    quantity,
+    credits_per_unit,
+    total_credits,
     metadata
-  )
-  VALUES (
-    p_card_id, 
-    p_target_languages, 
-    p_credit_cost, 
+  ) VALUES (
     p_user_id,
-    'completed',
+    'translation',
+    1,
+    p_credit_cost,
+    p_credit_cost,
     jsonb_build_object(
-      'model', 'gpt-4.1-nano',
-      'language_count', array_length(p_target_languages, 1)
+      'card_id', p_card_id,
+      'card_name', v_card_name,
+      'language', p_language
     )
-  )
-  RETURNING id INTO v_translation_history_id;
-
-  -- Build result
-  v_result := jsonb_build_object(
-    'success', true,
-    'card_id', p_card_id,
-    'translated_languages', p_target_languages,
-    'credits_used', p_credit_cost,
-    'remaining_balance', v_current_balance - p_credit_cost,
-    'translation_history_id', v_translation_history_id
   );
 
-  RETURN v_result;
-EXCEPTION
-  WHEN OTHERS THEN
-    RAISE EXCEPTION 'Failed to store translations: %', SQLERRM;
+  RETURN jsonb_build_object(
+    'success', true,
+    'user_id', p_user_id,
+    'credits_consumed', p_credit_cost,
+    'balance_before', v_current_balance,
+    'balance_after', v_new_balance,
+    'language', p_language
+  );
 END;
 $$ LANGUAGE plpgsql;
 
--- Grant execution permission to service_role only
-GRANT EXECUTE ON FUNCTION store_card_translations(UUID, UUID, TEXT[], JSONB, JSONB, DECIMAL) TO service_role;
+-- =====================================================================
+-- 2. Record Translation Completion
+-- =====================================================================
+-- Records translation in translation_history table
+-- Called after translation completes (success or failure)
+-- =====================================================================
+
+CREATE OR REPLACE FUNCTION record_translation_completion(
+  p_user_id UUID,
+  p_card_id UUID,
+  p_target_languages TEXT[],
+  p_credit_cost DECIMAL,
+  p_status VARCHAR DEFAULT 'completed',
+  p_error_message TEXT DEFAULT NULL,
+  p_metadata JSONB DEFAULT '{}'::JSONB
+)
+RETURNS UUID
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_history_id UUID;
+BEGIN
+  INSERT INTO translation_history (
+    card_id,
+    target_languages,
+    credit_cost,
+    translated_by,
+    translated_at,
+    status,
+    error_message,
+    metadata
+  ) VALUES (
+    p_card_id,
+    p_target_languages,
+    p_credit_cost,
+    p_user_id,
+    NOW(),
+    p_status,
+    p_error_message,
+    p_metadata
+  )
+  RETURNING id INTO v_history_id;
+
+  RETURN v_history_id;
+END;
+$$ LANGUAGE plpgsql;
+
+-- =====================================================================
+-- Grant permissions to service_role (backend server)
+-- =====================================================================
+
+GRANT EXECUTE ON FUNCTION consume_translation_credits(UUID, UUID, VARCHAR, DECIMAL) TO service_role;
+GRANT EXECUTE ON FUNCTION record_translation_completion(UUID, UUID, TEXT[], DECIMAL, VARCHAR, TEXT, JSONB) TO service_role;
 
 
+
+-- =================================================================
+-- TRIGGERS
+-- =================================================================
+
+-- File: triggers.sql
+-- -----------------------------------------------------------------
+-- =================================================================
+-- GENERIC TIMESTAMP UPDATE TRIGGER
+-- =================================================================
+-- Function for updating timestamps
+-- MOVED TO sql/schemaStoreProc.sql
+
+-- Triggers for 'updated_at' column
+-- Cards
+DROP TRIGGER IF EXISTS update_cards_updated_at ON public.cards;
+CREATE TRIGGER update_cards_updated_at
+    BEFORE UPDATE ON public.cards
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at();
+
+-- Content items
+DROP TRIGGER IF EXISTS update_content_items_updated_at ON public.content_items;
+CREATE TRIGGER update_content_items_updated_at
+    BEFORE UPDATE ON public.content_items
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at();
+
+-- Card batches
+DROP TRIGGER IF EXISTS update_card_batches_updated_at ON public.card_batches;
+CREATE TRIGGER update_card_batches_updated_at
+    BEFORE UPDATE ON public.card_batches
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at();
+
+-- Issued cards
+DROP TRIGGER IF EXISTS update_issue_cards_updated_at ON public.issue_cards;
+CREATE TRIGGER update_issue_cards_updated_at
+    BEFORE UPDATE ON public.issue_cards
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at();
+
+-- Print requests
+DROP TRIGGER IF EXISTS update_print_requests_updated_at ON public.print_requests;
+CREATE TRIGGER update_print_requests_updated_at
+    BEFORE UPDATE ON public.print_requests
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at();
+
+-- User credits
+DROP TRIGGER IF EXISTS update_user_credits_updated_at ON public.user_credits;
+CREATE TRIGGER update_user_credits_updated_at
+    BEFORE UPDATE ON public.user_credits
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at();
+
+-- Translation jobs
+DROP TRIGGER IF EXISTS update_translation_jobs_updated_at ON public.translation_jobs;
+CREATE TRIGGER update_translation_jobs_updated_at
+    BEFORE UPDATE ON public.translation_jobs
+    FOR EACH ROW
+    EXECUTE FUNCTION public.update_updated_at();
+
+-- =================================================================
+-- AUTH RELATED TRIGGERS
+-- =================================================================
+-- Function to set default role for new users
+-- MOVED TO sql/schemaStoreProc.sql
+
+-- Trigger to call the function upon new user creation
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Grant execute permission on the function to Supabase internal roles
+-- MOVED TO sql/schemaStoreProc.sql (with the function)
+
+-- Note: For the trigger to work on auth.users, the database user that Supabase uses for its internal operations
+-- (often `supabase_auth_admin` or a similar role) must have permissions to run the trigger function, 
+-- and the function itself needs appropriate permissions (SECURITY DEFINER) if it modifies tables like auth.users.
+-- The `SECURITY DEFINER` on `handle_new_user` and granting execute to `supabase_auth_admin` addresses this. 
+-- (Function and its grant moved to sql/schemaStoreProc.sql)
+
+-- =================================================================
+-- TRANSLATION CONTENT HASH TRIGGERS
+-- =================================================================
+-- These triggers automatically calculate content_hash on INSERT and UPDATE
+-- to enable translation freshness detection
+-- =================================================================
+
+-- Trigger function for cards table
+-- Modified to allow hash override during import: only calculates if NULL
+CREATE OR REPLACE FUNCTION update_card_content_hash()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- On INSERT: Only calculate hash if not already provided
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.content_hash IS NULL THEN
+      NEW.content_hash := md5(COALESCE(NEW.name, '') || '|' || COALESCE(NEW.description, ''));
+      NEW.last_content_update := NOW();
+    END IF;
+  -- On UPDATE: Only recalculate if name or description changed AND hash wasn't manually set
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF (NEW.name IS DISTINCT FROM OLD.name OR NEW.description IS DISTINCT FROM OLD.description) THEN
+      -- Only recalculate if hash hasn't been manually updated
+      IF NEW.content_hash = OLD.content_hash THEN
+        NEW.content_hash := md5(COALESCE(NEW.name, '') || '|' || COALESCE(NEW.description, ''));
+        NEW.last_content_update := NOW();
+      END IF;
+      -- Note: We don't clear translations here - they're marked as outdated via hash comparison
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Drop existing trigger if exists
+DROP TRIGGER IF EXISTS trigger_update_card_content_hash ON cards;
+
+-- Create trigger for cards (both INSERT and UPDATE)
+CREATE TRIGGER trigger_update_card_content_hash
+  BEFORE INSERT OR UPDATE ON cards
+  FOR EACH ROW
+  EXECUTE FUNCTION update_card_content_hash();
+
+-- Trigger function for content_items table
+-- Modified to allow hash override during import: only calculates if NULL
+CREATE OR REPLACE FUNCTION update_content_item_content_hash()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- On INSERT: Only calculate hash if not already provided
+  IF TG_OP = 'INSERT' THEN
+    IF NEW.content_hash IS NULL THEN
+      NEW.content_hash := md5(
+        COALESCE(NEW.name, '') || '|' || 
+        COALESCE(NEW.content, '') || '|' ||
+        COALESCE(NEW.ai_knowledge_base, '')
+      );
+      NEW.last_content_update := NOW();
+    END IF;
+  -- On UPDATE: Only recalculate if any translatable field changed AND hash wasn't manually set
+  ELSIF TG_OP = 'UPDATE' THEN
+    IF (NEW.name IS DISTINCT FROM OLD.name OR 
+        NEW.content IS DISTINCT FROM OLD.content OR
+        NEW.ai_knowledge_base IS DISTINCT FROM OLD.ai_knowledge_base) THEN
+      -- Only recalculate if hash hasn't been manually updated
+      IF NEW.content_hash = OLD.content_hash THEN
+        NEW.content_hash := md5(
+          COALESCE(NEW.name, '') || '|' || 
+          COALESCE(NEW.content, '') || '|' ||
+          COALESCE(NEW.ai_knowledge_base, '')
+        );
+        NEW.last_content_update := NOW();
+      END IF;
+    END IF;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Drop existing trigger if exists
+DROP TRIGGER IF EXISTS trigger_update_content_item_content_hash ON content_items;
+
+-- Create trigger for content_items (both INSERT and UPDATE)
+CREATE TRIGGER trigger_update_content_item_content_hash
+  BEFORE INSERT OR UPDATE ON content_items
+  FOR EACH ROW
+  EXECUTE FUNCTION update_content_item_content_hash();
 

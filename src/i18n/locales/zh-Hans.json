@@ -274,6 +274,31 @@
     }
   },
 
+  "translation": {
+    "dialog": {
+      "addTranslations": "添加翻译",
+      "manageExisting": "管理现有翻译",
+      "manageMode": "删除模式",
+      "manageModeWarning": "⚠️ 删除翻译是永久性的，无法撤销。",
+      "deselectAll": "取消全选",
+      "deleteSelected": "删除所选 ({count})",
+      "confirmBatchDeleteTitle": "删除 {count} 个翻译？",
+      "confirmBatchDeleteMessage": "您确定要删除 {count} 个翻译吗？此操作无法撤销。",
+      "deletingProgress": "正在删除翻译",
+      "deletingLanguage": "正在删除 {language}...",
+      "batchDeleteSuccess": "翻译已删除",
+      "deletedCount": "成功删除 {count} 个翻译",
+      "noTranslations": "暂无翻译",
+      "successfullyTranslated": "成功翻译 {count} 个",
+      "minutesAgo": "{minutes} 分钟前",
+      "hoursAgo": "{hours} 小时前",
+      "daysAgo": "{days} 天前",
+      "justNow": "刚刚",
+      "delete": "删除",
+      "retranslate": "重新翻译"
+    }
+  },
+
   "batch": {
     "batch": "批次",
     "quantity": "数量"

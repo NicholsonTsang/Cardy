@@ -3,103 +3,134 @@
     v-model:visible="dialogVisible"
     :header="dialogTitle"
     :modal="true"
-    :closable="!translationStore.isTranslating"
-    :close-on-escape="!translationStore.isTranslating"
+    :closable="!translationStore.isTranslating && !isDeletingBatch"
+    :close-on-escape="!translationStore.isTranslating && !isDeletingBatch"
     class="w-full max-w-2xl"
     @update:visible="handleVisibleChange"
   >
     <!-- Step 1: Language Selection -->
     <div v-if="currentStep === 1" class="space-y-6">
-      <!-- Quick Selection Buttons -->
-      <div class="flex gap-2 flex-wrap">
-        <Button
-          :label="$t('translation.dialog.selectAll')"
-          icon="pi pi-check-square"
-          size="small"
-          outlined
-          @click="selectAll"
-        />
-        <Button
-          :label="$t('translation.dialog.clearAll')"
-          icon="pi pi-times"
-          size="small"
-          severity="secondary"
-          outlined
-          @click="clearAll"
-          :disabled="selectedLanguages.length === 0"
-        />
-        <Button
-          :label="$t('translation.dialog.selectPopular')"
-          icon="pi pi-star"
-          size="small"
-          outlined
-          @click="selectPopular"
-        />
-        <Button
-          v-if="outdatedLanguages.length > 0"
-          :label="$t('translation.dialog.selectOutdated', { count: outdatedLanguages.length })"
-          icon="pi pi-exclamation-triangle"
-          size="small"
-          severity="warning"
-          outlined
-          @click="selectOutdated"
-        />
+      <!-- Mode Tabs -->
+      <div class="flex gap-2 border-b border-slate-200">
+        <button
+          @click="viewMode = 'translate'"
+          class="px-4 py-2 font-medium transition-all"
+          :class="{
+            'text-blue-600 border-b-2 border-blue-600': viewMode === 'translate',
+            'text-slate-600 hover:text-slate-900': viewMode !== 'translate'
+          }"
+        >
+          <i class="pi pi-language mr-2"></i>
+          {{ $t('translation.dialog.addTranslations') }}
+        </button>
+        <button
+          @click="viewMode = 'manage'"
+          class="px-4 py-2 font-medium transition-all relative"
+          :class="{
+            'text-red-600 border-b-2 border-red-600': viewMode === 'manage',
+            'text-slate-600 hover:text-slate-900': viewMode !== 'manage'
+          }"
+        >
+          <i class="pi pi-cog mr-2"></i>
+          {{ $t('translation.dialog.manageExisting') }}
+          <span class="ml-2 px-2 py-0.5 text-xs font-bold rounded-full bg-slate-200 text-slate-700">
+            {{ existingTranslations.length }}
+          </span>
+        </button>
       </div>
 
-      <!-- Language Selection Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div
-          v-for="lang in selectableLanguages"
-          :key="lang.language"
-          class="flex items-center p-3 border rounded-lg transition-all"
-          :class="{
-            // Selected state
-            'border-blue-400 bg-blue-50': selectedLanguages.includes(lang.language as LanguageCode),
-            
-            // Unselected states
-            'border-amber-300 bg-amber-50/30 hover:bg-amber-50 cursor-pointer': lang.status === 'outdated' && !selectedLanguages.includes(lang.language as LanguageCode),
-            'border-slate-200 bg-white hover:bg-slate-50 cursor-pointer': lang.status === 'not_translated' && !selectedLanguages.includes(lang.language as LanguageCode),
-            'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed': lang.status === 'up_to_date' && !selectedLanguages.includes(lang.language as LanguageCode),
-          }"
-          @click="lang.status !== 'up_to_date' && toggleLanguage(lang.language)"
-        >
-          <Checkbox
-            v-model="selectedLanguages"
-            :input-id="`lang-${lang.language}`"
-            :value="lang.language"
-            :disabled="lang.status === 'up_to_date'"
-            class="mr-3"
-            @click.stop
+      <!-- Translate Mode -->
+      <div v-show="viewMode === 'translate'" class="space-y-6">
+        <!-- Quick Selection Buttons -->
+        <div class="flex gap-2 flex-wrap">
+          <Button
+            :label="$t('translation.dialog.selectAll')"
+            icon="pi pi-check-square"
+            size="small"
+            outlined
+            @click="selectAll"
           />
-          <label 
-            :for="`lang-${lang.language}`" 
-            class="flex-1 flex items-center justify-between"
-            :class="lang.status === 'up_to_date' ? 'cursor-not-allowed' : 'cursor-pointer'"
-          >
-            <div class="flex items-center gap-2">
-              <span class="text-lg">{{ getLanguageFlag(lang.language) }}</span>
-              <span 
-                class="text-sm font-medium"
-                :class="lang.status === 'up_to_date' ? 'text-gray-400' : 'text-gray-900'"
-              >
-                {{ lang.language_name }}
-              </span>
-            </div>
-            
-            <!-- Status Indicators - Minimal -->
-            <i 
-              v-if="lang.status === 'outdated'"
-              class="pi pi-exclamation-circle text-amber-600 text-xs"
-              v-tooltip.left="$t('translation.dialog.outdatedTooltip')"
-            ></i>
-            <i 
-              v-if="lang.status === 'up_to_date'"
-              class="pi pi-check-circle text-green-600 text-xs"
-              v-tooltip.left="$t('translation.dialog.upToDateTooltip')"
-            ></i>
-          </label>
+          <Button
+            :label="$t('translation.dialog.clearAll')"
+            icon="pi pi-times"
+            size="small"
+            severity="secondary"
+            outlined
+            @click="clearAll"
+            :disabled="selectedLanguages.length === 0"
+          />
+          <Button
+            :label="$t('translation.dialog.selectPopular')"
+            icon="pi pi-star"
+            size="small"
+            outlined
+            @click="selectPopular"
+          />
+          <Button
+            v-if="outdatedLanguages.length > 0"
+            :label="$t('translation.dialog.selectOutdated', { count: outdatedLanguages.length })"
+            icon="pi pi-exclamation-triangle"
+            size="small"
+            severity="warning"
+            outlined
+            @click="selectOutdated"
+          />
         </div>
-      </div>
+
+        <!-- Language Selection Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div
+            v-for="lang in selectableLanguages"
+            :key="lang.language"
+            class="flex items-center p-3 border rounded-lg transition-all"
+            :class="{
+              // Selected state
+              'border-blue-400 bg-blue-50': selectedLanguages.includes(lang.language as LanguageCode),
+              
+              // Unselected states
+              'border-amber-300 bg-amber-50/30 hover:bg-amber-50 cursor-pointer': lang.status === 'outdated' && !selectedLanguages.includes(lang.language as LanguageCode),
+              'border-slate-200 bg-white hover:bg-slate-50 cursor-pointer': lang.status === 'not_translated' && !selectedLanguages.includes(lang.language as LanguageCode),
+              'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed': lang.status === 'up_to_date' && !selectedLanguages.includes(lang.language as LanguageCode),
+            }"
+            @click="lang.status !== 'up_to_date' && toggleLanguage(lang.language)"
+          >
+            <Checkbox
+              v-model="selectedLanguages"
+              :input-id="`lang-${lang.language}`"
+              :value="lang.language"
+              :disabled="lang.status === 'up_to_date'"
+              class="mr-3"
+              @click.stop
+            />
+            <label 
+              :for="`lang-${lang.language}`" 
+              class="flex-1 flex items-center justify-between"
+              :class="lang.status === 'up_to_date' ? 'cursor-not-allowed' : 'cursor-pointer'"
+            >
+              <div class="flex items-center gap-2">
+                <span class="text-lg">{{ getLanguageFlag(lang.language) }}</span>
+                <span 
+                  class="text-sm font-medium"
+                  :class="lang.status === 'up_to_date' ? 'text-gray-400' : 'text-gray-900'"
+                >
+                  {{ lang.language_name }}
+                </span>
+              </div>
+              
+              <!-- Status Indicators - Minimal -->
+              <i 
+                v-if="lang.status === 'outdated'"
+                class="pi pi-exclamation-circle text-amber-600 text-xs"
+                v-tooltip.left="$t('translation.dialog.outdatedTooltip')"
+              ></i>
+              <i 
+                v-if="lang.status === 'up_to_date'"
+                class="pi pi-check-circle text-green-600 text-xs"
+                v-tooltip.left="$t('translation.dialog.upToDateTooltip')"
+              ></i>
+            </label>
+          </div>
+        </div>
 
       <!-- Translation Preview -->
       <div v-if="selectedLanguages.length > 0" class="bg-gray-50 p-4 rounded-lg">
@@ -150,29 +181,147 @@
         </div>
       </div>
 
-      <!-- AI Notice -->
-      <div class="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-        <i class="pi pi-sparkles mr-2"></i>
-        {{ $t('translation.dialog.aiNotice') }}
-      </div>
-
       <!-- Large Content Warning -->
       <div v-if="contentItemsCount > 20" class="text-sm text-yellow-700 bg-yellow-50 p-3 rounded border border-yellow-200">
         <i class="pi pi-exclamation-triangle mr-2"></i>
         {{ $t('translation.dialog.largeContentWarning') }}
       </div>
+      </div>
+
+      <!-- Manage Existing Mode -->
+      <div v-show="viewMode === 'manage'" class="space-y-4">
+        <!-- Warning Banner -->
+        <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div class="flex items-start gap-3">
+            <i class="pi pi-exclamation-triangle text-red-600 text-xl mt-0.5"></i>
+            <div class="flex-1">
+              <h4 class="font-semibold text-red-900 mb-1">{{ $t('translation.dialog.manageMode') }}</h4>
+              <p class="text-sm text-red-800">{{ $t('translation.dialog.manageModeWarning') }}</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bulk Actions -->
+        <div v-if="existingTranslations.length > 0" class="flex gap-2 flex-wrap">
+          <Button
+            :label="selectedForDelete.length === existingTranslations.length ? $t('translation.dialog.deselectAll') : $t('translation.dialog.selectAll')"
+            :icon="selectedForDelete.length === existingTranslations.length ? 'pi pi-times' : 'pi pi-check-square'"
+            size="small"
+            outlined
+            severity="secondary"
+            @click="toggleSelectAllForDelete"
+            :disabled="isDeletingBatch"
+          />
+          <Button
+            v-if="selectedForDelete.length > 0"
+            :label="$t('translation.dialog.deleteSelected', { count: selectedForDelete.length })"
+            icon="pi pi-trash"
+            size="small"
+            severity="danger"
+            @click="confirmBatchDelete"
+            :loading="isDeletingBatch"
+            :disabled="isDeletingBatch"
+          />
+        </div>
+
+        <!-- Batch Delete Progress -->
+        <div v-if="isDeletingBatch" class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+          <div class="flex justify-between items-center mb-2">
+            <span class="text-sm font-medium text-slate-700">
+              {{ $t('translation.dialog.deletingProgress') }}
+            </span>
+            <span class="text-sm font-semibold text-slate-900">
+              {{ deleteProgress.completed }}/{{ deleteProgress.total }}
+            </span>
+          </div>
+          <ProgressBar
+            :value="(deleteProgress.completed / deleteProgress.total) * 100"
+            :show-value="false"
+            class="mb-2"
+          />
+          <p v-if="deleteProgress.current" class="text-xs text-slate-600">
+            {{ $t('translation.dialog.deletingLanguage', { language: getLanguageName(deleteProgress.current) }) }}
+          </p>
+        </div>
+        
+        <!-- Existing Translations List -->
+        <div class="space-y-2">
+          <div
+            v-for="trans in existingTranslations"
+            :key="trans.language"
+            class="flex items-center gap-3 p-3 border rounded-lg transition-all cursor-pointer"
+            :class="{
+              'border-red-400 bg-red-50': selectedForDelete.includes(trans.language),
+              'border-slate-200 bg-white hover:bg-slate-50': !selectedForDelete.includes(trans.language)
+            }"
+            @click="toggleDeleteSelection(trans.language)"
+          >
+            <Checkbox
+              v-model="selectedForDelete"
+              :input-id="`delete-${trans.language}`"
+              :value="trans.language"
+              :disabled="isDeletingBatch"
+              @click.stop
+            />
+            <div class="flex-1 flex items-center gap-3">
+              <span class="text-lg">{{ getLanguageFlag(trans.language) }}</span>
+              <div class="flex-1">
+                <div class="font-medium text-slate-900">{{ trans.language_name }}</div>
+                <div class="flex gap-2 mt-1">
+                  <Tag 
+                    :value="$t(`translation.status.${trans.status}`)"
+                    :severity="getStatusSeverity(trans.status)"
+                    class="text-xs"
+                  />
+                  <span v-if="trans.translated_at" class="text-xs text-slate-500">
+                    {{ formatRelativeTime(trans.translated_at) }}
+                </span>
+              </div>
+            </div>
+            </div>
+            <!-- Individual Actions -->
+            <div class="flex gap-2" @click.stop>
+              <Button
+                v-if="trans.status === 'outdated'"
+                icon="pi pi-refresh"
+                size="small"
+                severity="warning"
+                outlined
+                @click="retranslateLanguage(trans.language)"
+                :disabled="isDeletingBatch"
+                v-tooltip.left="$t('translation.dialog.retranslate')"
+              />
+            <Button
+              icon="pi pi-trash"
+                size="small"
+              severity="danger"
+                outlined
+                @click="confirmSingleDelete(trans)"
+                :disabled="isDeletingBatch"
+                v-tooltip.left="$t('translation.dialog.delete')"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div v-if="existingTranslations.length === 0" class="text-center py-12 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
+        <i class="pi pi-inbox text-5xl text-slate-400 mb-4 block"></i>
+        <p class="text-slate-600 font-medium">{{ $t('translation.dialog.noTranslations') }}</p>
+      </div>
     </div>
+  </div>
 
     <!-- Step 2: Translation Progress -->
     <div v-if="currentStep === 2" class="space-y-6">
       <div class="text-center py-8">
         <i class="pi pi-spin pi-spinner text-4xl text-blue-600 mb-4"></i>
         <h3 class="text-xl font-semibold text-gray-900 mb-2">
-          {{ $t('translation.dialog.translating') }}
-        </h3>
+            {{ $t('translation.dialog.translating') }}
+          </h3>
         <p class="text-gray-600 mb-6">
           {{ $t('translation.dialog.translatingMessage', { count: selectedLanguages.length }) }}
-        </p>
+          </p>
 
         <!-- Progress List - Parallel Execution -->
         <div class="text-left max-w-md mx-auto space-y-2">
@@ -187,15 +336,15 @@
           >
             <i
               class="pi text-lg transition-all duration-300"
-              :class="{
+                  :class="{
                 'pi-check-circle text-green-600': translationProgress >= selectedLanguages.length,
                 'pi-spin pi-spinner text-blue-600': translationProgress < selectedLanguages.length,
-              }"
-            ></i>
+                  }"
+                ></i>
             <span class="flex-1">{{ getLanguageName(lang) }}</span>
-            <span
+              <span 
               class="text-sm transition-all duration-300"
-              :class="{
+                :class="{
                 'text-green-600 font-medium': translationProgress >= selectedLanguages.length,
                 'text-blue-600 font-medium': translationProgress < selectedLanguages.length,
               }"
@@ -205,20 +354,9 @@
                   ? $t('translation.dialog.complete')
                   : $t('translation.dialog.translating')
               }}
-            </span>
-          </div>
-        </div>
-
-        <!-- Parallel Execution Indicator -->
-        <div class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm">
-          <div class="flex items-center gap-2 text-blue-800">
-            <i class="pi pi-bolt text-blue-600"></i>
-            <span class="font-medium">{{ $t('translation.dialog.parallelExecution') }}</span>
-          </div>
-          <p class="text-blue-700 mt-1 text-xs">
-            {{ $t('translation.dialog.parallelExecutionMessage', { count: selectedLanguages.length }) }}
-          </p>
-        </div>
+              </span>
+            </div>
+            </div>
 
         <!-- Overall Progress -->
         <ProgressBar
@@ -232,25 +370,65 @@
       </div>
     </div>
 
-    <!-- Step 3: Success -->
+    <!-- Step 3: Success/Failure Results -->
     <div v-if="currentStep === 3" class="space-y-6">
       <div class="text-center py-8">
-        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <i class="pi pi-check text-3xl text-green-600"></i>
+        <!-- Icon based on results -->
+        <div 
+          class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
+          :class="{
+            'bg-green-100': failedLanguages.length === 0,
+            'bg-yellow-100': failedLanguages.length > 0 && completedLanguages.length > 0,
+            'bg-red-100': failedLanguages.length > 0 && completedLanguages.length === 0
+          }"
+        >
+          <i 
+            class="text-3xl"
+            :class="{
+              'pi pi-check text-green-600': failedLanguages.length === 0,
+              'pi pi-exclamation-triangle text-yellow-600': failedLanguages.length > 0 && completedLanguages.length > 0,
+              'pi pi-times text-red-600': failedLanguages.length > 0 && completedLanguages.length === 0
+            }"
+          ></i>
         </div>
+        
+        <!-- Title based on results -->
         <h3 class="text-2xl font-semibold text-gray-900 mb-2">
-          {{ $t('translation.dialog.successTitle') }}
+          <template v-if="failedLanguages.length === 0">
+            {{ $t('translation.dialog.successTitle') }}
+          </template>
+          <template v-else-if="completedLanguages.length > 0">
+            {{ $t('translation.dialog.partialSuccessTitle') }}
+          </template>
+          <template v-else>
+            {{ $t('translation.dialog.failureTitle') }}
+          </template>
         </h3>
+        
         <p class="text-gray-600 mb-6">
-          {{ $t('translation.dialog.successMessage', { count: selectedLanguages.length }) }}
+          <template v-if="failedLanguages.length === 0">
+            {{ $t('translation.dialog.successMessage', { count: completedLanguages.length }) }}
+          </template>
+          <template v-else-if="completedLanguages.length > 0">
+            {{ $t('translation.dialog.partialSuccessMessage', { 
+              completed: completedLanguages.length, 
+              failed: failedLanguages.length 
+            }) }}
+          </template>
+          <template v-else>
+            {{ $t('translation.dialog.failureMessage', { count: failedLanguages.length }) }}
+          </template>
         </p>
 
-        <!-- Translated Languages List -->
-        <div class="bg-gray-50 rounded-lg p-4 text-left max-w-md mx-auto mb-4">
-          <h4 class="font-semibold mb-2">{{ $t('translation.dialog.translatedLanguages') }}</h4>
+        <!-- Successfully Translated Languages -->
+        <div v-if="completedLanguages.length > 0" class="bg-green-50 border border-green-200 rounded-lg p-4 text-left max-w-md mx-auto mb-4">
+          <h4 class="font-semibold mb-2 text-green-900">
+            <i class="pi pi-check-circle mr-2"></i>
+            {{ $t('translation.dialog.successfullyTranslated', { count: completedLanguages.length }) }}
+          </h4>
           <div class="flex flex-wrap gap-2">
             <Tag
-              v-for="lang in selectedLanguages"
+              v-for="lang in completedLanguages"
               :key="lang"
               :value="`${getLanguageFlag(lang)} ${getLanguageName(lang)}`"
               severity="success"
@@ -258,11 +436,35 @@
           </div>
         </div>
 
+        <!-- Failed Languages -->
+        <div v-if="failedLanguages.length > 0" class="bg-red-50 border border-red-200 rounded-lg p-4 text-left max-w-md mx-auto mb-4">
+          <h4 class="font-semibold mb-2 text-red-900">
+            <i class="pi pi-times-circle mr-2"></i>
+            {{ $t('translation.dialog.failedTranslations', { count: failedLanguages.length }) }}
+          </h4>
+          <div class="flex flex-wrap gap-2 mb-3">
+            <Tag
+              v-for="lang in failedLanguages"
+              :key="lang"
+              :value="`${getLanguageFlag(lang)} ${getLanguageName(lang)}`"
+              severity="danger"
+            />
+          </div>
+          <Button
+            :label="$t('translation.dialog.retryFailed')"
+            icon="pi pi-refresh"
+            size="small"
+            severity="warning"
+            @click="retryFailedLanguages"
+            class="w-full"
+          />
+        </div>
+
         <!-- Credit Summary -->
-        <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left max-w-md mx-auto">
+        <div v-if="completedLanguages.length > 0" class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left max-w-md mx-auto">
           <div class="flex justify-between text-sm mb-1">
             <span class="text-gray-600">{{ $t('translation.dialog.creditsUsed') }}</span>
-            <span class="font-semibold">{{ selectedLanguages.length }}</span>
+            <span class="font-semibold">{{ completedLanguages.length }}</span>
           </div>
           <div class="flex justify-between text-sm">
             <span class="text-gray-600">{{ $t('translation.dialog.remainingBalance') }}</span>
@@ -270,7 +472,7 @@
           </div>
         </div>
 
-        <p class="text-sm text-gray-500 mt-4">
+        <p v-if="completedLanguages.length > 0" class="text-sm text-gray-500 mt-4">
           {{ $t('translation.dialog.availableMessage') }}
         </p>
       </div>
@@ -288,7 +490,7 @@
           @click="closeDialog"
         />
         <Button
-          v-if="currentStep === 1"
+          v-if="currentStep === 1 && viewMode === 'translate'"
           :label="$t('translation.dialog.translate', { count: selectedLanguages.length })"
           icon="pi pi-language"
           :disabled="selectedLanguages.length === 0 || remainingBalance < 0"
@@ -304,6 +506,9 @@
     </template>
   </Dialog>
 
+  <!-- Confirmation Dialog -->
+  <ConfirmDialog />
+
   <!-- Credit Confirmation Dialog -->
   <CreditConfirmationDialog
     v-model:visible="showCreditConfirmation"
@@ -317,14 +522,14 @@
     @cancel="handleCancelConfirmation"
   >
     <template #details>
-      <div class="space-y-3">
-        <div class="flex justify-between items-center">
-          <span class="text-slate-600">{{ $t('translation.dialog.languagesToTranslate') }}:</span>
-          <span class="font-semibold text-slate-900">{{ selectedLanguages.length }}</span>
-        </div>
-        <div class="flex justify-between items-center">
-          <span class="text-slate-600">{{ $t('translation.dialog.creditPerLanguage') }}:</span>
-          <span class="font-semibold text-slate-900">1 {{ $t('batches.credit') }}</span>
+          <div class="space-y-3">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-600">{{ $t('translation.dialog.languagesToTranslate') }}:</span>
+              <span class="font-semibold text-slate-900">{{ selectedLanguages.length }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-slate-600">{{ $t('translation.dialog.creditPerLanguage') }}:</span>
+              <span class="font-semibold text-slate-900">1 {{ $t('batches.credit') }}</span>
         </div>
       </div>
     </template>
@@ -340,6 +545,8 @@ import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Tag from 'primevue/tag';
 import ProgressBar from 'primevue/progressbar';
+import ConfirmDialog from 'primevue/confirmdialog';
+import { useConfirm } from 'primevue/useconfirm';
 import { useTranslationStore, SUPPORTED_LANGUAGES, type LanguageCode, type TranslationStatus } from '@/stores/translation';
 import { useCreditStore } from '@/stores/credits';
 import CreditConfirmationDialog from '@/components/CreditConfirmationDialog.vue';
@@ -359,15 +566,26 @@ const emit = defineEmits<{
 // Composables
 const { t } = useI18n();
 const toast = useToast();
+const confirm = useConfirm();
 const translationStore = useTranslationStore();
 const creditStore = useCreditStore();
 
 // State
+const viewMode = ref<'translate' | 'manage'>('translate');
 const currentStep = ref(1); // 1: Selection, 2: Progress, 3: Success
 const selectedLanguages = ref<LanguageCode[]>([]);
+const selectedForDelete = ref<LanguageCode[]>([]);
+const completedLanguages = ref<LanguageCode[]>([]);
+const failedLanguages = ref<LanguageCode[]>([]);
 const translationProgress = ref(0);
 const contentItemsCount = ref(5); // Will be fetched from card data
 const showCreditConfirmation = ref(false);
+const isDeletingBatch = ref(false);
+const deleteProgress = ref({
+  completed: 0,
+  total: 0,
+  current: null as LanguageCode | null,
+});
 
 // Computed
 const dialogVisible = computed({
@@ -387,6 +605,12 @@ const selectableLanguages = computed(() => {
 
 const outdatedLanguages = computed(() => {
   return props.availableLanguages.filter(lang => lang.status === 'outdated');
+});
+
+const existingTranslations = computed(() => {
+  return props.availableLanguages.filter(
+    lang => lang.status !== 'original' && lang.status !== 'not_translated'
+  );
 });
 
 const totalFieldsCount = computed(() => {
@@ -473,10 +697,16 @@ const handleCancelConfirmation = () => {
 const startTranslation = async () => {
   currentStep.value = 2;
   translationProgress.value = 0;
+  completedLanguages.value = [];
+  failedLanguages.value = [];
 
   try {
     // Call translation store
-    await translationStore.translateCard(props.cardId, selectedLanguages.value);
+    const result = await translationStore.translateCard(props.cardId, selectedLanguages.value);
+    
+    // Store successful and failed languages
+    completedLanguages.value = (result.translated_languages || []) as LanguageCode[];
+    failedLanguages.value = (result.failed_languages || []) as LanguageCode[];
     
     translationProgress.value = selectedLanguages.value.length;
     currentStep.value = 3;
@@ -498,7 +728,11 @@ const closeDialog = () => {
   // Reset after animation
   setTimeout(() => {
     currentStep.value = 1;
+    viewMode.value = 'translate';
     selectedLanguages.value = [];
+    selectedForDelete.value = [];
+    completedLanguages.value = [];
+    failedLanguages.value = [];
     translationProgress.value = 0;
   }, 300);
 };
@@ -529,6 +763,154 @@ const getLanguageFlag = (languageCode: string): string => {
     th: '🇹🇭',
   };
   return flagMap[languageCode] || '🌐';
+};
+
+// Management Methods
+const toggleDeleteSelection = (lang: LanguageCode) => {
+  const index = selectedForDelete.value.indexOf(lang);
+  if (index > -1) {
+    selectedForDelete.value.splice(index, 1);
+  } else {
+    selectedForDelete.value.push(lang);
+  }
+};
+
+const toggleSelectAllForDelete = () => {
+  if (selectedForDelete.value.length === existingTranslations.value.length) {
+    selectedForDelete.value = [];
+  } else {
+    selectedForDelete.value = existingTranslations.value.map(t => t.language);
+  }
+};
+
+const confirmSingleDelete = (translation: TranslationStatus) => {
+  confirm.require({
+    message: t('translation.dialog.confirmDeleteMessage', { language: translation.language_name }),
+    header: t('translation.dialog.confirmDeleteTitle'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    accept: () => deleteSingle(translation.language),
+  });
+};
+
+const deleteSingle = async (language: LanguageCode) => {
+  try {
+    await translationStore.deleteTranslation(props.cardId, language);
+    // Success feedback shown via empty state or updated list
+    emit('translated'); // Refresh parent
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: t('translation.dialog.deleteFailed'),
+      detail: error.message,
+      life: 5000,
+    });
+  }
+};
+
+const confirmBatchDelete = () => {
+  const languageNames = selectedForDelete.value.map(lang => getLanguageName(lang)).join(', ');
+  confirm.require({
+    message: t('translation.dialog.confirmBatchDeleteMessage', {
+      count: selectedForDelete.value.length,
+      languages: languageNames,
+    }),
+    header: t('translation.dialog.confirmBatchDeleteTitle'),
+    icon: 'pi pi-exclamation-triangle',
+    acceptClass: 'p-button-danger',
+    accept: () => deleteBatch(),
+  });
+};
+
+const deleteBatch = async () => {
+  isDeletingBatch.value = true;
+  deleteProgress.value = {
+    completed: 0,
+    total: selectedForDelete.value.length,
+    current: null,
+  };
+
+  const languagesToDelete = [...selectedForDelete.value];
+  let successCount = 0;
+  let failCount = 0;
+  
+  for (const language of languagesToDelete) {
+    deleteProgress.value.current = language;
+    try {
+      await translationStore.deleteTranslation(props.cardId, language);
+      successCount++;
+    } catch (error) {
+      failCount++;
+    }
+      deleteProgress.value.completed++;
+  }
+
+  isDeletingBatch.value = false;
+  deleteProgress.value.current = null;
+  selectedForDelete.value = [];
+
+  // Show result only for errors (success is shown via empty state)
+  if (successCount === 0) {
+    toast.add({
+      severity: 'error',
+      summary: t('translation.dialog.batchDeleteFailed'),
+      detail: t('translation.dialog.allDeletesFailed'),
+      life: 5000,
+    });
+  } else {
+    toast.add({
+      severity: 'warn',
+      summary: t('translation.dialog.batchDeletePartial'),
+      detail: t('translation.dialog.partialDeleteResult', { success: successCount, failed: failCount }),
+      life: 5000,
+    });
+  }
+  
+  emit('translated'); // Refresh parent
+};
+
+const retranslateLanguage = (language: LanguageCode) => {
+  // Switch to translate mode and pre-select this language
+  viewMode.value = 'translate';
+  selectedLanguages.value = [language];
+  // User can then click translate button
+};
+
+const retryFailedLanguages = () => {
+  // Reset to step 1 with failed languages selected
+  currentStep.value = 1;
+  viewMode.value = 'translate';
+  selectedLanguages.value = [...failedLanguages.value];
+  // Clear the failed list
+  failedLanguages.value = [];
+  // Show confirmation
+  showConfirmation();
+};
+
+const getStatusSeverity = (status: string) => {
+  const severityMap: Record<string, any> = {
+    original: 'info',
+    up_to_date: 'success',
+    outdated: 'warning',
+    not_translated: 'secondary',
+  };
+  return severityMap[status] || 'secondary';
+};
+
+const formatRelativeTime = (dateString: string): string => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  
+  if (diffMins < 1) return t('translation.dialog.justNow');
+  if (diffMins < 60) return t('translation.dialog.minutesAgo', { count: diffMins });
+  
+  const diffHours = Math.floor(diffMins / 60);
+  if (diffHours < 24) return t('translation.dialog.hoursAgo', { count: diffHours });
+  
+  const diffDays = Math.floor(diffHours / 24);
+  return t('translation.dialog.daysAgo', { count: diffDays });
 };
 
 // Watchers

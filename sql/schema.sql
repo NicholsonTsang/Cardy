@@ -386,18 +386,3 @@ CREATE INDEX idx_translation_history_card_id ON translation_history(card_id);
 CREATE INDEX idx_translation_history_user_id ON translation_history(translated_by);
 CREATE INDEX idx_translation_history_created_at ON translation_history(translated_at DESC);
 CREATE INDEX idx_translation_history_status ON translation_history(status);
-
--- Trigger to update user_credits updated_at
-CREATE OR REPLACE FUNCTION update_user_credits_updated_at()
-RETURNS TRIGGER AS $$
-BEGIN
-    NEW.updated_at = CURRENT_TIMESTAMP;
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
-
-DROP TRIGGER IF EXISTS trigger_update_user_credits_updated_at ON user_credits;
-CREATE TRIGGER trigger_update_user_credits_updated_at
-    BEFORE UPDATE ON user_credits
-    FOR EACH ROW
-    EXECUTE FUNCTION update_user_credits_updated_at();

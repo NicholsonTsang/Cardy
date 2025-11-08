@@ -191,7 +191,7 @@ const httpServer = createServer(app);
 initializeSocket(httpServer, allowedOrigins);
 
 // Start server
-const server = httpServer.listen(PORT, () => {
+const server = httpServer.listen(PORT, async () => {
   console.log('');
   console.log('🚀 CardStudio Backend Server');
   console.log('=====================================');
@@ -220,7 +220,7 @@ const server = httpServer.listen(PORT, () => {
 });
 
 // Graceful shutdown
-const gracefulShutdown = (signal: string) => {
+const gracefulShutdown = async (signal: string) => {
   console.log(`\n⚠️  Received ${signal}, shutting down gracefully...`);
   
   server.close(() => {

@@ -110,7 +110,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (data.user && data.user.email_confirmed_at) {
       // Force session refresh to get updated user metadata
       await refreshSession()
-      toast.add({ severity: 'success', summary: 'Sign In Successful', detail: 'Welcome back!', group: 'br', life: 3000 })
+      // No success toast needed - Navigation/redirect provides clear feedback
       
       // Redirect to appropriate default page based on user role
       redirectToDefaultPage()

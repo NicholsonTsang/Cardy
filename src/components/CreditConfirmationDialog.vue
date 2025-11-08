@@ -22,70 +22,75 @@
         </div>
       </div>
 
-      <!-- Action Description (if provided) -->
-      <div v-if="actionDescription" class="bg-slate-50 rounded-lg p-4 border border-slate-200">
-        <h4 class="font-medium text-slate-900 mb-2">{{ $t('common.action') }}</h4>
-        <p class="text-slate-700">{{ actionDescription }}</p>
-      </div>
+      <!-- Embedded Content Slot (replaces entire middle section if provided) -->
+      <slot name="embedded-content">
+        <!-- Default Content (shown if no embedded-content slot) -->
+        
+        <!-- Action Description (if provided) -->
+        <div v-if="actionDescription" class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+          <h4 class="font-medium text-slate-900 mb-2">{{ $t('common.action') }}</h4>
+          <p class="text-slate-700">{{ actionDescription }}</p>
+        </div>
 
-      <!-- Credit Usage Summary -->
-      <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
-        <h4 class="font-medium text-slate-900 mb-3">{{ $t('batches.credit_usage_summary') }}</h4>
-        <div class="space-y-3">
-          <!-- Custom Details Slot -->
-          <slot name="details">
-            <!-- Default details if no slot provided -->
-            <div v-if="itemCount && creditsPerItem" class="space-y-3">
-              <div class="flex justify-between items-center">
-                <span class="text-slate-600">{{ itemLabel }}:</span>
-                <span class="font-semibold text-slate-900">{{ itemCount }}</span>
+        <!-- Credit Usage Summary -->
+        <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
+          <h4 class="font-medium text-slate-900 mb-3">{{ $t('batches.credit_usage_summary') }}</h4>
+          <div class="space-y-3">
+            <!-- Custom Details Slot -->
+            <slot name="details">
+              <!-- Default details if no slot provided -->
+              <div v-if="itemCount && creditsPerItem" class="space-y-3">
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-600">{{ itemLabel }}:</span>
+                  <span class="font-semibold text-slate-900">{{ itemCount }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                  <span class="text-slate-600">{{ $t('batches.credits_per_card') }}:</span>
+                  <span class="font-semibold text-slate-900">{{ creditsPerItem }} {{ $t('batches.credits') }}</span>
+                </div>
               </div>
-              <div class="flex justify-between items-center">
-                <span class="text-slate-600">{{ $t('batches.credits_per_card') }}:</span>
-                <span class="font-semibold text-slate-900">{{ creditsPerItem }} {{ $t('batches.credits') }}</span>
-              </div>
+            </slot>
+            
+            <!-- Total Credits (always shown) -->
+            <div class="border-t border-slate-300 pt-3 flex justify-between items-center">
+              <span class="text-slate-700 font-medium">{{ $t('batches.total_credits_to_consume') }}:</span>
+              <span class="text-xl font-bold text-orange-600">{{ creditsToConsume }} {{ $t('batches.credits') }}</span>
             </div>
-          </slot>
-          
-          <!-- Total Credits (always shown) -->
-          <div class="border-t border-slate-300 pt-3 flex justify-between items-center">
-            <span class="text-slate-700 font-medium">{{ $t('batches.total_credits_to_consume') }}:</span>
-            <span class="text-xl font-bold text-orange-600">{{ creditsToConsume }} {{ $t('batches.credits') }}</span>
           </div>
         </div>
-      </div>
 
-      <!-- Balance Information -->
-      <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
-        <h4 class="font-medium text-blue-900 mb-3">{{ $t('batches.balance_after_consumption') }}</h4>
-        <div class="space-y-2">
-          <div class="flex justify-between items-center">
-            <span class="text-blue-700">{{ $t('batches.current_balance') }}:</span>
-            <span class="font-semibold text-blue-900">{{ formattedCurrentBalance }} {{ $t('batches.credits') }}</span>
+        <!-- Balance Information -->
+        <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
+          <h4 class="font-medium text-blue-900 mb-3">{{ $t('batches.balance_after_consumption') }}</h4>
+          <div class="space-y-2">
+            <div class="flex justify-between items-center">
+              <span class="text-blue-700">{{ $t('batches.current_balance') }}:</span>
+              <span class="font-semibold text-blue-900">{{ formattedCurrentBalance }} {{ $t('batches.credits') }}</span>
+            </div>
+            <div class="flex justify-between items-center">
+              <span class="text-blue-700">{{ $t('batches.after_consumption') }}:</span>
+              <span class="font-semibold text-blue-900" :class="remainingBalanceClass">
+                {{ formattedRemainingBalance }} {{ $t('batches.credits') }}
+              </span>
+            </div>
           </div>
-          <div class="flex justify-between items-center">
-            <span class="text-blue-700">{{ $t('batches.after_consumption') }}:</span>
-            <span class="font-semibold text-blue-900" :class="remainingBalanceClass">
-              {{ formattedRemainingBalance }} {{ $t('batches.credits') }}
+        </div>
+
+        <!-- Low Balance Warning -->
+        <div v-if="showLowBalanceWarning" class="bg-yellow-50 border border-yellow-300 rounded-lg p-3">
+          <div class="flex items-center gap-2">
+            <i class="pi pi-info-circle text-yellow-600"></i>
+            <span class="text-sm text-yellow-800">
+              {{ $t('batches.low_balance_warning') }}
             </span>
           </div>
         </div>
-      </div>
 
-      <!-- Low Balance Warning -->
-      <div v-if="showLowBalanceWarning" class="bg-yellow-50 border border-yellow-300 rounded-lg p-3">
-        <div class="flex items-center gap-2">
-          <i class="pi pi-info-circle text-yellow-600"></i>
-          <span class="text-sm text-yellow-800">
-            {{ $t('batches.low_balance_warning') }}
-          </span>
+        <!-- Confirmation Question -->
+        <div class="text-center text-slate-700 font-medium">
+          {{ confirmationQuestion || $t('batches.are_you_sure_proceed') }}
         </div>
-      </div>
-
-      <!-- Confirmation Question -->
-      <div class="text-center text-slate-700 font-medium">
-        {{ confirmationQuestion || $t('batches.are_you_sure_proceed') }}
-      </div>
+      </slot>
     </div>
 
     <template #footer>

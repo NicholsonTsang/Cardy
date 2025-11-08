@@ -150,7 +150,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
@@ -231,12 +231,8 @@ const loadTranslationStatus = async () => {
 };
 
 const handleTranslationSuccess = () => {
-  toast.add({
-    severity: 'success',
-    summary: t('translation.success.title'),
-    detail: t('translation.success.message'),
-    life: 5000,
-  });
+  // No toast needed - Dialog already shows success screen (Step 3)
+  // Visual feedback: status badges update to show new translations
   loadTranslationStatus();
 };
 
@@ -260,6 +256,16 @@ const getLanguageFlag = (languageCode: string): string => {
 onMounted(() => {
   loadTranslationStatus();
 });
+
+// Watch for card ID changes and reload translation status
+watch(() => props.cardId, (newCardId, oldCardId) => {
+  if (newCardId && newCardId !== oldCardId) {
+    // Reset store state to clear previous card's data
+    translationStore.reset();
+    // Load new card's translation status
+    loadTranslationStatus();
+  }
+}, { immediate: false });
 
 // Expose methods for parent component to call
 defineExpose({

@@ -61,7 +61,10 @@ export const authenticateUser = async (
       role: user.user_metadata?.role
     };
 
+    // Only log authentication in development (too verbose for production)
+    if (process.env.NODE_ENV === 'development' && process.env.DEBUG_AUTH) {
     console.log(`✅ Authenticated user: ${user.email} (${user.id})`);
+    }
     
     return next();
   } catch (error: any) {
@@ -101,7 +104,10 @@ export const optionalAuth = async (
           email: user.email,
           role: user.user_metadata?.role
         };
+        // Only log in debug mode (too verbose for production)
+        if (process.env.DEBUG_AUTH) {
         console.log(`✅ Optional auth: Authenticated user ${user.email}`);
+        }
       }
     }
     

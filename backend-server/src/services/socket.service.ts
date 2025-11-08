@@ -76,13 +76,17 @@ export type TranslationProgressEvent =
   | TranslationStartedEvent
   | LanguageStartedEvent
   | BatchProgressEvent
+  | BatchCompletedEvent
   | LanguageCompletedEvent
   | LanguageFailedEvent
   | TranslationCompletedEvent
-  | TranslationErrorEvent;
+  | TranslationErrorEvent
+  | TranslationRetryEvent
+  | TranslationFailedEvent;
 
 export interface TranslationStartedEvent {
   type: 'translation:started';
+  jobId?: string;  // Optional for synchronous translations
   cardId: string;
   totalLanguages: number;
   languages: string[];
@@ -91,6 +95,7 @@ export interface TranslationStartedEvent {
 
 export interface LanguageStartedEvent {
   type: 'language:started';
+  jobId?: string;  // Optional for synchronous translations
   cardId: string;
   language: string;
   languageIndex: number;
@@ -109,12 +114,23 @@ export interface BatchProgressEvent {
   timestamp: string;
 }
 
-export interface LanguageCompletedEvent {
-  type: 'language:completed';
+export interface BatchCompletedEvent {
+  type: 'batch:completed';
+  jobId?: string;  // Optional for synchronous translations
   cardId: string;
   language: string;
-  languageIndex: number;
-  totalLanguages: number;
+  batchIndex: number;
+  totalBatches: number;
+  timestamp: string;
+}
+
+export interface LanguageCompletedEvent {
+  type: 'language:completed';
+  jobId?: string;  // Optional for synchronous translations
+  cardId: string;
+  language: string;
+  languageIndex?: number;  // Optional for synchronous translations
+  totalLanguages?: number;  // Optional for synchronous translations
   duration?: number; // Duration in milliseconds
   timestamp: string;
 }
@@ -129,6 +145,7 @@ export interface LanguageFailedEvent {
 
 export interface TranslationCompletedEvent {
   type: 'translation:completed';
+  jobId?: string;  // Optional for synchronous translations
   cardId: string;
   completedLanguages: string[];
   failedLanguages: string[];
@@ -140,6 +157,24 @@ export interface TranslationErrorEvent {
   type: 'translation:error';
   cardId: string;
   error: string;
+  timestamp: string;
+}
+
+export interface TranslationRetryEvent {
+  type: 'translation:retry';
+  jobId?: string;  // Optional for synchronous translations
+  cardId: string;
+  retryCount: number;
+  maxRetries: number;
+  timestamp: string;
+}
+
+export interface TranslationFailedEvent {
+  type: 'translation:failed';
+  jobId?: string;  // Optional for synchronous translations
+  cardId: string;
+  error: string;
+  retryCount: number;
   timestamp: string;
 }
 

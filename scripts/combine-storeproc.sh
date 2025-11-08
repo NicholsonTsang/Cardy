@@ -13,11 +13,6 @@ echo "-- Combined Stored Procedures" >> "$OUTPUT_FILE"
 echo "-- Generated: $(date)" >> "$OUTPUT_FILE"
 echo "" >> "$OUTPUT_FILE"
 
-# Add drop all functions at the beginning
-echo "-- Drop all existing functions first" >> "$OUTPUT_FILE"
-cat "$PROJECT_ROOT/sql/drop_all_functions_simple.sql" >> "$OUTPUT_FILE"
-echo "" >> "$OUTPUT_FILE"
-
 # Process each SQL file
 process_file() {
     local file="$1"
@@ -60,6 +55,20 @@ echo "" >> "$OUTPUT_FILE"
 for file in "$PROJECT_ROOT"/sql/storeproc/server-side/*.sql; do
     [ -f "$file" ] && process_file "$file"
 done
+
+# Triggers
+echo "-- =================================================================" >> "$OUTPUT_FILE"
+echo "-- TRIGGERS" >> "$OUTPUT_FILE"
+echo "-- =================================================================" >> "$OUTPUT_FILE"
+echo "" >> "$OUTPUT_FILE"
+
+if [ -f "$PROJECT_ROOT/sql/triggers.sql" ]; then
+    echo "-- File: triggers.sql" >> "$OUTPUT_FILE"
+    echo "-- -----------------------------------------------------------------" >> "$OUTPUT_FILE"
+    cat "$PROJECT_ROOT/sql/triggers.sql" >> "$OUTPUT_FILE"
+    echo "" >> "$OUTPUT_FILE"
+    echo "" >> "$OUTPUT_FILE"
+fi
 
 echo "✅ Combined into: $OUTPUT_FILE"
 echo "🚀 Deploy: psql \"\$DATABASE_URL\" -f sql/all_stored_procedures.sql"

@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import translationRoutes from './translation.routes';
+import translationRoutes from './translation.routes.direct';
 import paymentRoutes from './payment.routes';
 import aiRoutes from './ai.routes';
 import webhookRoutes from './webhook.routes';

@@ -243,9 +243,10 @@ import CardTranslationSection from '@/components/Card/CardTranslationSection.vue
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
 import { getCardAspectRatio } from '@/utils/cardConfig';
 import { renderMarkdown } from '@/utils/markdownRenderer';
-import { SUPPORTED_LANGUAGES } from '@/stores/translation';
+import { SUPPORTED_LANGUAGES, useTranslationStore } from '@/stores/translation';
 
 const { t } = useI18n();
+const translationStore = useTranslationStore();
 
 const props = defineProps({
     cardProp: {
@@ -367,10 +368,13 @@ const handleSaveEdit = async () => {
             await emit('update-card', payload);
         }
         
-        // Refresh translation section to show updated original_language
+        // Refresh translation section to show updated original_language and status
         if (translationSectionRef.value) {
             translationSectionRef.value.loadTranslationStatus();
         }
+        
+        // Refetch translation status (card content changed)
+        await translationStore.fetchTranslationStatus(props.cardProp.id);
         
         // Don't manually close dialog - MyDialog will close it automatically after success
     }
