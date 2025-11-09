@@ -36,7 +36,7 @@ fi
 source .env
 
 # Configuration
-echo -e "${BLUE}[1/7]${NC} Configuration"
+echo -e "${BLUE}[1/8]${NC} Configuration"
 echo "Please provide your deployment details:"
 echo ""
 
@@ -93,26 +93,38 @@ fi
 
 # Set project
 echo ""
-echo -e "${BLUE}[2/7]${NC} Setting GCP project..."
+echo -e "${BLUE}[2/8]${NC} Setting GCP project..."
 gcloud config set project $PROJECT_ID
 
 # Enable APIs
 echo ""
-echo -e "${BLUE}[3/7]${NC} Enabling required APIs..."
+echo -e "${BLUE}[3/8]${NC} Enabling required APIs..."
 gcloud services enable run.googleapis.com --quiet
 gcloud services enable containerregistry.googleapis.com --quiet
 gcloud services enable cloudbuild.googleapis.com --quiet
 echo -e "${GREEN}✓${NC} APIs enabled"
 
+# Verify required files
+echo ""
+echo -e "${BLUE}[4/7]${NC} Verifying required files..."
+REQUIRED_FILES=("package.json" "package-lock.json" "Dockerfile" "tsconfig.json")
+for file in "${REQUIRED_FILES[@]}"; do
+    if [ ! -f "$file" ]; then
+        echo -e "${RED}✗ Required file missing: $file${NC}"
+        exit 1
+    fi
+done
+echo -e "${GREEN}✓${NC} All required files present"
+
 # Build container image
 echo ""
-echo -e "${BLUE}[4/7]${NC} Building container image (this may take 2-3 minutes)..."
-gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE_NAME --quiet
+echo -e "${BLUE}[5/7]${NC} Building container image (this may take 2-3 minutes)..."
+gcloud builds submit --tag gcr.io/$PROJECT_ID/$SERVICE_NAME . --quiet
 echo -e "${GREEN}✓${NC} Container image built and pushed"
 
 # Prepare environment variables (excluding reserved ones)
 echo ""
-echo -e "${BLUE}[5/7]${NC} Preparing environment variables..."
+echo -e "${BLUE}[6/7]${NC} Preparing environment variables..."
 
 # Reserved variables that Cloud Run sets automatically
 RESERVED_VARS=("PORT" "K_SERVICE" "K_REVISION" "K_CONFIGURATION")
@@ -154,7 +166,7 @@ echo -e "${GREEN}✓${NC} Environment variables prepared"
 
 # Deploy to Cloud Run
 echo ""
-echo -e "${BLUE}[5/7]${NC} Deploying to Cloud Run..."
+echo -e "${BLUE}[7/8]${NC} Deploying to Cloud Run..."
 gcloud run deploy $SERVICE_NAME \
   --image gcr.io/$PROJECT_ID/$SERVICE_NAME \
   --platform managed \
@@ -173,7 +185,7 @@ echo -e "${GREEN}✓${NC} Service deployed"
 
 # Get service URL
 echo ""
-echo -e "${BLUE}[6/7]${NC} Getting service URL..."
+echo -e "${BLUE}[8/8]${NC} Getting service URL..."
 SERVICE_URL=$(gcloud run services describe $SERVICE_NAME \
   --region $REGION \
   --format 'value(status.url)')
@@ -182,7 +194,7 @@ echo -e "${GREEN}✓${NC} Service URL: $SERVICE_URL"
 
 # Test health endpoint
 echo ""
-echo -e "${BLUE}[7/7]${NC} Testing health endpoint..."
+echo -e "${BLUE}Testing health endpoint...${NC}"
 sleep 5  # Wait for service to be ready
 HEALTH_RESPONSE=$(curl -s $SERVICE_URL/health)
 

@@ -452,8 +452,8 @@ async function connectRealtime() {
     console.error('❌ Realtime connection error:', err)
     
     // Set error message for display
-    if (err.message?.includes('Relay server required') || err.message?.includes('VITE_OPENAI_RELAY_URL')) {
-      connectionError.value = 'Realtime voice mode requires additional setup. Please use Chat Mode instead (text or voice recording).'
+    if (err.message?.includes('Backend server required') || err.message?.includes('VITE_BACKEND_URL')) {
+      connectionError.value = 'Realtime voice mode requires backend server. Please use Chat Mode instead (text or voice recording).'
     } else if (err.message?.includes('microphone') || err.message?.includes('getUserMedia')) {
       connectionError.value = 'Microphone access denied. Please allow microphone permissions in your browser settings and try again.'
     } else if (err.message?.includes('network') || err.message?.includes('fetch')) {

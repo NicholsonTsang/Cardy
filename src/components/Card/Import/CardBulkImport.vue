@@ -1,7 +1,7 @@
 <template>
   <div class="card-bulk-import">
-    <!-- Header Section -->
-    <div class="import-header">
+    <!-- Header Section - Only for regular import mode -->
+    <div v-if="props.mode === 'regular'" class="import-header">
       <div class="header-content">
         <div class="icon-section">
           <div class="import-icon">

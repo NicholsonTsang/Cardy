@@ -146,6 +146,8 @@
     "create_new_card": "Create New Card",
     "edit_card": "Edit Card",
     "delete_card": "Delete Card",
+    "confirm_deletion": "Confirm Deletion",
+    "confirm_delete_card_message": "Are you sure you want to delete '{name}'? This action cannot be undone.",
     "card_created": "Card created successfully",
     "card_updated": "Card updated successfully",
     "card_details": "Card Details",
@@ -768,7 +770,8 @@
     "change": "Change",
     "welcome_message": "Hello! I'm the AI assistant for {name}. How can I help you?",
     "connection_error": "Connection error",
-    "open_ai_assistant": "Open AI Assistant"
+    "open_ai_assistant": "Open AI Assistant",
+    "translated_content_available": "Translated content available"
   },
 
   "validation": {
@@ -918,6 +921,10 @@
       "video_description": "Watch a 1-2 minute demonstration",
       "card_title": "Interactive Experience Demo",
       "try_live_demo": "Try Live Demo",
+      "scan_to_try": "Scan to Try",
+      "scan_with_phone": "Scan with Phone",
+      "instant_demo": "Try it instantly!",
+      "scan_qr_code": "Scan the QR code on the card",
       "experience_features": "Experience Features",
     "features": {
         "qr_access_title": "Instant QR Access",

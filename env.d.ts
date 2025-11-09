@@ -30,10 +30,12 @@ interface ImportMetaEnv {
   readonly VITE_CONTENT_ASPECT_RATIO_WIDTH: string
   readonly VITE_CONTENT_ASPECT_RATIO_HEIGHT: string
   
+  // Backend Configuration
+  readonly VITE_BACKEND_URL: string
+  
   // AI Configuration
   readonly VITE_DEFAULT_AI_INSTRUCTION: string
   readonly VITE_OPENAI_REALTIME_MODEL: string
-  readonly VITE_OPENAI_RELAY_URL?: string
   
   // Batch Configuration
   readonly VITE_BATCH_MIN_QUANTITY: string

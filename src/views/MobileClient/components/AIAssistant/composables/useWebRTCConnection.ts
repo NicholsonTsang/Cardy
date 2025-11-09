@@ -77,23 +77,23 @@ export function useWebRTCConnection() {
     try {
       // IMPORTANT: OpenAI Realtime API with WebRTC requires a relay server for browser connections
       // The direct HTTP POST approach doesn't work due to CORS restrictions
-      const relayUrl = import.meta.env.VITE_OPENAI_RELAY_URL
+      const backendUrl = import.meta.env.VITE_BACKEND_URL
       
-      if (!relayUrl) {
+      if (!backendUrl) {
         const errorMessage = [
-          'OpenAI Realtime API requires a relay server for browser connections.',
+          'OpenAI Realtime API requires backend server for browser connections.',
           'Direct connections are blocked by CORS policy.',
           '',
           'To fix this:',
-          '1. Set up a relay server (see openai-relay-server/ directory)',
-          '2. Add VITE_OPENAI_RELAY_URL to your .env.local file',
+          '1. Ensure backend server is running',
+          '2. Add VITE_BACKEND_URL to your .env file',
           '',
           'For local development, you can use Chat Mode (text + TTS) instead,',
           'which works without a relay server.'
         ].join('\n')
         
         console.error('❌ ' + errorMessage)
-        throw new Error('Relay server required. Please configure VITE_OPENAI_RELAY_URL in your .env.local file.')
+        throw new Error('Backend server required. Please configure VITE_BACKEND_URL in your .env file.')
       }
       
       // Get ephemeral token
@@ -247,9 +247,9 @@ export function useWebRTCConnection() {
       const model = import.meta.env.VITE_OPENAI_REALTIME_MODEL || 'gpt-realtime-mini-2025-10-06'
       console.log('🎯 Using Realtime model:', model)
       
-      // Use relay server to proxy the WebRTC connection
-      console.log('🌐 Connecting through relay server:', relayUrl)
-      const response = await fetch(`${relayUrl}/offer`, {
+      // Use backend server to proxy the WebRTC connection
+      console.log('🌐 Connecting through backend server:', backendUrl)
+      const response = await fetch(`${backendUrl}/offer`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

@@ -185,7 +185,9 @@ const handleSelectCard = (cardId) => {
     selectedCardId.value = cardId;
     // Clear batch selection when switching cards
     selectedBatchId.value = null;
-    updateURL(cardId, activeTab.value, null);
+    // Reset to General tab (tab 0) when switching cards
+    activeTab.value = 0;
+    updateURL(cardId, 0, null);
 };
 
 const handleBatchChange = (batchId) => {

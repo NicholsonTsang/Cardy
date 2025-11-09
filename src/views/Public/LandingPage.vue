@@ -171,11 +171,15 @@
           </div>
 
           <!-- Demo Card Preview -->
-          <div class="grid md:grid-cols-2 gap-8 mt-16">
-            <div class="relative mx-auto animate-on-scroll">
+          <div class="grid md:grid-cols-5 gap-12 lg:gap-16 mt-16 items-center">
+            <!-- Left Column: Demo Card (2/5 width) -->
+            <div class="md:col-span-2 relative w-full animate-on-scroll">
+              <!-- Ambient glow -->
               <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur-3xl opacity-50"></div>
-              <div class="relative bg-white rounded-3xl p-6 shadow-2xl max-w-sm transform hover:scale-105 transition-all duration-500">
-                <div class="aspect-[2/3] bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl overflow-hidden relative group">
+              
+              <!-- Card container -->
+              <div class="relative bg-white rounded-3xl p-4 shadow-2xl hover:shadow-[0_20px_60px_rgba(59,130,246,0.3)] transition-all duration-500">
+                <div :style="{ aspectRatio: cardAspectRatio }" class="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl overflow-hidden relative group">
                   <img 
                     :src="demoCardImageUrl" 
                     :alt="$t('landing.demo.card_title')"
@@ -188,17 +192,21 @@
                     <p class="text-sm opacity-90">{{ demoCardSubtitle }}</p>
                   </div>
                   
+                  <!-- QR Code with Visual Guide -->
                   <div class="absolute top-4 right-4">
-                    <div class="relative">
-                      <div class="absolute inset-0 bg-white rounded-xl blur-xl opacity-50"></div>
-                      <div class="relative bg-white rounded-xl p-2 shadow-2xl">
-                        <QrCode :value="sampleQrUrl" :size="48" />
+                    <div class="relative group/qr">
+                      <!-- Glow effect -->
+                      <div class="absolute inset-0 bg-white/60 rounded-lg blur-md"></div>
+                      <!-- QR Code container with frosted glass effect -->
+                      <div class="relative bg-white/95 backdrop-blur-sm rounded-lg p-1.5 shadow-lg ring-1 ring-white/20 transition-all duration-300 group-hover/qr:scale-105 group-hover/qr:shadow-xl">
+                        <QrCode :value="sampleQrUrl" :size="52" />
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                <div class="mt-6 text-center">
+                <!-- Try Demo Button - Mobile Only -->
+                <div class="mt-6 text-center lg:hidden">
                   <Button 
                     @click="openDemoCard"
                     class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 text-base font-bold shadow-lg hover:shadow-xl transition-all rounded-xl min-h-[52px]"
@@ -209,8 +217,28 @@
               </div>
             </div>
 
-            <div class="space-y-6 animate-on-scroll" style="animation-delay: 200ms">
-              <h3 class="text-3xl font-bold text-white mb-8">{{ $t('landing.demo.experience_features') }}</h3>
+            <!-- Right Column: Features & Guide (3/5 width) -->
+            <div class="md:col-span-3 space-y-8 animate-on-scroll" style="animation-delay: 200ms">
+              <!-- Visual Guide - Desktop Only -->
+              <div class="hidden lg:block">
+                <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
+                  <div class="flex items-start gap-4 mb-6">
+                    <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                      <i class="pi pi-mobile text-white text-xl"></i>
+                    </div>
+                    <div>
+                      <h4 class="text-lg font-bold text-white mb-1">{{ $t('landing.demo.scan_with_phone') }}</h4>
+                      <p class="text-sm text-white/70">{{ $t('landing.demo.instant_demo') }}</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-3 text-white/60 text-sm">
+                    <i class="pi pi-arrow-left animate-pulse"></i>
+                    <span>{{ $t('landing.demo.scan_qr_code') }}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <h3 class="text-3xl font-bold text-white">{{ $t('landing.demo.experience_features') }}</h3>
               
               <div v-for="(feature, index) in demoFeatures" :key="index" class="flex gap-4">
                 <div class="w-12 h-12 bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
@@ -303,7 +331,7 @@
           </p>
         </div>
 
-        <Carousel :value="applications.value" :numVisible="3" :numScroll="1" :responsiveOptions="carouselResponsiveOptions" 
+        <Carousel :value="applications" :numVisible="3" :numScroll="1" :responsiveOptions="carouselResponsiveOptions" 
                   :circular="true" :autoplayInterval="5000" class="custom-carousel">
           <template #item="slotProps">
             <div class="p-4">
@@ -1022,6 +1050,7 @@ import InputText from 'primevue/inputtext'
 import Textarea from 'primevue/textarea'
 import Dropdown from 'primevue/dropdown'
 import QrCode from 'qrcode.vue'
+import { getCardAspectRatio } from '@/utils/cardConfig'
 import { useToast } from 'primevue/usetoast'
 import UnifiedHeader from '@/components/Layout/UnifiedHeader.vue'
 
@@ -1035,9 +1064,10 @@ const mobileMenuOpen = ref(false)
 const sampleQrUrl = ref(import.meta.env.VITE_SAMPLE_QR_URL || `${window.location.origin}/c/demo-ancient-artifacts`)
 
 // Demo card configuration
-const demoCardTitle = import.meta.env.VITE_DEMO_CARD_TITLE || 'Ancient Mysteries'
-const demoCardSubtitle = import.meta.env.VITE_DEMO_CARD_SUBTITLE || 'AI-Powered Museum Guide'
-const demoCardImageUrl = import.meta.env.VITE_DEFAULT_CARD_IMAGE_URL || 'https://images.unsplash.com/photo-1564399580075-5dfe19c205f3?w=400&h=600&fit=crop&crop=center'
+const demoCardTitle = import.meta.env.VITE_DEMO_CARD_TITLE || 'Museum'
+const demoCardSubtitle = import.meta.env.VITE_DEMO_CARD_SUBTITLE || 'Scan to explore the exhibits\nActivate your interactive AI guide\nAvailable in multiple languages'
+const demoCardImageUrl = import.meta.env.VITE_DEFAULT_CARD_IMAGE_URL || '/Image/DemoCard.jpg'
+const cardAspectRatio = computed(() => getCardAspectRatio())
 
 // Contact configuration
 const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || 'inquiry@cardstudio.org'
@@ -1488,6 +1518,15 @@ const inquiryTypes = computed(() => [
   }
 }
 
+@keyframes pulse {
+  0%, 100% { 
+    opacity: 1;
+  }
+  50% { 
+    opacity: 0.6;
+  }
+}
+
 .floating-orb {
   animation: float 20s ease-in-out infinite;
 }
@@ -1506,6 +1545,14 @@ const inquiryTypes = computed(() => [
 
 .animate-fade-in-up {
   animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .animation-delay-200 {

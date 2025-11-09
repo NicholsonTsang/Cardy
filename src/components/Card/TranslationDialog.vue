@@ -304,13 +304,13 @@
         </div>
       </div>
 
-      <!-- Empty State -->
+        <!-- Empty State -->
       <div v-if="existingTranslations.length === 0" class="text-center py-12 bg-slate-50 rounded-lg border-2 border-dashed border-slate-200">
         <i class="pi pi-inbox text-5xl text-slate-400 mb-4 block"></i>
         <p class="text-slate-600 font-medium">{{ $t('translation.dialog.noTranslations') }}</p>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
 
     <!-- Step 2: Translation Progress -->
     <div v-if="currentStep === 2" class="space-y-6">
@@ -356,7 +356,7 @@
               }}
               </span>
             </div>
-            </div>
+        </div>
 
         <!-- Overall Progress -->
         <ProgressBar

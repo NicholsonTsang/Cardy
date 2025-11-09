@@ -34,19 +34,21 @@
                 class="language-option"
                 :class="{ 
                   active: languageStore.selectedLanguage.code === lang.code,
-                  disabled: !isLanguageAvailable(lang.code)
+                  'has-translation': hasTranslation(lang.code)
                 }"
-                :disabled="!isLanguageAvailable(lang.code)"
               >
-                <span 
-                  class="flag" 
-                  :class="{ 'opacity-30': !isLanguageAvailable(lang.code) }"
-                >
+                <span class="flag">
                   {{ lang.flag }}
                 </span>
                 <span class="name">{{ lang.name }}</span>
+                
+                <!-- Active checkmark -->
                 <i v-if="languageStore.selectedLanguage.code === lang.code" class="pi pi-check check-icon" />
-                <i v-if="!isLanguageAvailable(lang.code)" class="pi pi-lock disabled-icon" />
+                
+                <!-- Translation status badge -->
+                <span v-if="hasTranslation(lang.code)" class="translation-badge" :title="$t('mobile.translated_content_available')">
+                  <i class="pi pi-language" />
+                </span>
               </button>
             </div>
           </div>
@@ -124,10 +126,10 @@ onUnmounted(() => {
   }
 })
 
-// Check if a language is available for this card
-const isLanguageAvailable = (langCode: string) => {
+// Check if a language has translated content available
+const hasTranslation = (langCode: string) => {
   if (!props.availableLanguages || props.availableLanguages.length === 0) {
-    return true // If no restriction, all languages available
+    return false // No translations available
   }
   return props.availableLanguages.includes(langCode)
 }
@@ -141,10 +143,8 @@ function closeModal() {
 }
 
 function selectLanguage(language: Language) {
-  // Don't allow selection of unavailable languages
-  if (!isLanguageAvailable(language.code)) {
-    return
-  }
+  // Allow selection of all languages (even without translations)
+  // Users will see i18n text if no translation exists
   
   // Track user selection (prevents auto-reset to card's original language)
   if (props.trackSelection) {
@@ -312,33 +312,20 @@ function selectLanguage(language: Language) {
   -webkit-tap-highlight-color: transparent;
 }
 
-.language-option:hover:not(.disabled) {
+.language-option:hover {
   border-color: #3b82f6;
   background: #eff6ff;
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 
-.language-option:active:not(.disabled) {
+.language-option:active {
   transform: translateY(0);
 }
 
 .language-option.active {
   border-color: #3b82f6;
   background: linear-gradient(135deg, #eff6ff, #dbeafe);
-}
-
-.language-option.disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-  background: #f3f4f6;
-}
-
-.language-option.disabled:hover {
-  border-color: #e5e7eb;
-  background: #f3f4f6;
-  transform: none;
-  box-shadow: none;
 }
 
 .language-option .flag {
@@ -365,12 +352,31 @@ function selectLanguage(language: Language) {
   font-weight: bold;
 }
 
-.disabled-icon {
+.translation-badge {
   position: absolute;
-  top: 0.5rem;
+  bottom: 0.5rem;
   right: 0.5rem;
-  color: #9ca3af;
-  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: linear-gradient(135deg, #10b981, #059669);
+  border-radius: 50%;
+  color: white;
+  font-size: 0.75rem;
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.3);
+  transition: all 0.2s ease;
+}
+
+.language-option:hover .translation-badge {
+  transform: scale(1.15);
+  box-shadow: 0 3px 8px rgba(16, 185, 129, 0.4);
+}
+
+.translation-badge i {
+  font-size: 0.7rem;
+  font-weight: 600;
 }
 
 /* Scrollbar Styling */
