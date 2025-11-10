@@ -1,17 +1,17 @@
 <template>
-    <div class="space-y-6">
+    <div class="space-y-3 sm:space-y-4 lg:space-y-6">
         <!-- Action Bar -->
-        <div class="flex justify-between items-center" v-if="cardProp">
-            <div class="flex items-center gap-3">
+        <div class="flex justify-between items-center flex-wrap gap-2" v-if="cardProp">
+            <div class="flex items-center gap-2 sm:gap-3">
                 <!-- Remove the publishing tag -->
             </div>
-            <div class="flex gap-3">
+            <div class="flex gap-2 sm:gap-3">
                 <Button 
                     :label="$t('dashboard.edit_card')" 
                     icon="pi pi-pencil" 
                     @click="handleEdit" 
                     severity="info" 
-                    class="px-4 py-2 shadow-lg hover:shadow-xl transition-shadow"
+                    class="px-3 py-2 sm:px-4 text-sm sm:text-base shadow-lg hover:shadow-xl transition-shadow"
                 />
                 <Button 
                     :label="$t('common.delete')" 
@@ -19,22 +19,22 @@
                     @click="handleRequestDelete" 
                     severity="danger" 
                     outlined
-                    class="px-4 py-2"
+                    class="px-3 py-2 sm:px-4 text-sm sm:text-base"
                 />
             </div>
         </div>
 
         <!-- Card Content -->
-        <div v-if="cardProp" class="space-y-6">
+        <div v-if="cardProp" class="space-y-3 sm:space-y-4 lg:space-y-6">
             <!-- Main Card Info - Two Column Layout -->
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                <div class="p-6">
-                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <div class="p-3 sm:p-4 lg:p-6">
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-4 lg:gap-6">
                         <!-- Artwork Display -->
                         <div class="xl:col-span-1">
-                            <div class="bg-slate-50 rounded-xl p-6">
-                                <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                                    <i class="pi pi-image text-blue-600"></i>
+                            <div class="bg-slate-50 rounded-xl p-3 sm:p-4 lg:p-6">
+                                <h3 class="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 flex items-center gap-2">
+                                    <i class="pi pi-image text-blue-600 text-sm sm:text-base"></i>
                                     {{ $t('dashboard.card_artwork') }}
                                 </h3>
                                 <div class="card-artwork-container relative">
@@ -74,12 +74,12 @@
                         </div>
 
                         <!-- Details Display -->
-                        <div class="xl:col-span-2 space-y-6">
+                        <div class="xl:col-span-2 space-y-3 sm:space-y-4 lg:space-y-6">
                             <!-- Basic Info -->
-                            <div class="bg-slate-50 rounded-xl p-6">
-                                <div class="flex items-center justify-between mb-4">
-                                    <h3 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                                        <i class="pi pi-info-circle text-blue-600"></i>
+                            <div class="bg-slate-50 rounded-xl p-3 sm:p-4 lg:p-6">
+                                <div class="flex items-center justify-between mb-3 sm:mb-4 flex-wrap gap-2">
+                                    <h3 class="text-base sm:text-lg font-semibold text-slate-900 flex items-center gap-2">
+                                        <i class="pi pi-info-circle text-blue-600 text-sm sm:text-base"></i>
                                         {{ $t('dashboard.basic_information') }}
                                     </h3>
                                     <!-- Language Preview Selector -->
@@ -90,7 +90,7 @@
                                         optionLabel="label"
                                         optionValue="value"
                                         :placeholder="$t('translation.previewLanguage')"
-                                        class="w-48"
+                                        class="w-full sm:w-48"
                                         size="small"
                                     >
                                         <template #value="slotProps">
@@ -108,14 +108,14 @@
                                         </template>
                                     </Dropdown>
                                 </div>
-                                <div class="space-y-4">
+                                <div class="space-y-3 sm:space-y-4">
                                     <div>
-                                        <h4 class="text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.card_name') }}</h4>
-                                        <p class="text-base text-slate-900 font-medium">{{ displayedCardName }}</p>
+                                        <h4 class="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">{{ $t('dashboard.card_name') }}</h4>
+                                        <p class="text-sm sm:text-base text-slate-900 font-medium">{{ displayedCardName }}</p>
                                     </div>
 
                                     <div v-if="displayedCardDescription">
-                                        <h4 class="text-sm font-medium text-slate-700 mb-2">{{ $t('common.description') }}</h4>
+                                        <h4 class="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">{{ $t('common.description') }}</h4>
                                         <div 
                                             class="text-sm text-slate-600 leading-relaxed prose prose-sm max-w-none prose-slate"
                                             v-html="renderMarkdown(displayedCardDescription)"
@@ -125,54 +125,54 @@
                             </div>
 
                             <!-- Technical Details -->
-                            <div class="bg-slate-50 rounded-xl p-6">
-                                <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                                    <i class="pi pi-cog text-blue-600"></i>
+                            <div class="bg-slate-50 rounded-xl p-3 sm:p-4 lg:p-6">
+                                <h3 class="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 flex items-center gap-2">
+                                    <i class="pi pi-cog text-blue-600 text-sm sm:text-base"></i>
                                     {{ $t('dashboard.configuration') }}
                                 </h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div class="bg-white rounded-lg p-4 border border-slate-200">
-                                        <h4 class="text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
-                                            <i class="pi pi-qrcode text-slate-500"></i>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                                    <div class="bg-white rounded-lg p-3 sm:p-4 border border-slate-200">
+                                        <h4 class="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2 flex items-center gap-2">
+                                            <i class="pi pi-qrcode text-slate-500 text-xs sm:text-sm"></i>
                                             {{ $t('dashboard.qr_code_position') }}
                                         </h4>
-                                        <p class="text-sm text-slate-600">{{ displayQrCodePositionForView || $t('dashboard.not_set') }}</p>
+                                        <p class="text-xs sm:text-sm text-slate-600">{{ displayQrCodePositionForView || $t('dashboard.not_set') }}</p>
                                     </div>
                                 </div>
                             </div>
 
                             <!-- AI Configuration -->
                             <div v-if="cardProp.conversation_ai_enabled" 
-                                 class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
-                                <h3 class="text-lg font-semibold text-blue-900 mb-4 flex items-center gap-2">
-                                    <i class="pi pi-comments text-blue-600"></i>
+                                 class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-3 sm:p-4 lg:p-6 border border-blue-200">
+                                <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-3 sm:mb-4 flex items-center gap-2">
+                                    <i class="pi pi-comments text-blue-600 text-sm sm:text-base"></i>
                                     {{ $t('dashboard.ai_assistance_configuration') }}
                                 </h3>
                                 
                                 <!-- AI Instruction -->
-                                <div v-if="cardProp.ai_instruction" class="mb-4">
-                                    <h4 class="text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
-                                        <i class="pi pi-user text-blue-600"></i>
+                                <div v-if="cardProp.ai_instruction" class="mb-3 sm:mb-4">
+                                    <h4 class="text-xs sm:text-sm font-medium text-blue-800 mb-1.5 sm:mb-2 flex items-center gap-2">
+                                        <i class="pi pi-user text-blue-600 text-xs sm:text-sm"></i>
                                         {{ $t('dashboard.ai_instruction_role') }}
                                     </h4>
-                                    <div class="bg-white rounded-lg p-4 border border-blue-200">
-                                        <p class="text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">{{ cardProp.ai_instruction }}</p>
+                                    <div class="bg-white rounded-lg p-3 sm:p-4 border border-blue-200">
+                                        <p class="text-xs sm:text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">{{ cardProp.ai_instruction }}</p>
                                     </div>
                                 </div>
 
                                 <!-- AI Knowledge Base -->
-                                <div v-if="cardProp.ai_knowledge_base" class="mb-4">
-                                    <h4 class="text-sm font-medium text-blue-800 mb-2 flex items-center gap-2">
-                                        <i class="pi pi-book text-blue-600"></i>
+                                <div v-if="cardProp.ai_knowledge_base" class="mb-3 sm:mb-4">
+                                    <h4 class="text-xs sm:text-sm font-medium text-blue-800 mb-1.5 sm:mb-2 flex items-center gap-2">
+                                        <i class="pi pi-book text-blue-600 text-xs sm:text-sm"></i>
                                         {{ $t('dashboard.ai_knowledge_base') }}
                                     </h4>
-                                    <div class="bg-white rounded-lg p-4 border border-blue-200">
-                                        <p class="text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">{{ cardProp.ai_knowledge_base }}</p>
+                                    <div class="bg-white rounded-lg p-3 sm:p-4 border border-blue-200">
+                                        <p class="text-xs sm:text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">{{ cardProp.ai_knowledge_base }}</p>
                                     </div>
                                 </div>
 
                                 <!-- Info Note -->
-                                <div class="mt-3 p-3 bg-blue-100 rounded-lg">
+                                <div class="mt-2 sm:mt-3 p-2.5 sm:p-3 bg-blue-100 rounded-lg">
                                     <p class="text-xs text-blue-800 flex items-center gap-2">
                                         <i class="pi pi-info-circle"></i>
                                         <span>{{ $t('dashboard.ai_enabled_note') }}</span>
@@ -181,20 +181,20 @@
                             </div>
 
                             <!-- Metadata -->
-                            <div class="bg-slate-50 rounded-xl p-6">
-                                <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                                    <i class="pi pi-calendar text-blue-600"></i>
+                            <div class="bg-slate-50 rounded-xl p-3 sm:p-4 lg:p-6">
+                                <h3 class="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 flex items-center gap-2">
+                                    <i class="pi pi-calendar text-blue-600 text-sm sm:text-base"></i>
                                     {{ $t('dashboard.metadata') }}
                                 </h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div v-if="cardProp.created_at" class="bg-white rounded-lg p-4 border border-slate-200">
-                                        <h4 class="text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.created') }}</h4>
-                                        <p class="text-sm text-slate-600">{{ formatDate(cardProp.created_at) }}</p>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
+                                    <div v-if="cardProp.created_at" class="bg-white rounded-lg p-3 sm:p-4 border border-slate-200">
+                                        <h4 class="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">{{ $t('dashboard.created') }}</h4>
+                                        <p class="text-xs sm:text-sm text-slate-600">{{ formatDate(cardProp.created_at) }}</p>
                                     </div>
 
-                                    <div v-if="cardProp.updated_at" class="bg-white rounded-lg p-4 border border-slate-200">
-                                        <h4 class="text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.last_updated') }}</h4>
-                                        <p class="text-sm text-slate-600">{{ formatDate(cardProp.updated_at) }}</p>
+                                    <div v-if="cardProp.updated_at" class="bg-white rounded-lg p-3 sm:p-4 border border-slate-200">
+                                        <h4 class="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">{{ $t('dashboard.last_updated') }}</h4>
+                                        <p class="text-xs sm:text-sm text-slate-600">{{ formatDate(cardProp.updated_at) }}</p>
                                     </div>
                                 </div>
                             </div>
@@ -534,6 +534,7 @@ onMounted(() => {
     text-decoration: underline;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
     text-overflow: ellipsis;

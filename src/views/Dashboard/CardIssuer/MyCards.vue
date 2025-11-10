@@ -1,6 +1,6 @@
 <template>
     <PageWrapper :title="$t('dashboard.my_cards')" :description="$t('dashboard.manage_cards_description')">
-        <div class="space-y-6">
+        <div class="space-y-3 sm:space-y-4 lg:space-y-6">
             <!-- Add Card Dialog -->
             <MyDialog 
                 v-model="showAddCardDialog"
@@ -20,7 +20,7 @@
             <!-- Delete Confirmation Dialog -->
             <ConfirmDialog group="deleteCardConfirmation"></ConfirmDialog>
 
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 min-h-[calc(100vh-200px)]">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 min-h-[calc(100vh-200px)]">
                 <!-- Card List Panel -->
                 <div class="lg:col-span-1">
                     <CardListPanel

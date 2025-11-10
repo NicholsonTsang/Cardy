@@ -2,13 +2,13 @@
   <div class="page-wrapper">
     <!-- Page Header -->
     <div v-if="showHeader" class="page-header">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6">
         <div class="flex items-center justify-between">
           <div>
-            <h1 v-if="title" class="text-2xl font-bold text-slate-900">{{ title }}</h1>
-            <p v-if="description" class="text-slate-600 mt-1">{{ description }}</p>
+            <h1 v-if="title" class="text-xl sm:text-2xl font-bold text-slate-900">{{ title }}</h1>
+            <p v-if="description" class="text-sm sm:text-base text-slate-600 mt-1">{{ description }}</p>
           </div>
-          <div v-if="$slots.actions" class="flex items-center space-x-3">
+          <div v-if="$slots.actions" class="flex items-center space-x-2 sm:space-x-3">
             <slot name="actions" />
           </div>
         </div>
@@ -17,7 +17,7 @@
 
     <!-- Page Content -->
     <div class="page-content">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6">
         <slot />
       </div>
     </div>

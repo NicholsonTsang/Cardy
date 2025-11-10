@@ -18,18 +18,19 @@
         <!-- Card Details -->
         <div v-else class="flex-1 flex flex-col">
             <!-- Card Header -->
-            <div class="p-6 border-b border-slate-200 bg-white">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h2 class="text-xl font-semibold text-slate-900">{{ selectedCard.name }}</h2>
-                        <p class="text-slate-600 mt-1">{{ t('dashboard.manage_card_subtitle') }}</p>
+            <div class="p-3 sm:p-4 lg:p-6 border-b border-slate-200 bg-white">
+                <div class="flex items-center justify-between gap-2">
+                    <div class="min-w-0 flex-1">
+                        <h2 class="text-base sm:text-lg lg:text-xl font-semibold text-slate-900 truncate">{{ selectedCard.name }}</h2>
+                        <p class="text-xs sm:text-sm lg:text-base text-slate-600 mt-0.5 sm:mt-1">{{ t('dashboard.manage_card_subtitle') }}</p>
                     </div>
-                    <div>
+                    <div class="flex-shrink-0">
                         <Button 
                             :label="t('common.export')" 
                             icon="pi pi-download" 
                             @click="showExportDialog = true"
-                            class="export-button bg-blue-600 hover:bg-blue-700 text-white border-0"
+                            class="export-button bg-blue-600 hover:bg-blue-700 text-white border-0 text-xs sm:text-sm"
+                            size="small"
                         />
                     </div>
                 </div>
@@ -53,16 +54,17 @@
 
             <!-- Tabs -->
             <Tabs :value="activeTab" @update:value="$emit('update:activeTab', $event)" class="flex-1 flex flex-col">
-                <TabList class="flex-shrink-0 border-b border-slate-200 bg-white px-6">
+                <TabList class="flex-shrink-0 border-b border-slate-200 bg-white px-1 sm:px-3 lg:px-6 overflow-x-auto scrollbar-hide">
                     <Tab v-for="(tab, index) in tabs" :key="index" :value="index.toString()" 
-                         class="px-4 py-3 font-medium text-sm text-slate-600 hover:text-slate-900 transition-colors">
-                        <i :class="tab.icon" class="mr-2"></i>
-                        {{ tab.label }}
+                         class="px-1.5 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 font-medium text-xs sm:text-sm text-slate-600 hover:text-slate-900 transition-colors whitespace-nowrap flex-shrink-0">
+                        <i :class="tab.icon" class="mr-0.5 sm:mr-1 lg:mr-2 text-xs sm:text-sm"></i>
+                        <span class="hidden sm:inline">{{ tab.label }}</span>
+                        <span class="sm:hidden">{{ tab.label.split(' ')[0] }}</span>
                     </Tab>
                 </TabList>
                 <TabPanels class="flex-1 overflow-hidden bg-slate-50">
                     <TabPanel v-for="(tab, index) in tabs" :value="index.toString()" class="h-full">
-                        <div class="h-full overflow-y-auto p-6">
+                        <div class="h-full overflow-y-auto px-0 py-2 sm:p-3 lg:p-4 xl:p-6">
                             <!-- General Tab -->
                             <CardGeneral 
                                 v-if="index === 0"
@@ -226,5 +228,21 @@ watch(() => props.activeTab, (newTab, oldTab) => {
 /* Custom export dialog styles */
 :deep(.export-dialog .p-dialog-content) {
   padding: 0;
+}
+
+/* Hide scrollbar for TabList while maintaining scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Ensure tabs container allows horizontal scrolling */
+:deep(.p-tablist) {
+  display: flex;
+  flex-wrap: nowrap;
 }
 </style>

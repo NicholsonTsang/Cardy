@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from './auth';
 
 export interface TranslationStatus {
-  language: string;
+  language: LanguageCode;
   language_name: string;
   status: 'original' | 'up_to_date' | 'outdated' | 'not_translated';
   translated_at: string | null;

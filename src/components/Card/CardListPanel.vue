@@ -1,9 +1,9 @@
 <template>
     <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden"> 
         <!-- Header -->
-        <div class="p-4 border-b border-slate-200 bg-white">
+        <div class="p-3 sm:p-4 border-b border-slate-200 bg-white">
             <div class="flex items-center justify-between mb-3">
-                <h1 class="text-2xl font-bold text-slate-900">{{ $t('dashboard.card_designs') }}</h1>
+                <h1 class="text-xl sm:text-2xl font-bold text-slate-900">{{ $t('dashboard.card_designs') }}</h1>
                 <Button 
                     icon="pi pi-plus" 
                     @click="$emit('create-card')" 
@@ -13,13 +13,13 @@
                     v-tooltip.top="$t('dashboard.create_new_card')"
                 />
             </div>
-            <p class="text-slate-600 -mt-2 mb-4 text-sm">{{ $t('dashboard.create_and_manage') }}</p>
+            <p class="text-slate-600 -mt-2 mb-3 sm:mb-4 text-xs sm:text-sm">{{ $t('dashboard.create_and_manage') }}</p>
             
             <!-- Search -->
             <IconField>
                 <InputIcon class="pi pi-search" />
                 <InputText 
-                    class="w-full" 
+                    class="w-full text-sm" 
                     :model-value="searchQuery" 
                     @update:model-value="$emit('update:searchQuery', $event)"
                     :placeholder="$t('dashboard.search_cards')" 
@@ -27,7 +27,7 @@
             </IconField>
             
             <!-- Import & Example Buttons -->
-            <div class="mt-4 space-y-2">
+            <div class="mt-3 sm:mt-4 space-y-2">
                 <div class="relative">
                     <Button 
                         :label="$t('dashboard.try_example')"
@@ -104,38 +104,38 @@
         </div>
 
         <!-- Optimized Empty State -->
-        <div v-else-if="cards.length === 0 && !searchQuery" class="flex-1 flex flex-col justify-center p-4 text-center min-h-[400px]">
+        <div v-else-if="cards.length === 0 && !searchQuery" class="flex-1 flex flex-col justify-center p-3 sm:p-4 text-center min-h-[400px]">
             <!-- Compact Header -->
-            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <i class="pi pi-id-card text-2xl text-slate-400"></i>
+            <div class="w-14 h-14 sm:w-16 sm:h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                <i class="pi pi-id-card text-xl sm:text-2xl text-slate-400"></i>
             </div>
-            <h3 class="text-xl font-semibold text-slate-900 mb-2">{{ $t('dashboard.no_cards_yet') }}</h3>
-            <p class="text-slate-500 mb-8">{{ $t('dashboard.start_creating') }}</p>
+            <h3 class="text-lg sm:text-xl font-semibold text-slate-900 mb-2">{{ $t('dashboard.no_cards_yet') }}</h3>
+            <p class="text-sm sm:text-base text-slate-500 mb-6 sm:mb-8">{{ $t('dashboard.start_creating') }}</p>
             
             <!-- Primary Action -->
-            <div class="mb-6">
+            <div class="mb-4 sm:mb-6">
                 <Button 
                     :label="$t('dashboard.create_new_card')"
                     icon="pi pi-plus"
                     @click="$emit('create-card')"
-                    class="bg-blue-600 hover:bg-blue-700 text-white border-0 px-8 py-3 text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
+                    class="bg-blue-600 hover:bg-blue-700 text-white border-0 px-6 sm:px-8 py-2.5 sm:py-3 text-base sm:text-lg font-semibold shadow-lg hover:shadow-xl transition-all"
                 />
             </div>
             
         </div>
 
         <!-- No Search Results -->
-        <div v-if="filteredCards.length === 0 && searchQuery" class="flex-1 flex flex-col items-center justify-center p-8 text-center">
-            <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                <i class="pi pi-search-slash text-2xl text-slate-400"></i>
+        <div v-if="filteredCards.length === 0 && searchQuery" class="flex-1 flex flex-col items-center justify-center p-6 sm:p-8 text-center">
+            <div class="w-14 h-14 sm:w-16 sm:h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                <i class="pi pi-search-slash text-xl sm:text-2xl text-slate-400"></i>
             </div>
-            <h3 class="text-lg font-medium text-slate-900 mb-2">{{ $t('dashboard.no_results_found') }}</h3>
-            <p class="text-slate-500 mb-4">{{ $t('dashboard.no_cards_match_search') }}</p>
+            <h3 class="text-base sm:text-lg font-medium text-slate-900 mb-2">{{ $t('dashboard.no_results_found') }}</h3>
+            <p class="text-sm sm:text-base text-slate-500 mb-4">{{ $t('dashboard.no_cards_match_search') }}</p>
         </div>
 
         <!-- Cards List -->
         <div v-else-if="cards.length > 0" class="flex-1 overflow-y-auto">
-            <div class="p-2 space-y-2">
+            <div class="p-2 sm:p-2 space-y-2">
                 <CardListItem
                     v-for="card in paginatedCards" 
                     :key="card.id"

@@ -10,19 +10,19 @@
       />
     </template>
 
-    <div class="space-y-6">
+      <div class="space-y-3 sm:space-y-4 lg:space-y-6">
 
       <!-- Balance Overview Cards -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
         <!-- Current Balance -->
-        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-all duration-200">
-          <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0">
-              <i class="pi pi-wallet text-white text-xl"></i>
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
+          <div class="flex items-start gap-3 sm:gap-4">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0">
+              <i class="pi pi-wallet text-white text-lg sm:text-xl"></i>
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('credits.currentBalance') }}</p>
-              <h3 class="text-2xl font-bold text-slate-900 truncate">{{ creditStore.formattedBalance }}</h3>
+              <h3 class="text-xl sm:text-2xl font-bold text-slate-900 truncate">{{ creditStore.formattedBalance }}</h3>
               <div class="mt-1">
                 <span class="text-xs text-slate-500 truncate block">{{ $t('credits.availableCredits') }}</span>
               </div>
@@ -41,14 +41,14 @@
         </div>
 
         <!-- Total Purchased -->
-        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-all duration-200">
-          <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg flex-shrink-0">
-              <i class="pi pi-arrow-up text-white text-xl"></i>
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
+          <div class="flex items-start gap-3 sm:gap-4">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg flex-shrink-0">
+              <i class="pi pi-arrow-up text-white text-lg sm:text-xl"></i>
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('credits.totalPurchased') }}</p>
-              <h3 class="text-2xl font-bold text-slate-900 truncate">{{ statistics?.total_purchased?.toFixed(2) || '0.00' }}</h3>
+              <h3 class="text-xl sm:text-2xl font-bold text-slate-900 truncate">{{ statistics?.total_purchased?.toFixed(2) || '0.00' }}</h3>
               <div class="mt-1">
                 <span class="text-xs text-slate-500 truncate block">
                   {{ $t('credits.monthlyPurchases') }}: 
@@ -60,14 +60,14 @@
         </div>
 
         <!-- Total Consumed -->
-        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-all duration-200">
-          <div class="flex items-start gap-4">
-            <div class="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg flex-shrink-0">
-              <i class="pi pi-arrow-down text-white text-xl"></i>
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
+          <div class="flex items-start gap-3 sm:gap-4">
+            <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg flex-shrink-0">
+              <i class="pi pi-arrow-down text-white text-lg sm:text-xl"></i>
             </div>
             <div class="flex-1 min-w-0">
               <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('credits.totalConsumed') }}</p>
-              <h3 class="text-2xl font-bold text-slate-900 truncate">{{ statistics?.total_consumed?.toFixed(2) || '0.00' }}</h3>
+              <h3 class="text-xl sm:text-2xl font-bold text-slate-900 truncate">{{ statistics?.total_consumed?.toFixed(2) || '0.00' }}</h3>
               <div class="mt-1">
                 <span class="text-xs text-slate-500 truncate block">
                   {{ $t('credits.monthlyConsumption') }}: 
@@ -82,26 +82,26 @@
       <!-- History Tables -->
       <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
         <Tabs :value="activeTab" @update:value="(value) => activeTab = String(value)" class="flex-1 flex flex-col">
-          <TabList class="flex-shrink-0 border-b border-slate-200 bg-white px-6">
-            <Tab value="0" class="px-4 py-3 font-medium text-sm text-slate-600 hover:text-slate-900 transition-colors">
-              <i class="pi pi-list mr-2"></i>
-              {{ $t('credits.recentTransactions') }}
-              <Chip v-if="creditStore.transactions?.length" :label="String(creditStore.transactions.length)" class="ml-2" />
+          <TabList class="flex-shrink-0 border-b border-slate-200 bg-white px-1 sm:px-3 lg:px-6 overflow-x-auto scrollbar-hide">
+            <Tab value="0" class="px-1.5 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 font-medium text-xs sm:text-sm text-slate-600 hover:text-slate-900 transition-colors whitespace-nowrap flex-shrink-0">
+              <i class="pi pi-list mr-0.5 sm:mr-1 lg:mr-2 text-xs sm:text-sm"></i>
+              <span class="hidden sm:inline">{{ $t('credits.recentTransactions') }}</span>
+              <span class="sm:hidden">Transactions</span>
             </Tab>
-            <Tab value="1" class="px-4 py-3 font-medium text-sm text-slate-600 hover:text-slate-900 transition-colors">
-              <i class="pi pi-shopping-cart mr-2"></i>
-              {{ $t('credits.purchaseHistory') }}
-              <Chip v-if="creditStore.purchases?.length" :label="String(creditStore.purchases.length)" class="ml-2" />
+            <Tab value="1" class="px-1.5 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 font-medium text-xs sm:text-sm text-slate-600 hover:text-slate-900 transition-colors whitespace-nowrap flex-shrink-0">
+              <i class="pi pi-shopping-cart mr-0.5 sm:mr-1 lg:mr-2 text-xs sm:text-sm"></i>
+              <span class="hidden sm:inline">{{ $t('credits.purchaseHistory') }}</span>
+              <span class="sm:hidden">Purchases</span>
             </Tab>
-            <Tab value="2" class="px-4 py-3 font-medium text-sm text-slate-600 hover:text-slate-900 transition-colors">
-              <i class="pi pi-chart-line mr-2"></i>
-              {{ $t('credits.consumptionHistory') }}
-              <Chip v-if="creditStore.consumptions?.length" :label="String(creditStore.consumptions.length)" class="ml-2" />
+            <Tab value="2" class="px-1.5 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 font-medium text-xs sm:text-sm text-slate-600 hover:text-slate-900 transition-colors whitespace-nowrap flex-shrink-0">
+              <i class="pi pi-chart-line mr-0.5 sm:mr-1 lg:mr-2 text-xs sm:text-sm"></i>
+              <span class="hidden sm:inline">{{ $t('credits.consumptionHistory') }}</span>
+              <span class="sm:hidden">Consumption</span>
             </Tab>
           </TabList>
           <TabPanels class="flex-1 overflow-hidden bg-slate-50">
             <TabPanel value="0" class="h-full">
-              <div class="h-full overflow-y-auto p-6">
+              <div class="h-full overflow-y-auto p-3 sm:p-4 lg:p-6">
                 <DataTable 
                   :value="creditStore.transactions" 
                   :loading="creditStore.loading"
@@ -168,7 +168,7 @@
             </TabPanel>
 
             <TabPanel value="1" class="h-full">
-              <div class="h-full overflow-y-auto p-6">
+              <div class="h-full overflow-y-auto p-3 sm:p-4 lg:p-6">
                 <DataTable 
                   :value="creditStore.purchases" 
                   :loading="creditStore.loading"
@@ -245,7 +245,7 @@
             </TabPanel>
 
             <TabPanel value="2" class="h-full">
-              <div class="h-full overflow-y-auto p-6">
+              <div class="h-full overflow-y-auto p-3 sm:p-4 lg:p-6">
                 <DataTable 
                   :value="creditStore.consumptions" 
                   :loading="creditStore.loading"
@@ -621,6 +621,22 @@ async function proceedToPayment() {
 </script>
 
 <style scoped>
+/* Hide scrollbar for TabList while maintaining scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
+/* Ensure tabs container allows horizontal scrolling */
+:deep(.p-tablist) {
+  display: flex;
+  flex-wrap: nowrap;
+}
+
 /* Purchase Dialog */
 .credit-amount-card {
   @apply p-4 border-2 rounded-lg cursor-pointer transition-all duration-200;
@@ -678,6 +694,71 @@ async function proceedToPayment() {
 @media (max-width: 768px) {
   .credit-amount-card {
     min-height: 100px;
+  }
+}
+
+/* Mobile Pagination Optimization */
+@media (max-width: 640px) {
+  /* Compact pagination on mobile - show fewer page numbers */
+  :deep(.p-paginator) {
+    padding: 0.5rem 0.25rem;
+    font-size: 0.75rem;
+    flex-wrap: nowrap;
+    gap: 0.25rem;
+  }
+  
+  /* Reduce size of pagination buttons */
+  :deep(.p-paginator .p-paginator-first),
+  :deep(.p-paginator .p-paginator-prev),
+  :deep(.p-paginator .p-paginator-next),
+  :deep(.p-paginator .p-paginator-last) {
+    min-width: 1.75rem;
+    height: 1.75rem;
+    padding: 0.25rem;
+  }
+  
+  /* Make page number buttons smaller */
+  :deep(.p-paginator .p-paginator-pages .p-paginator-page) {
+    min-width: 1.75rem;
+    height: 1.75rem;
+    padding: 0.25rem;
+    font-size: 0.75rem;
+  }
+  
+  /* Hide middle page numbers on mobile, show only 3 pages max */
+  :deep(.p-paginator .p-paginator-pages) {
+    gap: 0.125rem;
+  }
+  
+  /* Limit visible page numbers on very small screens */
+  :deep(.p-paginator .p-paginator-pages .p-paginator-page:not(.p-highlight)) {
+    display: none;
+  }
+  
+  :deep(.p-paginator .p-paginator-pages .p-paginator-page.p-highlight) {
+    display: inline-flex;
+  }
+  
+  /* Show only adjacent pages to current page */
+  :deep(.p-paginator .p-paginator-pages .p-paginator-page.p-highlight + .p-paginator-page),
+  :deep(.p-paginator .p-paginator-pages .p-paginator-page:has(+ .p-paginator-page.p-highlight)) {
+    display: inline-flex;
+  }
+  
+  /* Compact rows per page dropdown */
+  :deep(.p-paginator .p-dropdown) {
+    min-width: 3rem;
+    font-size: 0.75rem;
+  }
+  
+  :deep(.p-paginator .p-dropdown .p-dropdown-label) {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+  }
+  
+  /* Hide "Showing X to Y of Z" text on mobile */
+  :deep(.p-paginator .p-paginator-current) {
+    display: none;
   }
 }
 

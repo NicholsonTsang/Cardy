@@ -840,104 +840,39 @@
             </div>
           </div>
 
-          <!-- Contact Form -->
-          <form @submit.prevent="handleSubmit" class="space-y-6">
-            <div class="grid md:grid-cols-2 gap-6">
-              <div>
-                <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.full_name') }}</label>
-                <InputText 
-                  v-model="contactForm.fullName" 
-                  required 
-                  class="w-full"
-                  :placeholder="$t('landing.contact.form.full_name_placeholder')"
-                />
+          <!-- Contact Form CTA -->
+          <div class="text-center py-12 px-6">
+            <div class="mb-8">
+              <div class="inline-block p-4 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl mb-6">
+                <i class="pi pi-file-edit text-5xl text-blue-600"></i>
               </div>
-              <div>
-                <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.organization') }}</label>
-                <InputText 
-                  v-model="contactForm.organizationName" 
-                  required 
-                  class="w-full"
-                  :placeholder="$t('landing.contact.form.organization_placeholder')"
-                />
-              </div>
+              <h3 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">
+                {{ $t('landing.contact.form_cta.title') }}
+              </h3>
+              <p class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto mb-8">
+                {{ $t('landing.contact.form_cta.description') }}
+              </p>
             </div>
 
-            <div class="grid md:grid-cols-2 gap-6">
-              <div>
-                <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.email') }}</label>
-                <InputText 
-                  v-model="contactForm.email" 
-                  type="email" 
-                  required 
-                  class="w-full"
-                  :placeholder="$t('landing.contact.form.email_placeholder')"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.phone') }}</label>
-                <InputText 
-                  v-model="contactForm.phone" 
-                  class="w-full"
-                  :placeholder="$t('landing.contact.form.phone_placeholder')"
-                />
-              </div>
-            </div>
-
-            <div class="grid md:grid-cols-2 gap-6">
-              <div>
-                <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.org_type') }}</label>
-                <Dropdown 
-                  v-model="contactForm.organizationType" 
-                  :options="organizationTypes.value" 
-                  required 
-                  class="w-full"
-                  :placeholder="$t('landing.contact.form.org_type_placeholder')"
-                />
-              </div>
-              <div>
-                <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.visitor_count') }}</label>
-                <Dropdown 
-                  v-model="contactForm.visitorCount" 
-                  :options="visitorCountOptions.value" 
-                  required 
-                  class="w-full"
-                  :placeholder="$t('landing.contact.form.visitor_count_placeholder')"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.inquiry_type') }}</label>
-              <Dropdown 
-                v-model="contactForm.inquiryType" 
-                :options="inquiryTypes.value" 
-                required 
-                class="w-full"
-                :placeholder="$t('landing.contact.form.inquiry_type_placeholder')"
-              />
-            </div>
-
-            <div>
-              <label class="block text-sm font-semibold text-slate-900 mb-2">{{ $t('landing.contact.form.message') }}</label>
-              <Textarea 
-                v-model="contactForm.message" 
-                rows="5" 
-                class="w-full"
-                :placeholder="$t('landing.contact.form.message_placeholder')"
-              />
-            </div>
-
-            <div class="text-center">
+            <a 
+              :href="contactFormUrl" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              class="inline-block"
+            >
               <Button 
-                type="submit"
-                :loading="submitting"
-                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 rounded-xl min-h-[56px]"
-              >
-                Submit Inquiry
-              </Button>
-            </div>
-          </form>
+                :label="$t('landing.contact.form_cta.button')"
+                icon="pi pi-external-link"
+                iconPos="right"
+                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-12 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 rounded-xl"
+              />
+            </a>
+
+            <p class="text-sm text-slate-500 mt-6">
+              <i class="pi pi-clock mr-2"></i>
+              {{ $t('landing.contact.form_cta.response_time') }}
+            </p>
+          </div>
 
           <!-- Alternative Contact Methods -->
           <div class="mt-12 pt-12 border-t border-slate-200">
@@ -1046,16 +981,11 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import Button from 'primevue/button'
 import Carousel from 'primevue/carousel'
-import InputText from 'primevue/inputtext'
-import Textarea from 'primevue/textarea'
-import Dropdown from 'primevue/dropdown'
 import QrCode from 'qrcode.vue'
 import { getCardAspectRatio } from '@/utils/cardConfig'
-import { useToast } from 'primevue/usetoast'
 import UnifiedHeader from '@/components/Layout/UnifiedHeader.vue'
 
 const router = useRouter()
-const toast = useToast()
 
 // Navigation state
 const mobileMenuOpen = ref(false)
@@ -1081,59 +1011,8 @@ const toggleFaq = (index) => {
   openFaqIndex.value = openFaqIndex.value === index ? -1 : index
 }
 
-// Contact form
-const contactForm = ref({
-  fullName: '',
-  organizationName: '',
-  email: '',
-  phone: '',
-  organizationType: null,
-  visitorCount: null,
-  inquiryType: null,
-  message: ''
-})
-
-const submitting = ref(false)
-
-const handleSubmit = async () => {
-  // Form validation
-  if (!contactForm.value.fullName || !contactForm.value.organizationName || !contactForm.value.email || 
-      !contactForm.value.organizationType || !contactForm.value.visitorCount || !contactForm.value.inquiryType) {
-    toast.add({
-      severity: 'warn',
-      summary: t('landing.contact.toast.missing_info_title'),
-      detail: t('landing.contact.toast.missing_info_detail'),
-      life: 5000
-    })
-    return
-  }
-
-  submitting.value = true
-  
-  // Simulate form submission (replace with actual API call)
-  setTimeout(() => {
-    toast.add({
-      severity: 'success',
-      summary: t('landing.contact.toast.inquiry_sent_title'),
-      detail: t('landing.contact.toast.inquiry_sent_detail'),
-      life: 5000
-    })
-    
-    // Reset form
-    contactForm.value = {
-      fullName: '',
-      organizationName: '',
-      email: '',
-      phone: '',
-      organizationType: null,
-      visitorCount: null,
-      inquiryType: null,
-      message: ''
-    }
-    
-    submitting.value = false
-  }, 1500)
-}
+// Contact form URL from environment variables
+const contactFormUrl = import.meta.env.VITE_CONTACT_FORM_URL
 
 // Scroll handling (reserved for future use)
 
@@ -1447,40 +1326,6 @@ const faqs = computed(() => [
   }
 ])
 
-const organizationTypes = computed(() => [
-  t('landing.contact.organization_types.museum'),
-  t('landing.contact.organization_types.gallery'),
-  t('landing.contact.organization_types.exhibition'),
-  t('landing.contact.organization_types.conference'),
-  t('landing.contact.organization_types.tourist'),
-  t('landing.contact.organization_types.zoo'),
-  t('landing.contact.organization_types.trade_show'),
-  t('landing.contact.organization_types.hotel'),
-  t('landing.contact.organization_types.restaurant'),
-  t('landing.contact.organization_types.theme_park'),
-  t('landing.contact.organization_types.training'),
-  t('landing.contact.organization_types.agency'),
-  t('landing.contact.organization_types.other')
-])
-
-const visitorCountOptions = computed(() => [
-  t('landing.contact.visitor_counts.under_1k'),
-  t('landing.contact.visitor_counts.1k_5k'),
-  t('landing.contact.visitor_counts.5k_10k'),
-  t('landing.contact.visitor_counts.10k_50k'),
-  t('landing.contact.visitor_counts.50k_100k'),
-  t('landing.contact.visitor_counts.over_100k')
-])
-
-const inquiryTypes = computed(() => [
-  t('landing.contact.inquiry_types.pilot'),
-  t('landing.contact.inquiry_types.info'),
-  t('landing.contact.inquiry_types.pricing'),
-  t('landing.contact.inquiry_types.partnership'),
-  t('landing.contact.inquiry_types.licensing'),
-  t('landing.contact.inquiry_types.technical'),
-  t('landing.contact.inquiry_types.other')
-])
 </script>
 
 <style scoped>

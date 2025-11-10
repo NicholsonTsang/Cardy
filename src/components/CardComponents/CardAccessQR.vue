@@ -38,25 +38,25 @@
       </div>
       
       <!-- QR Code Display -->
-      <div v-if="selectedBatch && selectedBatchData" class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h4 class="font-semibold text-slate-900">{{ $t('batches.qr_codes_and_urls') }}</h4>
-          <div class="flex gap-2">
+      <div v-if="selectedBatch && selectedBatchData" class="bg-white rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 lg:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <h4 class="font-semibold text-base sm:text-lg text-slate-900">{{ $t('batches.qr_codes_and_urls') }}</h4>
+          <div class="flex flex-col sm:flex-row gap-2 sm:gap-2">
             <Button 
               :label="$t('batches.download_all_qr')" 
               icon="pi pi-download"
               @click="downloadAllQRCodes"
-              outlined
-              severity="secondary"
-              class="border-blue-600 text-blue-600 hover:bg-blue-50"
+              severity="info"
+              size="small"
+              class="text-xs sm:text-sm w-full sm:w-auto"
             />
             <Button 
               :label="$t('batches.download_csv')" 
               icon="pi pi-file-excel"
               @click="downloadCSV"
-              outlined
-              severity="success"
-              class="border-green-600 text-green-600 hover:bg-green-50"
+              severity="info"
+              size="small"
+              class="text-xs sm:text-sm w-full sm:w-auto"
             />
           </div>
         </div>
@@ -122,25 +122,25 @@
                     <Button 
                       icon="pi pi-copy"
                       @click="copyURL(card.id)"
+                      severity="info"
                       size="small"
-                      outlined
-                      class="border-blue-600 text-blue-600 hover:bg-blue-50"
+                      text
                       v-tooltip="$t('batches.copy_url')"
                     />
                     <Button 
                       icon="pi pi-download"
                       @click="downloadSingleQR(card.id, index + 1)"
+                      severity="info"
                       size="small"
-                      outlined
-                      class="border-green-600 text-green-600 hover:bg-green-50"
+                      text
                       v-tooltip="$t('batches.download_qr')"
                     />
                     <Button 
                       icon="pi pi-external-link"
                       @click="openCard(card.id)"
+                      severity="info"
                       size="small"
-                      outlined
-                      class="border-purple-600 text-purple-600 hover:bg-purple-50"
+                      text
                       v-tooltip="$t('batches.open_card')"
                     />
                   </div>

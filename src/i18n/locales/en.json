@@ -1245,6 +1245,12 @@
         "technical": "Technical Questions",
         "other": "Other"
       },
+      "form_cta": {
+        "title": "Share Your Interest with Us",
+        "description": "Fill out our inquiry form to tell us about your organization, needs, and how CardStudio can help transform your visitor experience. We'll get back to you within 24-48 hours.",
+        "button": "Fill Out Inquiry Form",
+        "response_time": "We typically respond within 24-48 hours"
+      },
       "alternative_title": "Alternative Contact Methods",
       "email_label": "Email",
       "whatsapp_label": "WhatsApp",

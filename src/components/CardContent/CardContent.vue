@@ -1,8 +1,8 @@
 <template>
-    <div class="grid grid-cols-1 xl:grid-cols-5 gap-6">
+    <div class="grid grid-cols-1 xl:grid-cols-5 gap-4 lg:gap-6">
         <!-- Content Items List -->
         <div class="xl:col-span-2 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
-            <div class="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+            <div class="p-3 sm:p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
                 <div class="flex justify-between items-center">
                     <h2 class="text-lg font-semibold text-slate-900">{{ $t('content.card_content') }}</h2>
                     <Button 
@@ -15,14 +15,14 @@
             </div>
 
             <!-- Content Items List -->
-            <div class="flex-1 overflow-y-auto p-3">
+            <div class="flex-1 overflow-y-auto p-2 sm:p-3">
                 <!-- Empty State -->
-                <div v-if="contentItems.length === 0" class="flex flex-col items-center justify-center py-12 text-center">
-                    <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                        <i class="pi pi-file-edit text-2xl text-slate-400"></i>
+                <div v-if="contentItems.length === 0" class="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
+                    <div class="w-14 h-14 sm:w-16 sm:h-16 bg-slate-100 rounded-full flex items-center justify-center mb-3 sm:mb-4">
+                        <i class="pi pi-file-edit text-xl sm:text-2xl text-slate-400"></i>
                     </div>
-                    <h3 class="text-lg font-medium text-slate-900 mb-2">{{ $t('content.no_content_items') }}</h3>
-                    <p class="text-slate-500 mb-4">{{ $t('content.add_first_content') }}</p>
+                    <h3 class="text-base sm:text-lg font-medium text-slate-900 mb-2 px-2">{{ $t('content.no_content_items') }}</h3>
+                    <p class="text-sm sm:text-base text-slate-500 mb-4 px-2">{{ $t('content.add_first_content') }}</p>
                     <!-- <Button 
                         icon="pi pi-plus" 
                         label="Add Content" 
@@ -31,8 +31,8 @@
                 </div>
 
                 <!-- Drag Hint (dismissible, shown when items exist) -->
-                <div v-if="contentItems.length > 0 && !dragHintDismissed" class="flex items-start gap-2.5 px-3 py-2.5 mb-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-                    <i class="pi pi-info-circle text-blue-600 mt-0.5 flex-shrink-0"></i>
+                <div v-if="contentItems.length > 0 && !dragHintDismissed" class="flex items-start gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-2 sm:py-2.5 mb-2 sm:mb-3 bg-blue-50 border border-blue-200 rounded-lg text-xs sm:text-sm text-blue-700">
+                    <i class="pi pi-info-circle text-blue-600 mt-0.5 flex-shrink-0 text-xs sm:text-sm"></i>
                     <span class="leading-relaxed flex-1">
                         {{ $t('content.drag_tip') }}
                     </span>
@@ -51,7 +51,7 @@
                     @end="onParentDragEnd"
                     item-key="id"
                     handle=".parent-drag-handle"
-                    class="space-y-3"
+                    class="space-y-2 sm:space-y-3"
                 >
                     <template #item="{ element: item, index }">
                         <div class="group">

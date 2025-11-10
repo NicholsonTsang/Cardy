@@ -1,15 +1,15 @@
 <template>
     <div 
-        class="group relative p-4 rounded-lg border border-slate-200 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-blue-300"
+        class="group relative p-3 sm:p-4 rounded-lg border border-slate-200 cursor-pointer transition-all duration-200 hover:shadow-md hover:border-blue-300"
         :class="{ 
             'bg-blue-50 border-blue-300 shadow-md': isSelected,
             'bg-white hover:bg-slate-50': !isSelected
         }"
         @click="$emit('select')"
     >
-        <div class="flex items-start gap-3">
+        <div class="flex items-start gap-2.5 sm:gap-3">
             <!-- Card Thumbnail -->
-            <div class="flex-shrink-0 w-12 h-16 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+            <div class="flex-shrink-0 w-10 h-14 sm:w-12 sm:h-16 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
                 <img
                     :src="displayImage"
                     :alt="card.name"
@@ -19,21 +19,21 @@
             
             <!-- Card Info -->
             <div class="flex-1 min-w-0">
-                <h3 class="font-medium text-slate-900 truncate group-hover:text-blue-600 transition-colors">
+                <h3 class="text-sm sm:text-base font-medium text-slate-900 truncate group-hover:text-blue-600 transition-colors">
                     {{ card.name }}
                 </h3>
-                <p class="text-sm text-slate-500 mt-1">
+                <p class="text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1">
                     Created {{ formatDate(card.created_at) }}
                 </p>
-                <div v-if="card.description" class="text-xs text-slate-400 mt-1 line-clamp-2">
+                <div v-if="card.description" class="text-xs text-slate-400 mt-0.5 sm:mt-1 line-clamp-2">
                     {{ card.description }}
                 </div>
             </div>
         </div>
         
         <!-- Selection Indicator -->
-        <div v-if="isSelected" class="absolute top-2 right-2">
-            <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
+        <div v-if="isSelected" class="absolute top-1.5 right-1.5 sm:top-2 sm:right-2">
+            <div class="w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-500 rounded-full"></div>
         </div>
     </div>
 </template>
