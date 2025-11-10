@@ -2,13 +2,13 @@
   <div class="translation-section bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
     <!-- Header Section -->
     <div class="px-6 py-4 border-b border-slate-200 bg-gradient-to-r from-blue-50 to-purple-50">
-      <div class="flex items-start justify-between">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h3 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
-            <i class="pi pi-language text-blue-600"></i>
+          <h3 class="text-base sm:text-lg font-semibold text-slate-900 flex items-center gap-1.5 sm:gap-2">
+            <i class="pi pi-language text-blue-600 text-base sm:text-lg"></i>
             {{ $t('translation.sectionTitle') }}
           </h3>
-          <p class="text-sm text-slate-600 mt-1">
+          <p class="text-xs sm:text-sm text-slate-600 mt-1">
             {{ $t('translation.sectionSubtitle') }}
           </p>
         </div>
@@ -18,7 +18,7 @@
           severity="primary"
           @click="showTranslationDialog = true"
           :disabled="loading"
-          class="shadow-md hover:shadow-lg transition-shadow"
+          class="w-full sm:w-auto mt-3 sm:mt-0 shadow-md hover:shadow-lg transition-shadow"
         />
       </div>
     </div>

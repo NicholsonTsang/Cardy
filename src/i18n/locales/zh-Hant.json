@@ -864,37 +864,37 @@
   },
   "landing": {
     "nav": {
-      "about": "關於",
-      "demo": "演示",
-      "pricing": "定價",
-      "contact": "聯絡",
+      "about": "關於我們",
+      "demo": "功能演示",
+      "pricing": "價格方案",
+      "contact": "聯絡我們",
       "sign_in": "登入",
       "start_free_trial": "開始免費試用",
       "start_free": "免費開始"
     },
     "hero": {
-      "title_line1": "點燃觀眾參與",
-      "title_line2": "高級 AI 驅動的",
-      "title_line3": "紀念卡",
-      "subtitle_part1": "AI 驅動的可收藏紀念卡：將靜態內容轉化為生動故事，",
-      "subtitle_highlight": "前所未有地吸引觀眾",
-      "subtitle_part2": "— 靜態展示、傳單和小冊子的未來升級方案。適用於博物館、商展、會議等。",
-      "cta_pilot": "聯絡我們進行試點",
+      "title_line1": "點燃觀眾的熱情",
+      "title_line2": "頂級 AI 驅動",
+      "title_line3": "珍藏卡",
+      "subtitle_part1": "AI 驅動珍藏卡：將靜態內容轉化為生動故事，",
+      "subtitle_highlight": "以前所未有的方式吸引觀眾",
+      "subtitle_part2": "— 是靜態展示、傳單和手冊的未來升級方案。非常適合博物館、商展、會議等場所。",
+      "cta_pilot": "聯繫我們進行試點合作",
       "cta_learn": "了解更多"
     },
     "about": {
       "title": "探索",
-      "title_highlight": "CardStudio",
-      "intro": "CardStudio 融合實體可收藏紀念卡與 AI，創造互動體驗。透過 QR 碼存取量身訂製的數位內容，並在行動裝置上解鎖 AI 語音對話——簡單且無需應用程式。",
-      "description1": "專為全球各地的博物館、展覽、會議、地標、景點、酒店等設計，CardStudio 卡片以單一高級紀念品取代靜態展示、印刷手冊和靜態語音導覽。它透過有趣且富教育性的互動提升參與度，與觀眾建立更緊密的聯繫。",
+      "title_highlight": "CardStudio 的魅力",
+      "intro": "CardStudio 將實體珍藏卡與 AI 完美融合，創造出獨特的互動體驗。只需掃描 QR 碼，即可在行動裝置上存取客製化的數位內容，並與 AI 進行語音對話——過程簡單，無需安裝任何應用程式。",
+      "description1": "CardStudio 專為全球的博物館、展覽、會議、地標、景點和酒店等場所設計，用一張精美的珍藏卡取代了靜態展示、印刷手冊和傳統語音導覽。它透過有趣且富教育意義的互動，極大地提升了觀眾的參與感，並與他們建立更深層次的聯繫。",
       "description2": "CardStudio 卡片還減少了貴組織的印刷材料浪費，實現可持續影響。",
       "description3": "試用 CardStudio，體驗不同之處。透過我們的一站式服務輕鬆啟動。",
-      "cta": "親身體驗"
+      "cta": "觀看實際操作"
     },
     "demo": {
-      "title": "親身體驗 CardStudio",
-      "title_highlight": "實際運作",
-      "subtitle": "觀看 CardStudio 如何將參觀轉變為個人化的數位冒險。高級卡片解鎖 AI 講故事——無縫、引人入勝且令人難忘。",
+      "title": "見證 CardStudio",
+      "title_highlight": "的實際應用",
+      "subtitle": "觀看 CardStudio 如何將參觀轉變為個人化的數位冒險。精美的珍藏卡解鎖 AI 故事講述功能——無縫、引人入勝且令人難忘。",
       "video_coming_soon": "演示影片即將推出",
       "video_description": "觀看 1-2 分鐘的演示",
       "card_title": "互動體驗演示",
@@ -906,7 +906,7 @@
         "ai_voice_title": "AI 語音對話",
         "ai_voice_desc": "即時、自然的 AI 語音互動，根據興趣和知識量身訂製。",
         "multilingual_title": "真正的多語言",
-        "multilingual_desc": "以 10 多種語言進行自然對話，實現包容性的全球參與。",
+        "multilingual_desc": "支援超過 10 種語言的自然對話，實現無國界的全球參與。",
         "keepsakes_title": "高級紀念品",
         "keepsakes_desc": "精美的可收藏卡片，成為珍貴的數位紀念品。"
       }
@@ -917,27 +917,27 @@
       "subtitle": "簡單、無縫且引人入勝——只需 4 個步驟即可跟隨訪客旅程。",
       "steps": {
         "purchase_title": "購買",
-        "purchase_desc": "訪客購買高級 CardStudio 卡片，既是紀念品也是互動指南。",
+        "purchase_desc": "訪客購買精美的 CardStudio 珍藏卡，既可作為紀念品，也是互動指南。",
         "scan_title": "掃描",
         "scan_desc": "掃描 QR 碼即可立即存取數位內容和 AI 指南——無需下載應用程式。",
         "explore_title": "探索",
         "explore_desc": "透過 AI 語音對話和個人化講故事，享受引導式冒險。",
         "collect_title": "收藏",
-        "collect_desc": "卡片成為珍貴的紀念品，促進重複造訪和持久回憶。"
+        "collect_desc": "卡片成為珍貴的收藏品，鼓勵再次造訪並留下持久的回憶。"
       }
     },
     "features": {
       "title": "為何選擇",
       "title_highlight": "CardStudio",
       "features": {
-        "collectible_title": "高級可收藏紀念品",
-        "collectible_desc": "啟用 QR 的設計，連結至量身訂製的數位內容和 AI 指南——創造數位紀念品，提升收入和重複造訪。",
+        "collectible_title": "頂級珍藏紀念品",
+        "collectible_desc": "支援 QR 碼的設計，連結至客製化的數位內容和 AI 指南——創造數位珍藏品，提升收入並增加回訪率。",
         "ai_guide_title": "對話式 AI 指南",
         "ai_guide_desc": "即時 AI 語音對話——自然、低延遲的聊天，根據興趣、年齡和知識量身訂製。理解上下文並回答後續問題的動態互動。",
         "no_app_title": "即時、無需應用程式存取",
         "no_app_desc": "在任何智慧型手機上掃描 QR——無需下載，輕鬆獲得最大採用率。",
         "multilingual_title": "真正的多語言支援",
-        "multilingual_desc": "以多種語言進行自然對話：英語、普通話、粵語、日語、韓語、泰語、阿拉伯語、西班牙語、法語、俄語等——實現包容性參與。一次內容上傳，服務全球觀眾。",
+        "multilingual_desc": "支援多種語言的自然對話，包括英語、普通話、粵語、日語、韓語、泰語、阿拉伯語、西班牙語、法語、俄語等，實現包容性的全球互動。只需上傳一次內容，即可服務全球觀眾。",
         "no_hardware_title": "無需硬體",
         "no_hardware_desc": "利用訪客的裝置——無需場地設置或昂貴的基礎設施。",
         "dashboard_title": "強大的管理儀表板",
@@ -946,12 +946,12 @@
     },
     "applications": {
       "title": "CardStudio",
-      "title_highlight": "閃耀之處",
+      "title_highlight": "的應用場景",
       "subtitle": "CardStudio 將場館轉變為互動式目的地——推動參與和聯繫。滑動探索：",
       "apps": {
         "museums": {
           "name": "博物館與展覽",
-          "role": "您的個人化多語言 AI 博物館導覽員",
+          "role": "您的個人化多語言 AI 博物館導覽",
           "alternatives": "真人導覽員、語音導覽、印刷畫廊指南、牆面文字翻譯",
           "benefit1": "透過深入講故事讓文物和展品栩栩如生",
           "benefit2": "體驗多語言導覽和無障礙功能",
@@ -1014,8 +1014,8 @@
           "benefit3": "透過自然對話獲得飲食調整——提升國際客人的用餐體驗"
         }
       },
-      "alternatives_for": "替代方案：",
-      "cta": "找到適合您的方案 – 聯絡我們進行試點"
+      "alternatives_for": "傳統方案：",
+      "cta": "找到最適合您的方案 – 聯繫我們進行試點合作"
     },
     "benefits": {
       "title": "真實",
@@ -1026,7 +1026,7 @@
         "engagement": "透過互動式 AI 內容提升參與度",
         "global": "透過多語言存取吸引全球人群",
         "reputation": "建立創新聲譽",
-        "sustainability": "透過減少紙張浪費滿足 ESG 可持續發展目標",
+        "sustainability": "透過減少紙張浪費，實現 ESG 可持續發展目標",
         "revenue": "透過可收藏銷售和增加重複造訪來提升收入",
         "rollout": "透過企業級安全和全天候支援輕鬆推出"
       },
@@ -1034,7 +1034,7 @@
         "personalized": "按您的節奏和興趣量身訂製故事",
         "educational": "適合所有年齡的有趣、富教育性的體驗",
         "language": "以您的語言進行語音互動",
-        "souvenir": "作為難忘數位紀念品的高級卡片",
+        "souvenir": "可作為難忘數位紀念品的精美珍藏卡",
         "access": "輕鬆存取，無需應用程式或設置"
       }
     },
@@ -1048,7 +1048,7 @@
       "traditional_waste": "500 公斤紙張浪費",
       "cardstudio_title": "使用 CardStudio",
       "cardstudio_cards": "10,000 張可收藏卡片",
-      "cardstudio_kept": "80% 保留作為紀念品",
+      "cardstudio_kept": "80% 被作為珍藏品保留",
       "cardstudio_reduction": "紙張浪費減少 95%",
       "cardstudio_digital": "數位內容 = 零持續浪費",
       "impact_title": "您的影響",
@@ -1060,7 +1060,7 @@
     "pricing": {
       "title": "簡單",
       "title_highlight": "定價",
-      "subtitle": "透明的按卡計價",
+      "subtitle": "透明的按卡計費模式",
       "price": "$2",
       "currency": "美元",
       "per_card": "每張卡片",
@@ -1072,7 +1072,7 @@
       "profit_margin": "您的利潤空間",
       "profit_value": "每張卡片 $1-5",
       "alternative_note": "替代方案：免費模式（訪客免費，您的成本 $2）",
-      "included_title": "包含所有功能",
+      "included_title": "價格包含所有功能",
       "features": {
         "ai_voice": "AI 語音對話",
         "multilingual": "多語言支援",
@@ -1094,7 +1094,7 @@
       "title_highlight": "CardStudio 合作",
       "subtitle": "超越購買卡片 - 與 CardStudio 一起成長的三種方式。",
       "client": {
-        "title": "成為客戶",
+        "title": "成為我們的客戶",
         "for": "適用對象：場館、博物館、景點、活動、會議、酒店",
         "you_get": "您將獲得：",
         "benefit1": "免費完整平台存取（卡片設計管理、數位內容管理、雲端託管）",
@@ -1105,7 +1105,7 @@
         "cta": "開始您的試點"
       },
       "partner": {
-        "title": "區域合作夥伴",
+        "title": "成為區域合作夥伴",
         "for": "適用對象：擁有場館網絡的代理商、顧問",
         "you_get": "您將獲得：",
         "benefit1": "在您的區域代表 CardStudio",
@@ -1116,7 +1116,7 @@
         "cta": "探索合作夥伴關係"
       },
       "license": {
-        "title": "軟體授權",
+        "title": "軟體授權方案",
         "for": "適用對象：企業、大型代理商、平台創業家",
         "you_get": "您將獲得：",
         "benefit1": "擁有整個平台",
@@ -1128,7 +1128,7 @@
         "cta": "詢問授權事宜"
       },
       "not_sure": "不確定哪一個適合？安排策略通話以找到您的最佳路徑。",
-      "schedule_call": "安排通話"
+      "schedule_call": "預約諮詢"
     },
     "faq": {
       "title": "常見",
@@ -1136,13 +1136,13 @@
       "q1": "什麼是 CardStudio？",
       "a1": "CardStudio 是一個 AI 驅動的平台，結合高級可收藏卡片與互動式語音指南，將參觀轉變為個人化的數位冒險——無需應用程式或硬體。",
       "q2": "對訪客來說如何運作？",
-      "a2": "訪客購買或接收啟用 QR 的卡片，用智慧型手機掃描，即可立即存取以其語言提供的數位內容、AI 驅動的講故事和對話。無縫且無需應用程式。",
+      "a2": "訪客購買或接收啟用 QR 的卡片，用智慧型手機掃描，即可立即以他們的語言存取數位內容，並體驗 AI 驅動的故事和對話。無縫且無需應用程式。",
       "q3": "場館如何開始使用 CardStudio？",
-      "a3": "幾分鐘內啟動——從構思到實際體驗，只需 3 個簡單步驟：\n\n步驟 0：註冊 CardStudio 帳戶。\n步驟 1：設計與配置——使用直覺工具創建卡片。將您的卡片設計和數位內容上傳到您的 CardStudio 帳戶並輕鬆設置。\n步驟 2：提交您的卡片訂單——線上提交實體卡片訂單。每張卡片都帶有不同的 QR 碼以存取 AI 驅動的數位內容。我們將處理印刷和運送到您的門口。\n步驟 3：分析與優化——透過即時分析追蹤參與度，改進內容並輕鬆擴展。",
-      "q4": "費用是多少？",
-      "a4": "透明的按卡計價：每張卡片 $2.00。建議零售價：$3-7 美元（您的利潤：每張卡片 $1-5）。替代方案：免費模式（訪客免費，您的成本 $2）。無月費、設置費或隱藏費用——包含所有功能（AI 聊天、多語言支援、儀表板、分析、QR 生成、印刷管理、託管和 24/7 支援）。",
+      "a3": "只需幾分鐘即可啟動——從概念到實現，只需三個簡單步驟：\n\n步驟 0：註冊 CardStudio 帳戶。\n步驟 1：設計與配置——使用直覺工具創建卡片。將您的卡片設計和數位內容上傳到您的 CardStudio 帳戶並輕鬆設置。\n步驟 2：提交您的卡片訂單——線上提交實體卡片訂單。每張卡片都附有獨特的 QR 碼，用於存取 AI 驅動的數位內容。我們將負責印刷並將其運送到您手中。\n步驟 3：分析與優化——透過即時分析追蹤參與度，改進內容並輕鬆擴展。",
+      "q4": "費用如何計算？",
+      "a4": "我們採用透明的按卡計費模式：每張卡片 $2.00。建議零售價：$3-7 美元（您的利潤：每張卡片 $1-5）。替代方案：免費模式（訪客免費，您的成本 $2）。無月費、設置費或隱藏費用——包含所有功能（AI 聊天、多語言支援、儀表板、分析、QR 生成、印刷管理、託管和 24/7 支援）。",
       "q5": "我們可以客製化卡片和內容嗎？",
-      "a5": "絕對可以。使用我們的自助式工具進行設計、管理數位內容，以及 AI 互動客製化以符合您的場館需求。",
+      "a5": "當然可以。您可以使用我們的自助平台來設計卡片、管理數位內容，並客製化 AI 互動，以完全符合您場館的需求。",
       "q6": "設置需要多長時間？",
       "a6": "幾分鐘——基於雲端，無需技術設置或 IT 整合。立即啟動。",
       "q7": "您提供什麼樣的支援？",
@@ -1170,9 +1170,9 @@
       },
       "form": {
         "full_name": "全名 *",
-        "full_name_placeholder": "張小明",
+        "full_name_placeholder": "王大明",
         "organization": "組織/場館名稱 *",
-        "organization_placeholder": "歷史博物館",
+        "organization_placeholder": "國立故宮博物院",
         "email": "電子郵件 *",
         "email_placeholder": "john{'@'}example.com",
         "phone": "電話號碼",
@@ -1219,7 +1219,7 @@
         "technical": "技術問題",
         "other": "其他"
       },
-      "alternative_title": "替代聯絡方式",
+      "alternative_title": "其他聯絡方式",
       "email_label": "電子郵件",
       "whatsapp_label": "WhatsApp",
       "security_note": "您的資訊是安全的，僅用於回應您的詢問。",

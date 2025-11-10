@@ -108,6 +108,7 @@
                   paginator 
                   :rows="10" 
                   :rowsPerPageOptions="[10, 20, 50]"
+                  :pageLinkSize="isMobile ? 3 : 7"
                   showGridlines
                   responsiveLayout="scroll"
                 >
@@ -175,6 +176,7 @@
                   paginator 
                   :rows="10" 
                   :rowsPerPageOptions="[10, 20, 50]"
+                  :pageLinkSize="isMobile ? 3 : 7"
                   showGridlines
                   responsiveLayout="scroll"
                 >
@@ -252,6 +254,7 @@
                   paginator 
                   :rows="10" 
                   :rowsPerPageOptions="[10, 20, 50]"
+                  :pageLinkSize="isMobile ? 3 : 7"
                   showGridlines
                   responsiveLayout="scroll"
                 >
@@ -447,7 +450,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useCreditStore } from '@/stores/credits'
 import { useToast } from 'primevue/usetoast'
@@ -478,12 +481,23 @@ const showPurchaseDialog = ref(false)
 const selectedAmount = ref(0)
 const customAmount = ref<number | null>(null)
 const purchaseLoading = ref(false)
+const isMobile = ref(false)
+let mediaQueryList: MediaQueryList | null = null
+let updateIsMobile: (() => void) | null = null
 
 const creditAmounts = [50, 100, 200, 500, 1000, 2000]
 
 const statistics = computed(() => creditStore.statistics)
 
 onMounted(async () => {
+  if (typeof window !== 'undefined' && 'matchMedia' in window) {
+    mediaQueryList = window.matchMedia('(max-width: 640px)')
+    updateIsMobile = () => {
+      isMobile.value = !!mediaQueryList?.matches
+    }
+    updateIsMobile()
+    mediaQueryList.addEventListener('change', updateIsMobile)
+  }
   await Promise.all([
     creditStore.fetchCreditBalance(),
     creditStore.fetchCreditStatistics(),
@@ -491,6 +505,12 @@ onMounted(async () => {
     creditStore.fetchPurchases(),
     creditStore.fetchConsumptions()
   ])
+})
+
+onUnmounted(() => {
+  if (mediaQueryList && updateIsMobile) {
+    mediaQueryList.removeEventListener('change', updateIsMobile)
+  }
 })
 
 function formatDate(dateString: string) {
