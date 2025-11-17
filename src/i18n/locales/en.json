@@ -743,6 +743,7 @@
     "select_language": "Select your preferred language",
     "select_chinese_voice": "Select Chinese Voice",
     "chinese_voice_description": "Choose which Chinese dialect to use for AI voice responses",
+    "speak_in": "Speak in",
     "start_conversation": "Start Conversation",
     "type_message": "Type a message...",
     "hold_to_record": "Hold to record",

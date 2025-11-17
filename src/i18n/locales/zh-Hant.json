@@ -726,6 +726,7 @@
     "select_language": "選擇您偏好的語言",
     "select_chinese_voice": "選擇中文語音",
     "chinese_voice_description": "選擇 AI 語音回應使用的中文方言",
+    "speak_in": "請用",
     "start_conversation": "開始對話",
     "type_message": "輸入訊息...",
     "hold_to_record": "按住以錄音",

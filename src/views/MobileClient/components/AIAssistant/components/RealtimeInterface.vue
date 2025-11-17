@@ -1,14 +1,6 @@
 <template>
   <div class="realtime-container">
-    <!-- Connection Status Banner (only show when not connected) -->
-    <div v-if="status !== 'connected'" class="realtime-status-banner" :class="`status-${status}`">
-      <div class="status-indicator">
-        <div class="status-dot"></div>
-        <span class="status-text">{{ statusText }}</span>
-      </div>
-    </div>
-    
-    <!-- Error Warning (separate, more visible) -->
+    <!-- Error Warning (only show for actual connection failures) -->
     <div v-if="error" class="connection-error-warning">
       <div class="error-icon">
         <i class="pi pi-exclamation-triangle"></i>
@@ -23,6 +15,7 @@
     <div class="realtime-content">
       <!-- AI Avatar with Waveform -->
       <div class="realtime-avatar-section">
+        <!-- Avatar Circle -->
         <div class="realtime-avatar" :class="{ 
           'speaking': isSpeaking,
           'listening': isConnected && !isSpeaking,
@@ -30,14 +23,6 @@
         }">
           <div class="avatar-circle">
             <i class="pi pi-sparkles avatar-icon" />
-          </div>
-          
-          <!-- Waveform Visualization -->
-          <div v-if="isConnected" class="waveform-container">
-            <div class="waveform-bars">
-              <div v-for="i in 20" :key="i" class="waveform-bar" 
-                   :style="{ animationDelay: `${i * 0.05}s` }"></div>
-            </div>
           </div>
         </div>
         
@@ -139,76 +124,12 @@ watch(streamingProgressKey, async () => {
   background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
 }
 
-.realtime-status-banner {
-  padding: 0.75rem 1.5rem;
-  background: #f3f4f6;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.realtime-status-banner.status-connected {
-  background: #dcfce7;
-  border-bottom-color: #86efac;
-}
-
-.realtime-status-banner.status-connecting {
-  background: #fef3c7;
-  border-bottom-color: #fde047;
-}
-
-.realtime-status-banner.status-error {
-  background: #fee2e2;
-  border-bottom-color: #fca5a5;
-}
-
-.status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  justify-content: center;
-}
-
-.status-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: #9ca3af;
-}
-
-.status-connected .status-dot {
-  background: #22c55e;
-  animation: pulse 2s ease-in-out infinite;
-}
-
-.status-connecting .status-dot {
-  background: #f59e0b;
-  animation: pulse 1s ease-in-out infinite;
-}
-
-.status-error .status-dot {
-  background: #ef4444;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.status-text {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: #374151;
-}
-
 /* Connection Error Warning */
 .connection-error-warning {
   display: flex;
-  gap: 1rem;
-  margin: 1rem 1.5rem;
-  padding: 1rem 1.25rem;
+  gap: 0.75rem;
+  margin: 0.75rem 1rem;
+  padding: 0.75rem 1rem;
   background: #fee2e2;
   border: 2px solid #fca5a5;
   border-radius: 12px;
@@ -229,8 +150,8 @@ watch(streamingProgressKey, async () => {
 
 .error-icon {
   flex-shrink: 0;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -239,7 +160,7 @@ watch(streamingProgressKey, async () => {
 }
 
 .error-icon i {
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   color: #dc2626;
 }
 
@@ -249,16 +170,16 @@ watch(streamingProgressKey, async () => {
 }
 
 .error-title {
-  margin: 0 0 0.25rem 0;
-  font-size: 1rem;
+  margin: 0 0 0.125rem 0;
+  font-size: 0.875rem;
   font-weight: 600;
   color: #991b1b;
 }
 
 .error-message {
   margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.5;
+  font-size: 0.8125rem;
+  line-height: 1.4;
   color: #7f1d1d;
 }
 
@@ -266,7 +187,7 @@ watch(streamingProgressKey, async () => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 2rem 1.5rem;
+  padding: 0.75rem 1rem;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
@@ -275,27 +196,25 @@ watch(streamingProgressKey, async () => {
 
 .realtime-avatar-section {
   text-align: center;
-  margin-bottom: 2rem;
-}
-
-.realtime-avatar {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   margin-bottom: 1rem;
 }
 
+.realtime-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 10px;
+  margin-bottom: 0.5rem;
+}
+
 .avatar-circle {
-  width: 120px;
-  height: 120px;
+  width: 90px;
+  height: 90px;
   border-radius: 50%;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   display: flex;
   align-items: center;
   justify-content: center;
-  position: relative;
-  z-index: 2;
   box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
 }
 
@@ -318,87 +237,37 @@ watch(streamingProgressKey, async () => {
 }
 
 .avatar-icon {
-  font-size: 3rem;
+  font-size: 2.25rem;
   color: white;
 }
 
-.waveform-container {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 200px;
-  height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1;
-}
-
-.waveform-bars {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  height: 60px;
-}
-
-.waveform-bar {
-  width: 3px;
-  height: 20%;
-  background: linear-gradient(to top, #3b82f6, #8b5cf6);
-  border-radius: 2px;
-  animation: waveform 1s ease-in-out infinite;
-}
-
-.realtime-avatar.speaking .waveform-bar {
-  animation: waveformActive 0.5s ease-in-out infinite;
-}
-
-@keyframes waveform {
-  0%, 100% {
-    height: 20%;
-  }
-  50% {
-    height: 40%;
-  }
-}
-
-@keyframes waveformActive {
-  0%, 100% {
-    height: 30%;
-  }
-  50% {
-    height: 80%;
-  }
-}
-
 .realtime-status-text h3 {
-  font-size: 1.5rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: #1f2937;
-  margin: 0;
+  margin: 0.5rem 0 0 0;
 }
 
 .realtime-transcript {
   flex: 1;
   background: white;
   border-radius: 12px;
-  padding: 1.5rem;
+  padding: 1rem;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  min-height: 200px; /* Ensure minimum readable height */
+  min-height: 150px; /* Ensure minimum readable height */
 }
 
 .transcript-placeholder {
   text-align: center;
   color: #9ca3af;
-  padding: 2rem;
+  padding: 1rem;
 }
 
 .transcript-messages {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
 }
 
 .transcript-message {
@@ -406,7 +275,7 @@ watch(streamingProgressKey, async () => {
   gap: 0.5rem;
   padding: 0.5rem;
   border-radius: 6px;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   line-height: 1.5;
 }
 
@@ -429,7 +298,7 @@ watch(streamingProgressKey, async () => {
 }
 
 .realtime-controls {
-  padding: 1.5rem;
+  padding: 1rem;
   background: white;
   border-top: 1px solid #e5e7eb;
   flex-shrink: 0; /* Prevent controls from being compressed */
@@ -440,13 +309,13 @@ watch(streamingProgressKey, async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
+  gap: 0.5rem;
+  padding: 0.875rem 1.25rem;
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
   color: white;
   border: none;
   border-radius: 12px;
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;
@@ -468,13 +337,13 @@ watch(streamingProgressKey, async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
+  gap: 0.5rem;
+  padding: 0.875rem 1.25rem;
   background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   color: white;
   border: none;
   border-radius: 12px;
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s;

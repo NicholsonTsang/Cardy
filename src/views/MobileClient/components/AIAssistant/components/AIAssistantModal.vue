@@ -36,6 +36,17 @@
             </div>
           </div>
 
+          <!-- Language Indicator -->
+          <div class="language-indicator">
+            <div class="language-badge">
+              <i class="pi pi-globe" />
+              <span class="language-flag">{{ languageStore.selectedLanguage.flag }}</span>
+              <span class="language-text">
+                {{ $t('mobile.speak_in') }} <strong>{{ languageStore.selectedLanguage.name }}</strong>
+              </span>
+            </div>
+          </div>
+
           <!-- Content -->
           <div class="modal-body">
             <slot />
@@ -49,7 +60,10 @@
 <script setup lang="ts">
 import { watch, onMounted, onUnmounted, ref } from 'vue'
 import LanguageSelector from './LanguageSelector.vue'
+import { useMobileLanguageStore } from '@/stores/language'
 import type { ConversationMode, Language } from '../types'
+
+const languageStore = useMobileLanguageStore()
 
 const props = defineProps<{
   isOpen: boolean
@@ -198,6 +212,50 @@ onUnmounted(() => {
   margin: 0;
   font-size: 0.875rem;
   color: #6b7280;
+}
+
+/* Language Indicator */
+.language-indicator {
+  padding: 0.75rem 1.5rem;
+  background: linear-gradient(135deg, #eff6ff 0%, #f3f0ff 100%);
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.language-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.875rem;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
+  font-size: 0.875rem;
+  color: #374151;
+  transition: all 0.2s ease;
+}
+
+.language-badge:hover {
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+  transform: translateY(-1px);
+}
+
+.language-badge .pi-globe {
+  color: #3b82f6;
+  font-size: 1rem;
+}
+
+.language-flag {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.language-text {
+  color: #6b7280;
+}
+
+.language-text strong {
+  color: #1f2937;
+  font-weight: 600;
 }
 
 .header-actions {
