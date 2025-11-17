@@ -483,7 +483,7 @@
                 <div class="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-400 rounded-2xl blur-xl opacity-30 animate-pulse"></div>
                 <div class="relative p-5 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg">
                   <i class="pi pi-send text-5xl text-white"></i>
-                </div>
+              </div>
               </div>
 
               <!-- Title with gradient text -->
@@ -516,24 +516,24 @@
                   </div>
                   <span class="font-medium">{{ $t('landing.contact.form_cta.benefits.personal_service') }}</span>
                 </div>
-              </div>
+            </div>
 
               <!-- CTA Button & Response Time - Vertically Stacked -->
               <div class="flex flex-col items-center gap-6">
                 <!-- CTA Button - Enhanced -->
-                <a 
-                  :href="contactFormUrl" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
+            <a 
+              :href="contactFormUrl" 
+              target="_blank" 
+              rel="noopener noreferrer"
                   class="inline-block group"
-                >
-                  <Button 
-                    :label="$t('landing.contact.form_cta.button')"
+            >
+              <Button 
+                :label="$t('landing.contact.form_cta.button')"
                     icon="pi pi-arrow-right"
-                    iconPos="right"
+                iconPos="right"
                     class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-10 sm:px-14 py-4 sm:py-6 text-base sm:text-lg font-bold shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 rounded-2xl"
-                  />
-                </a>
+              />
+            </a>
 
                 <!-- Response time badge -->
                 <div class="inline-flex items-center gap-2 px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full shadow-md border border-slate-200">
@@ -543,7 +543,7 @@
                     <span class="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full"></span>
                   </div>
                   <span class="text-sm font-medium text-slate-700">
-                    {{ $t('landing.contact.form_cta.response_time') }}
+              {{ $t('landing.contact.form_cta.response_time') }}
                   </span>
                 </div>
               </div>
@@ -747,7 +747,7 @@ const initAnimations = () => {
 onMounted(() => {
   // Initialize animations on mount
   nextTick(() => {
-    setTimeout(() => {
+  setTimeout(() => {
       initAnimations()
     }, 50)
   })
@@ -766,7 +766,7 @@ watch(locale, () => {
       
       // Re-initialize animations
       initAnimations()
-    }, 100)
+  }, 100)
   })
 })
 
