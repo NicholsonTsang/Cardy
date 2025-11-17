@@ -1,4 +1,22 @@
 {
+  "seo": {
+    "title": "CardStudio - AI-Powered Interactive Souvenir Cards for Museums & Attractions",
+    "description": "Transform visitor experiences with AI-powered souvenir cards. QR-enabled collectibles with multilingual AI voice guides for museums, exhibitions, tourist attractions, trade shows, and events. No app required.",
+    "keywords": "AI souvenir cards, interactive museum guide, digital exhibition cards, QR code tour guide, multilingual AI assistant, museum technology, visitor engagement, collectible cards, audio guide alternative, museum souvenir, exhibition technology, tourist attraction cards, trade show cards, conference materials, hotel concierge AI, no-app experience",
+    "language": "English",
+    "structured_description": "AI-Powered Interactive Souvenir Cards for Museums, Exhibitions, Tourist Attractions, Trade Shows, Conferences, and Events Worldwide",
+    "features": [
+      "AI voice conversations",
+      "Multi-language support in 10+ languages",
+      "QR code instant access",
+      "No app download required",
+      "Real-time analytics",
+      "Content management dashboard",
+      "Cloud hosting",
+      "24/7 support"
+    ],
+    "audience": "Museums, Exhibitions, Tourist Attractions, Trade Shows, Conferences, Hotels, Restaurants, Events"
+  },
   "common": {
     "app_name": "CardStudio",
     "tagline": "Digital Souvenir Platform",

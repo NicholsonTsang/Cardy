@@ -656,6 +656,7 @@ import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
+import { useSEO } from '@/composables/useSEO'
 import Button from 'primevue/button'
 import QrCode from 'qrcode.vue'
 import { getCardAspectRatio } from '@/utils/cardConfig'
@@ -663,6 +664,7 @@ import UnifiedHeader from '@/components/Layout/UnifiedHeader.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const { updateSEO } = useSEO()
 
 // Navigation state
 const mobileMenuOpen = ref(false)
@@ -745,6 +747,9 @@ const initAnimations = () => {
 }
 
 onMounted(() => {
+  // Initialize SEO
+  updateSEO()
+  
   // Initialize animations on mount
   nextTick(() => {
   setTimeout(() => {
