@@ -11,13 +11,13 @@
     <transition name="slide-down">
       <div v-if="mobileMenuOpen" class="fixed top-16 left-0 right-0 bg-white backdrop-blur-xl border-b border-slate-200 shadow-xl z-40 lg:hidden">
         <div class="px-6 py-6 space-y-1">
-          <a @click="scrollToSection('about')" 
-             class="block text-slate-700 hover:text-white hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 font-medium py-3 px-4 rounded-xl transition-all cursor-pointer">
-            {{ $t('landing.nav.about') }}
-          </a>
           <a @click="scrollToSection('demo')" 
              class="block text-slate-700 hover:text-white hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 font-medium py-3 px-4 rounded-xl transition-all cursor-pointer">
             {{ $t('landing.nav.demo') }}
+          </a>
+          <a @click="scrollToSection('features')" 
+             class="block text-slate-700 hover:text-white hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 font-medium py-3 px-4 rounded-xl transition-all cursor-pointer">
+            {{ $t('landing.nav.features') }}
           </a>
           <a @click="scrollToSection('pricing')" 
              class="block text-slate-700 hover:text-white hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 font-medium py-3 px-4 rounded-xl transition-all cursor-pointer">
@@ -29,18 +29,20 @@
           </a>
           
           <div class="pt-4 space-y-3">
-            <Button 
-              @click="router.push('/login'); mobileMenuOpen = false"
-              class="w-full bg-slate-100 text-slate-700 hover:bg-slate-200 border-0 py-4 text-base font-semibold rounded-xl min-h-[52px]"
-            >
-              {{ $t('landing.nav.sign_in') }}
-            </Button>
-            <Button 
+            <button 
               @click="router.push('/signup'); mobileMenuOpen = false"
-              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 text-base font-bold shadow-lg rounded-xl min-h-[52px]"
+              class="w-full flex items-center justify-center gap-2 bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 py-4 text-base font-semibold rounded-xl transition-all duration-300 transform hover:scale-[1.02] shadow-sm hover:shadow-md cursor-pointer"
             >
-              {{ $t('landing.nav.start_free_trial') }}
-            </Button>
+              <i class="pi pi-user-plus text-lg"></i>
+              <span>{{ $t('landing.nav.create_account') }}</span>
+            </button>
+            <button 
+              @click="handleGetStarted(); mobileMenuOpen = false"
+              class="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 text-base font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] cursor-pointer"
+            >
+              <span>{{ $t('landing.nav.get_started') }}</span>
+              <i class="pi pi-arrow-right text-lg"></i>
+            </button>
           </div>
         </div>
       </div>
@@ -77,19 +79,21 @@
             <span class="font-semibold text-white">{{ $t('landing.hero.subtitle_highlight') }}</span> {{ $t('landing.hero.subtitle_part2') }}
           </p>
           
-          <div class="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-stretch sm:items-center mb-16 animate-fade-in-up animation-delay-400 px-4 sm:px-0">
-            <Button 
-              @click="scrollToContact"
-              class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold text-white shadow-2xl hover:shadow-blue-500/25 transition-all transform hover:scale-105 rounded-xl min-h-[56px]"
+          <div class="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-16 animate-fade-in-up animation-delay-400 px-4 sm:px-0">
+            <button 
+              @click="scrollToSection('demo')"
+              class="flex items-center justify-center gap-3 bg-white hover:bg-blue-50 border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold text-slate-900 shadow-2xl hover:shadow-white/50 transition-all duration-300 transform hover:scale-105 rounded-xl cursor-pointer w-full sm:w-auto"
             >
-              {{ $t('landing.hero.cta_pilot') }}
-            </Button>
-            <Button 
-              @click="scrollToSection('about')"
-              class="group border-2 border-white/30 bg-white/5 hover:bg-white/10 backdrop-blur-sm px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-semibold text-white hover:border-white/50 transition-all transform hover:scale-105 rounded-xl min-h-[56px]"
+              <span>{{ $t('landing.hero.cta_demo') }}</span>
+              <i class="pi pi-play-circle text-xl"></i>
+            </button>
+            <button 
+              @click="handleGetStarted"
+              class="flex items-center justify-center gap-3 border-2 border-white/40 bg-white/10 hover:bg-white/20 backdrop-blur-sm px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold text-white hover:border-white/60 shadow-lg hover:shadow-white/25 transition-all duration-300 transform hover:scale-105 rounded-xl cursor-pointer w-full sm:w-auto"
             >
-              {{ $t('landing.hero.cta_learn') }}
-            </Button>
+              <span>{{ $t('landing.hero.cta_start') }}</span>
+              <i class="pi pi-arrow-right text-xl"></i>
+            </button>
           </div>
         </div>
 
@@ -98,44 +102,6 @@
           <div class="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
             <div class="w-1 h-3 bg-white/60 rounded-full mt-2 animate-scroll"></div>
           </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- About Section -->
-    <section id="about" class="py-20 sm:py-32 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden">
-      <div class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-blue-100/50 to-purple-100/50 rounded-full blur-3xl"></div>
-      <div class="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-br from-emerald-100/50 to-cyan-100/50 rounded-full blur-3xl"></div>
-      
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div class="text-center mb-12 sm:mb-20">
-          <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 mb-4 sm:mb-6">
-            {{ $t('landing.about.title') }} <span class="bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">{{ $t('landing.about.title_highlight') }}</span>
-          </h2>
-          <p class="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto px-2">
-            {{ $t('landing.about.intro') }}
-          </p>
-        </div>
-        
-        <div class="max-w-4xl mx-auto space-y-6 mb-12">
-          <p class="text-lg text-slate-700 text-center leading-relaxed">
-            {{ $t('landing.about.description1') }}
-          </p>
-          <p class="text-lg text-slate-700 text-center leading-relaxed">
-            {{ $t('landing.about.description2') }}
-          </p>
-          <p class="text-lg text-slate-700 text-center leading-relaxed font-semibold">
-            {{ $t('landing.about.description3') }}
-          </p>
-        </div>
-
-        <div class="text-center px-4">
-          <Button 
-            @click="scrollToSection('demo')"
-            class="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white bg-transparent px-6 sm:px-8 py-3 sm:py-4 text-base font-semibold rounded-xl transition-all min-h-[48px]"
-          >
-            {{ $t('landing.about.cta') }}
-          </Button>
         </div>
       </div>
     </section>
@@ -271,8 +237,8 @@
         <div class="relative">
           <div class="hidden lg:block absolute top-1/2 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-200 via-purple-200 to-pink-200"></div>
           
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-            <div v-for="(step, index) in howItWorksSteps" :key="index" class="relative group">
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div v-for="(step, index) in howItWorksSteps.slice(0, 3)" :key="index" class="relative group">
               <!-- Card Content -->
               <div class="relative bg-white rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all duration-500 border-2 border-slate-200 hover:border-purple-300 h-full">
                 <!-- Step Number Badge - Inside Top Left -->
@@ -294,7 +260,7 @@
     </section>
 
     <!-- Key Features -->
-    <section class="py-20 sm:py-32 bg-gradient-to-b from-slate-50 to-white">
+    <section id="features" class="py-20 sm:py-32 bg-gradient-to-b from-slate-50 to-white">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-20">
           <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
@@ -302,7 +268,7 @@
           </h2>
         </div>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-8 max-w-5xl mx-auto">
           <div v-for="(feature, index) in keyFeatures" :key="feature.title" 
                class="group relative animate-on-scroll"
                :style="{ animationDelay: (index * 100) + 'ms' }">
@@ -313,190 +279,6 @@
               </div>
               <h3 class="text-xl font-bold text-slate-900 mb-3">{{ feature.title }}</h3>
               <p class="text-slate-600 leading-relaxed">{{ feature.description }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Versatile Applications Carousel -->
-    <section class="py-20 sm:py-32 bg-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-20">
-          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            {{ $t('landing.applications.title') }} <span class="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">{{ $t('landing.applications.title_highlight') }}</span>
-          </h2>
-          <p class="text-xl text-slate-600 max-w-3xl mx-auto">
-            {{ $t('landing.applications.subtitle') }}
-          </p>
-        </div>
-
-        <Carousel :value="applications" :numVisible="3" :numScroll="1" :responsiveOptions="carouselResponsiveOptions" 
-                  :circular="true" :autoplayInterval="5000" class="custom-carousel">
-          <template #item="slotProps">
-            <div class="p-4">
-              <div class="bg-gradient-to-br from-white to-slate-50 rounded-3xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-500 transform hover:-translate-y-2 border border-slate-200 h-full">
-                <div class="p-8">
-                  <div class="w-20 h-20 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                    <i :class="`pi ${slotProps.data.icon} text-emerald-600 text-3xl`"></i>
-                  </div>
-                  <h3 class="text-2xl font-bold text-slate-900 mb-2 text-center">{{ slotProps.data.name }}</h3>
-                  <p class="text-sm font-semibold text-emerald-600 mb-4 text-center">{{ slotProps.data.role }}</p>
-                  <div class="mb-4">
-                    <p class="text-xs text-slate-500 font-semibold mb-2">{{ $t('landing.applications.alternatives_for') }}</p>
-                    <p class="text-sm text-slate-600 italic">{{ slotProps.data.alternatives }}</p>
-                  </div>
-                  <ul class="space-y-3">
-                    <li v-for="(benefit, idx) in slotProps.data.benefits" :key="idx" 
-                        class="flex items-start gap-2 text-sm text-slate-600">
-                      <i class="pi pi-check-circle text-emerald-500 text-lg mt-0.5 flex-shrink-0"></i>
-                      <span>{{ benefit }}</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </template>
-        </Carousel>
-
-        <div class="text-center mt-12 px-4">
-          <Button 
-            @click="scrollToContact"
-            class="border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white bg-transparent px-6 sm:px-8 py-3 sm:py-4 text-base font-semibold rounded-xl transition-all min-h-[48px]"
-          >
-            {{ $t('landing.applications.cta') }}
-          </Button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Benefits Section -->
-    <section class="py-20 sm:py-32 bg-gradient-to-b from-slate-50 to-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-20">
-          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            {{ $t('landing.benefits.title') }} <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{{ $t('landing.benefits.title_highlight') }}</span>
-          </h2>
-        </div>
-
-        <div class="grid lg:grid-cols-2 gap-12">
-          <!-- For Venues -->
-          <div class="bg-white rounded-3xl p-10 shadow-lg border border-slate-200">
-            <h3 class="text-3xl font-bold text-slate-900 mb-8 text-center">{{ $t('landing.benefits.venue_title') }}</h3>
-            <ul class="space-y-6">
-              <li v-for="(benefit, index) in venueBenefits" :key="index" 
-                  class="flex items-start gap-4 group">
-                <div class="w-10 h-10 bg-gradient-to-br from-blue-100 to-purple-100 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <i class="pi pi-check text-blue-600 text-lg"></i>
-                </div>
-                <p class="text-lg text-slate-700 leading-relaxed">{{ benefit }}</p>
-              </li>
-            </ul>
-          </div>
-
-          <!-- For Visitors -->
-          <div class="bg-white rounded-3xl p-10 shadow-lg border border-slate-200">
-            <h3 class="text-3xl font-bold text-slate-900 mb-8 text-center">{{ $t('landing.benefits.visitor_title') }}</h3>
-            <ul class="space-y-6">
-              <li v-for="(benefit, index) in visitorBenefits" :key="index" 
-                  class="flex items-start gap-4 group">
-                <div class="w-10 h-10 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
-                  <i class="pi pi-check text-emerald-600 text-lg"></i>
-                </div>
-                <p class="text-lg text-slate-700 leading-relaxed">{{ benefit }}</p>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Sustainability Impact -->
-    <section class="py-20 sm:py-32 bg-gradient-to-br from-emerald-50 to-teal-50">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-20">
-          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            {{ $t('landing.sustainability.title') }} <span class="bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">{{ $t('landing.sustainability.title_highlight') }}</span>
-          </h2>
-        </div>
-
-        <div class="grid lg:grid-cols-2 gap-12 max-w-6xl mx-auto">
-          <!-- Traditional Way -->
-          <div class="bg-white rounded-3xl p-10 shadow-lg border-2 border-slate-200">
-            <h3 class="text-2xl font-bold text-slate-900 mb-8 text-center">{{ $t('landing.sustainability.traditional_title') }}</h3>
-            <div class="space-y-6">
-              <div class="flex items-center gap-4">
-                <div class="text-4xl">📄</div>
-                <div>
-                  <p class="font-semibold text-slate-900">{{ $t('landing.sustainability.traditional_brochures') }}</p>
-                  <p class="text-sm text-slate-600">{{ $t('landing.sustainability.traditional_visitors') }}</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-4">
-                <div class="text-4xl">🗑️</div>
-                <div>
-                  <p class="font-semibold text-slate-900">{{ $t('landing.sustainability.traditional_discarded') }}</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-4">
-                <div class="text-4xl">🌳</div>
-                <div>
-                  <p class="font-semibold text-red-600">{{ $t('landing.sustainability.traditional_waste') }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- CardStudio Way -->
-          <div class="bg-gradient-to-br from-emerald-600 to-teal-600 rounded-3xl p-10 shadow-2xl text-white">
-            <h3 class="text-2xl font-bold mb-8 text-center">{{ $t('landing.sustainability.cardstudio_title') }}</h3>
-            <div class="space-y-6">
-              <div class="flex items-center gap-4">
-                <div class="text-4xl">🎴</div>
-                <div>
-                  <p class="font-semibold">{{ $t('landing.sustainability.cardstudio_cards') }}</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-4">
-                <div class="text-4xl">💚</div>
-                <div>
-                  <p class="font-semibold">{{ $t('landing.sustainability.cardstudio_kept') }}</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-4">
-                <div class="text-4xl">♻️</div>
-                <div>
-                  <p class="font-semibold text-yellow-300">{{ $t('landing.sustainability.cardstudio_reduction') }}</p>
-                </div>
-              </div>
-              <div class="flex items-center gap-4">
-                <div class="text-4xl">📱</div>
-                <div>
-                  <p class="font-semibold">{{ $t('landing.sustainability.cardstudio_digital') }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-16 bg-white rounded-3xl p-10 shadow-lg border border-emerald-200 max-w-4xl mx-auto">
-          <h3 class="text-2xl font-bold text-slate-900 mb-6 text-center">{{ $t('landing.sustainability.impact_title') }}</h3>
-          <div class="grid md:grid-cols-2 gap-6">
-            <div class="flex items-start gap-3">
-              <i class="pi pi-check-circle text-emerald-600 text-xl mt-1"></i>
-              <p class="text-slate-700">{{ $t('landing.sustainability.impact_esg') }}</p>
-            </div>
-            <div class="flex items-start gap-3">
-              <i class="pi pi-check-circle text-emerald-600 text-xl mt-1"></i>
-              <p class="text-slate-700">{{ $t('landing.sustainability.impact_cost') }}</p>
-            </div>
-            <div class="flex items-start gap-3">
-              <i class="pi pi-check-circle text-emerald-600 text-xl mt-1"></i>
-              <p class="text-slate-700">{{ $t('landing.sustainability.impact_leader') }}</p>
-            </div>
-            <div class="flex items-start gap-3">
-              <i class="pi pi-check-circle text-emerald-600 text-xl mt-1"></i>
-              <p class="text-slate-700">{{ $t('landing.sustainability.impact_appeal') }}</p>
             </div>
           </div>
         </div>
@@ -599,158 +381,6 @@
       </div>
     </section>
 
-    <!-- Collaboration Models -->
-    <section class="py-20 sm:py-32 bg-white">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="text-center mb-20">
-          <h2 class="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 mb-6">
-            {{ $t('landing.collaboration.title') }} <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{{ $t('landing.collaboration.title_highlight') }}</span>
-          </h2>
-          <p class="text-xl text-slate-600 max-w-3xl mx-auto">
-            {{ $t('landing.collaboration.subtitle') }}
-          </p>
-        </div>
-
-        <div class="grid lg:grid-cols-3 gap-8">
-          <!-- Become a Client -->
-          <div class="bg-gradient-to-br from-blue-50 to-purple-50 rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-blue-200 hover:border-blue-400">
-            <div class="w-16 h-16 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-              <i class="pi pi-shopping-cart text-white text-2xl"></i>
-            </div>
-            <h3 class="text-2xl font-bold text-slate-900 mb-4 text-center">{{ $t('landing.collaboration.client.title') }}</h3>
-            <p class="text-sm text-slate-600 mb-6 text-center">{{ $t('landing.collaboration.client.for') }}</p>
-            
-            <div class="mb-6">
-              <p class="font-semibold text-slate-900 mb-3">{{ $t('landing.collaboration.client.you_get') }}</p>
-              <ul class="space-y-2">
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-blue-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.client.benefit1') }}</span>
-                </li>
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-blue-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.client.benefit2') }}</span>
-                </li>
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-blue-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.client.benefit3') }}</span>
-                </li>
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-blue-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.client.benefit4') }}</span>
-                </li>
-              </ul>
-            </div>
-
-            <p class="text-sm font-semibold text-blue-600 mb-6 text-center">{{ $t('landing.collaboration.client.best_if') }}</p>
-
-            <Button 
-              @click="scrollToContact"
-              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 text-base font-bold rounded-xl shadow-lg min-h-[52px]"
-            >
-              {{ $t('landing.collaboration.client.cta') }}
-            </Button>
-          </div>
-
-          <!-- Regional Partner -->
-          <div class="bg-gradient-to-br from-emerald-50 to-teal-50 rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-emerald-200 hover:border-emerald-400">
-            <div class="w-16 h-16 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-              <i class="pi pi-globe text-white text-2xl"></i>
-            </div>
-            <h3 class="text-2xl font-bold text-slate-900 mb-4 text-center">{{ $t('landing.collaboration.partner.title') }}</h3>
-            <p class="text-sm text-slate-600 mb-6 text-center">{{ $t('landing.collaboration.partner.for') }}</p>
-            
-            <div class="mb-6">
-              <p class="font-semibold text-slate-900 mb-3">{{ $t('landing.collaboration.partner.you_get') }}</p>
-              <ul class="space-y-2">
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-emerald-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.partner.benefit1') }}</span>
-                </li>
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-emerald-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.partner.benefit2') }}</span>
-                </li>
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-emerald-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.partner.benefit3') }}</span>
-                </li>
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-emerald-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.partner.benefit4') }}</span>
-                </li>
-              </ul>
-            </div>
-
-            <p class="text-sm font-semibold text-emerald-600 mb-6 text-center">{{ $t('landing.collaboration.partner.best_if') }}</p>
-
-            <Button 
-              @click="scrollToContact"
-              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 text-base font-bold rounded-xl shadow-lg min-h-[52px]"
-            >
-              {{ $t('landing.collaboration.partner.cta') }}
-            </Button>
-          </div>
-
-          <!-- Software License -->
-          <div class="bg-gradient-to-br from-orange-50 to-pink-50 rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-orange-200 hover:border-orange-400">
-            <div class="w-16 h-16 bg-gradient-to-br from-orange-600 to-pink-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-              <i class="pi pi-code text-white text-2xl"></i>
-            </div>
-            <h3 class="text-2xl font-bold text-slate-900 mb-4 text-center">{{ $t('landing.collaboration.license.title') }}</h3>
-            <p class="text-sm text-slate-600 mb-6 text-center">{{ $t('landing.collaboration.license.for') }}</p>
-            
-            <div class="mb-6">
-              <p class="font-semibold text-slate-900 mb-3">{{ $t('landing.collaboration.license.you_get') }}</p>
-              <ul class="space-y-2">
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-orange-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.license.benefit1') }}</span>
-                </li>
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-orange-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.license.benefit2') }}</span>
-                </li>
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-orange-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.license.benefit3') }}</span>
-                </li>
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-orange-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.license.benefit4') }}</span>
-                </li>
-                <li class="flex items-start gap-2 text-sm text-slate-700">
-                  <i class="pi pi-check text-orange-600 text-lg mt-0.5"></i>
-                  <span>{{ $t('landing.collaboration.license.benefit5') }}</span>
-                </li>
-              </ul>
-            </div>
-
-            <p class="text-sm font-semibold text-orange-600 mb-6 text-center">{{ $t('landing.collaboration.license.best_if') }}</p>
-
-            <Button 
-              @click="scrollToContact"
-              class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 text-base font-bold rounded-xl shadow-lg min-h-[52px]"
-            >
-              {{ $t('landing.collaboration.license.cta') }}
-            </Button>
-          </div>
-        </div>
-
-        <div class="text-center mt-12 px-4">
-          <p class="text-base sm:text-lg text-slate-600 mb-6">
-            {{ $t('landing.collaboration.not_sure') }}
-          </p>
-          <Button 
-            @click="scrollToContact"
-            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 text-base sm:text-lg font-bold shadow-lg rounded-xl min-h-[52px]"
-          >
-            {{ $t('landing.collaboration.schedule_call') }}
-          </Button>
-        </div>
-      </div>
-    </section>
-
     <!-- FAQ Section -->
     <section class="py-20 sm:py-32 bg-gradient-to-b from-slate-50 to-white">
       <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -761,7 +391,7 @@
         </div>
         
         <div class="space-y-4">
-          <div v-for="(faq, index) in faqs" :key="index"
+          <div v-for="(faq, index) in faqs.slice(0, 6)" :key="index"
                class="bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-all duration-300 border border-slate-200">
             <button
               @click="toggleFaq(index)"
@@ -840,38 +470,84 @@
             </div>
           </div>
 
-          <!-- Contact Form CTA -->
-          <div class="text-center py-12 px-6">
-            <div class="mb-8">
-              <div class="inline-block p-4 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl mb-6">
-                <i class="pi pi-file-edit text-5xl text-blue-600"></i>
+          <!-- Contact Form CTA - Enhanced -->
+          <div class="relative overflow-hidden">
+            <!-- Background decoration -->
+            <div class="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-3xl"></div>
+            <div class="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))] rounded-3xl"></div>
+            
+            <!-- Content -->
+            <div class="relative text-center py-16 px-6 sm:px-12">
+              <!-- Icon with pulse animation -->
+              <div class="relative inline-flex items-center justify-center mb-8">
+                <div class="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-400 rounded-2xl blur-xl opacity-30 animate-pulse"></div>
+                <div class="relative p-5 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg">
+                  <i class="pi pi-send text-5xl text-white"></i>
+                </div>
               </div>
-              <h3 class="text-2xl sm:text-3xl font-bold text-slate-900 mb-4">
+
+              <!-- Title with gradient text -->
+              <h3 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
                 {{ $t('landing.contact.form_cta.title') }}
               </h3>
-              <p class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto mb-8">
+              
+              <!-- Description -->
+              <p class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto mb-8 leading-relaxed">
                 {{ $t('landing.contact.form_cta.description') }}
               </p>
+
+              <!-- Key Benefits -->
+              <div class="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-10 text-sm sm:text-base">
+                <div class="flex items-center gap-2 text-slate-700">
+                  <div class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
+                    <i class="pi pi-check text-green-600 text-xs"></i>
+                  </div>
+                  <span class="font-medium">{{ $t('landing.contact.form_cta.benefits.fast_response') }}</span>
+                </div>
+                <div class="flex items-center gap-2 text-slate-700">
+                  <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
+                    <i class="pi pi-shield text-blue-600 text-xs"></i>
+                  </div>
+                  <span class="font-medium">{{ $t('landing.contact.form_cta.benefits.confidential') }}</span>
+                </div>
+                <div class="flex items-center gap-2 text-slate-700">
+                  <div class="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center">
+                    <i class="pi pi-users text-purple-600 text-xs"></i>
+                  </div>
+                  <span class="font-medium">{{ $t('landing.contact.form_cta.benefits.personal_service') }}</span>
+                </div>
+              </div>
+
+              <!-- CTA Button & Response Time - Vertically Stacked -->
+              <div class="flex flex-col items-center gap-6">
+                <!-- CTA Button - Enhanced -->
+                <a 
+                  :href="contactFormUrl" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  class="inline-block group"
+                >
+                  <Button 
+                    :label="$t('landing.contact.form_cta.button')"
+                    icon="pi pi-arrow-right"
+                    iconPos="right"
+                    class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-10 sm:px-14 py-4 sm:py-6 text-base sm:text-lg font-bold shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 rounded-2xl"
+                  />
+                </a>
+
+                <!-- Response time badge -->
+                <div class="inline-flex items-center gap-2 px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full shadow-md border border-slate-200">
+                  <div class="relative">
+                    <i class="pi pi-clock text-blue-600"></i>
+                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-ping"></span>
+                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full"></span>
+                  </div>
+                  <span class="text-sm font-medium text-slate-700">
+                    {{ $t('landing.contact.form_cta.response_time') }}
+                  </span>
+                </div>
+              </div>
             </div>
-
-            <a 
-              :href="contactFormUrl" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              class="inline-block"
-            >
-              <Button 
-                :label="$t('landing.contact.form_cta.button')"
-                icon="pi pi-external-link"
-                iconPos="right"
-                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-12 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-xl hover:shadow-2xl transition-all transform hover:scale-105 rounded-xl"
-              />
-            </a>
-
-            <p class="text-sm text-slate-500 mt-6">
-              <i class="pi pi-clock mr-2"></i>
-              {{ $t('landing.contact.form_cta.response_time') }}
-            </p>
           </div>
 
           <!-- Alternative Contact Methods -->
@@ -976,16 +652,17 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { useAuthStore } from '@/stores/auth'
 import Button from 'primevue/button'
-import Carousel from 'primevue/carousel'
 import QrCode from 'qrcode.vue'
 import { getCardAspectRatio } from '@/utils/cardConfig'
 import UnifiedHeader from '@/components/Layout/UnifiedHeader.vue'
 
 const router = useRouter()
+const authStore = useAuthStore()
 
 // Navigation state
 const mobileMenuOpen = ref(false)
@@ -1014,13 +691,32 @@ const toggleFaq = (index) => {
 // Contact form URL from environment variables
 const contactFormUrl = import.meta.env.VITE_CONTACT_FORM_URL
 
+// Get i18n for locale watching
+const { t, locale } = useI18n()
+
 // Scroll handling (reserved for future use)
 
 // Intersection Observer for animations
-const observeElements = () => {
-  document.documentElement.classList.add('js-animations-ready')
+let animationObserver = null
+
+const checkElementVisibility = (element) => {
+  const rect = element.getBoundingClientRect()
+  return (
+    rect.top >= 0 &&
+    rect.left >= 0 &&
+    rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) + 100 &&
+    rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+  )
+}
+
+const initAnimations = () => {
+  // Disconnect existing observer if any
+  if (animationObserver) {
+    animationObserver.disconnect()
+  }
   
-  const observer = new IntersectionObserver((entries) => {
+  // Create new observer
+  animationObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add('animate-visible')
@@ -1032,17 +728,46 @@ const observeElements = () => {
   })
   
   const animateElements = document.querySelectorAll('.animate-on-scroll')
+  
+  // Check which elements are already in viewport and mark them visible immediately
   animateElements.forEach(el => {
-    observer.observe(el)
+    if (checkElementVisibility(el)) {
+      // Element is already visible, show it immediately
+      el.classList.add('animate-visible')
+    }
+    
+    // Observe for future scroll-triggered animations
+    animationObserver.observe(el)
   })
   
-  return observer
+  // Add animation-ready class after checking initial visibility
+  document.documentElement.classList.add('js-animations-ready')
 }
 
 onMounted(() => {
-  setTimeout(() => {
-    observeElements()
-  }, 100)
+  // Initialize animations on mount
+  nextTick(() => {
+    setTimeout(() => {
+      initAnimations()
+    }, 50)
+  })
+})
+
+// Re-initialize animations when language changes
+watch(locale, () => {
+  // Wait for DOM to update with new language content
+  nextTick(() => {
+    setTimeout(() => {
+      // Remove animate-visible from all elements to reset
+      const animateElements = document.querySelectorAll('.animate-on-scroll')
+      animateElements.forEach(el => {
+        el.classList.remove('animate-visible')
+      })
+      
+      // Re-initialize animations
+      initAnimations()
+    }, 100)
+  })
 })
 
 // Navigation functions
@@ -1063,12 +788,19 @@ const scrollToContact = () => {
   scrollToSection('contact')
 }
 
+const handleGetStarted = () => {
+  if (authStore.isLoggedIn()) {
+    router.push('/cms')
+  } else {
+    router.push('/login')
+  }
+}
+
 const openDemoCard = () => {
   window.location.href = sampleQrUrl.value
 }
 
-// Data
-const { t } = useI18n()
+// Data (t and locale already declared above for locale watching)
 
 const demoFeatures = computed(() => [
   {
@@ -1128,151 +860,15 @@ const keyFeatures = computed(() => [
     description: t('landing.features.features.ai_guide_desc')
   },
   {
-    icon: 'pi-mobile',
-    title: t('landing.features.features.no_app_title'),
-    description: t('landing.features.features.no_app_desc')
+    icon: 'pi-cog',
+    title: t('landing.features.features.portal_config_title'),
+    description: t('landing.features.features.portal_config_desc')
   },
   {
     icon: 'pi-globe',
     title: t('landing.features.features.multilingual_title'),
     description: t('landing.features.features.multilingual_desc')
-  },
-  {
-    icon: 'pi-bolt',
-    title: t('landing.features.features.no_hardware_title'),
-    description: t('landing.features.features.no_hardware_desc')
-  },
-  {
-    icon: 'pi-chart-bar',
-    title: t('landing.features.features.dashboard_title'),
-    description: t('landing.features.features.dashboard_desc')
   }
-])
-
-const applications = computed(() => [
-  {
-    icon: 'pi-building',
-    name: t('landing.applications.apps.museums.name'),
-    role: t('landing.applications.apps.museums.role'),
-    alternatives: t('landing.applications.apps.museums.alternatives'),
-    benefits: [
-      t('landing.applications.apps.museums.benefit1'),
-      t('landing.applications.apps.museums.benefit2'),
-      t('landing.applications.apps.museums.benefit3')
-    ]
-  },
-  {
-    icon: 'pi-map-marker',
-    name: t('landing.applications.apps.tourist.name'),
-    role: t('landing.applications.apps.tourist.role'),
-    alternatives: t('landing.applications.apps.tourist.alternatives'),
-    benefits: [
-      t('landing.applications.apps.tourist.benefit1'),
-      t('landing.applications.apps.tourist.benefit2'),
-      t('landing.applications.apps.tourist.benefit3')
-    ]
-  },
-  {
-    icon: 'pi-star',
-    name: t('landing.applications.apps.zoos.name'),
-    role: t('landing.applications.apps.zoos.role'),
-    alternatives: t('landing.applications.apps.zoos.alternatives'),
-    benefits: [
-      t('landing.applications.apps.zoos.benefit1'),
-      t('landing.applications.apps.zoos.benefit2'),
-      t('landing.applications.apps.zoos.benefit3')
-    ]
-  },
-  {
-    icon: 'pi-briefcase',
-    name: t('landing.applications.apps.trade_shows.name'),
-    role: t('landing.applications.apps.trade_shows.role'),
-    alternatives: t('landing.applications.apps.trade_shows.alternatives'),
-    benefits: [
-      t('landing.applications.apps.trade_shows.benefit1'),
-      t('landing.applications.apps.trade_shows.benefit2'),
-      t('landing.applications.apps.trade_shows.benefit3')
-    ]
-  },
-  {
-    icon: 'pi-calendar',
-    name: t('landing.applications.apps.conferences.name'),
-    role: t('landing.applications.apps.conferences.role'),
-    alternatives: t('landing.applications.apps.conferences.alternatives'),
-    benefits: [
-      t('landing.applications.apps.conferences.benefit1'),
-      t('landing.applications.apps.conferences.benefit2'),
-      t('landing.applications.apps.conferences.benefit3')
-    ]
-  },
-  {
-    icon: 'pi-users',
-    name: t('landing.applications.apps.training.name'),
-    role: t('landing.applications.apps.training.role'),
-    alternatives: t('landing.applications.apps.training.alternatives'),
-    benefits: [
-      t('landing.applications.apps.training.benefit1'),
-      t('landing.applications.apps.training.benefit2'),
-      t('landing.applications.apps.training.benefit3')
-    ]
-  },
-  {
-    icon: 'pi-home',
-    name: t('landing.applications.apps.hotels.name'),
-    role: t('landing.applications.apps.hotels.role'),
-    alternatives: t('landing.applications.apps.hotels.alternatives'),
-    benefits: [
-      t('landing.applications.apps.hotels.benefit1'),
-      t('landing.applications.apps.hotels.benefit2'),
-      t('landing.applications.apps.hotels.benefit3')
-    ]
-  },
-  {
-    icon: 'pi-server',
-    name: t('landing.applications.apps.restaurants.name'),
-    role: t('landing.applications.apps.restaurants.role'),
-    alternatives: t('landing.applications.apps.restaurants.alternatives'),
-    benefits: [
-      t('landing.applications.apps.restaurants.benefit1'),
-      t('landing.applications.apps.restaurants.benefit2'),
-      t('landing.applications.apps.restaurants.benefit3')
-    ]
-  }
-])
-
-const carouselResponsiveOptions = ref([
-  {
-    breakpoint: '1024px',
-    numVisible: 3,
-    numScroll: 1
-  },
-  {
-    breakpoint: '768px',
-    numVisible: 2,
-    numScroll: 1
-  },
-  {
-    breakpoint: '560px',
-    numVisible: 1,
-    numScroll: 1
-  }
-])
-
-const venueBenefits = computed(() => [
-  t('landing.benefits.venue_benefits.engagement'),
-  t('landing.benefits.venue_benefits.global'),
-  t('landing.benefits.venue_benefits.reputation'),
-  t('landing.benefits.venue_benefits.sustainability'),
-  t('landing.benefits.venue_benefits.revenue'),
-  t('landing.benefits.venue_benefits.rollout')
-])
-
-const visitorBenefits = computed(() => [
-  t('landing.benefits.visitor_benefits.personalized'),
-  t('landing.benefits.visitor_benefits.educational'),
-  t('landing.benefits.visitor_benefits.language'),
-  t('landing.benefits.visitor_benefits.souvenir'),
-  t('landing.benefits.visitor_benefits.access')
 ])
 
 const pricingFeatures = computed(() => [

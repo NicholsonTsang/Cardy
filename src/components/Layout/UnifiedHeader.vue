@@ -114,13 +114,23 @@
           <!-- Language Selector -->
           <DashboardLanguageSelector />
 
-          <!-- Sign In / Dashboard Button - Desktop Only -->
-          <Button 
-            :label="isAuthenticated ? $t('dashboard.dashboard') : $t('auth.sign_in')"
-            @click="handleAuthButtonClick"
-            class="!hidden lg:!inline-flex p-button-outlined"
-            :icon="isAuthenticated ? 'pi pi-th-large' : 'pi pi-sign-in'"
-          />
+          <!-- Create Account & Get Started Buttons - Desktop Only -->
+          <div class="hidden lg:flex items-center gap-3">
+            <button 
+              @click="router.push('/signup')"
+              class="flex items-center gap-2 px-5 py-2.5 bg-slate-50 hover:bg-slate-100 border border-slate-300 text-slate-700 font-semibold rounded-lg transition-all duration-300 transform hover:scale-105 shadow-sm hover:shadow-md cursor-pointer"
+            >
+              <i class="pi pi-user-plus text-sm"></i>
+              <span>{{ $t('landing.nav.create_account') }}</span>
+            </button>
+            <button 
+              @click="handleGetStarted"
+              class="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 cursor-pointer"
+            >
+              <span>{{ $t('landing.nav.get_started') }}</span>
+              <i class="pi pi-arrow-right text-sm"></i>
+            </button>
+          </div>
 
           <!-- Mobile Menu Button - Shows ONLY when nav links are hidden (below lg/1024px) -->
           <Button 
@@ -339,6 +349,15 @@ const handleAuthButtonClick = () => {
     }
   } else {
     // If not logged in, route to login page
+    router.push('/login')
+  }
+}
+
+// Get Started handler - navigates to login or dashboard based on auth state
+const handleGetStarted = () => {
+  if (isAuthenticated.value) {
+    router.push('/cms')
+  } else {
     router.push('/login')
   }
 }
