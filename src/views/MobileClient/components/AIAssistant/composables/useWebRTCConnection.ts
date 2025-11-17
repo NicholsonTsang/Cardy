@@ -151,6 +151,25 @@ export function useWebRTCConnection() {
           'ar': 'Arabic (العربية)'
         }
         
+        // Map language codes to Whisper language codes (ISO-639-1)
+        // Whisper expects 2-letter codes for accurate transcription
+        const whisperLanguageMap: Record<string, string> = {
+          'en': 'en',
+          'zh-Hans-mandarin': 'zh',  // Chinese (Mandarin or Cantonese, any script)
+          'zh-Hans-cantonese': 'zh',
+          'zh-Hant-mandarin': 'zh',
+          'zh-Hant-cantonese': 'zh',
+          'zh-Hans': 'zh',
+          'zh-Hant': 'zh',
+          'ja': 'ja',
+          'ko': 'ko',
+          'th': 'th',
+          'es': 'es',
+          'fr': 'fr',
+          'ru': 'ru',
+          'ar': 'ar'
+        }
+        
         // Prepare session configuration with language enforcement
         const sessionConfig = {
           type: 'session.update',
@@ -161,7 +180,8 @@ export function useWebRTCConnection() {
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
             input_audio_transcription: { 
-              model: 'whisper-1' 
+              model: 'whisper-1',
+              language: whisperLanguageMap[language] || 'en'  // Tell Whisper which language to expect
             },
             turn_detection: { 
               type: 'server_vad',
@@ -178,6 +198,7 @@ export function useWebRTCConnection() {
         console.log('🔧 ========== REALTIME API SESSION CONFIGURATION ==========')
         console.log('🌍 Selected Language:', language)
         console.log('🎤 Voice:', voiceMap[language] || 'alloy')
+        console.log('🎧 Whisper Language Code:', whisperLanguageMap[language] || 'en')
         console.log('📝 Full Instructions:')
         console.log(instructions)
         console.log('📦 Complete Session Config:', JSON.stringify(sessionConfig, null, 2))
