@@ -12,6 +12,8 @@ export function useWebRTCConnection() {
   // Audio state
   const isSpeaking = ref(false)
   const mediaStream = ref<MediaStream | null>(null)
+  const audioElement = ref<HTMLAudioElement | null>(null)
+  const audioAnalyser = ref<{ context: AudioContext; analyser: AnalyserNode } | null>(null)
   
   // Transcript callbacks
   let onUserTranscriptCallback: ((text: string) => void) | null = null
@@ -217,15 +219,46 @@ export function useWebRTCConnection() {
       // Handle incoming audio
       pc.value.ontrack = (event) => {
         console.log('🎵 Received audio track')
-        const audio = new Audio()
-        audio.srcObject = event.streams[0]
-        audio.autoplay = true
+        
+        // CRITICAL FIX: Prevent multiple audio elements from being created
+        // On mobile, ontrack can fire multiple times due to ICE reconnections
+        // This causes the AI to restart speaking from the beginning
+        if (audioElement.value && audioElement.value.srcObject === event.streams[0]) {
+          console.log('⚠️ Audio track already connected, skipping duplicate ontrack event')
+          return
+        }
+        
+        // Clean up existing audio element and analyser before creating new ones
+        if (audioElement.value) {
+          console.log('🧹 Cleaning up existing audio element before creating new one')
+          audioElement.value.pause()
+          audioElement.value.srcObject = null
+        }
+        
+        if (audioAnalyser.value) {
+          console.log('🧹 Cleaning up existing audio analyser')
+          try {
+            audioAnalyser.value.context.close()
+          } catch (err) {
+            console.warn('Error closing audio context:', err)
+          }
+          audioAnalyser.value = null
+        }
+        
+        // Create new audio element
+        console.log('✅ Creating new audio element for stream')
+        audioElement.value = new Audio()
+        audioElement.value.srcObject = event.streams[0]
+        audioElement.value.autoplay = true
         
         // Track speaking state
         const audioContext = new AudioContext()
         const source = audioContext.createMediaStreamSource(event.streams[0])
         const analyser = audioContext.createAnalyser()
         source.connect(analyser)
+        
+        // Store analyser for cleanup
+        audioAnalyser.value = { context: audioContext, analyser }
         
         const dataArray = new Uint8Array(analyser.frequencyBinCount)
         const checkAudio = () => {
@@ -397,6 +430,25 @@ export function useWebRTCConnection() {
   
   // Cleanup resources
   function cleanup() {
+    // Clean up audio element
+    if (audioElement.value) {
+      console.log('🧹 Cleaning up audio element')
+      audioElement.value.pause()
+      audioElement.value.srcObject = null
+      audioElement.value = null
+    }
+    
+    // Clean up audio analyser
+    if (audioAnalyser.value) {
+      console.log('🧹 Cleaning up audio analyser')
+      try {
+        audioAnalyser.value.context.close()
+      } catch (err) {
+        console.warn('Error closing audio context:', err)
+      }
+      audioAnalyser.value = null
+    }
+    
     // Close data channel
     if (dc.value) {
       dc.value.close()

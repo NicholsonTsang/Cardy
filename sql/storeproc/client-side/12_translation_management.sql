@@ -7,9 +7,11 @@
 -- Client-side procedures (called from dashboard frontend):
 -- - get_card_translation_status: Get translation status for all languages
 -- - get_card_translations: Get full translations for a card
--- - store_card_translations: Store GPT-translated content (called by Edge Function)
 -- - delete_card_translation: Remove a specific language translation
 -- - get_translation_history: Get audit trail of translations
+--
+-- Note: Translations are now saved via direct Supabase updates in 
+-- backend-server/src/routes/translation.routes.direct.ts (saveTranslations function)
 -- =====================================================================
 
 -- =====================================================================
@@ -225,12 +227,12 @@ $$ LANGUAGE plpgsql;
 -- =====================================================================
 -- 3. Store Card Translations (Called by Edge Function)
 -- =====================================================================
--- Stores GPT-generated translations for a card and its content items
--- This is called by the Edge Function after successful translation
+-- Translation Storage
 -- =====================================================================
 
--- NOTE: store_card_translations has been moved to server-side/translation_management.sql
--- This function is called by Edge Functions and requires service_role permissions
+-- NOTE: store_card_translations function removed - translations now saved 
+-- via direct Supabase updates in backend (see translation.routes.direct.ts)
+-- This approach provides better control over hash freshness and race condition prevention
 
 -- =====================================================================
 -- 4. Delete Card Translation
@@ -683,7 +685,7 @@ $$ LANGUAGE plpgsql;
 
 GRANT EXECUTE ON FUNCTION get_card_translation_status(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_card_translations(UUID, VARCHAR) TO authenticated;
-GRANT EXECUTE ON FUNCTION store_card_translations(UUID, UUID, TEXT[], JSONB, JSONB, DECIMAL) TO service_role;
+-- store_card_translations removed - translations now saved via direct Supabase updates (see translation.routes.direct.ts)
 GRANT EXECUTE ON FUNCTION delete_card_translation(UUID, VARCHAR) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_translation_history(UUID, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_outdated_translations(UUID) TO authenticated;

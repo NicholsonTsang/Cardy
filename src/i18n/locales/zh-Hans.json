@@ -112,6 +112,7 @@
     "crop_image": "Crop image",
     "undo_crop": "Undo crop",
     "no_cards_yet": "No cards yet",
+    "no_cards_found": "未找到卡片",
     "get_started_creating": "Get started by creating your first card",
     "select_card_to_view": "Select a card to view details"
   },
@@ -158,6 +159,9 @@
     "print_requests": "Print Requests",
     "operations_log": "Operations Log",
     "user_cards": "User Cards",
+    "view_user_cards_desc": "查看和管理此用户创建的所有卡片",
+    "user_no_cards_yet": "此用户尚未创建任何卡片",
+    "search_cards": "搜索卡片...",
     "system_stats": "System Statistics",
     "total_users": "Total Users",
     "total_cards": "Total Cards",

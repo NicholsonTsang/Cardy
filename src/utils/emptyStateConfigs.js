@@ -24,23 +24,7 @@ export const emptyStateConfigs = {
         }
     },
     
-    verifications: {
-        noData: {
-            icon: 'pi pi-check-circle',
-            title: 'All Caught Up!',
-            description: 'No verification requests require attention at this time.',
-            showButton: false,
-            variant: 'positive'
-        },
-        filtered: {
-            icon: 'pi pi-search-slash',
-            title: 'No Verifications Found',
-            description: 'No verification requests match your search criteria.',
-            buttonLabel: 'Clear Filters',
-            buttonIcon: 'pi pi-filter-slash',
-            variant: 'search'
-        }
-    },
+    // verifications config removed - verification feature was never implemented
     
     printRequests: {
         noData: {

@@ -1707,8 +1707,10 @@ const getPrintStatusSeverity = (status) => {
 }
 
 // Print request progress bar helpers
+// Note: PAYMENT_PENDING is excluded from user progress tracking since it never occurs
+// in the credit-based payment model (payment happens before print request creation)
 const isPrintStepCompleted = (stepStatus, currentStatus) => {
-  const statusOrder = ['SUBMITTED', 'PAYMENT_PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED']
+  const statusOrder = ['SUBMITTED', 'PROCESSING', 'SHIPPED', 'COMPLETED']
   const stepIndex = statusOrder.indexOf(stepStatus)
   const currentIndex = statusOrder.indexOf(currentStatus)
   
@@ -1736,7 +1738,8 @@ const getPrintStepStatusClass = (stepStatus, currentStatus) => {
 }
 
 const getPrintProgressWidth = (currentStatus) => {
-  const statusOrder = ['SUBMITTED', 'PAYMENT_PENDING', 'PROCESSING', 'SHIPPED', 'COMPLETED']
+  // Note: PAYMENT_PENDING excluded - never occurs in credit-based payment model
+  const statusOrder = ['SUBMITTED', 'PROCESSING', 'SHIPPED', 'COMPLETED']
   const currentIndex = statusOrder.indexOf(currentStatus)
   
   if (currentStatus === 'CANCELLED') {
@@ -1754,7 +1757,7 @@ const getPrintProgressWidth = (currentStatus) => {
 const getPrintStatusDescription = (status) => {
   const descriptions = {
     SUBMITTED: 'Your print request has been received and is being reviewed.',
-    PAYMENT_PENDING: 'Awaiting payment confirmation for print request.',
+    PAYMENT_PENDING: 'Awaiting payment confirmation.',  // Kept for data integrity only
     PROCESSING: 'Your cards are being printed and prepared for shipping.',
     SHIPPED: 'Your cards have been shipped and are on their way to you.',
     COMPLETED: 'Your cards have been delivered successfully.',

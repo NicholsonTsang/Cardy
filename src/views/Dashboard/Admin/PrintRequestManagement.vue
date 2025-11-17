@@ -287,19 +287,20 @@ const showDetailsDialog = ref(false)
 const selectedRequest = ref(null)
 
 // Filter options
+// Note: PAYMENT_PENDING removed from filters - not used in credit-based payment model
 const statusOptions = computed(() => [
   { label: t('admin.all_statuses'), value: null },
   { label: t('print.submitted'), value: 'SUBMITTED' },
-  { label: t('print.payment_pending'), value: 'PAYMENT_PENDING' },
   { label: t('print.in_production'), value: 'PROCESSING' },
   { label: t('print.shipped'), value: 'SHIPPED' },
   { label: t('print.delivered'), value: 'COMPLETED' },
   { label: t('print.cancelled'), value: 'CANCELLED' }
 ])
 
+// Note: PAYMENT_PENDING removed from status updates - not used in credit-based payment model
+// Payment happens before print request creation, so all requests start as SUBMITTED
 const statusUpdateOptions = computed(() => [
   { label: t('print.submitted'), value: 'SUBMITTED' },
-  { label: t('print.payment_pending'), value: 'PAYMENT_PENDING' },
   { label: t('print.in_production'), value: 'PROCESSING' },
   { label: t('print.shipped'), value: 'SHIPPED' },
   { label: t('print.delivered'), value: 'COMPLETED' },

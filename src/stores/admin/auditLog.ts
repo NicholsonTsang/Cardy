@@ -29,9 +29,7 @@ export const ACTION_TYPES = {
   // User Management
   USER_REGISTRATION: 'USER_REGISTRATION',
   ROLE_CHANGE: 'ROLE_CHANGE',
-  VERIFICATION_REVIEW: 'VERIFICATION_REVIEW',
-  VERIFICATION_RESET: 'VERIFICATION_RESET',
-  MANUAL_VERIFICATION: 'MANUAL_VERIFICATION',
+  // VERIFICATION_* removed - verification feature was never implemented
   
   // Card Management
   CARD_CREATION: 'CARD_CREATION',
@@ -67,9 +65,7 @@ export const ACTION_TYPE_SEARCH_KEYWORDS: Record<string, string> = {
   // User Management - no mapping needed (legacy format uses these directly)
   USER_REGISTRATION: 'USER_REGISTRATION',
   ROLE_CHANGE: 'Changed user role',
-  VERIFICATION_REVIEW: 'VERIFICATION_REVIEW',
-  VERIFICATION_RESET: 'Reset verification',
-  MANUAL_VERIFICATION: 'Manually approved verification',
+  // VERIFICATION_* removed - verification feature was never implemented
   
   // Card Management
   CARD_CREATION: 'Created card:',

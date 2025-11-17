@@ -61,8 +61,8 @@ GRANT EXECUTE ON FUNCTION my_server_function(UUID, UUID, ...) TO service_role;
   - `refund_credit_purchase()` - Handle credit refunds
 
 ### Content Management
-- `translation_management.sql` - AI-powered translation storage
-  - `store_card_translations()` - Store GPT-4 translated content
+- ~~`translation_management.sql`~~ - Removed, translations now saved via direct Supabase updates
+  - ~~`store_card_translations()`~~ - Removed, see `backend-server/src/routes/translation.routes.direct.ts`
 
 ---
 

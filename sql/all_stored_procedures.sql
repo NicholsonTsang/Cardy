@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Sun Nov  9 00:37:27 HKT 2025
+-- Generated: Mon Nov 17 20:39:37 HKT 2025
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -1566,6 +1566,9 @@ BEGIN
     FROM auth.users 
     WHERE id = auth.uid();
 
+    -- Create print request with SUBMITTED status
+    -- Note: PAYMENT_PENDING is never used in the current credit-based payment model
+    -- because payment happens before print request creation (at batch issuance time)
     INSERT INTO print_requests (
         batch_id,
         user_id,
@@ -1579,7 +1582,7 @@ BEGIN
         p_shipping_address,
         COALESCE(p_contact_email, v_user_email),
         p_contact_whatsapp,
-        'SUBMITTED'
+        'SUBMITTED'  -- Always SUBMITTED; PAYMENT_PENDING reserved for future payment models
     )
     RETURNING id INTO v_print_request_id;
 
@@ -1950,8 +1953,6 @@ DROP FUNCTION IF EXISTS admin_get_system_stats_enhanced CASCADE;
 DROP FUNCTION IF EXISTS admin_get_all_print_requests CASCADE;
 DROP FUNCTION IF EXISTS admin_update_print_request_status CASCADE;
 DROP FUNCTION IF EXISTS admin_get_pending_verifications CASCADE;
-DROP FUNCTION IF EXISTS get_all_verifications CASCADE;
-DROP FUNCTION IF EXISTS get_verification_by_id CASCADE;
 DROP FUNCTION IF EXISTS get_all_users_with_details CASCADE;
 DROP FUNCTION IF EXISTS get_admin_batches_requiring_attention CASCADE;
 DROP FUNCTION IF EXISTS get_admin_all_batches CASCADE;
@@ -1960,7 +1961,6 @@ DROP FUNCTION IF EXISTS admin_change_user_role CASCADE;
 DROP FUNCTION IF EXISTS get_verification_feedbacks CASCADE;
 DROP FUNCTION IF EXISTS get_print_request_feedbacks CASCADE;
 DROP FUNCTION IF EXISTS reset_user_verification CASCADE;
-DROP FUNCTION IF EXISTS admin_manual_verification CASCADE;
 DROP FUNCTION IF EXISTS get_user_activity_summary CASCADE;
 DROP FUNCTION IF EXISTS admin_get_all_users CASCADE;
 DROP FUNCTION IF EXISTS admin_update_user_role CASCADE;
@@ -2474,133 +2474,18 @@ $$;
 -- - Use get_operations_log_stats() instead of get_admin_audit_logs_count()
 -- See 00_logging.sql for new functions
 
--- (Admin) Get all verifications with comprehensive filtering
-CREATE OR REPLACE FUNCTION get_all_verifications(
-    p_status "ProfileStatus" DEFAULT NULL,
-    p_search_query TEXT DEFAULT NULL,
-    p_start_date TIMESTAMPTZ DEFAULT NULL,
-    p_end_date TIMESTAMPTZ DEFAULT NULL,
-    p_limit INTEGER DEFAULT 100,
-    p_offset INTEGER DEFAULT 0
-)
-RETURNS TABLE (
-    user_id UUID,
-    user_email VARCHAR(255),
-    public_name TEXT,
-    bio TEXT,
-    company_name TEXT,
-    full_name TEXT,
-    verification_status "ProfileStatus",
-    supporting_documents TEXT[],
-    verified_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if caller is admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view all verifications.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        up.user_id,
-        au.email,
-        up.public_name,
-        up.bio,
-        up.company_name,
-        up.full_name,
-        up.verification_status,
-        up.supporting_documents,
-        up.verified_at,
-        up.created_at,
-        up.updated_at
-    FROM public.user_profiles up
-    JOIN auth.users au ON up.user_id = au.id
-    WHERE 
-        (p_status IS NULL OR up.verification_status = p_status)
-        AND (p_search_query IS NULL OR (
-            au.email ILIKE '%' || p_search_query || '%' OR
-            up.public_name ILIKE '%' || p_search_query || '%' OR
-            up.company_name ILIKE '%' || p_search_query || '%' OR
-            up.full_name ILIKE '%' || p_search_query || '%'
-        ))
-        AND (p_start_date IS NULL OR up.updated_at >= p_start_date)
-        AND (p_end_date IS NULL OR up.updated_at <= p_end_date)
-        AND up.verification_status != 'NOT_SUBMITTED' -- Only show submitted verifications
-    ORDER BY up.updated_at DESC
-    LIMIT p_limit OFFSET p_offset;
-END;
-$$;
-
--- (Admin) Get verification by user ID
-CREATE OR REPLACE FUNCTION get_verification_by_id(p_user_id UUID)
-RETURNS TABLE (
-    user_id UUID,
-    user_email VARCHAR(255),
-    public_name TEXT,
-    bio TEXT,
-    company_name TEXT,
-    full_name TEXT,
-    verification_status "ProfileStatus",
-    supporting_documents TEXT[],
-    verified_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if caller is admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view verifications.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        up.user_id,
-        au.email,
-        up.public_name,
-        up.bio,
-        up.company_name,
-        up.full_name,
-        up.verification_status,
-        up.supporting_documents,
-        up.verified_at,
-        up.created_at,
-        up.updated_at
-    FROM public.user_profiles up
-    JOIN auth.users au ON up.user_id = au.id
-    WHERE up.user_id = p_user_id
-    AND up.verification_status != 'NOT_SUBMITTED'; -- Only show submitted verifications
-END;
-$$;
+-- Verification functions removed - feature was never implemented
+-- No frontend components, routes, or calls to these functions exist
+-- Related tables (user_profiles, verification_feedbacks) also don't exist
 
 -- (Admin) Get all users with detailed information including activity stats
+-- Note: Removed verification/profile fields - user_profiles table doesn't exist
 CREATE OR REPLACE FUNCTION get_all_users_with_details()
 RETURNS TABLE (
     user_id UUID,
     user_email VARCHAR(255),
     role TEXT,
-    public_name TEXT,
-    bio TEXT,
-    company_name TEXT,
-    full_name TEXT,
-    verification_status "ProfileStatus",
-    supporting_documents TEXT[],
-    verified_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ,
     last_sign_in_at TIMESTAMPTZ,
     cards_count INTEGER,
     issued_cards_count INTEGER,
@@ -2623,21 +2508,12 @@ BEGIN
         au.id AS user_id,
         au.email AS user_email,
         au.raw_user_meta_data->>'role' AS role,
-        COALESCE(up.public_name, '') AS public_name,
-        COALESCE(up.bio, '') AS bio,
-        COALESCE(up.company_name, '') AS company_name,
-        COALESCE(up.full_name, '') AS full_name,
-        COALESCE(up.verification_status, 'NOT_SUBMITTED') AS verification_status,
-        COALESCE(up.supporting_documents, ARRAY[]::TEXT[]) AS supporting_documents,
-        up.verified_at,
-        COALESCE(up.created_at, au.created_at) AS created_at,
-        up.updated_at,
+        au.created_at,
         au.last_sign_in_at,
         COALESCE(card_stats.cards_count, 0)::INTEGER AS cards_count,
         COALESCE(issued_stats.issued_cards_count, 0)::INTEGER AS issued_cards_count,
         COALESCE(print_stats.print_requests_count, 0)::INTEGER AS print_requests_count
     FROM auth.users au
-    LEFT JOIN public.user_profiles up ON au.id = up.user_id
     LEFT JOIN (
         SELECT c.user_id, COUNT(*) AS cards_count
         FROM public.cards c
@@ -3004,83 +2880,8 @@ BEGIN
 END;
 $$;
 
--- (Admin) Manual verification approval
-CREATE OR REPLACE FUNCTION admin_manual_verification(
-    p_user_id UUID,
-    p_reason TEXT
-)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-    v_user_email TEXT;
-    v_current_status "ProfileStatus";
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can manually verify users.';
-    END IF;
-
-    -- Get target user details for audit logging
-    SELECT au.email, up.verification_status 
-    INTO v_user_email, v_current_status
-    FROM auth.users au
-    LEFT JOIN user_profiles up ON au.id = up.user_id
-    WHERE au.id = p_user_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'User not found.';
-    END IF;
-
-    -- Create or update user profile if not exists
-    INSERT INTO user_profiles (
-        user_id,
-        verification_status,
-        verified_at,
-        created_at,
-        updated_at
-    ) VALUES (
-        p_user_id,
-        'APPROVED',
-        NOW(),
-        NOW(),
-        NOW()
-    )
-    ON CONFLICT (user_id) DO UPDATE SET
-        verification_status = 'APPROVED',
-        verified_at = NOW(),
-        updated_at = NOW();
-    
-    -- Create feedback entry if admin provided reason
-    IF p_reason IS NOT NULL AND LENGTH(TRIM(p_reason)) > 0 THEN
-        DECLARE
-            v_admin_email VARCHAR(255);
-        BEGIN
-            SELECT email INTO v_admin_email FROM auth.users WHERE auth.users.id = auth.uid();
-            
-            INSERT INTO verification_feedbacks (
-                user_id,
-                admin_user_id,
-                admin_email,
-                message
-            ) VALUES (
-                p_user_id,
-                auth.uid(),
-                v_admin_email,
-                p_reason
-            );
-        END;
-    END IF;
-
-    -- Log the manual verification
-    PERFORM log_operation(format('Manually approved verification for user: %s', v_user_email));
-    
-    RETURN TRUE;
-END;
-$$;
+-- admin_manual_verification() removed - references non-existent user_profiles table
+-- Verification feature was never implemented in frontend
 
 -- (Admin) Get user activity summary
 CREATE OR REPLACE FUNCTION get_user_activity_summary(
@@ -3501,9 +3302,11 @@ DROP FUNCTION IF EXISTS recalculate_all_translation_hashes CASCADE;
 -- Client-side procedures (called from dashboard frontend):
 -- - get_card_translation_status: Get translation status for all languages
 -- - get_card_translations: Get full translations for a card
--- - store_card_translations: Store GPT-translated content (called by Edge Function)
 -- - delete_card_translation: Remove a specific language translation
 -- - get_translation_history: Get audit trail of translations
+--
+-- Note: Translations are now saved via direct Supabase updates in 
+-- backend-server/src/routes/translation.routes.direct.ts (saveTranslations function)
 -- =====================================================================
 
 -- =====================================================================
@@ -3719,12 +3522,12 @@ $$ LANGUAGE plpgsql;
 -- =====================================================================
 -- 3. Store Card Translations (Called by Edge Function)
 -- =====================================================================
--- Stores GPT-generated translations for a card and its content items
--- This is called by the Edge Function after successful translation
+-- Translation Storage
 -- =====================================================================
 
--- NOTE: store_card_translations has been moved to server-side/translation_management.sql
--- This function is called by Edge Functions and requires service_role permissions
+-- NOTE: store_card_translations function removed - translations now saved 
+-- via direct Supabase updates in backend (see translation.routes.direct.ts)
+-- This approach provides better control over hash freshness and race condition prevention
 
 -- =====================================================================
 -- 4. Delete Card Translation
@@ -4177,7 +3980,7 @@ $$ LANGUAGE plpgsql;
 
 GRANT EXECUTE ON FUNCTION get_card_translation_status(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_card_translations(UUID, VARCHAR) TO authenticated;
-GRANT EXECUTE ON FUNCTION store_card_translations(UUID, UUID, TEXT[], JSONB, JSONB, DECIMAL) TO service_role;
+-- store_card_translations removed - translations now saved via direct Supabase updates (see translation.routes.direct.ts)
 GRANT EXECUTE ON FUNCTION delete_card_translation(UUID, VARCHAR) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_translation_history(UUID, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_outdated_translations(UUID) TO authenticated;
@@ -5683,12 +5486,8 @@ CREATE TRIGGER update_user_credits_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at();
 
--- Translation jobs
-DROP TRIGGER IF EXISTS update_translation_jobs_updated_at ON public.translation_jobs;
-CREATE TRIGGER update_translation_jobs_updated_at
-    BEFORE UPDATE ON public.translation_jobs
-    FOR EACH ROW
-    EXECUTE FUNCTION public.update_updated_at();
+-- Translation jobs trigger removed - translation_jobs table removed (Nov 8, 2025)
+-- Job queue system replaced with synchronous translations + Socket.IO progress updates
 
 -- =================================================================
 -- AUTH RELATED TRIGGERS

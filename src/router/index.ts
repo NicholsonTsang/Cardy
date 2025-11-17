@@ -184,13 +184,27 @@ const getDefaultRouteForRole = (userRole: string | undefined): { name: string } 
   return { name: 'mycards' };
 };
 
+// Track if auth has been initialized to avoid redundant checks
+let authInitialized = false;
+
 router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
   const toast = useToast(); 
 
-  // Initialize auth store only if not already initialized
-  if (authStore.loading) {
+  // Early return for public routes that don't need any auth checks
+  // This skips all auth logic for landing page and public card views
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
+  const isAuthRoute = to.name === 'login' || to.name === 'signup';
+  
+  if (!requiresAuth && !isAuthRoute) {
+    // Public routes like landing page and public card views - no auth needed
+    return next();
+  }
+
+  // Initialize auth store only once on first navigation (for protected routes)
+  if (!authInitialized && authStore.loading) {
     await authStore.initialize();
+    authInitialized = true;
   }
 
   const isLoggedIn = !!authStore.session?.user;
@@ -198,7 +212,7 @@ router.beforeEach(async (to, from, next) => {
   const requiredRole = to.meta.requiredRole as string | undefined;
 
   // Check if route requires authentication
-  if (to.matched.some(record => record.meta.requiresAuth)) {
+  if (requiresAuth) {
     if (!isLoggedIn) {
       // User is not logged in, redirect to login
       if (to.name !== 'login') {

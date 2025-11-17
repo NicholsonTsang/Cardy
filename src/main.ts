@@ -51,4 +51,12 @@ app.use(createPinia())
 app.use(router)
 app.use(i18n)
 
+// Initialize auth store eagerly for faster first navigation
+// This must happen AFTER app.use(router) so useRouter() works in the auth store
+import { useAuthStore } from '@/stores/auth'
+const authStore = useAuthStore()
+authStore.initialize().catch(err => {
+  console.error('Failed to initialize auth:', err)
+})
+
 app.mount('#app')

@@ -13,13 +13,17 @@ EXCEPTION
 END $$;
 
 DO $$ BEGIN
+    -- Print Request Status enum
+    -- Note: PAYMENT_PENDING is defined but not used in the current credit-based payment model.
+    -- Payment happens at batch creation time, so all print requests start with SUBMITTED status.
+    -- PAYMENT_PENDING is reserved for potential future payment models (invoicing, pay-on-delivery, etc.)
     CREATE TYPE public."PrintRequestStatus" AS ENUM (
-        'SUBMITTED',
-        'PAYMENT_PENDING',
-        'PROCESSING',
-        'SHIPPED',
-        'COMPLETED',
-        'CANCELLED'
+        'SUBMITTED',      -- Print request received, pending admin review
+        'PAYMENT_PENDING', -- [UNUSED] Reserved for future invoice/deferred payment models
+        'PROCESSING',     -- Admin is printing/preparing cards
+        'SHIPPED',        -- Cards have been shipped to customer
+        'COMPLETED',      -- Cards delivered successfully
+        'CANCELLED'       -- Request cancelled or withdrawn
     );
 EXCEPTION
     WHEN duplicate_object THEN NULL;
@@ -36,6 +40,9 @@ EXCEPTION
     WHEN duplicate_object THEN NULL;
     WHEN insufficient_privilege THEN NULL;
 END $$;
+
+-- ProfileStatus enum removed - verification feature was never implemented
+-- No frontend components or routes use verification functionality
 
 -- Simple audit system - no complex enums, just practical logging
 

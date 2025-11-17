@@ -47,12 +47,8 @@ CREATE TRIGGER update_user_credits_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at();
 
--- Translation jobs
-DROP TRIGGER IF EXISTS update_translation_jobs_updated_at ON public.translation_jobs;
-CREATE TRIGGER update_translation_jobs_updated_at
-    BEFORE UPDATE ON public.translation_jobs
-    FOR EACH ROW
-    EXECUTE FUNCTION public.update_updated_at();
+-- Translation jobs trigger removed - translation_jobs table removed (Nov 8, 2025)
+-- Job queue system replaced with synchronous translations + Socket.IO progress updates
 
 -- =================================================================
 -- AUTH RELATED TRIGGERS

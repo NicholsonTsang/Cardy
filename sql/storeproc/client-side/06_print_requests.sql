@@ -62,6 +62,9 @@ BEGIN
     FROM auth.users 
     WHERE id = auth.uid();
 
+    -- Create print request with SUBMITTED status
+    -- Note: PAYMENT_PENDING is never used in the current credit-based payment model
+    -- because payment happens before print request creation (at batch issuance time)
     INSERT INTO print_requests (
         batch_id,
         user_id,
@@ -75,7 +78,7 @@ BEGIN
         p_shipping_address,
         COALESCE(p_contact_email, v_user_email),
         p_contact_whatsapp,
-        'SUBMITTED'
+        'SUBMITTED'  -- Always SUBMITTED; PAYMENT_PENDING reserved for future payment models
     )
     RETURNING id INTO v_print_request_id;
 
