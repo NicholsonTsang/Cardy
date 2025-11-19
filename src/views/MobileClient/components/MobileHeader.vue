@@ -58,17 +58,17 @@ function handleLanguageSelect() {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1rem;
+  padding: 1rem 1.25rem; /* 16px vertical, 20px horizontal */
   padding-top: max(1rem, env(safe-area-inset-top)); /* Account for notch */
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 1rem;
   -webkit-text-size-adjust: 100%; /* Prevent text scaling */
 }
 
 .back-button {
-  width: 2.5rem;
-  height: 2.5rem;
+  width: 2.75rem; /* Increased from 2.5rem */
+  height: 2.75rem;
   min-width: 44px; /* iOS recommended touch target */
   min-height: 44px;
   border-radius: 50%;
@@ -95,7 +95,7 @@ function handleLanguageSelect() {
 }
 
 .header-title {
-  font-size: 1rem;
+  font-size: 1.125rem; /* 18px */
   font-weight: 600;
   color: white;
   margin: 0;
@@ -105,7 +105,7 @@ function handleLanguageSelect() {
 }
 
 .header-subtitle {
-  font-size: 14px; /* Slightly smaller but not triggering zoom (non-interactive) */
+  font-size: 0.875rem; /* 14px */
   color: rgba(255, 255, 255, 0.7);
   margin: 0;
   margin-top: 0.125rem;
@@ -117,7 +117,7 @@ function handleLanguageSelect() {
 .language-controls {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   flex-shrink: 0;
 }
 </style>

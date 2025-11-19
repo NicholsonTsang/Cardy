@@ -147,8 +147,8 @@ onMounted(() => {
 <style scoped>
 .content-detail {
   padding-top: calc(5rem + env(safe-area-inset-top)); /* Account for header + notch */
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  padding-right: max(1.25rem, env(safe-area-inset-right));
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
   min-height: 100vh;
   min-height: var(--viewport-height, 100vh); /* Dynamic viewport */
@@ -166,11 +166,12 @@ onMounted(() => {
   aspect-ratio: var(--content-aspect-ratio, 4/3);
   overflow: hidden;
   margin-top: 1rem; /* Breathing room from header */
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   background-color: white;
   position: relative;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 1rem; /* Match glass morphism design */
+  border-radius: 1.25rem; /* Match glass morphism design */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .image {
@@ -193,28 +194,29 @@ onMounted(() => {
 /* Content Info */
 .content-info {
   background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 1rem;
-  padding: 1rem;
+  border-radius: 1.25rem;
+  padding: 1.25rem;
 }
 
 .content-title {
-  font-size: 1.25rem;
-  font-weight: bold;
+  font-size: 1.5rem;
+  font-weight: 800;
   color: white;
   margin: 0;
   margin-bottom: 1rem;
   word-break: break-word;
+  line-height: 1.2;
 }
 
 .content-description {
-  font-size: 16px; /* Minimum 16px to prevent iOS zoom on tap */
+  font-size: 1rem; /* 16px base */
   color: rgba(255, 255, 255, 0.9);
   line-height: 1.6;
   margin: 0;
-  margin-bottom: 1rem;
+  margin-bottom: 1.25rem;
   word-break: break-word;
   
   /* Scrollable container with max height */
@@ -228,8 +230,8 @@ onMounted(() => {
   overscroll-behavior-y: contain; /* Prevent overscroll bounce affecting parent */
   
   /* Consistent styling with CardOverview and ContentList */
-  padding: 0.75rem;
-  padding-bottom: 1.5rem; /* Extra bottom padding for fade effect */
+  padding: 1rem;
+  padding-bottom: 1.25rem; /* Optimized bottom padding */
   background: rgba(255, 255, 255, 0.1); /* Match other mobile components */
   backdrop-filter: blur(8px); /* Glass morphism effect like other components */
   -webkit-backdrop-filter: blur(8px);
@@ -247,15 +249,15 @@ onMounted(() => {
   bottom: 0;
   left: 0;
   right: 0;
-  height: 2.5rem;
+  height: 2rem;
   background: linear-gradient(
     to bottom, 
     transparent 0%, 
-    rgba(30, 41, 59, 0.7) 50%,
-    rgba(30, 41, 59, 0.9) 100%
+    rgba(30, 41, 59, 0.8) 60%,
+    rgba(30, 41, 59, 0.95) 100%
   ); /* Darker gradient for better visibility with lighter background */
   pointer-events: none; /* Don't block scrolling */
-  margin: 0 -0.75rem -1.5rem -0.75rem; /* Align with container padding */
+  margin: 0 -1rem -2rem -1rem; /* Negate flow height to overlay */
   border-radius: 0 0 1rem 1rem; /* Match parent border-radius */
 }
 
@@ -294,36 +296,37 @@ onMounted(() => {
 
 /* Sub Items */
 .sub-items {
-  margin-top: 2rem;
+  margin-top: 2.5rem;
 }
 
 .sub-items-title {
-  font-size: 1.125rem;
-  font-weight: 600;
+  font-size: 1.25rem;
+  font-weight: 700;
   color: white;
   margin: 0;
   margin-bottom: 1rem;
+  padding-left: 0.5rem;
 }
 
 .sub-items-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 /* Sub Item Card */
 .sub-item-card {
   display: flex;
-  gap: 0.75rem;
+  gap: 1rem;
   background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.75rem;
-  padding: 0.75rem;
+  border-radius: 1rem;
+  padding: 1rem;
   cursor: pointer;
   transition: all 0.2s;
-  min-height: 44px; /* iOS touch target */
+  min-height: 52px; /* Increased touch target */
   touch-action: manipulation; /* Disable double-tap zoom */
   -webkit-tap-highlight-color: transparent;
 }
@@ -335,12 +338,13 @@ onMounted(() => {
 
 /* Sub Item Image */
 .sub-item-image {
-  width: 4.5rem;
-  height: 4.5rem;
+  width: 5rem;
+  height: 5rem;
   flex-shrink: 0;
-  border-radius: 0.5rem;
+  border-radius: 0.75rem;
   overflow: hidden;
   background-color: black;
+  border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .thumbnail {
@@ -363,21 +367,24 @@ onMounted(() => {
 .sub-item-info {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .sub-item-title {
-  font-size: 16px; /* Minimum 16px for tappable card */
+  font-size: 1rem; /* 16px */
   font-weight: 600;
   color: white;
   margin: 0;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.375rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .sub-item-description {
-  font-size: 0.75rem;
+  font-size: 0.875rem; /* 14px */
   color: rgba(255, 255, 255, 0.7);
   margin: 0;
   margin-bottom: 0.5rem;
@@ -393,7 +400,8 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
+  margin-top: auto;
 }
 
 .explore-hint {

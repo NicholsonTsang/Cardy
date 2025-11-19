@@ -727,6 +727,7 @@
     "select_chinese_voice": "選擇中文語音",
     "chinese_voice_description": "選擇 AI 語音回應使用的中文方言",
     "speak_in": "請用",
+    "chat_in": "請用",
     "start_conversation": "開始對話",
     "type_message": "輸入訊息...",
     "hold_to_record": "按住以錄音",
@@ -774,7 +775,9 @@
     "ai_voice_guide": "提供 AI 語音導覽",
     "close": "關閉",
     "change": "變更",
-    "welcome_message": "您好！我是 {name} 的 AI 助理。我能為您提供什麼協助？",
+    "welcome_message": "你好！我係「{name}」嘅AI助手。有咩想知都可以問我！",
+    "welcome_message_mandarin": "你好！我是「{name}」的AI助手。有什麼想知道的都可以問我！",
+    "call_ended_message": "通話已結束。請切換回聊天模式或開始新的通話。",
     "connection_error": "連線錯誤",
     "open_ai_assistant": "開啟 AI 助理"
   },

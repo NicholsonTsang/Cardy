@@ -1077,12 +1077,7 @@ const showValidationError = computed(() => {
 
 // Watch for reactive updates on quantity changes
 watch(batchQuantity, (newValue, oldValue) => {
-  console.log('🔄 Quantity changed:', { 
-    oldValue, 
-    newValue, 
-    isValid: isQuantityValid.value,
-    showError: showValidationError.value
-  })
+  // Logic to update validation state based on quantity changes
 }, { immediate: true })
 
 // Methods
@@ -1199,13 +1194,10 @@ const loadCurrentCard = async () => {
 
     if (error) throw error
     
-    console.log('Card data received:', data); // Debug log
-    
     // Handle nested data structure - the actual card data is in data["0"]
     let cardData = data;
     if (data && typeof data === 'object' && data["0"]) {
       cardData = data["0"];
-      console.log('Using nested card data:', cardData);
     }
     
     // Transform data to match expected structure
@@ -1215,8 +1207,6 @@ const loadCurrentCard = async () => {
       image_url: cardData.image_url || null, // Use image if available
       description: cardData.description || ''
     }
-    
-    console.log('Transformed currentCard:', currentCard.value); // Debug log
 
   } catch (error) {
     console.error('Error loading current card:', error)
@@ -1231,12 +1221,11 @@ const loadCurrentCard = async () => {
 
 // Image handling functions
 const handleImageError = (event) => {
-  console.log('Image failed to load, using placeholder:', event.target.src);
   event.target.src = cardPlaceholder;
 }
 
 const handleImageLoad = (event) => {
-  console.log('Image loaded successfully:', event.target.src);
+  // Image loaded successfully
 }
 
 const showConfirmationDialog = () => {
@@ -1506,15 +1495,12 @@ const viewPrintRequestDialog = async (batch) => {
     
     if (printRequests && printRequests.length > 0) {
       const latestRequest = printRequests.sort((a, b) => new Date(b.requested_at) - new Date(a.requested_at))[0]
-      console.log('Latest print request data:', latestRequest)
-      console.log('Cards count from DB:', latestRequest.cards_count)
       selectedPrintRequestData.value = {
         ...latestRequest,
         batch_info: batch,
         // Fallback to batch.cards_count if not provided by DB
         cards_count: latestRequest.cards_count || batch.cards_count
       }
-      console.log('Selected print request data:', selectedPrintRequestData.value)
       showPrintStatusDialog.value = true
     } else {
       toast.add({

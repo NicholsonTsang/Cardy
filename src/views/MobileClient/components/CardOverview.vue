@@ -36,7 +36,7 @@
         <h1 class="card-title">{{ card.card_name }}</h1>
         
         <!-- Description -->
-        <div class="description-wrapper">
+        <div v-if="renderedDescription" class="description-wrapper">
           <div class="card-description markdown-content" v-html="renderedDescription"></div>
         </div>
         
@@ -141,7 +141,7 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem 1rem 1rem;
+  padding: 1.5rem 1.25rem 1rem;
   position: relative;
   min-height: 0;
 }
@@ -199,7 +199,7 @@ onMounted(() => {
 .card-frame {
   aspect-ratio: var(--card-aspect-ratio, 2/3);
   width: 100%;
-  border-radius: 1.25rem;
+  border-radius: 1.5rem;
   overflow: hidden;
   background: white;
   box-shadow: 
@@ -259,10 +259,12 @@ onMounted(() => {
   flex-shrink: 0;
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 58, 138, 0.95) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 1.5rem 1rem 2rem;
+  padding: 1.5rem 1.25rem 2rem;
   padding-bottom: max(2rem, env(safe-area-inset-bottom)); /* Account for home indicator */
   animation: slideUp 0.5s ease-out 0.2s both;
   z-index: 2;
+  border-top-left-radius: 1.5rem;
+  border-top-right-radius: 1.5rem;
 }
 
 @keyframes slideUp {
@@ -289,18 +291,18 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  padding: 0.625rem 1.25rem;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 9999px;
   color: white;
-  font-size: 16px; /* Minimum 16px to prevent iOS zoom */
+  font-size: 1rem; /* 16px base */
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  margin: 0 auto 0.75rem;
+  margin: 0 auto 0.5rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
 }
@@ -353,7 +355,7 @@ onMounted(() => {
 .card-description {
   font-size: 16px; /* Minimum 16px to prevent iOS zoom */
   color: rgba(255, 255, 255, 0.85);
-  line-height: 1.6;
+  line-height: 1.5;
   margin: 0;
   text-align: center;
   word-break: break-word;
@@ -361,7 +363,7 @@ onMounted(() => {
 
 /* Markdown Content Styling */
 .markdown-content :deep(p) {
-  margin: 0 0 0.75rem 0;
+  margin: 0 0 0.5rem 0;
 }
 
 .markdown-content :deep(p:last-child) {

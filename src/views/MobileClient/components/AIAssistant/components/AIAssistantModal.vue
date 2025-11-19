@@ -42,7 +42,7 @@
               <i class="pi pi-globe" />
               <span class="language-flag">{{ languageStore.selectedLanguage.flag }}</span>
               <span class="language-text">
-                {{ $t('mobile.speak_in') }} <strong>{{ languageStore.selectedLanguage.name }}</strong>
+                {{ indicatorPrefix }} <strong>{{ indicatorLanguage }}</strong>
               </span>
             </div>
           </div>
@@ -58,17 +58,20 @@
 </template>
 
 <script setup lang="ts">
-import { watch, onMounted, onUnmounted, ref } from 'vue'
+import { watch, onMounted, onUnmounted, ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import LanguageSelector from './LanguageSelector.vue'
-import { useMobileLanguageStore } from '@/stores/language'
+import { useMobileLanguageStore, CHINESE_VOICE_OPTIONS } from '@/stores/language'
 import type { ConversationMode, Language } from '../types'
 
 const languageStore = useMobileLanguageStore()
+const { t } = useI18n()
 
 const props = defineProps<{
   isOpen: boolean
   showLanguageSelection: boolean
   conversationMode: ConversationMode
+  inputMode?: 'text' | 'voice'
   contentItemName: string
 }>()
 
@@ -79,6 +82,31 @@ defineEmits<{
 }>()
 
 const visualViewportHeight = ref<number | null>(null)
+
+// Computed properties for language indicator
+const isVoiceMode = computed(() => {
+  return props.conversationMode === 'realtime' || props.inputMode === 'voice'
+})
+
+const indicatorPrefix = computed(() => {
+  // Use "Speak in" for voice/realtime, "Chat in" for text
+  return isVoiceMode.value ? t('mobile.speak_in') : t('mobile.chat_in')
+})
+
+const indicatorLanguage = computed(() => {
+  const selectedLang = languageStore.selectedLanguage
+  
+  // For Chinese in Voice Mode, show dialect name (e.g., 廣東話, 普通話)
+  if (isVoiceMode.value && languageStore.isChinese(selectedLang.code)) {
+    const voiceOption = CHINESE_VOICE_OPTIONS.find(opt => opt.value === languageStore.chineseVoice)
+    if (voiceOption) {
+      return voiceOption.nativeName
+    }
+  }
+  
+  // Default: show language name (e.g., 繁體中文, English)
+  return selectedLang.name
+})
 
 // Update modal height when keyboard appears/disappears
 function updateVisualViewport() {

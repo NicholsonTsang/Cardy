@@ -99,8 +99,8 @@ onMounted(() => {
 <style scoped>
 .content-list {
   padding-top: calc(5rem + env(safe-area-inset-top)); /* Account for header + notch */
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-left: max(1.25rem, env(safe-area-inset-left));
+  padding-right: max(1.25rem, env(safe-area-inset-right));
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
   min-height: 100vh;
   min-height: var(--viewport-height, 100vh); /* Dynamic viewport */
@@ -111,16 +111,16 @@ onMounted(() => {
 .content-grid {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 /* Content Card */
 .content-card {
   background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 1rem;
+  border-radius: 1.25rem;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.2s;
@@ -161,25 +161,26 @@ onMounted(() => {
 
 .badge {
   position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  background: rgba(59, 130, 246, 0.8);
-  backdrop-filter: blur(4px);
-  padding: 0.25rem 0.75rem;
+  top: 1rem;
+  right: 1rem;
+  background: rgba(59, 130, 246, 0.9);
+  backdrop-filter: blur(8px);
+  padding: 0.375rem 0.875rem;
   border-radius: 9999px;
   font-size: 0.75rem;
   color: white;
-  font-weight: 500;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 /* Card Content */
 .card-content {
-  padding: 1rem;
+  padding: 1.25rem;
 }
 
 .item-title {
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 1.125rem;
+  font-weight: 700;
   color: white;
   margin: 0;
   margin-bottom: 0.5rem;
@@ -189,13 +190,14 @@ onMounted(() => {
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   word-break: break-word;
+  line-height: 1.3;
 }
 
 .item-description {
-  font-size: 16px; /* Minimum 16px to prevent iOS zoom on tap */
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.9375rem; /* 15px */
+  color: rgba(255, 255, 255, 0.8);
   margin: 0;
-  margin-bottom: 0.75rem;
+  margin-bottom: 1rem;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;

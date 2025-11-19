@@ -744,6 +744,7 @@
     "select_chinese_voice": "Select Chinese Voice",
     "chinese_voice_description": "Choose which Chinese dialect to use for AI voice responses",
     "speak_in": "Speak in",
+    "chat_in": "Chat in",
     "start_conversation": "Start Conversation",
     "type_message": "Type a message...",
     "hold_to_record": "Hold to record",
@@ -791,7 +792,8 @@
     "ai_voice_guide": "AI Voice Guide Available",
     "close": "Close",
     "change": "Change",
-    "welcome_message": "Hello! I'm the AI assistant for {name}. How can I help you?",
+    "welcome_message": "Hi! I'm your AI assistant for \"{name}\". Feel free to ask me anything about this exhibit!",
+    "call_ended_message": "Call ended. Switch back to chat mode or start a new call.",
     "connection_error": "Connection error",
     "open_ai_assistant": "Open AI Assistant",
     "translated_content_available": "Translated content available"

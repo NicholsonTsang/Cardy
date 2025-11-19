@@ -45,7 +45,7 @@ The backend is an Express.js server located in the `backend-server/` directory. 
 -   **Authentication**: JWT validation via middleware, integrated with Supabase Auth.
 -   **Key Services**:
     -   **Background Translation Job Processor**: Asynchronous translation processing using Supabase Realtime with automatic polling fallback
-    -   Card content translation (OpenAI GPT-4.1-nano)
+    -   Card content translation (OpenAI GPT-4.1-nano / Gemini)
     -   Payment processing (Stripe checkout and webhooks)
     -   AI chat and voice features (OpenAI)
     -   Real-time progress updates (Socket.IO)
@@ -191,9 +191,7 @@ Cardy/
 │   ├── all_stored_procedures.sql  # GENERATED - Do not edit directly
 │   ├── storeproc/          # Source files for stored procedures
 │   │   ├── client-side/
-│   │   │   └── 12_translation_management.sql
 │   │   └── server-side/
-│   │       └── translation_jobs.sql   # Job management procedures
 │   ├── policy.sql          # RLS policies
 │   └── triggers.sql        # Database triggers (includes updated_at triggers)
 │
@@ -204,37 +202,38 @@ Cardy/
 │   ├── combine-storeproc.sh  # Combines SQL files (includes triggers)
 │   └── deploy-cloud-run.sh   # Backend deployment script
 │
-├── BACKGROUND_TRANSLATION_JOBS.md          # Translation system documentation
-├── CONCURRENCY_FIX_TRANSLATION_JOBS.md     # Row-level locking documentation
-├── TRANSLATION_JOBS_TESTING_GUIDE.md       # Comprehensive testing guide
-├── JOB_MANAGEMENT_UI_SUMMARY.md            # Job management UI overview
-├── REALTIME_SCHEMA_AUTOMATION.md           # Realtime setup automation
-├── IMPLEMENTATION_STATUS.md                # Current implementation status
-├── CLAUDE.md                                # AI assistant project overview
-├── .env.example                            # Frontend environment template
-└── package.json                            # Frontend dependencies
+├── docs_archive/           # Historical documentation and logs
+│   ├── backend/            # Backend-specific archival docs
+│   └── ...                 # Feature implementation details, bug fixes logs
+│
+├── CLAUDE.md               # AI assistant project overview and recent updates
+├── .env.example            # Frontend environment template
+└── package.json            # Frontend dependencies
 ```
 
 ---
 
-## Database Management
+## Maintenance & Handover
 
-All database schema, RLS policies, and stored procedures are managed as SQL files. **Direct modifications in the Supabase Dashboard are discouraged.**
+### Documentation Strategy
+-   **Active Documentation**: `README.md` (this file) and `CLAUDE.md` (recent updates/context) are the primary sources of truth.
+-   **Historical Documentation**: Detailed implementation logs, feature specs, and bug fix reports are archived in the `docs_archive/` directory. Refer to these for deep dives into specific past decisions.
 
-**Update Workflow:**
+### Security Best Practices
+-   **HTML Sanitization**: The project uses `dompurify` in `src/utils/markdownRenderer.ts` to sanitize HTML rendered from Markdown. Always use `renderMarkdown()` when displaying user-generated content.
+-   **Environment Variables**: Never commit `.env` files. Use `.env.example` for templates.
+-   **Database Access**: All database access is via Stored Procedures (`.rpc()`). Direct table access (SELECT/INSERT/UPDATE/DELETE) should remain disabled for the `anon` and `authenticated` roles in production to ensure business logic encapsulation.
 
-1.  **Edit Source Files**: Modify the relevant files in `sql/` (e.g., `sql/schema.sql` or files in `sql/storeproc/`).
-2.  **Generate Combined File**: If you edited stored procedures, run the script to combine them:
-    ```bash
-    ./scripts/combine-storeproc.sh
-    ```
-3.  **Manual Deployment**: Navigate to the **SQL Editor** in your Supabase Dashboard and execute the contents of the modified files in the following order:
-    1.  `sql/schema.sql` (includes Realtime setup via `ALTER PUBLICATION`)
-    2.  `sql/all_stored_procedures.sql`
-    3.  `sql/policy.sql`
-    4.  `sql/triggers.sql`
-    
-    ✅ **Note**: Running `schema.sql` automatically enables Supabase Realtime for the `translation_jobs` table. No additional dashboard configuration needed!
+### Common Maintenance Tasks
+-   **Updating Database Schema**:
+    1.  Modify files in `sql/` (schema or storeproc).
+    2.  Run `./scripts/combine-storeproc.sh` to regenerate `all_stored_procedures.sql`.
+    3.  Apply changes via Supabase Dashboard SQL Editor.
+-   **Adding New Translations**: Update `src/i18n/locales/*.json` files.
+-   **Updating Backend**:
+    1.  Make changes in `backend-server/`.
+    2.  Test locally with `npm run dev`.
+    3.  Deploy using `./scripts/deploy-cloud-run.sh`.
 
 ---
 
@@ -264,55 +263,17 @@ CardStudio uses a **production-ready background translation job processing syste
 ✅ **Real-time Progress** - Socket.IO updates for connected clients  
 ✅ **Job Management UI** - Visual panel showing ongoing/failed jobs with retry/cancel buttons
 
-### How It Works
+### Documentation Links (Archived)
 
-1. **Job Creation** - User initiates translation via frontend
-2. **Credit Reservation** - Credits reserved upfront (refunded if translation fails)
-3. **Instant Notification** - Supabase Realtime notifies backend immediately
-4. **Background Processing** - Job processed independently of client connection
-5. **Progress Updates** - Real-time updates via Socket.IO (if client connected)
-6. **Completion** - Credits consumed for successful languages, refunded for failures
-
-### Performance
-
-| Metric | Value |
-|--------|-------|
-| **Job Pickup Latency** | <100ms (Realtime) / 0-5s (polling fallback) |
-| **Database Queries (idle)** | 2/hour (Realtime) / 720/hour (polling) |
-| **Concurrent Jobs** | 3 per instance (configurable) |
-| **Concurrent Languages** | 3 per job (configurable) |
-| **Batch Size** | 10 content items (configurable) |
-
-### Job Management UI
-
-**Integrated Translation Jobs Panel** - Appears automatically on each card's translation section
-
-**Features:**
-- Real-time job status display (pending, processing, completed, failed, cancelled)
-- Progress bars showing translation completion (0% → 100%)
-- Per-language status indicators with color-coded badges
-- One-click **Retry** button for failed translations
-- One-click **Cancel** button for ongoing translations
-- Credit accounting display (reserved, consumed, refunded)
-- Error messages for failed translations
-- Automatic refresh every 5 seconds for active jobs
-- "Time ago" formatting (e.g., "2 minutes ago")
-
-**User Benefits:**
-- ✅ Close browser during translation - job continues in background
-- ✅ Visual feedback on translation progress
-- ✅ Easy recovery from failures with retry button
-- ✅ Transparent credit usage and refunds
-- ✅ No page refresh needed
-
-### Documentation
-
+For detailed implementation details, refer to the following files in `docs_archive/`:
 -   **`BACKGROUND_TRANSLATION_JOBS.md`** - Complete system architecture and implementation
 -   **`CONCURRENCY_FIX_TRANSLATION_JOBS.md`** - Row-level locking for multi-instance safety
--   **`backend-server/REALTIME_JOB_PROCESSOR.md`** - Realtime connection handling and monitoring
--   **`backend-server/ENVIRONMENT_VARIABLES.md`** - All configuration options
 -   **`TRANSLATION_JOBS_TESTING_GUIDE.md`** - Comprehensive testing scenarios
 -   **`JOB_MANAGEMENT_UI_SUMMARY.md`** - Job management UI overview
+
+For current backend configuration, see:
+-   **`backend-server/REALTIME_JOB_PROCESSOR.md`** - Realtime connection handling and monitoring
+-   **`backend-server/ENVIRONMENT_VARIABLES.md`** - All configuration options
 
 ### Monitoring
 

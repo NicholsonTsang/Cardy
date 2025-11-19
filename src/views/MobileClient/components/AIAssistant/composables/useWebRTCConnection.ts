@@ -73,6 +73,17 @@ export function useWebRTCConnection() {
   
   // Initialize WebRTC connection
   async function connect(language: string, instructions: string): Promise<void> {
+    // Prevent duplicate connections
+    if (isConnected.value || status.value === 'connecting') {
+      console.warn('⚠️ Connection already active or in progress, ignoring duplicate connect request')
+      return
+    }
+    
+    // Clean up any existing connection first
+    if (pc.value || dc.value || mediaStream.value) {
+      cleanup()
+    }
+    
     status.value = 'connecting'
     error.value = null
     
@@ -100,7 +111,6 @@ export function useWebRTCConnection() {
       
       // Get ephemeral token
       const ephemeralToken = await getEphemeralToken(language)
-      console.log('🔑 Got ephemeral token')
       
       // Request microphone access
       mediaStream.value = await navigator.mediaDevices.getUserMedia({
@@ -129,7 +139,6 @@ export function useWebRTCConnection() {
       
       // Set up data channel handlers
       dc.value.onopen = () => {
-        console.log('✅ Data channel opened')
         isConnected.value = true
         status.value = 'connected'
         
@@ -194,16 +203,6 @@ export function useWebRTCConnection() {
           }
         }
         
-        // DEBUG: Print full session configuration
-        console.log('🔧 ========== REALTIME API SESSION CONFIGURATION ==========')
-        console.log('🌍 Selected Language:', language)
-        console.log('🎤 Voice:', voiceMap[language] || 'alloy')
-        console.log('🎧 Whisper Language Code:', whisperLanguageMap[language] || 'en')
-        console.log('📝 Full Instructions:')
-        console.log(instructions)
-        console.log('📦 Complete Session Config:', JSON.stringify(sessionConfig, null, 2))
-        console.log('🔧 =======================================================')
-        
         // Send session configuration with context
         sendMessage(sessionConfig)
         
@@ -217,7 +216,6 @@ export function useWebRTCConnection() {
             }
           }
           
-          console.log('👋 Triggering AI first greeting:', greetingConfig)
           sendMessage(greetingConfig)
         }, 500)
       }
@@ -227,7 +225,6 @@ export function useWebRTCConnection() {
       }
       
       dc.value.onclose = () => {
-        console.log('🔌 Data channel closed')
         cleanup()
       }
       
@@ -239,25 +236,20 @@ export function useWebRTCConnection() {
       
       // Handle incoming audio
       pc.value.ontrack = (event) => {
-        console.log('🎵 Received audio track')
-        
         // CRITICAL FIX: Prevent multiple audio elements from being created
         // On mobile, ontrack can fire multiple times due to ICE reconnections
         // This causes the AI to restart speaking from the beginning
         if (audioElement.value && audioElement.value.srcObject === event.streams[0]) {
-          console.log('⚠️ Audio track already connected, skipping duplicate ontrack event')
           return
         }
         
         // Clean up existing audio element and analyser before creating new ones
         if (audioElement.value) {
-          console.log('🧹 Cleaning up existing audio element before creating new one')
           audioElement.value.pause()
           audioElement.value.srcObject = null
         }
         
         if (audioAnalyser.value) {
-          console.log('🧹 Cleaning up existing audio analyser')
           try {
             audioAnalyser.value.context.close()
           } catch (err) {
@@ -267,7 +259,6 @@ export function useWebRTCConnection() {
         }
         
         // Create new audio element
-        console.log('✅ Creating new audio element for stream')
         audioElement.value = new Audio()
         audioElement.value.srcObject = event.streams[0]
         audioElement.value.autoplay = true
@@ -299,10 +290,8 @@ export function useWebRTCConnection() {
       
       // Get model from environment (must match what was used for ephemeral token)
       const model = import.meta.env.VITE_OPENAI_REALTIME_MODEL || 'gpt-realtime-mini-2025-10-06'
-      console.log('🎯 Using Realtime model:', model)
       
       // Use backend server to proxy the WebRTC connection
-      console.log('🌐 Connecting through backend server:', backendUrl)
       const response = await fetch(`${backendUrl}/offer`, {
         method: 'POST',
         headers: {
@@ -330,8 +319,6 @@ export function useWebRTCConnection() {
         sdp: answerSdp
       })
       
-      console.log('✅ WebRTC connection established through relay')
-      
     } catch (err: any) {
       console.error('Connection failed:', err)
       error.value = err.message
@@ -349,19 +336,15 @@ export function useWebRTCConnection() {
     try {
       const message = JSON.parse(data)
       
-      console.log('📨 Received message type:', message.type)
-      
       // Handle different message types
       switch (message.type) {
         case 'session.created':
         case 'session.updated':
-          console.log('📋 Session event:', message.type)
           break
           
         case 'conversation.item.input_audio_transcription.completed':
           // User's speech transcript
           if (message.transcript && onUserTranscriptCallback) {
-            console.log('🎤 User said:', message.transcript)
             onUserTranscriptCallback(message.transcript)
           }
           break
@@ -369,7 +352,6 @@ export function useWebRTCConnection() {
         case 'response.audio_transcript.delta':
           // AI response transcript (streaming)
           if (message.delta) {
-            console.log('📝 AI transcript delta:', message.delta)
             currentAssistantTranscript += message.delta
           }
           break
@@ -377,7 +359,6 @@ export function useWebRTCConnection() {
         case 'response.audio_transcript.done':
           // AI response complete
           if (currentAssistantTranscript && onAssistantTranscriptCallback) {
-            console.log('✅ AI transcript complete:', currentAssistantTranscript)
             onAssistantTranscriptCallback(currentAssistantTranscript)
             currentAssistantTranscript = ''
           }
@@ -386,7 +367,6 @@ export function useWebRTCConnection() {
         case 'response.done':
           // Response fully completed - fallback if no audio_transcript.done
           if (currentAssistantTranscript && onAssistantTranscriptCallback) {
-            console.log('✅ AI response done:', currentAssistantTranscript)
             onAssistantTranscriptCallback(currentAssistantTranscript)
             currentAssistantTranscript = ''
           }
@@ -398,7 +378,7 @@ export function useWebRTCConnection() {
           break
           
         default:
-          console.log('📨 Unhandled message:', message.type)
+          // Unhandled message type
       }
     } catch (err) {
       console.error('Failed to parse message:', err)
@@ -445,46 +425,83 @@ export function useWebRTCConnection() {
   
   // Disconnect and cleanup
   function disconnect() {
-    console.log('🔌 Disconnecting...')
     cleanup()
   }
   
   // Cleanup resources
   function cleanup() {
-    // Clean up audio element
+    // Clean up audio element - CRITICAL: Proper order to prevent audio glitches/noises
     if (audioElement.value) {
-      console.log('🧹 Cleaning up audio element')
-      audioElement.value.pause()
-      audioElement.value.srcObject = null
-      audioElement.value = null
+      try {
+        // Step 1: Mute immediately to prevent any audio glitches
+        audioElement.value.muted = true
+        audioElement.value.volume = 0
+        
+        // Step 2: Pause playback
+        audioElement.value.pause()
+        
+        // Step 3: Remove the stream
+        if (audioElement.value.srcObject) {
+          const stream = audioElement.value.srcObject as MediaStream
+          stream.getTracks().forEach(track => track.stop())
+        }
+        audioElement.value.srcObject = null
+        
+        // Step 4: Remove event listeners (if any were added)
+        audioElement.value.onended = null
+        audioElement.value.onerror = null
+        
+        // Step 5: Nullify reference
+        audioElement.value = null
+      } catch (err) {
+        console.warn('⚠️ Error cleaning up audio element:', err)
+        audioElement.value = null
+      }
     }
     
     // Clean up audio analyser
     if (audioAnalyser.value) {
-      console.log('🧹 Cleaning up audio analyser')
       try {
+        // Disconnect analyser node before closing context
+        audioAnalyser.value.analyser.disconnect()
         audioAnalyser.value.context.close()
       } catch (err) {
-        console.warn('Error closing audio context:', err)
+        console.warn('⚠️ Error closing audio context:', err)
       }
       audioAnalyser.value = null
     }
     
     // Close data channel
     if (dc.value) {
-      dc.value.close()
+      try {
+        if (dc.value.readyState === 'open') {
+          dc.value.close()
+        }
+      } catch (err) {
+        console.warn('⚠️ Error closing data channel:', err)
+      }
       dc.value = null
     }
     
     // Close peer connection
     if (pc.value) {
-      pc.value.close()
+      try {
+        pc.value.close()
+      } catch (err) {
+        console.warn('⚠️ Error closing peer connection:', err)
+      }
       pc.value = null
     }
     
-    // Stop media stream
+    // Stop media stream (microphone)
     if (mediaStream.value) {
-      mediaStream.value.getTracks().forEach(track => track.stop())
+      try {
+        mediaStream.value.getTracks().forEach(track => {
+          track.stop()
+        })
+      } catch (err) {
+        console.warn('⚠️ Error stopping media stream:', err)
+      }
       mediaStream.value = null
     }
     
@@ -504,6 +521,25 @@ export function useWebRTCConnection() {
     onAssistantTranscriptCallback = callback
   }
   
+  // Handle page visibility changes (mobile browser going to background)
+  function handleVisibilityChange() {
+    if (document.hidden && isConnected.value) {
+      disconnect()
+    }
+  }
+  
+  // Set up visibility listener
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+  }
+  
+  // Cleanup visibility listener
+  function destroyVisibilityListener() {
+    if (typeof document !== 'undefined') {
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }
+  
   return {
     // State
     isConnected,
@@ -517,6 +553,7 @@ export function useWebRTCConnection() {
     interrupt,
     sendText,
     onUserTranscript,
-    onAssistantTranscript
+    onAssistantTranscript,
+    destroyVisibilityListener  // Expose for cleanup when composable is unmounted
   }
 }

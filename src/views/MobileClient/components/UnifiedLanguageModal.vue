@@ -10,7 +10,7 @@
         :title="$t('mobile.select_language')"
       >
         <span class="language-flag">{{ languageStore.selectedLanguage.flag }}</span>
-        <span class="language-code">{{ languageStore.selectedLanguage.code.toUpperCase() }}</span>
+        <span class="language-name">{{ languageStore.selectedLanguage.name }}</span>
       </button>
     </slot>
 
@@ -198,10 +198,9 @@ function selectLanguage(language: Language) {
   line-height: 1;
 }
 
-.language-code {
+.language-name {
   font-weight: 600;
-  font-size: 0.75rem;
-  text-transform: uppercase;
+  font-size: 0.875rem;
 }
 
 /* Modal Overlay */

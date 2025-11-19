@@ -3,14 +3,15 @@
     <!-- AI Button -->
     <button @click="openModal" class="ai-button">
       <i class="pi pi-comments" />
-      <span>Ask AI Assistant</span>
-        </button>
+      <span>{{ $t('mobile.ask_ai_assistant') }}</span>
+    </button>
 
     <!-- Modal -->
     <AIAssistantModal
       :is-open="isModalOpen"
       :show-language-selection="false"
       :conversation-mode="conversationMode"
+      :input-mode="inputMode"
       :content-item-name="contentItemName"
       @close="closeModal"
       @toggle-mode="toggleConversationMode"
@@ -56,7 +57,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AIAssistantModal from './components/AIAssistantModal.vue'
 import ChatInterface from './components/ChatInterface.vue'
 import RealtimeInterface from './components/RealtimeInterface.vue'
@@ -70,6 +72,7 @@ import type { Message, ConversationMode, AIAssistantProps } from './types'
 
 const props = defineProps<AIAssistantProps>()
 const languageStore = useMobileLanguageStore()
+const { t } = useI18n()
 
 // ============================================================================
 // COMPOSABLES
@@ -140,22 +143,34 @@ Remember: You are here to enhance the visitor's understanding of "${props.conten
 You are speaking with someone interested in: ${props.contentItemName}. Provide engaging, natural conversation.`
 })
 
-const welcomeMessages: Record<string, string> = {
-  'en': `Hi! I'm your AI assistant for "${props.contentItemName}". Feel free to ask me anything about this exhibit!`,
-  'zh-Hans-cantonese': `你好！我係「${props.contentItemName}」嘅AI助手。有咩想知都可以问我！`,  // Simplified + Cantonese
-  'zh-Hans-mandarin': `你好！我是「${props.contentItemName}」的AI助手。有什么想知道的都可以问我！`,  // Simplified + Mandarin
-  'zh-Hant-cantonese': `你好！我係「${props.contentItemName}」嘅AI助手。有咩想知都可以問我！`,  // Traditional + Cantonese
-  'zh-Hant-mandarin': `你好！我是「${props.contentItemName}」的AI助手。有什麼想知道的都可以問我！`,  // Traditional + Mandarin
-  'zh-Hans': `你好！我是「${props.contentItemName}」的AI助手。有什么想知道的都可以问我！`,  // Fallback
-  'zh-Hant': `你好！我是「${props.contentItemName}」的AI助手。有什麼想知道的都可以問我！`,  // Fallback
-  'ja': `こんにちは！「${props.contentItemName}」のAIアシスタントです。この展示について何でも聞いてください！`,
-  'ko': `안녕하세요! "${props.contentItemName}"의 AI 어시스턴트입니다. 이 전시에 대해 무엇이든 물어보세요!`,
-  'es': `¡Hola! Soy tu asistente de IA para "${props.contentItemName}". ¡Pregúntame lo que quieras sobre esta exhibición!`,
-  'fr': `Bonjour ! Je suis votre assistant IA pour "${props.contentItemName}". N'hésitez pas à me poser des questions sur cette exposition !`,
-  'ru': `Привет! Я ваш AI-помощник для "${props.contentItemName}". Спрашивайте меня о чем угодно!`,
-  'ar': `مرحبا! أنا مساعدك الذكي لـ "${props.contentItemName}". لا تتردد في طرح أي أسئلة!`,
-  'th': `สวัสดี! ฉันเป็น AI ผู้ช่วยของ "${props.contentItemName}" ถามอะไรก็ได้เกี่ยวกับนิทรรศการนี้!`
-}
+const welcomeText = computed(() => {
+  const langCode = languageStore.selectedLanguage.code
+  const voice = languageStore.chineseVoice
+  const params = { name: props.contentItemName }
+  
+  // Special handling for Chinese dialects to match voice preference
+  if (languageStore.isChinese(langCode)) {
+    if (voice === 'cantonese') {
+      // For simplified Chinese with Cantonese voice, use specific key if available
+      if (langCode === 'zh-Hans') {
+        return t('mobile.welcome_message_cantonese', params)
+      }
+      // For Traditional Chinese, default is Cantonese style
+      return t('mobile.welcome_message', params)
+    } else {
+      // Mandarin voice
+      // For Traditional Chinese with Mandarin voice, use specific key
+      if (langCode === 'zh-Hant') {
+        return t('mobile.welcome_message_mandarin', params)
+      }
+      // For Simplified Chinese, default is Mandarin style
+      return t('mobile.welcome_message', params)
+    }
+  }
+  
+  // Default for other languages
+  return t('mobile.welcome_message', params)
+})
 
 // Computed property for realtime status text
 const realtimeStatusText = computed(() => {
@@ -197,15 +212,11 @@ function openModal() {
   firstAudioPlayed.value = false
   connectionError.value = null // Clear any previous errors
   
-  // Add welcome message using voice-aware language code (with fallback)
-  const voiceAwareCode = languageStore.getVoiceAwareLanguageCode()
-  const welcomeText = welcomeMessages[voiceAwareCode] || 
-                     welcomeMessages[languageStore.selectedLanguage.code] || 
-                     welcomeMessages['en']
+  // Add welcome message using reactive computed property
   messages.value = [{
     id: Date.now().toString(),
     role: 'assistant',
-    content: welcomeText,
+    content: welcomeText.value,
     timestamp: new Date()
   }]
 }
@@ -238,14 +249,10 @@ function toggleConversationMode() {
     }
     connectionError.value = null // Clear errors
     // Add welcome message back
-    const voiceAwareCode = languageStore.getVoiceAwareLanguageCode()
-    const welcomeText = welcomeMessages[voiceAwareCode] || 
-                       welcomeMessages[languageStore.selectedLanguage.code] || 
-                       welcomeMessages['en']
     messages.value = [{
       id: Date.now().toString(),
       role: 'assistant',
-      content: welcomeText,
+      content: welcomeText.value,
       timestamp: new Date()
     }]
   }
@@ -253,14 +260,10 @@ function toggleConversationMode() {
 
 function clearChat() {
   // Clear messages and reset to welcome message
-  const voiceAwareCode = languageStore.getVoiceAwareLanguageCode()
-  const welcomeText = welcomeMessages[voiceAwareCode] || 
-                     welcomeMessages[languageStore.selectedLanguage.code] || 
-                     welcomeMessages['en']
   messages.value = [{
     id: Date.now().toString(),
     role: 'assistant',
-    content: welcomeText,
+    content: welcomeText.value,
     timestamp: new Date()
   }]
   
@@ -272,7 +275,7 @@ function clearChat() {
     voiceRecording.cancelRecording()
   }
   
-  console.log('Chat cleared')
+  // Chat cleared
 }
 
 // ============================================================================
@@ -398,14 +401,6 @@ async function playMessageAudio(message: Message) {
 
 async function connectRealtime() {
   const voiceAwareCode = languageStore.getVoiceAwareLanguageCode()
-  console.log('🚀 ========== CONNECTING TO REALTIME API ==========')
-  console.log('🌍 Selected Language Object:', languageStore.selectedLanguage)
-  console.log('🔤 Text Language Code:', languageStore.selectedLanguage.code)
-  console.log('🎤 Voice-Aware Language Code:', voiceAwareCode)
-  console.log('📛 Language Name:', languageStore.selectedLanguage.name)
-  console.log('📋 System Instructions Preview (first 500 chars):')
-  console.log(systemInstructions.value.substring(0, 500) + '...')
-  console.log('🚀 ===============================================')
   
   // Clear any previous errors
   connectionError.value = null
@@ -420,7 +415,6 @@ async function connectRealtime() {
         content: text,
         timestamp: new Date()
       })
-      console.log('💬 Added user message:', text)
     })
     
     realtimeConnection.onAssistantTranscript((text: string) => {
@@ -431,7 +425,6 @@ async function connectRealtime() {
         content: text,
         timestamp: new Date()
       })
-      console.log('💬 Added assistant message:', text)
     })
     
     // Connect via WebRTC
@@ -473,7 +466,6 @@ async function connectRealtime() {
 }
 
 function disconnectRealtime() {
-  console.log('Disconnecting realtime...')
   realtimeConnection.disconnect()
   costSafeguards.removeSafeguards()
   inactivityTimer.clearTimer()
@@ -483,11 +475,20 @@ function disconnectRealtime() {
     messages.value.push({
       id: Date.now().toString(),
       role: 'assistant',
-      content: 'Call ended. Switch back to chat mode or start a new call.',
+      content: t('mobile.call_ended_message'),
       timestamp: new Date()
     })
   }
 }
+
+// ============================================================================
+// LIFECYCLE HOOKS
+// ============================================================================
+
+// Cleanup when component is unmounted
+onUnmounted(() => {
+  realtimeConnection.destroyVisibilityListener()
+})
 </script>
 
 <style scoped>

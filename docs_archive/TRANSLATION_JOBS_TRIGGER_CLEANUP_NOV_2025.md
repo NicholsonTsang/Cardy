@@ -132,3 +132,4 @@ All remaining triggers are for tables that exist:
 **Impact**: Zero user impact - table was already removed  
 **Complexity Reduction**: Part of the 700+ line job queue removal
 
+
