@@ -926,9 +926,9 @@
       "title_line1": "Transform Visitor Experiences with",
       "title_line2": "AI-Powered",
       "title_line3": "Digital Souvenir Cards",
-      "subtitle_part1": "Physical collectible cards with QR-enabled",
+      "subtitle_part1": "Turn physical cards into interactive experiences with",
       "subtitle_highlight": "AI voice interactions",
-      "subtitle_part2": "— No app required. Perfect for museums, exhibitions, trade shows, and attractions worldwide.",
+      "subtitle_part2": "— instantly. No app required. Perfect for museums, exhibitions, and attractions.",
       "cta_pilot": "Contact Us for a Pilot",
       "cta_learn": "See Demo",
       "cta_demo": "See Demo",
@@ -937,8 +937,8 @@
     "about": {
       "title": "Discover",
       "title_highlight": "CardStudio",
-      "intro": "CardStudio fuses physical collectible souvenir cards with AI for interactive experiences. Through QR codes to access tailored digital content and unlock AI voice conversations on mobile devices—simple and app-free.",
-      "description1": "Designed for museums, exhibitions, conferences, landmarks, attractions, hotels, etc. worldwide, CardStudio card replaces static displays, printed brochures, and static audio guides with a single premium keepsake. It boosts engagement with fun and educational interactions, leading to stronger connections with audiences.",
+      "intro": "CardStudio connects physical souvenirs with digital storytelling. A simple QR code scan unlocks tailored content and AI voice conversations on any mobile device—instant and app-free.",
+      "description1": "Designed for museums, attractions, and events worldwide. Replace static displays and brochures with a premium keepsake. Our cards boost engagement through fun, educational interactions, creating deeper connections with your audience.",
       "description2": "CardStudio cards also reduces printed material waste for your organization, delivering sustainable impact.",
       "description3": "Try CardStudio and see the difference. Launch easily with our one-stop service.",
       "cta": "See It in Action"
@@ -946,7 +946,7 @@
     "demo": {
       "title": "See",
       "title_highlight": "How It Works",
-      "subtitle": "Interactive demo card with live QR code. Experience AI-powered storytelling on your mobile device.",
+      "subtitle": "Scan the interactive card below to experience AI-powered storytelling on your own device.",
       "video_coming_soon": "Demo Video Coming Soon",
       "video_description": "Watch a 1-2 minute demonstration",
       "card_title": "Interactive Experience Demo",
@@ -973,31 +973,31 @@
       "subtitle": "From purchase to lasting memory—designed for seamless visitor engagement.",
       "steps": {
         "purchase_title": "Purchase",
-        "purchase_desc": "Visitors buy cards as souvenirs and interactive guides.",
+        "purchase_desc": "Visitors receive or purchase a collectible card.",
         "scan_title": "Scan",
-        "scan_desc": "QR code unlocks digital content and AI assistant—no app needed.",
+        "scan_desc": "They scan the QR code to instantly unlock the AI guide.",
         "explore_title": "Experience",
-        "explore_desc": "AI voice conversations provide personalized storytelling and lasting memories.",
+        "explore_desc": "Your AI assistant tells stories, answers questions, and guides them.",
         "collect_title": "Collect",
-        "collect_desc": "Cards become treasured keepsakes, promoting repeat visits and lasting memories."
+        "collect_desc": "Visitors keep the card as a lasting digital & physical souvenir."
       }
     },
     "features": {
       "title": "Why",
       "title_highlight": "CardStudio",
       "features": {
-        "collectible_title": "Physical + Digital Cards",
-        "collectible_desc": "QR-enabled collectibles linking to rich digital content and AI guides.",
+        "collectible_title": "Physical & Digital",
+        "collectible_desc": "Beautiful physical cards that unlock rich digital worlds and AI guides.",
         "ai_guide_title": "AI Voice Assistant",
         "ai_guide_desc": "Real-time conversations with context awareness and follow-up questions.",
         "no_app_title": "No App Required",
-        "no_app_desc": "Works on any smartphone. Maximum accessibility, zero friction.",
+        "no_app_desc": "Instant access via any smartphone camera. No downloads, no friction.",
         "portal_config_title": "Easy Content Management",
         "portal_config_desc": "Configure and update content through intuitive web portal anytime.",
         "multilingual_title": "Multilingual Support",
         "multilingual_desc": "Content and conversations in 10+ languages from one upload.",
         "no_hardware_title": "Zero Hardware Needed",
-        "no_hardware_desc": "Leverages visitors' devices—no venue setup or costly infrastructure required.",
+        "no_hardware_desc": "Uses visitors' own phones. No expensive equipment to buy or maintain.",
         "dashboard_title": "Admin Dashboard",
         "dashboard_desc": "Self-service platform for content management, analytics, and card issuance."
       }
@@ -1118,7 +1118,7 @@
     "pricing": {
       "title": "Simple,",
       "title_highlight": "Transparent Pricing",
-      "subtitle": "No hidden fees. No per-visitor charges. Pay only for physical cards.",
+      "subtitle": "No monthly fees. No per-visitor charges. Just pay for the cards you issue.",
       "price": "$2",
       "currency": "USD",
       "per_card": "per card",
@@ -1145,7 +1145,7 @@
       "minimum_order": "Minimum Order",
       "minimum_cards": "{count} cards per order",
       "cta": "Contact Us for a Pilot",
-      "footer_text": "No monthly subscriptions • No setup fees • No hidden costs"
+      "footer_text": "No Subscriptions • No Setup Fees • No Hidden Costs"
     },
     "collaboration": {
       "title": "Partner with",
@@ -1663,4 +1663,3 @@
     }
   }
 }
-

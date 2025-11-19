@@ -240,7 +240,7 @@
           <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div v-for="(step, index) in howItWorksSteps.slice(0, 3)" :key="index" class="relative group">
               <!-- Card Content -->
-              <div class="relative bg-white rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all duration-500 border-2 border-slate-200 hover:border-purple-300 h-full">
+              <div class="relative bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-500 border-2 border-slate-200 hover:border-purple-400 hover:-translate-y-2 h-full">
                 <!-- Step Number Badge - Inside Top Left -->
                 <div class="absolute top-4 left-4 w-10 h-10 bg-gradient-to-br from-purple-600 to-pink-600 rounded-full flex items-center justify-center text-white font-bold text-base shadow-lg">
                   {{ index + 1 }}
@@ -273,7 +273,7 @@
                class="group relative animate-on-scroll"
                :style="{ animationDelay: (index * 100) + 'ms' }">
             <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur-xl"></div>
-            <div class="relative bg-white rounded-3xl p-8 shadow-lg hover:shadow-xl transition-all duration-300 border border-slate-200 h-full">
+            <div class="relative bg-white rounded-3xl p-8 shadow-lg hover:shadow-2xl transition-all duration-300 border border-slate-200 hover:border-blue-300 hover:-translate-y-1 h-full">
               <div class="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-2xl flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
                 <i :class="`pi ${feature.icon} text-blue-600 text-2xl`"></i>
               </div>
@@ -648,11 +648,24 @@
         </div>
       </div>
     </footer>
+
+    <!-- Floating CTA Button -->
+    <transition name="fade-up">
+      <div v-if="showFloatingCta" class="fixed bottom-6 right-6 z-50 hidden sm:block lg:hidden">
+        <button 
+          @click="handleGetStarted"
+          class="flex items-center gap-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-6 py-4 rounded-full shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-105 font-bold text-lg border border-white/20 backdrop-blur-sm"
+        >
+          <span>{{ $t('landing.nav.get_started') }}</span>
+          <i class="pi pi-arrow-right"></i>
+        </button>
+      </div>
+    </transition>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
@@ -668,6 +681,7 @@ const { updateSEO } = useSEO()
 
 // Navigation state
 const mobileMenuOpen = ref(false)
+const showFloatingCta = ref(false)
 
 // Sample QR code URL
 const sampleQrUrl = ref(import.meta.env.VITE_SAMPLE_QR_URL || `${window.location.origin}/c/demo-ancient-artifacts`)
@@ -746,16 +760,27 @@ const initAnimations = () => {
   document.documentElement.classList.add('js-animations-ready')
 }
 
+const handleScroll = () => {
+  showFloatingCta.value = window.scrollY > 600
+}
+
 onMounted(() => {
   // Initialize SEO
   updateSEO()
   
+  // Scroll listener
+  window.addEventListener('scroll', handleScroll)
+
   // Initialize animations on mount
   nextTick(() => {
   setTimeout(() => {
       initAnimations()
     }, 50)
   })
+})
+
+onUnmounted(() => {
+  window.removeEventListener('scroll', handleScroll)
 })
 
 // Re-initialize animations when language changes
@@ -1031,6 +1056,18 @@ const faqs = computed(() => [
 .collapse-leave-to {
   max-height: 0;
   opacity: 0;
+}
+
+/* Fade Up Transition for Floating CTA */
+.fade-up-enter-active,
+.fade-up-leave-active {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.fade-up-enter-from,
+.fade-up-leave-to {
+  opacity: 0;
+  transform: translateY(20px) scale(0.95);
 }
 
 /* Custom Carousel Styles */

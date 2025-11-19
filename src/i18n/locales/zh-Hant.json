@@ -905,19 +905,19 @@
       "title_line1": "用 AI 驅動的",
       "title_line2": "數位紀念卡",
       "title_line3": "改變訪客體驗",
-      "subtitle_part1": "實體收藏卡結合掃碼啟動的",
+      "subtitle_part1": "將實體卡片轉化為互動體驗",
       "subtitle_highlight": "AI 語音互動",
-      "subtitle_part2": "— 免下載 App。適用於全球博物館、展覽、展會和景點。",
+      "subtitle_part2": "— 掃碼即用，免下載 App。",
       "cta_pilot": "聯繫我們試用",
       "cta_learn": "立即體驗",
-      "cta_demo": "看看演示",
+      "cta_demo": "觀看演示",
       "cta_start": "開始使用"
     },
     "about": {
       "title": "探索",
       "title_highlight": "CardStudio 的魅力",
-      "intro": "CardStudio 將實體珍藏卡與 AI 完美融合，創造出獨特的互動體驗。只需掃描 QR 碼，即可在行動裝置上存取客製化的數位內容，並與 AI 進行語音對話——過程簡單，無需安裝任何應用程式。",
-      "description1": "CardStudio 專為全球的博物館、展覽、會議、地標、景點和酒店等場所設計，用一張精美的珍藏卡取代了靜態展示、印刷手冊和傳統語音導覽。它透過有趣且富教育意義的互動，極大地提升了觀眾的參與感，並與他們建立更深層次的聯繫。",
+      "intro": "CardStudio 結合實體紀念品與數位故事。簡單掃描 QR 碼，即可解鎖客製化內容與 AI 語音對話——無需下載 App，即掃即用。",
+      "description1": "專為博物館、景點與活動打造。用一張精美的紀念卡取代靜態看板與傳統導覽機。透過有趣的互動體驗，加深訪客與您的連結。",
       "description2": "CardStudio 卡片還減少了貴組織的印刷材料浪費，實現可持續影響。",
       "description3": "試用 CardStudio，體驗不同之處。透過我們的一站式服務輕鬆啟動。",
       "cta": "觀看實際操作"
@@ -929,9 +929,9 @@
       "video_coming_soon": "演示影片即將推出",
       "video_description": "觀看 1-2 分鐘的演示",
       "card_title": "互動體驗演示",
-      "try_live_demo": "馬上試試",
+      "try_live_demo": "立即試用",
       "scan_to_try": "掃碼試用",
-      "scan_with_phone": "手機掃碼",
+      "scan_with_phone": "使用手機掃描",
       "instant_demo": "立即體驗！",
       "scan_qr_code": "掃描卡片 QR 碼",
       "experience_features": "主要功能",
@@ -952,25 +952,25 @@
       "subtitle": "三個步驟，從購買到永久珍藏。",
       "steps": {
         "purchase_title": "購買卡片",
-        "purchase_desc": "訪客在現場購買精美紀念卡。",
+        "purchase_desc": "訪客取得或購買紀念卡。",
         "scan_title": "掃碼啟用",
-        "scan_desc": "手機掃描 QR 碼，立即進入數位世界。",
+        "scan_desc": "掃描 QR 碼，立即啟動 AI 導覽。",
         "explore_title": "智能體驗",
-        "explore_desc": "AI 語音導覽提供個人化深度講解。",
+        "explore_desc": "AI 助理提供個人化的語音導覽與問答。",
         "collect_title": "永久保存",
-        "collect_desc": "實體卡片隨身帶，數位內容隨時看。"
+        "collect_desc": "保留實體卡片作為永久紀念，數位內容隨時重溫。"
       }
     },
     "features": {
       "title": "為什麼選擇",
       "title_highlight": "CardStudio",
       "features": {
-        "collectible_title": "實體卡 + 數位內容",
+        "collectible_title": "虛實整合紀念品",
         "collectible_desc": "精美收藏卡連結豐富數位內容和 AI 導覽。",
         "ai_guide_title": "AI 智能導覽",
         "ai_guide_desc": "即時對話，理解上下文，回答追問。",
         "no_app_title": "免下載 App",
-        "no_app_desc": "任何手機都能用，零門檻。",
+        "no_app_desc": "支援所有智慧型手機，無需安裝 App。",
         "portal_config_title": "輕鬆管理內容",
         "portal_config_desc": "透過網頁後台隨時設定和更新內容。",
         "multilingual_title": "多語言服務",
@@ -1257,9 +1257,9 @@
         "other": "其他"
       },
       "form_cta": {
-        "title": "告訴我們您的需求",
+        "title": "與我們聯繫",
         "description": "填寫表單告訴我們您的機構、需求，以及 CardStudio 如何協助提升訪客體驗。我們會在 24-48 小時內回覆您。",
-        "button": "填寫詢問表單",
+        "button": "填寫諮詢表單",
         "response_time": "我們通常在 24-48 小時內回覆",
         "benefits": {
           "fast_response": "快速回覆",
@@ -1547,4 +1547,3 @@
     }
   }
 }
-
