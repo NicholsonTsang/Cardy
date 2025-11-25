@@ -335,3 +335,13 @@ After deployment, update your frontend's `.env` file with the new production `VI
     -   `VITE_SUPABASE_ANON_KEY`
     -   `VITE_BACKEND_URL` (from the backend deployment step)
     -   `VITE_STRIPE_PUBLISHABLE_KEY`
+    -   `VITE_APP_URL` (Optional: Set to your custom domain like `https://cardstudio.org` for SEO)
+
+### SEO Configuration
+
+The frontend includes a comprehensive SEO optimization system that generates dynamic meta tags, Open Graph tags, and structured data.
+
+1.  **Automatic sitemap**: `public/sitemap.xml` is generated and should be submitted to Google Search Console.
+2.  **Robots.txt**: `public/robots.txt` guides search engine crawlers.
+3.  **Domain Configuration**: Update `VITE_APP_URL` in your production `.env` to your custom domain (e.g., `https://cardstudio.org`) to ensure Canonical URLs are correct.
+4.  **Hosting Configuration**: The `firebase.json` is pre-configured with optimal caching headers for static assets (`max-age=31536000`).

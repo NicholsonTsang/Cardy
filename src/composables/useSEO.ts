@@ -44,7 +44,7 @@ export function useSEO() {
   const { t, locale } = useI18n()
   const route = useRoute()
 
-  const baseUrl = import.meta.env.VITE_APP_URL || 'https://cardstudio.app'
+  const baseUrl = import.meta.env.VITE_APP_URL || 'https://cardstudio.org'
 
   // Update HTML lang attribute
   const updateHtmlLang = (lang: string) => {
