@@ -123,16 +123,10 @@
         </div>
         
         <div class="max-w-5xl mx-auto">
-          <!-- Video Placeholder -->
-          <div class="relative bg-slate-900/50 backdrop-blur rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
-            <div class="aspect-video flex items-center justify-center bg-gradient-to-br from-blue-600/20 to-purple-600/20">
-              <div class="text-center">
-                <div class="w-24 h-24 bg-white/20 backdrop-blur-xl rounded-full flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform cursor-pointer">
-                  <i class="pi pi-play text-white text-4xl"></i>
-                </div>
-                <p class="text-white text-lg font-semibold">{{ $t('landing.demo.video_coming_soon') }}</p>
-                <p class="text-blue-200 text-sm mt-2">{{ $t('landing.demo.video_description') }}</p>
-              </div>
+          <!-- Video Player -->
+          <div class="relative bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
+            <div style="padding:56.6% 0 0 0;position:relative;">
+              <iframe src="https://player.vimeo.com/video/1140994913?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="CardStudio Promotion Video"></iframe>
             </div>
           </div>
 
@@ -773,10 +767,16 @@ onMounted(() => {
 
   // Initialize animations on mount
   nextTick(() => {
-  setTimeout(() => {
+    setTimeout(() => {
       initAnimations()
     }, 50)
   })
+
+  // Load Vimeo Player API
+  const vimeoScript = document.createElement('script')
+  vimeoScript.src = "https://player.vimeo.com/api/player.js"
+  vimeoScript.async = true
+  document.body.appendChild(vimeoScript)
 })
 
 onUnmounted(() => {
