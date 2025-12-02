@@ -43,12 +43,12 @@
           <TabPanel v-for="(tab, index) in tabs" :value="index.toString()" class="h-full">
             <div class="h-full overflow-y-auto p-6">
               <!-- General Tab -->
-              <div v-if="index === 0">
+              <div v-if="getTabComponent(index) === 'general'">
                 <AdminCardGeneral :card="selectedCard" />
               </div>
               
               <!-- Content Tab -->
-              <div v-if="index === 1">
+              <div v-if="getTabComponent(index) === 'content'">
                 <AdminCardContent
                   :cardId="selectedCard.id"
                   :content="content"
@@ -56,8 +56,8 @@
                 />
               </div>
               
-              <!-- Issuance Tab -->
-              <div v-if="index === 2">
+              <!-- Issuance Tab (Physical Cards Only) -->
+              <div v-if="getTabComponent(index) === 'issuance'">
                 <AdminCardIssuance
                   :cardId="selectedCard.id"
                   :batches="batches"
@@ -66,7 +66,7 @@
               </div>
               
               <!-- QR & Access Tab -->
-              <div v-if="index === 3">
+              <div v-if="getTabComponent(index) === 'qr'">
                 <CardAccessQR
                   :cardId="selectedCard.id"
                   :cardName="selectedCard.name"
@@ -74,7 +74,7 @@
               </div>
               
               <!-- Preview Tab -->
-              <div v-if="index === 4">
+              <div v-if="getTabComponent(index) === 'preview'">
                 <MobilePreview
                   :cardProp="selectedCard"
                 />
@@ -114,6 +114,10 @@ interface Card {
   ai_instruction: string | null
   ai_knowledge_base: string | null
   qr_code_position: string
+  content_mode?: 'solo' | 'stack' | 'catalog' | 'guide'
+  billing_type?: 'physical' | 'digital'
+  max_scans?: number | null
+  current_scans?: number
   created_at: string
   updated_at: string
 }
@@ -153,13 +157,46 @@ const emit = defineEmits<{
   (e: 'update:activeTab', value: string): void
 }>()
 
-const tabs = computed(() => [
-  { label: t('dashboard.general'), icon: 'pi pi-info-circle' },
-  { label: t('dashboard.content'), icon: 'pi pi-list' },
-  { label: t('dashboard.issuance'), icon: 'pi pi-box' },
-  { label: t('dashboard.qr_access'), icon: 'pi pi-qrcode' },
-  { label: t('dashboard.preview'), icon: 'pi pi-mobile' }
-])
+// Tabs are dynamic based on billing_type (access mode)
+const tabs = computed(() => {
+  const baseTabs = [
+    { label: t('dashboard.general'), icon: 'pi pi-info-circle' },
+    { label: t('dashboard.content'), icon: 'pi pi-list' }
+  ]
+  
+  // Physical cards have Issuance tab (for batch printing)
+  if (props.selectedCard?.billing_type !== 'digital') {
+    baseTabs.push({ label: t('dashboard.issuance'), icon: 'pi pi-box' })
+  }
+  
+  // Both have QR & Access tab
+  baseTabs.push({ label: t('dashboard.qr_access'), icon: 'pi pi-qrcode' })
+  
+  // Both have Preview tab
+  baseTabs.push({ label: t('dashboard.preview'), icon: 'pi pi-mobile' })
+  
+  return baseTabs
+})
+
+// Map tab index to component type based on billing_type
+const getTabComponent = (index: number): string | null => {
+  const isDigital = props.selectedCard?.billing_type === 'digital'
+  
+  if (index === 0) return 'general'
+  if (index === 1) return 'content'
+  
+  if (isDigital) {
+    // Digital: [General, Content, QR, Preview]
+    if (index === 2) return 'qr'
+    if (index === 3) return 'preview'
+  } else {
+    // Physical: [General, Content, Issuance, QR, Preview]
+    if (index === 2) return 'issuance'
+    if (index === 3) return 'qr'
+    if (index === 4) return 'preview'
+  }
+  return null
+}
 
 const handleTabChange = (value: string | number) => {
   emit('update:activeTab', String(value))

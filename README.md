@@ -23,6 +23,31 @@ CardStudio is a comprehensive **digital souvenir and exhibition platform** that 
     -   **Advanced AI Voice Conversations**: Real-time voice-based AI using OpenAI for natural conversations.
     -   **Multi-Language Support**: AI-powered, one-click translation of card content into multiple languages.
 
+### Access Modes
+
+CardStudio supports two access modes (selected first when creating):
+
+| Mode | Description | Mobile UX | Use Cases |
+|------|-------------|-----------|-----------|
+| **Physical Card** | Printed souvenir cards | Card Overview → Content | Museums, exhibitions, events |
+| **Digital Access** | QR-code only (no physical card) | Direct to Content (skips overview) | Link-in-bio, digital menus, campaigns |
+
+- **Physical Card**: Unlimited scans, card image/description displayed on overview page
+- **Digital Access**: Configurable scan limits, per-access billing, skips overview page (card image/description not displayed)
+
+### Content Modes
+
+Four rendering modes for different content structures:
+
+| Mode | Items | Layout | Best For |
+|------|-------|--------|----------|
+| **Solo** | 0 | Profile card | Business cards, personal profiles |
+| **Stack** | N (no images) | Button list | Link-in-bio, resource lists |
+| **Catalog** | N (with images) | Visual grid | Menus, portfolios, galleries |
+| **Guide** | N + sub-items | Hierarchical tour | Museum tours, manuals |
+
+See `planning_docs/BILLING_AND_CONTENT_MODES.md` for complete documentation.
+
 ---
 
 ## Core Architecture

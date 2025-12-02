@@ -19,17 +19,146 @@
                 @click="handleSave" 
             />
         </div>
+
+        <!-- Access Mode Selector - First Step (Only for new cards) -->
+        <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 mb-6">
+            <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <i class="pi pi-sliders-h text-blue-600"></i>
+                {{ $t('dashboard.access_mode') }}
+                <span v-if="!isEditMode" class="text-xs font-normal text-slate-500 ml-2">{{ $t('dashboard.select_first') }}</span>
+                <span v-else class="text-xs font-normal text-amber-600 ml-2">
+                    <i class="pi pi-lock mr-1"></i>{{ $t('dashboard.access_mode_locked') }}
+                </span>
+            </h3>
             
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
-            <!-- Artwork Section -->
-            <div class="xl:col-span-1">
+            <!-- Edit Mode: Show locked access mode -->
+            <div v-if="isEditMode" class="p-5 rounded-xl border-2 text-left"
+                 :class="formData.billing_type === 'physical' 
+                     ? 'border-purple-500 bg-purple-50' 
+                     : 'border-cyan-500 bg-cyan-50'">
+                <div class="flex items-start gap-4">
+                    <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" 
+                         :class="formData.billing_type === 'physical' ? 'bg-purple-100' : 'bg-cyan-100'">
+                        <i :class="['text-xl', formData.billing_type === 'physical' ? 'pi pi-credit-card text-purple-600' : 'pi pi-qrcode text-cyan-600']"></i>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="font-bold text-base" :class="formData.billing_type === 'physical' ? 'text-purple-900' : 'text-cyan-900'">
+                                {{ formData.billing_type === 'physical' ? $t('dashboard.physical_card') : $t('dashboard.digital_access') }}
+                            </span>
+                            <span class="px-2 py-0.5 text-xs font-medium rounded-full"
+                                  :class="formData.billing_type === 'physical' ? 'bg-purple-200 text-purple-800' : 'bg-cyan-200 text-cyan-800'">
+                                <i class="pi pi-lock mr-1"></i>{{ $t('dashboard.locked') }}
+                            </span>
+                        </div>
+                        <p class="text-sm" :class="formData.billing_type === 'physical' ? 'text-purple-700' : 'text-cyan-700'">
+                            {{ $t('dashboard.access_mode_cannot_change') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Create Mode: Allow selection -->
+            <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Physical Card Option -->
+                <button
+                    type="button"
+                    @click="formData.billing_type = 'physical'"
+                    class="p-5 rounded-xl border-2 transition-all text-left"
+                    :class="formData.billing_type === 'physical' 
+                        ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200' 
+                        : 'border-slate-200 hover:border-slate-300 bg-white'"
+                >
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" 
+                             :class="formData.billing_type === 'physical' ? 'bg-purple-100' : 'bg-slate-100'">
+                            <i class="pi pi-credit-card text-xl" :class="formData.billing_type === 'physical' ? 'text-purple-600' : 'text-slate-500'"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-bold text-base" :class="formData.billing_type === 'physical' ? 'text-purple-900' : 'text-slate-800'">
+                                    {{ $t('dashboard.physical_card') }}
+                                </span>
+                                <span v-if="formData.billing_type === 'physical'" class="px-2 py-0.5 bg-purple-200 text-purple-800 text-xs font-medium rounded-full">
+                                    {{ $t('common.selected') }}
+                                </span>
+                            </div>
+                            <p class="text-sm text-slate-600 mb-3">{{ $t('dashboard.physical_card_full_desc') }}</p>
+                            <div class="flex flex-wrap gap-2 text-xs">
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 rounded-full">
+                                    <i class="pi pi-check"></i> {{ $t('dashboard.unlimited_scans') }}
+                                </span>
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                                    <i class="pi pi-image"></i> {{ $t('dashboard.card_image_required') }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </button>
+                
+                <!-- Digital Access Option -->
+                <button
+                    type="button"
+                    @click="formData.billing_type = 'digital'"
+                    class="p-5 rounded-xl border-2 transition-all text-left"
+                    :class="formData.billing_type === 'digital' 
+                        ? 'border-cyan-500 bg-cyan-50 ring-2 ring-cyan-200' 
+                        : 'border-slate-200 hover:border-slate-300 bg-white'"
+                >
+                    <div class="flex items-start gap-4">
+                        <div class="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" 
+                             :class="formData.billing_type === 'digital' ? 'bg-cyan-100' : 'bg-slate-100'">
+                            <i class="pi pi-qrcode text-xl" :class="formData.billing_type === 'digital' ? 'text-cyan-600' : 'text-slate-500'"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-bold text-base" :class="formData.billing_type === 'digital' ? 'text-cyan-900' : 'text-slate-800'">
+                                    {{ $t('dashboard.digital_access') }}
+                                </span>
+                                <span v-if="formData.billing_type === 'digital'" class="px-2 py-0.5 bg-cyan-200 text-cyan-800 text-xs font-medium rounded-full">
+                                    {{ $t('common.selected') }}
+                                </span>
+                            </div>
+                            <p class="text-sm text-slate-600 mb-3">{{ $t('dashboard.digital_access_full_desc') }}</p>
+                            <div class="flex flex-wrap gap-2 text-xs">
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-amber-100 text-amber-700 rounded-full">
+                                    <i class="pi pi-bolt"></i> {{ $t('dashboard.pay_per_scan') }}
+                                </span>
+                                <span class="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-600 rounded-full">
+                                    <i class="pi pi-eye-slash"></i> {{ $t('dashboard.no_card_image') }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </button>
+            </div>
+            
+            <!-- Access Mode Info Banner (only show in create mode) -->
+            <div v-if="!isEditMode" class="mt-4 p-4 rounded-lg" :class="formData.billing_type === 'physical' ? 'bg-purple-50 border border-purple-200' : 'bg-cyan-50 border border-cyan-200'">
+                <div class="flex items-start gap-3">
+                    <i :class="['pi text-lg', formData.billing_type === 'physical' ? 'pi-credit-card text-purple-600' : 'pi-qrcode text-cyan-600']"></i>
+                    <div>
+                        <p class="text-sm font-semibold" :class="formData.billing_type === 'physical' ? 'text-purple-800' : 'text-cyan-800'">
+                            {{ formData.billing_type === 'physical' ? $t('dashboard.physical_mode_title') : $t('dashboard.digital_mode_title') }}
+                        </p>
+                        <p class="text-sm mt-1" :class="formData.billing_type === 'physical' ? 'text-purple-700' : 'text-cyan-700'">
+                            {{ formData.billing_type === 'physical' ? $t('dashboard.physical_mode_hint') : $t('dashboard.digital_mode_hint') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+            
+        <div class="grid grid-cols-1 gap-6" :class="{ 'xl:grid-cols-3': formData.billing_type === 'physical' }">
+            <!-- Artwork Section - Only for Physical Cards -->
+            <div v-if="formData.billing_type === 'physical'" class="xl:col-span-1">
                 <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
                     <h3 class="text-lg font-semibold text-slate-900 mb-6 flex items-center gap-2">
                         <i class="pi pi-image text-blue-600"></i>
                         {{ $t('dashboard.card_artwork') }}
                     </h3>
                     
-                    <!-- Single-Column Layout -->
+                    <!-- Physical Card Image Upload -->
                     <div class="space-y-6">
                         <!-- Image Preview Section (Only when image exists) -->
                         <div v-if="previewImage">
@@ -177,34 +306,116 @@
                 </div>
             </div>
             
+            <!-- Digital Access - No Artwork Section, show info instead -->
+            <div v-else class="col-span-full mb-0">
+                <!-- This space intentionally left empty - digital access doesn't need artwork -->
+            </div>
+            
             <!-- Form Fields Section -->
-            <div class="xl:col-span-2">
+            <div :class="formData.billing_type === 'physical' ? 'xl:col-span-2' : 'col-span-full'">
                 <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 space-y-6">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
                             <i class="pi pi-cog text-blue-600"></i>
-                            {{ $t('dashboard.card_details') }}
+                            {{ formData.billing_type === 'digital' ? $t('dashboard.qr_content_settings') : $t('dashboard.card_details') }}
                         </h3>
                         
                         <div class="space-y-4">
+                            <!-- Content Mode Selector -->
                             <div>
-                                <label for="cardName" class="block text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.card_name') }} *</label>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">
+                                    {{ $t('dashboard.content_mode') }}
+                                    <i class="pi pi-info-circle text-slate-400 text-xs ml-1 cursor-help" 
+                                       v-tooltip.right="{
+                                           value: $t('dashboard.content_mode_tooltip'),
+                                           class: 'max-w-sm'
+                                       }"></i>
+                                </label>
+                                <!-- Filter content modes based on access mode -->
+                                <div class="grid grid-cols-2 gap-2" :class="{ 'md:grid-cols-4': formData.billing_type === 'digital' }">
+                                    <button
+                                        v-for="mode in filteredContentModeOptions"
+                                        :key="mode.value"
+                                        type="button"
+                                        @click="formData.content_mode = mode.value"
+                                        class="p-3 rounded-lg border-2 transition-all text-left"
+                                        :class="formData.content_mode === mode.value 
+                                            ? 'border-blue-500 bg-blue-50' 
+                                            : 'border-slate-200 hover:border-slate-300 bg-white'"
+                                    >
+                                        <div class="flex items-center gap-2 mb-1">
+                                            <i :class="['pi', mode.icon, formData.content_mode === mode.value ? 'text-blue-600' : 'text-slate-500']"></i>
+                                            <span class="font-medium text-sm" :class="formData.content_mode === mode.value ? 'text-blue-900' : 'text-slate-700'">{{ mode.label }}</span>
+                                        </div>
+                                        <p class="text-xs text-slate-500 line-clamp-2">{{ mode.description }}</p>
+                                    </button>
+                                </div>
+                                <!-- Mode Requirements Checklist - Only for physical cards -->
+                                <div v-if="formData.billing_type === 'physical'" class="mt-3 p-3 rounded-lg" :class="modeRequirementsClass">
+                                    <div class="flex items-start gap-2 mb-2">
+                                        <i :class="['pi', currentModeDetails.icon, modeRequirementsMet ? 'text-green-600' : 'text-amber-600', 'mt-0.5']"></i>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-medium" :class="modeRequirementsMet ? 'text-green-800' : 'text-amber-800'">
+                                                {{ currentModeDetails.label }}
+                                            </p>
+                                            <p class="text-xs mt-1" :class="modeRequirementsMet ? 'text-green-700' : 'text-amber-700'">
+                                                {{ currentModeDetails.guidance }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <!-- Requirements List -->
+                                    <div class="mt-2 pt-2 border-t" :class="modeRequirementsMet ? 'border-green-200' : 'border-amber-200'">
+                                        <p class="text-xs font-medium mb-1" :class="modeRequirementsMet ? 'text-green-700' : 'text-amber-700'">
+                                            {{ $t('dashboard.mode_requirements') }}:
+                                        </p>
+                                        <ul class="space-y-1">
+                                            <li v-for="req in currentModeRequirements" :key="req.key" 
+                                                class="flex items-center gap-1.5 text-xs"
+                                                :class="req.met ? 'text-green-600' : 'text-amber-600'">
+                                                <i :class="req.met ? 'pi pi-check-circle' : 'pi pi-circle'" class="text-xs"></i>
+                                                {{ req.label }}
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                                <!-- Digital Mode Guidance - Simpler for digital -->
+                                <div v-else class="mt-3 p-3 rounded-lg bg-cyan-50 border border-cyan-200">
+                                    <div class="flex items-start gap-2">
+                                        <i :class="['pi', currentModeDetails.icon, 'text-cyan-600 mt-0.5']"></i>
+                                        <div class="flex-1">
+                                            <p class="text-sm font-medium text-cyan-800">{{ currentModeDetails.label }}</p>
+                                            <p class="text-xs mt-1 text-cyan-700">{{ currentModeDetails.guidance }}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Card/QR Name -->
+                            <div>
+                                <label for="cardName" class="block text-sm font-medium text-slate-700 mb-2">
+                                    {{ formData.billing_type === 'digital' ? $t('dashboard.qr_name') : $t('dashboard.card_name') }} *
+                                </label>
                                 <InputText 
                                     id="cardName" 
                                     type="text" 
                                     v-model="formData.name" 
                                     class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                                     :class="{ 'border-red-300 focus:ring-red-500 focus:border-red-500': !formData.name.trim() && showValidation }"
-                                    :placeholder="$t('dashboard.enter_card_name')"
+                                    :placeholder="formData.billing_type === 'digital' ? $t('dashboard.enter_qr_name') : $t('dashboard.enter_card_name')"
                                 />
                                 <p v-if="!formData.name.trim() && showValidation" class="text-sm text-red-600 mt-1">{{ $t('dashboard.card_name_required') }}</p>
                             </div>
 
+                            <!-- Card Description - Available for all modes -->
                             <div>
                                 <label for="cardDescription" class="block text-sm font-medium text-slate-700 mb-2">
-                                    {{ $t('dashboard.card_description') }} 
+                                    {{ formData.billing_type === 'digital' ? $t('dashboard.welcome_description') : $t('dashboard.card_description') }} 
                                     <span class="text-xs text-slate-500 font-normal">({{ $t('dashboard.markdown_supported') }})</span>
                                 </label>
+                                <p v-if="formData.billing_type === 'digital'" class="text-xs text-cyan-600 mb-2 flex items-center gap-1">
+                                    <i class="pi pi-info-circle"></i>
+                                    {{ $t('dashboard.digital_description_hint') }}
+                                </p>
                                 <div class="border border-slate-300 rounded-lg overflow-hidden">
                                     <MdEditor 
                                         v-model="formData.description"
@@ -214,7 +425,7 @@
                                         :codeTheme="'atom'"
                                         :previewTheme="'default'"
                                         :onHtmlChanged="handleMarkdownHtmlChanged"
-                                        placeholder="Describe your card's purpose and content using Markdown..."
+                                        :placeholder="getDescriptionPlaceholder()"
                                         :style="{ height: '200px' }"
                                     />
                                 </div>
@@ -418,7 +629,115 @@ const formData = reactive({
     ai_instruction: '',
     ai_knowledge_base: '',
     conversation_ai_enabled: false,
-    cropParameters: null
+    cropParameters: null,
+    content_mode: 'list', // Default mode: list (simple vertical list)
+    billing_type: 'physical', // Default: physical card (per-card billing)
+    max_scans: null // NULL for physical (unlimited), Integer for digital
+});
+
+// Content Mode Options with descriptions and guidance
+const contentModeOptions = computed(() => [
+    {
+        value: 'single',
+        label: t('dashboard.mode_single'),
+        icon: 'pi-file',
+        description: t('dashboard.mode_single_desc'),
+        guidance: t('dashboard.mode_single_guidance'),
+        color: 'purple'
+    },
+    {
+        value: 'grouped',
+        label: t('dashboard.mode_grouped'),
+        icon: 'pi-folder',
+        description: t('dashboard.mode_grouped_desc'),
+        guidance: t('dashboard.mode_grouped_guidance'),
+        color: 'orange'
+    },
+    {
+        value: 'list',
+        label: t('dashboard.mode_list'),
+        icon: 'pi-list',
+        description: t('dashboard.mode_list_desc'),
+        guidance: t('dashboard.mode_list_guidance'),
+        color: 'blue'
+    },
+    {
+        value: 'grid',
+        label: t('dashboard.mode_grid'),
+        icon: 'pi-th-large',
+        description: t('dashboard.mode_grid_desc'),
+        guidance: t('dashboard.mode_grid_guidance'),
+        color: 'green'
+    },
+    {
+        value: 'inline',
+        label: t('dashboard.mode_inline'),
+        icon: 'pi-clone',
+        description: t('dashboard.mode_inline_desc'),
+        guidance: t('dashboard.mode_inline_guidance'),
+        color: 'cyan'
+    }
+]);
+
+// Get current mode details
+const currentModeDetails = computed(() => {
+    return contentModeOptions.value.find(m => m.value === formData.content_mode) || contentModeOptions.value[2]; // Default to 'list'
+});
+
+// Filter content modes based on access mode
+// All modes available for both access types
+const filteredContentModeOptions = computed(() => {
+    // All modes available for both access types
+    // But we can reorder to show most relevant first for digital
+    if (formData.billing_type === 'digital') {
+        // For digital: List is most common, then Single, Grouped, Grid, Inline
+        const order = ['list', 'single', 'grouped', 'grid', 'inline'];
+        return [...contentModeOptions.value].sort((a, b) => 
+            order.indexOf(a.value) - order.indexOf(b.value)
+        );
+    }
+    return contentModeOptions.value;
+});
+
+// Mode requirements validation
+const currentModeRequirements = computed(() => {
+    switch (formData.content_mode) {
+        case 'single':
+            return [
+                { key: 'one_item', label: t('dashboard.req_one_content_item'), met: true } // Validated in Content tab
+            ];
+        case 'grouped':
+            return [
+                { key: 'parents', label: t('dashboard.req_parent_items_categories'), met: true }, // Validated in Content tab
+                { key: 'children', label: t('dashboard.req_child_items'), met: true }
+            ];
+        case 'list':
+            return [
+                { key: 'items', label: t('dashboard.req_content_items'), met: true } // Validated in Content tab
+            ];
+        case 'grid':
+            return [
+                { key: 'items', label: t('dashboard.req_content_items_with_images'), met: true } // Validated in Content tab
+            ];
+        case 'inline':
+            return [
+                { key: 'items', label: t('dashboard.req_content_items'), met: true } // Validated in Content tab
+            ];
+        default:
+            return [];
+    }
+});
+
+// Check if all mode requirements are met
+const modeRequirementsMet = computed(() => {
+    return currentModeRequirements.value.every(req => req.met);
+});
+
+// Dynamic class for requirements box
+const modeRequirementsClass = computed(() => {
+    return modeRequirementsMet.value 
+        ? 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200'
+        : 'bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200';
 });
 
 // Language options for dropdown
@@ -509,6 +828,11 @@ const handleMarkdownHtmlChanged = (html) => {
     return html.replace(/<a href=/g, '<a target="_blank" rel="noopener noreferrer" href=');
 };
 
+// Dynamic placeholder based on content mode
+const getDescriptionPlaceholder = () => {
+    return t('dashboard.placeholder_description');
+};
+
 const qrCodePositions = computed(() => [
     { name: t('dashboard.top_left'), code: 'TL' },
     { name: t('dashboard.top_right'), code: 'TR' },
@@ -557,6 +881,9 @@ const initializeForm = () => {
         formData.ai_knowledge_base = props.cardProp.ai_knowledge_base || '';
         formData.conversation_ai_enabled = props.cardProp.conversation_ai_enabled || false;
         formData.cropParameters = props.cardProp.cropParameters || props.cardProp.crop_parameters || null;
+        formData.content_mode = props.cardProp.content_mode || 'list';
+        formData.billing_type = props.cardProp.billing_type || 'physical'; // Access mode
+        formData.max_scans = props.cardProp.max_scans || null;
         
         // Set crop parameters if they exist
         if (formData.cropParameters) {
@@ -588,6 +915,9 @@ const resetForm = () => {
     formData.ai_knowledge_base = '';
     formData.conversation_ai_enabled = false;
     formData.cropParameters = null;
+    formData.content_mode = 'list'; // Reset to default mode
+    formData.billing_type = 'physical'; // Reset to default access mode
+    formData.max_scans = null;
     
     previewImage.value = null;
     imageFile.value = null;

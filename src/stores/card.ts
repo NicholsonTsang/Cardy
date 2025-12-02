@@ -20,6 +20,10 @@ export interface Card {
     original_language?: string; // Original language code (e.g., 'en')
     content_hash?: string; // MD5 hash for detecting content changes
     last_content_update?: string; // Timestamp of last content update
+    content_mode?: 'single' | 'grouped' | 'list' | 'grid' | 'inline'; // Content rendering mode
+    billing_type?: 'physical' | 'digital'; // Billing model: physical = per-card, digital = per-scan
+    max_scans?: number | null; // NULL for physical (unlimited), Integer for digital
+    current_scans?: number; // Current scan count (for digital)
     created_at: string;
     updated_at: string;
 }
@@ -37,6 +41,9 @@ export interface CardFormData {
     ai_knowledge_base: string; // Background knowledge for AI (max 2000 words)
     qr_code_position: string;
     original_language?: string; // Original language code (e.g., 'en')
+    content_mode?: 'single' | 'grouped' | 'list' | 'grid' | 'inline'; // Content rendering mode
+    billing_type?: 'physical' | 'digital'; // Billing model
+    max_scans?: number | null; // Scan limit for digital cards
     id?: string; // Optional for updates
 }
 
@@ -83,11 +90,7 @@ export const useCardStore = defineStore('card', () => {
             error.value = errorMsg;
             throw new Error(errorMsg);
         }
-        if (!cardData.description?.trim()) {
-            const errorMsg = 'Card description is required';
-            error.value = errorMsg;
-            throw new Error(errorMsg);
-        }
+        // Description is optional (especially for digital access modes)
         
         try {
             const { data: { user } } = await supabase.auth.getUser();
@@ -158,7 +161,10 @@ export const useCardStore = defineStore('card', () => {
                     p_ai_instruction: cardData.ai_instruction,
                     p_ai_knowledge_base: cardData.ai_knowledge_base,
                     p_qr_code_position: cardData.qr_code_position,
-                    p_original_language: cardData.original_language || 'en'
+                    p_original_language: cardData.original_language || 'en',
+                    p_content_mode: cardData.content_mode || 'list',
+                    p_billing_type: cardData.billing_type || 'physical',
+                    p_max_scans: cardData.billing_type === 'digital' ? (cardData.max_scans || null) : null
                 });
                 
             if (createError) throw createError;
@@ -261,7 +267,10 @@ export const useCardStore = defineStore('card', () => {
                 p_ai_instruction: updateData.ai_instruction,
                 p_ai_knowledge_base: updateData.ai_knowledge_base,
                 p_qr_code_position: updateData.qr_code_position,
-                p_original_language: updateData.original_language || 'en'
+                p_original_language: updateData.original_language || 'en',
+                p_content_mode: updateData.content_mode || null,
+                p_billing_type: updateData.billing_type || null,
+                p_max_scans: updateData.billing_type === 'digital' ? (updateData.max_scans || null) : null
             };
             
             const { data, error: updateError } = await supabase

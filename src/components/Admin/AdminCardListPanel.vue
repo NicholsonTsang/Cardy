@@ -49,8 +49,17 @@
           ]"
         >
           <div class="flex gap-3">
+            <!-- Digital Access: Show QR icon -->
             <div
-              v-if="card.image_url"
+              v-if="card.billing_type === 'digital'"
+              class="w-16 h-24 flex-shrink-0 rounded-lg bg-gradient-to-br from-cyan-50 to-cyan-100 border border-cyan-200 flex items-center justify-center"
+              style="aspect-ratio: 2/3;"
+            >
+              <i class="pi pi-qrcode text-cyan-500 text-xl"></i>
+            </div>
+            <!-- Physical Card: Show image -->
+            <div
+              v-else-if="card.image_url"
               class="w-16 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-slate-100"
               style="aspect-ratio: 2/3;"
             >
@@ -60,7 +69,17 @@
               <i class="pi pi-id-card text-slate-400 text-xl"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <p class="font-semibold text-slate-900 truncate">{{ card.name }}</p>
+              <div class="flex items-center gap-2 mb-1">
+                <p class="font-semibold text-slate-900 truncate">{{ card.name }}</p>
+                <span 
+                  class="text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
+                  :class="card.billing_type === 'digital' 
+                    ? 'bg-cyan-100 text-cyan-700' 
+                    : 'bg-purple-100 text-purple-700'"
+                >
+                  {{ card.billing_type === 'digital' ? 'Digital' : 'Physical' }}
+                </span>
+              </div>
               <p v-if="card.description" class="text-xs text-slate-600 line-clamp-2">
                 {{ card.description }}
               </p>

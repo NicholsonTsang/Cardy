@@ -5,6 +5,7 @@
 
 -- Get public card content by issue card ID
 -- Updated to support translations via p_language parameter
+-- Updated to include billing_type for routing and scan tracking
 CREATE OR REPLACE FUNCTION get_public_card_content(
     p_issue_card_id UUID,
     p_language VARCHAR(10) DEFAULT 'en'
@@ -20,6 +21,11 @@ RETURNS TABLE (
     card_original_language VARCHAR(10),
     card_has_translation BOOLEAN,
     card_available_languages TEXT[], -- Array of available language codes
+    card_content_mode TEXT, -- Content rendering mode (single, grouped, list, grid, inline)
+    card_billing_type TEXT, -- Billing model: physical or digital
+    card_max_scans INTEGER, -- NULL for physical (unlimited), Integer for digital
+    card_current_scans INTEGER, -- Current scan count
+    card_scan_limit_reached BOOLEAN, -- TRUE if digital card has reached scan limit
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -36,13 +42,17 @@ DECLARE
     v_card_owner_id UUID;
     v_caller_id UUID;
     v_is_owner_access BOOLEAN := FALSE;
+    v_billing_type TEXT;
+    v_max_scans INTEGER;
+    v_current_scans INTEGER;
+    v_scan_limit_reached BOOLEAN := FALSE;
 BEGIN
     -- Get the caller's user ID
     v_caller_id := auth.uid();
     
     -- Get card information by issue card ID
-    SELECT ic.card_id, ic.active, c.user_id 
-    INTO v_card_design_id, v_is_card_active, v_card_owner_id
+    SELECT ic.card_id, ic.active, c.user_id, c.billing_type, c.max_scans, c.current_scans
+    INTO v_card_design_id, v_is_card_active, v_card_owner_id, v_billing_type, v_max_scans, v_current_scans
     FROM issue_cards ic
     JOIN cards c ON ic.card_id = c.id
     WHERE ic.id = p_issue_card_id;
@@ -57,6 +67,22 @@ BEGIN
         v_is_owner_access := TRUE;
         -- For owner access, we consider the card as "activated" for preview purposes
         v_is_card_active := TRUE;
+    END IF;
+
+    -- For digital cards, check scan limit and increment counter (only for non-owner access)
+    IF v_billing_type = 'digital' AND NOT v_is_owner_access THEN
+        -- Check if limit reached
+        IF v_max_scans IS NOT NULL AND v_current_scans >= v_max_scans THEN
+            v_scan_limit_reached := TRUE;
+        ELSE
+            -- Increment scan counter
+            BEGIN
+                UPDATE cards SET current_scans = current_scans + 1 WHERE id = v_card_design_id;
+                v_current_scans := v_current_scans + 1;
+            EXCEPTION
+                WHEN others THEN NULL;
+            END;
+        END IF;
     END IF;
 
     -- If the card is not active, activate it automatically (regardless of owner status)
@@ -91,6 +117,11 @@ BEGIN
             ARRAY[c.original_language] || 
             ARRAY(SELECT jsonb_object_keys(c.translations))
         )::TEXT[] AS card_available_languages,
+        COALESCE(c.content_mode, 'list')::TEXT AS card_content_mode, -- Content rendering mode
+        COALESCE(c.billing_type, 'physical')::TEXT AS card_billing_type, -- Billing model
+        c.max_scans AS card_max_scans,
+        c.current_scans AS card_current_scans,
+        v_scan_limit_reached AS card_scan_limit_reached,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
@@ -150,6 +181,7 @@ $$;
 
 -- Get card content for preview mode (card owner or admin)
 -- Updated to support translations via p_language parameter
+-- Updated to include billing_type for preview
 CREATE OR REPLACE FUNCTION get_card_preview_content(
     p_card_id UUID,
     p_language VARCHAR(10) DEFAULT 'en'
@@ -165,6 +197,10 @@ RETURNS TABLE (
     card_original_language VARCHAR(10),
     card_has_translation BOOLEAN,
     card_available_languages TEXT[], -- Array of available language codes
+    card_content_mode TEXT, -- Content rendering mode (single, grouped, list, grid, inline)
+    card_billing_type TEXT, -- Billing model: physical or digital
+    card_max_scans INTEGER, -- NULL for physical (unlimited), Integer for digital
+    card_current_scans INTEGER, -- Current scan count
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -223,6 +259,10 @@ BEGIN
             ARRAY[c.original_language] || 
             ARRAY(SELECT jsonb_object_keys(c.translations))
         )::TEXT[] AS card_available_languages,
+        COALESCE(c.content_mode, 'list')::TEXT AS card_content_mode, -- Content rendering mode
+        COALESCE(c.billing_type, 'physical')::TEXT AS card_billing_type, -- Billing model
+        c.max_scans AS card_max_scans,
+        c.current_scans AS card_current_scans,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,

@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Mon Nov 17 20:39:37 HKT 2025
+-- Generated: Tue Dec  2 23:53:27 HKT 2025
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -229,6 +229,10 @@ RETURNS TABLE (
     original_language VARCHAR(10),
     content_hash TEXT,
     last_content_update TIMESTAMPTZ,
+    content_mode TEXT,
+    billing_type TEXT,
+    max_scans INTEGER,
+    current_scans INTEGER,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -249,6 +253,10 @@ BEGIN
         c.original_language,
         c.content_hash,
         c.last_content_update,
+        c.content_mode,
+        c.billing_type,
+        c.max_scans,
+        c.current_scans,
         c.created_at,
         c.updated_at
     FROM cards c
@@ -262,7 +270,7 @@ GRANT EXECUTE ON FUNCTION get_user_cards() TO authenticated;
 -- Modified to accept optional content_hash and translations for import
 CREATE OR REPLACE FUNCTION create_card(
     p_name TEXT,
-    p_description TEXT,
+    p_description TEXT DEFAULT '',
     p_image_url TEXT DEFAULT NULL,
     p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
@@ -272,7 +280,10 @@ CREATE OR REPLACE FUNCTION create_card(
     p_qr_code_position TEXT DEFAULT 'BR',
     p_original_language VARCHAR(10) DEFAULT 'en',
     p_content_hash TEXT DEFAULT NULL,  -- For import: preserve original hash
-    p_translations JSONB DEFAULT NULL  -- For import: restore translations
+    p_translations JSONB DEFAULT NULL,  -- For import: restore translations
+    p_content_mode TEXT DEFAULT 'list',  -- Content rendering mode: single, grouped, list, grid, inline
+    p_billing_type TEXT DEFAULT 'physical',  -- Billing model: physical or digital
+    p_max_scans INTEGER DEFAULT NULL  -- NULL = unlimited (physical), Integer = limit (digital)
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -290,7 +301,11 @@ BEGIN
         qr_code_position,
         original_language,
         content_hash,  -- May be NULL (trigger calculates) or provided (import)
-        translations   -- May be NULL (normal) or provided (import)
+        translations,  -- May be NULL (normal) or provided (import)
+        content_mode,
+        billing_type,
+        max_scans,
+        current_scans
     ) VALUES (
         auth.uid(),
         p_name,
@@ -304,7 +319,11 @@ BEGIN
         p_qr_code_position::"QRCodePosition",
         p_original_language,
         p_content_hash,  -- Trigger will calculate if NULL
-        COALESCE(p_translations, '{}'::JSONB)  -- Default to empty object
+        COALESCE(p_translations, '{}'::JSONB),  -- Default to empty object
+        COALESCE(p_content_mode, 'list'),
+        COALESCE(p_billing_type, 'physical'),
+        p_max_scans,  -- NULL for physical (unlimited), set for digital
+        0  -- Start with 0 scans
     )
     RETURNING id INTO v_card_id;
     
@@ -312,13 +331,13 @@ BEGIN
     IF p_translations IS NOT NULL AND p_translations != '{}'::JSONB THEN
         PERFORM log_operation(format('Imported card with translations: %s', p_name));
     ELSE
-        PERFORM log_operation(format('Created card: %s', p_name));
+        PERFORM log_operation(format('Created %s card: %s', p_billing_type, p_name));
     END IF;
     
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, TEXT, INTEGER) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 CREATE OR REPLACE FUNCTION get_card_by_id(p_card_id UUID)
@@ -338,6 +357,10 @@ RETURNS TABLE (
     original_language VARCHAR(10),
     content_hash TEXT,
     last_content_update TIMESTAMPTZ,
+    content_mode TEXT,
+    billing_type TEXT,
+    max_scans INTEGER,
+    current_scans INTEGER,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -359,6 +382,10 @@ BEGIN
         c.original_language,
         c.content_hash,
         c.last_content_update,
+        c.content_mode,
+        c.billing_type,
+        c.max_scans,
+        c.current_scans,
         c.created_at, 
         c.updated_at
     FROM cards c
@@ -379,7 +406,10 @@ CREATE OR REPLACE FUNCTION update_card(
     p_ai_instruction TEXT DEFAULT NULL,
     p_ai_knowledge_base TEXT DEFAULT NULL,
     p_qr_code_position TEXT DEFAULT NULL,
-    p_original_language VARCHAR(10) DEFAULT NULL
+    p_original_language VARCHAR(10) DEFAULT NULL,
+    p_content_mode TEXT DEFAULT NULL,
+    p_billing_type TEXT DEFAULT NULL,
+    p_max_scans INTEGER DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_old_record RECORD;
@@ -399,6 +429,9 @@ BEGIN
         ai_knowledge_base,
         qr_code_position,
         original_language,
+        content_mode,
+        billing_type,
+        max_scans,
         user_id,
         updated_at
     INTO v_old_record
@@ -460,12 +493,24 @@ BEGIN
         has_changes := TRUE;
     END IF;
     
+    IF p_content_mode IS NOT NULL AND p_content_mode != v_old_record.content_mode THEN
+        v_changes_made := v_changes_made || jsonb_build_object('content_mode', jsonb_build_object('from', v_old_record.content_mode, 'to', p_content_mode));
+        has_changes := TRUE;
+    END IF;
+    
+    -- NOTE: billing_type cannot be changed after card creation
+    -- Silently ignore any attempt to change billing_type
+    -- IF p_billing_type IS NOT NULL AND p_billing_type != v_old_record.billing_type THEN
+    --     RAISE EXCEPTION 'Access mode (billing_type) cannot be changed after card creation.';
+    -- END IF;
+    
     -- Only proceed if there are actual changes
     IF NOT has_changes THEN
         RETURN TRUE; -- No changes to make
-END IF;
+    END IF;
     
     -- Perform the update
+    -- NOTE: billing_type is NOT updated - it's immutable after creation
     UPDATE cards
     SET 
         name = COALESCE(p_name, name),
@@ -478,6 +523,9 @@ END IF;
         ai_knowledge_base = COALESCE(p_ai_knowledge_base, ai_knowledge_base),
         qr_code_position = COALESCE(p_qr_code_position::"QRCodePosition", qr_code_position),
         original_language = COALESCE(p_original_language, original_language),
+        content_mode = COALESCE(p_content_mode, content_mode),
+        -- billing_type is immutable - not updated here
+        max_scans = CASE WHEN billing_type = 'digital' THEN COALESCE(p_max_scans, max_scans) ELSE NULL END,
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
     
@@ -487,7 +535,7 @@ END IF;
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR, TEXT, TEXT, INTEGER) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
@@ -1706,6 +1754,7 @@ DROP FUNCTION IF EXISTS get_card_preview_content CASCADE;
 
 -- Get public card content by issue card ID
 -- Updated to support translations via p_language parameter
+-- Updated to include billing_type for routing and scan tracking
 CREATE OR REPLACE FUNCTION get_public_card_content(
     p_issue_card_id UUID,
     p_language VARCHAR(10) DEFAULT 'en'
@@ -1721,6 +1770,11 @@ RETURNS TABLE (
     card_original_language VARCHAR(10),
     card_has_translation BOOLEAN,
     card_available_languages TEXT[], -- Array of available language codes
+    card_content_mode TEXT, -- Content rendering mode (single, grouped, list, grid, inline)
+    card_billing_type TEXT, -- Billing model: physical or digital
+    card_max_scans INTEGER, -- NULL for physical (unlimited), Integer for digital
+    card_current_scans INTEGER, -- Current scan count
+    card_scan_limit_reached BOOLEAN, -- TRUE if digital card has reached scan limit
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -1737,13 +1791,17 @@ DECLARE
     v_card_owner_id UUID;
     v_caller_id UUID;
     v_is_owner_access BOOLEAN := FALSE;
+    v_billing_type TEXT;
+    v_max_scans INTEGER;
+    v_current_scans INTEGER;
+    v_scan_limit_reached BOOLEAN := FALSE;
 BEGIN
     -- Get the caller's user ID
     v_caller_id := auth.uid();
     
     -- Get card information by issue card ID
-    SELECT ic.card_id, ic.active, c.user_id 
-    INTO v_card_design_id, v_is_card_active, v_card_owner_id
+    SELECT ic.card_id, ic.active, c.user_id, c.billing_type, c.max_scans, c.current_scans
+    INTO v_card_design_id, v_is_card_active, v_card_owner_id, v_billing_type, v_max_scans, v_current_scans
     FROM issue_cards ic
     JOIN cards c ON ic.card_id = c.id
     WHERE ic.id = p_issue_card_id;
@@ -1758,6 +1816,22 @@ BEGIN
         v_is_owner_access := TRUE;
         -- For owner access, we consider the card as "activated" for preview purposes
         v_is_card_active := TRUE;
+    END IF;
+
+    -- For digital cards, check scan limit and increment counter (only for non-owner access)
+    IF v_billing_type = 'digital' AND NOT v_is_owner_access THEN
+        -- Check if limit reached
+        IF v_max_scans IS NOT NULL AND v_current_scans >= v_max_scans THEN
+            v_scan_limit_reached := TRUE;
+        ELSE
+            -- Increment scan counter
+            BEGIN
+                UPDATE cards SET current_scans = current_scans + 1 WHERE id = v_card_design_id;
+                v_current_scans := v_current_scans + 1;
+            EXCEPTION
+                WHEN others THEN NULL;
+            END;
+        END IF;
     END IF;
 
     -- If the card is not active, activate it automatically (regardless of owner status)
@@ -1792,6 +1866,11 @@ BEGIN
             ARRAY[c.original_language] || 
             ARRAY(SELECT jsonb_object_keys(c.translations))
         )::TEXT[] AS card_available_languages,
+        COALESCE(c.content_mode, 'list')::TEXT AS card_content_mode, -- Content rendering mode
+        COALESCE(c.billing_type, 'physical')::TEXT AS card_billing_type, -- Billing model
+        c.max_scans AS card_max_scans,
+        c.current_scans AS card_current_scans,
+        v_scan_limit_reached AS card_scan_limit_reached,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
@@ -1851,6 +1930,7 @@ $$;
 
 -- Get card content for preview mode (card owner or admin)
 -- Updated to support translations via p_language parameter
+-- Updated to include billing_type for preview
 CREATE OR REPLACE FUNCTION get_card_preview_content(
     p_card_id UUID,
     p_language VARCHAR(10) DEFAULT 'en'
@@ -1866,6 +1946,10 @@ RETURNS TABLE (
     card_original_language VARCHAR(10),
     card_has_translation BOOLEAN,
     card_available_languages TEXT[], -- Array of available language codes
+    card_content_mode TEXT, -- Content rendering mode (single, grouped, list, grid, inline)
+    card_billing_type TEXT, -- Billing model: physical or digital
+    card_max_scans INTEGER, -- NULL for physical (unlimited), Integer for digital
+    card_current_scans INTEGER, -- Current scan count
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -1924,6 +2008,10 @@ BEGIN
             ARRAY[c.original_language] || 
             ARRAY(SELECT jsonb_object_keys(c.translations))
         )::TEXT[] AS card_available_languages,
+        COALESCE(c.content_mode, 'list')::TEXT AS card_content_mode, -- Content rendering mode
+        COALESCE(c.billing_type, 'physical')::TEXT AS card_billing_type, -- Billing model
+        c.max_scans AS card_max_scans,
+        c.current_scans AS card_current_scans,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,

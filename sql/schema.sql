@@ -70,6 +70,12 @@ CREATE TABLE cards (
     conversation_ai_enabled BOOLEAN DEFAULT false,
     ai_instruction TEXT DEFAULT '' NOT NULL, -- AI role and guidelines (max 100 words) - defines AI's role, personality, and restrictions
     ai_knowledge_base TEXT DEFAULT '' NOT NULL, -- Background knowledge for AI conversations (max 2000 words) - detailed domain knowledge, facts, specifications
+    -- Content mode for rendering (determines mobile layout)
+    content_mode TEXT DEFAULT 'list' CHECK (content_mode IN ('single', 'grouped', 'list', 'grid', 'inline')), -- single = one page, grouped = categories, list = simple list, grid = 2-col gallery, inline = horizontal cards
+    -- Billing model columns (for future Digital/Traffic-based billing)
+    billing_type TEXT DEFAULT 'physical' CHECK (billing_type IN ('physical', 'digital')), -- physical = per-card, digital = per-access
+    max_scans INTEGER DEFAULT NULL, -- NULL = Unlimited (Physical default), Integer = Traffic limit (Digital)
+    current_scans INTEGER DEFAULT 0, -- Counter for Digital billing
     -- Translation system columns
     translations JSONB DEFAULT '{}'::JSONB, -- AI-powered translations: {"zh-Hans": {"name": "...", "description": "...", "translated_at": "...", "content_hash": "..."}}
     original_language VARCHAR(10) DEFAULT 'en', -- ISO 639-1 language code

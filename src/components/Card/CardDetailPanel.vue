@@ -67,7 +67,7 @@
                         <div class="h-full overflow-y-auto px-0 py-2 sm:p-3 lg:p-4 xl:p-6">
                             <!-- General Tab -->
                             <CardGeneral 
-                                v-if="index === 0"
+                                v-if="getTabComponent(index) === 'general'"
                                 :cardProp="selectedCard"
                                 :loading="loading"
                                 :updateCardFn="updateCardFn"
@@ -77,21 +77,22 @@
                             />
                             <!-- Content Tab -->
                             <CardContent 
-                                v-if="index === 1" 
+                                v-if="getTabComponent(index) === 'content'" 
                                 :cardId="selectedCard.id" 
-                                :cardAiEnabled="selectedCard.conversation_ai_enabled" 
+                                :cardAiEnabled="selectedCard.conversation_ai_enabled"
+                                :contentMode="selectedCard.content_mode || 'catalog'" 
                                 :key="selectedCard.id + '-content'" 
                             />
-                            <!-- Issuance Tab -->
+                            <!-- Issuance Tab (Physical Cards Only) -->
                             <CardIssuanceCheckout 
-                                v-if="index === 2" 
+                                v-if="getTabComponent(index) === 'issuance'" 
                                 :cardId="selectedCard.id" 
                                 :key="selectedCard.id + '-issurance'"
                                 @batch-created="handleBatchCreated"
                             />
                             <!-- QR & Access Tab -->
                             <CardAccessQR 
-                                v-if="index === 3"
+                                v-if="getTabComponent(index) === 'qr'"
                                 :cardId="selectedCard.id"
                                 :cardName="selectedCard.name"
                                 :selectedBatchId="selectedBatchId"
@@ -100,7 +101,7 @@
                             />
                             <!-- Preview Tab -->
                             <MobilePreview 
-                                v-if="index === 4" 
+                                v-if="getTabComponent(index) === 'preview'" 
                                 :cardProp="selectedCard" 
                                 :key="`${selectedCard.id}-mobile-preview-${mobilePreviewRefreshKey}`"
                             />
@@ -197,13 +198,46 @@ const handleBatchCreated = async (batchId) => {
     accessQRRefreshKey.value++;
 };
 
-const tabs = computed(() => [
-    { label: t('dashboard.general'), icon: 'pi pi-cog' },
-    { label: t('dashboard.content'), icon: 'pi pi-list' },
-    { label: t('dashboard.card_issuance'), icon: 'pi pi-credit-card' },
-    { label: t('dashboard.qr_access'), icon: 'pi pi-qrcode' },
-    { label: t('dashboard.mobile_preview'), icon: 'pi pi-mobile' }
-]);
+// Tabs are dynamic based on billing_type (access mode)
+const tabs = computed(() => {
+    const baseTabs = [
+        { label: t('dashboard.general'), icon: 'pi pi-cog' },
+        { label: t('dashboard.content'), icon: 'pi pi-list' }
+    ];
+    
+    // Physical cards have Issuance tab (for batch printing)
+    if (props.selectedCard?.billing_type !== 'digital') {
+        baseTabs.push({ label: t('dashboard.card_issuance'), icon: 'pi pi-credit-card' });
+    }
+    
+    // Both have QR & Access tab
+    baseTabs.push({ label: t('dashboard.qr_access'), icon: 'pi pi-qrcode' });
+    
+    // Both have Mobile Preview tab
+    baseTabs.push({ label: t('dashboard.mobile_preview'), icon: 'pi pi-mobile' });
+    
+    return baseTabs;
+});
+
+// Map tab index to component type based on billing_type
+const getTabComponent = (index) => {
+    const isDigital = props.selectedCard?.billing_type === 'digital';
+    
+    if (index === 0) return 'general';
+    if (index === 1) return 'content';
+    
+    if (isDigital) {
+        // Digital: [General, Content, QR, Preview]
+        if (index === 2) return 'qr';
+        if (index === 3) return 'preview';
+    } else {
+        // Physical: [General, Content, Issuance, QR, Preview]
+        if (index === 2) return 'issuance';
+        if (index === 3) return 'qr';
+        if (index === 4) return 'preview';
+    }
+    return null;
+};
 
 const emptyStateTitle = computed(() => {
     return props.hasCards ? t('dashboard.select_a_card') : t('dashboard.no_cards_yet');

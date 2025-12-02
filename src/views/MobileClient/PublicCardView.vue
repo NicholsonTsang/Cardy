@@ -18,19 +18,27 @@
       />
     </div>
 
+    <!-- Scan Limit Reached State (for digital cards) -->
+    <div v-else-if="cardData?.scan_limit_reached" class="error-container scan-limit-container">
+      <i class="pi pi-lock error-icon text-amber-400" />
+      <h2 class="error-title">{{ $t('mobile.scan_limit_reached') }}</h2>
+      <p class="error-message">{{ $t('mobile.scan_limit_message') }}</p>
+    </div>
+
     <!-- Main Content -->
-    <div v-else-if="cardData" class="content-wrapper">
-      <!-- Navigation Header -->
+    <div v-else-if="cardData && !cardData.scan_limit_reached" class="content-wrapper">
+      <!-- Navigation Header (show when not on overview page) -->
       <MobileHeader 
         v-if="!isCardView"
         :title="headerTitle"
         :subtitle="cardData.card_name"
+        :show-back-button="true"
         @back="handleNavigation"
       />
 
       <!-- Dynamic View Container -->
       <transition name="view-transition" mode="out-in">
-        <!-- Card Overview -->
+        <!-- Card/Welcome Overview (both physical and digital) -->
         <CardOverview 
           v-if="isCardView"
           :card="cardData"
@@ -38,12 +46,15 @@
           @explore="openContentList"
         />
 
-        <!-- Content List -->
-        <ContentList 
+        <!-- Smart Content Renderer (Auto-detects layout based on content_mode) -->
+        <SmartContentRenderer 
           v-else-if="isContentListView"
           :items="topLevelContent"
           :card-ai-enabled="cardData.conversation_ai_enabled"
           :all-items="contentItems"
+          :card="cardData"
+          :available-languages="availableLanguages"
+          :has-header="true"
           @select="selectContent"
         />
 
@@ -73,10 +84,10 @@ import Button from 'primevue/button'
 const { t } = useI18n()
 const mobileLanguageStore = useMobileLanguageStore()
 
-// Child Components - We'll create these next
+// Child Components
 import MobileHeader from './components/MobileHeader.vue'
 import CardOverview from './components/CardOverview.vue'
-import ContentList from './components/ContentList.vue'
+import SmartContentRenderer from './components/SmartContentRenderer.vue'
 import ContentDetail from './components/ContentDetail.vue'
 
 // Types
@@ -91,6 +102,11 @@ interface CardData {
   ai_prompt: string  // For backward compatibility with AI Assistant
   is_activated: boolean
   is_preview?: boolean
+  content_mode?: 'solo' | 'stack' | 'catalog' | 'guide' // Content rendering mode
+  billing_type?: 'physical' | 'digital' // Billing model
+  max_scans?: number | null // Scan limit for digital
+  current_scans?: number // Current scan count
+  scan_limit_reached?: boolean // TRUE if digital card has reached limit
 }
 
 interface ContentItem {
@@ -204,7 +220,12 @@ async function fetchCardData() {
       ai_knowledge_base: firstRow.card_ai_knowledge_base,
       ai_prompt: firstRow.card_ai_instruction, // For backward compatibility with AI Assistant
       is_activated: isPreviewMode.value ? true : firstRow.is_activated, // Always activated in preview mode
-      is_preview: isPreviewMode.value || firstRow.is_preview || false
+      is_preview: isPreviewMode.value || firstRow.is_preview || false,
+      content_mode: firstRow.card_content_mode || 'catalog', // Content rendering mode
+      billing_type: firstRow.card_billing_type || 'physical', // Billing model
+      max_scans: firstRow.card_max_scans,
+      current_scans: firstRow.card_current_scans,
+      scan_limit_reached: firstRow.card_scan_limit_reached || false
     }
 
     // Extract available languages for this card

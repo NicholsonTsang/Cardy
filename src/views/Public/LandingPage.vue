@@ -215,8 +215,246 @@
       </div>
     </section>
 
-    <!-- How CardStudio Works -->
+    <!-- Content Modes Showcase -->
     <section class="py-20 sm:py-32 bg-white relative overflow-hidden">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12 sm:mb-16">
+          <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 mb-4 sm:mb-6">
+            {{ $t('landing.content_modes.title') }} <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">{{ $t('landing.content_modes.title_highlight') }}</span>
+          </h2>
+          <p class="text-lg sm:text-xl text-slate-600 max-w-3xl mx-auto px-2">
+            {{ $t('landing.content_modes.subtitle') }}
+          </p>
+        </div>
+
+        <!-- Mode Tabs - Responsive -->
+        <div class="mb-8 sm:mb-12">
+          <!-- Mobile: Horizontal scroll tabs -->
+          <div class="flex gap-2 overflow-x-auto pb-2 sm:hidden scrollbar-hide px-1">
+            <button 
+              v-for="mode in contentModes" 
+              :key="mode.key"
+              @click="selectedMode = mode.key"
+              :class="[
+                'flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all whitespace-nowrap',
+                selectedMode === mode.key 
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg' 
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              ]"
+            >
+              <i :class="`pi ${mode.icon}`"></i>
+              <span>{{ $t(`landing.content_modes.${mode.key}.name`) }}</span>
+            </button>
+          </div>
+          
+          <!-- Desktop: Centered tabs -->
+          <div class="hidden sm:flex justify-center gap-3 flex-wrap">
+            <button 
+              v-for="mode in contentModes" 
+              :key="mode.key"
+              @click="selectedMode = mode.key"
+              :class="[
+                'flex items-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-300',
+                selectedMode === mode.key 
+                  ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg scale-105' 
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:scale-102'
+              ]"
+            >
+              <i :class="`pi ${mode.icon} text-lg`"></i>
+              <span>{{ $t(`landing.content_modes.${mode.key}.name`) }}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mode Display -->
+        <div class="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+          <!-- Left: Phone Mockup with Schematic -->
+          <div class="relative flex justify-center animate-on-scroll">
+            <div class="relative">
+              <!-- Phone Frame -->
+              <div class="relative w-[280px] sm:w-[320px] bg-slate-900 rounded-[2.5rem] p-3 shadow-2xl">
+                <!-- Notch -->
+                <div class="absolute top-0 left-1/2 -translate-x-1/2 w-32 h-6 bg-slate-900 rounded-b-2xl z-10"></div>
+                
+                <!-- Screen Content -->
+                <div class="bg-gradient-to-br from-slate-800 to-slate-900 rounded-[2rem] overflow-hidden aspect-[9/19.5]">
+                  <!-- Header Bar -->
+                  <div class="h-12 bg-slate-800/80 backdrop-blur flex items-center justify-between px-4">
+                    <i class="pi pi-arrow-left text-white/60 text-sm"></i>
+                    <span class="text-white/90 text-sm font-medium">{{ $t(`landing.content_modes.${selectedMode}.name`) }}</span>
+                    <i class="pi pi-globe text-white/60 text-sm"></i>
+                  </div>
+                  
+                  <!-- Dynamic Schematic Content -->
+                  <div class="p-4 h-full">
+                    <!-- Single Mode -->
+                    <div v-if="selectedMode === 'single'" class="space-y-4 animate-fade-in">
+                      <div class="w-full h-32 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-xl flex items-center justify-center">
+                        <i class="pi pi-image text-white/40 text-4xl"></i>
+                      </div>
+                      <div class="h-6 bg-white/20 rounded-lg w-3/4"></div>
+                      <div class="space-y-2">
+                        <div class="h-3 bg-white/10 rounded w-full"></div>
+                        <div class="h-3 bg-white/10 rounded w-full"></div>
+                        <div class="h-3 bg-white/10 rounded w-5/6"></div>
+                        <div class="h-3 bg-white/10 rounded w-full"></div>
+                        <div class="h-3 bg-white/10 rounded w-4/5"></div>
+                      </div>
+                    </div>
+                    
+                    <!-- Grouped Mode -->
+                    <div v-else-if="selectedMode === 'grouped'" class="space-y-4 animate-fade-in">
+                      <div class="h-5 bg-white/20 rounded w-1/2 mb-2"></div>
+                      <!-- Category 1 -->
+                      <div class="space-y-2">
+                        <div class="h-3 bg-purple-400/40 rounded w-1/3 uppercase"></div>
+                        <div class="flex items-center gap-3 bg-white/10 rounded-lg p-3">
+                          <div class="w-8 h-8 bg-white/20 rounded-lg"></div>
+                          <div class="flex-1 space-y-1">
+                            <div class="h-3 bg-white/20 rounded w-3/4"></div>
+                            <div class="h-2 bg-white/10 rounded w-1/2"></div>
+                          </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-white/10 rounded-lg p-3">
+                          <div class="w-8 h-8 bg-white/20 rounded-lg"></div>
+                          <div class="flex-1 space-y-1">
+                            <div class="h-3 bg-white/20 rounded w-2/3"></div>
+                            <div class="h-2 bg-white/10 rounded w-1/3"></div>
+                          </div>
+                        </div>
+                      </div>
+                      <!-- Category 2 -->
+                      <div class="space-y-2">
+                        <div class="h-3 bg-purple-400/40 rounded w-1/4 uppercase"></div>
+                        <div class="flex items-center gap-3 bg-white/10 rounded-lg p-3">
+                          <div class="w-8 h-8 bg-white/20 rounded-lg"></div>
+                          <div class="flex-1 space-y-1">
+                            <div class="h-3 bg-white/20 rounded w-1/2"></div>
+                            <div class="h-2 bg-white/10 rounded w-2/5"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- List Mode -->
+                    <div v-else-if="selectedMode === 'list'" class="space-y-3 animate-fade-in">
+                      <div class="h-5 bg-white/20 rounded w-2/3 mb-4"></div>
+                      <div v-for="i in 5" :key="i" class="flex items-center gap-3 bg-white/10 rounded-xl p-3">
+                        <div class="w-10 h-10 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-lg flex items-center justify-center">
+                          <i class="pi pi-link text-white/50 text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                          <div class="h-3 bg-white/20 rounded w-3/4 mb-1"></div>
+                          <div class="h-2 bg-white/10 rounded w-1/2"></div>
+                        </div>
+                        <i class="pi pi-chevron-right text-white/30 text-xs"></i>
+                      </div>
+                    </div>
+                    
+                    <!-- Grid Mode -->
+                    <div v-else-if="selectedMode === 'grid'" class="animate-fade-in">
+                      <div class="h-5 bg-white/20 rounded w-1/2 mb-4"></div>
+                      <div class="grid grid-cols-2 gap-3">
+                        <div v-for="i in 4" :key="i" class="bg-white/10 rounded-xl overflow-hidden">
+                          <div class="aspect-square bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                            <i class="pi pi-image text-white/30 text-2xl"></i>
+                          </div>
+                          <div class="p-2">
+                            <div class="h-3 bg-white/20 rounded w-3/4 mx-auto"></div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Inline Mode (Full-width cards, one per row) -->
+                    <div v-else-if="selectedMode === 'inline'" class="animate-fade-in">
+                      <div class="h-5 bg-white/20 rounded w-2/3 mb-4"></div>
+                      <div class="space-y-3">
+                        <div v-for="i in 2" :key="i" class="bg-white/10 rounded-xl overflow-hidden">
+                          <div class="aspect-[16/9] bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                            <i class="pi pi-image text-white/30 text-2xl"></i>
+                          </div>
+                          <div class="p-3 space-y-2">
+                            <div class="h-4 bg-white/20 rounded w-3/4"></div>
+                            <div class="h-2 bg-white/10 rounded w-full"></div>
+                            <div class="h-2 bg-white/10 rounded w-2/3"></div>
+                            <div class="flex items-center gap-1 mt-1">
+                              <div class="h-2 bg-white/15 rounded w-16"></div>
+                              <i class="pi pi-arrow-right text-white/20 text-[8px]"></i>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Decorative glow -->
+              <div class="absolute -inset-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-[3rem] blur-2xl -z-10"></div>
+            </div>
+          </div>
+          
+          <!-- Right: Mode Description -->
+          <div class="animate-on-scroll" style="animation-delay: 200ms">
+            <div class="bg-gradient-to-br from-slate-50 to-slate-100 rounded-3xl p-8 sm:p-10 border border-slate-200">
+              <div class="flex items-center gap-4 mb-6">
+                <div class="w-14 h-14 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
+                  <i :class="`pi ${contentModes.find(m => m.key === selectedMode)?.icon} text-white text-2xl`"></i>
+                </div>
+                <div>
+                  <h3 class="text-2xl font-bold text-slate-900">{{ $t(`landing.content_modes.${selectedMode}.name`) }}</h3>
+                  <p class="text-slate-500">{{ $t(`landing.content_modes.${selectedMode}.desc`) }}</p>
+                </div>
+              </div>
+              
+              <div class="space-y-4">
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i class="pi pi-check text-green-600"></i>
+                  </div>
+                  <div>
+                    <h4 class="font-semibold text-slate-900 mb-1">{{ $t('landing.content_modes.best_for') || 'Best For' }}</h4>
+                    <p class="text-slate-600">{{ $t(`landing.content_modes.${selectedMode}.use_case`) }}</p>
+                  </div>
+                </div>
+                
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i class="pi pi-cog text-blue-600"></i>
+                  </div>
+                  <div>
+                    <h4 class="font-semibold text-slate-900 mb-1">{{ $t('landing.content_modes.easy_setup') || 'Easy Setup' }}</h4>
+                    <p class="text-slate-600">{{ $t('landing.content_modes.setup_desc') || 'Configure in seconds from the CMS dashboard. No coding required.' }}</p>
+                  </div>
+                </div>
+                
+                <div class="flex items-start gap-3">
+                  <div class="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <i class="pi pi-mobile text-purple-600"></i>
+                  </div>
+                  <div>
+                    <h4 class="font-semibold text-slate-900 mb-1">{{ $t('landing.content_modes.mobile_optimized') || 'Mobile Optimized' }}</h4>
+                    <p class="text-slate-600">{{ $t('landing.content_modes.mobile_desc') || 'Responsive design that looks perfect on any device.' }}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <button 
+                @click="handleGetStarted"
+                class="mt-8 w-full flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white py-4 text-base font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+              >
+                <span>{{ $t('landing.hero.cta_start') }}</span>
+                <i class="pi pi-arrow-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How CardStudio Works -->
+    <section class="py-20 sm:py-32 bg-gradient-to-b from-white to-slate-50 relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12 sm:mb-20">
           <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-slate-900 mb-4 sm:mb-6">
@@ -698,6 +936,16 @@ const toggleFaq = (index) => {
   openFaqIndex.value = openFaqIndex.value === index ? -1 : index
 }
 
+// Content Modes showcase
+const selectedMode = ref('list')
+const contentModes = [
+  { key: 'single', icon: 'pi-file' },
+  { key: 'grouped', icon: 'pi-folder' },
+  { key: 'list', icon: 'pi-list' },
+  { key: 'grid', icon: 'pi-th-large' },
+  { key: 'inline', icon: 'pi-clone' }
+]
+
 // Contact form URL from environment variables
 const contactFormUrl = import.meta.env.VITE_CONTACT_FORM_URL
 
@@ -1140,5 +1388,36 @@ html {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Content Modes Section */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Fade in animation for mode switching */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Hover scale for tabs */
+.hover\:scale-102:hover {
+  transform: scale(1.02);
 }
 </style>

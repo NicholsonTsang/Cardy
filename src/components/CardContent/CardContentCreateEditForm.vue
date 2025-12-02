@@ -1,6 +1,448 @@
 <template>
     <div class="space-y-6">
-        <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <!-- ============================================== -->
+        <!-- SINGLE MODE: Full Page Content -->
+        <!-- ============================================== -->
+        <div v-if="contentMode === 'single'" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <!-- Image Section -->
+            <div class="xl:col-span-1">
+                <div class="bg-white rounded-xl shadow-lg border border-purple-200 p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center">
+                            <i class="pi pi-image text-purple-600 text-sm"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-slate-900">{{ $t('form.single_image') }}</h3>
+                            <span class="text-xs text-slate-400">{{ $t('common.optional') }}</span>
+                        </div>
+                    </div>
+                    
+                    <ImageUploadSection 
+                        :previewImage="previewImage"
+                        :isDragActive="isDragActive"
+                        @dragover="handleDragOver"
+                        @dragleave="handleDragLeave"
+                        @drop="handleDrop"
+                        @upload="triggerFileInput"
+                        @crop="handleCropImage"
+                        @undo-crop="handleUndoCrop"
+                        :isCropped="isCropped"
+                        :uploadTitle="$t('form.add_single_image')"
+                        :aspectRatioDisplay="'16:9'"
+                    />
+                    <input ref="fileInputRef" type="file" accept="image/*" @change="handleFileSelect" class="hidden" />
+                </div>
+            </div>
+            
+            <!-- Content Section -->
+            <div class="xl:col-span-2">
+                <div class="bg-white rounded-xl shadow-lg border border-purple-200 p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                            <i class="pi pi-file text-purple-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-900">{{ $t('form.single_content_title') }}</h3>
+                            <p class="text-xs text-slate-500">{{ $t('form.single_content_subtitle') }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <!-- Title -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('form.single_title') }} *</label>
+                            <InputText 
+                                v-model="formData.name" 
+                                class="w-full" 
+                                :placeholder="$t('form.single_title_placeholder')"
+                                :class="{ 'p-invalid': !formData.name.trim() }"
+                            />
+                        </div>
+
+                        <!-- Full Content -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('form.single_content') }}</label>
+                            <MdEditor 
+                                v-model="formData.description"
+                                language="en-US"
+                                :toolbars="markdownToolbars"
+                                :placeholder="$t('form.single_content_placeholder')"
+                                :onHtmlChanged="handleMarkdownHtmlChanged"
+                                style="height: 350px;"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- AI Context -->
+                    <div v-if="cardAiEnabled" class="mt-6 pt-6 border-t border-slate-200">
+                        <AIContextSection 
+                            v-model="formData.aiKnowledgeBase"
+                            :label="$t('form.single_ai_context')"
+                            :placeholder="$t('form.single_ai_placeholder')"
+                            :hint="$t('form.single_ai_hint')"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- GROUPED MODE: Category Header or Sub-Item -->
+        <!-- ============================================== -->
+        <div v-else-if="contentMode === 'grouped'">
+            <!-- CATEGORY (no parent) -->
+            <div v-if="!parentId" class="bg-white rounded-xl shadow-lg border border-orange-200 p-6">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                        <i class="pi pi-folder text-orange-600"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-900">{{ $t('form.category_title') }}</h3>
+                        <p class="text-xs text-slate-500">{{ $t('form.category_subtitle') }}</p>
+                    </div>
+                </div>
+                
+                <div class="space-y-4">
+                    <!-- Category Name -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('form.category_name') }} *</label>
+                        <InputText 
+                            v-model="formData.name" 
+                            class="w-full" 
+                            :placeholder="$t('form.category_name_placeholder')"
+                            :class="{ 'p-invalid': !formData.name.trim() }"
+                        />
+                        <small class="text-slate-500 mt-1 block">{{ $t('form.category_name_hint') }}</small>
+                    </div>
+                </div>
+
+                <!-- AI Context -->
+                <div v-if="cardAiEnabled" class="mt-6 pt-6 border-t border-slate-200">
+                    <AIContextSection 
+                        v-model="formData.aiKnowledgeBase"
+                        :label="$t('form.category_ai_context')"
+                        :placeholder="$t('form.category_ai_placeholder')"
+                        :hint="$t('form.category_ai_hint')"
+                    />
+                </div>
+            </div>
+
+            <!-- SUB-ITEM (has parent) -->
+            <div v-else class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+                <!-- Image -->
+                <div class="xl:col-span-1">
+                    <div class="bg-white rounded-xl shadow-lg border border-amber-200 p-6">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                                <i class="pi pi-image text-amber-600 text-sm"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-base font-semibold text-slate-900">{{ $t('form.grouped_item_image') }}</h3>
+                                <span class="text-xs text-slate-400">{{ $t('common.optional') }}</span>
+                            </div>
+                        </div>
+                        
+                        <ImageUploadSection 
+                            :previewImage="previewImage"
+                            :isDragActive="isDragActive"
+                            @dragover="handleDragOver"
+                            @dragleave="handleDragLeave"
+                            @drop="handleDrop"
+                            @upload="triggerFileInput"
+                            @crop="handleCropImage"
+                            @undo-crop="handleUndoCrop"
+                            :isCropped="isCropped"
+                            :uploadTitle="$t('form.add_item_image')"
+                            :aspectRatioDisplay="getContentAspectRatioDisplay()"
+                        />
+                        <input ref="fileInputRef" type="file" accept="image/*" @change="handleFileSelect" class="hidden" />
+                    </div>
+                </div>
+                
+                <!-- Details -->
+                <div class="xl:col-span-2">
+                    <div class="bg-white rounded-xl shadow-lg border border-amber-200 p-6">
+                        <div class="flex items-center gap-3 mb-6">
+                            <div class="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center">
+                                <i class="pi pi-list text-amber-600"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-slate-900">{{ $t('form.grouped_item_title') }}</h3>
+                                <p class="text-xs text-slate-500">{{ $t('form.grouped_item_subtitle') }}</p>
+                            </div>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <!-- Item Name -->
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('form.grouped_item_name') }} *</label>
+                                <InputText 
+                                    v-model="formData.name" 
+                                    class="w-full" 
+                                    :placeholder="$t('form.grouped_item_name_placeholder')"
+                                    :class="{ 'p-invalid': !formData.name.trim() }"
+                                />
+                            </div>
+
+                            <!-- Item Description -->
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('form.grouped_item_desc') }}</label>
+                                <MdEditor 
+                                    v-model="formData.description"
+                                    language="en-US"
+                                    :toolbars="markdownToolbars"
+                                    :placeholder="$t('form.grouped_item_desc_placeholder')"
+                                    :onHtmlChanged="handleMarkdownHtmlChanged"
+                                    style="height: 200px;"
+                                />
+                            </div>
+                        </div>
+
+                        <!-- AI Context -->
+                        <div v-if="cardAiEnabled" class="mt-6 pt-6 border-t border-slate-200">
+                            <AIContextSection 
+                                v-model="formData.aiKnowledgeBase"
+                                :label="$t('form.grouped_item_ai')"
+                                :placeholder="$t('form.grouped_item_ai_placeholder')"
+                                :hint="$t('form.grouped_item_ai_hint')"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- LIST MODE: Simple List Item -->
+        <!-- ============================================== -->
+        <div v-else-if="contentMode === 'list'" class="bg-white rounded-xl shadow-lg border border-blue-200 p-6">
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                    <i class="pi pi-list text-blue-600"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-slate-900">{{ $t('form.list_item_title') }}</h3>
+                    <p class="text-xs text-slate-500">{{ $t('form.list_item_subtitle') }}</p>
+                </div>
+            </div>
+            
+            <div class="space-y-4">
+                <!-- Item Title -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        {{ $t('form.list_item_name') }} *
+                    </label>
+                    <InputText 
+                        v-model="formData.name" 
+                        class="w-full" 
+                        :placeholder="$t('form.list_item_name_placeholder')"
+                        :class="{ 'p-invalid': !formData.name.trim() }"
+                    />
+                </div>
+
+                <!-- URL or Content -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                        {{ $t('form.list_item_content') }}
+                    </label>
+                    <div class="relative">
+                        <i class="pi pi-link absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                        <InputText 
+                            v-model="formData.description" 
+                            class="w-full pl-10" 
+                            :placeholder="$t('form.list_item_content_placeholder')"
+                        />
+                    </div>
+                    <small class="text-slate-500 mt-1 block">{{ $t('form.list_item_content_hint') }}</small>
+                </div>
+            </div>
+
+            <!-- AI Context -->
+            <div v-if="cardAiEnabled" class="mt-6 pt-6 border-t border-slate-200">
+                <AIContextSection 
+                    v-model="formData.aiKnowledgeBase"
+                    :label="$t('form.list_item_ai')"
+                    :placeholder="$t('form.list_item_ai_placeholder')"
+                    :hint="$t('form.list_item_ai_hint')"
+                />
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- GRID MODE: Visual Gallery Item -->
+        <!-- ============================================== -->
+        <div v-else-if="contentMode === 'grid'" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <!-- Image Section -->
+            <div class="xl:col-span-1">
+                <div class="bg-white rounded-xl shadow-lg border border-green-200 p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="pi pi-image text-green-600 text-sm"></i>
+                        </div>
+                        <h3 class="text-base font-semibold text-slate-900">{{ $t('form.grid_image') }} *</h3>
+                    </div>
+                    
+                    <ImageUploadSection 
+                        :previewImage="previewImage"
+                        :isDragActive="isDragActive"
+                        @dragover="handleDragOver"
+                        @dragleave="handleDragLeave"
+                        @drop="handleDrop"
+                        @upload="triggerFileInput"
+                        @crop="handleCropImage"
+                        @undo-crop="handleUndoCrop"
+                        :isCropped="isCropped"
+                        :uploadTitle="$t('form.add_grid_image')"
+                        :aspectRatioDisplay="'1:1'"
+                    />
+                    <input ref="fileInputRef" type="file" accept="image/*" @change="handleFileSelect" class="hidden" />
+                    <p class="text-xs text-slate-500 mt-3 text-center">{{ $t('form.grid_image_hint') }}</p>
+                </div>
+            </div>
+            
+            <!-- Details Section -->
+            <div class="xl:col-span-2">
+                <div class="bg-white rounded-xl shadow-lg border border-green-200 p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                            <i class="pi pi-th-large text-green-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-900">{{ $t('form.grid_item_title') }}</h3>
+                            <p class="text-xs text-slate-500">{{ $t('form.grid_item_subtitle') }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <!-- Item Name -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('form.grid_item_name') }} *</label>
+                            <InputText 
+                                v-model="formData.name" 
+                                class="w-full" 
+                                :placeholder="$t('form.grid_item_name_placeholder')"
+                                :class="{ 'p-invalid': !formData.name.trim() }"
+                            />
+                        </div>
+
+                        <!-- Item Description -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('form.grid_item_desc') }}</label>
+                            <MdEditor 
+                                v-model="formData.description"
+                                language="en-US"
+                                :toolbars="markdownToolbars"
+                                :placeholder="$t('form.grid_item_desc_placeholder')"
+                                :onHtmlChanged="handleMarkdownHtmlChanged"
+                                style="height: 200px;"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- AI Context -->
+                    <div v-if="cardAiEnabled" class="mt-6 pt-6 border-t border-slate-200">
+                        <AIContextSection 
+                            v-model="formData.aiKnowledgeBase"
+                            :label="$t('form.grid_item_ai')"
+                            :placeholder="$t('form.grid_item_ai_placeholder')"
+                            :hint="$t('form.grid_item_ai_hint')"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- INLINE MODE: Full-Width Card Item -->
+        <!-- ============================================== -->
+        <div v-else-if="contentMode === 'inline'" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <!-- Image Section -->
+            <div class="xl:col-span-1">
+                <div class="bg-white rounded-xl shadow-lg border border-cyan-200 p-6">
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-8 h-8 bg-cyan-100 rounded-full flex items-center justify-center">
+                            <i class="pi pi-image text-cyan-600 text-sm"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-base font-semibold text-slate-900">{{ $t('form.inline_image') }}</h3>
+                            <span class="text-xs text-slate-400">{{ $t('form.inline_image_recommended') }}</span>
+                        </div>
+                    </div>
+                    
+                    <ImageUploadSection 
+                        :previewImage="previewImage"
+                        :isDragActive="isDragActive"
+                        @dragover="handleDragOver"
+                        @dragleave="handleDragLeave"
+                        @drop="handleDrop"
+                        @upload="triggerFileInput"
+                        @crop="handleCropImage"
+                        @undo-crop="handleUndoCrop"
+                        :isCropped="isCropped"
+                        :uploadTitle="$t('form.add_inline_image')"
+                        :aspectRatioDisplay="'16:9'"
+                    />
+                    <input ref="fileInputRef" type="file" accept="image/*" @change="handleFileSelect" class="hidden" />
+                    <p class="text-xs text-slate-500 mt-3 text-center">{{ $t('form.inline_image_hint') }}</p>
+                </div>
+            </div>
+            
+            <!-- Details Section -->
+            <div class="xl:col-span-2">
+                <div class="bg-white rounded-xl shadow-lg border border-cyan-200 p-6">
+                    <div class="flex items-center gap-3 mb-6">
+                        <div class="w-10 h-10 bg-cyan-100 rounded-full flex items-center justify-center">
+                            <i class="pi pi-clone text-cyan-600"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-slate-900">{{ $t('form.inline_item_title') }}</h3>
+                            <p class="text-xs text-slate-500">{{ $t('form.inline_item_subtitle') }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-4">
+                        <!-- Item Title -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('form.inline_item_name') }} *</label>
+                            <InputText 
+                                v-model="formData.name" 
+                                class="w-full" 
+                                :placeholder="$t('form.inline_item_name_placeholder')"
+                                :class="{ 'p-invalid': !formData.name.trim() }"
+                            />
+                        </div>
+
+                        <!-- Item Description -->
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('form.inline_item_desc') }}</label>
+                            <MdEditor 
+                                v-model="formData.description"
+                                language="en-US"
+                                :toolbars="markdownToolbars"
+                                :placeholder="$t('form.inline_item_desc_placeholder')"
+                                :onHtmlChanged="handleMarkdownHtmlChanged"
+                                style="height: 200px;"
+                            />
+                        </div>
+                    </div>
+
+                    <!-- AI Context -->
+                    <div v-if="cardAiEnabled" class="mt-6 pt-6 border-t border-slate-200">
+                        <AIContextSection 
+                            v-model="formData.aiKnowledgeBase"
+                            :label="$t('form.inline_item_ai')"
+                            :placeholder="$t('form.inline_item_ai_placeholder')"
+                            :hint="$t('form.inline_item_ai_hint')"
+                        />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================== -->
+        <!-- DEFAULT/FALLBACK: Generic Content Item -->
+        <!-- ============================================== -->
+        <div v-else class="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <!-- Image Section -->
             <div class="xl:col-span-1">
                 <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
@@ -9,106 +451,20 @@
                         {{ parentId ? $t('dashboard.sub_item_image_label') : $t('dashboard.content_item_image') }}
                     </h3>
                     
-                    <!-- Single-Column Layout -->
-                    <div class="space-y-6">
-                        <!-- Requirements, Actions Section -->
-                        <div class="space-y-4">
-                            <!-- Image Requirements Info -->
-                            <div class="p-3 bg-blue-100 rounded-lg">
-                                <p class="text-xs text-blue-800 flex items-start gap-2">
-                                    <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
-                                    <span><strong>{{ $t('dashboard.image_requirements') }}:</strong> {{ $t('dashboard.image_requirements_content', { ratio: getContentAspectRatioDisplay() }) }}</span>
-                                </p>
-                            </div>
-                        
-                            <!-- Combined Upload/Preview Area -->
-                            <div 
-                                v-if="!previewImage"
-                                class="upload-drop-zone-content"
-                                @dragover.prevent="handleDragOver"
-                                @dragleave.prevent="handleDragLeave"
-                                @drop.prevent="handleDrop"
-                                :class="{ 'drag-active': isDragActive }"
-                            >
-                                <div class="upload-content">
-                                    <div class="upload-icon-container">
-                                        <i class="pi pi-image upload-icon"></i>
-                                    </div>
-                                    <h4 class="upload-title">{{ parentId ? $t('dashboard.add_sub_item_image') : $t('dashboard.add_content_image') }}</h4>
-                                    <p class="upload-subtitle">{{ $t('dashboard.drag_drop_upload') }}</p>
-                                
-                                    <!-- Hidden File Input -->
-                                    <input 
-                                        ref="fileInputRef"
-                                        type="file" 
-                                        accept="image/*"
-                                        @change="handleFileSelect"
-                                        class="hidden"
-                                    />
-                                    
-                                    <Button 
-                                        :label="$t('dashboard.upload_photo')"
-                                        icon="pi pi-upload"
-                                        @click="triggerFileInput"
-                                        class="upload-trigger-button"
-                                        severity="info"
-                                        size="small"
-                                    />
-                                </div>
-                            </div>
-                            
-                            <!-- Image Preview with Actions -->
-                            <div v-else class="space-y-4">
-                                <div class="content-image-container-compact border-2 border-solid border-blue-400 bg-white rounded-xl relative">
-                                    <img 
-                                        :src="previewImage" 
-                                        :alt="`${itemTypeLabel} Preview`"
-                                        class="object-contain h-full w-full rounded-lg shadow-md" 
-                                    />
-                                </div>
-                                
-                                <div class="image-actions-content">
-                                    <Button 
-                                        :label="$t('dashboard.change_photo')"
-                                        icon="pi pi-image"
-                                        @click="triggerFileInput"
-                                        severity="secondary"
-                                        outlined
-                                        size="small"
-                                        class="action-button-content"
-                                    />
-                                    <Button 
-                                        :label="$t('dashboard.crop_image')"
-                                        icon="pi pi-expand"
-                                        @click="handleCropImage"
-                                        severity="info"
-                                        outlined
-                                        size="small"
-                                        class="action-button-content"
-                                    />
-                                    <Button 
-                                        v-if="isCropped"
-                                        :label="$t('dashboard.undo_crop')"
-                                        icon="pi pi-undo"
-                                        @click="handleUndoCrop"
-                                        severity="warning"
-                                        outlined
-                                        size="small"
-                                        class="action-button-content"
-                                    />
-                                </div>
-                                
-                                <!-- Hidden File Input for Change Photo -->
-                                <input 
-                                    ref="fileInputRef"
-                                    type="file" 
-                                    accept="image/*"
-                                    @change="handleFileSelect"
-                                    class="hidden"
-                                />
-                            </div>
-                        </div>
-                    </div>
+                    <ImageUploadSection 
+                        :previewImage="previewImage"
+                        :isDragActive="isDragActive"
+                        @dragover="handleDragOver"
+                        @dragleave="handleDragLeave"
+                        @drop="handleDrop"
+                        @upload="triggerFileInput"
+                        @crop="handleCropImage"
+                        @undo-crop="handleUndoCrop"
+                        :isCropped="isCropped"
+                        :uploadTitle="parentId ? $t('dashboard.add_sub_item_image') : $t('dashboard.add_content_image')"
+                        :aspectRatioDisplay="getContentAspectRatioDisplay()"
+                    />
+                    <input ref="fileInputRef" type="file" accept="image/*" @change="handleFileSelect" class="hidden" />
                 </div>
             </div>
             
@@ -117,7 +473,7 @@
                 <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6 space-y-6">
                     <div>
                         <h3 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                            <i class="pi pi-cog text-blue-600"></i>
+                            <i class="pi pi-file-edit text-blue-600"></i>
                             {{ parentId ? $t('dashboard.sub_item_details') : $t('dashboard.content_item_details') }}
                         </h3>
                         
@@ -130,7 +486,6 @@
                                     :placeholder="$t('dashboard.enter_content_name', { type: itemTypeLabelLower })"
                                     :class="{ 'p-invalid': !formData.name.trim() }"
                                 />
-                                <small v-if="!formData.name.trim()" class="p-error">{{ $t('dashboard.name_required') }}</small>
                             </div>
 
                             <div>
@@ -147,29 +502,14 @@
                         </div>
                     </div>
 
-                    <!-- AI Knowledge Base Section (shown only if card has AI enabled) -->
+                    <!-- AI Knowledge Base Section -->
                     <div v-if="cardAiEnabled" class="border-t border-slate-200 pt-6">
-                        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-4">
-                            <label class="flex items-center gap-2 text-sm font-medium text-blue-900 mb-2">
-                                <i class="pi pi-database"></i>
-                                {{ $t('dashboard.ai_knowledge_base_content') }}
-                                <span class="text-xs text-blue-600 ml-auto">{{ aiKnowledgeBaseWordCount }}/500 {{ $t('dashboard.words') }}</span>
-                            </label>
-                            <Textarea 
-                                v-model="formData.aiKnowledgeBase" 
-                                rows="5" 
-                                class="w-full px-4 py-3 border border-blue-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none bg-white" 
-                                :class="{ 'border-red-500': aiKnowledgeBaseWordCount > 500 }"
-                                :placeholder="getAiKnowledgePlaceholder()"
-                                autoResize
-                            />
-                            <div class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                                <p class="text-xs text-blue-800 flex items-start gap-2">
-                                    <i class="pi pi-info-circle mt-0.5 flex-shrink-0"></i>
-                                    <span>{{ $t('dashboard.ai_knowledge_purpose_content', { type: itemTypeLabelLower }) }}</span>
-                                </p>
-                            </div>
-                        </div>
+                        <AIContextSection 
+                            v-model="formData.aiKnowledgeBase"
+                            :label="$t('dashboard.ai_knowledge_base_content')"
+                            :placeholder="getAiKnowledgePlaceholder()"
+                            :hint="$t('dashboard.ai_knowledge_purpose_content', { type: itemTypeLabelLower })"
+                        />
                     </div>
                 </div>
             </div>
@@ -193,8 +533,8 @@
         <ImageCropper
             v-if="showCropDialog && cropImageSrc"
             :imageSrc="cropImageSrc"
-            :aspectRatio="getContentAspectRatioNumber()"
-            :aspectRatioDisplay="getContentAspectRatioDisplay()"
+            :aspectRatio="getCropAspectRatio()"
+            :aspectRatioDisplay="getCropAspectRatioDisplay()"
             :cropParameters="cropParameters"
             ref="imageCropperRef"
         />
@@ -211,6 +551,8 @@ import InputText from 'primevue/inputtext';
 const { t } = useI18n();
 import MyDialog from '@/components/MyDialog.vue';
 import ImageCropper from '@/components/ImageCropper.vue';
+import ImageUploadSection from './ImageUploadSection.vue';
+import AIContextSection from './AIContextSection.vue';
 import cardPlaceholder from '@/assets/images/card-placeholder.svg';
 import { getContentAspectRatioNumber, getContentAspectRatioDisplay, getContentAspectRatio } from '@/utils/cardConfig';
 import { MdEditor } from 'md-editor-v3';
@@ -241,6 +583,11 @@ const props = defineProps({
     cardId: {
         type: String,
         required: true
+    },
+    contentMode: {
+        type: String,
+        default: 'list', // 'single', 'grouped', 'list', 'grid', 'inline'
+        validator: (value) => ['single', 'grouped', 'list', 'grid', 'inline'].includes(value)
     }
 });
 
@@ -256,7 +603,7 @@ const itemTypeLabelLower = computed(() => {
     return props.parentId ? t('dashboard.sub_item_lower') : t('dashboard.content_item_lower');
 });
 
-// Generate appropriate placeholder text for description
+// Generate appropriate placeholder text for description (for fallback mode)
 const getDescriptionPlaceholder = () => {
     if (props.parentId) {
         return t('content.sub_item_description_placeholder');
@@ -265,12 +612,37 @@ const getDescriptionPlaceholder = () => {
     }
 };
 
-// Generate appropriate placeholder text for AI knowledge base
+// Generate appropriate placeholder text for AI knowledge base (for fallback mode)
 const getAiKnowledgePlaceholder = () => {
     if (props.parentId) {
         return t('content.sub_item_ai_placeholder');
     } else {
         return t('content.content_item_ai_placeholder');
+    }
+};
+
+// Get crop aspect ratio based on content mode
+const getCropAspectRatio = () => {
+    switch (props.contentMode) {
+        case 'single':
+        case 'inline':
+            return 16 / 9;
+        case 'grid':
+            return 1;
+        default:
+            return getContentAspectRatioNumber();
+    }
+};
+
+const getCropAspectRatioDisplay = () => {
+    switch (props.contentMode) {
+        case 'single':
+        case 'inline':
+            return '16:9';
+        case 'grid':
+            return '1:1';
+        default:
+            return getContentAspectRatioDisplay();
     }
 };
 
@@ -290,8 +662,8 @@ const aiKnowledgeBaseWordCount = computed(() => {
 });
 
 const previewImage = ref(null);
-const imageFile = ref(null); // Original uploaded file (raw)
-const croppedImageFile = ref(null); // Cropped image file
+const imageFile = ref(null);
+const croppedImageFile = ref(null);
 const originalData = ref(null);
 
 // Cropping state
@@ -341,7 +713,6 @@ const markdownToolbars = ref([
 
 // Handle markdown HTML preview to add target="_blank" to links
 const handleMarkdownHtmlChanged = (html) => {
-    // Post-process the HTML to add target="_blank" and rel="noopener noreferrer" to links
     return html.replace(/<a href=/g, '<a target="_blank" rel="noopener noreferrer" href=');
 };
 
@@ -359,13 +730,10 @@ watch(() => props.contentItem, (newVal) => {
         };
         originalData.value = { ...formData.value };
         
-        // Set crop parameters if they exist
         if (formData.value.cropParameters) {
             cropParameters.value = formData.value.cropParameters;
         }
         
-        // For edit mode: Simply display the already-cropped imageUrl
-        // The imageUrl is the final cropped result, no need to re-generate preview
         previewImage.value = formData.value.imageUrl;
     }
 }, { immediate: true });
@@ -373,34 +741,26 @@ watch(() => props.contentItem, (newVal) => {
 const handleImageUpload = (event) => {
     const file = event.files[0];
     if (file) {
-        // Store the original image file
         imageFile.value = file;
         
-        // Always show the image with object-fit: contain (no auto-cropping)
         const reader = new FileReader();
         reader.onload = (e) => {
             previewImage.value = e.target.result;
         };
         reader.readAsDataURL(file);
         
-        // Reset crop-related state when a new image is uploaded
         croppedImageFile.value = null;
         cropParameters.value = null;
         formData.value.cropParameters = null;
     }
 };
 
-// Open crop dialog for existing image
 const handleCropImage = () => {
-    // Priority: imageFile (new upload) > originalImageUrl (saved) > imageUrl (fallback for old data)
     const originalImage = imageFile.value || formData.value.originalImageUrl || formData.value.imageUrl;
     
     if (originalImage) {
-        // Use the original image file or URL
         const imageSrc = imageFile.value ? URL.createObjectURL(imageFile.value) : originalImage;
         cropImageSrc.value = imageSrc;
-        
-        // Set the existing crop parameters to restore previous crop state (if any)
         cropParameters.value = formData.value.cropParameters || null;
         showCropDialog.value = true;
     } else {
@@ -408,33 +768,24 @@ const handleCropImage = () => {
     }
 };
 
-// Undo crop and revert to object-fit: contain
 const handleUndoCrop = () => {
-    // Clear all crop-related data
     croppedImageFile.value = null;
     cropParameters.value = null;
     formData.value.cropParameters = null;
     
-    // Revert preview to original image with object-fit: contain
     if (imageFile.value) {
-        // Use the original uploaded file
         const reader = new FileReader();
         reader.onload = (e) => {
             previewImage.value = e.target.result;
         };
         reader.readAsDataURL(imageFile.value);
     } else if (formData.value.originalImageUrl) {
-        // Use the saved original image URL
         previewImage.value = formData.value.originalImageUrl;
     } else if (formData.value.imageUrl) {
-        // Fallback to imageUrl if no original is available
         previewImage.value = formData.value.imageUrl;
     }
-    
-    console.log('Crop undone - reverted to object-fit: contain');
 };
 
-// LinkedIn-style upload functions
 const triggerFileInput = () => {
     fileInputRef.value?.click();
 };
@@ -469,22 +820,16 @@ const handleDrop = (event) => {
     }
 };
 
-// Process image file (show with object-fit: contain by default)
 const processImageFile = (file) => {
-    // Validate file size (5MB)
     if (file.size > 5000000) {
         console.error('File size exceeds 5MB limit');
         return;
     }
     
-    // Store the file
     imageFile.value = file;
-    
-    // Create preview URL and display with object-fit: contain
     const previewUrl = URL.createObjectURL(file);
     previewImage.value = previewUrl;
     
-    // Reset crop-related state when a new image is uploaded
     croppedImageFile.value = null;
     cropParameters.value = null;
     formData.value.cropParameters = null;
@@ -492,25 +837,22 @@ const processImageFile = (file) => {
 
 const handleCancel = () => {
     if (props.mode === 'edit' && originalData.value) {
-        // Restore original data
         formData.value = { ...originalData.value };
         previewImage.value = originalData.value.imageUrl;
         imageFile.value = null;
     } else {
-        // Reset form for create mode
         resetForm();
     }
     emit('cancel');
 };
 
 const getFormData = () => {
-    // Ensure crop parameters are included in form data
     formData.value.cropParameters = cropParameters.value;
     
     return {
         formData: formData.value,
-        imageFile: imageFile.value, // Original uploaded file
-        croppedImageFile: croppedImageFile.value, // Cropped image file
+        imageFile: imageFile.value,
+        croppedImageFile: croppedImageFile.value,
         cropParameters: cropParameters.value
     };
 };
@@ -534,22 +876,17 @@ const resetForm = () => {
     cropParameters.value = null;
 };
 
-// Cropping event handlers
 const handleCropConfirm = async () => {
-    // Wait for the component to be mounted
     await nextTick();
     
     if (imageCropperRef.value) {
         try {
-            // Get both crop parameters AND cropped image
             const cropParams = imageCropperRef.value.getCropParameters();
             const croppedDataURL = imageCropperRef.value.getCroppedImage();
             
             if (cropParams && croppedDataURL) {
-                // Store the crop parameters
                 cropParameters.value = cropParams;
                 
-                // Convert cropped dataURL to File
                 const arr = croppedDataURL.split(',');
                 const mime = arr[0].match(/:(.*?);/)[1];
                 const bstr = atob(arr[1]);
@@ -560,38 +897,27 @@ const handleCropConfirm = async () => {
                 }
                 croppedImageFile.value = new File([u8arr], 'cropped-image.jpg', { type: mime });
                 
-                // Use cropped image for preview
                 previewImage.value = croppedDataURL;
-                
-                console.log('Crop applied - parameters and cropped file saved');
-            } else {
-                console.error('Failed to get crop parameters or cropped image');
             }
         } catch (error) {
             console.error('Error generating crop:', error);
         }
-    } else {
-        console.error('ImageCropper ref not available');
     }
     
-    // Close the cropping dialog
     showCropDialog.value = false;
     cropImageSrc.value = null;
 };
 
 const handleCropCancelled = () => {
-    // Close the cropping dialog without updating the image
     showCropDialog.value = false;
     cropImageSrc.value = null;
 };
 
-// Set up CSS custom property for content aspect ratio
 onMounted(() => {
     const aspectRatio = getContentAspectRatio();
     document.documentElement.style.setProperty('--content-aspect-ratio', aspectRatio);
 });
 
-// Expose methods to parent component
 defineExpose({
     getFormData,
     resetForm
@@ -599,14 +925,12 @@ defineExpose({
 </script>
 
 <style scoped>
-/* Content image container with configurable aspect ratio */
 .content-image-container {
     aspect-ratio: var(--content-aspect-ratio, 4/3);
     width: 100%;
     background-color: white;
 }
 
-/* Compact container for sub-items */
 .content-image-container-compact {
     aspect-ratio: var(--content-aspect-ratio, 4/3);
     width: 100%;
@@ -615,97 +939,6 @@ defineExpose({
     background-color: white;
 }
 
-/* LinkedIn-Style Upload Drop Zone for Content */
-.upload-drop-zone-content {
-    border: 2px dashed #cbd5e1;
-    border-radius: 8px;
-    padding: 24px 16px;
-    text-align: center;
-    background: #fefefe;
-    transition: all 0.3s ease;
-    cursor: pointer;
-    position: relative;
-    overflow: hidden;
-}
-
-.upload-drop-zone-content:hover {
-    border-color: #3b82f6;
-    background: #f8faff;
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
-}
-
-.upload-drop-zone-content.drag-active {
-    border-color: #2563eb;
-    background: #eff6ff;
-    transform: scale(1.01);
-    box-shadow: 0 6px 20px rgba(59, 130, 246, 0.2);
-}
-
-.upload-content {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-}
-
-.upload-icon-container {
-    width: 48px;
-    height: 48px;
-    background: linear-gradient(135deg, #e0f2fe 0%, #b3e5fc 100%);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 4px;
-}
-
-.upload-icon {
-    font-size: 20px;
-    color: #0277bd;
-}
-
-.upload-title {
-    font-size: 14px;
-    font-weight: 600;
-    color: #1e293b;
-    margin: 0;
-}
-
-.upload-subtitle {
-    font-size: 12px;
-    color: #64748b;
-    margin: 0;
-}
-
-.upload-trigger-button {
-    margin-top: 4px;
-    padding: 6px 12px;
-    font-weight: 500;
-}
-
-
-/* LinkedIn-Style Action Buttons for Content */
-.image-actions-content {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-    justify-content: center;
-}
-
-.action-button-content {
-    font-weight: 500;
-    border-radius: 4px;
-    transition: all 0.2s ease;
-    min-width: 80px;
-}
-
-.action-button-content:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-}
-
-/* Markdown editor preview link styling - 2 line truncation */
 :deep(.md-editor-preview-wrapper) a {
     color: #3b82f6 !important;
     text-decoration: underline;
@@ -720,4 +953,4 @@ defineExpose({
 :deep(.md-editor-preview-wrapper) a:hover {
     color: #1d4ed8 !important;
 }
-</style> 
+</style>

@@ -8,9 +8,18 @@
         @click="$emit('select')"
     >
         <div class="flex items-start gap-2.5 sm:gap-3">
-            <!-- Card Thumbnail -->
-            <div class="flex-shrink-0 w-10 h-14 sm:w-12 sm:h-16 bg-slate-100 rounded-lg overflow-hidden border border-slate-200">
+            <!-- Card Thumbnail - Different display for Physical vs Digital -->
+            <div 
+                class="flex-shrink-0 w-10 h-14 sm:w-12 sm:h-16 rounded-lg overflow-hidden border flex items-center justify-center"
+                :class="card.billing_type === 'digital' 
+                    ? 'bg-gradient-to-br from-cyan-50 to-cyan-100 border-cyan-200' 
+                    : 'bg-slate-100 border-slate-200'"
+            >
+                <!-- Digital Access: Show QR icon -->
+                <i v-if="card.billing_type === 'digital'" class="pi pi-qrcode text-cyan-500 text-lg sm:text-xl"></i>
+                <!-- Physical Card: Show image -->
                 <img
+                    v-else
                     :src="displayImage"
                     :alt="card.name"
                     class="w-full h-full object-cover"

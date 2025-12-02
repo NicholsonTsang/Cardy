@@ -1,8 +1,12 @@
 <template>
   <header class="mobile-header">
-    <button @click="handleBack" class="back-button">
+    <!-- Back Button (optional) -->
+    <button v-if="showBackButton" @click="handleBack" class="back-button">
       <i class="pi pi-arrow-left" />
     </button>
+    <!-- Spacer when no back button to maintain layout -->
+    <div v-else class="back-button-spacer"></div>
+    
     <div class="header-content">
       <h1 class="header-title">{{ title }}</h1>
       <p v-if="subtitle" class="header-subtitle">{{ subtitle }}</p>
@@ -27,9 +31,13 @@ import ChineseVoiceSelector from './ChineseVoiceSelector.vue'
 interface Props {
   title: string
   subtitle?: string
+  showBackButton?: boolean
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  showBackButton: true
+})
+
 const emit = defineEmits<{
   back: []
 }>()
@@ -87,6 +95,15 @@ function handleLanguageSelect() {
 .back-button:active {
   transform: scale(0.95);
   background: rgba(255, 255, 255, 0.2);
+}
+
+.back-button-spacer {
+  width: 2.75rem;
+  height: 2.75rem;
+  min-width: 44px;
+  min-height: 44px;
+  flex-shrink: 0;
+  /* Invisible spacer to maintain layout when back button is hidden */
 }
 
 .header-content {

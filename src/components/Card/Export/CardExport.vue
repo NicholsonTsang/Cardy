@@ -22,8 +22,14 @@
       <div class="card-preview">
         <div class="card-visual">
           <div class="card-image-container">
+            <!-- Digital Access: Show QR icon -->
+            <div v-if="props.card.billing_type === 'digital'" class="card-placeholder digital-access">
+              <i class="pi pi-qrcode"></i>
+              <span class="digital-label">Digital Access</span>
+            </div>
+            <!-- Physical Card: Show image -->
             <img 
-              v-if="props.card.image_url"
+              v-else-if="props.card.image_url"
               :src="props.card.image_url"
               :alt="props.card.name"
               class="card-image"
@@ -536,7 +542,15 @@ function formatExportTime(timestamp) {
 }
 
 .card-placeholder {
-  @apply text-slate-400 text-2xl;
+  @apply text-slate-400 text-2xl flex flex-col items-center justify-center;
+}
+
+.card-placeholder.digital-access {
+  @apply bg-gradient-to-br from-cyan-50 to-cyan-100 text-cyan-500;
+}
+
+.digital-label {
+  @apply text-xs font-medium mt-1;
 }
 
 .card-details {

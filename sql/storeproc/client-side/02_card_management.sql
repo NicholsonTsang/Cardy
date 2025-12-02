@@ -20,6 +20,10 @@ RETURNS TABLE (
     original_language VARCHAR(10),
     content_hash TEXT,
     last_content_update TIMESTAMPTZ,
+    content_mode TEXT,
+    billing_type TEXT,
+    max_scans INTEGER,
+    current_scans INTEGER,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -40,6 +44,10 @@ BEGIN
         c.original_language,
         c.content_hash,
         c.last_content_update,
+        c.content_mode,
+        c.billing_type,
+        c.max_scans,
+        c.current_scans,
         c.created_at,
         c.updated_at
     FROM cards c
@@ -53,7 +61,7 @@ GRANT EXECUTE ON FUNCTION get_user_cards() TO authenticated;
 -- Modified to accept optional content_hash and translations for import
 CREATE OR REPLACE FUNCTION create_card(
     p_name TEXT,
-    p_description TEXT,
+    p_description TEXT DEFAULT '',
     p_image_url TEXT DEFAULT NULL,
     p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
@@ -63,7 +71,10 @@ CREATE OR REPLACE FUNCTION create_card(
     p_qr_code_position TEXT DEFAULT 'BR',
     p_original_language VARCHAR(10) DEFAULT 'en',
     p_content_hash TEXT DEFAULT NULL,  -- For import: preserve original hash
-    p_translations JSONB DEFAULT NULL  -- For import: restore translations
+    p_translations JSONB DEFAULT NULL,  -- For import: restore translations
+    p_content_mode TEXT DEFAULT 'list',  -- Content rendering mode: single, grouped, list, grid, inline
+    p_billing_type TEXT DEFAULT 'physical',  -- Billing model: physical or digital
+    p_max_scans INTEGER DEFAULT NULL  -- NULL = unlimited (physical), Integer = limit (digital)
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -81,7 +92,11 @@ BEGIN
         qr_code_position,
         original_language,
         content_hash,  -- May be NULL (trigger calculates) or provided (import)
-        translations   -- May be NULL (normal) or provided (import)
+        translations,  -- May be NULL (normal) or provided (import)
+        content_mode,
+        billing_type,
+        max_scans,
+        current_scans
     ) VALUES (
         auth.uid(),
         p_name,
@@ -95,7 +110,11 @@ BEGIN
         p_qr_code_position::"QRCodePosition",
         p_original_language,
         p_content_hash,  -- Trigger will calculate if NULL
-        COALESCE(p_translations, '{}'::JSONB)  -- Default to empty object
+        COALESCE(p_translations, '{}'::JSONB),  -- Default to empty object
+        COALESCE(p_content_mode, 'list'),
+        COALESCE(p_billing_type, 'physical'),
+        p_max_scans,  -- NULL for physical (unlimited), set for digital
+        0  -- Start with 0 scans
     )
     RETURNING id INTO v_card_id;
     
@@ -103,13 +122,13 @@ BEGIN
     IF p_translations IS NOT NULL AND p_translations != '{}'::JSONB THEN
         PERFORM log_operation(format('Imported card with translations: %s', p_name));
     ELSE
-        PERFORM log_operation(format('Created card: %s', p_name));
+        PERFORM log_operation(format('Created %s card: %s', p_billing_type, p_name));
     END IF;
     
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, TEXT, INTEGER) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 CREATE OR REPLACE FUNCTION get_card_by_id(p_card_id UUID)
@@ -129,6 +148,10 @@ RETURNS TABLE (
     original_language VARCHAR(10),
     content_hash TEXT,
     last_content_update TIMESTAMPTZ,
+    content_mode TEXT,
+    billing_type TEXT,
+    max_scans INTEGER,
+    current_scans INTEGER,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -150,6 +173,10 @@ BEGIN
         c.original_language,
         c.content_hash,
         c.last_content_update,
+        c.content_mode,
+        c.billing_type,
+        c.max_scans,
+        c.current_scans,
         c.created_at, 
         c.updated_at
     FROM cards c
@@ -170,7 +197,10 @@ CREATE OR REPLACE FUNCTION update_card(
     p_ai_instruction TEXT DEFAULT NULL,
     p_ai_knowledge_base TEXT DEFAULT NULL,
     p_qr_code_position TEXT DEFAULT NULL,
-    p_original_language VARCHAR(10) DEFAULT NULL
+    p_original_language VARCHAR(10) DEFAULT NULL,
+    p_content_mode TEXT DEFAULT NULL,
+    p_billing_type TEXT DEFAULT NULL,
+    p_max_scans INTEGER DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_old_record RECORD;
@@ -190,6 +220,9 @@ BEGIN
         ai_knowledge_base,
         qr_code_position,
         original_language,
+        content_mode,
+        billing_type,
+        max_scans,
         user_id,
         updated_at
     INTO v_old_record
@@ -251,12 +284,24 @@ BEGIN
         has_changes := TRUE;
     END IF;
     
+    IF p_content_mode IS NOT NULL AND p_content_mode != v_old_record.content_mode THEN
+        v_changes_made := v_changes_made || jsonb_build_object('content_mode', jsonb_build_object('from', v_old_record.content_mode, 'to', p_content_mode));
+        has_changes := TRUE;
+    END IF;
+    
+    -- NOTE: billing_type cannot be changed after card creation
+    -- Silently ignore any attempt to change billing_type
+    -- IF p_billing_type IS NOT NULL AND p_billing_type != v_old_record.billing_type THEN
+    --     RAISE EXCEPTION 'Access mode (billing_type) cannot be changed after card creation.';
+    -- END IF;
+    
     -- Only proceed if there are actual changes
     IF NOT has_changes THEN
         RETURN TRUE; -- No changes to make
-END IF;
+    END IF;
     
     -- Perform the update
+    -- NOTE: billing_type is NOT updated - it's immutable after creation
     UPDATE cards
     SET 
         name = COALESCE(p_name, name),
@@ -269,6 +314,9 @@ END IF;
         ai_knowledge_base = COALESCE(p_ai_knowledge_base, ai_knowledge_base),
         qr_code_position = COALESCE(p_qr_code_position::"QRCodePosition", qr_code_position),
         original_language = COALESCE(p_original_language, original_language),
+        content_mode = COALESCE(p_content_mode, content_mode),
+        -- billing_type is immutable - not updated here
+        max_scans = CASE WHEN billing_type = 'digital' THEN COALESCE(p_max_scans, max_scans) ELSE NULL END,
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
     
@@ -278,7 +326,7 @@ END IF;
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR, TEXT, TEXT, INTEGER) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)

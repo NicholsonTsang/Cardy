@@ -1,7 +1,7 @@
 <template>
-  <div class="card-overview">
-    <!-- Hero Section with Card -->
-    <div class="hero-section">
+  <div class="card-overview" :class="{ 'digital-mode': isDigitalAccess }">
+    <!-- Hero Section with Card (Physical cards only) -->
+    <div v-if="!isDigitalAccess" class="hero-section">
       <!-- Card Spotlight -->
       <div class="card-spotlight">
         <div class="spotlight-glow"></div>
@@ -21,9 +21,49 @@
         </div>
       </div>
     </div>
+
+    <!-- Welcome Section (Digital access - Visual effects only) -->
+    <div v-else class="welcome-section">
+      <!-- Immersive Background -->
+      <div class="immersive-bg">
+        <!-- Animated gradient layers -->
+        <div class="gradient-layer gradient-1"></div>
+        <div class="gradient-layer gradient-2"></div>
+        <div class="gradient-layer gradient-3"></div>
+        
+        <!-- 3D Grid floor with perspective -->
+        <div class="perspective-grid"></div>
+        
+        <!-- Floating particles -->
+        <div class="particles">
+          <div class="particle particle-1"></div>
+          <div class="particle particle-2"></div>
+          <div class="particle particle-3"></div>
+          <div class="particle particle-4"></div>
+          <div class="particle particle-5"></div>
+          <div class="particle particle-6"></div>
+          <div class="particle particle-7"></div>
+          <div class="particle particle-8"></div>
+        </div>
+      </div>
+
+      <!-- Centered Icon with animations -->
+      <div class="welcome-visual">
+        <div class="welcome-icon-container">
+          <div class="icon-glow-ring"></div>
+          <div class="icon-glow-ring icon-glow-ring-2"></div>
+          <div class="icon-glow-ring icon-glow-ring-3"></div>
+          <div class="icon-main">
+            <i class="pi pi-compass" />
+          </div>
+          <div class="icon-pulse-wave"></div>
+          <div class="icon-pulse-wave icon-pulse-wave-2"></div>
+        </div>
+      </div>
+    </div>
     
     <!-- Info Panel -->
-    <div class="info-panel">
+    <div class="info-panel" :class="{ 'digital-panel': isDigitalAccess }">
       <div class="panel-inner">
         <!-- Language Selection Chip -->
         <button @click="showLanguageSelector = true" class="language-chip" :title="t('mobile.select_language')">
@@ -32,10 +72,10 @@
           <span class="language-chip-flag">{{ languageStore.selectedLanguage.flag }}</span>
         </button>
         
-        <!-- Card Title -->
+        <!-- Card Title (Both modes now) -->
         <h1 class="card-title">{{ card.card_name }}</h1>
         
-        <!-- Description -->
+        <!-- Description (Both modes now) -->
         <div v-if="renderedDescription" class="description-wrapper">
           <div class="card-description markdown-content" v-html="renderedDescription"></div>
         </div>
@@ -89,11 +129,15 @@ interface Props {
     ai_instruction?: string
     ai_knowledge_base?: string
     is_activated: boolean
+    billing_type?: 'physical' | 'digital'
   }
   availableLanguages?: string[] // Languages available for this card
 }
 
 const props = defineProps<Props>()
+
+// Check if this is digital access mode
+const isDigitalAccess = computed(() => props.card.billing_type === 'digital')
 const emit = defineEmits<{
   explore: []
 }>()
@@ -135,15 +179,346 @@ onMounted(() => {
   touch-action: manipulation; /* Disable double-tap zoom */
 }
 
-/* Hero Section */
+/* Digital mode uses fixed height to keep info panel at bottom */
+.card-overview.digital-mode {
+  height: 100vh;
+  height: var(--viewport-height, 100vh);
+  height: 100dvh;
+  min-height: auto;
+}
+
+/* Hero Section (Physical cards) */
 .hero-section {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1.5rem 1.25rem 1rem;
+  padding: 2rem 1.25rem 1.5rem;
+  padding-top: calc(2rem + env(safe-area-inset-top));
   position: relative;
   min-height: 0;
+}
+
+/* ============================================== */
+/* Welcome Section (Digital - Full-screen Immersive) */
+/* ============================================== */
+
+.welcome-section {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  padding-top: calc(2rem + env(safe-area-inset-top));
+  position: relative;
+  overflow: visible;
+  min-height: 0; /* Allow flex shrinking */
+}
+
+/* Immersive Background */
+.immersive-bg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Animated Gradient Layers */
+.gradient-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.gradient-1 {
+  background: radial-gradient(ellipse 150% 100% at 50% 0%, rgba(99, 102, 241, 0.4) 0%, transparent 60%);
+  animation: gradientPulse1 8s ease-in-out infinite;
+}
+
+.gradient-2 {
+  background: radial-gradient(ellipse 100% 80% at 100% 100%, rgba(139, 92, 246, 0.3) 0%, transparent 50%);
+  animation: gradientPulse2 10s ease-in-out infinite;
+}
+
+.gradient-3 {
+  background: radial-gradient(ellipse 80% 60% at 0% 50%, rgba(59, 130, 246, 0.25) 0%, transparent 50%);
+  animation: gradientPulse3 12s ease-in-out infinite;
+}
+
+@keyframes gradientPulse1 {
+  0%, 100% { opacity: 0.8; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+@keyframes gradientPulse2 {
+  0%, 100% { opacity: 0.6; transform: translateX(0); }
+  50% { opacity: 0.9; transform: translateX(-20px); }
+}
+
+@keyframes gradientPulse3 {
+  0%, 100% { opacity: 0.5; transform: translateY(0); }
+  50% { opacity: 0.8; transform: translateY(20px); }
+}
+
+/* 3D Perspective Grid */
+.perspective-grid {
+  position: absolute;
+  bottom: 0;
+  left: -100%;
+  right: -100%;
+  height: 50%;
+  background: 
+    linear-gradient(90deg, rgba(99, 102, 241, 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(99, 102, 241, 0.08) 1px, transparent 1px);
+  background-size: 50px 50px;
+  transform: perspective(500px) rotateX(65deg);
+  transform-origin: bottom center;
+  mask-image: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 70%);
+  -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 70%);
+  animation: gridMove 20s linear infinite;
+}
+
+@keyframes gridMove {
+  from { background-position: 0 0, 0 0; }
+  to { background-position: 50px 50px, 50px 50px; }
+}
+
+/* Floating Particles */
+.particles {
+  position: absolute;
+  inset: 0;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+  animation: particleFloat 15s ease-in-out infinite;
+}
+
+.particle-1 { top: 10%; left: 10%; animation-delay: 0s; }
+.particle-2 { top: 20%; right: 15%; animation-delay: -2s; width: 3px; height: 3px; }
+.particle-3 { top: 40%; left: 5%; animation-delay: -4s; }
+.particle-4 { top: 60%; right: 10%; animation-delay: -6s; width: 5px; height: 5px; }
+.particle-5 { top: 30%; left: 30%; animation-delay: -8s; width: 2px; height: 2px; }
+.particle-6 { top: 70%; left: 20%; animation-delay: -10s; }
+.particle-7 { top: 15%; right: 30%; animation-delay: -12s; width: 3px; height: 3px; }
+.particle-8 { top: 50%; right: 25%; animation-delay: -14s; }
+
+@keyframes particleFloat {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.4;
+  }
+  25% {
+    transform: translate(30px, -40px) scale(1.2);
+    opacity: 0.8;
+  }
+  50% {
+    transform: translate(-20px, -60px) scale(0.8);
+    opacity: 0.6;
+  }
+  75% {
+    transform: translate(20px, -30px) scale(1.1);
+    opacity: 0.9;
+  }
+}
+
+/* Centered Visual Container */
+.welcome-visual {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: contentFadeUp 0.8s ease-out;
+}
+
+@keyframes contentFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Icon Container */
+.welcome-icon-container {
+  position: relative;
+  width: 120px;
+  height: 120px;
+}
+
+.icon-glow-ring {
+  position: absolute;
+  inset: -15px;
+  border: 2px solid rgba(99, 102, 241, 0.4);
+  border-radius: 50%;
+  animation: ringPulse 3s ease-in-out infinite;
+}
+
+.icon-glow-ring-2 {
+  inset: -35px;
+  border-color: rgba(139, 92, 246, 0.25);
+  animation-delay: -1s;
+}
+
+.icon-glow-ring-3 {
+  inset: -55px;
+  border-color: rgba(99, 102, 241, 0.15);
+  animation-delay: -2s;
+}
+
+@keyframes ringPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+.icon-main {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.2));
+  border: 2px solid rgba(255, 255, 255, 0.25);
+  border-radius: 50%;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 
+    0 10px 40px rgba(99, 102, 241, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.icon-main i {
+  font-size: 3rem;
+  color: white;
+  text-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
+}
+
+.icon-pulse-wave {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid rgba(99, 102, 241, 0.5);
+  animation: pulseWave 2.5s ease-out infinite;
+}
+
+.icon-pulse-wave-2 {
+  animation-delay: -1.25s;
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+@keyframes pulseWave {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+/* Digital mode panel adjustments */
+.digital-panel {
+  border-top-left-radius: 2rem;
+  border-top-right-radius: 2rem;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
+}
+
+/* Digital mode specific overrides */
+.digital-mode {
+  background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+}
+
+/* Responsive adjustments */
+@media (min-width: 640px) {
+  .icon-platform {
+    width: 160px;
+    height: 160px;
+  }
+  
+  .icon-cube {
+    inset: 40px;
+  }
+  
+  .cube-face {
+    width: 80px;
+    height: 80px;
+  }
+  
+  .cube-front,
+  .cube-back {
+    transform: translateZ(40px);
+  }
+  
+  .cube-front i {
+    font-size: 2.5rem;
+  }
+  
+  .cube-left {
+    transform: rotateY(-90deg) translateZ(40px);
+  }
+  
+  .cube-right {
+    transform: rotateY(90deg) translateZ(40px);
+  }
+  
+  .cube-top {
+    transform: rotateX(90deg) translateZ(40px);
+  }
+  
+  .cube-bottom {
+    transform: rotateX(-90deg) translateZ(40px);
+  }
+  
+  .welcome-title-3d {
+    font-size: 2rem;
+  }
+  
+  .glass-content {
+    font-size: 1rem;
+  }
+  
+  .content-card {
+    padding: 2rem;
+    max-width: 420px;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .floating-cube,
+  .floating-prism,
+  .glow-sphere,
+  .light-beam,
+  .platform-ring,
+  .icon-cube,
+  .icon-glow {
+    animation: none;
+  }
+  
+  .welcome-content-3d {
+    animation: none;
+  }
+  
+  .grid-floor {
+    display: none;
+  }
 }
 
 /* Card Spotlight */
@@ -256,7 +631,7 @@ onMounted(() => {
 
 /* Info Panel */
 .info-panel {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 58, 138, 0.95) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   padding: 1.5rem 1.25rem 2rem;
@@ -265,6 +640,11 @@ onMounted(() => {
   z-index: 2;
   border-top-left-radius: 1.5rem;
   border-top-right-radius: 1.5rem;
+}
+
+/* Digital mode - push info panel to bottom */
+.digital-mode .info-panel {
+  margin-top: auto;
 }
 
 @keyframes slideUp {
@@ -384,6 +764,7 @@ onMounted(() => {
   text-decoration: underline;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;

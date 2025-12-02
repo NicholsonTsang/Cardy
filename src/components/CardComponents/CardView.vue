@@ -1,209 +1,273 @@
 <template>
-    <div class="space-y-3 sm:space-y-4 lg:space-y-6">
-        <!-- Action Bar -->
-        <div class="flex justify-between items-center flex-wrap gap-2" v-if="cardProp">
-            <div class="flex items-center gap-2 sm:gap-3">
-                <!-- Remove the publishing tag -->
-            </div>
-            <div class="flex gap-2 sm:gap-3">
-                <Button 
-                    :label="$t('dashboard.edit_card')" 
-                    icon="pi pi-pencil" 
-                    @click="handleEdit" 
-                    severity="info" 
-                    class="px-3 py-2 sm:px-4 text-sm sm:text-base shadow-lg hover:shadow-xl transition-shadow"
-                />
-                <Button 
-                    :label="$t('common.delete')" 
-                    icon="pi pi-trash" 
-                    @click="handleRequestDelete" 
-                    severity="danger" 
-                    outlined
-                    class="px-3 py-2 sm:px-4 text-sm sm:text-base"
-                />
+    <div class="card-view-container">
+        <!-- Hero Header with Card Identity -->
+        <div v-if="cardProp" class="card-hero" :class="cardProp.billing_type === 'digital' ? 'hero-digital' : 'hero-physical'">
+            <div class="hero-content">
+                <div class="hero-left">
+                    <!-- Access Mode Icon -->
+                    <div class="hero-icon" :class="cardProp.billing_type === 'digital' ? 'icon-digital' : 'icon-physical'">
+                        <i :class="cardProp.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-credit-card'"></i>
+                    </div>
+                    <div class="hero-info">
+                        <div class="hero-badges">
+                            <span class="badge" :class="cardProp.billing_type === 'digital' ? 'badge-digital' : 'badge-physical'">
+                                {{ cardProp.billing_type === 'digital' ? $t('dashboard.digital_access') : $t('dashboard.physical_card') }}
+                            </span>
+                            <span class="badge badge-mode">
+                                <i :class="getContentModeIcon(cardProp.content_mode)" class="mr-1"></i>
+                                {{ getContentModeLabel(cardProp.content_mode) }}
+                            </span>
+                        </div>
+                        <h1 class="hero-title">{{ displayedCardName }}</h1>
+                        <p v-if="displayedCardDescription" class="hero-description">
+                            {{ truncateText(displayedCardDescription, 120) }}
+                        </p>
+                    </div>
+                </div>
+                <div class="hero-actions">
+                    <Button 
+                        :label="$t('dashboard.edit_card')" 
+                        icon="pi pi-pencil" 
+                        @click="handleEdit" 
+                        class="btn-edit"
+                    />
+                    <Button 
+                        icon="pi pi-trash" 
+                        @click="handleRequestDelete" 
+                        severity="danger" 
+                        outlined
+                        class="btn-delete"
+                        v-tooltip.bottom="$t('common.delete')"
+                    />
+                </div>
             </div>
         </div>
 
-        <!-- Card Content -->
-        <div v-if="cardProp" class="space-y-3 sm:space-y-4 lg:space-y-6">
-            <!-- Main Card Info - Two Column Layout -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                <div class="p-3 sm:p-4 lg:p-6">
-                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-4 lg:gap-6">
-                        <!-- Artwork Display -->
-                        <div class="xl:col-span-1">
-                            <div class="bg-slate-50 rounded-xl p-3 sm:p-4 lg:p-6">
-                                <h3 class="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 flex items-center gap-2">
-                                    <i class="pi pi-image text-blue-600 text-sm sm:text-base"></i>
-                                    {{ $t('dashboard.card_artwork') }}
-                                </h3>
-                                <div class="card-artwork-container relative">
-                                    <!-- Display the already-cropped image_url directly, no need to re-apply crop parameters -->
-                                    <img
-                                        v-if="displayImageForView"
-                                        :src="displayImageForView"
-                                        alt="Card Artwork"
-                                        class="w-full h-full object-cover rounded-lg border border-slate-200 shadow-md"
-                                    />
-                                    <img
-                                        v-else
-                                        :src="cardPlaceholder"
-                                        alt="Card Artwork Placeholder"
-                                        class="w-full h-full object-cover rounded-lg border border-slate-200 shadow-md"
-                                    />
-                                    <div v-if="!displayImageForView" 
-                                         class="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg">
-                                        <div class="text-center text-slate-400">
-                                            <i class="pi pi-image text-3xl mb-3"></i>
-                                            <p class="text-sm font-medium">{{ $t('dashboard.no_artwork_uploaded') }}</p>
-                                        </div>
-                                    </div>
-                                    
-                                    <!-- Mock QR Code Overlay -->
-                                    <div 
-                                        v-if="cardProp && cardProp.qr_code_position"
-                                        class="absolute w-12 h-12 bg-white border-2 border-slate-300 rounded-lg shadow-lg flex items-center justify-center"
-                                        :class="getQrCodePositionClass(cardProp.qr_code_position)"
-                                    >
-                                        <div class="w-8 h-8 bg-slate-800 rounded-sm flex items-center justify-center">
-                                            <i class="pi pi-qrcode text-white text-xs"></i>
-                                        </div>
-                                    </div>
-                                </div>
+        <!-- Main Content Grid -->
+        <div v-if="cardProp" class="content-grid">
+            <!-- Left Column: Card Preview & Quick Stats -->
+            <div class="left-column">
+                <!-- Card Preview -->
+                <div v-if="cardProp.billing_type !== 'digital'" class="card-preview-section">
+                    <div class="section-header">
+                        <i class="pi pi-image"></i>
+                        <span>{{ $t('dashboard.card_artwork') }}</span>
+                    </div>
+                    <div class="card-preview-wrapper">
+                        <div class="card-artwork-container">
+                            <img
+                                v-if="displayImageForView"
+                                :src="displayImageForView"
+                                alt="Card Artwork"
+                                class="card-image"
+                            />
+                            <div v-else class="card-placeholder">
+                                <i class="pi pi-image"></i>
+                                <span>{{ $t('dashboard.no_artwork_uploaded') }}</span>
+                            </div>
+                            <!-- QR Code Overlay -->
+                            <div 
+                                v-if="cardProp.qr_code_position"
+                                class="qr-overlay"
+                                :class="getQrCodePositionClass(cardProp.qr_code_position)"
+                            >
+                                <i class="pi pi-qrcode"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="quick-stats-section">
+                    <div class="section-header">
+                        <i class="pi pi-chart-line"></i>
+                        <span>{{ $t('dashboard.quick_stats') }}</span>
+                    </div>
+                    <div class="stats-grid">
+                        <!-- Scan Stats for Digital -->
+                        <div v-if="cardProp.billing_type === 'digital'" class="stat-card stat-scans">
+                            <div class="stat-icon">
+                                <i class="pi pi-eye"></i>
+                            </div>
+                            <div class="stat-info">
+                                <span class="stat-value">{{ cardProp.current_scans || 0 }}</span>
+                                <span class="stat-label">{{ $t('dashboard.total_scans') }}</span>
+                            </div>
+                            <div class="stat-limit">
+                                / {{ cardProp.max_scans || '∞' }}
                             </div>
                         </div>
 
-                        <!-- Details Display -->
-                        <div class="xl:col-span-2 space-y-3 sm:space-y-4 lg:space-y-6">
-                            <!-- Basic Info -->
-                            <div class="bg-slate-50 rounded-xl p-3 sm:p-4 lg:p-6">
-                                <div class="flex items-center justify-between mb-3 sm:mb-4 flex-wrap gap-2">
-                                    <h3 class="text-base sm:text-lg font-semibold text-slate-900 flex items-center gap-2">
-                                        <i class="pi pi-info-circle text-blue-600 text-sm sm:text-base"></i>
-                                        {{ $t('dashboard.basic_information') }}
-                                    </h3>
-                                    <!-- Language Preview Selector -->
-                                    <Dropdown
-                                        v-if="availableTranslations.length > 0"
-                                        v-model="selectedPreviewLanguage"
-                                        :options="languageOptions"
-                                        optionLabel="label"
-                                        optionValue="value"
-                                        :placeholder="$t('translation.previewLanguage')"
-                                        class="w-full sm:w-48"
-                                        size="small"
-                                    >
-                                        <template #value="slotProps">
-                                            <div v-if="slotProps.value" class="flex items-center gap-2">
-                                                <span>{{ getLanguageFlag(slotProps.value) }}</span>
-                                                <span class="text-sm">{{ getLanguageName(slotProps.value) }}</span>
-                                            </div>
-                                            <span v-else class="text-sm">{{ slotProps.placeholder }}</span>
-                                        </template>
-                                        <template #option="slotProps">
-                                            <div class="flex items-center gap-2">
-                                                <span>{{ getLanguageFlag(slotProps.option.value) }}</span>
-                                                <span>{{ slotProps.option.label }}</span>
-                                            </div>
-                                        </template>
-                                    </Dropdown>
-                                </div>
-                                <div class="space-y-3 sm:space-y-4">
-                                    <div>
-                                        <h4 class="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">{{ $t('dashboard.card_name') }}</h4>
-                                        <p class="text-sm sm:text-base text-slate-900 font-medium">{{ displayedCardName }}</p>
-                                    </div>
-
-                                    <div v-if="displayedCardDescription">
-                                        <h4 class="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">{{ $t('common.description') }}</h4>
-                                        <div 
-                                            class="text-sm text-slate-600 leading-relaxed prose prose-sm max-w-none prose-slate"
-                                            v-html="renderMarkdown(displayedCardDescription)"
-                                        ></div>
-                                    </div>
-                                </div>
+                        <!-- AI Status -->
+                        <div class="stat-card" :class="cardProp.conversation_ai_enabled ? 'stat-ai-on' : 'stat-ai-off'">
+                            <div class="stat-icon">
+                                <i class="pi pi-comments"></i>
                             </div>
-
-                            <!-- Technical Details -->
-                            <div class="bg-slate-50 rounded-xl p-3 sm:p-4 lg:p-6">
-                                <h3 class="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 flex items-center gap-2">
-                                    <i class="pi pi-cog text-blue-600 text-sm sm:text-base"></i>
-                                    {{ $t('dashboard.configuration') }}
-                                </h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                                    <div class="bg-white rounded-lg p-3 sm:p-4 border border-slate-200">
-                                        <h4 class="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2 flex items-center gap-2">
-                                            <i class="pi pi-qrcode text-slate-500 text-xs sm:text-sm"></i>
-                                            {{ $t('dashboard.qr_code_position') }}
-                                        </h4>
-                                        <p class="text-xs sm:text-sm text-slate-600">{{ displayQrCodePositionForView || $t('dashboard.not_set') }}</p>
-                                    </div>
-                                </div>
+                            <div class="stat-info">
+                                <span class="stat-value">{{ cardProp.conversation_ai_enabled ? $t('common.enabled') : $t('common.disabled') }}</span>
+                                <span class="stat-label">{{ $t('dashboard.ai_assistant') }}</span>
                             </div>
+                        </div>
 
-                            <!-- AI Configuration -->
-                            <div v-if="cardProp.conversation_ai_enabled" 
-                                 class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-3 sm:p-4 lg:p-6 border border-blue-200">
-                                <h3 class="text-base sm:text-lg font-semibold text-blue-900 mb-3 sm:mb-4 flex items-center gap-2">
-                                    <i class="pi pi-comments text-blue-600 text-sm sm:text-base"></i>
-                                    {{ $t('dashboard.ai_assistance_configuration') }}
-                                </h3>
-                                
-                                <!-- AI Instruction -->
-                                <div v-if="cardProp.ai_instruction" class="mb-3 sm:mb-4">
-                                    <h4 class="text-xs sm:text-sm font-medium text-blue-800 mb-1.5 sm:mb-2 flex items-center gap-2">
-                                        <i class="pi pi-user text-blue-600 text-xs sm:text-sm"></i>
-                                        {{ $t('dashboard.ai_instruction_role') }}
-                                    </h4>
-                                    <div class="bg-white rounded-lg p-3 sm:p-4 border border-blue-200">
-                                        <p class="text-xs sm:text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">{{ cardProp.ai_instruction }}</p>
-                                    </div>
-                                </div>
-
-                                <!-- AI Knowledge Base -->
-                                <div v-if="cardProp.ai_knowledge_base" class="mb-3 sm:mb-4">
-                                    <h4 class="text-xs sm:text-sm font-medium text-blue-800 mb-1.5 sm:mb-2 flex items-center gap-2">
-                                        <i class="pi pi-book text-blue-600 text-xs sm:text-sm"></i>
-                                        {{ $t('dashboard.ai_knowledge_base') }}
-                                    </h4>
-                                    <div class="bg-white rounded-lg p-3 sm:p-4 border border-blue-200">
-                                        <p class="text-xs sm:text-sm text-blue-800 whitespace-pre-wrap leading-relaxed">{{ cardProp.ai_knowledge_base }}</p>
-                                    </div>
-                                </div>
-
-                                <!-- Info Note -->
-                                <div class="mt-2 sm:mt-3 p-2.5 sm:p-3 bg-blue-100 rounded-lg">
-                                    <p class="text-xs text-blue-800 flex items-center gap-2">
-                                        <i class="pi pi-info-circle"></i>
-                                        <span>{{ $t('dashboard.ai_enabled_note') }}</span>
-                                    </p>
-                                </div>
+                        <!-- Translations -->
+                        <div class="stat-card stat-translations">
+                            <div class="stat-icon">
+                                <i class="pi pi-globe"></i>
                             </div>
+                            <div class="stat-info">
+                                <span class="stat-value">{{ availableTranslations.length }}</span>
+                                <span class="stat-label">{{ $t('dashboard.translations') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-                            <!-- Metadata -->
-                            <div class="bg-slate-50 rounded-xl p-3 sm:p-4 lg:p-6">
-                                <h3 class="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 flex items-center gap-2">
-                                    <i class="pi pi-calendar text-blue-600 text-sm sm:text-base"></i>
-                                    {{ $t('dashboard.metadata') }}
-                                </h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-                                    <div v-if="cardProp.created_at" class="bg-white rounded-lg p-3 sm:p-4 border border-slate-200">
-                                        <h4 class="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">{{ $t('dashboard.created') }}</h4>
-                                        <p class="text-xs sm:text-sm text-slate-600">{{ formatDate(cardProp.created_at) }}</p>
-                                    </div>
-
-                                    <div v-if="cardProp.updated_at" class="bg-white rounded-lg p-3 sm:p-4 border border-slate-200">
-                                        <h4 class="text-xs sm:text-sm font-medium text-slate-700 mb-1.5 sm:mb-2">{{ $t('dashboard.last_updated') }}</h4>
-                                        <p class="text-xs sm:text-sm text-slate-600">{{ formatDate(cardProp.updated_at) }}</p>
-                                    </div>
-                                </div>
+                <!-- Metadata -->
+                <div class="metadata-section">
+                    <div class="section-header">
+                        <i class="pi pi-clock"></i>
+                        <span>{{ $t('dashboard.timeline') }}</span>
+                    </div>
+                    <div class="timeline">
+                        <div class="timeline-item">
+                            <div class="timeline-dot"></div>
+                            <div class="timeline-content">
+                                <span class="timeline-label">{{ $t('dashboard.created') }}</span>
+                                <span class="timeline-value">{{ formatDate(cardProp.created_at) }}</span>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-dot dot-active"></div>
+                            <div class="timeline-content">
+                                <span class="timeline-label">{{ $t('dashboard.last_updated') }}</span>
+                                <span class="timeline-value">{{ formatDate(cardProp.updated_at) }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Multi-Language Translation Section - Full Width -->
+            <!-- Right Column: Details -->
+            <div class="right-column">
+                <!-- Content Details with Language Preview -->
+                <div class="details-section">
+                    <div class="section-header">
+                        <div class="header-left">
+                            <i class="pi pi-file-edit"></i>
+                            <span>{{ $t('dashboard.content_details') }}</span>
+                        </div>
+                        <!-- Language Preview Selector -->
+                        <Dropdown
+                            v-if="availableTranslations.length > 0"
+                            v-model="selectedPreviewLanguage"
+                            :options="languageOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            :placeholder="$t('translation.previewLanguage')"
+                            class="language-selector"
+                            size="small"
+                        >
+                            <template #value="slotProps">
+                                <div v-if="slotProps.value" class="flex items-center gap-2">
+                                    <span>{{ getLanguageFlag(slotProps.value) }}</span>
+                                    <span>{{ getLanguageName(slotProps.value) }}</span>
+                                </div>
+                                <div v-else class="flex items-center gap-2">
+                                    <span>{{ getLanguageFlag(cardProp?.original_language || 'en') }}</span>
+                                    <span>{{ $t('translation.original') }}</span>
+                                </div>
+                            </template>
+                            <template #option="slotProps">
+                                <div class="flex items-center gap-2">
+                                    <span>{{ getLanguageFlag(slotProps.option.value) }}</span>
+                                    <span>{{ slotProps.option.label }}</span>
+                                </div>
+                            </template>
+                        </Dropdown>
+                    </div>
+                    
+                    <div class="details-content">
+                        <div class="detail-item">
+                            <label>{{ $t('dashboard.card_name') }}</label>
+                            <p class="detail-value detail-name">{{ displayedCardName }}</p>
+                        </div>
+                        <div v-if="displayedCardDescription" class="detail-item">
+                            <label>{{ $t('common.description') }}</label>
+                            <div 
+                                class="detail-value prose-content"
+                                v-html="renderMarkdown(displayedCardDescription)"
+                            ></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Configuration -->
+                <div class="config-section">
+                    <div class="section-header">
+                        <i class="pi pi-sliders-h"></i>
+                        <span>{{ $t('dashboard.configuration') }}</span>
+                    </div>
+                    <div class="config-grid">
+                        <div class="config-item">
+                            <i :class="cardProp.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-credit-card'"></i>
+                            <div class="config-info">
+                                <span class="config-label">{{ $t('dashboard.access_mode') }}</span>
+                                <span class="config-value">{{ cardProp.billing_type === 'digital' ? $t('dashboard.digital_access') : $t('dashboard.physical_card') }}</span>
+                            </div>
+                        </div>
+                        <div class="config-item">
+                            <i :class="getContentModeIcon(cardProp.content_mode)"></i>
+                            <div class="config-info">
+                                <span class="config-label">{{ $t('dashboard.content_mode') }}</span>
+                                <span class="config-value">{{ getContentModeLabel(cardProp.content_mode) }}</span>
+                            </div>
+                        </div>
+                        <div v-if="cardProp.billing_type !== 'digital'" class="config-item">
+                            <i class="pi pi-qrcode"></i>
+                            <div class="config-info">
+                                <span class="config-label">{{ $t('dashboard.qr_code_position') }}</span>
+                                <span class="config-value">{{ displayQrCodePositionForView || $t('dashboard.not_set') }}</span>
+                            </div>
+                        </div>
+                        <div class="config-item">
+                            <i class="pi pi-globe"></i>
+                            <div class="config-info">
+                                <span class="config-label">{{ $t('dashboard.original_language') }}</span>
+                                <span class="config-value">{{ getLanguageFlag(cardProp.original_language) }} {{ getLanguageName(cardProp.original_language) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Configuration -->
+                <div v-if="cardProp.conversation_ai_enabled" class="ai-section">
+                    <div class="section-header">
+                        <i class="pi pi-sparkles"></i>
+                        <span>{{ $t('dashboard.ai_assistance_configuration') }}</span>
+                        <span class="ai-badge">{{ $t('common.enabled') }}</span>
+                    </div>
+                    <div class="ai-content">
+                        <div v-if="cardProp.ai_instruction" class="ai-item">
+                            <label>
+                                <i class="pi pi-user"></i>
+                                {{ $t('dashboard.ai_instruction_role') }}
+                            </label>
+                            <p>{{ cardProp.ai_instruction }}</p>
+                        </div>
+                        <div v-if="cardProp.ai_knowledge_base" class="ai-item">
+                            <label>
+                                <i class="pi pi-book"></i>
+                                {{ $t('dashboard.ai_knowledge_base') }}
+                            </label>
+                            <p>{{ cardProp.ai_knowledge_base }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Translation Section -->
+        <div v-if="cardProp" class="translation-section">
             <CardTranslationSection ref="translationSectionRef" :card-id="cardProp.id" />
         </div>
 
@@ -332,6 +396,14 @@ const getLanguageFlag = (langCode) => {
     return flagMap[langCode] || '🌐';
 };
 
+const truncateText = (text, maxLength) => {
+    if (!text) return '';
+    // Strip markdown for preview
+    const plainText = text.replace(/[#*_`~\[\]()]/g, '').replace(/\n/g, ' ');
+    if (plainText.length <= maxLength) return plainText;
+    return plainText.substring(0, maxLength) + '...';
+};
+
 const displayImageForView = computed(() => {
     if (props.cardProp && props.cardProp.image_url) {
         return props.cardProp.image_url;
@@ -421,6 +493,29 @@ const getQrCodePositionClass = (position) => {
     return classes[position] || 'bottom-2 right-2'; // Default to bottom-right
 };
 
+// Content mode helper functions
+const getContentModeLabel = (mode) => {
+    const modeLabels = {
+        'single': t('dashboard.mode_single'),
+        'grouped': t('dashboard.mode_grouped'),
+        'list': t('dashboard.mode_list'),
+        'grid': t('dashboard.mode_grid'),
+        'inline': t('dashboard.mode_inline')
+    };
+    return modeLabels[mode] || t('dashboard.mode_list');
+};
+
+const getContentModeIcon = (mode) => {
+    const modeIcons = {
+        'single': 'pi pi-file',
+        'grouped': 'pi pi-folder',
+        'list': 'pi pi-list',
+        'grid': 'pi pi-th-large',
+        'inline': 'pi pi-clone'
+    };
+    return modeIcons[mode] || 'pi pi-list';
+};
+
 // Set up CSS custom property for aspect ratio
 onMounted(() => {
     const aspectRatio = getCardAspectRatio();
@@ -429,75 +524,638 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Responsive container with configurable aspect ratio */
+/* ===== Main Container ===== */
+.card-view-container {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* ===== Hero Header ===== */
+.card-hero {
+    border-radius: 1rem;
+    padding: 1.25rem;
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+}
+
+.card-hero.hero-physical {
+    background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
+    border-color: #e9d5ff;
+}
+
+.card-hero.hero-digital {
+    background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
+    border-color: #a5f3fc;
+}
+
+.hero-content {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.hero-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    flex: 1;
+    min-width: 0;
+}
+
+.hero-icon {
+    width: 3.5rem;
+    height: 3.5rem;
+    border-radius: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.hero-icon.icon-physical {
+    background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
+}
+
+.hero-icon.icon-digital {
+    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
+}
+
+.hero-icon i {
+    font-size: 1.5rem;
+    color: white;
+}
+
+.hero-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.hero-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.625rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.badge-physical {
+    background: #f3e8ff;
+    color: #7c3aed;
+}
+
+.badge-digital {
+    background: #cffafe;
+    color: #0891b2;
+}
+
+.badge-mode {
+    background: #dbeafe;
+    color: #2563eb;
+}
+
+.hero-title {
+    font-size: 1.375rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0 0 0.25rem 0;
+    line-height: 1.3;
+}
+
+.hero-description {
+    font-size: 0.875rem;
+    color: #64748b;
+    margin: 0;
+    line-height: 1.5;
+}
+
+.hero-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+
+.btn-edit {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+    border: none !important;
+    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
+    transition: all 0.2s ease;
+}
+
+.btn-edit:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.btn-delete {
+    width: 2.5rem !important;
+    padding: 0 !important;
+}
+
+/* ===== Content Grid ===== */
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (min-width: 1024px) {
+    .content-grid {
+        grid-template-columns: 320px 1fr;
+    }
+}
+
+/* ===== Left Column ===== */
+.left-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* ===== Section Headers ===== */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e2e8f0;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #334155;
+}
+
+.section-header i {
+    color: #3b82f6;
+    font-size: 1rem;
+}
+
+.section-header .header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+}
+
+/* ===== Card Preview Section ===== */
+.card-preview-section {
+    background: white;
+    border-radius: 1rem;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.card-preview-wrapper {
+    display: flex;
+    justify-content: center;
+}
+
 .card-artwork-container {
+    position: relative;
     aspect-ratio: var(--card-aspect-ratio, 2/3);
     width: 100%;
-    max-width: 240px; /* Constrain maximum width */
-    margin: 0 auto;
+    max-width: 200px;
+    border-radius: 0.75rem;
+    overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
-/* Component-specific styles */
-.card-artwork-container img {
-    transition: all 0.2s ease-in-out;
+.card-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
 }
 
-.card-artwork-container:hover img {
-    transform: scale(1.02);
+.card-artwork-container:hover .card-image {
+    transform: scale(1.03);
 }
 
-/* Markdown prose styling */
-.prose {
+.card-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+    color: #94a3b8;
+    gap: 0.5rem;
+}
+
+.card-placeholder i {
+    font-size: 2rem;
+}
+
+.card-placeholder span {
+    font-size: 0.75rem;
+}
+
+.qr-overlay {
+    position: absolute;
+    width: 2.5rem;
+    height: 2.5rem;
+    background: white;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.qr-overlay i {
+    font-size: 1.25rem;
+    color: #1e293b;
+}
+
+.qr-overlay.top-2.left-2 { top: 0.5rem; left: 0.5rem; }
+.qr-overlay.top-2.right-2 { top: 0.5rem; right: 0.5rem; }
+.qr-overlay.bottom-2.left-2 { bottom: 0.5rem; left: 0.5rem; }
+.qr-overlay.bottom-2.right-2 { bottom: 0.5rem; right: 0.5rem; }
+
+/* ===== Quick Stats Section ===== */
+.quick-stats-section {
+    background: white;
+    border-radius: 1rem;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.stats-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.stat-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 0.75rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+}
+
+.stat-card.stat-scans {
+    background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
+    border-color: #a5f3fc;
+}
+
+.stat-card.stat-ai-on {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+    border-color: #bbf7d0;
+}
+
+.stat-card.stat-ai-off {
+    background: #f8fafc;
+}
+
+.stat-card.stat-translations {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border-color: #fcd34d;
+}
+
+.stat-icon {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.stat-icon i {
+    font-size: 1rem;
+    color: #3b82f6;
+}
+
+.stat-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-value {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.stat-label {
+    font-size: 0.75rem;
     color: #64748b;
-    max-width: none;
 }
 
-.prose h1, .prose h2, .prose h3, .prose h4, .prose h5, .prose h6 {
+.stat-limit {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #94a3b8;
+}
+
+/* ===== Metadata Section ===== */
+.metadata-section {
+    background: white;
+    border-radius: 1rem;
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-left: 0.5rem;
+}
+
+.timeline-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    position: relative;
+}
+
+.timeline-item:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 1.25rem;
+    width: 1px;
+    height: calc(100% + 0.5rem);
+    background: #e2e8f0;
+}
+
+.timeline-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #cbd5e1;
+    flex-shrink: 0;
+    margin-top: 0.375rem;
+}
+
+.timeline-dot.dot-active {
+    background: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.timeline-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.timeline-label {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+.timeline-value {
+    font-size: 0.8125rem;
     color: #334155;
+    font-weight: 500;
+}
+
+/* ===== Right Column ===== */
+.right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* ===== Details Section ===== */
+.details-section {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.25rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.language-selector {
+    min-width: 140px;
+}
+
+.details-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.detail-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.detail-item label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.025em;
+}
+
+.detail-value {
+    font-size: 0.9375rem;
+    color: #1e293b;
+    line-height: 1.6;
+}
+
+.detail-name {
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+/* ===== Config Section ===== */
+.config-section {
+    background: white;
+    border-radius: 1rem;
+    padding: 1.25rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 0.75rem;
+}
+
+.config-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem;
+    border-radius: 0.75rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    transition: all 0.2s ease;
+}
+
+.config-item:hover {
+    background: #f1f5f9;
+    border-color: #cbd5e1;
+}
+
+.config-item > i {
+    font-size: 1.125rem;
+    color: #64748b;
+    width: 1.5rem;
+    text-align: center;
+}
+
+.config-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.config-label {
+    font-size: 0.6875rem;
+    color: #94a3b8;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.config-value {
+    font-size: 0.875rem;
+    color: #334155;
+    font-weight: 500;
+}
+
+/* ===== AI Section ===== */
+.ai-section {
+    background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    border: 1px solid #c7d2fe;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.ai-section .section-header {
+    border-bottom-color: #c7d2fe;
+}
+
+.ai-section .section-header i {
+    color: #7c3aed;
+}
+
+.ai-badge {
+    margin-left: auto;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    background: #22c55e;
+    color: white;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.ai-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.ai-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ai-item label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #4c1d95;
+}
+
+.ai-item label i {
+    font-size: 0.875rem;
+}
+
+.ai-item p {
+    font-size: 0.875rem;
+    color: #5b21b6;
+    background: white;
+    padding: 0.875rem;
+    border-radius: 0.5rem;
+    border: 1px solid #c7d2fe;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    margin: 0;
+}
+
+/* ===== Translation Section ===== */
+.translation-section {
+    margin-top: 0.5rem;
+}
+
+/* ===== Prose Content ===== */
+.prose-content {
+    color: #475569;
+}
+
+.prose-content :deep(h1),
+.prose-content :deep(h2),
+.prose-content :deep(h3),
+.prose-content :deep(h4),
+.prose-content :deep(h5),
+.prose-content :deep(h6) {
+    color: #1e293b;
     font-weight: 600;
     margin-top: 0.75em;
     margin-bottom: 0.5em;
 }
 
-.prose h1 { font-size: 1.25em; }
-.prose h2 { font-size: 1.125em; }
-.prose h3 { font-size: 1em; }
-.prose h4, .prose h5, .prose h6 { font-size: 0.875em; }
+.prose-content :deep(h1) { font-size: 1.25em; }
+.prose-content :deep(h2) { font-size: 1.125em; }
+.prose-content :deep(h3) { font-size: 1em; }
 
-.prose p {
+.prose-content :deep(p) {
     margin-top: 0.5em;
     margin-bottom: 0.5em;
 }
 
-.prose strong {
+.prose-content :deep(strong) {
     font-weight: 600;
     color: #1e293b;
 }
 
-.prose em {
-    font-style: italic;
-}
-
-.prose ul, .prose ol {
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
+.prose-content :deep(ul),
+.prose-content :deep(ol) {
+    margin: 0.5em 0;
     padding-left: 1.25em;
 }
 
-.prose ul {
-    list-style-type: disc;
+.prose-content :deep(ul) { list-style-type: disc; }
+.prose-content :deep(ol) { list-style-type: decimal; }
+
+.prose-content :deep(li) {
+    margin: 0.25em 0;
 }
 
-.prose ol {
-    list-style-type: decimal;
-}
-
-.prose li {
-    margin-top: 0.25em;
-    margin-bottom: 0.25em;
-}
-
-.prose blockquote {
+.prose-content :deep(blockquote) {
     border-left: 3px solid #cbd5e1;
     padding-left: 1em;
     margin: 0.75em 0;
@@ -505,43 +1163,49 @@ onMounted(() => {
     color: #64748b;
 }
 
-.prose code {
-    background-color: #f1f5f9;
+.prose-content :deep(code) {
+    background: #f1f5f9;
     padding: 0.125em 0.25em;
     border-radius: 0.25rem;
     font-size: 0.875em;
     color: #dc2626;
-    font-family: ui-monospace, SFMono-Regular, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-.prose pre {
-    background-color: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.5rem;
-    padding: 1em;
-    overflow-x: auto;
-    margin: 0.75em 0;
-}
-
-.prose pre code {
-    background-color: transparent;
-    padding: 0;
-    color: #334155;
-}
-
-.prose a {
-    color: #3b82f6 !important;
+.prose-content :deep(a) {
+    color: #3b82f6;
     text-decoration: underline;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    word-break: break-word;
 }
 
-.prose a:hover {
-    color: #1d4ed8 !important;
+.prose-content :deep(a:hover) {
+    color: #1d4ed8;
+}
+
+/* ===== Responsive ===== */
+@media (max-width: 640px) {
+    .card-hero {
+        padding: 1rem;
+    }
+    
+    .hero-icon {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+    
+    .hero-icon i {
+        font-size: 1.25rem;
+    }
+    
+    .hero-title {
+        font-size: 1.125rem;
+    }
+    
+    .hero-actions {
+        width: 100%;
+        justify-content: flex-end;
+    }
+    
+    .config-grid {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

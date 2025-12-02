@@ -1,8 +1,27 @@
 <template>
   <div class="space-y-6">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- Card Image -->
-      <div>
+    <!-- Access Mode Badge -->
+    <div class="flex items-center gap-2">
+      <span 
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium"
+        :class="card.billing_type === 'digital' 
+          ? 'bg-cyan-100 text-cyan-800 border border-cyan-200' 
+          : 'bg-purple-100 text-purple-800 border border-purple-200'"
+      >
+        <i :class="card.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-credit-card'" class="text-xs"></i>
+        {{ card.billing_type === 'digital' ? 'Digital Access' : 'Physical Card' }}
+      </span>
+      <span 
+        v-if="card.content_mode"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200"
+      >
+        {{ card.content_mode }}
+      </span>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6" :class="{ 'md:grid-cols-2': card.billing_type !== 'digital' }">
+      <!-- Card Image - Only for Physical Cards -->
+      <div v-if="card.billing_type !== 'digital'">
         <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.card_image') }}</label>
         <div v-if="card.image_url" class="relative" style="aspect-ratio: 2/3; max-width: 300px;">
           <img
