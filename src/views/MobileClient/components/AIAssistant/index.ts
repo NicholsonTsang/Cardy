@@ -1,5 +1,6 @@
-// Main component
+// Main components
 export { default as MobileAIAssistant } from './MobileAIAssistant.vue'
+export { default as CardLevelAssistant } from './CardLevelAssistant.vue'
 
 // Sub-components
 export { default as AIAssistantModal } from './components/AIAssistantModal.vue'

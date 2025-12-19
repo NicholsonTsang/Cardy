@@ -47,7 +47,7 @@ export const AVAILABLE_LANGUAGES: Language[] = [
   { code: 'ar', name: 'العربية', flag: '🇸🇦' }
 ]
 
-// Available languages for dashboard (only English and Traditional Chinese for card issuers/admins)
+// Available languages for dashboard (only English and Traditional Chinese for experience creators/admins)
 export const DASHBOARD_LANGUAGES: Language[] = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
   { code: 'zh-Hant', name: '繁體中文', flag: '🇭🇰' }   // Traditional Chinese
@@ -147,6 +147,14 @@ export const useMobileLanguageStore = defineStore('mobileLanguage', () => {
   const initialLanguage = getInitialLanguage()
   const selectedLanguage = ref<Language>(initialLanguage)
   
+  // Sync i18n locale on store initialization
+  // This ensures the UI language matches the stored preference
+  const initialLocale = initialLanguage.code === 'zh-Hans' ? 'zh-Hans' : 
+                        initialLanguage.code === 'zh-Hant' ? 'zh-Hant' : 
+                        initialLanguage.code
+  setLocale(initialLocale)
+  console.log('📱 Mobile client i18n synced to:', initialLocale)
+  
   // Chinese voice preference (only relevant for Chinese languages)
   // Default to Mandarin for simplified, Cantonese for traditional
   const chineseVoice = ref<ChineseVoice>(
@@ -217,7 +225,7 @@ export const useMobileLanguageStore = defineStore('mobileLanguage', () => {
 
 /**
  * Dashboard Language Store
- * For card issuers managing their cards in CMS
+ * For experience creators managing their experiences in CMS
  * Used in: Dashboard, Card Management, Admin Panel
  * Supports: English and Traditional Chinese only
  */

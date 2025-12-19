@@ -33,6 +33,29 @@ export interface AdminDashboardStats {
   daily_issued_cards: number;
   weekly_issued_cards: number;
   monthly_issued_cards: number;
+  // Access Mode metrics (Physical vs Digital)
+  physical_cards_count: number;
+  digital_cards_count: number;
+  // Digital Access metrics
+  total_digital_scans: number;
+  daily_digital_scans: number;
+  weekly_digital_scans: number;
+  monthly_digital_scans: number;
+  digital_credits_consumed: number;
+  // Content Mode distribution (matches schema: single, list, grid, cards)
+  content_mode_single: number;
+  content_mode_list: number;
+  content_mode_grid: number;
+  content_mode_cards: number;
+  is_grouped_count: number;
+  // Subscription metrics
+  total_free_users: number;
+  total_premium_users: number;
+  active_subscriptions: number;
+  estimated_mrr_cents: number;
+  // Access Log metrics
+  monthly_total_accesses: number;
+  monthly_overage_accesses: number;
 }
 
 export interface AdminActivity {
@@ -104,7 +127,30 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
         monthly_new_cards: dbStats.monthly_new_cards || 0,
         daily_issued_cards: dbStats.daily_issued_cards || 0,
         weekly_issued_cards: dbStats.weekly_issued_cards || 0,
-        monthly_issued_cards: dbStats.monthly_issued_cards || 0
+        monthly_issued_cards: dbStats.monthly_issued_cards || 0,
+        // Access Mode metrics
+        physical_cards_count: dbStats.physical_cards_count || 0,
+        digital_cards_count: dbStats.digital_cards_count || 0,
+        // Digital Access metrics
+        total_digital_scans: dbStats.total_digital_scans || 0,
+        daily_digital_scans: dbStats.daily_digital_scans || 0,
+        weekly_digital_scans: dbStats.weekly_digital_scans || 0,
+        monthly_digital_scans: dbStats.monthly_digital_scans || 0,
+        digital_credits_consumed: parseFloat(dbStats.digital_credits_consumed) || 0,
+        // Content Mode distribution (matches schema: single, list, grid, cards)
+        content_mode_single: dbStats.content_mode_single || 0,
+        content_mode_list: dbStats.content_mode_list || 0,
+        content_mode_grid: dbStats.content_mode_grid || 0,
+        content_mode_cards: dbStats.content_mode_cards || 0,
+        is_grouped_count: dbStats.is_grouped_count || 0,
+        // Subscription metrics
+        total_free_users: dbStats.total_free_users || 0,
+        total_premium_users: dbStats.total_premium_users || 0,
+        active_subscriptions: dbStats.active_subscriptions || 0,
+        estimated_mrr_cents: dbStats.estimated_mrr_cents || 0,
+        // Access Log metrics
+        monthly_total_accesses: dbStats.monthly_total_accesses || 0,
+        monthly_overage_accesses: dbStats.monthly_overage_accesses || 0
       }
       
       dashboardStats.value = stats

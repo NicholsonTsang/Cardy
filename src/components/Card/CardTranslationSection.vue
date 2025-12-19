@@ -13,6 +13,7 @@
           </p>
         </div>
         <Button
+          v-if="canTranslate"
           :label="$t('translation.manageTranslations')"
           icon="pi pi-globe"
           severity="primary"
@@ -20,14 +21,43 @@
           :disabled="loading"
           class="w-full sm:w-auto mt-3 sm:mt-0 shadow-md hover:shadow-lg transition-shadow"
         />
+        <Button
+          v-else
+          :label="$t('subscription.upgrade')"
+          icon="pi pi-star"
+          severity="warning"
+          @click="router.push('/cms/plan')"
+          class="w-full sm:w-auto mt-3 sm:mt-0 shadow-md hover:shadow-lg transition-shadow"
+        />
       </div>
     </div>
 
     <!-- Content Section -->
     <div class="p-6">
+      <!-- Premium Required Message -->
+      <Message 
+        v-if="!canTranslate"
+        severity="warn" 
+        :closable="false"
+        class="mb-6"
+      >
+        <div class="text-sm">
+          <strong>{{ $t('subscription.translation_not_available') }}</strong>
+          <p class="mt-2">{{ $t('subscription.upgrade_for_translations') }}</p>
+          <Button
+            :label="$t('subscription.view_plans')"
+            icon="pi pi-star"
+            severity="warning"
+            size="small"
+            class="mt-3"
+            @click="router.push('/cms/plan')"
+          />
+        </div>
+      </Message>
+      
       <!-- Warning Message -->
       <Message 
-        v-if="!hasAnyTranslations"
+        v-else-if="!hasAnyTranslations"
         severity="info" 
         :closable="false"
         class="mb-6"
@@ -36,7 +66,7 @@
           <strong>{{ $t('translation.beforeYouStart') }}</strong>
           <ul class="list-disc ml-5 mt-2 space-y-1">
             <li>{{ $t('translation.warningFinishContent') }}</li>
-            <li>{{ $t('translation.warningCost') }}</li>
+            <li>{{ $t('translation.warningFreeForPremium') }}</li>
             <li>{{ $t('translation.warningQuality') }}</li>
           </ul>
         </div>
@@ -153,11 +183,13 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
+import { useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import Message from 'primevue/message';
 import ProgressSpinner from 'primevue/progressspinner';
 import { useTranslationStore, SUPPORTED_LANGUAGES } from '@/stores/translation';
+import { useSubscriptionStore } from '@/stores/subscription';
 import TranslationDialog from './TranslationDialog.vue';
 
 // Props
@@ -168,11 +200,22 @@ const props = defineProps<{
 // Composables
 const { t } = useI18n();
 const toast = useToast();
+const router = useRouter();
 const translationStore = useTranslationStore();
+const subscriptionStore = useSubscriptionStore();
 
 // State
 const loading = ref(false);
 const showTranslationDialog = ref(false);
+
+// Subscription check
+const canTranslate = computed(() => subscriptionStore.canTranslate);
+const isPremium = computed(() => subscriptionStore.isPremium);
+
+// Fetch subscription on mount
+onMounted(async () => {
+  await subscriptionStore.fetchSubscription();
+});
 
 // Computed
 const originalLanguageName = computed(() => {

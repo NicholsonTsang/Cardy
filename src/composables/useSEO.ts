@@ -134,7 +134,7 @@ export function useSEO() {
     setMetaTag('og:title', title, true)
     setMetaTag('og:description', description, true)
     setMetaTag('og:image', image, true)
-    setMetaTag('og:site_name', 'CardStudio', true)
+    setMetaTag('og:site_name', 'ExperienceQR', true)
     setMetaTag('og:locale', ogLocale, true)
 
     // Add alternate locales
@@ -169,7 +169,7 @@ export function useSEO() {
     const structuredData = {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "CardStudio",
+      "name": "ExperienceQR",
       "applicationCategory": "BusinessApplication",
       "description": t('seo.structured_description'),
       "inLanguage": isoLangMap[lang],

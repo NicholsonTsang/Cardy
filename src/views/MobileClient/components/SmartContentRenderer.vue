@@ -1,56 +1,80 @@
 <template>
   <div class="smart-content-renderer">
-    <!-- SINGLE Mode: One full-page content item -->
-    <LayoutSingle 
-      v-if="detectedLayout === 'single'"
-      :card="card"
-      :item="singleItem"
-      :available-languages="availableLanguages"
-      :has-header="hasHeader"
-    />
+    <template v-if="card">
+      <!-- SINGLE Mode: One full-page content item -->
+      <LayoutSingle 
+        v-if="detectedLayout === 'single'"
+        :card="card"
+        :item="singleItem"
+        :available-languages="availableLanguages"
+        :has-header="hasHeader"
+      />
 
-    <!-- GROUPED Mode: Categories with sub-items -->
-    <LayoutGrouped 
-      v-else-if="detectedLayout === 'grouped'"
-      :card="card"
-      :items="parentItems"
-      :all-items="allItems"
-      :available-languages="availableLanguages"
-      :has-header="hasHeader"
-      @select="handleSelect"
-    />
+      <!-- GROUPED Mode: Categories with sub-items (when is_grouped is true) -->
+      <!-- Used for: list+grouped, grid+grouped, cards+grouped with expanded display -->
+      <LayoutGrouped 
+        v-else-if="isGrouped && groupDisplay === 'expanded'"
+        :card="card"
+        :items="parentItems"
+        :all-items="allItems || items"
+        :available-languages="availableLanguages"
+        :has-header="hasHeader"
+        :layout-style="detectedLayout"
+        @select="handleSelect"
+      />
 
-    <!-- LIST Mode: Simple vertical list -->
-    <LayoutList 
-      v-else-if="detectedLayout === 'list'"
-      :card="card"
-      :items="items"
-      :available-languages="availableLanguages"
-      :has-header="hasHeader"
-      @select="handleSelect"
-    />
+      <!-- COLLAPSED GROUPED Mode: Categories that navigate to children -->
+      <!-- Used for: list+grouped, grid+grouped, cards+grouped with collapsed display -->
+      <LayoutGroupedCollapsed 
+        v-else-if="isGrouped && groupDisplay === 'collapsed'"
+        :card="card"
+        :items="parentItems"
+        :all-items="allItems || items"
+        :available-languages="availableLanguages"
+        :has-header="hasHeader"
+        :layout-style="detectedLayout"
+        @select="handleSelect"
+      />
 
-    <!-- GRID Mode: 2-column visual grid -->
-    <LayoutGrid 
-      v-else-if="detectedLayout === 'grid'"
-      :card="card"
-      :items="items"
-      :all-items="allItems"
-      :available-languages="availableLanguages"
-      :has-header="hasHeader"
-      @select="handleSelect"
-    />
+      <!-- LIST Mode: Simple vertical list (flat, no grouping) -->
+      <LayoutList 
+        v-else-if="detectedLayout === 'list'"
+        :card="card"
+        :items="items"
+        :available-languages="availableLanguages"
+        :has-header="hasHeader"
+        :has-more="hasMore"
+        :is-loading-more="isLoadingMore"
+        :total-count="totalCount"
+        @select="handleSelect"
+        @load-more="handleLoadMore"
+      />
 
-    <!-- INLINE Mode: Horizontal scrollable cards -->
-    <LayoutInline 
-      v-else
-      :card="card"
-      :items="items"
-      :all-items="allItems"
-      :available-languages="availableLanguages"
-      :has-header="hasHeader"
-      @select="handleSelect"
-    />
+      <!-- GRID Mode: 2-column visual grid (flat, no grouping) -->
+      <LayoutGrid 
+        v-else-if="detectedLayout === 'grid'"
+        :card="card"
+        :items="items"
+        :all-items="allItems || items"
+        :available-languages="availableLanguages"
+        :has-header="hasHeader"
+        @select="handleSelect"
+      />
+
+      <!-- CARDS Mode: Full-width cards (flat, no grouping) -->
+      <LayoutInline 
+        v-else
+        :card="card"
+        :items="items"
+        :all-items="allItems || items"
+        :available-languages="availableLanguages"
+        :has-header="hasHeader"
+        @select="handleSelect"
+      />
+      
+      <!-- Note: Floating AI button removed - users access AI from Card Overview 
+           or contextually from Content Detail pages -->
+    </template>
   </div>
 </template>
 
@@ -59,6 +83,7 @@ import { computed, onMounted } from 'vue'
 import { getContentAspectRatio } from '@/utils/cardConfig'
 import LayoutSingle from './LayoutSingle.vue'
 import LayoutGrouped from './LayoutGrouped.vue'
+import LayoutGroupedCollapsed from './LayoutGroupedCollapsed.vue'
 import LayoutList from './LayoutList.vue'
 import LayoutGrid from './LayoutGrid.vue'
 import LayoutInline from './LayoutInline.vue'
@@ -67,9 +92,11 @@ interface ContentItem {
   content_item_id: string
   content_item_parent_id: string | null
   content_item_name: string
-  content_item_content: string
+  content_item_content?: string       // Full content (legacy, optional)
+  content_preview?: string            // Truncated preview (optimized)
+  content_length?: number             // Full content length (optimized)
   content_item_image_url: string
-  content_item_ai_knowledge_base: string
+  content_item_ai_knowledge_base?: string
   content_item_ai_metadata?: string
   content_item_sort_order: number
   crop_parameters?: any
@@ -84,7 +111,9 @@ interface CardData {
   ai_instruction?: string
   ai_knowledge_base?: string
   is_activated: boolean
-  content_mode?: 'single' | 'grouped' | 'list' | 'grid' | 'inline'
+  content_mode?: 'single' | 'grid' | 'list' | 'cards'
+  is_grouped?: boolean
+  group_display?: 'expanded' | 'collapsed'
 }
 
 interface Props {
@@ -94,11 +123,20 @@ interface Props {
   card?: CardData
   availableLanguages?: string[]
   hasHeader?: boolean
+  // Pagination props (optional - for optimized loading)
+  hasMore?: boolean
+  isLoadingMore?: boolean
+  totalCount?: number
 }
 
-const props = defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  hasMore: false,
+  isLoadingMore: false,
+  totalCount: 0
+})
 const emit = defineEmits<{
   select: [item: ContentItem]
+  loadMore: []
 }>()
 
 // Get parent items (top-level, no parent_id)
@@ -115,20 +153,23 @@ const singleItem = computed(() => {
 /**
  * Layout Detection Logic
  * 
- * New 5 Content Modes:
- * - single: 1 parent item, displayed as full page
- * - grouped: N parents as category headers, N children listed below each
- * - list: N parents only, simple vertical list
+ * 4 Content Modes with Grouping Options:
+ * - single: 1 parent item, displayed as full page (no grouping)
  * - grid: N items displayed in 2-column grid
- * - inline: N items displayed as horizontal scrollable cards
+ * - list: N items displayed as vertical list
+ * - cards: N items displayed as full-width cards
+ * 
+ * Grouping (for grid, list, cards):
+ * - is_grouped: true = content organized into categories (parent/child)
+ * - group_display: 'expanded' = children shown inline, 'collapsed' = navigate to see children
  */
-const detectedLayout = computed<'single' | 'grouped' | 'list' | 'grid' | 'inline'>(() => {
-  // Priority 1: Use explicit content_mode from CMS if available
+const detectedLayout = computed<'single' | 'grid' | 'list' | 'cards'>(() => {
+  // Use explicit content_mode from CMS if available
   if (props.card?.content_mode) {
     return props.card.content_mode
   }
   
-  // Priority 2: Heuristic detection (fallback for legacy data)
+  // Fallback: Heuristic detection
   const hasSubItems = props.allItems?.some(item => item.content_item_parent_id !== null) || false
   
   // If only 1 parent item -> single
@@ -136,17 +177,26 @@ const detectedLayout = computed<'single' | 'grouped' | 'list' | 'grid' | 'inline
     return 'single'
   }
   
-  // If has sub-items -> grouped
-  if (hasSubItems) {
-    return 'grouped'
-  }
-  
   // Default to list
   return 'list'
 })
 
+// Check if content is grouped
+const isGrouped = computed(() => {
+  return props.card?.is_grouped || false
+})
+
+// Get group display mode
+const groupDisplay = computed(() => {
+  return props.card?.group_display || 'expanded'
+})
+
 function handleSelect(item: ContentItem) {
   emit('select', item)
+}
+
+function handleLoadMore() {
+  emit('loadMore')
 }
 
 // Set up CSS custom property for content aspect ratio

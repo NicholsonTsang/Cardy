@@ -16,26 +16,31 @@ const router = createRouter({
           path: '',
           redirect: { name: 'mycards' }
         },
-        // Card Issuer Routes
+        // Experience Creator Routes (accessible by both cardIssuer and admin)
         {
           path: 'mycards',
           name: 'mycards',
           component: () => import('@/views/Dashboard/CardIssuer/MyCards.vue'),
-          meta: { requiredRole: 'cardIssuer' }
+          meta: { requiredRoles: ['cardIssuer', 'admin'] }
         },
         {
           path: 'credits',
           name: 'credits',
           component: () => import('@/views/Dashboard/CardIssuer/CreditManagement.vue'),
-          meta: { requiredRole: 'cardIssuer' }
+          meta: { requiredRoles: ['cardIssuer', 'admin'] }
+        },
+        {
+          path: 'plan',
+          name: 'plan',
+          component: () => import('@/views/Dashboard/CardIssuer/SubscriptionManagement.vue'),
+          meta: { requiredRoles: ['cardIssuer', 'admin'] }
         },
         
         // Admin Routes (now using the same DashboardLayout)
+        // Redirect old print-requests route to batches page
         {
           path: 'admin/print-requests',
-          name: 'admin-print-requests',
-          component: () => import('@/views/Dashboard/Admin/PrintRequestManagement.vue'),
-          meta: { requiredRole: 'admin' }
+          redirect: { name: 'admin-batches' }
         },
         {
           path: 'admin/users',
@@ -74,10 +79,15 @@ const router = createRouter({
           meta: { requiredRole: 'admin' }
         },
         {
-          path: 'admin/issue-batch',
-          name: 'admin-issue-batch',
-          component: () => import('@/views/Dashboard/Admin/BatchIssuance.vue'),
+          path: 'admin/templates',
+          name: 'admin-templates',
+          component: () => import('@/views/Dashboard/Admin/TemplateManagement.vue'),
           meta: { requiredRole: 'admin' }
+        },
+        // Redirect old issue-batch route to batches page
+        {
+          path: 'admin/issue-batch',
+          redirect: { name: 'admin-batches' }
         },
       ]
     },
@@ -168,8 +178,12 @@ const getUserRole = (authStore: any): string | undefined => {
   return role;
 };
 
-const hasRequiredRole = (userRole: string | undefined, requiredRole: string | undefined): boolean => {
+const hasRequiredRole = (userRole: string | undefined, requiredRole: string | string[] | undefined): boolean => {
   if (!requiredRole) return true; // No role required
+  if (Array.isArray(requiredRole)) {
+    // Support multiple allowed roles
+    return requiredRole.includes(userRole || '');
+  }
   return userRole === requiredRole;
 };
 
@@ -209,7 +223,8 @@ router.beforeEach(async (to, from, next) => {
 
   const isLoggedIn = !!authStore.session?.user;
   const userRole = getUserRole(authStore);
-  const requiredRole = to.meta.requiredRole as string | undefined;
+  // Support both single role (requiredRole) and multiple roles (requiredRoles)
+  const requiredRole = (to.meta.requiredRoles || to.meta.requiredRole) as string | string[] | undefined;
 
   // Check if route requires authentication
   if (requiresAuth) {

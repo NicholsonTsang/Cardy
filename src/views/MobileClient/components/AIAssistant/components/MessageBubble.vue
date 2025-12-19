@@ -18,7 +18,7 @@
         <!-- Voice indicator for user messages -->
         <div v-if="message.audio && message.role === 'user'" class="audio-indicator">
           <i class="pi pi-microphone" />
-          <span>Voice message</span>
+          <span>{{ $t('common.voice_message') }}</span>
         </div>
         
         <!-- Audio playback button for assistant messages -->

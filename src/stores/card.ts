@@ -3,6 +3,10 @@ import { ref } from 'vue';
 import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
+// Content mode types
+export type ContentMode = 'single' | 'grid' | 'list' | 'cards';
+export type GroupDisplay = 'expanded' | 'collapsed';
+
 // Define interfaces for Card data
 export interface Card {
     id: string;
@@ -20,10 +24,16 @@ export interface Card {
     original_language?: string; // Original language code (e.g., 'en')
     content_hash?: string; // MD5 hash for detecting content changes
     last_content_update?: string; // Timestamp of last content update
-    content_mode?: 'single' | 'grouped' | 'list' | 'grid' | 'inline'; // Content rendering mode
-    billing_type?: 'physical' | 'digital'; // Billing model: physical = per-card, digital = per-scan
-    max_scans?: number | null; // NULL for physical (unlimited), Integer for digital
-    current_scans?: number; // Current scan count (for digital)
+    content_mode: ContentMode; // Content rendering mode: single, grid, list, cards
+    is_grouped: boolean; // Whether content is organized into categories
+    group_display: GroupDisplay; // How grouped items display: expanded or collapsed
+    billing_type: 'physical' | 'digital'; // Billing model: physical = per-card, digital = per-scan
+    max_scans: number | null; // NULL for physical (unlimited), Integer for digital (total limit)
+    current_scans: number; // Current total scan count (for digital)
+    daily_scan_limit: number | null; // Daily scan limit for digital access (NULL = unlimited)
+    daily_scans: number; // Today's scan count (for digital)
+    is_access_enabled: boolean; // Toggle to enable/disable QR code access (for digital cards)
+    access_token: string; // Unique token for access URL (can be regenerated)
     created_at: string;
     updated_at: string;
 }
@@ -41,9 +51,12 @@ export interface CardFormData {
     ai_knowledge_base: string; // Background knowledge for AI (max 2000 words)
     qr_code_position: string;
     original_language?: string; // Original language code (e.g., 'en')
-    content_mode?: 'single' | 'grouped' | 'list' | 'grid' | 'inline'; // Content rendering mode
+    content_mode?: ContentMode; // Content rendering mode
+    is_grouped?: boolean; // Whether content is organized into categories
+    group_display?: GroupDisplay; // How grouped items display
     billing_type?: 'physical' | 'digital'; // Billing model
-    max_scans?: number | null; // Scan limit for digital cards
+    max_scans?: number | null; // Total scan limit for digital cards
+    daily_scan_limit?: number | null; // Daily scan limit for digital cards (default: 500)
     id?: string; // Optional for updates
 }
 
@@ -150,6 +163,9 @@ export const useCardStore = defineStore('card', () => {
                 console.log('Cropped image URL:', publicUrl);
             }
             
+            // Get default daily limit from env
+            const defaultDailyLimit = Number(import.meta.env.VITE_DIGITAL_ACCESS_DEFAULT_DAILY_LIMIT) || 500;
+            
             const { data, error: createError } = await supabase
                 .rpc('create_card', {
                     p_name: cardData.name,
@@ -163,8 +179,11 @@ export const useCardStore = defineStore('card', () => {
                     p_qr_code_position: cardData.qr_code_position,
                     p_original_language: cardData.original_language || 'en',
                     p_content_mode: cardData.content_mode || 'list',
+                    p_is_grouped: cardData.is_grouped || false,
+                    p_group_display: cardData.group_display || 'expanded',
                     p_billing_type: cardData.billing_type || 'physical',
-                    p_max_scans: cardData.billing_type === 'digital' ? (cardData.max_scans || null) : null
+                    p_max_scans: cardData.billing_type === 'digital' ? (cardData.max_scans || null) : null,
+                    p_daily_scan_limit: cardData.billing_type === 'digital' ? (cardData.daily_scan_limit ?? defaultDailyLimit) : null
                 });
                 
             if (createError) throw createError;
@@ -269,8 +288,11 @@ export const useCardStore = defineStore('card', () => {
                 p_qr_code_position: updateData.qr_code_position,
                 p_original_language: updateData.original_language || 'en',
                 p_content_mode: updateData.content_mode || null,
+                p_is_grouped: updateData.is_grouped ?? null,
+                p_group_display: updateData.group_display || null,
                 p_billing_type: updateData.billing_type || null,
-                p_max_scans: updateData.billing_type === 'digital' ? (updateData.max_scans || null) : null
+                p_max_scans: updateData.billing_type === 'digital' ? (updateData.max_scans || null) : null,
+                p_daily_scan_limit: updateData.billing_type === 'digital' ? (updateData.daily_scan_limit || null) : null
             };
             
             const { data, error: updateError } = await supabase
@@ -314,6 +336,65 @@ export const useCardStore = defineStore('card', () => {
         }
     };
 
+    // Toggle access enabled/disabled for a digital card
+    const toggleCardAccess = async (cardId: string, isEnabled: boolean): Promise<boolean> => {
+        isLoading.value = true;
+        error.value = null;
+        
+        try {
+            const { error: toggleError } = await supabase
+                .rpc('toggle_card_access', {
+                    p_card_id: cardId,
+                    p_is_enabled: isEnabled
+                });
+                
+            if (toggleError) throw toggleError;
+            
+            // Update local state
+            const card = cards.value.find(c => c.id === cardId);
+            if (card) {
+                card.is_access_enabled = isEnabled;
+            }
+            
+            return true;
+        } catch (err: any) {
+            console.error('Error toggling card access:', err);
+            error.value = err.message || 'An unknown error occurred';
+            return false;
+        } finally {
+            isLoading.value = false;
+        }
+    };
+
+    // Regenerate access token for a digital card (invalidates old QR codes)
+    const regenerateAccessToken = async (cardId: string): Promise<string | null> => {
+        isLoading.value = true;
+        error.value = null;
+        
+        try {
+            const { data, error: regenError } = await supabase
+                .rpc('regenerate_access_token', {
+                    p_card_id: cardId
+                });
+                
+            if (regenError) throw regenError;
+            
+            // Update local state
+            const card = cards.value.find(c => c.id === cardId);
+            if (card && data) {
+                card.access_token = data;
+            }
+            
+            return data;
+        } catch (err: any) {
+            console.error('Error regenerating access token:', err);
+            error.value = err.message || 'An unknown error occurred';
+            return null;
+        } finally {
+            isLoading.value = false;
+        }
+    };
+
     return {
         cards,
         isLoading,
@@ -322,6 +403,8 @@ export const useCardStore = defineStore('card', () => {
         addCard,
         getCardById,
         updateCard,
-        deleteCard
+        deleteCard,
+        toggleCardAccess,
+        regenerateAccessToken
     };
 });

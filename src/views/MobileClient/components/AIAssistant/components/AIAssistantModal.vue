@@ -1,7 +1,7 @@
 <template>
   <Teleport to="body">
     <div v-if="isOpen" class="modal-overlay" @click="$emit('close')">
-      <div class="modal-content" @click.stop>
+      <div class="modal-content" :class="assistantModeClass" @click.stop>
         <!-- Language Selection Screen -->
         <LanguageSelector
           v-if="showLanguageSelection"
@@ -12,12 +12,12 @@
         <!-- Chat Interface (after language selection) -->
         <template v-else>
           <!-- Header -->
-          <div class="modal-header">
+          <div class="modal-header" :class="headerModeClass">
             <div class="header-info">
-              <i class="pi pi-comments header-icon" />
+              <i :class="headerIconClass" class="header-icon" />
               <div>
-                <h3 class="header-title">AI Assistant</h3>
-                <p class="header-subtitle">{{ contentItemName }}</p>
+                <h3 class="header-title">{{ headerTitle }}</h3>
+                <p class="header-subtitle">{{ headerSubtitle }}</p>
               </div>
             </div>
             <div class="header-actions">
@@ -62,7 +62,7 @@ import { watch, onMounted, onUnmounted, ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import LanguageSelector from './LanguageSelector.vue'
 import { useMobileLanguageStore, CHINESE_VOICE_OPTIONS } from '@/stores/language'
-import type { ConversationMode, Language } from '../types'
+import type { ConversationMode, Language, AssistantMode } from '../types'
 
 const languageStore = useMobileLanguageStore()
 const { t } = useI18n()
@@ -72,8 +72,41 @@ const props = defineProps<{
   showLanguageSelection: boolean
   conversationMode: ConversationMode
   inputMode?: 'text' | 'voice'
-  contentItemName: string
+  contentItemName?: string // For content-item mode
+  assistantMode?: AssistantMode // 'card-level' or 'content-item'
+  title?: string // Custom title for card-level mode
 }>()
+
+// Computed properties for mode-based styling
+const isCardLevel = computed(() => props.assistantMode === 'card-level')
+
+const assistantModeClass = computed(() => ({
+  'card-level-mode': isCardLevel.value,
+  'content-item-mode': !isCardLevel.value
+}))
+
+const headerModeClass = computed(() => ({
+  'header-card-level': isCardLevel.value,
+  'header-content-item': !isCardLevel.value
+}))
+
+const headerIconClass = computed(() => 
+  isCardLevel.value ? 'pi pi-comments' : 'pi pi-info-circle'
+)
+
+const headerTitle = computed(() => {
+  if (isCardLevel.value) {
+    return t('mobile.general_assistant')
+  }
+  return t('mobile.item_assistant')
+})
+
+const headerSubtitle = computed(() => {
+  if (isCardLevel.value && props.title) {
+    return props.title
+  }
+  return props.contentItemName || ''
+})
 
 defineEmits<{
   (e: 'close'): void
@@ -218,6 +251,26 @@ onUnmounted(() => {
   background: white;
 }
 
+/* Card-Level Assistant Header (Blue-Purple gradient) */
+.modal-header.header-card-level {
+  background: linear-gradient(135deg, #eff6ff 0%, #f3e8ff 100%);
+  border-bottom-color: #c7d2fe;
+}
+
+.modal-header.header-card-level .header-icon {
+  color: #7c3aed;
+}
+
+/* Content-Item Assistant Header (Emerald-Cyan gradient) */
+.modal-header.header-content-item {
+  background: linear-gradient(135deg, #ecfdf5 0%, #ecfeff 100%);
+  border-bottom-color: #a7f3d0;
+}
+
+.modal-header.header-content-item .header-icon {
+  color: #059669;
+}
+
 .header-info {
   display: flex;
   align-items: center;
@@ -240,6 +293,10 @@ onUnmounted(() => {
   margin: 0;
   font-size: 0.875rem;
   color: #6b7280;
+  max-width: 180px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Language Indicator */

@@ -20,7 +20,7 @@
         </div>
         
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <router-link :to="{ name: 'admin-print-requests' }" class="block">
+          <router-link :to="{ name: 'admin-batches' }" class="block">
             <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 hover:from-blue-100 hover:to-blue-200 transition-colors">
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
@@ -90,6 +90,22 @@
               </div>
               <div class="mt-1.5 sm:mt-2">
                 <span class="text-[10px] sm:text-xs text-slate-500 truncate block">{{ $t('admin.all_registered') }}</span>
+              </div>
+            </div>
+
+            <!-- Premium Users -->
+            <div class="bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">{{ $t('admin.premium_users') }}</p>
+                  <h3 class="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate">{{ stats.total_premium_users }}</h3>
+                </div>
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-md sm:shadow-lg flex-shrink-0">
+                  <i class="pi pi-star text-white text-xs sm:text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-1.5 sm:mt-2">
+                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">{{ stats.active_subscriptions }} {{ $t('admin.active_subs') }}</span>
               </div>
             </div>
 
@@ -169,7 +185,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <router-link :to="{ name: 'admin-print-requests' }" class="inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors">
+                <router-link :to="{ name: 'admin-batches' }" class="inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors">
                   {{ $t('admin.process') }}
                   <i class="pi pi-arrow-right ml-1 text-xs"></i>
                 </router-link>
@@ -188,7 +204,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <router-link :to="{ name: 'admin-print-requests' }" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
+                <router-link :to="{ name: 'admin-batches' }" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
                   {{ $t('admin.track') }}
                   <i class="pi pi-arrow-right ml-1 text-xs"></i>
                 </router-link>
@@ -207,7 +223,7 @@
                 </div>
               </div>
               <div class="mt-2">
-                <router-link :to="{ name: 'admin-print-requests' }" class="inline-flex items-center text-xs font-medium text-green-600 hover:text-green-700 transition-colors">
+                <router-link :to="{ name: 'admin-batches' }" class="inline-flex items-center text-xs font-medium text-green-600 hover:text-green-700 transition-colors">
                   {{ $t('admin.monitor') }}
                   <i class="pi pi-arrow-right ml-1 text-xs"></i>
                 </router-link>
@@ -275,6 +291,22 @@
               </div>
               <div class="mt-2">
                 <span class="text-xs text-slate-500">{{ $t('admin.last_30_days') }}</span>
+              </div>
+            </div>
+
+            <!-- Estimated MRR -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.estimated_mrr') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900 truncate">{{ formatRevenue(stats.estimated_mrr_cents) }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-wallet text-white text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-2">
+                <span class="text-xs text-slate-500">{{ $t('admin.recurring_revenue') }}</span>
               </div>
             </div>
           </template>
@@ -381,7 +413,7 @@
                   <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.weekly_issued_cards') }}</p>
                   <h3 class="text-lg font-bold text-slate-900">{{ stats.weekly_issued_cards }}</h3>
                 </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items center justify-center shadow-lg flex-shrink-0 ml-2">
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
                   <i class="pi pi-share-alt text-white text-sm"></i>
                 </div>
               </div>
@@ -403,6 +435,263 @@
               </div>
               <div class="mt-2">
                 <span class="text-xs text-slate-500">{{ $t('admin.last_30_days') }}</span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Access Mode Distribution Section (NEW) -->
+      <div>
+        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <i class="pi pi-th-large text-blue-600"></i>
+          {{ $t('admin.access_mode_distribution') }}
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <template v-if="isLoadingStats">
+            <div v-for="i in 3" :key="i" class="bg-white rounded-xl shadow-lg p-4 border border-slate-200 animate-pulse">
+              <div class="h-20"></div>
+            </div>
+          </template>
+          <template v-else>
+            <!-- Physical Cards -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.physical_cards') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.physical_cards_count }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-credit-card text-white text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-2">
+                <span class="text-xs text-slate-500">{{ $t('admin.per_card_billing') }}</span>
+              </div>
+            </div>
+
+            <!-- Digital Access Cards -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.digital_access_cards') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.digital_cards_count }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-qrcode text-white text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-2">
+                <span class="text-xs text-slate-500">{{ $t('admin.per_scan_billing') }}</span>
+              </div>
+            </div>
+
+            <!-- Digital Adoption Rate -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.digital_adoption_rate') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ digitalAdoptionRate }}%</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-chart-pie text-white text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-2">
+                <span class="text-xs text-slate-500">{{ $t('admin.of_all_cards') }}</span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Digital Access Analytics Section (NEW) -->
+      <div>
+        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <i class="pi pi-eye text-blue-600"></i>
+          {{ $t('admin.digital_access_analytics') }}
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+          <template v-if="isLoadingStats">
+            <div v-for="i in 4" :key="i" class="bg-white rounded-xl shadow-lg p-4 border border-slate-200 animate-pulse">
+              <div class="h-20"></div>
+            </div>
+          </template>
+          <template v-else>
+            <!-- Total Digital Scans -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.total_digital_scans') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.total_digital_scans.toLocaleString() }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-eye text-white text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-2">
+                <span class="text-xs text-slate-500">{{ $t('admin.all_time') }}</span>
+              </div>
+            </div>
+
+            <!-- Daily Digital Scans -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.daily_digital_scans') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.daily_digital_scans.toLocaleString() }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-sky-500 to-sky-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-calendar text-white text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-2">
+                <span class="text-xs text-slate-500">{{ $t('admin.today') }}</span>
+              </div>
+            </div>
+
+            <!-- Monthly Digital Scans -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.monthly_digital_scans') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.monthly_digital_scans.toLocaleString() }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-chart-bar text-white text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-2">
+                <span class="text-xs text-slate-500">{{ $t('admin.last_30_days') }}</span>
+              </div>
+            </div>
+
+            <!-- Monthly Logged Access -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.logged_access') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.monthly_total_accesses.toLocaleString() }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-check-circle text-white text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-2">
+                <span class="text-xs text-slate-500">{{ $t('admin.this_month') }}</span>
+              </div>
+            </div>
+
+            <!-- Overage Access -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.overage_access') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.monthly_overage_accesses.toLocaleString() }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-exclamation-circle text-white text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-2">
+                <span class="text-xs text-slate-500">{{ $t('admin.this_month') }}</span>
+              </div>
+            </div>
+
+            <!-- Digital Credits Consumed -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.digital_credits_consumed') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.digital_credits_consumed.toFixed(2) }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-dollar text-white text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-2">
+                <span class="text-xs text-slate-500">{{ $t('admin.all_time') }}</span>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+
+      <!-- Content Mode Distribution Section (NEW) -->
+      <div>
+        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <i class="pi pi-objects-column text-blue-600"></i>
+          {{ $t('admin.content_mode_distribution') }}
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+          <template v-if="isLoadingStats">
+            <div v-for="i in 5" :key="i" class="bg-white rounded-xl shadow-lg p-4 border border-slate-200 animate-pulse">
+              <div class="h-20"></div>
+            </div>
+          </template>
+          <template v-else>
+            <!-- Single Mode -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('dashboard.mode_single') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.content_mode_single }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-file text-white text-sm"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cards Mode -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('dashboard.mode_cards') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.content_mode_cards }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-id-card text-white text-sm"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- List Mode -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('dashboard.mode_list') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.content_mode_list }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-list text-white text-sm"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Grid Mode -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('dashboard.mode_grid') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.content_mode_grid }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-th-large text-white text-sm"></i>
+                </div>
+              </div>
+            </div>
+
+            <!-- Grouped Experiences -->
+            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+              <div class="flex items-center justify-between">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('dashboard.is_grouped') }}</p>
+                  <h3 class="text-lg font-bold text-slate-900">{{ stats.is_grouped_count }}</h3>
+                </div>
+                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
+                  <i class="pi pi-folder text-white text-sm"></i>
+                </div>
               </div>
             </div>
           </template>
@@ -449,7 +738,37 @@ const stats = computed(() => dashboardStore.dashboardStats || {
   monthly_new_cards: 0,
   daily_issued_cards: 0,
   weekly_issued_cards: 0,
-  monthly_issued_cards: 0
+  monthly_issued_cards: 0,
+  // Access Mode metrics
+  physical_cards_count: 0,
+  digital_cards_count: 0,
+  // Digital Access metrics
+  total_digital_scans: 0,
+  daily_digital_scans: 0,
+  weekly_digital_scans: 0,
+  monthly_digital_scans: 0,
+  digital_credits_consumed: 0,
+  // Content Mode distribution (matches schema: single, list, grid, cards)
+  content_mode_single: 0,
+  content_mode_list: 0,
+  content_mode_grid: 0,
+  content_mode_cards: 0,
+  is_grouped_count: 0,
+  // Subscription metrics
+  total_free_users: 0,
+  total_premium_users: 0,
+  active_subscriptions: 0,
+  estimated_mrr_cents: 0,
+  // Access Log metrics
+  monthly_total_accesses: 0,
+  monthly_overage_accesses: 0
+})
+
+// Computed helpers for display
+const digitalAdoptionRate = computed(() => {
+  const total = stats.value.physical_cards_count + stats.value.digital_cards_count
+  if (total === 0) return 0
+  return Math.round((stats.value.digital_cards_count / total) * 100)
 })
 
 // Computed property for verification rate
@@ -537,9 +856,9 @@ function formatTimeAgo(date) {
   const diffHours = Math.floor(diffMs / (60 * 60 * 1000))
   const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000))
 
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
-  return `${diffDays}d ago`
+  if (diffMins < 60) return t('common.minutes_ago', { count: diffMins })
+  if (diffHours < 24) return t('common.hours_ago', { count: diffHours })
+  return t('common.days_ago', { count: diffDays })
 }
 
 const refreshData = async () => {

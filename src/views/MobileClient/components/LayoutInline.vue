@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-inline" :class="{ 'has-header': hasHeader }">
+  <div class="layout-inline" :class="{ 'has-header': hasHeader, 'has-ai': card.conversation_ai_enabled }">
     <!-- Full-Width Cards (One per row) -->
     <div class="cards-container">
       <button
@@ -27,10 +27,6 @@
           <span v-if="item.content_item_content" class="card-preview">
             {{ truncateText(item.content_item_content, 100) }}
           </span>
-          <div class="card-action">
-            <span class="action-text">{{ $t('mobile.view_details') }}</span>
-            <i class="pi pi-arrow-right action-icon" />
-          </div>
         </div>
       </button>
     </div>
@@ -41,33 +37,44 @@
       <p>{{ $t('mobile.no_items') }}</p>
     </div>
 
-    <!-- AI Assistant (if enabled) -->
+    <!-- General AI Assistant (if enabled) - For navigation/browsing questions -->
+    <CardLevelAssistant
+      v-if="card.conversation_ai_enabled"
+      :card-data="cardDataForAssistant"
+      :show-button="false"
+      ref="cardAssistantRef"
+    />
+    
+    <!-- AI Badge at bottom for easy access -->
     <div v-if="card.conversation_ai_enabled" class="ai-section">
-      <MobileAIAssistant 
-        :content-item-name="card.card_name"
-        :content-item-content="card.card_description"
-        :content-item-knowledge-base="card.ai_knowledge_base || ''"
-        :parent-content-knowledge-base="''"
-        :card-data="card"
-      />
+      <button @click="openAssistant" class="ai-browse-badge">
+        <span class="ai-badge-icon">✨</span>
+        <span class="ai-badge-text">{{ $t('mobile.tap_to_chat_with_ai') }}</span>
+        <i class="pi pi-chevron-right ai-badge-arrow" />
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { MobileAIAssistant } from './AIAssistant'
+import { CardLevelAssistant } from './AIAssistant'
 
 const { t } = useI18n()
+
+// Card Level Assistant ref
+const cardAssistantRef = ref<InstanceType<typeof CardLevelAssistant> | null>(null)
 
 interface ContentItem {
   content_item_id: string
   content_item_parent_id: string | null
   content_item_name: string
-  content_item_content: string
+  content_item_content?: string       // Full content (optional for optimized loading)
+  content_preview?: string            // Truncated preview (optimized)
+  content_length?: number             // Full content length (optimized)
   content_item_image_url: string
-  content_item_ai_knowledge_base: string
+  content_item_ai_knowledge_base?: string
   content_item_sort_order: number
 }
 
@@ -94,6 +101,22 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   select: [item: ContentItem]
 }>()
+
+// Card data formatted for General AI assistant
+const cardDataForAssistant = computed(() => ({
+  card_name: props.card.card_name,
+  card_description: props.card.card_description,
+  card_image_url: props.card.card_image_url,
+  conversation_ai_enabled: props.card.conversation_ai_enabled,
+  ai_instruction: props.card.ai_instruction || '',
+  ai_knowledge_base: props.card.ai_knowledge_base || '',
+  is_activated: props.card.is_activated
+}))
+
+// Open the General Assistant
+function openAssistant() {
+  cardAssistantRef.value?.openModal()
+}
 
 function truncateText(text: string, maxLength: number): string {
   if (!text) return ''
@@ -123,6 +146,11 @@ function handleItemClick(item: ContentItem) {
   padding-top: calc(6.5rem + env(safe-area-inset-top));
 }
 
+/* Extra bottom padding when AI assistant is present (fixed at bottom) */
+.layout-inline.has-ai {
+  padding-bottom: calc(5rem + max(1rem, env(safe-area-inset-bottom)));
+}
+
 .cards-container {
   flex: 1;
   display: flex;
@@ -137,30 +165,51 @@ function handleItemClick(item: ContentItem) {
   background: rgba(255, 255, 255, 0.08);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 1.25rem;
   overflow: hidden;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   -webkit-tap-highlight-color: transparent;
   text-align: left;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
 }
 
 .inline-card:active {
   background: rgba(255, 255, 255, 0.15);
   transform: scale(0.98);
+  border-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 }
 
 .card-image {
   aspect-ratio: 16/9;
   width: 100%;
-  background: rgba(255, 255, 255, 0.05);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(147, 51, 234, 0.1));
+  position: relative;
+  overflow: hidden;
+}
+
+.card-image::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 60px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.4), transparent);
+  pointer-events: none;
 }
 
 .card-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.inline-card:active .card-image img {
+  transform: scale(1.05);
 }
 
 .image-placeholder {
@@ -169,7 +218,8 @@ function handleItemClick(item: ContentItem) {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.4);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(147, 51, 234, 0.15));
 }
 
 .image-placeholder i {
@@ -177,7 +227,7 @@ function handleItemClick(item: ContentItem) {
 }
 
 .card-info {
-  padding: 1rem 1.25rem;
+  padding: 1.125rem 1.25rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -185,37 +235,19 @@ function handleItemClick(item: ContentItem) {
 
 .card-name {
   font-size: 1.125rem;
-  font-weight: 600;
+  font-weight: 700;
   color: white;
   line-height: 1.3;
 }
 
 .card-preview {
   font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.65);
   line-height: 1.5;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-}
-
-.card-action {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 0.8125rem;
-}
-
-.action-icon {
-  font-size: 0.75rem;
-  transition: transform 0.2s;
-}
-
-.inline-card:hover .action-icon {
-  transform: translateX(4px);
 }
 
 .empty-state {
@@ -232,11 +264,69 @@ function handleItemClick(item: ContentItem) {
   font-size: 3rem;
 }
 
+/* Fixed AI Section at bottom */
 .ai-section {
-  margin-top: 1.5rem;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem 1.25rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.8) 70%, transparent 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 100;
+}
+
+/* AI Browse Badge - General Assistant trigger */
+.ai-browse-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   width: 100%;
   max-width: 400px;
-  margin-left: auto;
-  margin-right: auto;
+  margin: 0 auto;
+  padding: 0.875rem 1.125rem;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 1rem;
+  color: white;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+.ai-browse-badge:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35) 0%, rgba(59, 130, 246, 0.35) 100%);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.ai-browse-badge:active {
+  transform: scale(0.98);
+}
+
+.ai-browse-badge .ai-badge-icon {
+  font-size: 1.125rem;
+}
+
+.ai-browse-badge .ai-badge-text {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+}
+
+.ai-browse-badge .ai-badge-arrow {
+  font-size: 0.875rem;
+  opacity: 0.6;
+  transition: transform 0.2s ease;
+}
+
+.ai-browse-badge:hover .ai-badge-arrow {
+  transform: translateX(3px);
+  opacity: 0.9;
 }
 </style>

@@ -44,26 +44,45 @@
       </div>
 
       <!-- Current User Info -->
-      <div v-if="currentUser" class="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <div class="flex items-center justify-between">
+      <div v-if="currentUser" class="mt-4 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center">
-              <i class="pi pi-user text-white"></i>
+            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+              <i class="pi pi-user text-white text-lg"></i>
             </div>
             <div>
               <p class="font-semibold text-slate-900">{{ currentUser.email }}</p>
-              <div class="flex items-center gap-2 text-sm text-slate-600">
-                <Tag :value="currentUser.role" severity="info" class="px-2 py-1 text-xs" />
-                <span>•</span>
-                <span>{{ userCards.length }} {{ $t('batches.cards').toLowerCase() }}</span>
-                <span>•</span>
+              <div class="flex items-center gap-2 text-sm text-slate-600 flex-wrap">
+                <span 
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                  :class="currentUser.role === 'admin' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'"
+                >
+                  {{ currentUser.role }}
+                </span>
+                <span class="text-slate-400">•</span>
                 <span>{{ $t('admin.registered') }} {{ formatDate(currentUser.created_at) }}</span>
               </div>
             </div>
           </div>
-          <div class="text-xs text-slate-500">
-            <i class="pi pi-eye mr-1"></i>
-            {{ $t('admin.read_only_view') || 'Read-only view' }}
+          
+          <!-- Card Stats Summary -->
+          <div class="flex items-center gap-3 sm:gap-4">
+            <div class="text-center px-3 py-1.5 bg-white rounded-lg border border-slate-200 shadow-sm">
+              <p class="text-lg font-bold text-slate-900">{{ userCards.length }}</p>
+              <p class="text-[10px] text-slate-500 uppercase">{{ $t('batches.cards') }}</p>
+            </div>
+            <div class="text-center px-3 py-1.5 bg-white rounded-lg border border-purple-200 shadow-sm">
+              <p class="text-lg font-bold text-purple-600">{{ physicalCardsCount }}</p>
+              <p class="text-[10px] text-slate-500 uppercase">{{ $t('admin.physical') }}</p>
+            </div>
+            <div class="text-center px-3 py-1.5 bg-white rounded-lg border border-cyan-200 shadow-sm">
+              <p class="text-lg font-bold text-cyan-600">{{ digitalCardsCount }}</p>
+              <p class="text-[10px] text-slate-500 uppercase">{{ $t('admin.digital') }}</p>
+            </div>
+            <div class="hidden sm:flex items-center gap-1 text-xs text-slate-400 ml-2">
+              <i class="pi pi-eye"></i>
+              {{ $t('admin.read_only_view') || 'Read-only view' }}
+            </div>
           </div>
         </div>
       </div>
@@ -151,7 +170,25 @@ const activeTab = ref(0)
 // Computed
 const selectedCard = computed(() => {
   if (!selectedCardId.value) return null
-  return userCards.value.find(c => c.id === selectedCardId.value) || null
+  const card = userCards.value.find(c => c.id === selectedCardId.value)
+  if (!card) return null
+  // Inject user_id from currentUser for components that need it (e.g., DigitalAccessQR)
+  return {
+    ...card,
+    user_id: currentUser.value?.user_id || '',
+    // Ensure non-null values for required fields
+    description: card.description || '',
+    ai_instruction: card.ai_instruction || '',
+    ai_knowledge_base: card.ai_knowledge_base || ''
+  }
+})
+
+const physicalCardsCount = computed(() => {
+  return userCards.value.filter(c => c.billing_type === 'physical').length
+})
+
+const digitalCardsCount = computed(() => {
+  return userCards.value.filter(c => c.billing_type === 'digital').length
 })
 
 const activeTabString = computed({
@@ -214,8 +251,8 @@ const handleSelectCard = async (cardId: string) => {
   } catch (err: any) {
     toast.add({
       severity: 'error',
-      summary: 'Load Failed',
-      detail: 'Failed to load card details',
+      summary: t('messages.load_failed'),
+      detail: t('messages.failed_to_load_card_details'),
       life: 3000
     })
   }

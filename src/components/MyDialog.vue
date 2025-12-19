@@ -46,10 +46,13 @@
 
 <script setup>
 import { ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import PDialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
+
+const { t } = useI18n();
 
 const props = defineProps({
   modelValue: {
@@ -149,7 +152,7 @@ const handleConfirm = async () => {
     if (props.showToasts) {
     toast.add({
       severity: 'success',
-      summary: 'Success',
+      summary: t('common.success'),
       detail: props.successMessage,
       life: 3000
     });
@@ -160,7 +163,7 @@ const handleConfirm = async () => {
     const detailMessage = typeof error === 'string' ? error : (error?.message || props.errorMessage);
     toast.add({
       severity: 'error',
-      summary: 'Error',
+      summary: t('common.error'),
       detail: detailMessage,
       life: 5000
     });

@@ -1,100 +1,186 @@
 <template>
   <div class="space-y-6">
-    <!-- Access Mode Badge -->
-    <div class="flex items-center gap-2">
-      <span 
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium"
-        :class="card.billing_type === 'digital' 
-          ? 'bg-cyan-100 text-cyan-800 border border-cyan-200' 
-          : 'bg-purple-100 text-purple-800 border border-purple-200'"
-      >
-        <i :class="card.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-credit-card'" class="text-xs"></i>
-        {{ card.billing_type === 'digital' ? 'Digital Access' : 'Physical Card' }}
-      </span>
-      <span 
-        v-if="card.content_mode"
-        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium bg-blue-100 text-blue-800 border border-blue-200"
-      >
-        {{ card.content_mode }}
-      </span>
+    <!-- Hero Header with Gradient -->
+    <div 
+      class="rounded-xl p-4 sm:p-6"
+      :class="card.billing_type === 'digital' 
+        ? 'bg-gradient-to-r from-cyan-500 to-blue-600' 
+        : 'bg-gradient-to-r from-purple-500 to-indigo-600'"
+    >
+      <div class="flex items-center gap-4">
+        <div 
+          class="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
+          :class="card.billing_type === 'digital' ? 'bg-white/20' : 'bg-white/20'"
+        >
+          <i 
+            :class="card.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-credit-card'" 
+            class="text-2xl text-white"
+          ></i>
+        </div>
+        <div class="flex-1 min-w-0">
+          <h2 class="text-xl font-bold text-white truncate">{{ card.name }}</h2>
+          <div class="flex items-center gap-2 mt-1 flex-wrap">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white">
+              {{ card.billing_type === 'digital' ? $t('dashboard.digital_access') : $t('dashboard.physical_card') }}
+            </span>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white">
+              <i :class="getContentModeIcon(card.content_mode)" class="text-[10px]"></i>
+              {{ getContentModeLabel(card.content_mode) }}
+            </span>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-6" :class="{ 'md:grid-cols-2': card.billing_type !== 'digital' }">
-      <!-- Card Image - Only for Physical Cards -->
-      <div v-if="card.billing_type !== 'digital'">
-        <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.card_image') }}</label>
-        <div v-if="card.image_url" class="relative" style="aspect-ratio: 2/3; max-width: 300px;">
-          <img
-            :src="card.image_url"
-            :alt="card.name"
-            class="w-full h-full object-cover rounded-lg border border-slate-300 shadow-sm"
-          />
+    <!-- Quick Stats Row - Digital Only -->
+    <div v-if="card.billing_type === 'digital'" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <!-- Total Scans -->
+      <div class="bg-white rounded-lg border border-slate-200 p-3 hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-cyan-100 flex items-center justify-center flex-shrink-0">
+            <i class="pi pi-eye text-cyan-600 text-sm"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs text-slate-500 truncate">{{ $t('admin.total_scans') }}</p>
+            <p class="text-lg font-bold text-slate-900">{{ (card.current_scans || 0).toLocaleString() }}</p>
+          </div>
         </div>
-        <div v-else class="aspect-[2/3] max-w-[300px] bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center">
-          <div class="text-center">
-            <i class="pi pi-image text-4xl text-slate-400 mb-2"></i>
-            <p class="text-slate-500 text-sm">{{ $t('dashboard.no_image') }}</p>
+      </div>
+      <!-- Daily Scans -->
+      <div class="bg-white rounded-lg border border-slate-200 p-3 hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+            <i class="pi pi-calendar text-blue-600 text-sm"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs text-slate-500 truncate">{{ $t('admin.today_scans') }}</p>
+            <p class="text-lg font-bold text-slate-900">{{ (card.daily_scans || 0).toLocaleString() }}</p>
+          </div>
+        </div>
+      </div>
+      <!-- Total Limit -->
+      <div class="bg-white rounded-lg border border-slate-200 p-3 hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
+            <i class="pi pi-flag text-purple-600 text-sm"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs text-slate-500 truncate">{{ $t('admin.total_limit') }}</p>
+            <p class="text-lg font-bold text-slate-900">
+              {{ card.max_scans ? card.max_scans.toLocaleString() : '∞' }}
+            </p>
+          </div>
+        </div>
+      </div>
+      <!-- Daily Limit -->
+      <div class="bg-white rounded-lg border border-slate-200 p-3 hover:shadow-md transition-shadow">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+            <i class="pi pi-clock text-amber-600 text-sm"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs text-slate-500 truncate">{{ $t('admin.daily_limit') }}</p>
+            <p class="text-lg font-bold text-slate-900">
+              {{ card.daily_scan_limit ? card.daily_scan_limit.toLocaleString() : '∞' }}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6" :class="{ 'lg:grid-cols-3': card.billing_type !== 'digital' }">
+      <!-- Card Image - Only for Physical Cards -->
+      <div v-if="card.billing_type !== 'digital'" class="lg:col-span-1">
+        <div class="bg-white rounded-xl border border-slate-200 p-4">
+          <label class="block text-sm font-medium text-slate-700 mb-3">{{ $t('dashboard.card_image') }}</label>
+          <div v-if="card.image_url" class="relative" style="aspect-ratio: 2/3;">
+            <img
+              :src="card.image_url"
+              :alt="card.name"
+              class="w-full h-full object-cover rounded-lg border border-slate-300 shadow-sm"
+            />
+          </div>
+          <div v-else class="aspect-[2/3] bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center">
+            <div class="text-center">
+              <i class="pi pi-image text-4xl text-slate-400 mb-2"></i>
+              <p class="text-slate-500 text-sm">{{ $t('dashboard.no_image') }}</p>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Card Details -->
-      <div class="space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">{{ $t('dashboard.card_name') }}</label>
-          <p class="text-base font-semibold text-slate-900">{{ card.name }}</p>
-        </div>
-
-        <div>
-          <label class="block text-sm font-medium text-slate-700 mb-1">{{ $t('common.description') }}</label>
-          <p class="text-sm text-slate-600">{{ card.description || $t('dashboard.no_description') }}</p>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
+      <div :class="card.billing_type !== 'digital' ? 'lg:col-span-2' : ''">
+        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-4">
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">{{ $t('dashboard.qr_position') }}</label>
-            <Tag :value="card.qr_code_position" severity="info" />
+            <label class="block text-xs font-medium text-slate-500 mb-1">{{ $t('common.description') }}</label>
+            <p class="text-sm text-slate-700">{{ card.description || $t('dashboard.no_description') }}</p>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1">{{ $t('dashboard.ai_enabled') }}</label>
-            <Tag
-              :value="card.conversation_ai_enabled ? $t('common.yes') : $t('common.no')"
-              :severity="card.conversation_ai_enabled ? 'success' : 'secondary'"
-            />
-          </div>
-        </div>
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-4 pt-3 border-t border-slate-100">
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">{{ $t('dashboard.qr_position') }}</label>
+              <span class="inline-flex items-center px-2 py-1 rounded bg-slate-100 text-slate-700 text-sm font-medium">
+                {{ card.qr_code_position }}
+              </span>
+            </div>
 
-        <div v-if="card.ai_instruction" class="space-y-3">
-          <div>
-            <label class="block text-sm font-medium text-blue-700 mb-1 flex items-center gap-2">
-              <i class="pi pi-user text-xs"></i>
-              {{ $t('dashboard.ai_instruction') }}
-            </label>
-            <div class="p-3 bg-blue-50 rounded border border-blue-200 text-sm text-slate-700 whitespace-pre-wrap">
-              {{ card.ai_instruction }}
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">{{ $t('dashboard.ai_enabled') }}</label>
+              <span 
+                class="inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-medium"
+                :class="card.conversation_ai_enabled ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-500'"
+              >
+                <i :class="card.conversation_ai_enabled ? 'pi pi-check-circle' : 'pi pi-minus-circle'" class="text-xs"></i>
+                {{ card.conversation_ai_enabled ? $t('common.yes') : $t('common.no') }}
+              </span>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-500 mb-1">{{ $t('dashboard.access_mode') }}</label>
+              <span 
+                class="inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-medium"
+                :class="card.billing_type === 'digital' ? 'bg-cyan-100 text-cyan-700' : 'bg-purple-100 text-purple-700'"
+              >
+                <i :class="card.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-credit-card'" class="text-xs"></i>
+                {{ card.billing_type === 'digital' ? $t('dashboard.digital_access') : $t('dashboard.physical_card') }}
+              </span>
             </div>
           </div>
-        </div>
 
-        <div v-if="card.ai_knowledge_base">
-          <label class="block text-sm font-medium text-amber-700 mb-1 flex items-center gap-2">
-            <i class="pi pi-database text-xs"></i>
-            {{ $t('dashboard.ai_knowledge_base') }}
-          </label>
-          <div class="p-3 bg-amber-50 rounded border border-amber-200 text-sm text-slate-700 whitespace-pre-wrap max-h-48 overflow-y-auto">
-            {{ card.ai_knowledge_base }}
-          </div>
-        </div>
+          <!-- AI Configuration -->
+          <div v-if="card.ai_instruction || card.ai_knowledge_base" class="pt-3 border-t border-slate-100 space-y-3">
+            <div v-if="card.ai_instruction">
+              <label class="block text-xs font-medium text-blue-600 mb-1 flex items-center gap-1">
+                <i class="pi pi-user text-[10px]"></i>
+                {{ $t('dashboard.ai_instruction') }}
+              </label>
+              <div class="p-3 bg-blue-50 rounded-lg border border-blue-100 text-sm text-slate-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                {{ card.ai_instruction }}
+              </div>
+            </div>
 
-        <div class="grid grid-cols-2 gap-4 text-xs text-slate-500 pt-4 border-t border-slate-200">
-          <div>
-            <span class="font-medium">{{ $t('common.created_at') }}:</span><br />
-            {{ formatDateTime(card.created_at) }}
+            <div v-if="card.ai_knowledge_base">
+              <label class="block text-xs font-medium text-amber-600 mb-1 flex items-center gap-1">
+                <i class="pi pi-database text-[10px]"></i>
+                {{ $t('dashboard.ai_knowledge_base') }}
+              </label>
+              <div class="p-3 bg-amber-50 rounded-lg border border-amber-100 text-sm text-slate-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                {{ card.ai_knowledge_base }}
+              </div>
+            </div>
           </div>
-          <div>
-            <span class="font-medium">{{ $t('common.updated_at') }}:</span><br />
-            {{ formatDateTime(card.updated_at) }}
+
+          <!-- Timestamps -->
+          <div class="grid grid-cols-2 gap-4 text-xs text-slate-400 pt-3 border-t border-slate-100">
+            <div>
+              <span class="font-medium text-slate-500">{{ $t('common.created_at') }}</span>
+              <p class="mt-0.5">{{ formatDateTime(card.created_at) }}</p>
+            </div>
+            <div>
+              <span class="font-medium text-slate-500">{{ $t('common.updated_at') }}</span>
+              <p class="mt-0.5">{{ formatDateTime(card.updated_at) }}</p>
+            </div>
           </div>
         </div>
       </div>
@@ -104,7 +190,6 @@
 
 <script setup lang="ts">
 import { useI18n } from 'vue-i18n'
-import Tag from 'primevue/tag'
 
 const { t } = useI18n()
 
@@ -117,6 +202,16 @@ interface Card {
   ai_instruction: string | null
   ai_knowledge_base: string | null
   qr_code_position: string
+  content_mode: 'single' | 'grid' | 'list' | 'cards'
+  is_grouped: boolean
+  group_display: 'expanded' | 'collapsed'
+  billing_type: 'physical' | 'digital'
+  max_scans: number | null
+  current_scans: number
+  daily_scan_limit: number | null
+  daily_scans: number
+  is_access_enabled: boolean
+  access_token: string
   created_at: string
   updated_at: string
 }
@@ -133,6 +228,26 @@ const formatDateTime = (dateString: string) => {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+const getContentModeLabel = (mode: string) => {
+  const labels: Record<string, string> = {
+    'single': t('dashboard.mode_single'),
+    'list': t('dashboard.mode_list'),
+    'grid': t('dashboard.mode_grid'),
+    'cards': t('dashboard.mode_cards')
+  }
+  return labels[mode] || mode
+}
+
+const getContentModeIcon = (mode: string) => {
+  const icons: Record<string, string> = {
+    'single': 'pi pi-file',
+    'list': 'pi pi-list',
+    'grid': 'pi pi-th-large',
+    'cards': 'pi pi-id-card'
+  }
+  return icons[mode] || 'pi pi-list'
 }
 </script>
 

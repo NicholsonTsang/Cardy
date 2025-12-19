@@ -24,5 +24,10 @@ export const supabaseAdmin = createClient(
   }
 );
 
+// Alias for consistency with other modules
+export function getSupabaseClient() {
+  return supabaseAdmin;
+}
+
 console.log('✅ Supabase admin client initialized');
 

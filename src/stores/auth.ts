@@ -121,18 +121,51 @@ export const useAuthStore = defineStore('auth', () => {
     return data
   }
 
+  async function signInWithGoogle() {
+    loading.value = true
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/cms`
+        }
+      })
+      if (error) throw error
+      return data
+    } catch (error: any) {
+      console.error('Google sign in error:', error.message)
+      toast.add({ 
+        severity: 'error', 
+        summary: 'Google Sign In Failed', 
+        detail: error.message, 
+        group: 'br', 
+        life: 3000 
+      })
+      throw error
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function signOut() {
     loading.value = true
-    const { error } = await supabase.auth.signOut()
-    loading.value = false
-    if (error) {
-      console.error('Sign out error:', error.message)
-      toast.add({ severity: 'error', summary: 'Sign Out Failed', detail: error.message, group: 'br', life: 3000 })
-      throw error
+    try {
+      const { error } = await supabase.auth.signOut()
+      // Ignore "session missing" errors - user is effectively signed out
+      if (error && !error.message?.includes('session missing')) {
+        console.error('Sign out error:', error.message)
+        toast.add({ severity: 'error', summary: 'Sign Out Failed', detail: error.message, group: 'br', life: 3000 })
+      }
+    } catch (err) {
+      // Silently handle any sign out errors - we'll clear local state anyway
+      console.warn('Sign out warning:', err)
+    } finally {
+      loading.value = false
+      // Always clear local state and redirect, even if API call failed
+      user.value = null
+      session.value = null
+      router.push('/login')
     }
-    user.value = null
-    session.value = null
-    router.push('/login')
   }
 
   const isLoggedIn = () => {
@@ -291,6 +324,7 @@ export const useAuthStore = defineStore('auth', () => {
     loading,
     signUpWithEmail,
     signInWithEmail,
+    signInWithGoogle,
     signOut,
     isLoggedIn,
     isEmailVerified,

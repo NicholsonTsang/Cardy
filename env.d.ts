@@ -20,7 +20,6 @@ interface ImportMetaEnv {
   readonly VITE_CONTACT_EMAIL: string
   readonly VITE_CONTACT_WHATSAPP_URL: string
   readonly VITE_CONTACT_PHONE: string
-  readonly VITE_CONTACT_FORM_URL: string
   
   // Currency
   readonly VITE_DEFAULT_CURRENCY: string
@@ -40,6 +39,23 @@ interface ImportMetaEnv {
   
   // Batch Configuration
   readonly VITE_BATCH_MIN_QUANTITY: string
+  
+  // Content Pagination & Lazy Loading Configuration
+  readonly VITE_CONTENT_PAGE_SIZE: string
+  readonly VITE_CONTENT_PREVIEW_LENGTH: string
+  readonly VITE_LARGE_CARD_THRESHOLD: string
+  readonly VITE_INFINITE_SCROLL_THRESHOLD: string
+  
+  // Subscription Business Parameters
+  readonly VITE_FREE_TIER_EXPERIENCE_LIMIT: string
+  readonly VITE_FREE_TIER_MONTHLY_ACCESS_LIMIT: string
+  readonly VITE_PREMIUM_EXPERIENCE_LIMIT: string
+  readonly VITE_PREMIUM_MONTHLY_FEE_USD: string
+  readonly VITE_PREMIUM_MONTHLY_ACCESS_LIMIT: string
+  
+  // Overage Batch Pricing (Premium users only)
+  readonly VITE_OVERAGE_CREDITS_PER_BATCH: string
+  readonly VITE_OVERAGE_ACCESS_PER_BATCH: string
 }
 
 interface ImportMeta {

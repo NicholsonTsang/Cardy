@@ -1,10 +1,25 @@
 import { Router, Request, Response } from 'express';
 import { authenticateUser } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
-import { emitTranslationProgress } from '../services/socket.service';
 import { geminiClient } from '../services/gemini-client';
 
 const router = Router();
+
+/**
+ * Check if user has premium subscription via stored procedure
+ */
+async function isPremiumUser(userId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc(
+    'check_premium_subscription_server',
+    { p_user_id: userId }
+  );
+  
+  if (error) {
+    return false;
+  }
+  
+  return data === true;
+}
 
 // Language configuration
 const SUPPORTED_LANGUAGES = {
@@ -31,7 +46,7 @@ interface TranslationRequest {
 /**
  * POST /api/translations/translate-card
  * Synchronously translate card content to multiple languages
- * Provides real-time progress updates via Socket.IO
+ * Returns translation results after processing completes
  */
 router.post('/translate-card', authenticateUser, async (req: Request, res: Response) => {
   const startTime = Date.now();
@@ -42,6 +57,16 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
 
     console.log(`\n📝 Translation request from user ${userId} for card ${cardId}`);
     console.log(`   Languages: ${targetLanguages.join(', ')}, Force: ${forceRetranslate}`);
+
+    // Check if user has premium subscription (translations are free for premium only)
+    const hasPremium = await isPremiumUser(userId);
+    if (!hasPremium) {
+      console.log(`❌ Translation denied: User ${userId} is not a premium subscriber`);
+      return res.status(403).json({
+        error: 'Premium required',
+        message: 'Multi-language translations are only available for Premium subscribers. Please upgrade your plan to access this feature.'
+      });
+    }
 
     // Validate request
     if (!cardId || !targetLanguages || targetLanguages.length === 0) {
@@ -61,12 +86,13 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
       }
     }
 
-    // Fetch card data
-    const { data: cardData, error: cardError } = await supabaseAdmin
-      .from('cards')
-      .select('id, name, description, content_hash, translations, user_id, original_language')
-      .eq('id', cardId)
-      .single();
+    // Fetch card data via stored procedure
+    const { data: cardDataRows, error: cardError } = await supabaseAdmin.rpc(
+      'get_card_for_translation_server',
+      { p_card_id: cardId }
+    );
+
+    const cardData = cardDataRows?.[0];
 
     if (cardError || !cardData) {
       return res.status(404).json({
@@ -83,12 +109,11 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
       });
     }
 
-    // Fetch content items
-    const { data: contentItems, error: itemsError } = await supabaseAdmin
-      .from('content_items')
-      .select('id, name, content, content_hash, translations')
-      .eq('card_id', cardId)
-      .order('sort_order');
+    // Fetch content items via stored procedure
+    const { data: contentItems, error: itemsError } = await supabaseAdmin.rpc(
+      'get_content_items_for_translation_server',
+      { p_card_id: cardId }
+    );
 
     if (itemsError) {
       return res.status(500).json({
@@ -111,7 +136,7 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
       }
       
       if (contentItems && contentItems.length > 0) {
-        const outdatedItems = contentItems.filter(item => {
+        const outdatedItems = contentItems.filter((item: any) => {
           if (!item.translations || !item.translations[targetLang]) return true;
           return item.translations[targetLang].content_hash !== item.content_hash;
         });
@@ -133,15 +158,6 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
       });
     }
 
-    // Emit translation started event
-    emitTranslationProgress(userId, cardId, {
-      type: 'translation:started',
-      cardId,
-      languages: languagesToTranslate,
-      totalLanguages: languagesToTranslate.length,
-      timestamp: new Date().toISOString(),
-    });
-
     // Process translations
     const completedLanguages: string[] = [];
     const failedLanguages: string[] = [];
@@ -160,17 +176,6 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
     const processLanguage = async (targetLang: LanguageCode, langIndex: number) => {
       const languageStartTime = Date.now();
       console.log(`\n🌐 [${langIndex + 1}/${languagesToTranslate.length}] Translating to ${SUPPORTED_LANGUAGES[targetLang]}...`);
-
-      // Emit language started event
-      emitTranslationProgress(userId, cardId, {
-        type: 'language:started',
-        cardId,
-        language: targetLang,
-        languageIndex: langIndex + 1,
-        totalLanguages: languagesToTranslate.length,
-        totalBatches: numBatches,
-        timestamp: new Date().toISOString(),
-      });
 
       try {
         // Process batches for this language
@@ -215,16 +220,6 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
             });
           }
 
-          // Emit batch progress
-          emitTranslationProgress(userId, cardId, {
-            type: 'batch:completed',
-            cardId,
-            language: targetLang,
-            batchIndex: batchIndex + 1,
-            totalBatches: numBatches,
-            timestamp: new Date().toISOString(),
-          });
-
           // Delay between batches
           if (batchIndex < numBatches - 1) {
             await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
@@ -235,26 +230,9 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
         console.log(`   ✅ ${SUPPORTED_LANGUAGES[targetLang]} completed in ${languageTime}s`);
 
         completedLanguages.push(targetLang);
-
-        // Emit language completed event
-        emitTranslationProgress(userId, cardId, {
-          type: 'language:completed',
-          cardId,
-          language: targetLang,
-          timestamp: new Date().toISOString(),
-        });
       } catch (error: any) {
         console.error(`   ❌ ${SUPPORTED_LANGUAGES[targetLang]} failed:`, error.message);
         failedLanguages.push(targetLang);
-
-        // Emit language failed event
-        emitTranslationProgress(userId, cardId, {
-          type: 'language:failed',
-          cardId,
-          language: targetLang,
-          error: error.message,
-          timestamp: new Date().toISOString(),
-        });
       }
     };
 
@@ -281,28 +259,15 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
     console.log(`✅ Translation completed in ${totalTime}s`);
     console.log(`   Completed: ${completedLanguages.length}, Failed: ${failedLanguages.length}\n`);
 
-    // Consume credits for each completed language
-    for (const language of completedLanguages) {
-      try {
-        await supabaseAdmin.rpc('consume_translation_credits', {
-          p_user_id: userId,
-          p_card_id: cardId,
-          p_language: language,
-          p_credit_cost: 1.0,
-        });
-      } catch (error: any) {
-        console.error(`❌ Failed to consume credit for ${language}:`, error.message);
-      }
-    }
-
-    // Record translation completion in history
+    // Note: Translations are FREE for premium users - no credit consumption
+    // Record translation completion in history via stored procedure
     if (completedLanguages.length > 0 || failedLanguages.length > 0) {
       try {
-        await supabaseAdmin.rpc('record_translation_completion', {
-          p_user_id: userId,
+        await supabaseAdmin.rpc('insert_translation_history_server', {
           p_card_id: cardId,
+          p_user_id: userId,
           p_target_languages: completedLanguages,
-          p_credit_cost: completedLanguages.length,
+          p_credit_cost: 0, // Free for premium users
           p_status: failedLanguages.length > 0 ? 'partial' : 'completed',
           p_error_message: failedLanguages.length > 0 
             ? `Failed languages: ${failedLanguages.join(', ')}` 
@@ -311,6 +276,7 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
             completed: completedLanguages.length,
             failed: failedLanguages.length,
             duration: parseFloat(totalTime),
+            free_for_premium: true,
           },
         });
       } catch (error: any) {
@@ -318,23 +284,13 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
       }
     }
 
-    // Emit translation completed event
-    emitTranslationProgress(userId, cardId, {
-      type: 'translation:completed',
-      cardId,
-      completedLanguages,
-      failedLanguages,
-      duration: parseFloat(totalTime),
-      timestamp: new Date().toISOString(),
-    });
-
     // Return response
     return res.status(200).json({
       success: true,
       message: 'Translation completed',
       translated_languages: completedLanguages,
       failed_languages: failedLanguages,
-      credits_used: completedLanguages.length,
+      credits_used: 0, // Free for premium users
       duration: parseFloat(totalTime),
     });
   } catch (error: any) {
@@ -408,13 +364,12 @@ async function saveTranslations(
   cardTranslations: Record<string, any>,
   contentItemsTranslations: Record<string, Record<string, any>>
 ) {
-  // CRITICAL: Re-fetch current card hash before saving
+  // CRITICAL: Re-fetch current card hash before saving via stored procedure
   // This ensures we save with the EXACT current hash, preventing "outdated" status
-  const { data: freshCardData } = await supabaseAdmin
-    .from('cards')
-    .select('content_hash')
-    .eq('id', cardId)
-    .single();
+  const { data: freshCardHash } = await supabaseAdmin.rpc(
+    'get_card_content_hash_server',
+    { p_card_id: cardId }
+  );
 
   // Update card translations with fresh hash
   if (Object.keys(cardTranslations).length > 0) {
@@ -423,26 +378,27 @@ async function saveTranslations(
     for (const [lang, trans] of Object.entries(cardTranslations)) {
       updatedCardTranslations[lang] = {
         ...trans,
-        content_hash: freshCardData?.content_hash || trans.content_hash,
+        content_hash: freshCardHash || trans.content_hash,
       };
     }
 
     const finalTranslations = { ...cardData.translations, ...updatedCardTranslations };
     
-    await supabaseAdmin
-      .from('cards')
-      .update({ translations: finalTranslations })
-      .eq('id', cardId);
+    await supabaseAdmin.rpc('update_card_translations_server', {
+      p_card_id: cardId,
+      p_translations: finalTranslations
+    });
   }
 
   // Save content item translations with fresh hashes
   for (const [itemId, translations] of Object.entries(contentItemsTranslations)) {
-    // Re-fetch current content_hash for this item
-    const { data: freshItemData } = await supabaseAdmin
-      .from('content_items')
-      .select('translations, content_hash')
-      .eq('id', itemId)
-      .single();
+    // Re-fetch current content_hash for this item via stored procedure
+    const { data: freshItemRows } = await supabaseAdmin.rpc(
+      'get_content_item_for_update_server',
+      { p_item_id: itemId }
+    );
+    
+    const freshItemData = freshItemRows?.[0];
 
     // Update each language's translation with the FRESH hash
     const updatedItemTranslations: Record<string, any> = {};
@@ -455,10 +411,10 @@ async function saveTranslations(
 
     const finalTranslations = { ...freshItemData?.translations, ...updatedItemTranslations };
     
-    await supabaseAdmin
-      .from('content_items')
-      .update({ translations: finalTranslations })
-      .eq('id', itemId);
+    await supabaseAdmin.rpc('update_content_item_translations_server', {
+      p_item_id: itemId,
+      p_translations: finalTranslations
+    });
   }
 }
 

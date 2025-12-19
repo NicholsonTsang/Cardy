@@ -147,6 +147,42 @@
                     </div>
                 </div>
             </div>
+            
+            <!-- Daily Scan Limit (only for Digital Access) -->
+            <div v-if="formData.billing_type === 'digital'" class="mt-4 p-4 rounded-lg bg-white border border-cyan-200">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-lg bg-cyan-100 flex items-center justify-center flex-shrink-0">
+                        <i class="pi pi-clock text-cyan-600"></i>
+                    </div>
+                    <div class="flex-1">
+                        <label class="text-sm font-semibold text-slate-800 block mb-2">
+                            {{ $t('digital_access.daily_limit') }}
+                        </label>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <InputNumber 
+                                v-model="formData.daily_scan_limit"
+                                :disabled="isDailyLimitUnlimited"
+                                :min="1"
+                                :max="100000"
+                                :step="100"
+                                showButtons
+                                buttonLayout="horizontal"
+                                incrementButtonIcon="pi pi-plus"
+                                decrementButtonIcon="pi pi-minus"
+                                class="daily-limit-input"
+                            />
+                            <span class="text-sm text-slate-600">{{ $t('digital_access.scans_per_day') }}</span>
+                            <div class="flex items-center gap-2 ml-auto">
+                                <ToggleSwitch v-model="isDailyLimitUnlimited" />
+                                <span class="text-sm text-slate-600">{{ $t('digital_access.unlimited') }}</span>
+                            </div>
+                        </div>
+                        <p class="text-xs text-slate-500 mt-2">
+                            {{ $t('digital_access.set_daily_limit_hint') }}
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
             
         <div class="grid grid-cols-1 gap-6" :class="{ 'xl:grid-cols-3': formData.billing_type === 'physical' }">
@@ -295,8 +331,7 @@
                                         :placeholder="$t('dashboard.select_position')" 
                                         class="w-full"
                                     />
-                                    <p class="text-xs text-slate-500 mt-2 flex items-center gap-1">
-                                        <i class="pi pi-eye text-xs"></i>
+                                    <p class="text-xs text-slate-500 mt-2">
                                         {{ $t('dashboard.preview_updates_realtime') }}
                                     </p>
                                 </div>
@@ -389,6 +424,59 @@
                                     </div>
                                 </div>
                             </div>
+                            
+                            <!-- Grouping Options (only for modes that support it) -->
+                            <div v-if="currentModeSupportsGrouping" class="p-4 rounded-lg border border-slate-200 bg-slate-50">
+                                <div class="flex items-center justify-between mb-3">
+                                    <div class="flex items-center gap-2">
+                                        <i class="pi pi-folder text-amber-600"></i>
+                                        <span class="text-sm font-medium text-slate-700">{{ $t('dashboard.grouping_title') }}</span>
+                                    </div>
+                                    <ToggleSwitch v-model="formData.is_grouped" />
+                                </div>
+                                <p class="text-xs text-slate-500 mb-3">{{ $t('dashboard.grouping_description') }}</p>
+                                
+                                <!-- Group Display Options (only shown when grouped is enabled) -->
+                                <div v-if="formData.is_grouped" class="mt-4 pt-4 border-t border-slate-200">
+                                    <label class="block text-sm font-medium text-slate-700 mb-2">
+                                        {{ $t('dashboard.group_display_title') }}
+                                    </label>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <button
+                                            type="button"
+                                            @click="formData.group_display = 'expanded'"
+                                            class="p-3 rounded-lg border-2 transition-all text-left"
+                                            :class="formData.group_display === 'expanded' 
+                                                ? 'border-amber-500 bg-amber-50' 
+                                                : 'border-slate-200 hover:border-slate-300 bg-white'"
+                                        >
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <i :class="['pi pi-list', formData.group_display === 'expanded' ? 'text-amber-600' : 'text-slate-500']"></i>
+                                                <span class="font-medium text-sm" :class="formData.group_display === 'expanded' ? 'text-amber-900' : 'text-slate-700'">
+                                                    {{ $t('dashboard.group_display_expanded') }}
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-slate-500">{{ $t('dashboard.group_display_expanded_desc') }}</p>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            @click="formData.group_display = 'collapsed'"
+                                            class="p-3 rounded-lg border-2 transition-all text-left"
+                                            :class="formData.group_display === 'collapsed' 
+                                                ? 'border-amber-500 bg-amber-50' 
+                                                : 'border-slate-200 hover:border-slate-300 bg-white'"
+                                        >
+                                            <div class="flex items-center gap-2 mb-1">
+                                                <i :class="['pi pi-folder', formData.group_display === 'collapsed' ? 'text-amber-600' : 'text-slate-500']"></i>
+                                                <span class="font-medium text-sm" :class="formData.group_display === 'collapsed' ? 'text-amber-900' : 'text-slate-700'">
+                                                    {{ $t('dashboard.group_display_collapsed') }}
+                                                </span>
+                                            </div>
+                                            <p class="text-xs text-slate-500">{{ $t('dashboard.group_display_collapsed_desc') }}</p>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- Card/QR Name -->
                             <div>
@@ -412,8 +500,7 @@
                                     {{ formData.billing_type === 'digital' ? $t('dashboard.welcome_description') : $t('dashboard.card_description') }} 
                                     <span class="text-xs text-slate-500 font-normal">({{ $t('dashboard.markdown_supported') }})</span>
                                 </label>
-                                <p v-if="formData.billing_type === 'digital'" class="text-xs text-cyan-600 mb-2 flex items-center gap-1">
-                                    <i class="pi pi-info-circle"></i>
+                                <p v-if="formData.billing_type === 'digital'" class="text-xs text-cyan-600 mb-2">
                                     {{ $t('dashboard.digital_description_hint') }}
                                 </p>
                                 <div class="border border-slate-300 rounded-lg overflow-hidden">
@@ -484,7 +571,7 @@
                                 <p class="text-xs text-slate-500">{{ $t('dashboard.allow_visitors_ask') }}</p>
                             </div>
                             <i class="pi pi-info-circle text-slate-400 cursor-help" 
-                               v-tooltip="'AI assistant helps visitors interact with your card content'"></i>
+                               v-tooltip="'AI assistant helps visitors interact with your content'"></i>
                         </div>
 
                         <!-- AI Instruction Field (shown when AI is enabled) -->
@@ -539,6 +626,50 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <!-- AI Welcome Messages Section -->
+                            <div class="border-t border-blue-200 pt-4 mt-4">
+                                <h5 class="text-sm font-medium text-blue-900 mb-3 flex items-center gap-2">
+                                    <i class="pi pi-comment"></i>
+                                    {{ $t('dashboard.ai_welcome_messages') }}
+                                </h5>
+                                
+                                <!-- General Assistant Welcome -->
+                                <div class="bg-white border border-blue-200 rounded-lg p-4 mb-3">
+                                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                                        <i class="pi pi-comments text-blue-500"></i>
+                                        {{ $t('dashboard.ai_welcome_general_label') }}
+                                        <span class="text-xs text-slate-500 ml-auto">{{ aiWelcomeGeneralWordCount }}/100 {{ $t('dashboard.words') }}</span>
+                                    </label>
+                                    <Textarea 
+                                        v-model="formData.ai_welcome_general" 
+                                        rows="2" 
+                                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none text-sm" 
+                                        :class="{ 'border-red-500': aiWelcomeGeneralWordCount > 100 }"
+                                        :placeholder="$t('dashboard.ai_welcome_general_placeholder')"
+                                        autoResize
+                                    />
+                                    <p class="text-xs text-slate-500 mt-1">{{ $t('dashboard.ai_welcome_general_hint') }}</p>
+                                </div>
+                                
+                                <!-- Item Assistant Welcome -->
+                                <div class="bg-white border border-blue-200 rounded-lg p-4">
+                                    <label class="block text-sm font-medium text-slate-700 mb-2 flex items-center gap-2">
+                                        <i class="pi pi-info-circle text-emerald-500"></i>
+                                        {{ $t('dashboard.ai_welcome_item_label') }}
+                                        <span class="text-xs text-slate-500 ml-auto">{{ aiWelcomeItemWordCount }}/100 {{ $t('dashboard.words') }}</span>
+                                    </label>
+                                    <Textarea 
+                                        v-model="formData.ai_welcome_item" 
+                                        rows="2" 
+                                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors resize-none text-sm" 
+                                        :class="{ 'border-red-500': aiWelcomeItemWordCount > 100 }"
+                                        :placeholder="$t('dashboard.ai_welcome_item_placeholder')"
+                                        autoResize
+                                    />
+                                    <p class="text-xs text-slate-500 mt-1">{{ $t('dashboard.ai_welcome_item_hint') }}</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -575,6 +706,7 @@ import { ref, reactive, onMounted, watch, computed, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
+import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
 import Dropdown from 'primevue/dropdown';
 import ToggleSwitch from 'primevue/toggleswitch';
@@ -628,14 +760,20 @@ const formData = reactive({
     qr_code_position: 'BR',
     ai_instruction: '',
     ai_knowledge_base: '',
+    ai_welcome_general: '', // Custom welcome message for General AI Assistant
+    ai_welcome_item: '', // Custom welcome message for Content Item AI Assistant
     conversation_ai_enabled: false,
     cropParameters: null,
-    content_mode: 'list', // Default mode: list (simple vertical list)
+    content_mode: 'list', // Default mode: list (vertical rows)
+    is_grouped: false, // Whether content is organized into categories
+    group_display: 'expanded', // How grouped items display: expanded or collapsed
     billing_type: 'physical', // Default: physical card (per-card billing)
-    max_scans: null // NULL for physical (unlimited), Integer for digital
+    max_scans: null, // NULL for physical (unlimited), Integer for digital (total limit)
+    daily_scan_limit: 500 // Default daily limit for digital access
 });
 
 // Content Mode Options with descriptions and guidance
+// 4 base layouts, with grouping as a separate option
 const contentModeOptions = computed(() => [
     {
         value: 'single',
@@ -643,23 +781,8 @@ const contentModeOptions = computed(() => [
         icon: 'pi-file',
         description: t('dashboard.mode_single_desc'),
         guidance: t('dashboard.mode_single_guidance'),
-        color: 'purple'
-    },
-    {
-        value: 'grouped',
-        label: t('dashboard.mode_grouped'),
-        icon: 'pi-folder',
-        description: t('dashboard.mode_grouped_desc'),
-        guidance: t('dashboard.mode_grouped_guidance'),
-        color: 'orange'
-    },
-    {
-        value: 'list',
-        label: t('dashboard.mode_list'),
-        icon: 'pi-list',
-        description: t('dashboard.mode_list_desc'),
-        guidance: t('dashboard.mode_list_guidance'),
-        color: 'blue'
+        color: 'purple',
+        supportsGrouping: false
     },
     {
         value: 'grid',
@@ -667,17 +790,47 @@ const contentModeOptions = computed(() => [
         icon: 'pi-th-large',
         description: t('dashboard.mode_grid_desc'),
         guidance: t('dashboard.mode_grid_guidance'),
-        color: 'green'
+        color: 'amber',
+        supportsGrouping: true
     },
     {
-        value: 'inline',
-        label: t('dashboard.mode_inline'),
+        value: 'list',
+        label: t('dashboard.mode_list'),
+        icon: 'pi-list',
+        description: t('dashboard.mode_list_desc'),
+        guidance: t('dashboard.mode_list_guidance'),
+        color: 'blue',
+        supportsGrouping: true
+    },
+    {
+        value: 'cards',
+        label: t('dashboard.mode_cards'),
         icon: 'pi-clone',
-        description: t('dashboard.mode_inline_desc'),
-        guidance: t('dashboard.mode_inline_guidance'),
-        color: 'cyan'
+        description: t('dashboard.mode_cards_desc'),
+        guidance: t('dashboard.mode_cards_guidance'),
+        color: 'cyan',
+        supportsGrouping: true
     }
 ]);
+
+// Check if current mode supports grouping
+const currentModeSupportsGrouping = computed(() => {
+    const mode = contentModeOptions.value.find(m => m.value === formData.content_mode);
+    return mode?.supportsGrouping ?? false;
+});
+
+// Reset grouping when switching to a mode that doesn't support it
+watch(() => formData.content_mode, (newMode) => {
+    const mode = contentModeOptions.value.find(m => m.value === newMode);
+    if (!mode?.supportsGrouping) {
+        formData.is_grouped = false;
+        formData.group_display = 'expanded';
+    }
+});
+
+// No migration needed when switching is_grouped - just a display change
+// Layer 1 = categories (shown in grouped mode, hidden in flat mode)
+// Layer 2 = content items (always the actual content)
 
 // Get current mode details
 const currentModeDetails = computed(() => {
@@ -688,10 +841,10 @@ const currentModeDetails = computed(() => {
 // All modes available for both access types
 const filteredContentModeOptions = computed(() => {
     // All modes available for both access types
-    // But we can reorder to show most relevant first for digital
+    // Reorder to show most relevant first for digital
     if (formData.billing_type === 'digital') {
-        // For digital: List is most common, then Single, Grouped, Grid, Inline
-        const order = ['list', 'single', 'grouped', 'grid', 'inline'];
+        // For digital: List is most common, then Single, Grid, Cards
+        const order = ['list', 'single', 'grid', 'cards'];
         return [...contentModeOptions.value].sort((a, b) => 
             order.indexOf(a.value) - order.indexOf(b.value)
         );
@@ -701,15 +854,18 @@ const filteredContentModeOptions = computed(() => {
 
 // Mode requirements validation
 const currentModeRequirements = computed(() => {
+    // If grouped mode, show grouped requirements
+    if (formData.is_grouped) {
+        return [
+            { key: 'parents', label: t('dashboard.req_parent_items_categories'), met: true },
+            { key: 'children', label: t('dashboard.req_child_items'), met: true }
+        ];
+    }
+    
     switch (formData.content_mode) {
         case 'single':
             return [
                 { key: 'one_item', label: t('dashboard.req_one_content_item'), met: true } // Validated in Content tab
-            ];
-        case 'grouped':
-            return [
-                { key: 'parents', label: t('dashboard.req_parent_items_categories'), met: true }, // Validated in Content tab
-                { key: 'children', label: t('dashboard.req_child_items'), met: true }
             ];
         case 'list':
             return [
@@ -719,7 +875,7 @@ const currentModeRequirements = computed(() => {
             return [
                 { key: 'items', label: t('dashboard.req_content_items_with_images'), met: true } // Validated in Content tab
             ];
-        case 'inline':
+        case 'cards':
             return [
                 { key: 'items', label: t('dashboard.req_content_items'), met: true } // Validated in Content tab
             ];
@@ -775,6 +931,14 @@ const aiKnowledgeBaseWordCount = computed(() => {
     return formData.ai_knowledge_base.trim().split(/\s+/).filter(word => word.length > 0).length;
 });
 
+const aiWelcomeGeneralWordCount = computed(() => {
+    return formData.ai_welcome_general.trim().split(/\s+/).filter(word => word.length > 0).length;
+});
+
+const aiWelcomeItemWordCount = computed(() => {
+    return formData.ai_welcome_item.trim().split(/\s+/).filter(word => word.length > 0).length;
+});
+
 const previewImage = ref(null);
 const imageFile = ref(null); // Original uploaded file (raw)
 const croppedImageFile = ref(null); // Cropped image file
@@ -782,6 +946,9 @@ const showCropDialog = ref(false);
 const imageToCrop = ref(null);
 const imageCropperRef = ref(null);
 const cropParameters = ref(null);
+
+// Daily limit unlimited toggle for digital access
+const isDailyLimitUnlimited = ref(false);
 
 // LinkedIn-style upload variables
 const isDragActive = ref(false);
@@ -855,6 +1022,16 @@ onMounted(() => {
     document.documentElement.style.setProperty('--card-aspect-ratio', aspectRatio);
 });
 
+// Watch for daily limit unlimited toggle
+watch(isDailyLimitUnlimited, (isUnlimited) => {
+    if (isUnlimited) {
+        formData.daily_scan_limit = null;
+    } else if (formData.daily_scan_limit === null) {
+        // Set default when switching from unlimited
+        formData.daily_scan_limit = 500;
+    }
+});
+
 // Watch for changes in cardProp to update form
 watch(() => props.cardProp, (newVal) => {
     if (newVal) {
@@ -879,11 +1056,19 @@ const initializeForm = () => {
         formData.qr_code_position = props.cardProp.qr_code_position || 'BR';
         formData.ai_instruction = props.cardProp.ai_instruction || '';
         formData.ai_knowledge_base = props.cardProp.ai_knowledge_base || '';
+        formData.ai_welcome_general = props.cardProp.ai_welcome_general || '';
+        formData.ai_welcome_item = props.cardProp.ai_welcome_item || '';
         formData.conversation_ai_enabled = props.cardProp.conversation_ai_enabled || false;
         formData.cropParameters = props.cardProp.cropParameters || props.cardProp.crop_parameters || null;
         formData.content_mode = props.cardProp.content_mode || 'list';
+        formData.is_grouped = props.cardProp.is_grouped || false;
+        formData.group_display = props.cardProp.group_display || 'expanded';
         formData.billing_type = props.cardProp.billing_type || 'physical'; // Access mode
         formData.max_scans = props.cardProp.max_scans || null;
+        formData.daily_scan_limit = props.cardProp.daily_scan_limit ?? 500;
+        
+        // Set unlimited toggle based on daily_scan_limit value
+        isDailyLimitUnlimited.value = props.cardProp.daily_scan_limit === null;
         
         // Set crop parameters if they exist
         if (formData.cropParameters) {
@@ -913,11 +1098,16 @@ const resetForm = () => {
     formData.qr_code_position = 'BR';
     formData.ai_instruction = '';
     formData.ai_knowledge_base = '';
+    formData.ai_welcome_general = '';
+    formData.ai_welcome_item = '';
     formData.conversation_ai_enabled = false;
     formData.cropParameters = null;
     formData.content_mode = 'list'; // Reset to default mode
+    formData.is_grouped = false;
+    formData.group_display = 'expanded';
     formData.billing_type = 'physical'; // Reset to default access mode
     formData.max_scans = null;
+    formData.daily_scan_limit = 500; // Reset to default daily limit
     
     previewImage.value = null;
     imageFile.value = null;

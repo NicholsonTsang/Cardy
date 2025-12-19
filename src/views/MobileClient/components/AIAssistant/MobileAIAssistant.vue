@@ -1,9 +1,10 @@
 <template>
   <div class="ai-assistant">
-    <!-- AI Button -->
-    <button @click="openModal" class="ai-button">
-      <i class="pi pi-comments" />
-      <span>{{ $t('mobile.ask_ai_assistant') }}</span>
+    <!-- AI Badge - Context-aware text based on content mode -->
+    <button @click="openModal" class="ai-badge">
+      <span class="ai-badge-icon">✨</span>
+      <span class="ai-badge-text">{{ badgeText }}</span>
+      <i class="pi pi-chevron-right ai-badge-arrow" />
     </button>
 
     <!-- Modal -->
@@ -13,6 +14,7 @@
       :conversation-mode="conversationMode"
       :input-mode="inputMode"
       :content-item-name="contentItemName"
+      :assistant-mode="'content-item'"
       @close="closeModal"
       @toggle-mode="toggleConversationMode"
     >
@@ -68,9 +70,30 @@ import { useVoiceRecording } from './composables/useVoiceRecording'
 import { useCostSafeguards } from './composables/useCostSafeguards'
 import { useInactivityTimer } from './composables/useInactivityTimer'
 import { useMobileLanguageStore } from '@/stores/language'
-import type { Message, ConversationMode, AIAssistantProps } from './types'
+import type { Message, ConversationMode, CardData } from './types'
 
-const props = defineProps<AIAssistantProps>()
+// Content Mode types (includes 'detail' for item detail view)
+type ContentMode = 'single' | 'list' | 'grid' | 'cards' | 'detail'
+
+// Content Item Assistant Props
+interface Props {
+  contentItemName: string
+  contentItemContent: string
+  contentItemKnowledgeBase: string
+  parentContentName?: string
+  parentContentDescription?: string
+  parentContentKnowledgeBase?: string
+  cardData: CardData
+  contentMode?: ContentMode // The current content display mode
+  itemCount?: number // Number of items (for list/grid modes)
+  categoryCount?: number // Number of categories (for grouped mode)
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  contentMode: 'detail',
+  itemCount: 0,
+  categoryCount: 0
+})
 const languageStore = useMobileLanguageStore()
 const { t } = useI18n()
 
@@ -98,78 +121,128 @@ const connectionError = ref<string | null>(null)
 // COMPUTED
 // ============================================================================
 
+// Badge text based on content mode
+const badgeText = computed(() => {
+  switch (props.contentMode) {
+    case 'single':
+      return t('mobile.ai_ask_about_content')
+    case 'list':
+      return t('mobile.ai_find_items')
+    case 'grid':
+      return t('mobile.ai_explore_gallery')
+    case 'cards':
+      return t('mobile.ai_explore_featured')
+    case 'detail':
+    default:
+      return t('mobile.ask_about_item')
+  }
+})
+
+// Mode-specific context description
+const modeContext = computed(() => {
+  switch (props.contentMode) {
+    case 'single':
+      return `This is a single-page article/content. Help the visitor understand and explore this content in depth.`
+    case 'list':
+      return `This is a list of ${props.itemCount || 'multiple'} items. Help visitors discover items and understand what's available.`
+    case 'grid':
+      return `This is a visual gallery with ${props.itemCount || 'multiple'} items. Help visitors explore the visual content and find specific items.`
+    case 'cards':
+      return `These are featured items displayed as cards. Help visitors learn about the featured content and make recommendations.`
+    case 'detail':
+    default:
+      return `This is a detailed view of a specific item. Provide in-depth information about this particular item.`
+  }
+})
+
 const systemInstructions = computed(() => {
   const languageName = languageStore.selectedLanguage.name
   const languageCode = languageStore.selectedLanguage.code
   
-  // Language-specific emphasis with voice preference for Chinese
+  // Language-specific emphasis
   let languageNote = ''
   if (languageStore.isChinese(languageCode)) {
     if (languageStore.chineseVoice === 'cantonese') {
-      languageNote = '\n⚠️ CRITICAL: You MUST speak in CANTONESE (廣東話), NOT Mandarin. Use Cantonese vocabulary, grammar, and expressions. Respond naturally as a native Cantonese speaker.'
+      languageNote = '\n⚠️ CRITICAL: You MUST speak in CANTONESE (廣東話), NOT Mandarin.'
     } else {
-      languageNote = '\n⚠️ CRITICAL: You MUST speak in MANDARIN (普通話), NOT Cantonese. Use Mandarin vocabulary, grammar, and expressions. Respond naturally as a native Mandarin speaker.'
+      languageNote = '\n⚠️ CRITICAL: You MUST speak in MANDARIN (普通話), NOT Cantonese.'
     }
   } else {
-    languageNote = `\n⚠️ CRITICAL: You MUST speak EXCLUSIVELY in ${languageName}. Never use any other language.`
+    languageNote = `\n⚠️ CRITICAL: You MUST speak EXCLUSIVELY in ${languageName}.`
   }
   
-  return `You are an AI assistant for the content item "${props.contentItemName}" within the digital card "${props.cardData.card_name}".
+  // Build parent context section if this is a sub-item
+  let parentContext = ''
+  if (props.parentContentName) {
+    parentContext = `\nParent Category: "${props.parentContentName}"
+${props.parentContentDescription ? `Parent Description: ${props.parentContentDescription}` : ''}
+${props.parentContentKnowledgeBase ? `Parent Knowledge: ${props.parentContentKnowledgeBase}` : ''}`
+  }
 
-Your role: Provide helpful information about this specific content item to museum/exhibition visitors.
+  return `You are an AI assistant for "${props.cardData.card_name}".
 
-Content Details:
-- Item Name: ${props.contentItemName}
-- Item Description: ${props.contentItemContent}
+CONTEXT: ${modeContext.value}
 
-${props.contentItemKnowledgeBase ? `Additional Knowledge about this item:
+Current View:
+- Name: ${props.contentItemName}
+- Description: ${props.contentItemContent}
+${parentContext}
+
+${props.contentItemKnowledgeBase ? `Knowledge Base:
 ${props.contentItemKnowledgeBase}` : ''}
 
-${props.parentContentKnowledgeBase ? `Parent Content Context (for broader understanding):
-${props.parentContentKnowledgeBase}` : ''}
-
-${props.cardData.ai_instruction ? `Special Instructions from the Card Creator:
+${props.cardData.ai_instruction ? `Special Instructions:
 ${props.cardData.ai_instruction}` : ''}
 
-Communication Guidelines:${languageNote}
-- Be conversational and friendly
-- Focus specifically on this content item
-- Provide engaging and educational responses
-- Keep responses concise but informative (2-3 sentences max for chat)
-- If asked about other topics, politely redirect to this content item
+PROACTIVE GUIDANCE BEHAVIOR:${languageNote}
+- Be conversational, enthusiastic, and actively helpful
+- Keep responses concise (2-3 sentences) but informative
+- IMPORTANT: When users seem unsure what to ask, proactively suggest specific things you can help with
+- If the conversation pauses, offer a related interesting fact or suggest a follow-up topic
+- Share specific examples from your knowledge base when relevant
+- Guide users by saying things like "I can also tell you about..." or "Many visitors also ask about..."
+- Make users aware of the depth of information available to them
+- If you have knowledge about history, techniques, stories, tips, or recommendations - offer to share them`
+})
 
-Remember: You are here to enhance the visitor's understanding of "${props.contentItemName}".
-
-You are speaking with someone interested in: ${props.contentItemName}. Provide engaging, natural conversation.`
+// Mode-specific welcome message key
+const welcomeKey = computed(() => {
+  switch (props.contentMode) {
+    case 'single':
+      return 'mobile.ai_welcome_single'
+    case 'list':
+      return 'mobile.ai_welcome_list'
+    case 'grid':
+      return 'mobile.ai_welcome_grid'
+    case 'cards':
+      return 'mobile.ai_welcome_cards'
+    case 'detail':
+    default:
+      return 'mobile.ai_welcome_detail'
+  }
 })
 
 const welcomeText = computed(() => {
-  const langCode = languageStore.selectedLanguage.code
-  const voice = languageStore.chineseVoice
-  const params = { name: props.contentItemName }
-  
-  // Special handling for Chinese dialects to match voice preference
-  if (languageStore.isChinese(langCode)) {
-    if (voice === 'cantonese') {
-      // For simplified Chinese with Cantonese voice, use specific key if available
-      if (langCode === 'zh-Hans') {
-        return t('mobile.welcome_message_cantonese', params)
-      }
-      // For Traditional Chinese, default is Cantonese style
-      return t('mobile.welcome_message', params)
-    } else {
-      // Mandarin voice
-      // For Traditional Chinese with Mandarin voice, use specific key
-      if (langCode === 'zh-Hant') {
-        return t('mobile.welcome_message_mandarin', params)
-      }
-      // For Simplified Chinese, default is Mandarin style
-      return t('mobile.welcome_message', params)
-    }
+  const params = { 
+    name: props.contentItemName,
+    count: props.itemCount || props.categoryCount || 0
   }
   
-  // Default for other languages
-  return t('mobile.welcome_message', params)
+  // Check for custom welcome message from card settings
+  // For 'detail' mode (specific item), use ai_welcome_item if set
+  // For list/navigation modes, use ai_welcome_general if set (card-level)
+  if (props.contentMode === 'detail' && props.cardData.ai_welcome_item) {
+    // Replace {name} placeholder with actual item name
+    return props.cardData.ai_welcome_item.replace(/{name}/g, props.contentItemName)
+  }
+  
+  // For list views (single, grouped, list, grid, inline), check if custom general welcome exists
+  if (props.contentMode !== 'detail' && props.cardData.ai_welcome_general) {
+    return props.cardData.ai_welcome_general
+  }
+  
+  // Fall back to default i18n messages
+  return t(welcomeKey.value, params)
 })
 
 // Computed property for realtime status text
@@ -428,9 +501,16 @@ async function connectRealtime() {
     })
     
     // Connect via WebRTC
+    // Pass custom welcome message (ai_welcome_item with {name} replaced) for voice greeting if configured
+    let customWelcome: string | undefined
+    if (props.cardData.ai_welcome_item) {
+      customWelcome = props.cardData.ai_welcome_item.replace(/{name}/g, props.contentItemName)
+    }
+    
     await realtimeConnection.connect(
       voiceAwareCode,
-      systemInstructions.value
+      systemInstructions.value,
+      customWelcome
     )
     
     // Start inactivity timer
@@ -496,30 +576,86 @@ onUnmounted(() => {
   position: relative;
 }
 
-.ai-button {
+/* AI Badge - Consistent purple gradient style */
+.ai-badge {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.75rem 1.25rem;
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  gap: 0.75rem;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+  padding: 0.875rem 1.125rem;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 1rem;
   color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
+  font-size: 0.9375rem;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 6px -1px rgba(59, 130, 246, 0.3);
+  transition: all 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
 }
 
-.ai-button:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 8px -1px rgba(59, 130, 246, 0.4);
+/* Shimmer effect */
+.ai-badge::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.1) 50%,
+    transparent 100%
+  );
+  animation: shimmer 3s ease-in-out infinite;
 }
 
-.ai-button i {
-  font-size: 1.25rem;
+@keyframes shimmer {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.ai-badge:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35) 0%, rgba(59, 130, 246, 0.35) 100%);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.ai-badge:active {
+  transform: scale(0.98);
+}
+
+.ai-badge-icon {
+  font-size: 1.125rem;
+}
+
+.ai-badge-text {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.ai-badge-arrow {
+  font-size: 0.875rem;
+  opacity: 0.6;
+  transition: transform 0.2s ease;
+}
+
+.ai-badge:hover .ai-badge-arrow,
+.ai-badge:active .ai-badge-arrow {
+  transform: translateX(3px);
+  opacity: 0.9;
 }
 </style>
 

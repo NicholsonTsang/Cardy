@@ -9,9 +9,9 @@
           </div>
         </div>
         <div class="text-section">
-          <h3 class="export-title">Export Card Data</h3>
+          <h3 class="export-title">{{ $t('export.export_card_data') }}</h3>
           <p class="export-description">
-            Download complete card data with embedded images in professional Excel format.
+            {{ $t('export.export_description') }}
           </p>
         </div>
       </div>
@@ -25,7 +25,7 @@
             <!-- Digital Access: Show QR icon -->
             <div v-if="props.card.billing_type === 'digital'" class="card-placeholder digital-access">
               <i class="pi pi-qrcode"></i>
-              <span class="digital-label">Digital Access</span>
+              <span class="digital-label">{{ $t('export.digital_access') }}</span>
             </div>
             <!-- Physical Card: Show image -->
             <img 
@@ -53,7 +53,7 @@
               </div>
               <div class="stat-content">
                 <span class="stat-number">{{ contentCount }}</span>
-                <span class="stat-label">Content Items</span>
+                <span class="stat-label">{{ $t('export.content_items') }}</span>
               </div>
             </div>
             
@@ -63,7 +63,7 @@
               </div>
               <div class="stat-content">
                 <span class="stat-number">{{ contentWithImages }}</span>
-                <span class="stat-label">With Images</span>
+                <span class="stat-label">{{ $t('export.with_images') }}</span>
               </div>
             </div>
             
@@ -72,7 +72,7 @@
                 <i class="pi pi-comment"></i>
               </div>
               <div class="stat-content">
-                <span class="stat-label">AI Enabled</span>
+                <span class="stat-label">{{ $t('export.ai_enabled') }}</span>
               </div>
             </div>
           </div>
@@ -86,21 +86,21 @@
         <div class="summary-item">
           <i class="pi pi-id-card summary-icon"></i>
           <div class="summary-details">
-            <span class="summary-label">Card Information</span>
-            <span class="summary-value">1 card</span>
+            <span class="summary-label">{{ $t('export.card_information') }}</span>
+            <span class="summary-value">{{ $t('export.one_card') }}</span>
           </div>
         </div>
         <div class="summary-item">
           <i class="pi pi-list summary-icon"></i>
           <div class="summary-details">
-            <span class="summary-label">Content Items</span>
-            <span class="summary-value">{{ contentCount }} items</span>
+            <span class="summary-label">{{ $t('export.content_items') }}</span>
+            <span class="summary-value">{{ $t('export.items_count', { count: contentCount }) }}</span>
           </div>
         </div>
         <div class="summary-item" v-if="contentWithImages > 0">
           <i class="pi pi-image summary-icon"></i>
           <div class="summary-details">
-            <span class="summary-label">Items with Images</span>
+            <span class="summary-label">{{ $t('export.items_with_images') }}</span>
             <span class="summary-value">{{ contentWithImages }}</span>
           </div>
         </div>
@@ -121,7 +121,7 @@
       
       <div class="action-hint">
         <i class="pi pi-info-circle"></i>
-        <span>Excel file with embedded images will be downloaded</span>
+        <span>{{ $t('export.excel_download_hint') }}</span>
       </div>
     </div>
 
@@ -134,19 +134,19 @@
           <div class="progress-steps">
             <div class="step" :class="{ active: currentStep >= 1, completed: currentStep > 1 }">
               <i class="pi pi-database"></i>
-              <span>Loading Data</span>
+              <span>{{ $t('export.loading_data') }}</span>
             </div>
             <div class="step" :class="{ active: currentStep >= 2, completed: currentStep > 2 }">
               <i class="pi pi-image"></i>
-              <span>Processing Images</span>
+              <span>{{ $t('export.processing_images') }}</span>
             </div>
             <div class="step" :class="{ active: currentStep >= 3, completed: currentStep > 3 }">
               <i class="pi pi-file-excel"></i>
-              <span>Creating Excel</span>
+              <span>{{ $t('export.creating_excel') }}</span>
             </div>
             <div class="step" :class="{ active: currentStep >= 4 }">
               <i class="pi pi-download"></i>
-              <span>Downloading</span>
+              <span>{{ $t('export.downloading') }}</span>
             </div>
           </div>
         </div>
@@ -160,7 +160,7 @@
           <i class="pi pi-check-circle"></i>
         </div>
         <div class="results-content">
-          <h4 class="results-title">Export Completed Successfully</h4>
+          <h4 class="results-title">{{ $t('export.export_completed_successfully') }}</h4>
           <p class="results-summary">{{ lastExport.message }}</p>
         </div>
       </div>
@@ -168,19 +168,19 @@
       <div class="results-details">
         <div class="detail-grid">
           <div class="detail-item">
-            <span class="detail-label">File Name</span>
+            <span class="detail-label">{{ $t('export.file_name') }}</span>
             <span class="detail-value">{{ lastExport.filename }}</span>
           </div>
           <div class="detail-item">
-            <span class="detail-label">File Size</span>
+            <span class="detail-label">{{ $t('export.file_size') }}</span>
             <span class="detail-value">{{ formatFileSize(lastExport.fileSize) }}</span>
           </div>
           <div class="detail-item">
-            <span class="detail-label">Export Time</span>
+            <span class="detail-label">{{ $t('export.export_time') }}</span>
             <span class="detail-value">{{ formatExportTime(lastExport.timestamp) }}</span>
           </div>
           <div class="detail-item" v-if="lastExport.imageCount > 0">
-            <span class="detail-label">Images Embedded</span>
+            <span class="detail-label">{{ $t('export.images_embedded') }}</span>
             <span class="detail-value">{{ lastExport.imageCount }}</span>
           </div>
         </div>
@@ -192,10 +192,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
+import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
 import { exportCardToExcel } from '@/utils/excelHandler'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
+
+const { t } = useI18n()
 
 const props = defineProps({
   card: {
@@ -218,8 +221,8 @@ const lastExport = ref(null)
 
 // Computed properties
 const exportButtonLabel = computed(() => {
-  if (exporting.value) return 'Exporting...'
-  return `Export ${props.card.name || 'Card'}`
+  if (exporting.value) return t('export.exporting')
+  return `${t('common.export')} ${props.card.name || t('common.card')}`
 })
 
 const canExport = computed(() => {
@@ -326,7 +329,7 @@ async function exportCard() {
     // Success notification
     toast.add({
       severity: 'success',
-      summary: 'Export Complete',
+      summary: t('export.export_complete'),
       detail: lastExport.value.message,
       life: 5000
     })
@@ -335,8 +338,8 @@ async function exportCard() {
     console.error('Export error:', error)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: error.message || 'Failed to export card data',
+      summary: t('export.export_failed'),
+      detail: error.message || t('export.failed_to_export_card_data'),
       life: 5000
     })
   } finally {

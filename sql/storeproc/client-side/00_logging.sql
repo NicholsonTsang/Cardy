@@ -41,6 +41,7 @@ END;
 $$;
 
 -- Function to get recent operations log (admin only)
+-- PERFORMANCE: Hard limit cap prevents runaway queries
 CREATE OR REPLACE FUNCTION get_operations_log(
     p_limit INTEGER DEFAULT 100,
     p_offset INTEGER DEFAULT 0,
@@ -60,6 +61,9 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     caller_role TEXT;
+    -- PERFORMANCE: Maximum allowed limit to prevent abuse
+    MAX_LIMIT CONSTANT INTEGER := 1000;
+    v_effective_limit INTEGER;
 BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
@@ -69,6 +73,9 @@ BEGIN
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can view operations log.';
     END IF;
+
+    -- SECURITY: Cap the limit to prevent excessive data retrieval
+    v_effective_limit := LEAST(COALESCE(p_limit, 100), MAX_LIMIT);
 
     RETURN QUERY
     SELECT 
@@ -89,7 +96,7 @@ BEGIN
         AND (p_start_date IS NULL OR ol.created_at >= p_start_date)
         AND (p_end_date IS NULL OR ol.created_at <= p_end_date)
     ORDER BY ol.created_at DESC
-    LIMIT p_limit OFFSET p_offset;
+    LIMIT v_effective_limit OFFSET p_offset;
 END;
 $$;
 

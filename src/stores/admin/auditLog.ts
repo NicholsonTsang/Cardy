@@ -29,7 +29,7 @@ export const ACTION_TYPES = {
   // User Management
   USER_REGISTRATION: 'USER_REGISTRATION',
   ROLE_CHANGE: 'ROLE_CHANGE',
-  // VERIFICATION_* removed - verification feature was never implemented
+  VERIFICATION_RESET: 'VERIFICATION_RESET', // Still used in admin_functions.sql
   
   // Card Management
   CARD_CREATION: 'CARD_CREATION',
@@ -42,6 +42,7 @@ export const ACTION_TYPES = {
   CONTENT_ITEM_CREATION: 'CONTENT_ITEM_CREATION',
   CONTENT_ITEM_UPDATE: 'CONTENT_ITEM_UPDATE',
   CONTENT_ITEM_DELETION: 'CONTENT_ITEM_DELETION',
+  CONTENT_ITEM_REORDER: 'CONTENT_ITEM_REORDER',
   
   // Batch Management
   BATCH_ISSUANCE: 'BATCH_ISSUANCE',
@@ -62,13 +63,13 @@ export const ACTION_TYPES = {
 // Map ACTION_TYPES to actual search keywords in operation logs
 // This is needed because logs store descriptive text, not action type constants
 export const ACTION_TYPE_SEARCH_KEYWORDS: Record<string, string> = {
-  // User Management - no mapping needed (legacy format uses these directly)
+  // User Management
   USER_REGISTRATION: 'USER_REGISTRATION',
   ROLE_CHANGE: 'Changed user role',
-  // VERIFICATION_* removed - verification feature was never implemented
+  VERIFICATION_RESET: 'Reset verification',
   
   // Card Management
-  CARD_CREATION: 'Created card:',
+  CARD_CREATION: 'Created',  // Matches "Created physical card:" and "Created digital card:" and "Imported card"
   CARD_UPDATE: 'Updated card:',
   CARD_DELETION: 'Deleted card:',
   CARD_ACTIVATION: 'activated',  // Matches "Activated issued card" and "Card auto-activated"
@@ -78,10 +79,11 @@ export const ACTION_TYPE_SEARCH_KEYWORDS: Record<string, string> = {
   CONTENT_ITEM_CREATION: 'Created content item:',
   CONTENT_ITEM_UPDATE: 'Updated content item:',
   CONTENT_ITEM_DELETION: 'Deleted content item:',
+  CONTENT_ITEM_REORDER: 'Reordered content item',
   
   // Batch Management
   BATCH_ISSUANCE: 'Issued batch',
-  BATCH_STATUS_CHANGE: 'BATCH_STATUS_CHANGE',
+  BATCH_STATUS_CHANGE: 'abled batch',  // Matches "Disabled batch" and "Enabled batch"
   FREE_BATCH_ISSUANCE: 'Admin issued free batch',
   
   // Credit Management

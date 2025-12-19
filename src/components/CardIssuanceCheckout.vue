@@ -1,66 +1,98 @@
 <template>
     <div class="space-y-6">
       <!-- Statistics Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-sm font-medium text-slate-600 mb-2">{{ $t('batches.total_issued') }}</h3>
-            <p class="text-3xl font-bold text-slate-900">{{ stats.total_issued }}</p>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+      <!-- Total Cards Issued -->
+      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-5 hover:shadow-xl transition-shadow">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-medium text-slate-600">{{ $t('batches.total_issued') }}</h3>
+          <div class="p-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg">
+            <i class="pi pi-credit-card text-white text-lg"></i>
           </div>
-          <div class="p-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
-            <i class="pi pi-credit-card text-white text-2xl"></i>
+        </div>
+        <p class="text-2xl lg:text-3xl font-bold text-slate-900">{{ formatNumber(stats.total_issued) }}</p>
+        <p class="text-xs text-slate-500 mt-2 flex items-center gap-1">
+          <i class="pi pi-history text-xs"></i>
+          {{ $t('batches.cards_created') }}
+        </p>
+      </div>
+
+      <!-- Activation Rate -->
+      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-5 hover:shadow-xl transition-shadow">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="text-sm font-medium text-slate-600">{{ $t('batches.activation_rate') }}</h3>
+          <div class="p-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-lg">
+            <i class="pi pi-check-circle text-white text-lg"></i>
           </div>
+        </div>
+        <p class="text-2xl lg:text-3xl font-bold text-slate-900">
+          {{ stats.activation_rate }}%
+        </p>
+        <!-- Progress bar -->
+        <div class="mt-3">
+          <div class="h-2 bg-slate-100 rounded-full overflow-hidden">
+            <div 
+              class="h-full rounded-full transition-all duration-500 bg-emerald-500"
+              :style="{ width: stats.activation_rate + '%' }"
+            ></div>
+          </div>
+          <p class="text-xs text-emerald-600 mt-1.5">{{ stats.total_activated }} {{ $t('common.active') }}</p>
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-sm font-medium text-slate-600 mb-2">{{ $t('batches.activation_rate') }}</h3>
-            <p class="text-3xl font-bold text-slate-900">{{ stats.activation_rate }}%</p>
-            <p class="text-sm text-blue-600 mt-1">{{ stats.total_activated }} {{ $t('common.active') }}</p>
+      <!-- Credit Balance Card -->
+      <div class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-xl shadow-lg p-5 text-white hover:shadow-xl transition-shadow">
+        <!-- Decorative elements -->
+        <div class="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-500/20 to-transparent rounded-full -translate-y-1/2 translate-x-1/2"></div>
+        <div class="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-purple-500/10 to-transparent rounded-full translate-y-1/2 -translate-x-1/2"></div>
+        
+        <!-- Content -->
+        <div class="relative">
+          <div class="flex items-center gap-2 mb-2">
+            <i class="pi pi-wallet text-blue-400 text-sm"></i>
+            <h3 class="text-xs font-medium text-slate-400 uppercase tracking-wider">{{ $t('digital_access.your_balance') }}</h3>
           </div>
-          <div class="p-4 bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl">
-            <i class="pi pi-check-circle text-white text-2xl"></i>
+          
+          <div class="flex items-baseline gap-1.5">
+            <p class="text-3xl lg:text-4xl font-bold bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">
+              {{ creditStore.formattedBalance }}
+            </p>
+            <span class="text-sm font-medium text-slate-400">{{ $t('common.credits') }}</span>
           </div>
-        </div>
-      </div>
-
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-sm font-medium text-slate-600 mb-2">{{ $t('batches.batches') }}</h3>
-            <p class="text-3xl font-bold text-slate-900">{{ stats.total_batches }}</p>
-          </div>
-          <div class="p-4 bg-gradient-to-r from-purple-500 to-violet-500 rounded-xl">
-            <i class="pi pi-box text-white text-2xl"></i>
+          
+          <div class="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between gap-2">
+            <div class="flex items-center gap-1.5">
+              <div class="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></div>
+              <p class="text-xs text-slate-400">
+                <span class="text-blue-400 font-semibold">{{ Math.floor(creditStore.balance / 2) }}</span> {{ $t('batches.cards_available') }}
+              </p>
+            </div>
+            <Button 
+              :label="$t('digital_access.top_up')" 
+              icon="pi pi-plus"
+              size="small"
+              class="bg-blue-500 hover:bg-blue-600 border-0 text-xs font-semibold px-3"
+              @click="navigateToCreditPurchase"
+            />
           </div>
         </div>
       </div>
     </div>
 
     <!-- Print Ready Banner -->
-    <div v-if="readyToPrintBatches.length > 0" class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl shadow-soft border border-blue-200 p-6">
-      <div class="flex items-center gap-4">
-        <div class="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl">
-          <i class="pi pi-print text-white text-2xl"></i>
-        </div>
-        <div class="flex-1">
-          <h3 class="text-lg font-semibold text-slate-900 mb-2">
-            {{ readyToPrintBatches.length }} batch{{ readyToPrintBatches.length > 1 ? 'es' : '' }} ready for physical printing
-          </h3>
-          <div class="space-y-1">
-            <p class="text-slate-700 text-sm font-medium">
-              👉 To order physical cards:
-            </p>
-            <ol class="text-slate-600 text-sm ml-6 space-y-0.5">
-              <li>1. Find your batch in the table below</li>
-              <li>2. Look for the <span class="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-xs font-medium"><i class="pi pi-print text-xs"></i> Print</span> button in the Actions column</li>
-              <li>3. Click it to submit your print request</li>
-            </ol>
-          </div>
-        </div>
+    <div v-if="readyToPrintBatches.length > 0" class="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200">
+      <div class="p-3 bg-gradient-to-r from-blue-500 to-purple-500 rounded-xl flex-shrink-0 animate-pulse">
+        <i class="pi pi-print text-white text-xl"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p class="font-semibold text-slate-900 text-sm">
+          {{ readyToPrintBatches.length }} {{ readyToPrintBatches.length > 1 ? $t('batches.batches') : $t('batches.batch') }} {{ $t('batches.ready_for_printing') }}
+        </p>
+        <p class="text-xs text-slate-600 mt-0.5">{{ $t('batches.click_print_button') }}</p>
+      </div>
+      <div class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white rounded-full border border-blue-200 text-xs text-blue-700 font-medium">
+        <i class="pi pi-arrow-down"></i>
+        {{ $t('batches.see_table_below') }}
       </div>
     </div>
 
@@ -232,17 +264,19 @@
       <div class="space-y-6">
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('batches.cards') }}</label>
-          <input
-            v-model.number="batchQuantity"
-            type="number"
+          <InputNumber
+            v-model="batchQuantity"
             :min="1"
             :max="1000"
+            :step="10"
             :placeholder="$t('batches.enter_number_of_cards')"
-            class="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            :class="{
-              'border-red-500 ring-2 ring-red-200': showValidationError,
-              'border-slate-300': !showValidationError
-            }"
+            showButtons
+            buttonLayout="horizontal"
+            incrementButtonIcon="pi pi-plus"
+            decrementButtonIcon="pi pi-minus"
+            class="w-full"
+            :class="{ 'p-invalid': showValidationError }"
+            inputClass="text-center"
           />
           <div class="mt-2 space-y-1">
             <!-- Validation Error - Show when invalid -->
@@ -267,12 +301,12 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-slate-700 mb-2">Card Design</label>
+          <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('batches.card_design') }}</label>
           <div v-if="currentCard" class="flex items-center gap-3 p-3 border border-slate-200 rounded-lg bg-slate-50">
             <div class="relative w-12 h-16 flex-shrink-0">
               <img 
                 :src="currentCard.image_url || cardPlaceholder" 
-                :alt="currentCard.title || 'Card design'"
+                :alt="currentCard.title || $t('batches.card_design')"
                 class="w-full h-full object-cover rounded border border-slate-200"
                 @error="handleImageError"
                 @load="handleImageLoad"
@@ -282,12 +316,12 @@
               </div>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="font-medium text-slate-900 truncate">{{ currentCard.title || currentCard.name || 'Untitled Card' }}</div>
-              <div class="text-sm text-slate-600 line-clamp-2">{{ currentCard.description || 'No description available' }}</div>
+              <div class="font-medium text-slate-900 truncate">{{ currentCard.title || currentCard.name || $t('batches.untitled_card') }}</div>
+              <div class="text-sm text-slate-600 line-clamp-2">{{ currentCard.description || $t('batches.no_description_available') }}</div>
             </div>
           </div>
           <div v-else class="p-3 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
-            Loading card information...
+            {{ $t('batches.loading_card_information') }}
           </div>
         </div>
 
@@ -491,11 +525,11 @@
         <!-- Batch Info -->
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="text-sm font-medium text-slate-600">Batch Name</label>
+            <label class="text-sm font-medium text-slate-600">{{ $t('batches.batch_name') }}</label>
             <p class="text-lg font-semibold text-slate-900">{{ selectedBatch.batch_name }}</p>
           </div>
           <div>
-            <label class="text-sm font-medium text-slate-600">Batch Number</label>
+            <label class="text-sm font-medium text-slate-600">{{ $t('batches.batch_number') }}</label>
             <p class="text-lg font-semibold text-slate-900">#{{ selectedBatch.batch_number }}</p>
           </div>
         </div>
@@ -503,11 +537,11 @@
         <!-- Cards Info -->
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="text-sm font-medium text-slate-600">Total Cards</label>
+            <label class="text-sm font-medium text-slate-600">{{ $t('batches.total_cards') }}</label>
             <p class="text-lg font-semibold text-slate-900">{{ selectedBatch.cards_count }}</p>
           </div>
           <div>
-            <label class="text-sm font-medium text-slate-600">Active Cards</label>
+            <label class="text-sm font-medium text-slate-600">{{ $t('batches.active_cards') }}</label>
             <p class="text-lg font-semibold text-slate-900">{{ selectedBatch.active_cards_count || 0 }}</p>
           </div>
         </div>
@@ -529,7 +563,7 @@
               <p class="font-semibold text-slate-900">${{ (selectedBatch.total_amount / 100).toFixed(2) }}</p>
             </div>
             <div v-if="selectedBatch.payment_status === 'free'">
-              <label class="text-sm text-slate-600">Amount</label>
+              <label class="text-sm text-slate-600">{{ $t('batches.amount') }}</label>
               <p class="font-semibold text-slate-600">-</p>
             </div>
             <div v-if="selectedBatch.payment_completed_at">
@@ -538,7 +572,7 @@
             </div>
             <div v-if="selectedBatch.payment_waived && selectedBatch.payment_status === 'free'">
               <label class="text-sm text-slate-600">{{ $t('batches.issued_by') }}</label>
-              <p class="text-slate-900">Admin</p>
+              <p class="text-slate-900">{{ $t('common.admin') }}</p>
             </div>
             <div v-if="selectedBatch.payment_waiver_reason" class="col-span-2">
               <label class="text-sm text-slate-600">{{ $t('common.reason') }}</label>
@@ -585,7 +619,7 @@
         <div v-if="selectedBatch.is_disabled" class="bg-red-50 border border-red-200 rounded-lg p-4">
           <div class="flex items-center gap-2">
             <i class="pi pi-exclamation-triangle text-red-600"></i>
-            <span class="font-medium text-red-900">This batch is disabled</span>
+            <span class="font-medium text-red-900">{{ $t('batches.this_batch_is_disabled') }}</span>
           </div>
         </div>
 
@@ -637,24 +671,24 @@
         <div class="bg-blue-50 rounded-lg p-4 border border-blue-200">
           <h4 class="font-semibold text-blue-900 mb-2 flex items-center gap-2">
             <i class="pi pi-info-circle"></i>
-            Batch Information
+            {{ $t('batches.batch_information') }}
           </h4>
           <div class="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span class="text-blue-700 font-medium">Batch Name:</span>
+              <span class="text-blue-700 font-medium">{{ $t('batches.batch_name') }}:</span>
               <p class="text-blue-900">{{ selectedBatchForPrint.batch_name }}</p>
             </div>
             <div>
-              <span class="text-blue-700 font-medium">Cards Count:</span>
-              <p class="text-blue-900">{{ selectedBatchForPrint.cards_count }} cards</p>
+              <span class="text-blue-700 font-medium">{{ $t('batches.cards_count') }}:</span>
+              <p class="text-blue-900">{{ selectedBatchForPrint.cards_count }} {{ $t('batches.cards_text') }}</p>
             </div>
             <div>
-              <span class="text-blue-700 font-medium">Payment:</span>
-              <p class="text-blue-900">✓ Completed</p>
+              <span class="text-blue-700 font-medium">{{ $t('batches.payment_status') }}:</span>
+              <p class="text-blue-900">✓ {{ $t('batches.payment_completed_check') }}</p>
             </div>
             <div>
-              <span class="text-blue-700 font-medium">Digital Cards:</span>
-              <p class="text-blue-900">✓ Generated</p>
+              <span class="text-blue-700 font-medium">{{ $t('dashboard.digital_access') }}:</span>
+              <p class="text-blue-900">✓ {{ $t('batches.digital_cards_generated') }}</p>
             </div>
           </div>
         </div>
@@ -680,7 +714,7 @@
         <div class="space-y-4">
           <h4 class="text-sm font-medium text-slate-700">{{ $t('batches.contact_information') }}</h4>
           <p class="text-xs text-slate-600 mb-3">
-            Please provide at least one contact method for updates about your print request.
+            {{ $t('batches.provide_contact_method') }}
           </p>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -716,7 +750,7 @@
               <small v-if="printRequestForm.errors.contact_whatsapp" class="p-error">
                 {{ printRequestForm.errors.contact_whatsapp }}
               </small>
-              <small class="text-xs text-slate-500">Include country code (e.g., +1, +44, +852)</small>
+              <small class="text-xs text-slate-500">{{ $t('batches.include_country_code_hint') }}</small>
             </div>
           </div>
         </div>
@@ -793,7 +827,7 @@
         <div class="bg-slate-50 rounded-lg p-4 border border-slate-200">
           <h4 class="font-semibold text-slate-900 mb-3 flex items-center gap-2">
             <i class="pi pi-info-circle text-blue-600"></i>
-            Print Request Details
+            {{ $t('batches.print_request_details') }}
           </h4>
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -821,7 +855,7 @@
         <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 border border-blue-200">
           <h4 class="font-semibold text-slate-900 mb-4 flex items-center gap-2">
             <i class="pi pi-chart-line text-blue-600"></i>
-            Print Request Progress
+            {{ $t('batches.print_request_progress') }}
           </h4>
           
           <div class="space-y-4">
@@ -843,7 +877,7 @@
                   <i v-if="isPrintStepCompleted('SUBMITTED', selectedPrintRequestData.status)" class="pi pi-check text-xs"></i>
                   <span v-else>1</span>
                 </div>
-                <span class="text-xs font-medium text-slate-700 mt-2 text-center">Submitted</span>
+                <span class="text-xs font-medium text-slate-700 mt-2 text-center">{{ $t('batches.submitted_status') }}</span>
               </div>
               
               <!-- Step 2: PROCESSING -->
@@ -855,7 +889,7 @@
                   <i v-if="isPrintStepCompleted('PROCESSING', selectedPrintRequestData.status)" class="pi pi-check text-xs"></i>
                   <span v-else>2</span>
                 </div>
-                <span class="text-xs font-medium text-slate-700 mt-2 text-center">Processing</span>
+                <span class="text-xs font-medium text-slate-700 mt-2 text-center">{{ $t('batches.processing_status') }}</span>
               </div>
               
               <!-- Step 3: SHIPPED -->
@@ -867,7 +901,7 @@
                   <i v-if="isPrintStepCompleted('SHIPPED', selectedPrintRequestData.status)" class="pi pi-check text-xs"></i>
                   <span v-else>3</span>
                 </div>
-                <span class="text-xs font-medium text-slate-700 mt-2 text-center">Shipped</span>
+                <span class="text-xs font-medium text-slate-700 mt-2 text-center">{{ $t('batches.shipped_status') }}</span>
               </div>
               
               <!-- Step 4: COMPLETED -->
@@ -879,7 +913,7 @@
                   <i v-if="isPrintStepCompleted('COMPLETED', selectedPrintRequestData.status)" class="pi pi-check text-xs"></i>
                   <span v-else>4</span>
                 </div>
-                <span class="text-xs font-medium text-slate-700 mt-2 text-center">Completed</span>
+                <span class="text-xs font-medium text-slate-700 mt-2 text-center">{{ $t('batches.delivered_status') }}</span>
               </div>
             </div>
             
@@ -970,6 +1004,7 @@ import Button from 'primevue/button'
 import Tag from 'primevue/tag'
 import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
 import Textarea from 'primevue/textarea'
 import { useToast } from 'primevue/usetoast'
 import { supabase } from '@/lib/supabase'
@@ -1410,8 +1445,8 @@ const downloadBatchCodes = async (batch) => {
     console.error('Error downloading codes:', error)
     toast.add({
       severity: 'error',
-      summary: 'Download Failed',
-      detail: 'Failed to download activation codes',
+      summary: t('batches.download_failed'),
+      detail: t('batches.failed_to_download_activation_codes'),
       life: 5000
     })
   } finally {
@@ -1505,8 +1540,8 @@ const viewPrintRequestDialog = async (batch) => {
     } else {
       toast.add({
         severity: 'warn',
-        summary: 'No Print Request',
-        detail: 'No print request found for this batch',
+        summary: t('batches.no_print_request'),
+        detail: t('batches.no_print_request_found'),
         life: 5000
       })
     }
@@ -1514,8 +1549,8 @@ const viewPrintRequestDialog = async (batch) => {
     console.error('Error loading print request details:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load print request details',
+      summary: t('common.error'),
+      detail: t('batches.failed_to_load_print_request'),
       life: 5000
     })
   } finally {
@@ -1601,8 +1636,8 @@ const submitPrintRequest = async () => {
     
     toast.add({
       severity: 'success',
-      summary: 'Print Request Submitted',
-      detail: `Print request submitted for ${selectedBatchForPrint.value.cards_count} cards. You'll receive updates via email.`,
+      summary: t('batches.print_request_submitted'),
+      detail: t('batches.print_request_submitted_message', { count: selectedBatchForPrint.value.cards_count }),
       life: 6000
     })
     
@@ -1612,18 +1647,18 @@ const submitPrintRequest = async () => {
   } catch (error) {
     console.error('Error submitting print request:', error)
     
-    let errorMessage = 'Failed to submit print request'
+    let errorMessage = t('batches.failed_to_submit_print_request')
     if (error.message.includes('already exists')) {
-      errorMessage = 'A print request for this batch has already been submitted'
+      errorMessage = t('batches.print_request_already_exists')
     } else if (error.message.includes('payment')) {
-      errorMessage = 'Batch payment must be completed before requesting printing'
+      errorMessage = t('batches.payment_must_be_completed')
     } else if (error.message.includes('generated')) {
-      errorMessage = 'Cards must be generated before requesting printing'
+      errorMessage = t('batches.cards_must_be_generated')
     }
     
     toast.add({
       severity: 'error',
-      summary: 'Print Request Failed',
+      summary: t('batches.print_request_failed'),
       detail: errorMessage,
       life: 5000
     })
@@ -1665,6 +1700,12 @@ const formatDate = (dateString) => {
     day: 'numeric',
     year: 'numeric'
   })
+}
+
+const formatNumber = (num) => {
+  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+  if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
+  return num.toLocaleString()
 }
 
 // Print status helpers

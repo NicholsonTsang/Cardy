@@ -23,10 +23,6 @@
              class="block text-slate-700 hover:text-white hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 font-medium py-3 px-4 rounded-xl transition-all cursor-pointer">
             {{ $t('landing.nav.pricing') }}
           </a>
-          <a @click="scrollToSection('contact')" 
-             class="block text-slate-700 hover:text-white hover:bg-gradient-to-r hover:from-blue-600 hover:to-purple-600 font-medium py-3 px-4 rounded-xl transition-all cursor-pointer">
-            {{ $t('landing.nav.contact') }}
-          </a>
           
           <div class="pt-4 space-y-3">
             <button 
@@ -106,7 +102,7 @@
       </div>
     </section>
 
-    <!-- Promotion & Solution Showcase Video Section -->
+    <!-- Demo & Solution Showcase Section -->
     <section id="demo" class="py-20 sm:py-32 bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950 relative overflow-hidden">
       <div class="absolute inset-0">
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(120,180,255,0.1),transparent_70%)]"></div>
@@ -123,22 +119,58 @@
         </div>
         
         <div class="max-w-5xl mx-auto">
-          <!-- Video Player -->
-          <div class="relative bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10">
-            <div style="padding:56.6% 0 0 0;position:relative;">
-              <iframe src="https://player.vimeo.com/video/1140994913?badge=0&amp;autopause=0&amp;player_id=0&amp;app_id=58479" frameborder="0" allow="autoplay; fullscreen; picture-in-picture; clipboard-write; encrypted-media; web-share" referrerpolicy="strict-origin-when-cross-origin" style="position:absolute;top:0;left:0;width:100%;height:100%;" title="CardStudio Promotion Video"></iframe>
+          <!-- Demo Mode Toggle -->
+          <div class="flex justify-center mt-12 mb-4">
+            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-1.5 inline-flex gap-1">
+              <button
+                @click="demoMode = 'digital'"
+                :class="[
+                  'flex items-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-300',
+                  demoMode === 'digital'
+                    ? 'bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-lg'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                ]"
+              >
+                <i class="pi pi-qrcode"></i>
+                <span>{{ $t('landing.demo.mode_toggle.digital_access') }}</span>
+              </button>
+              <button
+                @click="demoMode = 'physical'"
+                :class="[
+                  'flex items-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-300',
+                  demoMode === 'physical'
+                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
+                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                ]"
+              >
+                <i class="pi pi-id-card"></i>
+                <span>{{ $t('landing.demo.mode_toggle.physical_card') }}</span>
+              </button>
             </div>
+          </div>
+          
+          <!-- Access Mode Description -->
+          <div class="text-center mb-8 max-w-2xl mx-auto">
+            <p v-if="demoMode === 'physical'" class="text-blue-100/80 text-sm sm:text-base">
+              {{ $t('landing.demo.physical_card.full_desc') }}
+            </p>
+            <p v-else class="text-emerald-100/80 text-sm sm:text-base">
+              {{ $t('landing.demo.digital_access.full_desc') }}
+            </p>
           </div>
 
           <!-- Demo Card Preview -->
-          <div class="grid md:grid-cols-5 gap-12 lg:gap-16 mt-16 items-center">
+          <div class="grid md:grid-cols-5 gap-12 lg:gap-16 items-center">
             <!-- Left Column: Demo Card (2/5 width) -->
             <div class="md:col-span-2 relative w-full animate-on-scroll">
               <!-- Ambient glow -->
-              <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 rounded-3xl blur-3xl opacity-50"></div>
+              <div :class="[
+                'absolute inset-0 rounded-3xl blur-3xl opacity-50 transition-all duration-500',
+                demoMode === 'physical' ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-gradient-to-r from-emerald-600 to-cyan-600'
+              ]"></div>
               
-              <!-- Card container -->
-              <div class="relative bg-white rounded-3xl p-4 shadow-2xl hover:shadow-[0_20px_60px_rgba(59,130,246,0.3)] transition-all duration-500">
+              <!-- Physical Card Demo -->
+              <div v-if="demoMode === 'physical'" class="relative bg-white rounded-3xl p-4 shadow-2xl hover:shadow-[0_20px_60px_rgba(59,130,246,0.3)] transition-all duration-500">
                 <div :style="{ aspectRatio: cardAspectRatio }" class="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl overflow-hidden relative group">
                   <img 
                     :src="demoCardImageUrl" 
@@ -149,30 +181,126 @@
                   
                   <div class="absolute bottom-4 left-4 right-4 text-white">
                     <h3 class="text-2xl font-bold mb-2">{{ demoCardTitle }}</h3>
-                    <p class="text-sm opacity-90">{{ demoCardSubtitle }}</p>
+                    <p class="text-sm opacity-90 whitespace-pre-line">{{ demoCardSubtitle }}</p>
                   </div>
                   
-                  <!-- QR Code with Visual Guide -->
+                  <!-- QR Code -->
                   <div class="absolute top-4 right-4">
                     <div class="relative group/qr">
-                      <!-- Glow effect -->
                       <div class="absolute inset-0 bg-white/60 rounded-lg blur-md"></div>
-                      <!-- QR Code container with frosted glass effect -->
-                      <div class="relative bg-white/95 backdrop-blur-sm rounded-lg p-1.5 shadow-lg ring-1 ring-white/20 transition-all duration-300 group-hover/qr:scale-105 group-hover/qr:shadow-xl">
-                        <QrCode :value="sampleQrUrl" :size="52" />
+                      <div 
+                        class="relative bg-white/95 backdrop-blur-sm rounded-lg p-2 shadow-lg ring-1 ring-white/20 transition-all duration-300 group-hover/qr:scale-105 group-hover/qr:shadow-xl"
+                        :class="{ 'cursor-pointer': demoCardUrl }"
+                        @click="openDemoUrl(demoCardUrl)"
+                        :title="demoCardUrl ? $t('landing.demo_templates.scan_or_click') : ''"
+                      >
+                        <QrCode v-if="demoCardUrl" :value="demoCardUrl" :size="56" />
+                        <!-- Fallback decorative pattern if no URL configured -->
+                        <div v-else class="w-14 h-14 grid grid-cols-5 gap-0.5">
+                          <div class="col-span-2 row-span-2 bg-slate-800 rounded-sm relative">
+                            <div class="absolute inset-1 bg-white rounded-sm">
+                              <div class="absolute inset-1 bg-slate-800 rounded-sm"></div>
+                            </div>
+                          </div>
+                          <div class="bg-slate-800 rounded-sm"></div>
+                          <div class="col-span-2 row-span-2 bg-slate-800 rounded-sm relative">
+                            <div class="absolute inset-1 bg-white rounded-sm">
+                              <div class="absolute inset-1 bg-slate-800 rounded-sm"></div>
+                            </div>
+                          </div>
+                          <div class="bg-white"></div>
+                          <div class="bg-slate-800 rounded-sm"></div>
+                          <div class="bg-slate-800 rounded-sm"></div>
+                          <div class="bg-white"></div>
+                          <div class="bg-slate-800 rounded-sm"></div>
+                          <div class="bg-white"></div>
+                          <div class="bg-slate-800 rounded-sm"></div>
+                          <div class="col-span-2 row-span-2 bg-slate-800 rounded-sm relative">
+                            <div class="absolute inset-1 bg-white rounded-sm">
+                              <div class="absolute inset-1 bg-slate-800 rounded-sm"></div>
+                            </div>
+                          </div>
+                          <div class="bg-white"></div>
+                          <div class="bg-slate-800 rounded-sm"></div>
+                          <div class="bg-white"></div>
+                          <div class="bg-slate-800 rounded-sm"></div>
+                          <div class="bg-white"></div>
+                          <div class="bg-slate-800 rounded-sm"></div>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                <!-- Try Demo Button - Mobile Only -->
-                <div class="mt-6 text-center lg:hidden">
-                  <Button 
-                    @click="openDemoCard"
-                    class="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 py-4 text-base font-bold shadow-lg hover:shadow-xl transition-all rounded-xl min-h-[52px]"
-                  >
-                    {{ $t('landing.demo.try_live_demo') }}
-                  </Button>
+                <!-- Physical Card Info Caption -->
+                <div class="mt-4 text-center">
+                  <p class="text-sm text-slate-500 italic">{{ $t('landing.demo.physical_card.caption') }}</p>
+                </div>
+              </div>
+
+              <!-- Digital Access Demo -->
+              <div v-else class="relative bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-6 shadow-2xl hover:shadow-[0_20px_60px_rgba(16,185,129,0.3)] transition-all duration-500 border border-emerald-500/20">
+                <div class="text-center">
+                  <!-- Title -->
+                  <div class="mb-6">
+                    <h3 class="text-2xl font-bold text-white mb-2">{{ digitalAccessDemoTitle }}</h3>
+                    <p class="text-emerald-200/80 text-sm">{{ digitalAccessDemoSubtitle }}</p>
+                  </div>
+                  
+                  <!-- QR Code -->
+                  <div class="flex justify-center mb-6">
+                    <div class="relative group/qr">
+                      <div class="absolute inset-0 bg-emerald-400/30 rounded-2xl blur-xl"></div>
+                      <div 
+                        class="relative bg-white rounded-2xl p-5 shadow-xl transition-all duration-300 group-hover/qr:scale-105"
+                        :class="{ 'cursor-pointer': digitalAccessDemoUrl }"
+                        @click="openDemoUrl(digitalAccessDemoUrl)"
+                        :title="digitalAccessDemoUrl ? $t('landing.demo_templates.scan_or_click') : ''"
+                      >
+                        <QrCode v-if="digitalAccessDemoUrl" :value="digitalAccessDemoUrl" :size="140" />
+                        <!-- Fallback decorative pattern if no URL configured -->
+                        <div v-else class="w-32 h-32 grid grid-cols-7 gap-1">
+                          <div class="col-span-3 row-span-3 bg-emerald-700 rounded relative">
+                            <div class="absolute inset-1.5 bg-white rounded">
+                              <div class="absolute inset-1.5 bg-emerald-700 rounded"></div>
+                            </div>
+                          </div>
+                          <div class="bg-white"></div>
+                          <div class="col-span-3 row-span-3 bg-emerald-700 rounded relative">
+                            <div class="absolute inset-1.5 bg-white rounded">
+                              <div class="absolute inset-1.5 bg-emerald-700 rounded"></div>
+                            </div>
+                          </div>
+                          <div class="bg-emerald-700 rounded"></div>
+                          <div class="bg-white"></div>
+                          <div class="bg-emerald-700 rounded"></div>
+                          <div class="bg-white"></div>
+                          <div class="bg-emerald-700 rounded"></div>
+                          <div class="bg-white"></div>
+                          <div class="bg-emerald-700 rounded"></div>
+                          <div class="bg-white"></div>
+                          <div class="bg-emerald-700 rounded"></div>
+                          <div class="bg-white"></div>
+                          <div class="bg-emerald-700 rounded"></div>
+                          <div class="bg-white"></div>
+                          <div class="bg-emerald-700 rounded"></div>
+                          <div class="bg-white"></div>
+                          <div class="col-span-3 row-span-3 bg-emerald-700 rounded relative">
+                            <div class="absolute inset-1.5 bg-white rounded">
+                              <div class="absolute inset-1.5 bg-emerald-700 rounded"></div>
+                            </div>
+                          </div>
+                          <div class="bg-emerald-700 rounded"></div>
+                          <div class="bg-white"></div>
+                          <div class="bg-emerald-700 rounded"></div>
+                          <div class="bg-white"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <!-- Digital Access Caption -->
+                  <p class="text-slate-400 text-sm">{{ $t('landing.demo.digital_access.caption') }}</p>
                 </div>
               </div>
             </div>
@@ -181,19 +309,29 @@
             <div class="md:col-span-3 space-y-8 animate-on-scroll" style="animation-delay: 200ms">
               <!-- Visual Guide - Desktop Only -->
               <div class="hidden lg:block">
-                <div class="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-6">
-                  <div class="flex items-start gap-4 mb-6">
-                    <div class="flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-                      <i class="pi pi-mobile text-white text-xl"></i>
+                <div :class="[
+                  'backdrop-blur-sm border rounded-2xl p-6 transition-all duration-300',
+                  demoMode === 'physical' 
+                    ? 'bg-white/5 border-white/10' 
+                    : 'bg-emerald-500/5 border-emerald-500/20'
+                ]">
+                  <div class="flex items-start gap-4">
+                    <div :class="[
+                      'flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300',
+                      demoMode === 'physical'
+                        ? 'bg-gradient-to-br from-blue-500 to-purple-600'
+                        : 'bg-gradient-to-br from-emerald-500 to-cyan-600'
+                    ]">
+                      <i :class="['pi text-white text-xl', demoMode === 'physical' ? 'pi-id-card' : 'pi-qrcode']"></i>
                     </div>
                     <div>
-                      <h4 class="text-lg font-bold text-white mb-1">{{ $t('landing.demo.scan_with_phone') }}</h4>
-                      <p class="text-sm text-white/70">{{ $t('landing.demo.instant_demo') }}</p>
+                      <h4 class="text-lg font-bold text-white mb-1">
+                        {{ demoMode === 'physical' ? $t('landing.demo.physical_card.title') : $t('landing.demo.digital_access.title') }}
+                      </h4>
+                      <p class="text-sm text-white/70">
+                        {{ demoMode === 'physical' ? $t('landing.demo.physical_card.desc') : $t('landing.demo.digital_access.desc') }}
+                      </p>
                     </div>
-                  </div>
-                  <div class="flex items-center gap-3 text-white/60 text-sm">
-                    <i class="pi pi-arrow-left animate-pulse"></i>
-                    <span>{{ $t('landing.demo.scan_qr_code') }}</span>
                   </div>
                 </div>
               </div>
@@ -201,14 +339,216 @@
               <h3 class="text-3xl font-bold text-white">{{ $t('landing.demo.experience_features') }}</h3>
               
               <div v-for="(feature, index) in demoFeatures" :key="index" class="flex gap-4">
-                <div class="w-12 h-12 bg-gradient-to-br from-blue-600/20 to-purple-600/20 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0">
-                  <i :class="`pi ${feature.icon} text-blue-400 text-xl`"></i>
+                <div :class="[
+                  'w-12 h-12 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300',
+                  demoMode === 'physical'
+                    ? 'bg-gradient-to-br from-blue-600/20 to-purple-600/20'
+                    : 'bg-gradient-to-br from-emerald-600/20 to-cyan-600/20'
+                ]">
+                  <i :class="[
+                    `pi ${feature.icon} text-xl`,
+                    demoMode === 'physical' ? 'text-blue-400' : 'text-emerald-400'
+                  ]"></i>
                 </div>
                 <div>
                   <h4 class="text-lg font-semibold text-white mb-1">{{ feature.title }}</h4>
                   <p class="text-blue-100/70 leading-relaxed">{{ feature.description }}</p>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Demo Templates Showcase -->
+    <section v-if="demoTemplates.length > 0" class="py-16 sm:py-24 bg-slate-50 relative overflow-hidden">
+      <div class="absolute inset-0">
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(59,130,246,0.05),transparent_70%)]"></div>
+      </div>
+      
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        <div class="text-center mb-10 sm:mb-14">
+          <div class="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 rounded-full text-blue-700 text-sm font-semibold mb-4">
+            <i class="pi pi-qrcode"></i>
+            <span>{{ $t('landing.demo_templates.badge') }}</span>
+          </div>
+          <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-slate-900 mb-3">
+            {{ $t('landing.demo_templates.title') }}
+          </h2>
+          <p class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto">
+            {{ $t('landing.demo_templates.subtitle') }}
+          </p>
+        </div>
+
+        <!-- Venue Type Filter Tabs -->
+        <!-- Mobile: Horizontal scroll | Desktop: Centered wrap -->
+        <div class="relative mb-8">
+          <!-- Fade indicators for scroll on mobile -->
+          <div class="md:hidden absolute left-0 top-0 bottom-0 w-6 bg-gradient-to-r from-slate-50 to-transparent z-10 pointer-events-none opacity-0 transition-opacity" :class="{ 'opacity-100': canScrollLeft }"></div>
+          <div class="md:hidden absolute right-0 top-0 bottom-0 w-6 bg-gradient-to-l from-slate-50 to-transparent z-10 pointer-events-none opacity-0 transition-opacity" :class="{ 'opacity-100': canScrollRight }"></div>
+          
+          <div 
+            ref="venueFilterScroll"
+            class="flex gap-2 overflow-x-auto md:overflow-visible md:flex-wrap md:justify-center scrollbar-hide pb-2 md:pb-0 -mx-4 px-4 md:mx-0 md:px-0"
+            @scroll="updateScrollIndicators"
+          >
+            <button 
+              class="flex-shrink-0 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 whitespace-nowrap"
+              :class="selectedVenueType === null 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'"
+              @click="selectVenueType(null)"
+            >
+              <i class="pi pi-th-large mr-1.5"></i>
+              {{ $t('landing.demo_templates.all_types') }}
+            </button>
+            <button 
+              v-for="venueType in availableVenueTypes"
+              :key="venueType"
+              class="flex-shrink-0 px-4 py-2 text-sm font-medium rounded-full transition-all duration-200 whitespace-nowrap"
+              :class="selectedVenueType === venueType 
+                ? 'bg-blue-600 text-white shadow-md' 
+                : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'"
+              @click="selectVenueType(venueType)"
+            >
+              <i :class="getVenueIcon(venueType)" class="mr-1.5"></i>
+              {{ formatVenueType(venueType) }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Templates Grid with Pagination -->
+        <div class="relative">
+          <!-- Navigation Arrows (Desktop) -->
+          <button 
+            v-if="totalTemplatePages > 1"
+            @click="prevTemplatePage"
+            :disabled="currentTemplatePage === 0"
+            class="hidden lg:flex absolute -left-14 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white shadow-lg border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-slate-600 disabled:hover:border-slate-200 z-10"
+          >
+            <i class="pi pi-chevron-left text-xl"></i>
+          </button>
+          <button 
+            v-if="totalTemplatePages > 1"
+            @click="nextTemplatePage"
+            :disabled="currentTemplatePage >= totalTemplatePages - 1"
+            class="hidden lg:flex absolute -right-14 top-1/2 -translate-y-1/2 w-12 h-12 items-center justify-center rounded-full bg-white shadow-lg border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 transition-all duration-300 disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:text-slate-600 disabled:hover:border-slate-200 z-10"
+          >
+            <i class="pi pi-chevron-right text-xl"></i>
+          </button>
+
+          <!-- Templates Grid -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+            <div 
+              v-for="template in paginatedTemplates" 
+              :key="template.id"
+              class="group bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden hover:shadow-xl hover:border-blue-200 transition-all duration-300"
+            >
+              <!-- Template Image -->
+              <div class="aspect-video relative overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
+                <img 
+                  v-if="template.thumbnail_url" 
+                  :src="template.thumbnail_url" 
+                  :alt="template.name"
+                  class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                />
+                <div v-else class="w-full h-full flex items-center justify-center">
+                  <i class="pi pi-image text-4xl text-slate-300"></i>
+                </div>
+                <!-- Venue Type Badge -->
+                <div v-if="template.venue_type" class="absolute top-3 left-3">
+                  <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-semibold text-slate-700 shadow-sm">
+                    <i :class="getVenueIcon(template.venue_type)" class="text-blue-500"></i>
+                    {{ formatVenueType(template.venue_type) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Template Info -->
+              <div class="p-5">
+                <div class="flex items-start justify-between gap-4">
+                  <div class="flex-1 min-w-0">
+                    <h3 class="text-lg font-bold text-slate-900 mb-1 truncate">{{ template.name }}</h3>
+                    <p class="text-sm text-slate-500 line-clamp-2">{{ template.description || $t('landing.demo_templates.no_description') }}</p>
+                    <div class="flex items-center gap-3 mt-2 text-xs text-slate-400">
+                      <span class="flex items-center gap-1">
+                        <i class="pi pi-list"></i>
+                        {{ template.item_count }} {{ $t('landing.demo_templates.items') }}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  <!-- QR Code -->
+                  <div v-if="template.access_url" class="flex-shrink-0">
+                    <div class="relative group/qr">
+                      <div class="absolute inset-0 bg-blue-500/20 rounded-lg blur-md opacity-0 group-hover/qr:opacity-100 transition-opacity"></div>
+                      <div 
+                        class="relative bg-white rounded-lg p-1.5 border border-slate-200 shadow-sm cursor-pointer hover:shadow-md transition-all"
+                        @click="openTemplate(template)"
+                        :title="$t('landing.demo_templates.scan_or_click')"
+                      >
+                        <QrCode :value="getTemplateUrl(template)" :size="64" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Try Demo Button (Mobile) -->
+                <button
+                  v-if="template.access_url"
+                  @click="openTemplate(template)"
+                  class="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white text-sm font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-300 sm:hidden"
+                >
+                  <i class="pi pi-external-link"></i>
+                  {{ $t('landing.demo_templates.try_demo') }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pagination Dots & Info -->
+          <div v-if="totalTemplatePages > 1" class="flex flex-col items-center gap-4 mt-8">
+            <!-- Page Counter -->
+            <div class="text-sm text-slate-500">
+              {{ $t('landing.demo_templates.showing') }} {{ currentTemplatePage * templatesPerPage + 1 }}-{{ Math.min((currentTemplatePage + 1) * templatesPerPage, filteredTemplates.length) }} {{ $t('landing.demo_templates.of') }} {{ filteredTemplates.length }}
+            </div>
+            
+            <!-- Pagination Controls -->
+            <div class="flex items-center gap-3">
+              <!-- Prev Button (Mobile/Tablet) -->
+              <button 
+                @click="prevTemplatePage"
+                :disabled="currentTemplatePage === 0"
+                class="lg:hidden flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <i class="pi pi-chevron-left"></i>
+              </button>
+
+              <!-- Page Dots -->
+              <div class="flex items-center gap-2">
+                <button
+                  v-for="page in totalTemplatePages"
+                  :key="page"
+                  @click="currentTemplatePage = page - 1"
+                  :class="[
+                    'w-3 h-3 rounded-full transition-all duration-300',
+                    currentTemplatePage === page - 1
+                      ? 'bg-blue-600 scale-110'
+                      : 'bg-slate-300 hover:bg-slate-400'
+                  ]"
+                  :aria-label="`Page ${page}`"
+                />
+              </div>
+
+              <!-- Next Button (Mobile/Tablet) -->
+              <button 
+                @click="nextTemplatePage"
+                :disabled="currentTemplatePage >= totalTemplatePages - 1"
+                class="lg:hidden flex items-center justify-center w-10 h-10 rounded-full bg-white shadow-md border border-slate-200 text-slate-600 hover:text-blue-600 hover:border-blue-300 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                <i class="pi pi-chevron-right"></i>
+              </button>
             </div>
           </div>
         </div>
@@ -228,13 +568,13 @@
         </div>
 
         <!-- Mode Tabs - Responsive -->
-        <div class="mb-8 sm:mb-12">
+        <div class="mb-6 sm:mb-8">
           <!-- Mobile: Horizontal scroll tabs -->
           <div class="flex gap-2 overflow-x-auto pb-2 sm:hidden scrollbar-hide px-1">
             <button 
               v-for="mode in contentModes" 
               :key="mode.key"
-              @click="selectedMode = mode.key"
+              @click="selectMode(mode.key)"
               :class="[
                 'flex-shrink-0 flex items-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all whitespace-nowrap',
                 selectedMode === mode.key 
@@ -252,7 +592,7 @@
             <button 
               v-for="mode in contentModes" 
               :key="mode.key"
-              @click="selectedMode = mode.key"
+              @click="selectMode(mode.key)"
               :class="[
                 'flex items-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-300',
                 selectedMode === mode.key 
@@ -264,6 +604,52 @@
               <span>{{ $t(`landing.content_modes.${mode.key}.name`) }}</span>
             </button>
           </div>
+        </div>
+        
+        <!-- Grouping Options (only for modes that support grouping) -->
+        <div v-if="currentModeSupportsGrouping" class="mb-8 sm:mb-12">
+          <div class="flex justify-center">
+            <div class="inline-flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+              <button 
+                @click="selectedGrouping = 'none'"
+                :class="[
+                  'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                  selectedGrouping === 'none'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                ]"
+              >
+                {{ $t('landing.content_modes.grouping_flat') }}
+              </button>
+              <button 
+                @click="selectedGrouping = 'expanded'"
+                :class="[
+                  'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                  selectedGrouping === 'expanded'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                ]"
+              >
+                {{ $t('landing.content_modes.grouping_expanded') }}
+              </button>
+              <button 
+                @click="selectedGrouping = 'collapsed'"
+                :class="[
+                  'px-4 py-2 rounded-lg text-sm font-medium transition-all',
+                  selectedGrouping === 'collapsed'
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                ]"
+              >
+                {{ $t('landing.content_modes.grouping_collapsed') }}
+              </button>
+            </div>
+          </div>
+          <p class="text-center text-sm text-slate-500 mt-3">
+            {{ selectedGrouping === 'none' ? $t('landing.content_modes.grouping_flat_desc') : 
+               selectedGrouping === 'expanded' ? $t('landing.content_modes.grouping_expanded_desc') : 
+               $t('landing.content_modes.grouping_collapsed_desc') }}
+          </p>
         </div>
 
         <!-- Mode Display -->
@@ -302,59 +688,12 @@
                       </div>
                     </div>
                     
-                    <!-- Grouped Mode -->
-                    <div v-else-if="selectedMode === 'grouped'" class="space-y-4 animate-fade-in">
-                      <div class="h-5 bg-white/20 rounded w-1/2 mb-2"></div>
-                      <!-- Category 1 -->
-                      <div class="space-y-2">
-                        <div class="h-3 bg-purple-400/40 rounded w-1/3 uppercase"></div>
-                        <div class="flex items-center gap-3 bg-white/10 rounded-lg p-3">
-                          <div class="w-8 h-8 bg-white/20 rounded-lg"></div>
-                          <div class="flex-1 space-y-1">
-                            <div class="h-3 bg-white/20 rounded w-3/4"></div>
-                            <div class="h-2 bg-white/10 rounded w-1/2"></div>
-                          </div>
-                        </div>
-                        <div class="flex items-center gap-3 bg-white/10 rounded-lg p-3">
-                          <div class="w-8 h-8 bg-white/20 rounded-lg"></div>
-                          <div class="flex-1 space-y-1">
-                            <div class="h-3 bg-white/20 rounded w-2/3"></div>
-                            <div class="h-2 bg-white/10 rounded w-1/3"></div>
-                          </div>
-                        </div>
-                      </div>
-                      <!-- Category 2 -->
-                      <div class="space-y-2">
-                        <div class="h-3 bg-purple-400/40 rounded w-1/4 uppercase"></div>
-                        <div class="flex items-center gap-3 bg-white/10 rounded-lg p-3">
-                          <div class="w-8 h-8 bg-white/20 rounded-lg"></div>
-                          <div class="flex-1 space-y-1">
-                            <div class="h-3 bg-white/20 rounded w-1/2"></div>
-                            <div class="h-2 bg-white/10 rounded w-2/5"></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- List Mode -->
-                    <div v-else-if="selectedMode === 'list'" class="space-y-3 animate-fade-in">
-                      <div class="h-5 bg-white/20 rounded w-2/3 mb-4"></div>
-                      <div v-for="i in 5" :key="i" class="flex items-center gap-3 bg-white/10 rounded-xl p-3">
-                        <div class="w-10 h-10 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-lg flex items-center justify-center">
-                          <i class="pi pi-link text-white/50 text-sm"></i>
-                        </div>
-                        <div class="flex-1">
-                          <div class="h-3 bg-white/20 rounded w-3/4 mb-1"></div>
-                          <div class="h-2 bg-white/10 rounded w-1/2"></div>
-                        </div>
-                        <i class="pi pi-chevron-right text-white/30 text-xs"></i>
-                      </div>
-                    </div>
-                    
                     <!-- Grid Mode -->
                     <div v-else-if="selectedMode === 'grid'" class="animate-fade-in">
                       <div class="h-5 bg-white/20 rounded w-1/2 mb-4"></div>
-                      <div class="grid grid-cols-2 gap-3">
+                      
+                      <!-- Flat Grid -->
+                      <div v-if="selectedGrouping === 'none'" class="grid grid-cols-2 gap-3">
                         <div v-for="i in 4" :key="i" class="bg-white/10 rounded-xl overflow-hidden">
                           <div class="aspect-square bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
                             <i class="pi pi-image text-white/30 text-2xl"></i>
@@ -364,12 +703,106 @@
                           </div>
                         </div>
                       </div>
+                      
+                      <!-- Grouped Expanded Grid -->
+                      <div v-else-if="selectedGrouping === 'expanded'" class="space-y-4">
+                        <div class="space-y-2">
+                          <div class="h-3 bg-amber-400/50 rounded w-1/3"></div>
+                          <div class="grid grid-cols-2 gap-2">
+                            <div v-for="i in 2" :key="i" class="bg-white/10 rounded-lg overflow-hidden">
+                              <div class="aspect-square bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                                <i class="pi pi-image text-white/30 text-lg"></i>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="space-y-2">
+                          <div class="h-3 bg-amber-400/50 rounded w-1/4"></div>
+                          <div class="grid grid-cols-2 gap-2">
+                            <div v-for="i in 2" :key="i" class="bg-white/10 rounded-lg overflow-hidden">
+                              <div class="aspect-square bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                                <i class="pi pi-image text-white/30 text-lg"></i>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Grouped Collapsed Grid (Categories only) -->
+                      <div v-else class="space-y-3">
+                        <div v-for="i in 3" :key="i" class="bg-white/10 rounded-xl p-4 flex items-center gap-3">
+                          <div class="w-12 h-12 bg-gradient-to-br from-amber-500/30 to-orange-500/30 rounded-lg flex items-center justify-center">
+                            <i class="pi pi-folder text-white/50"></i>
+                          </div>
+                          <div class="flex-1">
+                            <div class="h-4 bg-white/20 rounded w-2/3 mb-1"></div>
+                            <div class="h-2 bg-white/10 rounded w-1/3"></div>
+                          </div>
+                          <i class="pi pi-chevron-right text-white/30"></i>
+                        </div>
+                      </div>
                     </div>
                     
-                    <!-- Inline Mode (Full-width cards, one per row) -->
-                    <div v-else-if="selectedMode === 'inline'" class="animate-fade-in">
+                    <!-- List Mode -->
+                    <div v-else-if="selectedMode === 'list'" class="animate-fade-in">
                       <div class="h-5 bg-white/20 rounded w-2/3 mb-4"></div>
-                      <div class="space-y-3">
+                      
+                      <!-- Flat List -->
+                      <div v-if="selectedGrouping === 'none'" class="space-y-3">
+                        <div v-for="i in 5" :key="i" class="flex items-center gap-3 bg-white/10 rounded-xl p-3">
+                          <div class="w-10 h-10 bg-gradient-to-br from-blue-500/30 to-purple-500/30 rounded-lg flex items-center justify-center">
+                            <i class="pi pi-file text-white/50 text-sm"></i>
+                          </div>
+                          <div class="flex-1">
+                            <div class="h-3 bg-white/20 rounded w-3/4 mb-1"></div>
+                            <div class="h-2 bg-white/10 rounded w-1/2"></div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Grouped Expanded List -->
+                      <div v-else-if="selectedGrouping === 'expanded'" class="space-y-4">
+                        <div class="space-y-2">
+                          <div class="h-3 bg-amber-400/50 rounded w-1/3"></div>
+                          <div v-for="i in 2" :key="i" class="flex items-center gap-3 bg-white/10 rounded-lg p-2.5 ml-2">
+                            <div class="w-8 h-8 bg-white/20 rounded-lg"></div>
+                            <div class="flex-1">
+                              <div class="h-3 bg-white/20 rounded w-3/4"></div>
+                            </div>
+                          </div>
+                        </div>
+                        <div class="space-y-2">
+                          <div class="h-3 bg-amber-400/50 rounded w-1/4"></div>
+                          <div v-for="i in 2" :key="i" class="flex items-center gap-3 bg-white/10 rounded-lg p-2.5 ml-2">
+                            <div class="w-8 h-8 bg-white/20 rounded-lg"></div>
+                            <div class="flex-1">
+                              <div class="h-3 bg-white/20 rounded w-2/3"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Grouped Collapsed List (Categories only) -->
+                      <div v-else class="space-y-3">
+                        <div v-for="i in 4" :key="i" class="bg-white/10 rounded-xl p-4 flex items-center gap-3">
+                          <div class="w-10 h-10 bg-gradient-to-br from-amber-500/30 to-orange-500/30 rounded-lg flex items-center justify-center">
+                            <i class="pi pi-folder text-white/50 text-sm"></i>
+                          </div>
+                          <div class="flex-1">
+                            <div class="h-4 bg-white/20 rounded w-1/2 mb-1"></div>
+                            <div class="h-2 bg-white/10 rounded w-1/4"></div>
+                          </div>
+                          <i class="pi pi-chevron-right text-white/30 text-sm"></i>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <!-- Cards Mode -->
+                    <div v-else-if="selectedMode === 'cards'" class="animate-fade-in">
+                      <div class="h-5 bg-white/20 rounded w-2/3 mb-4"></div>
+                      
+                      <!-- Flat Cards -->
+                      <div v-if="selectedGrouping === 'none'" class="space-y-3">
                         <div v-for="i in 2" :key="i" class="bg-white/10 rounded-xl overflow-hidden">
                           <div class="aspect-[16/9] bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
                             <i class="pi pi-image text-white/30 text-2xl"></i>
@@ -377,12 +810,47 @@
                           <div class="p-3 space-y-2">
                             <div class="h-4 bg-white/20 rounded w-3/4"></div>
                             <div class="h-2 bg-white/10 rounded w-full"></div>
-                            <div class="h-2 bg-white/10 rounded w-2/3"></div>
-                            <div class="flex items-center gap-1 mt-1">
-                              <div class="h-2 bg-white/15 rounded w-16"></div>
-                              <i class="pi pi-arrow-right text-white/20 text-[8px]"></i>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Grouped Expanded Cards -->
+                      <div v-else-if="selectedGrouping === 'expanded'" class="space-y-4">
+                        <div class="space-y-2">
+                          <div class="h-3 bg-amber-400/50 rounded w-1/3"></div>
+                          <div class="bg-white/10 rounded-lg overflow-hidden">
+                            <div class="aspect-[2/1] bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center">
+                              <i class="pi pi-image text-white/30 text-xl"></i>
+                            </div>
+                            <div class="p-2">
+                              <div class="h-3 bg-white/20 rounded w-2/3"></div>
                             </div>
                           </div>
+                        </div>
+                        <div class="space-y-2">
+                          <div class="h-3 bg-amber-400/50 rounded w-1/4"></div>
+                          <div class="bg-white/10 rounded-lg overflow-hidden">
+                            <div class="aspect-[2/1] bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
+                              <i class="pi pi-image text-white/30 text-xl"></i>
+                            </div>
+                            <div class="p-2">
+                              <div class="h-3 bg-white/20 rounded w-1/2"></div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <!-- Grouped Collapsed Cards (Categories only) -->
+                      <div v-else class="space-y-3">
+                        <div v-for="i in 3" :key="i" class="bg-white/10 rounded-xl p-4 flex items-center gap-3">
+                          <div class="w-14 h-14 bg-gradient-to-br from-amber-500/30 to-orange-500/30 rounded-lg flex items-center justify-center">
+                            <i class="pi pi-folder text-white/50 text-lg"></i>
+                          </div>
+                          <div class="flex-1">
+                            <div class="h-4 bg-white/20 rounded w-2/3 mb-1"></div>
+                            <div class="h-2 bg-white/10 rounded w-1/2"></div>
+                          </div>
+                          <i class="pi pi-chevron-right text-white/30"></i>
                         </div>
                       </div>
                     </div>
@@ -438,6 +906,70 @@
                     <p class="text-slate-600">{{ $t('landing.content_modes.mobile_desc') || 'Responsive design that looks perfect on any device.' }}</p>
                   </div>
                 </div>
+                
+                <!-- Grouping Option (for Grid, List, Cards) -->
+                <div v-if="currentModeSupportsGrouping" class="flex items-start gap-3">
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+                       :class="selectedGrouping !== 'none' ? 'bg-amber-100' : 'bg-slate-100'">
+                    <i :class="selectedGrouping !== 'none' ? 'pi pi-folder text-amber-600' : 'pi pi-minus text-slate-400'"></i>
+                  </div>
+                  <div>
+                    <h4 class="font-semibold text-slate-900 mb-1">
+                      {{ selectedGrouping === 'none' ? $t('landing.content_modes.grouping_flat') : 
+                         selectedGrouping === 'expanded' ? $t('landing.content_modes.grouping_expanded') : 
+                         $t('landing.content_modes.grouping_collapsed') }}
+                    </h4>
+                    <p class="text-slate-600">
+                      {{ selectedGrouping === 'none' ? $t('landing.content_modes.grouping_flat_desc') : 
+                         selectedGrouping === 'expanded' ? $t('landing.content_modes.grouping_expanded_desc') : 
+                         $t('landing.content_modes.grouping_collapsed_desc') }}
+                    </p>
+                  </div>
+                </div>
+                
+                <!-- AI Assistant Context -->
+                <div class="mt-6 pt-6 border-t border-slate-200">
+                  <h4 class="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                    <i class="pi pi-sparkles text-blue-600"></i>
+                    {{ $t('landing.content_modes.ai_context_label') || 'AI Assistant Context' }}
+                  </h4>
+                  
+                  <!-- Single Mode: One unified AI assistant -->
+                  <div v-if="selectedMode === 'single'" class="space-y-2">
+                    <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-4 border border-blue-200">
+                      <div class="flex items-center gap-2 mb-2">
+                        <div class="w-6 h-6 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                          <i class="pi pi-sparkles text-white text-xs"></i>
+                        </div>
+                        <span class="text-sm font-semibold text-slate-800">{{ $t('landing.content_modes.ai_assistant') || 'AI Assistant' }}</span>
+                      </div>
+                      <p class="text-sm text-slate-600">{{ $t(`landing.content_modes.${selectedMode}.ai_single`) }}</p>
+                      <p class="text-xs text-slate-500 mt-2 italic">{{ $t(`landing.content_modes.${selectedMode}.ai_note`) }}</p>
+                    </div>
+                  </div>
+                  
+                  <!-- Other Modes: Dual AI assistants -->
+                  <div v-else class="space-y-3">
+                    <div class="bg-white rounded-lg p-3 border border-blue-100">
+                      <div class="flex items-center gap-2 mb-1">
+                        <div class="w-5 h-5 bg-gradient-to-br from-blue-600 to-purple-600 rounded flex items-center justify-center">
+                          <i class="pi pi-comments text-white text-xs"></i>
+                        </div>
+                        <span class="text-sm font-medium text-blue-800">{{ $t('landing.content_modes.ai_general_label') || 'General Assistant' }}</span>
+                      </div>
+                      <p class="text-xs text-slate-600 ml-7">{{ $t(`landing.content_modes.${selectedMode}.ai_general`) }}</p>
+                    </div>
+                    <div class="bg-white rounded-lg p-3 border border-emerald-100">
+                      <div class="flex items-center gap-2 mb-1">
+                        <div class="w-5 h-5 bg-gradient-to-br from-emerald-500 to-teal-500 rounded flex items-center justify-center">
+                          <i class="pi pi-info-circle text-white text-xs"></i>
+                        </div>
+                        <span class="text-sm font-medium text-emerald-800">{{ $t('landing.content_modes.ai_item_label') || 'Item Assistant' }}</span>
+                      </div>
+                      <p class="text-xs text-slate-600 ml-7">{{ $t(`landing.content_modes.${selectedMode}.ai_item`) }}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
               
               <button 
@@ -453,7 +985,7 @@
       </div>
     </section>
 
-    <!-- How CardStudio Works -->
+    <!-- How ExperienceQR Works -->
     <section class="py-20 sm:py-32 bg-gradient-to-b from-white to-slate-50 relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12 sm:mb-20">
@@ -524,8 +1056,8 @@
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(180,120,255,0.15),transparent_50%)]"></div>
       </div>
       
-      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-          <div class="text-center mb-12 sm:mb-20">
+      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+        <div class="text-center mb-12 sm:mb-16">
           <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 sm:mb-6">
             {{ $t('landing.pricing.title') }} <span class="bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">{{ $t('landing.pricing.title_highlight') }}</span>
           </h2>
@@ -534,81 +1066,128 @@
           </p>
         </div>
 
-        <div class="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 overflow-hidden">
-          <div class="bg-gradient-to-r from-blue-600/10 to-purple-600/10 p-8 border-b border-white/10">
-            <div class="text-center">
-              <div class="flex items-baseline justify-center gap-2 mb-2">
-                <span class="text-6xl lg:text-7xl font-black text-white">$2</span>
-                <span class="text-2xl text-blue-300">USD</span>
-              </div>
-              <p class="text-xl text-blue-200">per card</p>
-            </div>
-          </div>
-
-          <div class="p-8 lg:p-12">
-            <div class="grid lg:grid-cols-2 gap-12 mb-8">
-              <div>
-                <h3 class="text-2xl font-bold text-white mb-6">{{ $t('landing.pricing.details_title') }}</h3>
-                <div class="space-y-4 text-blue-100">
-                  <div class="bg-white/5 rounded-xl p-4">
-                    <div class="flex justify-between items-center">
-                      <span>{{ $t('landing.pricing.cost_to_you') }}</span>
-                      <span class="font-bold text-white">{{ $t('landing.pricing.cost_value') }}</span>
-                    </div>
-                  </div>
-                  <div class="bg-white/5 rounded-xl p-4">
-                    <div class="flex justify-between items-center">
-                      <span>{{ $t('landing.pricing.suggested_retail') }}</span>
-                      <span class="font-bold text-white">{{ $t('landing.pricing.retail_value') }}</span>
-                    </div>
-                  </div>
-                  <div class="bg-emerald-500/10 rounded-xl p-4 border border-emerald-500/20">
-                    <div class="flex justify-between items-center">
-                      <span>{{ $t('landing.pricing.profit_margin') }}</span>
-                      <span class="font-bold text-emerald-400">{{ $t('landing.pricing.profit_value') }}</span>
-                    </div>
-                  </div>
-                  <div class="text-sm text-blue-300 pt-4">
-                    <i class="pi pi-info-circle mr-2"></i>
-                    {{ $t('landing.pricing.alternative_note') }}
-                  </div>
+        <!-- Subscription Tiers -->
+        <div class="grid lg:grid-cols-2 gap-6 lg:gap-8 mb-12 max-w-4xl mx-auto">
+          <!-- Free Tier -->
+          <div class="bg-gradient-to-br from-slate-500/10 to-slate-600/10 backdrop-blur-xl rounded-3xl border border-slate-400/30 overflow-hidden hover:border-slate-400/50 transition-all duration-300">
+            <div class="bg-gradient-to-r from-slate-600/20 to-slate-700/20 p-6 border-b border-white/10">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl flex items-center justify-center">
+                  <i class="pi pi-user text-white text-lg"></i>
                 </div>
+                <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.free_tier.title') }}</h3>
               </div>
-
-              <div>
-                <h3 class="text-2xl font-bold text-white mb-6">{{ $t('landing.pricing.included_title') }}</h3>
-                <ul class="space-y-4">
-                  <li v-for="feature in pricingFeatures" :key="feature" 
-                      class="flex items-center gap-3 text-blue-100">
-                    <div class="w-6 h-6 bg-emerald-500/20 rounded-full flex items-center justify-center flex-shrink-0">
-                      <i class="pi pi-check text-emerald-400 text-sm"></i>
-                    </div>
-                    <span>{{ feature }}</span>
-                  </li>
-                </ul>
+              <div class="flex items-baseline gap-2">
+                <span class="text-5xl font-black text-white">{{ $t('landing.pricing.free_tier.price') }}</span>
+                <span class="text-xl text-slate-300">{{ $t('landing.pricing.free_tier.per') }}</span>
               </div>
+              <p class="text-slate-300 mt-2 text-sm">{{ $t('landing.pricing.free_tier.desc') }}</p>
             </div>
-
-            <div class="bg-white/5 rounded-xl p-6 mb-8">
-              <div class="flex items-center justify-between">
-                <div>
-                  <p class="text-white font-semibold mb-1">{{ $t('landing.pricing.minimum_order') }}</p>
-                  <p class="text-blue-200 text-sm">{{ $t('landing.pricing.minimum_cards', { count: minBatchQuantity }) }}</p>
-                </div>
-                <div class="text-4xl">📦</div>
-              </div>
-            </div>
-
-            <div class="text-center px-4">
-              <Button 
-                @click="scrollToContact"
-                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-2xl hover:shadow-blue-500/25 transition-all transform hover:scale-105 rounded-xl min-h-[56px]"
+            <div class="p-6">
+              <ul class="space-y-3 mb-6">
+                <li v-for="(feature, idx) in freeTierFeatures" :key="idx" class="flex items-center gap-3 text-slate-100">
+                  <div class="w-5 h-5 bg-slate-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="pi pi-check text-slate-400 text-xs"></i>
+                  </div>
+                  <span class="text-sm">{{ feature }}</span>
+                </li>
+              </ul>
+              <button
+                @click="handleGetStarted"
+                class="w-full py-3 px-6 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold rounded-xl transition-all duration-300"
               >
-                {{ $t('landing.pricing.cta') }}
-              </Button>
-              <p class="text-blue-300 text-sm mt-4">{{ $t('landing.pricing.footer_text') }}</p>
+                {{ $t('landing.pricing.free_tier.cta') }}
+              </button>
             </div>
           </div>
+
+          <!-- Premium Tier -->
+          <div class="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-xl rounded-3xl border-2 border-blue-400/50 overflow-hidden hover:border-blue-400/70 transition-all duration-300 relative">
+            <!-- Popular Badge -->
+            <div class="absolute top-4 right-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+              {{ $t('landing.pricing.premium_tier.popular') }}
+            </div>
+            <div class="bg-gradient-to-r from-blue-600/20 to-purple-600/20 p-6 border-b border-white/10">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+                  <i class="pi pi-star text-white text-lg"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.premium_tier.title') }}</h3>
+              </div>
+              <div class="flex items-baseline gap-2">
+                <span class="text-5xl font-black text-white">{{ $t('landing.pricing.premium_tier.price') }}</span>
+                <span class="text-xl text-blue-200">{{ $t('landing.pricing.premium_tier.per') }}</span>
+              </div>
+              <p class="text-blue-200 mt-2 text-sm">{{ $t('landing.pricing.premium_tier.desc') }}</p>
+            </div>
+            <div class="p-6">
+              <ul class="space-y-3 mb-6">
+                <li v-for="(feature, idx) in premiumTierFeatures" :key="idx" class="flex items-center gap-3 text-blue-100">
+                  <div class="w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="pi pi-check text-blue-400 text-xs"></i>
+                  </div>
+                  <span class="text-sm">{{ feature }}</span>
+                </li>
+              </ul>
+              <button
+                @click="handleGetStarted"
+                class="w-full py-3 px-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                {{ $t('landing.pricing.premium_tier.cta') }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Physical Cards Add-on -->
+        <div class="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-xl rounded-3xl border border-amber-400/30 p-6 sm:p-8 mb-8 max-w-4xl mx-auto">
+          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6">
+            <div class="flex items-center gap-4">
+              <div class="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
+                <i class="pi pi-id-card text-white text-2xl"></i>
+              </div>
+              <div>
+                <div class="flex items-center gap-2">
+                  <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.physical_cards.title') }}</h3>
+                  <span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full">{{ $t('landing.pricing.physical_cards.subtitle') }}</span>
+                </div>
+                <p class="text-amber-200 text-sm mt-1">{{ $t('landing.pricing.physical_cards.desc') }}</p>
+              </div>
+            </div>
+            <div class="flex items-baseline gap-2 sm:ml-auto">
+              <span class="text-4xl font-black text-white">{{ $t('landing.pricing.physical_cards.price') }}</span>
+              <span class="text-lg text-amber-200">{{ $t('landing.pricing.physical_cards.per') }}</span>
+            </div>
+          </div>
+          <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
+            <div v-for="(feature, idx) in physicalCardFeatures" :key="idx" class="flex items-center gap-2 text-amber-100 text-sm">
+              <i class="pi pi-check text-amber-400 text-xs"></i>
+              <span>{{ feature }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Everything Included Section -->
+        <div class="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-6 sm:p-8 mb-8 max-w-4xl mx-auto">
+          <h3 class="text-2xl font-bold text-white mb-6 text-center">{{ $t('landing.pricing.included_title') }}</h3>
+          <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div v-for="feature in pricingFeatures" :key="feature" class="flex items-center gap-3 text-blue-100">
+              <div class="w-6 h-6 bg-emerald-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                <i class="pi pi-check text-emerald-400 text-sm"></i>
+              </div>
+              <span class="text-sm">{{ feature }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="text-center px-4">
+          <Button 
+            @click="handleGetStarted"
+            class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold shadow-2xl hover:shadow-blue-500/25 transition-all transform hover:scale-105 rounded-xl min-h-[56px]"
+          >
+            {{ $t('landing.pricing.cta') }}
+          </Button>
+          <p class="text-blue-300 text-sm mt-4">{{ $t('landing.pricing.footer_text') }}</p>
         </div>
       </div>
     </section>
@@ -649,177 +1228,6 @@
       </div>
     </section>
 
-    <!-- Contact Section with Form -->
-    <section id="contact" class="py-20 sm:py-32 bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 relative overflow-hidden">
-      <div class="absolute inset-0">
-        <div class="absolute inset-0 bg-[url('/grid.svg')] bg-center opacity-10"></div>
-      </div>
-      
-      <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div class="text-center mb-12 sm:mb-16">
-          <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 sm:mb-6">
-            {{ $t('landing.contact.title_line1') }}<br />
-            <span class="text-yellow-300">{{ $t('landing.contact.title_line2') }}</span>
-          </h2>
-          <p class="text-lg sm:text-xl text-white/90 max-w-3xl mx-auto px-2">
-            {{ $t('landing.contact.subtitle') }}
-          </p>
-        </div>
-        
-        <div class="bg-white rounded-3xl p-8 lg:p-12 shadow-2xl">
-          <!-- What You Can Do -->
-          <div class="mb-10">
-            <h3 class="text-2xl font-bold text-slate-900 mb-6">{{ $t('landing.contact.what_you_can_do') }}</h3>
-            <div class="grid md:grid-cols-2 gap-4">
-              <div class="flex items-start gap-3">
-                <div class="text-2xl">🚀</div>
-                <div>
-                  <p class="font-semibold text-slate-900">{{ $t('landing.contact.actions.pilot_title') }}</p>
-                  <p class="text-sm text-slate-600">{{ $t('landing.contact.actions.pilot_desc') }}</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <div class="text-2xl">💡</div>
-                <div>
-                  <p class="font-semibold text-slate-900">{{ $t('landing.contact.actions.info_title') }}</p>
-                  <p class="text-sm text-slate-600">{{ $t('landing.contact.actions.info_desc') }}</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <div class="text-2xl">🤝</div>
-                <div>
-                  <p class="font-semibold text-slate-900">{{ $t('landing.contact.actions.partnership_title') }}</p>
-                  <p class="text-sm text-slate-600">{{ $t('landing.contact.actions.partnership_desc') }}</p>
-                </div>
-              </div>
-              <div class="flex items-start gap-3">
-                <div class="text-2xl">❓</div>
-                <div>
-                  <p class="font-semibold text-slate-900">{{ $t('landing.contact.actions.questions_title') }}</p>
-                  <p class="text-sm text-slate-600">{{ $t('landing.contact.actions.questions_desc') }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Contact Form CTA - Enhanced -->
-          <div class="relative overflow-hidden">
-            <!-- Background decoration -->
-            <div class="absolute inset-0 bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 rounded-3xl"></div>
-            <div class="absolute inset-0 bg-grid-slate-100 [mask-image:linear-gradient(0deg,transparent,rgba(255,255,255,0.6))] rounded-3xl"></div>
-            
-            <!-- Content -->
-            <div class="relative text-center py-16 px-6 sm:px-12">
-              <!-- Icon with pulse animation -->
-              <div class="relative inline-flex items-center justify-center mb-8">
-                <div class="absolute inset-0 bg-gradient-to-br from-blue-400 to-purple-400 rounded-2xl blur-xl opacity-30 animate-pulse"></div>
-                <div class="relative p-5 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl shadow-lg">
-                  <i class="pi pi-send text-5xl text-white"></i>
-              </div>
-              </div>
-
-              <!-- Title with gradient text -->
-              <h3 class="text-2xl sm:text-3xl lg:text-4xl font-bold mb-4 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
-                {{ $t('landing.contact.form_cta.title') }}
-              </h3>
-              
-              <!-- Description -->
-              <p class="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto mb-8 leading-relaxed">
-                {{ $t('landing.contact.form_cta.description') }}
-              </p>
-
-              <!-- Key Benefits -->
-              <div class="flex flex-wrap items-center justify-center gap-4 sm:gap-6 mb-10 text-sm sm:text-base">
-                <div class="flex items-center gap-2 text-slate-700">
-                  <div class="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-                    <i class="pi pi-check text-green-600 text-xs"></i>
-                  </div>
-                  <span class="font-medium">{{ $t('landing.contact.form_cta.benefits.fast_response') }}</span>
-                </div>
-                <div class="flex items-center gap-2 text-slate-700">
-                  <div class="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center">
-                    <i class="pi pi-shield text-blue-600 text-xs"></i>
-                  </div>
-                  <span class="font-medium">{{ $t('landing.contact.form_cta.benefits.confidential') }}</span>
-                </div>
-                <div class="flex items-center gap-2 text-slate-700">
-                  <div class="w-6 h-6 rounded-full bg-purple-100 flex items-center justify-center">
-                    <i class="pi pi-users text-purple-600 text-xs"></i>
-                  </div>
-                  <span class="font-medium">{{ $t('landing.contact.form_cta.benefits.personal_service') }}</span>
-                </div>
-            </div>
-
-              <!-- CTA Button & Response Time - Vertically Stacked -->
-              <div class="flex flex-col items-center gap-6">
-                <!-- CTA Button - Enhanced -->
-            <a 
-              :href="contactFormUrl" 
-              target="_blank" 
-              rel="noopener noreferrer"
-                  class="inline-block group"
-            >
-              <Button 
-                :label="$t('landing.contact.form_cta.button')"
-                    icon="pi pi-arrow-right"
-                iconPos="right"
-                    class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white border-0 px-10 sm:px-14 py-4 sm:py-6 text-base sm:text-lg font-bold shadow-2xl hover:shadow-blue-500/50 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1 rounded-2xl"
-              />
-            </a>
-
-                <!-- Response time badge -->
-                <div class="inline-flex items-center gap-2 px-6 py-3 bg-white/80 backdrop-blur-sm rounded-full shadow-md border border-slate-200">
-                  <div class="relative">
-                    <i class="pi pi-clock text-blue-600"></i>
-                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-ping"></span>
-                    <span class="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full"></span>
-                  </div>
-                  <span class="text-sm font-medium text-slate-700">
-              {{ $t('landing.contact.form_cta.response_time') }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Alternative Contact Methods -->
-          <div class="mt-12 pt-12 border-t border-slate-200">
-            <h3 class="text-xl font-bold text-slate-900 mb-6 text-center">{{ $t('landing.contact.alternative_title') }}</h3>
-            <div class="grid md:grid-cols-2 gap-6">
-              <a :href="`mailto:${contactEmail}`" 
-                 class="flex items-center gap-4 p-6 bg-gradient-to-br from-blue-50 to-purple-50 rounded-2xl hover:shadow-lg transition-all border border-blue-200">
-                <div class="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <i class="pi pi-envelope text-white text-lg"></i>
-                </div>
-                <div>
-                  <p class="font-semibold text-slate-900">{{ $t('landing.contact.email_label') }}</p>
-                  <p class="text-blue-600 text-sm">{{ contactEmail }}</p>
-                </div>
-              </a>
-              
-              <a :href="contactWhatsApp" target="_blank"
-                 class="flex items-center gap-4 p-6 bg-gradient-to-br from-emerald-50 to-teal-50 rounded-2xl hover:shadow-lg transition-all border border-emerald-200">
-                <div class="w-12 h-12 bg-gradient-to-br from-emerald-600 to-teal-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <i class="pi pi-comments text-white text-lg"></i>
-                </div>
-                <div>
-                  <p class="font-semibold text-slate-900">{{ $t('landing.contact.whatsapp_label') }}</p>
-                  <p class="text-emerald-600 text-sm">{{ contactWhatsAppDisplay }}</p>
-                </div>
-              </a>
-            </div>
-          </div>
-
-          <div class="mt-8 text-center">
-            <p class="text-sm text-slate-500">
-              <i class="pi pi-shield mr-2"></i>
-              {{ $t('landing.contact.security_note') }}
-            </p>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- Footer -->
     <footer class="bg-slate-900 text-white py-16">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -830,7 +1238,7 @@
               <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
                 <i class="pi pi-id-card text-white text-xl"></i>
               </div>
-              <span class="text-xl font-bold">CardStudio</span>
+              <span class="text-xl font-bold">ExperienceQR</span>
             </div>
             <p class="text-slate-400">
               {{ $t('landing.footer.description') }}
@@ -844,7 +1252,6 @@
               <li><a @click="scrollToSection('about')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.about') }}</a></li>
               <li><a @click="scrollToSection('demo')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.demo') }}</a></li>
               <li><a @click="scrollToSection('pricing')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.pricing') }}</a></li>
-              <li><a @click="scrollToSection('contact')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.contact') }}</a></li>
             </ul>
           </div>
 
@@ -902,6 +1309,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useSEO } from '@/composables/useSEO'
+import { supabase } from '@/lib/supabase'
 import Button from 'primevue/button'
 import QrCode from 'qrcode.vue'
 import { getCardAspectRatio } from '@/utils/cardConfig'
@@ -915,14 +1323,87 @@ const { updateSEO } = useSEO()
 const mobileMenuOpen = ref(false)
 const showFloatingCta = ref(false)
 
-// Sample QR code URL
-const sampleQrUrl = ref(import.meta.env.VITE_SAMPLE_QR_URL || `${window.location.origin}/c/demo-ancient-artifacts`)
+// Demo Templates state
+const demoTemplates = ref([])
+const isLoadingTemplates = ref(false)
+const currentTemplatePage = ref(0)
+const templatesPerPage = 6  // 3 columns x 2 rows
+const selectedVenueType = ref(null)
 
-// Demo card configuration
+// Venue filter scroll indicators (mobile)
+const venueFilterScroll = ref(null)
+const canScrollLeft = ref(false)
+const canScrollRight = ref(true)
+
+const updateScrollIndicators = () => {
+  if (!venueFilterScroll.value) return
+  const el = venueFilterScroll.value
+  canScrollLeft.value = el.scrollLeft > 10
+  canScrollRight.value = el.scrollLeft < el.scrollWidth - el.clientWidth - 10
+}
+
+// Extract unique venue types from templates
+const availableVenueTypes = computed(() => {
+  const types = new Set()
+  demoTemplates.value.forEach(t => {
+    if (t.venue_type) types.add(t.venue_type)
+  })
+  return Array.from(types).sort()
+})
+
+// Filter templates by selected venue type
+const filteredTemplates = computed(() => {
+  if (!selectedVenueType.value) return demoTemplates.value
+  return demoTemplates.value.filter(t => t.venue_type === selectedVenueType.value)
+})
+
+// Pagination computed properties (now based on filtered templates)
+const totalTemplatePages = computed(() => Math.ceil(filteredTemplates.value.length / templatesPerPage))
+const paginatedTemplates = computed(() => {
+  const start = currentTemplatePage.value * templatesPerPage
+  return filteredTemplates.value.slice(start, start + templatesPerPage)
+})
+
+// Select venue type and reset pagination
+const selectVenueType = (type) => {
+  selectedVenueType.value = type
+  currentTemplatePage.value = 0
+}
+
+// Pagination functions
+const nextTemplatePage = () => {
+  if (currentTemplatePage.value < totalTemplatePages.value - 1) {
+    currentTemplatePage.value++
+  }
+}
+
+const prevTemplatePage = () => {
+  if (currentTemplatePage.value > 0) {
+    currentTemplatePage.value--
+  }
+}
+
+// Demo mode toggle (physical card vs digital access) - defaults to digital
+const demoMode = ref('digital')
+
+// Physical Card Demo configuration
 const demoCardTitle = import.meta.env.VITE_DEMO_CARD_TITLE || 'Museum'
 const demoCardSubtitle = import.meta.env.VITE_DEMO_CARD_SUBTITLE || 'Scan to explore the exhibits\nActivate your interactive AI guide\nAvailable in multiple languages'
 const demoCardImageUrl = import.meta.env.VITE_DEFAULT_CARD_IMAGE_URL || '/Image/DemoCard.jpg'
+const demoCardUrl = import.meta.env.VITE_SAMPLE_QR_URL || ''
 const cardAspectRatio = computed(() => getCardAspectRatio())
+
+// Digital Access Demo configuration
+const digitalAccessDemoTitle = import.meta.env.VITE_DIGITAL_ACCESS_DEMO_TITLE || 'Digital Menu'
+const digitalAccessDemoSubtitle = import.meta.env.VITE_DIGITAL_ACCESS_DEMO_SUBTITLE || 'Scan for instant access'
+const digitalAccessDemoUrl = import.meta.env.VITE_DIGITAL_ACCESS_DEMO_URL || ''
+
+// Open demo URLs
+const openDemoUrl = (url) => {
+  if (url) {
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+}
 
 // Contact configuration
 const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || 'inquiry@cardstudio.org'
@@ -938,16 +1419,27 @@ const toggleFaq = (index) => {
 
 // Content Modes showcase
 const selectedMode = ref('list')
+const selectedGrouping = ref('none') // 'none', 'expanded', 'collapsed'
 const contentModes = [
-  { key: 'single', icon: 'pi-file' },
-  { key: 'grouped', icon: 'pi-folder' },
-  { key: 'list', icon: 'pi-list' },
-  { key: 'grid', icon: 'pi-th-large' },
-  { key: 'inline', icon: 'pi-clone' }
+  { key: 'single', icon: 'pi-file', supportsGrouping: false },
+  { key: 'grid', icon: 'pi-th-large', supportsGrouping: true },
+  { key: 'list', icon: 'pi-list', supportsGrouping: true },
+  { key: 'cards', icon: 'pi-clone', supportsGrouping: true }
 ]
 
-// Contact form URL from environment variables
-const contactFormUrl = import.meta.env.VITE_CONTACT_FORM_URL
+// Reset grouping when switching to a mode that doesn't support it
+const selectMode = (modeKey) => {
+  selectedMode.value = modeKey
+  const mode = contentModes.find(m => m.key === modeKey)
+  if (!mode?.supportsGrouping) {
+    selectedGrouping.value = 'none'
+  }
+}
+
+const currentModeSupportsGrouping = computed(() => {
+  const mode = contentModes.find(m => m.key === selectedMode.value)
+  return mode?.supportsGrouping ?? false
+})
 
 // Get i18n for locale watching
 const { t, locale } = useI18n()
@@ -1010,6 +1502,9 @@ onMounted(() => {
   // Initialize SEO
   updateSEO()
   
+  // Fetch demo templates
+  fetchDemoTemplates()
+  
   // Scroll listener
   window.addEventListener('scroll', handleScroll)
 
@@ -1062,9 +1557,6 @@ const scrollToSection = (sectionId) => {
   mobileMenuOpen.value = false
 }
 
-const scrollToContact = () => {
-  scrollToSection('contact')
-}
 
 const handleGetStarted = () => {
   if (authStore.isLoggedIn()) {
@@ -1074,8 +1566,62 @@ const handleGetStarted = () => {
   }
 }
 
-const openDemoCard = () => {
-  window.location.href = sampleQrUrl.value
+// Demo Templates functions
+const fetchDemoTemplates = async () => {
+  isLoadingTemplates.value = true
+  try {
+    const { data, error } = await supabase.rpc('get_demo_templates', { p_limit: 100 })
+    if (error) {
+      console.error('Error fetching demo templates:', error)
+      return
+    }
+    demoTemplates.value = data || []
+    currentTemplatePage.value = 0  // Reset to first page
+  } catch (err) {
+    console.error('Failed to fetch demo templates:', err)
+  } finally {
+    isLoadingTemplates.value = false
+    // Initialize scroll indicators after templates load
+    nextTick(() => updateScrollIndicators())
+  }
+}
+
+const getTemplateUrl = (template) => {
+  if (!template.access_url) return ''
+  return `${window.location.origin}/c/${template.access_url}`
+}
+
+const openTemplate = (template) => {
+  if (template.access_url) {
+    window.location.href = getTemplateUrl(template)
+  }
+}
+
+const getVenueIcon = (venueType) => {
+  const icons = {
+    'cultural': 'pi pi-building',
+    'food': 'pi pi-star',
+    'events': 'pi pi-calendar',
+    'hospitality': 'pi pi-heart',
+    'retail': 'pi pi-shopping-bag',
+    'tours': 'pi pi-map',
+    'general': 'pi pi-box'
+  }
+  return icons[venueType] || 'pi pi-tag'
+}
+
+const formatVenueType = (type) => {
+  if (!type) return ''
+  const labels = {
+    'cultural': 'Cultural & Arts',
+    'food': 'Food & Beverage',
+    'events': 'Events & Entertainment',
+    'hospitality': 'Hospitality & Wellness',
+    'retail': 'Shopping & Showrooms',
+    'tours': 'Tours & Education',
+    'general': 'General'
+  }
+  return labels[type] || type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ')
 }
 
 // Data (t and locale already declared above for locale watching)
@@ -1151,15 +1697,29 @@ const keyFeatures = computed(() => [
 
 const pricingFeatures = computed(() => [
   t('landing.pricing.features.ai_voice'),
-  t('landing.pricing.features.multilingual'),
+  t('landing.pricing.features.qr_access'),
   t('landing.pricing.features.design_dashboard'),
   t('landing.pricing.features.content_management'),
   t('landing.pricing.features.analytics'),
   t('landing.pricing.features.qr_generation'),
-  t('landing.pricing.features.print_management'),
   t('landing.pricing.features.cloud_hosting'),
   t('landing.pricing.features.support')
 ])
+
+const freeTierFeatures = computed(() => {
+  const features = t('landing.pricing.free_tier.features')
+  return Array.isArray(features) ? features : []
+})
+
+const premiumTierFeatures = computed(() => {
+  const features = t('landing.pricing.premium_tier.features')
+  return Array.isArray(features) ? features : []
+})
+
+const physicalCardFeatures = computed(() => {
+  const features = t('landing.pricing.physical_cards.features')
+  return Array.isArray(features) ? features : []
+})
 
 const faqs = computed(() => [
   {

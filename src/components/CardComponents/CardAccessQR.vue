@@ -3,88 +3,125 @@
     <!-- Header -->
     <div class="text-center">
       <h3 class="text-lg font-semibold text-slate-900 mb-2">{{ $t('batches.qr_codes_and_access') }}</h3>
-      <p class="text-slate-600">{{ $t('batches.generate_qr_codes') }}</p>
+      <p class="text-slate-600 text-sm">{{ $t('batches.generate_qr_codes') }}</p>
     </div>
     
     <!-- Loading State -->
-    <div v-if="loading" class="flex items-center justify-center py-12">
-      <i class="pi pi-spin pi-spinner text-4xl text-blue-600"></i>
+    <div v-if="loading" class="flex flex-col items-center justify-center py-12">
+      <div class="relative">
+        <div class="w-16 h-16 rounded-full bg-blue-100 animate-pulse"></div>
+        <i class="pi pi-spin pi-spinner text-3xl text-blue-600 absolute inset-0 flex items-center justify-center"></i>
+      </div>
+      <p class="text-slate-500 mt-4">{{ $t('common.loading') }}...</p>
     </div>
     
     <!-- No Batches State -->
-    <div v-else-if="!batches.length" class="text-center py-12">
-      <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+    <div v-else-if="!batches.length" class="bg-white rounded-xl shadow-lg border border-slate-200 p-8 text-center">
+      <div class="w-20 h-20 bg-gradient-to-br from-slate-100 to-slate-200 rounded-full flex items-center justify-center mx-auto mb-4">
         <i class="pi pi-qrcode text-3xl text-slate-400"></i>
       </div>
-      <h4 class="text-lg font-medium text-slate-900 mb-2">{{ $t('batches.no_batches_found') }}</h4>
-      <p class="text-slate-600">{{ $t('batches.create_batch_for_qr') }}</p>
+      <h4 class="text-lg font-semibold text-slate-900 mb-2">{{ $t('batches.no_batches_found') }}</h4>
+      <p class="text-slate-500 text-sm max-w-sm mx-auto">{{ $t('batches.create_batch_for_qr') }}</p>
     </div>
     
     <!-- QR Code Generator -->
     <div v-else class="space-y-6">
-      <!-- Batch Selector -->
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-        <h4 class="font-semibold text-slate-900 mb-4">{{ $t('batches.select_card_batch') }}</h4>
-        <Dropdown 
-          v-model="selectedBatch"
-          :options="availableBatches"
-          optionLabel="display_name"
-          optionValue="id"
-          :placeholder="$t('batches.choose_batch_to_generate')"
-          class="w-full"
-          @change="onBatchChange"
-        />
-        <p class="text-sm text-slate-500 mt-2">{{ $t('batches.only_paid_batches') }}</p>
+      <!-- Batch Selector Card -->
+      <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+        <div class="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+          <div class="flex items-center gap-3">
+            <div class="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg">
+              <i class="pi pi-box text-white"></i>
+            </div>
+            <div>
+              <h4 class="font-semibold text-slate-900">{{ $t('batches.select_card_batch') }}</h4>
+              <p class="text-xs text-slate-500">{{ $t('batches.only_paid_batches') }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="p-4">
+          <Dropdown 
+            v-model="selectedBatch"
+            :options="availableBatches"
+            optionLabel="display_name"
+            optionValue="id"
+            :placeholder="$t('batches.choose_batch_to_generate')"
+            class="w-full"
+            @change="onBatchChange"
+          />
+        </div>
       </div>
       
       <!-- QR Code Display -->
-      <div v-if="selectedBatch && selectedBatchData" class="bg-white rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 lg:p-6">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <h4 class="font-semibold text-base sm:text-lg text-slate-900">{{ $t('batches.qr_codes_and_urls') }}</h4>
-          <div class="flex flex-col sm:flex-row gap-2 sm:gap-2">
-            <Button 
-              :label="$t('batches.download_all_qr')" 
-              icon="pi pi-download"
-              @click="downloadAllQRCodes"
-              severity="info"
-              size="small"
-              class="text-xs sm:text-sm w-full sm:w-auto"
-            />
-            <Button 
-              :label="$t('batches.download_csv')" 
-              icon="pi pi-file-excel"
-              @click="downloadCSV"
-              severity="info"
-              size="small"
-              class="text-xs sm:text-sm w-full sm:w-auto"
-            />
+      <div v-if="selectedBatch && selectedBatchData" class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
+        <!-- Header with Actions -->
+        <div class="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="flex items-center gap-3">
+              <div class="p-2 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-lg">
+                <i class="pi pi-qrcode text-white"></i>
+              </div>
+              <div>
+                <h4 class="font-semibold text-slate-900">{{ $t('batches.qr_codes_and_urls') }}</h4>
+                <p class="text-xs text-slate-500">{{ selectedBatchData.batch_name }}</p>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <Button 
+                :label="$t('batches.download_all_qr')" 
+                icon="pi pi-download"
+                @click="downloadAllQRCodes"
+                size="small"
+                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0"
+              />
+              <Button 
+                :label="$t('batches.download_csv')" 
+                icon="pi pi-file-excel"
+                @click="downloadCSV"
+                severity="secondary"
+                outlined
+                size="small"
+              />
+            </div>
           </div>
         </div>
         
-        <!-- Batch Info -->
-        <div class="bg-slate-50 rounded-lg p-4 mb-6">
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <label class="text-sm font-medium text-slate-600">{{ $t('batches.batch_name') }}</label>
-              <p class="font-semibold text-slate-900">{{ selectedBatchData.batch_name }}</p>
+        <!-- Batch Stats -->
+        <div class="p-4 border-b border-slate-100 bg-slate-50/50">
+          <div class="grid grid-cols-3 gap-4">
+            <div class="text-center">
+              <div class="flex items-center justify-center gap-2 mb-1">
+                <i class="pi pi-credit-card text-blue-600 text-sm"></i>
+                <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">{{ $t('batches.total_cards') }}</span>
+              </div>
+              <p class="text-2xl font-bold text-slate-900">{{ selectedBatchData.cards_count }}</p>
             </div>
-            <div>
-              <label class="text-sm font-medium text-slate-600">{{ $t('batches.total_cards') }}</label>
-              <p class="font-semibold text-slate-900">{{ selectedBatchData.cards_count }}</p>
+            <div class="text-center border-x border-slate-200">
+              <div class="flex items-center justify-center gap-2 mb-1">
+                <i class="pi pi-check-circle text-green-600 text-sm"></i>
+                <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">{{ $t('batches.active_cards') }}</span>
+              </div>
+              <p class="text-2xl font-bold text-green-600">{{ issuedCards.filter(card => card.active).length }}</p>
             </div>
-            <div>
-              <label class="text-sm font-medium text-slate-600">{{ $t('batches.active_cards') }}</label>
-              <p class="font-semibold text-slate-900">{{ issuedCards.filter(card => card.active).length }}</p>
+            <div class="text-center">
+              <div class="flex items-center justify-center gap-2 mb-1">
+                <i class="pi pi-clock text-yellow-600 text-sm"></i>
+                <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">{{ $t('common.inactive') }}</span>
+              </div>
+              <p class="text-2xl font-bold text-yellow-600">{{ issuedCards.filter(card => !card.active).length }}</p>
             </div>
           </div>
         </div>
         
         <!-- QR Code Grid -->
-        <div v-if="issuedCards.length" class="space-y-4">
-          <div class="flex items-center justify-between">
-            <h5 class="font-medium text-slate-900">{{ $t('batches.individual_qr_codes') }}</h5>
+        <div v-if="issuedCards.length" class="p-4">
+          <div class="flex items-center justify-between mb-4">
+            <h5 class="font-medium text-slate-900 flex items-center gap-2">
+              <i class="pi pi-th-large text-slate-400"></i>
+              {{ $t('batches.individual_qr_codes') }}
+            </h5>
             <div class="flex items-center gap-2">
-              <label class="text-sm text-slate-600">{{ $t('batches.show') }}</label>
+              <label class="text-xs text-slate-500">{{ $t('batches.show') }}:</label>
               <Dropdown 
                 v-model="displayFilter"
                 :options="filterOptions"
@@ -95,53 +132,66 @@
             </div>
           </div>
           
-          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[480px] overflow-y-auto pr-1">
             <div 
               v-for="(card, index) in filteredCards" 
               :key="card.id"
-              class="border border-slate-200 rounded-lg p-4"
+              class="group bg-white border border-slate-200 rounded-xl p-4 hover:border-blue-300 hover:shadow-md transition-all duration-200"
             >
               <div class="text-center">
-                <!-- QR Code -->
-                <div class="bg-white p-3 rounded-lg border border-slate-100 mb-3 inline-block">
-                  <QrCode :value="getCardURL(card.id)" :size="120" />
+                <!-- QR Code with hover effect -->
+                <div class="relative inline-block mb-3">
+                  <div class="absolute -inset-1 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div class="relative bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+                    <QrCode :value="getCardURL(card.id)" :size="120" />
+                  </div>
                 </div>
                 
                 <!-- Card Info -->
                 <div class="space-y-2">
-                  <div class="text-sm font-medium text-slate-900">Card #{{ index + 1 }}</div>
-                  <div class="text-xs text-slate-600 break-all">{{ card.id }}</div>
                   <div class="flex items-center justify-center gap-2">
-                    <span :class="card.active ? 'text-green-600' : 'text-yellow-600'" class="text-xs font-medium">
+                    <span class="text-sm font-semibold text-slate-900">Card #{{ index + 1 }}</span>
+                    <span 
+                      :class="card.active 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-yellow-100 text-yellow-700'"
+                      class="text-xs font-medium px-2 py-0.5 rounded-full"
+                    >
                       {{ card.active ? $t('common.active') : $t('common.inactive') }}
                     </span>
                   </div>
+                  <div class="text-xs text-slate-400 font-mono truncate max-w-[180px] mx-auto" :title="card.id">
+                    {{ card.id.substring(0, 8) }}...
+                  </div>
                   
                   <!-- Actions -->
-                  <div class="flex gap-1 justify-center mt-2">
+                  <div class="flex gap-1 justify-center pt-2">
                     <Button 
                       icon="pi pi-copy"
                       @click="copyURL(card.id)"
-                      severity="info"
+                      severity="secondary"
                       size="small"
                       text
-                      v-tooltip="$t('batches.copy_url')"
+                      rounded
+                      v-tooltip.top="$t('batches.copy_url')"
                     />
                     <Button 
                       icon="pi pi-download"
                       @click="downloadSingleQR(card.id, index + 1)"
-                      severity="info"
+                      severity="secondary"
                       size="small"
                       text
-                      v-tooltip="$t('batches.download_qr')"
+                      rounded
+                      v-tooltip.top="$t('batches.download_qr')"
                     />
                     <Button 
                       icon="pi pi-external-link"
                       @click="openCard(card.id)"
-                      severity="info"
+                      severity="secondary"
                       size="small"
                       text
-                      v-tooltip="$t('batches.open_card')"
+                      rounded
+                      v-tooltip.top="$t('batches.open_card')"
                     />
                   </div>
                 </div>
@@ -431,7 +481,7 @@ How to Use:
 3. Active cards are immediately accessible
 4. Inactive cards can be activated via admin panel
 
-For support, contact your CardStudio administrator.
+For support, contact your ExperienceQR administrator.
 `
 }
 

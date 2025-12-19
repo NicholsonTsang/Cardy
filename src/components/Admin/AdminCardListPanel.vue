@@ -69,22 +69,37 @@
               <i class="pi pi-id-card text-slate-400 text-xl"></i>
             </div>
             <div class="flex-1 min-w-0">
-              <div class="flex items-center gap-2 mb-1">
+              <div class="flex items-center gap-2 mb-1 flex-wrap">
                 <p class="font-semibold text-slate-900 truncate">{{ card.name }}</p>
                 <span 
-                  class="text-xs px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
+                  class="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
                   :class="card.billing_type === 'digital' 
                     ? 'bg-cyan-100 text-cyan-700' 
                     : 'bg-purple-100 text-purple-700'"
                 >
                   {{ card.billing_type === 'digital' ? 'Digital' : 'Physical' }}
                 </span>
+                <span 
+                  class="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 bg-slate-100 text-slate-600"
+                >
+                  {{ getContentModeLabel(card.content_mode) }}
+                </span>
               </div>
-              <p v-if="card.description" class="text-xs text-slate-600 line-clamp-2">
+              <!-- Digital Access Stats -->
+              <div v-if="card.billing_type === 'digital'" class="flex items-center gap-3 text-xs text-slate-600 mb-1">
+                <span class="flex items-center gap-1">
+                  <i class="pi pi-eye text-[10px]"></i>
+                  {{ card.current_scans?.toLocaleString() || 0 }} {{ $t('admin.scans') }}
+                </span>
+                <span v-if="card.max_scans" class="text-slate-400">
+                  / {{ card.max_scans.toLocaleString() }}
+                </span>
+              </div>
+              <p v-else-if="card.description" class="text-xs text-slate-600 line-clamp-1">
                 {{ card.description }}
               </p>
-              <p class="text-xs text-slate-500 mt-1">
-                Created {{ formatDate(card.created_at) }}
+              <p class="text-[10px] text-slate-400 mt-1">
+                {{ formatDate(card.created_at) }}
               </p>
             </div>
           </div>
@@ -95,7 +110,7 @@
       <div v-else class="flex-1 flex items-center justify-center p-8">
         <div class="text-center">
           <i class="pi pi-search text-4xl text-slate-300 mb-3"></i>
-          <p class="text-slate-500">No cards match your search</p>
+          <p class="text-slate-500">{{ $t('common.no_cards_match_search') }}</p>
         </div>
       </div>
 
@@ -128,6 +143,14 @@ interface Card {
   name: string
   description: string | null
   image_url: string | null
+  billing_type: 'physical' | 'digital'
+  content_mode: 'single' | 'list' | 'grid' | 'cards'
+  is_grouped?: boolean
+  current_scans?: number
+  max_scans?: number | null
+  daily_scans?: number
+  daily_scan_limit?: number | null
+  is_access_enabled?: boolean
   created_at: string
 }
 
@@ -177,6 +200,17 @@ const formatDate = (dateString: string) => {
     day: 'numeric',
     year: 'numeric'
   })
+}
+
+const getContentModeLabel = (mode: string) => {
+  const labels: Record<string, string> = {
+    'single': t('dashboard.mode_single'),
+    'grouped': t('dashboard.mode_grouped'),
+    'list': t('dashboard.mode_list'),
+    'grid': t('dashboard.mode_grid'),
+    'inline': t('dashboard.mode_inline')
+  }
+  return labels[mode] || mode
 }
 
 // Watchers

@@ -3,12 +3,16 @@ import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
-import { createServer } from 'http';
 import apiRoutes from './routes/index';
-import { initializeSocket } from './services/socket.service';
+import { getRedisClient, getRateLimiter } from './config/redis';
+import { requestLogger, errorLogger } from './middleware/requestLogger';
 
 // Load environment variables
 dotenv.config();
+
+// Initialize Redis (non-blocking)
+const redisClient = getRedisClient();
+const rateLimiter = getRateLimiter();
 
 const app = express();
 const PORT = process.env.PORT || 8080;
@@ -51,21 +55,51 @@ app.use(cors({
   credentials: true
 }));
 
-// Rate limiting to prevent abuse
+// Request logging (enable verbose with DEBUG_REQUESTS=true)
+app.use(requestLogger);
+
+// Rate limiting to prevent abuse and DDoS
+// NOTE: In-memory rate limiting has limitations on Cloud Run (multi-instance)
+// For critical endpoints, database-level deduplication is the source of truth
+// This provides basic protection for single-instance and burst scenarios
 const rateLimitWindow = parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000'); // Default: 15 minutes
 const rateLimitMax = parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100'); // Default: 100 requests
-const limiter = rateLimit({
+
+// General rate limiter for all API routes
+// Works best when Cloud Run is set to min-instances=1, max-instances=1
+// For multi-instance, consider using Redis or rely on database-level deduplication
+const generalLimiter = rateLimit({
   windowMs: rateLimitWindow,
   max: rateLimitMax,
-  message: 'Too many requests from this IP, please try again later.',
+  message: { error: 'Too many requests from this IP, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  keyGenerator: (req) => {
+    // Use X-Forwarded-For header (set by Cloud Run/Firebase) or fall back to IP
+    return req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || 'unknown';
+  }
 });
-app.use('/offer', limiter);
+
+// Strict rate limiter for sensitive endpoints (WebRTC, AI chat)
+const strictLimiter = rateLimit({
+  windowMs: 60000, // 1 minute
+  max: 20, // 20 requests per minute
+  message: { error: 'Rate limit exceeded. Please slow down.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return req.headers['x-forwarded-for']?.toString().split(',')[0] || req.ip || 'unknown';
+  }
+});
+
+// Apply rate limiters
+app.use('/api', generalLimiter);  // All API routes
+app.use('/offer', strictLimiter); // WebRTC - stricter limit
 
 // Body parsing middleware
 // Special handling for Stripe webhooks - need raw body for signature verification
-app.use('/api/webhooks/stripe-credit', express.raw({ type: 'application/json' }));
+// MUST be before express.json() to receive raw body
+app.use('/api/webhooks/stripe', express.raw({ type: 'application/json' }));
 
 // Regular JSON parsing for all other routes
 app.use(express.json({ limit: '10mb' }));
@@ -81,6 +115,8 @@ app.get('/health', (_req: Request, res: Response) => {
     services: {
       openai: !!OPENAI_API_KEY,
       supabase: !!SUPABASE_URL && !!SUPABASE_SERVICE_ROLE_KEY,
+      redis: !!redisClient,
+      rateLimiter: rateLimiter ? 'redis' : 'memory',
     }
   });
 });
@@ -165,9 +201,11 @@ app.post('/offer', async (req: Request, res: Response) => {
   }
 });
 
+// Error logging middleware (detailed logging before sending response)
+app.use(errorLogger);
+
 // Error handling middleware
 app.use((err: Error, _req: Request, res: Response, _next: any) => {
-  console.error('❌ Unhandled error:', err);
   res.status(500).json({
     error: 'Internal server error',
     message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
@@ -186,12 +224,8 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-// Create HTTP server and attach Socket.IO
-const httpServer = createServer(app);
-initializeSocket(httpServer, allowedOrigins);
-
 // Start server
-const server = httpServer.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   console.log('');
   console.log('🚀 CardStudio Backend Server');
   console.log('=====================================');
@@ -199,8 +233,9 @@ const server = httpServer.listen(PORT, async () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔑 OpenAI API key: ${OPENAI_API_KEY ? '✅ Configured' : '❌ Missing'}`);
   console.log(`🗄️  Supabase: ${SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY ? '✅ Configured' : '❌ Missing'}`);
+  console.log(`📦 Redis: ${redisClient ? '✅ Connected (Upstash)' : '⚠️  Not configured (using fallback)'}`);
+  console.log(`🚦 Rate Limiter: ${rateLimiter ? '✅ Redis-backed' : '⚠️  In-memory fallback'}`);
   console.log(`🌐 Allowed origins: ${allowedOrigins.join(', ')}`);
-  console.log(`🔌 Socket.IO: ✅ Enabled`);
   console.log('');
   console.log('Available endpoints:');
   console.log('  Relay:');
@@ -213,9 +248,10 @@ const server = httpServer.listen(PORT, async () => {
   console.log(`    POST http://localhost:${PORT}/api/ai/chat/stream`);
   console.log(`    POST http://localhost:${PORT}/api/ai/generate-tts`);
   console.log(`    POST http://localhost:${PORT}/api/ai/realtime-token`);
-  console.log(`    POST http://localhost:${PORT}/api/webhooks/stripe-credit`);
-  console.log('  WebSocket:');
-  console.log(`    WS   ws://localhost:${PORT}/socket.io/`);
+  console.log(`    POST http://localhost:${PORT}/api/webhooks/stripe`);
+  console.log('  Mobile:');
+  console.log(`    GET  http://localhost:${PORT}/api/mobile/card/digital/:accessToken`);
+  console.log(`    GET  http://localhost:${PORT}/api/mobile/card/physical/:issueCardId`);
   console.log('');
 });
 

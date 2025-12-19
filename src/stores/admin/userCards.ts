@@ -11,15 +11,30 @@ export interface AdminUserInfo {
 
 export interface AdminUserCard {
   id: string
+  user_id?: string // Injected from currentUser when needed
   name: string
-  description: string | null
+  description: string
   image_url: string | null
   original_image_url: string | null
   crop_parameters: any
   conversation_ai_enabled: boolean
-  ai_instruction: string | null
-  ai_knowledge_base: string | null
+  ai_instruction: string
+  ai_knowledge_base: string
   qr_code_position: string
+  translations?: Record<string, any>
+  original_language?: string
+  content_hash?: string
+  last_content_update?: string
+  content_mode: 'single' | 'list' | 'grid' | 'cards'
+  is_grouped: boolean
+  group_display: 'expanded' | 'collapsed'
+  billing_type: 'physical' | 'digital'
+  max_scans: number | null
+  current_scans: number
+  daily_scan_limit: number | null
+  daily_scans: number
+  is_access_enabled: boolean
+  access_token: string
   created_at: string
   updated_at: string
   user_email: string

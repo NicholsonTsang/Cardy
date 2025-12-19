@@ -62,39 +62,50 @@ function handleLanguageSelect() {
   left: 0;
   right: 0;
   z-index: 50;
-  background: rgba(0, 0, 0, 0.3);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 1rem 1.25rem; /* 16px vertical, 20px horizontal */
-  padding-top: max(1rem, env(safe-area-inset-top)); /* Account for notch */
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 0.875rem 1.25rem; /* Slightly reduced vertical */
+  padding-top: max(0.875rem, env(safe-area-inset-top)); /* Account for notch */
   display: flex;
   align-items: center;
-  gap: 1rem;
+  gap: 0.875rem;
   -webkit-text-size-adjust: 100%; /* Prevent text scaling */
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
 }
 
 .back-button {
-  width: 2.75rem; /* Increased from 2.5rem */
-  height: 2.75rem;
+  width: 2.5rem;
+  height: 2.5rem;
   min-width: 44px; /* iOS recommended touch target */
   min-height: 44px;
-  border-radius: 50%;
+  border-radius: 0.75rem;
   background: rgba(255, 255, 255, 0.1);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
   touch-action: manipulation; /* Disable double-tap zoom */
   -webkit-tap-highlight-color: transparent;
 }
 
+.back-button i {
+  font-size: 1rem;
+  transition: transform 0.2s;
+}
+
 .back-button:active {
-  transform: scale(0.95);
+  transform: scale(0.92);
   background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.back-button:active i {
+  transform: translateX(-2px);
 }
 
 .back-button-spacer {
@@ -112,29 +123,31 @@ function handleLanguageSelect() {
 }
 
 .header-title {
-  font-size: 1.125rem; /* 18px */
-  font-weight: 600;
+  font-size: 1rem;
+  font-weight: 700;
   color: white;
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
 .header-subtitle {
-  font-size: 0.875rem; /* 14px */
-  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
   margin: 0;
   margin-top: 0.125rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 500;
 }
 
 .language-controls {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex-shrink: 0;
 }
 </style>

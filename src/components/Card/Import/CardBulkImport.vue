@@ -1,7 +1,7 @@
 <template>
   <div class="card-bulk-import">
-    <!-- Header Section - Only for regular import mode -->
-    <div v-if="props.mode === 'regular'" class="import-header">
+    <!-- Header Section -->
+    <div class="import-header">
       <div class="header-content">
         <div class="icon-section">
           <div class="import-icon">
@@ -15,47 +15,8 @@
       </div>
     </div>
 
-    <!-- Example Mode Content -->
-    <div v-if="props.mode === 'example'" class="example-mode-content">
-      <!-- Try Example Section -->
-      <div class="try-example-section">
-        <div class="example-header">
-          <div class="example-badge">
-            <i class="pi pi-star"></i>
-            <span>{{ $t('import.learn_with_example') }}</span>
-          </div>
-          <h3 class="example-title">{{ $t('import.try_prebuilt_museum_card') }}</h3>
-          <p class="example-description">{{ $t('import.example_card_desc') }}</p>
-        </div>
-        
-        <div class="example-action">
-          <Button 
-            :label="$t('import.load_example_card')"
-            icon="pi pi-play"
-            @click="loadExampleFile"
-            :disabled="importing"
-            class="example-button bg-gradient-to-r from-emerald-600 to-blue-600 hover:from-emerald-700 hover:to-blue-700 text-white border-0 font-semibold shadow-lg hover:shadow-xl transition-all"
-          />
-          <div class="example-features">
-            <div class="feature-item">
-              <i class="pi pi-check-circle text-emerald-600"></i>
-              <span>{{ $t('import.feature_artifacts_exhibits') }}</span>
-            </div>
-            <div class="feature-item">
-              <i class="pi pi-check-circle text-emerald-600"></i>
-              <span>{{ $t('import.feature_ai_prompts') }}</span>
-            </div>
-            <div class="feature-item">
-              <i class="pi pi-check-circle text-emerald-600"></i>
-              <span>{{ $t('import.feature_professional_images') }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Regular Import Mode Content -->
-    <div v-else class="regular-import-content">
+    <!-- Regular Import Content -->
+    <div class="regular-import-content">
       <!-- Quick Actions -->
       <div class="quick-actions">
         <div class="action-grid">
@@ -102,57 +63,26 @@
       </div>
     </div>
 
-    <!-- File Upload Area - Only for regular import mode -->
-    <div v-if="props.mode === 'regular'" class="upload-zone" :class="{ 'dragover': isDragover, 'has-file': selectedFile }">
-      <input 
-        ref="fileInput"
-        type="file"
-        accept=".xlsx,.xls"
-        @change="handleFileSelect"
-        class="hidden"
-      />
-      
-      <div 
-        class="drop-area"
-        @dragover.prevent="isDragover = true"
-        @dragleave.prevent="isDragover = false"
-        @drop.prevent="handleFileDrop"
-        @click="triggerFileInput"
-      >
-        <div v-if="!selectedFile" class="drop-content">
-          <i class="pi pi-cloud-upload drop-icon"></i>
-          <div class="drop-text">
-            <h4>{{ $t('import.drop_excel_here') }}</h4>
-            <p>{{ $t('import.or_click_to_browse') }}</p>
-          </div>
-          <div class="file-requirements">
-            <span class="requirement">• {{ $t('import.req_excel_with_images') }}</span>
-            <span class="requirement">• {{ $t('import.req_max_size') }}</span>
-            <span class="requirement">• {{ $t('import.req_images_extracted') }}</span>
-          </div>
-        </div>
-        
-        <div v-else class="file-selected">
-          <i class="pi pi-file-excel file-icon"></i>
-          <div class="file-details">
-            <span class="file-name">{{ selectedFile.name }}</span>
-            <span class="file-size">{{ formatFileSize(selectedFile.size) }}</span>
-            <div class="file-meta">
-              <span v-if="importPreview" class="meta-item">
-                <i class="pi pi-check-circle text-blue-600"></i>
-                {{ $t('import.analysis_complete') }}
-              </span>
-            </div>
-          </div>
-          <Button 
-            icon="pi pi-times"
-            @click.stop="removeFile"
-            class="p-button-text p-button-sm remove-button"
-            v-tooltip="$t('common.delete')"
-          />
-        </div>
-      </div>
-    </div>
+    <!-- File Upload Area (Shared Component) -->
+    <FileUploadZone
+      ref="uploadZone"
+      accept=".xlsx,.xls"
+      :max-size-m-b="25"
+      :multiple="true"
+      :drop-title="$t('import.drop_excel_here')"
+      :drop-subtitle="$t('import.or_click_to_browse_multiple')"
+      :requirements="[
+        $t('import.req_excel_with_images'),
+        $t('import.req_max_size'),
+        $t('import.req_multiple_files'),
+        $t('import.req_images_extracted')
+      ]"
+      :status-text="importPreview ? $t('import.analysis_complete') : undefined"
+      @file-selected="processFile"
+      @files-selected="processMultipleFiles"
+      @file-removed="handleFileRemoved"
+      @error="handleUploadError"
+    />
 
     <!-- Import Preview -->
     <div v-if="importPreview" class="import-preview">
@@ -164,17 +94,41 @@
         <div class="preview-stats">
           <span class="stat-item">
             <i class="pi pi-id-card text-blue-600"></i>
-            {{ importPreview.cardData ? 1 : 0 }} {{ $t('import.card') }}
+            {{ totalCardsCount }} {{ totalCardsCount === 1 ? $t('import.card') : $t('import.cards') }}
           </span>
           <span class="stat-item">
             <i class="pi pi-list text-blue-600"></i>
-            {{ importPreview.contentItems.length }} {{ $t('import.content_items') }}
+            {{ totalContentItemsCount }} {{ $t('import.content_items') }}
           </span>
           <span class="stat-item">
             <i class="pi pi-image text-purple-600"></i>
             {{ extractedImageCount }} {{ $t('import.embedded_images') }}
           </span>
         </div>
+      </div>
+      
+      <!-- Multi-card Navigation -->
+      <div v-if="hasMultipleCards" class="card-navigation">
+        <button 
+          @click="prevCard" 
+          :disabled="currentCardIndex === 0"
+          class="nav-btn"
+        >
+          <i class="pi pi-chevron-left"></i>
+        </button>
+        <div class="nav-indicator">
+          <span class="nav-current">{{ currentCardIndex + 1 }}</span>
+          <span class="nav-separator">/</span>
+          <span class="nav-total">{{ totalCardsCount }}</span>
+          <span class="nav-label">{{ currentCardData?.cardData?.name || $t('import.unnamed_card') }}</span>
+        </div>
+        <button 
+          @click="nextCard" 
+          :disabled="currentCardIndex >= totalCardsCount - 1"
+          class="nav-btn"
+        >
+          <i class="pi pi-chevron-right"></i>
+        </button>
       </div>
       
       <!-- Validation Issues -->
@@ -219,7 +173,7 @@
       </div>
       
       <!-- Card Preview -->
-      <div v-if="importPreview.cardData" class="card-preview">
+      <div v-if="currentCardData?.cardData" class="card-preview">
         <h5 class="preview-section-title">
           <i class="pi pi-id-card"></i>
           {{ $t('import.import_preview_card_info') }}
@@ -231,7 +185,7 @@
               <img 
                 v-if="getCardImageUrl()"
                 :src="getCardImageUrl()"
-                :alt="importPreview.cardData.name || $t('import.card_image')"
+                :alt="currentCardData.cardData.name || $t('import.card_image')"
                 class="card-preview-image"
               />
               <div v-else class="card-image-placeholder">
@@ -243,15 +197,15 @@
             <div class="card-details">
               <div class="preview-field">
                 <span class="field-label">{{ $t('common.name') }}:</span>
-                <span class="field-value">{{ importPreview.cardData.name || $t('import.unnamed_card') }}</span>
+                <span class="field-value">{{ currentCardData.cardData.name || $t('import.unnamed_card') }}</span>
               </div>
               <div class="preview-field">
                 <span class="field-label">{{ $t('common.description') }}:</span>
-                <span class="field-value">{{ truncateText(importPreview.cardData.description, 100) }}</span>
+                <span class="field-value">{{ truncateText(currentCardData.cardData.description, 100) }}</span>
               </div>
               <div class="preview-field">
                 <span class="field-label">{{ $t('import.ai_enabled') }}:</span>
-                <span class="field-value">{{ importPreview.cardData.conversation_ai_enabled ? $t('common.yes') : $t('common.no') }}</span>
+                <span class="field-value">{{ currentCardData.cardData.conversation_ai_enabled ? $t('common.yes') : $t('common.no') }}</span>
               </div>
             </div>
           </div>
@@ -259,10 +213,10 @@
       </div>
       
       <!-- Content Preview -->
-      <div v-if="importPreview.contentItems.length > 0" class="content-preview">
+      <div v-if="currentContentItems.length > 0" class="content-preview">
         <h5 class="preview-section-title">
           <i class="pi pi-list"></i>
-          {{ $t('import.import_preview_content_structure', { count: importPreview.contentItems.length }) }}
+          {{ $t('import.import_preview_content_structure', { count: currentContentItems.length }) }}
         </h5>
         
         <!-- Hierarchical Content Preview -->
@@ -454,30 +408,27 @@
 import { ref, computed, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
+import { useRouter } from 'vue-router'
 import { generateImportTemplate, importExcelToCardData } from '@/utils/excelHandler'
 import { applyCropParametersToImage, parseCropParameters } from '@/utils/imageCropUtils'
 import { getCardAspectRatio, getContentAspectRatio } from '@/utils/cardConfig'
 import { supabase } from '@/lib/supabase'
+import { useSubscriptionStore } from '@/stores/subscription'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import { Transition } from 'vue'
-
-const props = defineProps({
-  mode: {
-    type: String,
-    default: 'regular', // 'regular' or 'example'
-    validator: value => ['regular', 'example'].includes(value)
-  }
-})
+import FileUploadZone from '@/components/shared/FileUploadZone.vue'
 
 const emit = defineEmits(['imported'])
 const toast = useToast()
+const router = useRouter()
 const { t } = useI18n()
+const subscriptionStore = useSubscriptionStore()
+
+// Refs
+const uploadZone = ref(null)
 
 // State
-const fileInput = ref()
-const selectedFile = ref(null)
-const isDragover = ref(false)
 const importing = ref(false)
 const importPreview = ref(null)
 const importResults = ref(null)
@@ -485,6 +436,7 @@ const importStatus = ref('')
 const importProgress = ref(0)
 const feedbackMessage = ref(null) // Inline feedback message state
 const expandedItems = ref([])
+const currentCardIndex = ref(0) // For navigating multiple cards
 const createdImageUrls = ref(new Set())
 
 // Computed
@@ -504,25 +456,73 @@ const confirmButtonLabel = computed(() => {
 const canExecuteImport = computed(() => {
   return importPreview.value && 
     importPreview.value.isValid &&
-    (importPreview.value.cardData || importPreview.value.contentItems.length > 0) &&
+    (importPreview.value.cardData || importPreview.value.contentItems.length > 0 || (importPreview.value.cards && importPreview.value.cards.length > 0)) &&
     !importing.value
 })
 
+// Multi-card computed properties
+const hasMultipleCards = computed(() => {
+  return importPreview.value?.cards && importPreview.value.cards.length > 1
+})
+
+const totalCardsCount = computed(() => {
+  if (!importPreview.value) return 0
+  return importPreview.value.cards?.length || (importPreview.value.cardData ? 1 : 0)
+})
+
+const totalContentItemsCount = computed(() => {
+  if (!importPreview.value) return 0
+  if (importPreview.value.cards && importPreview.value.cards.length > 0) {
+    return importPreview.value.cards.reduce((sum, c) => sum + (c.contentItems?.length || 0), 0)
+  }
+  return importPreview.value.contentItems?.length || 0
+})
+
+const currentCardData = computed(() => {
+  if (!importPreview.value) return null
+  if (importPreview.value.cards && importPreview.value.cards.length > 0) {
+    return importPreview.value.cards[currentCardIndex.value]
+  }
+  // Fallback for single card format
+  return {
+    cardData: importPreview.value.cardData,
+    contentItems: importPreview.value.contentItems,
+    images: importPreview.value.images
+  }
+})
+
+const currentContentItems = computed(() => {
+  return currentCardData.value?.contentItems || []
+})
+
+// Computed for extracted image count (used in processFile feedback)
 const extractedImageCount = computed(() => {
-  if (!importPreview.value || !importPreview.value.images) return 0
+  if (!importPreview.value) return 0
+  
   let count = 0
-  importPreview.value.images.forEach(images => {
-    count += images.length
-  })
+  if (importPreview.value.cards && importPreview.value.cards.length > 0) {
+    importPreview.value.cards.forEach(card => {
+      if (card.images) {
+        card.images.forEach(images => {
+          count += Array.isArray(images) ? images.length : 1
+        })
+      }
+    })
+  } else if (importPreview.value.images) {
+    importPreview.value.images.forEach(images => {
+      count += Array.isArray(images) ? images.length : 1
+    })
+  }
   return count
 })
 
 const organizedContentItems = computed(() => {
-  if (!importPreview.value || !importPreview.value.contentItems) return []
+  const items = currentContentItems.value
+  if (!items || items.length === 0) return []
   
   // Group items by layer
-  const layer1Items = importPreview.value.contentItems.filter(item => item.layer === 'Layer 1')
-  const layer2Items = importPreview.value.contentItems.filter(item => item.layer === 'Layer 2')
+  const layer1Items = items.filter(item => item.layer === 'Layer 1')
+  const layer2Items = items.filter(item => item.layer === 'Layer 2')
   
   // Create hierarchical structure
   const organized = layer1Items.map(parent => {
@@ -572,38 +572,47 @@ function getFeedbackIcon(severity) {
   return icons[severity] || 'pi pi-info-circle'
 }
 
-// Methods
-async function loadExampleFile() {
-  try {
-    // Show loading state
-    importStatus.value = t('import.loading_example_file')
-    
-    // Fetch the example file from the public folder
-    const response = await fetch('/document/ImportFileExample.xlsx')
-    if (!response.ok) {
-      throw new Error(`Failed to load example file: ${response.status}`)
-    }
-    
-    // Convert response to blob and then to File object
-    const blob = await response.blob()
-    const file = new File([blob], 'ImportFileExample.xlsx', {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    })
-    
-    // Process the example file same as user uploads
-    await processFile(file)
-    
-    // Show success message with educational context
-    showFeedback('info', t('import.example_loaded'), 
-      t('import.example_loaded_desc'), 
-      true)
-    
-  } catch (error) {
-    console.error('Example file loading error:', error)
-    showFeedback('error', t('import.example_load_failed'), 
-      t('import.example_load_failed_desc'), 
-      false)
+// Handle file removed from upload zone
+function handleFileRemoved() {
+  importPreview.value = null
+  importResults.value = null
+  expandedItems.value = []
+  currentCardIndex.value = 0
+}
+
+// Multi-card navigation
+function prevCard() {
+  if (currentCardIndex.value > 0) {
+    currentCardIndex.value--
+    expandedItems.value = []
   }
+}
+
+function nextCard() {
+  if (currentCardIndex.value < totalCardsCount.value - 1) {
+    currentCardIndex.value++
+    expandedItems.value = []
+  }
+}
+
+// Handle upload error from shared component
+function handleUploadError(message) {
+  showFeedback('error', t('import.invalid_file_type'), message, false)
+}
+
+// Trigger file input on shared component
+function triggerFileInput() {
+  uploadZone.value?.triggerFileInput()
+}
+
+// Remove file using shared component
+function removeFile() {
+  // Clean up object URLs
+  createdImageUrls.value.forEach(url => URL.revokeObjectURL(url))
+  createdImageUrls.value.clear()
+  
+  uploadZone.value?.removeFile()
+  handleFileRemoved()
 }
 
 async function downloadTemplate() {
@@ -632,43 +641,8 @@ async function downloadTemplate() {
   }
 }
 
-function triggerFileInput() {
-  fileInput.value?.click()
-}
-
-function handleFileSelect(event) {
-  const file = event.target.files[0]
-  if (file) {
-    processFile(file)
-  }
-}
-
-function handleFileDrop(event) {
-  isDragover.value = false
-  const file = event.dataTransfer.files[0]
-  if (file) {
-    processFile(file)
-  }
-}
-
+// Process file - called when file is selected via shared component or example file
 async function processFile(file) {
-  // File validation
-  if (!file.name.match(/\.xlsx$/i)) {
-    showFeedback('error', t('import.invalid_file_type'), 
-      t('import.select_excel_with_images'), 
-      false)
-    return
-  }
-
-  if (file.size > 25 * 1024 * 1024) { // 25MB limit
-    showFeedback('error', t('import.file_too_large'), 
-      t('import.file_size_limit'), 
-      false)
-    return
-  }
-
-  selectedFile.value = file
-  
   // Analyze file
   try {
     importStatus.value = t('import.analyzing_excel_extracting')
@@ -694,17 +668,31 @@ async function processFile(file) {
   }
 }
 
-function removeFile() {
-  // Clean up object URLs
-  createdImageUrls.value.forEach(url => URL.revokeObjectURL(url))
-  createdImageUrls.value.clear()
-  
-  selectedFile.value = null
-  importPreview.value = null
-  importResults.value = null
-  expandedItems.value = []
-  if (fileInput.value) {
-    fileInput.value.value = ''
+// Process multiple files - called when multiple files are selected
+async function processMultipleFiles(files) {
+  try {
+    importStatus.value = t('import.analyzing_multiple_files', { count: files.length })
+    const preview = await importExcelToCardData(files)
+    importPreview.value = preview
+    
+    const totalCards = preview.cards?.length || 0
+    const totalItems = preview.cards?.reduce((sum, c) => sum + (c.contentItems?.length || 0), 0) || 0
+    
+    if (preview.isValid) {
+      showFeedback('success', t('import.files_analyzed'), 
+        t('import.files_analyzed_desc', { cards: totalCards, items: totalItems }), 
+        true)
+    } else {
+      showFeedback('warn', t('import.validation_issues'), 
+        t('import.validation_issues_desc', { errors: preview.errors.length }), 
+        false)
+    }
+  } catch (error) {
+    console.error('Multiple files analysis error:', error)
+    showFeedback('error', t('import.file_analysis_failed'), 
+      error.message || t('import.failed_analyze_uploaded_file'), 
+      false)
+    removeFile()
   }
 }
 
@@ -714,7 +702,40 @@ function cancelImport() {
 }
 
 async function executeImport() {
-  if (!selectedFile.value || !importPreview.value || !canExecuteImport.value) return
+  if (!importPreview.value || !canExecuteImport.value) return
+  
+  // Check subscription limit before importing
+  await subscriptionStore.fetchSubscription()
+  
+  // Calculate how many cards will be created
+  const cardsToCreate = importPreview.value.cards?.length || (importPreview.value.cardData ? 1 : 0)
+  const currentCount = subscriptionStore.experienceCount
+  const limit = subscriptionStore.experienceLimit
+  
+  // Check if import would exceed limit
+  if (currentCount + cardsToCreate > limit) {
+    const canCreate = limit - currentCount
+    showFeedback(
+      'warn',
+      t('subscription.limit_reached'),
+      t('subscription.bulk_import_limit', {
+        limit: limit,
+        current: currentCount,
+        importing: cardsToCreate,
+        canCreate: Math.max(0, canCreate)
+      }),
+      false
+    )
+    
+    // Offer to navigate to subscription page
+    toast.add({
+      severity: 'info',
+      summary: t('subscription.upgrade_available'),
+      detail: t('subscription.upgrade_to_create_more', { limit, current: currentCount }),
+      life: 8000
+    })
+    return
+  }
   
   importing.value = true
   importProgress.value = 0
@@ -946,7 +967,7 @@ async function importDataToDatabase(importData) {
                 if (parsedCropParams) {
                   // Has crop parameters - generate cropped image
                   try {
-                    importStatus.value = `Cropping image for "${item.name}"...`;
+                    importStatus.value = t('import.cropping_image', { name: item.name });
                     const contentAspectRatio = getContentAspectRatio();
                     const croppedImageFile = await applyCropParametersToImage(
                       originalImageFile,
@@ -994,7 +1015,7 @@ async function importDataToDatabase(importData) {
               }
             }
             
-            importStatus.value = `Creating content item "${item.name}"...`;
+            importStatus.value = t('import.creating_content_item', { name: item.name });
             // 1-STEP IMPORT: Pass translations and hash directly
             const { data: contentData, error: contentError } = await supabase.rpc('create_content_item', {
               p_card_id: cardId,
@@ -1050,7 +1071,7 @@ async function importDataToDatabase(importData) {
                 if (parsedCropParams) {
                   // Has crop parameters - generate cropped image
                   try {
-                    importStatus.value = `Cropping image for "${item.name}"...`;
+                    importStatus.value = t('import.cropping_image', { name: item.name });
                     const contentAspectRatio = getContentAspectRatio();
                     const croppedImageFile = await applyCropParametersToImage(
                       originalImageFile,
@@ -1098,7 +1119,7 @@ async function importDataToDatabase(importData) {
               }
             }
             
-            importStatus.value = `Creating sub-item "${item.name}"...`;
+            importStatus.value = t('import.creating_sub_item', { name: item.name });
             // 1-STEP IMPORT: Pass translations and hash directly
             const { data: subItemData, error: contentError } = await supabase.rpc('create_content_item', {
               p_card_id: cardId,
@@ -1208,9 +1229,10 @@ function truncateText(text, maxLength) {
 
 // Function to get card image URL
 function getCardImageUrl() {
-  if (!importPreview.value || !importPreview.value.images) return null
+  const cardData = currentCardData.value
+  if (!cardData || !cardData.images) return null
   
-  const cardImages = importPreview.value.images.get('card_image')
+  const cardImages = cardData.images.get('card_image')
   if (cardImages && cardImages.length > 0) {
     const imageData = cardImages[0]
     const blob = new Blob([imageData.buffer], { type: `image/${imageData.extension}` })
@@ -1223,15 +1245,16 @@ function getCardImageUrl() {
 
 // Function to get content item image URL
 function getItemImageUrl(item, parentIndex) {
-  if (!importPreview.value || !importPreview.value.images || !item.has_images) return null
+  const cardData = currentCardData.value
+  if (!cardData || !cardData.images || !item.has_images) return null
   
   // Calculate the actual row number in Excel for this item
-  const layer1Items = importPreview.value.contentItems.filter(i => i.layer === 'Layer 1')
+  const layer1Items = currentContentItems.value.filter(i => i.layer === 'Layer 1')
   const itemIndex = layer1Items.findIndex(i => i.name === item.name)
   const excelRowNum = 5 + itemIndex // Excel data starts at row 5
   
   const itemKey = `item_${excelRowNum}`
-  const itemImages = importPreview.value.images.get(itemKey)
+  const itemImages = cardData.images.get(itemKey)
   if (itemImages && itemImages.length > 0) {
     const imageData = itemImages[0]
     const blob = new Blob([imageData.buffer], { type: `image/${imageData.extension}` })
@@ -1397,63 +1420,8 @@ function getChildImageUrl(child, parentIndex, childIndex) {
   animation: fadeIn 0.3s ease-out;
 }
 
-/* Mode-specific content containers */
-.example-mode-content {
-  @apply space-y-6;
-}
-
 .regular-import-content {
   @apply space-y-6;
-}
-
-/* Try Example Section Styles */
-.try-example-section {
-  @apply bg-gradient-to-br from-emerald-50 via-blue-50 to-purple-50 border-2 border-emerald-200 rounded-xl p-6 space-y-4 relative overflow-hidden;
-}
-
-.try-example-section::before {
-  content: '';
-  @apply absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-blue-500 to-purple-500;
-}
-
-.example-header {
-  @apply text-center space-y-3;
-}
-
-.example-badge {
-  @apply inline-flex items-center gap-2 bg-emerald-500 text-white px-4 py-2 rounded-full text-sm font-semibold shadow-lg;
-}
-
-.example-badge i {
-  @apply text-yellow-300;
-}
-
-.example-title {
-  @apply text-2xl font-bold text-slate-900;
-}
-
-.example-description {
-  @apply text-slate-600 max-w-md mx-auto leading-relaxed;
-}
-
-.example-action {
-  @apply text-center space-y-4;
-}
-
-.example-button {
-  @apply px-8 py-4 text-lg font-bold rounded-xl shadow-xl transform hover:scale-105;
-}
-
-.example-features {
-  @apply flex flex-col sm:flex-row gap-3 justify-center items-center text-sm;
-}
-
-.feature-item {
-  @apply flex items-center gap-2 bg-white/70 backdrop-blur-sm px-3 py-2 rounded-lg border border-white/50 shadow-sm;
-}
-
-.feature-item span {
-  @apply text-slate-700 font-medium;
 }
 
 .quick-actions {
@@ -1480,70 +1448,6 @@ function getChildImageUrl(child, parentIndex, childIndex) {
   @apply text-xs text-slate-500 block;
 }
 
-.upload-zone {
-  @apply bg-white border-2 border-dashed border-slate-300 rounded-xl p-8 transition-all;
-}
-
-.upload-zone.dragover {
-  @apply border-blue-400 bg-blue-50;
-}
-
-.upload-zone.has-file {
-  @apply border-blue-400 bg-blue-50;
-}
-
-.drop-area {
-  @apply cursor-pointer;
-}
-
-.drop-content {
-  @apply text-center space-y-4;
-}
-
-.drop-icon {
-  @apply text-4xl text-slate-400;
-}
-
-.drop-text h4 {
-  @apply text-lg font-medium text-slate-900;
-}
-
-.drop-text p {
-  @apply text-slate-500;
-}
-
-.file-requirements {
-  @apply flex flex-col gap-1 text-xs text-slate-500;
-}
-
-.file-selected {
-  @apply flex items-center gap-4 p-4 bg-white rounded-lg border border-slate-200;
-}
-
-.file-icon {
-  @apply text-2xl text-blue-600;
-}
-
-.file-details {
-  @apply flex-1 min-w-0;
-}
-
-.file-name {
-  @apply block font-medium text-slate-900 truncate;
-}
-
-.file-size {
-  @apply block text-sm text-slate-500;
-}
-
-.file-meta {
-  @apply flex gap-2 mt-1;
-}
-
-.meta-item {
-  @apply flex items-center gap-1 text-xs;
-}
-
 .import-preview {
   @apply bg-white border border-slate-200 rounded-lg p-6 space-y-4;
 }
@@ -1566,6 +1470,35 @@ function getChildImageUrl(child, parentIndex, childIndex) {
 
 .stat-item {
   @apply flex items-center gap-1 text-sm font-medium;
+}
+
+/* Card Navigation */
+.card-navigation {
+  @apply flex items-center justify-center gap-3 py-3 px-4 bg-slate-100 rounded-lg my-4;
+}
+
+.nav-btn {
+  @apply w-8 h-8 flex items-center justify-center rounded-full bg-white border border-slate-200 text-slate-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:border-slate-200 disabled:hover:text-slate-600;
+}
+
+.nav-indicator {
+  @apply flex items-center gap-2;
+}
+
+.nav-current {
+  @apply text-lg font-bold text-blue-600;
+}
+
+.nav-separator {
+  @apply text-slate-400;
+}
+
+.nav-total {
+  @apply text-lg font-medium text-slate-600;
+}
+
+.nav-label {
+  @apply text-sm text-slate-500 max-w-32 truncate ml-2;
 }
 
 .validation-errors {
@@ -1656,22 +1589,6 @@ function getChildImageUrl(child, parentIndex, childIndex) {
   
   .action-grid {
     @apply grid-cols-1 gap-3;
-  }
-  
-  .upload-zone {
-    @apply p-4;
-  }
-  
-  .drop-content {
-    @apply space-y-3;
-  }
-  
-  .drop-icon {
-    @apply text-3xl;
-  }
-  
-  .file-requirements {
-    @apply text-xs;
   }
   
   .import-preview {

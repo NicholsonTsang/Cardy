@@ -87,9 +87,9 @@
         </div>
 
         <!-- ============================================== -->
-        <!-- GROUPED MODE: Category Header or Sub-Item -->
+        <!-- GROUPED LIST MODE: Category Header or Sub-Item -->
         <!-- ============================================== -->
-        <div v-else-if="contentMode === 'grouped'">
+        <div v-else-if="isGrouped && contentMode === 'list'">
             <!-- CATEGORY (no parent) -->
             <div v-if="!parentId" class="bg-white rounded-xl shadow-lg border border-orange-200 p-6">
                 <div class="flex items-center gap-3 mb-6">
@@ -245,14 +245,14 @@
                     <label class="block text-sm font-medium text-slate-700 mb-2">
                         {{ $t('form.list_item_content') }}
                     </label>
-                    <div class="relative">
-                        <i class="pi pi-link absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <IconField>
+                        <InputIcon class="pi pi-link" />
                         <InputText 
                             v-model="formData.description" 
-                            class="w-full pl-10" 
+                            class="w-full" 
                             :placeholder="$t('form.list_item_content_placeholder')"
                         />
-                    </div>
+                    </IconField>
                     <small class="text-slate-500 mt-1 block">{{ $t('form.list_item_content_hint') }}</small>
                 </div>
             </div>
@@ -353,9 +353,9 @@
         </div>
 
         <!-- ============================================== -->
-        <!-- INLINE MODE: Full-Width Card Item -->
+        <!-- CARDS MODE: Full-Width Card Item -->
         <!-- ============================================== -->
-        <div v-else-if="contentMode === 'inline'" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div v-else-if="contentMode === 'cards'" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
             <!-- Image Section -->
             <div class="xl:col-span-1">
                 <div class="bg-white rounded-xl shadow-lg border border-cyan-200 p-6">
@@ -547,6 +547,8 @@ import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import Textarea from 'primevue/textarea';
 import InputText from 'primevue/inputtext';
+import IconField from 'primevue/iconfield';
+import InputIcon from 'primevue/inputicon';
 
 const { t } = useI18n();
 import MyDialog from '@/components/MyDialog.vue';
@@ -586,8 +588,12 @@ const props = defineProps({
     },
     contentMode: {
         type: String,
-        default: 'list', // 'single', 'grouped', 'list', 'grid', 'inline'
-        validator: (value) => ['single', 'grouped', 'list', 'grid', 'inline'].includes(value)
+        default: 'list',
+        validator: (value) => ['single', 'list', 'grid', 'cards'].includes(value)
+    },
+    isGrouped: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -625,7 +631,7 @@ const getAiKnowledgePlaceholder = () => {
 const getCropAspectRatio = () => {
     switch (props.contentMode) {
         case 'single':
-        case 'inline':
+        case 'cards':
             return 16 / 9;
         case 'grid':
             return 1;
@@ -637,7 +643,7 @@ const getCropAspectRatio = () => {
 const getCropAspectRatioDisplay = () => {
     switch (props.contentMode) {
         case 'single':
-        case 'inline':
+        case 'cards':
             return '16:9';
         case 'grid':
             return '1:1';

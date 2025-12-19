@@ -34,11 +34,16 @@ interface ImportMetaEnv {
   readonly VITE_STRIPE_PUBLISHABLE_KEY: string
   readonly VITE_STRIPE_SUCCESS_URL: string
   
-  // Landing Page Demo Card
+  // Landing Page Demo - Physical Card Mode
   readonly VITE_DEFAULT_CARD_IMAGE_URL: string
   readonly VITE_SAMPLE_QR_URL: string
   readonly VITE_DEMO_CARD_TITLE: string
   readonly VITE_DEMO_CARD_SUBTITLE: string
+  
+  // Landing Page Demo - Digital Access Mode
+  readonly VITE_DIGITAL_ACCESS_DEMO_URL: string
+  readonly VITE_DIGITAL_ACCESS_DEMO_TITLE: string
+  readonly VITE_DIGITAL_ACCESS_DEMO_SUBTITLE: string
   
   // Contact Information
   readonly VITE_CONTACT_EMAIL: string
@@ -57,6 +62,10 @@ interface ImportMetaEnv {
   // AI Configuration
   readonly VITE_DEFAULT_AI_INSTRUCTION: string
   readonly VITE_OPENAI_REALTIME_MODEL: string
+  
+  // Digital Access Configuration
+  readonly VITE_DIGITAL_ACCESS_CREDIT_RATE: string
+  readonly VITE_DIGITAL_ACCESS_DEFAULT_DAILY_LIMIT: string
 }
 
 interface ImportMeta {

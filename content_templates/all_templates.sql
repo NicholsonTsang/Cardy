@@ -1,0 +1,1273 @@
+-- Art Gallery - Grouped Grid Mode (Digital Access)
+-- Template: Contemporary Art Exhibition with categories by medium
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_cat_paintings UUID;
+    v_cat_sculptures UUID;
+    v_cat_digital UUID;
+    v_cat_installations UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, image_url,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'Modern Visions: Contemporary Art Collection',
+        E'Welcome to **Modern Visions**, featuring 12 groundbreaking contemporary artworks that challenge perception and celebrate human creativity.\n\nThis exhibition brings together emerging and established artists exploring themes of identity, technology, and the natural world through painting, sculpture, and mixed media.\n\n🎨 Tap any artwork to learn more and chat with our AI art guide.',
+        'grid',
+        true,
+        'expanded',
+        'digital',
+        true,
+        'You are an enthusiastic art docent at a contemporary art gallery. Speak with passion about the artworks, artists, and artistic movements. Help visitors understand the meaning, techniques, and context behind each piece. Be approachable and encourage questions. Avoid overly academic language.',
+        E'Modern Visions Exhibition - Contemporary Art Collection 2024\n\nExhibition themes: Identity in the digital age, environmental consciousness, urban life, human connection, abstraction and emotion.\n\nGallery layout: Main hall (large installations), East wing (paintings), West wing (sculptures and mixed media), North gallery (digital art).\n\nCurator: Dr. Helena Vance, former MoMA associate curator\nCollection value: Insured for $12 million\n\nArtist talks every Saturday at 2pm. Guided tours at 11am and 3pm daily.\nGift shop near exit with exhibition catalog ($45) and prints available.\nPhotography allowed without flash. No touching artworks.\nAudio guide available: $8 rental or free via gallery app.',
+        'Welcome to Modern Visions! I''m your personal art guide. Ask me anything about the artworks, artists, or get recommendations based on your interests!',
+        'I''d love to tell you more about "{name}". What would you like to know?',
+        NULL,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Create categories by medium (Layer 1)
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🖼️ Paintings', E'Traditional and contemporary painting techniques exploring color, form, and emotion.\n\n📍 **East Wing** | 5 works', 'The Paintings section features works in oil, acrylic, and mixed media on canvas. Located in the East Wing with natural north-facing light optimal for viewing. Temperature maintained at 21°C with 45% humidity for preservation.', 1)
+    RETURNING id INTO v_cat_paintings;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🗿 Sculptures', E'Three-dimensional works exploring space, form, and material.\n\n📍 **West Wing** | 4 works', 'The Sculptures section showcases works in bronze, glass, steel, and found materials. West Wing has 5-meter ceilings to accommodate large pieces. Touch-free viewing only.', 2)
+    RETURNING id INTO v_cat_sculptures;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '💻 Digital Art', E'Technology-driven and generative works at the intersection of art and code.\n\n📍 **North Gallery** | 3 works', 'Digital Art section features projection mapping, AI-generated art, and interactive installations. Darkened gallery space with controlled viewing environment. Some works respond to viewer movement.', 3)
+    RETURNING id INTO v_cat_digital;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🏛️ Installations', E'Large-scale immersive experiences that transform the gallery space.\n\n📍 **Main Hall** | 3 works', 'Installations section features room-scale works in the Main Hall. Allow 10-15 minutes per installation for full experience. Some works have timed entry.', 4)
+    RETURNING id INTO v_cat_installations;
+
+    -- Insert paintings (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_paintings, 'Echoes of Tomorrow', E'**Artist:** Maya Chen (b. 1988, Taipei)\n**Year:** 2024\n**Medium:** Oil on canvas, embedded LED elements\n**Dimensions:** 180 × 240 cm\n\n---\n\nA stunning fusion of traditional oil painting with embedded LED lighting, this piece depicts a cityscape that shifts between day and night. The LEDs are programmed to cycle through a 24-hour light pattern, transforming the artwork continuously.\n\nChen explores how technology shapes our perception of urban spaces and the passage of time—questioning whether we control technology or it controls us.\n\n*"I wanted to capture that moment between waking and dreaming, when the city exists in both states simultaneously."* — Maya Chen\n\n---\n\n🏆 **Awarded:** Art Basel Emerging Artist Prize 2024\n💡 **Note:** Best viewed during the 8-minute sunset cycle (every 2 hours)', NULL, 'Maya Chen studied at RISD and Central Saint Martins. Known for incorporating technology into traditional painting. This piece took 8 months to complete - 4 months painting, 4 months electronic integration. LEDs are museum-grade with 100,000-hour lifespan. The work was featured on the cover of Art Forum. Chen was inspired by her childhood in Taipei''s night markets contrasted with her later life in smart cities. Currently represented by Gagosian Gallery.', 1),
+    
+    (v_card_id, v_cat_paintings, 'Concrete Dreams', E'**Artist:** Fatima Al-Hassan (b. 1985, Beirut)\n**Year:** 2024\n**Medium:** Concrete, embedded photographs, archival resin\n**Dimensions:** 90 × 120 cm (triptych, 3 panels)\n\n---\n\nA deeply personal triptych embedding family photographs within concrete slabs. The photos gradually become visible as light passes through the semi-translucent resin pockets, creating a meditation on memory, permanence, and loss.\n\nThe concrete represents the buildings of Al-Hassan''s childhood neighborhood in Beirut, many of which no longer exist. The photographs are from her grandmother''s collection, spanning three generations.\n\n*"Memory is not fixed like concrete. It shifts, fades, and sometimes disappears entirely."* — Fatima Al-Hassan\n\n---\n\n📖 **Featured in:** "Women Artists of the Middle East" (Thames & Hudson, 2024)', NULL, 'Fatima Al-Hassan explores memory and displacement through mixed media. The concrete was sourced from demolished buildings in Beirut. Each photograph was protected with archival resin rated for 200+ years before embedding. Each panel took 3 months to cure properly. Al-Hassan''s family left Beirut during the civil war - this work processes intergenerational trauma. She splits time between Paris and Beirut. The technique she developed is now being studied by conservation specialists.', 2),
+    
+    (v_card_id, v_cat_paintings, 'Neon Wilderness', E'**Artist:** Tommy Rivera (b. 1990, Mexico City)\n**Year:** 2024\n**Medium:** Dead tree branches, custom neon tubes, electronics\n**Dimensions:** 300 × 400 × 200 cm\n\n---\n\nA forest of dead tree branches illuminated with custom neon tubes in blues, pinks, and purples. The installation explores the intersection of nature and artificiality, creating a surreal landscape that feels both familiar and alien.\n\nThe colors cycle through a 12-hour pattern representing a compressed day/night cycle. Sensors detect viewer proximity, causing subtle color shifts.\n\n*"We''re creating a world where nature is something we see through screens. This is what a forest looks like when it''s been filtered through Instagram."* — Tommy Rivera\n\n---\n\n⚡ **Technical:** Uses 2.4 kW of power, equivalent to a small refrigerator\n🌳 **Environmental note:** All branches collected from naturally fallen trees in Central Park', NULL, 'Tommy Rivera works with light and natural materials. Based in Brooklyn, trained in both fine art and electrical engineering. Branches collected from fallen trees in Central Park over 2 years with NYC Parks permission. Neon tubes custom-bent by artisans in Brooklyn''s last remaining neon shop. The work comments on how we experience nature through technology. Rivera''s Instagram following (800K) has made him one of the most followed contemporary artists. Color palette inspired by the Sonoran Desert at dusk meets urban nightlife.', 3),
+    
+    (v_card_id, v_cat_paintings, 'Urban Pulse', E'**Artist:** Kenji Watanabe (b. 1982, Tokyo)\n**Year:** 2023\n**Medium:** Acrylic on canvas with sound sensors\n**Dimensions:** 200 × 300 cm\n\n---\n\nA large-scale abstract work that visualizes the rhythm of city life. Hidden sensors detect ambient sound, causing sections of UV-reactive paint to subtly glow in response to conversation and movement.\n\nWatanabe spent a year recording sounds from Tokyo''s busiest intersections. The painting''s composition maps the frequency patterns of urban noise.\n\n*"Cities have heartbeats. I wanted to make that visible."* — Kenji Watanabe\n\n---\n\n🔊 **Interactive:** Speak near the painting and watch it respond\n🌙 **Best viewed:** Gallery dims lights every 30 minutes for UV effect', NULL, 'Kenji Watanabe bridges traditional Japanese painting techniques with electronic art. Trained in nihonga (traditional Japanese painting) before studying at MIT Media Lab. Sound recordings from Shibuya Crossing, Shinjuku Station, and Ginza. UV-reactive pigments are archival-grade, will remain reactive for 50+ years. The work was commissioned by the Japan Foundation. Watanabe''s previous work is in the permanent collection of the Mori Art Museum.', 4);
+
+    -- Insert sculptures (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_sculptures, 'Fragments of Self', E'**Artist:** James Okonkwo (b. 1975, Lagos)\n**Year:** 2023\n**Medium:** Recycled mirrors, steel frame\n**Dimensions:** 200 × 150 × 150 cm\n\n---\n\nA sculptural installation using 847 recycled mirror fragments arranged to create a fragmented human figure. As viewers move around the piece, they see their own reflection broken and reassembled, questioning the nature of identity and wholeness.\n\nThe mirrors were collected from demolished buildings in London over 3 years—each fragment carries its own history of reflection.\n\n*"We are all made of fragments—experiences, memories, cultures. The illusion of a unified self is just that: an illusion."* — James Okonkwo\n\n---\n\n🏆 **Turner Prize Winner 2023**\n📍 **Viewing tip:** Walk slowly around the piece for the full effect', NULL, 'James Okonkwo explores identity and diaspora through sculpture. Born in Lagos, moved to London at 12, educated at Royal College of Art. Each mirror fragment represents a piece of cultural identity in the diaspora experience. Turner Prize jury cited "profound meditation on identity in an age of fragmentation." The work weighs 180kg and required custom installation. Okonkwo''s previous major work is in Tate Modern''s permanent collection. The piece has been acquired by the gallery for £350,000.', 1),
+    
+    (v_card_id, v_cat_sculptures, 'The Weight of Water', E'**Artist:** David Park (b. 1980, Seoul)\n**Year:** 2023\n**Medium:** Hand-cast glass droplets, suspended steel cables\n**Dimensions:** 400 × 300 × 250 cm (suspended from 5m height)\n\n---\n\nTwelve thousand hand-cast glass droplets suspended from the ceiling, creating an ethereal rain frozen in time. The installation represents the fragility of water resources and the impermanence of our natural world.\n\nEach droplet was individually cast over 18 months using Venetian glassblowing techniques combined with Korean metalwork traditions.\n\n*"We take water for granted until it''s gone. This piece asks: what if we could see every drop we waste, frozen in the air?"* — David Park\n\n---\n\n⚠️ **Conservation:** Please do not touch—oils from skin can damage glass\n💧 **Context:** Created in response to the 2022 global water crisis', NULL, 'David Park is known for large-scale glass installations addressing environmental themes. Trained in Venice with master glassblowers before returning to Seoul. Each of the 12,000 droplets took 3-5 minutes to create. Total weight of installation is 1.2 tonnes, supported by engineered ceiling structure. The piece was inspired by Park''s visit to drought-affected communities in California. A portion of sales proceeds goes to Water.org. Previously exhibited at the Venice Biennale where it won the Golden Lion.', 2),
+    
+    (v_card_id, v_cat_sculptures, 'The Listener', E'**Artist:** Roberto Gómez (b. 1972, Buenos Aires)\n**Year:** 2024\n**Medium:** Bronze, integrated sound installation\n**Dimensions:** 180 cm tall\n\n---\n\nA bronze figure with an oversized ear, housing concealed speakers that play ambient sounds recorded from public spaces around the world. The sculpture invites contemplation of how we listen—and what we choose to hear.\n\nSounds were recorded in 47 cities over 5 years: markets, protests, celebrations, everyday conversations in languages you may not understand.\n\n*"Listening is a political act. What we choose to hear shapes who we become."* — Roberto Gómez\n\n---\n\n🎧 **Audio loops:** 4 hours before repeating\n🗺️ **Sound locations:** Buenos Aires, Tokyo, Lagos, Berlin, Mumbai, and 42 more cities', NULL, 'Roberto Gómez creates sculptures with integrated sound, exploring themes of surveillance, communication, and global citizenship. Cast using traditional lost-wax method - the figure is solid bronze weighing 340kg. Sounds include: Buenos Aires street protests, Tokyo fish market at dawn, Berlin techno clubs, Mumbai street vendors. Audio system concealed in the base with museum-grade speakers. Gómez was inspired by his own experience as an immigrant, learning to listen in unfamiliar cities. Commissioned by the Serpentine Gallery in 2022.', 3),
+    
+    (v_card_id, v_cat_sculptures, 'Metamorphosis', E'**Artist:** Elena Kowalski (b. 1995, Warsaw)\n**Year:** 2024\n**Medium:** 3D-printed biodegradable PLA, living moss\n**Dimensions:** 120 × 80 × 80 cm\n\n---\n\nA geometric sculpture that deliberately transforms over time as living moss grows across its 3D-printed lattice structure. Over the exhibition''s run, the stark white form will become increasingly green.\n\nThe piece challenges notions of permanence in art—embracing change and natural processes as integral to the work.\n\n*"Traditional sculpture fights decay. I collaborate with it."* — Elena Kowalski\n\n---\n\n🌱 **Living art:** The moss is watered daily by gallery staff\n📅 **Watch it change:** Progress photos posted weekly on gallery Instagram', NULL, 'Elena Kowalski is one of the youngest artists in the exhibition. MFA from Central Saint Martins. The 3D-printed structure uses biodegradable PLA that will break down over 10 years. Moss species selected for indoor growth without direct sunlight. The work evolves throughout the exhibition—visitors are encouraged to return. Kowalski''s practice focuses on sustainability and impermanence. Previous work installed at the V&A as part of their "Future of Fashion" exhibition. She maintains a research partnership with materials scientists at Imperial College.', 4);
+
+    -- Insert digital art (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_digital, 'Digital Garden #7', E'**Artist:** Sofia Andersson (b. 1992, Stockholm)\n**Year:** 2024\n**Medium:** Custom AI, projection mapping, motion sensors\n**Dimensions:** Variable (room-scale installation)\n\n---\n\nAn immersive digital environment where AI-generated flowers bloom and wilt in response to viewers'' movements. The algorithm creates unique botanical forms that have never existed in nature—each one generated and then lost forever.\n\nAndersson trained her own neural network on 2 million botanical images, teaching it to imagine impossible flowers.\n\n*"These flowers exist only in the moment of observation. Like memories, they cannot be preserved."* — Sofia Andersson\n\n---\n\n🤖 **AI:** Custom neural network trained on 2M botanical images\n👀 **Interactive:** Your movement influences which flowers bloom\n⏱️ **Each flower:** Exists for only 30-60 seconds', NULL, 'Sofia Andersson specializes in AI-generated art, bridging computer science and fine art. PhD in computational creativity from KTH Royal Institute of Technology. Each flower is unique—the algorithm has generated over 50 million unique forms since 2022. The installation uses 6 4K projectors and infrared motion sensors. Floor sensors detect up to 30 visitors simultaneously. Previous version shown at Ars Electronica where it won the Golden Nica. Andersson publishes her code as open source—her GitHub has 45K followers.', 1),
+    
+    (v_card_id, v_cat_digital, 'Binary Sunset', E'**Artist:** Alex Zhang-Müller (b. 1995, Berlin)\n**Year:** 2024\n**Medium:** Real-time data visualization, custom software, dual 4K screens\n**Dimensions:** 180 × 240 cm (each screen)\n\n---\n\nTwo screens display real-time sunsets from opposite sides of the Earth, visualized through abstract data patterns. As the sun sets in New Zealand, it rises in Portugal—the piece connects these distant moments through live weather data.\n\nThe visualization transforms atmospheric measurements (temperature, humidity, air quality) into flowing abstract forms.\n\n*"Distance is a construct. Right now, someone on the other side of the world is watching the same sun."* — Alex Zhang-Müller\n\n---\n\n🌍 **Live data:** Weather stations in Auckland, NZ and Lisbon, Portugal\n☀️ **Best viewing:** During actual sunset/sunrise times (check gallery schedule)\n📡 **Technical:** Runs 24/7, constantly changing', NULL, 'Alex Zhang-Müller works with data as artistic medium. Dual German-Chinese heritage informs work about connection across distance. Parents live in different countries—this piece began as a way to share experiences with them. Live data feeds from meteorological stations, processed through custom software. The work requires internet connection and crashes if either station goes offline (intentional—reflects fragility of connection). New media art collection at ZKM has acquired earlier version for permanent collection. Zhang-Müller maintains a Patreon with 2,000 supporters who receive daily data-art postcards.', 2),
+    
+    (v_card_id, v_cat_digital, 'Memory Palace', E'**Artist:** Priya Sharma (b. 1988, Mumbai)\n**Year:** 2024\n**Medium:** VR experience, haptic feedback, scent diffusion\n**Dimensions:** 3 × 3 meter viewing space\n\n---\n\nA virtual reality experience that reconstructs memories submitted by the public. Visitors wear VR headsets and haptic gloves to walk through a palace built from strangers'' recollections—wedding days, childhood homes, moments of loss.\n\nOver 500 memories were collected and recreated, with ambient scents triggered to match (ocean, flowers, rain).\n\n*"Memory is architecture. We all live in palaces we can never fully return to."* — Priya Sharma\n\n---\n\n⏱️ **Duration:** 12-minute experience\n👤 **Capacity:** 1 visitor at a time\n🎫 **Timed entry:** Book at gallery desk (included in admission)', NULL, 'Priya Sharma creates immersive experiences exploring collective memory. Background in architecture before transitioning to digital art. The 500 memories were collected through public call-out—participants were interviewed about their most vivid recollections. Scent machine uses essential oils selected by a perfumer. Haptic gloves provide touch sensation when "touching" objects in memory. The project took 3 years and involved 20 collaborators. Shown at Sundance New Frontier and won the Jury Prize. Sharma is working on a version that will eventually include 10,000 memories.', 3);
+
+    -- Insert installations (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_installations, 'Woven Histories', E'**Artist:** Amara Diallo (b. 1983, Dakar)\n**Year:** 2023\n**Medium:** Reclaimed textiles, gold thread, GPS-traced routes\n**Dimensions:** 500 × 300 cm (wall-mounted tapestry)\n\n---\n\nA monumental tapestry created from clothing donated by immigrant families across five continents. Each piece of fabric carries a documented story of journey, and the gold thread traces actual GPS migration routes.\n\nThe project collected 2,847 clothing items from 214 families over 2 years. QR codes in the gallery link to recorded stories.\n\n*"Every thread is a journey. Every knot is a border crossed."* — Amara Diallo\n\n---\n\n📱 **Interactive:** Scan QR codes to hear donor stories\n🧵 **Materials:** 2,847 fabric pieces from 5 continents\n🗺️ **Gold thread:** Maps GPS routes of actual migrations', NULL, 'Amara Diallo specializes in textile art addressing migration and belonging. Born in Dakar, educated in Paris, now based in London. The project began with her own family''s clothing from their journey from Senegal to France. Gold thread represents value—both monetary and personal—of migration stories. GPS data provided voluntarily by participants. The work cannot be sold—will be donated to a public collection with agreement that all donor stories remain accessible. Partnered with UNHCR to collect some stories from refugee communities. Shortlisted for the Hugo Boss Prize.', 1),
+    
+    (v_card_id, v_cat_installations, 'Chromatic Meditation', E'**Artist:** Yuki Tanaka (b. 1987, Tokyo)\n**Year:** 2024\n**Medium:** 47 acrylic panels, programmed LED lighting, ambient sound\n**Dimensions:** 600 × 400 × 400 cm (walkthrough installation)\n\n---\n\nA walkthrough installation of translucent colored panels that shift hue throughout the day. Visitors are bathed in ever-changing light, creating a meditative space inspired by Japanese concepts of *ma* (negative space).\n\nThe color program runs on an 8-hour cycle, never repeating exactly. Sound design by composer Ryuichi Sakamoto.\n\n*"Color affects emotion. I wanted to create a space where time slows down."* — Yuki Tanaka\n\n---\n\n🎵 **Sound design:** Ryuichi Sakamoto\n⏱️ **Recommended time:** 10-15 minutes\n🧘 **Tip:** Meditation cushions available inside', NULL, 'Yuki Tanaka creates environments that affect mood and perception. Daughter of a Shinto priest, interested in spiritual architecture. 47 panels reference the 47 prefectures of Japan. LED system uses 1,000 color combinations based on traditional Japanese color names (some dating to 7th century). Sakamoto composed original ambient score before his passing—one of his final collaborations. Temperature maintained at 20°C for optimal contemplation. Research partnership with psychology department studying effects of colored light on stress reduction. Corporate version installed at Google Tokyo headquarters.', 2),
+    
+    (v_card_id, v_cat_installations, 'Urban Echoes', E'**Artist:** Marcus Webb (b. 1979, Detroit)\n**Year:** 2024\n**Medium:** Found objects, motion sensors, generative sound\n**Dimensions:** Variable (approx. 10 × 8 meters)\n\n---\n\nAn installation using objects found on city streets—shopping carts, traffic cones, discarded furniture—arranged to create an immersive urban soundscape. Sensors detect visitor movement, triggering sounds associated with each object.\n\nAll objects were collected within 5 miles of the gallery over 6 months. Each carries traces of its previous life.\n\n*"Cities throw away more than objects. They throw away stories."* — Marcus Webb\n\n---\n\n🔊 **Interactive:** Your movement triggers different sounds\n📍 **Objects:** All found within 5 miles of gallery\n🗑️ **Note:** Nothing was cleaned—wear marks tell stories', NULL, 'Marcus Webb works with found materials to critique consumer culture and urban displacement. Detroit native, experienced city''s decline firsthand. Objects include: shopping cart from closed grocery store, traffic cones from demolished construction site, furniture from evicted homes. Sound design creates "symphony" from urban noise—car alarms, construction, voices. Motion sensors create unique composition based on how visitors move through space. Webb employs formerly homeless individuals to help collect materials, paying living wage. Part of sales proceeds support Detroit housing justice organizations. Previous version won the Whitney Biennial jury prize.', 3);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('art-gallery-grid', v_card_id, 'museum', true, true, 1);
+
+    RAISE NOTICE 'Successfully created Art Gallery template with card ID: %', v_card_id;
+
+END $body$;
+-- Auction House - Grouped List Mode (Digital Access)
+-- Template: Auction catalog with lots by category
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_cat_impressionist UUID;
+    v_cat_contemporary UUID;
+    v_cat_decorative UUID;
+    v_cat_jewelry UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, image_url,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'Heritage Auctions - Spring Fine Art Sale',
+        E'**Spring Fine Art Auction 2025**\n\nApril 15-16 | Live & Online Bidding\n\nBrowse 180+ lots of exceptional paintings, sculptures, and decorative arts.\n\n📞 Bidder Registration: +1 (555) 123-4567',
+        'list',
+        true,
+        'expanded',
+        'digital',
+        true,
+        'You are a knowledgeable art specialist at a prestigious auction house. Help potential bidders understand lots, provenance, condition, and market context. Be professional yet approachable. Explain auction terminology and bidding process to newcomers. Never give price predictions.',
+        E'Heritage Auctions - Spring Fine Art Sale 2025\nDates: April 15-16, 2025\nLocation: Heritage Auction House, 500 Park Avenue\nPreview: April 12-14, 10am-6pm\n\nBidding options: In-person paddle, phone bid, online via LiveAuctioneer\nBuyer''s premium: 25% on hammer price\n\nPayment: Wire transfer, certified check, major credit cards\nShipping: In-house shipping department, international available\n\nCondition reports available upon request\nAll sales final, subject to Terms & Conditions',
+        'Welcome to Heritage Auctions. I''m here to help you explore our Spring Fine Art Sale. Which collecting area interests you?',
+        'Excellent eye! Let me tell you more about Lot {name} - this is a particularly noteworthy piece.',
+        NULL,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Category 1: Impressionist & Modern Art
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Impressionist & Modern Art', '', 
+        'Session 1: April 15, 10:00 AM. Lots 1-45: Works from 1860-1940. Highlight: Monet water lily study, Picasso ceramic. Estimates range $5,000 - $500,000.', 1)
+    RETURNING id INTO v_cat_impressionist;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_impressionist, 'Lot 12 - Monet Water Lily Study', E'**Claude Monet (French, 1840-1926)**\n\n*Nymphéas, étude* (Water Lilies, study)\nc. 1905\n\nOil on canvas\n18 × 24 inches (45.7 × 61 cm)\nSigned lower right: Claude Monet\n\n---\n\n**Provenance:**\n- Estate of the artist\n- Galerie Durand-Ruel, Paris (acquired 1927)\n- Private collection, Geneva (1952-2024)\n\n**Estimate:** $350,000 - $450,000\n\n🔨 **Session 1** | April 15, ~11:30 AM', NULL, 'One of numerous water lily studies Monet made at Giverny. This example shows the looser brushwork of his later period. Authenticated by Wildenstein Institute. Condition: Excellent, minor craquelure consistent with age. Provenance is impeccable - Durand-Ruel was Monet''s primary dealer. Similar works sold $400K-600K recently.', 1),
+    
+    (v_card_id, v_cat_impressionist, 'Lot 23 - Picasso Ceramic Owl', E'**Pablo Picasso (Spanish, 1881-1973)**\n\n*Hibou mat* (Matte Owl)\n1953\n\nTurned vase, white earthenware clay\nEdition of 500\nHeight: 13 inches (33 cm)\nStamped and numbered: Madoura Plein Feu / Edition Picasso\n\n---\n\n**Provenance:**\n- Madoura Pottery, Vallauris\n- Private collection, New York\n\n**Literature:**\n- Ramié, Alain, *Picasso Catalogue*, no. 253\n\n**Estimate:** $25,000 - $35,000\n\n🔨 **Session 1** | April 15, ~12:15 PM', NULL, 'From Picasso''s prolific ceramic period at Madoura pottery. Owl was favorite motif - symbolism of wisdom, night, Athena. Edition of 500 is relatively large for Picasso ceramics. Condition: Excellent, no chips or restoration. Madoura stamp authenticates. Market for Picasso ceramics strong, especially zoomorphic forms.', 2);
+
+    -- Category 2: Contemporary Art
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Contemporary Art', '', 
+        'Session 1: April 15, 2:00 PM. Lots 46-90: Works from 1945-present. Highlight: Warhol silk screen, Basquiat drawing. Estimates range $10,000 - $800,000.', 2)
+    RETURNING id INTO v_cat_contemporary;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_contemporary, 'Lot 52 - Warhol Campbell''s Soup', E'**Andy Warhol (American, 1928-1987)**\n\n*Campbell''s Soup Can (Tomato)*\n1968\n\nScreenprint on paper\n35 × 23 inches (88.9 × 58.4 cm)\nFrom the edition of 250\nSigned and numbered in pencil\n\n---\n\n**Provenance:**\n- Leo Castelli Gallery, New York\n- Private collection, Los Angeles\n\n**Exhibition:**\n- "Warhol: Icons", MOCA, 1995\n\n**Estimate:** $150,000 - $200,000\n\n🔨 **Session 1** | April 15, ~2:30 PM', NULL, 'Iconic Warhol image from 1968 portfolio of 10 soup can varieties. Tomato is most recognizable. This impression has strong colors, no fading. Pencil signature is period-appropriate (Warhol varied signature style). MOCA exhibition history adds provenance value. Market: Strong demand, prices up 15% over 5 years.', 1),
+    
+    (v_card_id, v_cat_contemporary, 'Lot 67 - Basquiat Untitled Drawing', E'**Jean-Michel Basquiat (American, 1960-1988)**\n\n*Untitled (Head)*\n1982\n\nOil stick and graphite on paper\n22 × 30 inches (55.9 × 76.2 cm)\nSigned and dated verso\n\n---\n\n**Provenance:**\n- Tony Shafrazi Gallery, New York (1983)\n- Private collection, Miami\n\n**Authentication:**\n- Authentication Committee of the Estate of Jean-Michel Basquiat\n\n**Estimate:** $600,000 - $800,000\n\n🔨 **Session 1** | April 15, ~3:15 PM', NULL, '1982 was breakthrough year for Basquiat - Documenta 7, first solo shows. Head/skull motif is central to his iconography. Authentication by Estate committee is essential - many forgeries exist. Condition: Some paper toning, oil stick stable. Tony Shafrazi was key early dealer. Current market extremely strong for works on paper.', 2);
+
+    -- Category 3: Decorative Arts & Furniture
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Decorative Arts & Furniture', '', 
+        'Session 2: April 16, 10:00 AM. Lots 91-130: European furniture, silver, porcelain. Highlight: Louis XV commode, Tiffany lamp. Estimates range $2,000 - $150,000.', 3)
+    RETURNING id INTO v_cat_decorative;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_decorative, 'Lot 98 - Louis XV Commode', E'**Louis XV Kingwood Commode**\n\nAttributed to Jean-François Oeben\nParis, c. 1755\n\nKingwood and tulipwood marquetry, gilt bronze mounts, Brèche d''Alep marble top\n34 × 50 × 24 inches (86 × 127 × 61 cm)\n\n---\n\n**Provenance:**\n- French noble collection (per tradition)\n- Sotheby''s Monaco, 1988\n- Private collection, London\n\n**Estimate:** $80,000 - $120,000\n\n🔨 **Session 2** | April 16, ~10:45 AM', NULL, 'Jean-François Oeben was master ébéniste, teacher of Riesener. Kingwood (bois de violette) prized for purple-brown tone. Marquetry pattern shows floral scrolls typical of period. Mounts appear period but may include 19th c. replacements (common). Marble top is later replacement. Condition report details restorations.', 1),
+    
+    (v_card_id, v_cat_decorative, 'Lot 115 - Tiffany Dragonfly Lamp', E'**Tiffany Studios Dragonfly Table Lamp**\n\nNew York, c. 1905\n\nLeaded glass shade, bronze base\nShade diameter: 16 inches (40.6 cm)\nOverall height: 22 inches (55.9 cm)\nShade stamped: TIFFANY STUDIOS NEW YORK\nBase stamped: TIFFANY STUDIOS NEW YORK 337\n\n---\n\n**Provenance:**\n- Private collection, Connecticut (acquired c. 1920)\n- By descent to present owner\n\n**Estimate:** $100,000 - $150,000\n\n🔨 **Session 2** | April 16, ~11:30 AM', NULL, 'Dragonfly is one of most desirable Tiffany lamp designs. This is 16-inch "cone" shade version (larger 20-inch more valuable). All glass appears original - no replaced segments. Bronze base #337 is correct period pairing. Provenance from 1920 suggests original purchase. Market for quality Tiffany very strong, especially insect designs (dragonfly, butterfly, spider).', 2);
+
+    -- Category 4: Jewelry & Watches
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Jewelry & Watches', '', 
+        'Session 2: April 16, 2:00 PM. Lots 131-180: Signed jewelry, vintage watches, diamonds. Highlight: Art Deco Cartier bracelet, Patek Philippe chronograph. Estimates range $5,000 - $250,000.', 4)
+    RETURNING id INTO v_cat_jewelry;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_jewelry, 'Lot 145 - Cartier Art Deco Bracelet', E'**Cartier Art Deco Diamond Bracelet**\n\nParis, c. 1925\n\nPlatinum, set with old European-cut diamonds\nTotal diamond weight: approximately 15.00 carats\nLength: 7 inches (17.8 cm)\nSigned: Cartier Paris, numbered\n\n---\n\n**Provenance:**\n- European private collection\n\n**Accompanied by:**\n- Cartier archive extract confirming manufacture\n\n**Estimate:** $180,000 - $250,000\n\n🔨 **Session 2** | April 16, ~2:45 PM', NULL, 'Geometric Art Deco design with calibré-cut diamonds. Paris-made Cartier of this period commands premium over London or New York. Old European cut diamonds show period-correct faceting. Cartier archive confirmation is gold standard for authentication. Platinum shows minimal wear. Art Deco jewelry market extremely strong, especially signed Cartier.', 1),
+    
+    (v_card_id, v_cat_jewelry, 'Lot 162 - Patek Philippe Ref. 5170', E'**Patek Philippe Reference 5170G-010**\n\nManual-winding chronograph\nGeneva, 2015\n\n18k white gold case, 39.4mm\nSilvered dial with applied Breguet numerals\nCaliber CH 29-535 PS\n\n---\n\n**Accompanied by:**\n- Original box and papers\n- Patek Philippe Certificate of Origin\n- Extract from the Archives\n\n**Estimate:** $60,000 - $80,000\n\n🔨 **Session 2** | April 16, ~3:30 PM', NULL, 'Reference 5170 introduced 2010, first in-house manual chronograph movement. Caliber CH 29-535 PS has column wheel, horizontal clutch. White gold with silver dial is classic configuration. Full set with box/papers commands 15-20% premium. Condition appears unworn. 5170 series discontinued, values appreciating. Extract from Archives confirms authenticity and original sale date.', 2);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('auction-house', v_card_id, 'retail', true, true, 10);
+
+    RAISE NOTICE 'Successfully created Auction House template with card ID: %', v_card_id;
+
+END $body$;
+
+-- Cocktail Bar - Grouped Cards Mode (Digital Access)
+-- Template: Craft cocktail menu organized by spirit type
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_cat_signature UUID;
+    v_cat_whiskey UUID;
+    v_cat_gin UUID;
+    v_cat_agave UUID;
+    v_cat_rum UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, daily_scan_limit,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'The Velvet Room - Cocktail Menu',
+        E'**Craft cocktails. Timeless classics. New discoveries.**\n\nOur bartenders blend artistry with tradition, creating drinks that honor the classics while pushing boundaries. Every cocktail tells a story.\n\n🥃 Ask your bartender for recommendations based on your mood.',
+        'cards',
+        true,
+        'expanded',
+        'digital',
+        true,
+        'You are a knowledgeable craft bartender with a warm, inviting personality. Help guests find their perfect drink based on flavor preferences (sweet, sour, bitter, spirit-forward), mood, or occasion. Share cocktail history and stories. Be enthusiastic but not pretentious—everyone is welcome regardless of cocktail knowledge.',
+        E'The Velvet Room - Craft Cocktail Bar\nEst. 2018 · Named "Best Bar" by City Magazine 2023\n\nHead Bartender: James Monroe (15 years experience, trained in London & Tokyo)\nBar Manager: Sarah Chen (10 years, previously at Death & Co)\n\nBar philosophy: Classic techniques, quality ingredients, personal touch\nIce program: All ice cut in-house from 300lb blocks (takes 3 days to freeze crystal-clear)\nSpirits: 400+ bottles, emphasis on small-batch and craft\n\nSignature technique: Clarified milk punches, fat-washed spirits, barrel-aged cocktails\n\nNon-alcoholic options: Full "Zero Proof" menu available (not just mocktails—serious cocktails without alcohol)\nFood: Light snacks and charcuterie available from our kitchen partner next door\n\nHappy hour: 5-7pm, $10 classic cocktails\nReservations: Recommended for groups of 4+\nDress code: Smart casual (no flip flops)\nPrivate events: Back room seats 20, full buyout available',
+        'Welcome to The Velvet Room! I''m here to help you find your perfect cocktail. What flavors are you in the mood for tonight?',
+        'The "{name}" is one of our favorites! Would you like to know more about its ingredients or the story behind it?',
+        1000,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Create categories by spirit type (Layer 1)
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '⭐ House Signatures', E'Our bartender''s original creations — each tells a unique story and showcases our house style.\n\n*"These are the drinks we dream about."*', 'Signature cocktails are original creations by our head bartender James. Each underwent months of development and tasting. These drinks showcase our house techniques: clarified milk punch, sous vide infusions, house-made bitters. They change seasonally but favorites stay on permanently. Most profitable for the house—ingredients controlled.', 1)
+    RETURNING id INTO v_cat_signature;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🥃 Whiskey & Bourbon', E'Spirit-forward classics and innovative twists for those who appreciate depth and warmth.\n\nOur collection: 100+ bottles from American bourbon to Japanese whisky.', 'Whiskey selection includes: 40 bourbons, 25 ryes, 20 Scotches, 15 Japanese whiskies. Price range $12-45 for cocktails, $15-200 for pours. Staff trained by Whiskey Ambassador program. Ice spheres cut specifically for whiskey service. Can do flights of 3 for comparison tasting. Yamazaki 18 available but limited to 2 pours per night.', 2)
+    RETURNING id INTO v_cat_whiskey;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🌿 Gin Cocktails', E'Botanical, refreshing, and versatile — from bright and citrusy to herbaceous and complex.\n\n*Perfect for: Gin lovers, cocktail newcomers, warm weather*', 'Gin selection emphasizes London Dry (Beefeater, Tanqueray), contemporary (Hendrick''s, The Botanist), and New Western (St. George). 35 gins total. Can customize G&Ts with selection of 8 tonics and 12 garnishes. Negroni variations are a specialty. Martini service is tableside with temperature-controlled gin.', 3)
+    RETURNING id INTO v_cat_gin;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🌵 Agave Spirits', E'From smooth tequila to smoky mezcal — celebrating Mexico''s finest spirits.\n\n*"Once you go mezcal, you never go back."*', 'Agave program is our pride. 20 mezcals, 15 tequilas, including rare expressions. All 100% agave—no mixto. Direct relationships with small producers in Oaxaca. Can explain the difference between espadín, tobalá, tepeztate. Mezcal tasting flights popular. Educating guests about agave crisis and sustainability.', 4)
+    RETURNING id INTO v_cat_agave;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🏝️ Rum & Tropical', E'Island-inspired refreshers — from light and tropical to dark and complex.\n\n*Close your eyes and you''re on a beach.*', 'Rum selection: 30 bottles spanning Caribbean, Central America, and Pacific. Includes agricole, Spanish-style, English-style. Tropical drinks made with fresh juices (squeezed daily). House orgeat and falernum. Tiki drinks available but done "properly"—balanced, not too sweet. Rum education often needed as guests underestimate the category.', 5)
+    RETURNING id INTO v_cat_rum;
+
+    -- Insert signature cocktails (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_signature, 'The Velvet Old Fashioned', E'**Our signature take on the timeless classic**\n\n*Woodford Reserve bourbon · demerara · house bitters · orange oil*\n\n---\n\nWe start with a base of Woodford Reserve, chosen for its rich vanilla and dried fruit notes. House-made demerara syrup (2:1 ratio for extra body) adds depth without cloying sweetness. Our proprietary bitters blend combines Angostura, orange, and house-made walnut bitters.\n\nThe drink is stirred exactly 50 rotations for optimal dilution, served over a hand-cut 2.5-inch ice sphere, and finished with expressed orange oil and a flamed orange peel.\n\n---\n\n🥃 **Spirit:** Bourbon\n📊 **Strength:** Strong (2oz pour)\n🍬 **Profile:** Spirit-forward, subtly sweet, aromatic\n\n**$16**', NULL, 'Our #1 selling cocktail since opening. House bitters recipe took 6 months to develop—walnut adds subtle earthiness. Demerara syrup uses Demerara sugar from Guyana. Ice sphere takes 3 days to freeze and 2 minutes to cut. Can substitute: Rittenhouse Rye (spicier), Nikka Coffey Grain (smoother). Named after the bar—the drink that defines us. James developed this during his time in Tokyo studying Japanese bartending precision.', 1),
+    
+    (v_card_id, v_cat_signature, 'Smoke & Mirrors', E'**A theatrical experience for mezcal lovers**\n\n*Del Maguey Vida mezcal · Aperol · lime · agave · chipotle*\n\n---\n\nOur most dramatic cocktail: smoky mezcal meets bitter Aperol, brightened with fresh lime and rounded with raw agave nectar. A whisper of house-made chipotle tincture adds warmth without overwhelming heat.\n\nServed under a glass cloche filled with applewood smoke—lifted tableside for full sensory impact. The smoke mingles with the drink and dissipates within moments, leaving behind subtle aromatics.\n\n---\n\n🥃 **Spirit:** Mezcal\n📊 **Strength:** Medium-Strong\n🍬 **Profile:** Smoky, bitter-sweet, complex\n\n**$18**\n\n📸 *One of our most Instagrammed drinks*', NULL, 'Del Maguey Vida chosen for balance of smoke and fruit—not too aggressive. Chipotle tincture made in-house: dried chipotles steeped in high-proof vodka for 2 weeks, then strained. Use sparingly—2 drops max. Applewood smoke from chips using a PolyScience smoking gun. Cloche creates drama and captures aroma. Best consumed within 2 minutes of reveal for full smoke experience. Inspired by Oaxacan mezcalerias where smoke is everywhere.', 2),
+    
+    (v_card_id, v_cat_signature, 'Lavender Dreams', E'**Floral elegance in a glass**\n\n*Grey Goose vodka · house lavender syrup · St-Germain · lemon · egg white*\n\n---\n\nA silky, aromatic cocktail that balances floral sweetness with bright citrus. We steep French lavender in simple syrup for 24 hours, then combine with premium vodka, elderflower liqueur, fresh lemon, and egg white for a luxurious foam.\n\nDry shaken first (no ice) for foam structure, then wet shaken to chill. Served in a chilled coupe with a single lavender sprig.\n\n---\n\n🥃 **Spirit:** Vodka\n📊 **Strength:** Medium\n🍬 **Profile:** Floral, creamy, elegant\n\n**$16**\n\n🌿 *Can be made vegan with aquafaba*', NULL, 'Most popular with guests who say they "don''t like cocktails." Lavender sourced from Provence, same farm supplies L''Occitane. Too much lavender tastes like soap—we use exactly 2 tablespoons per batch of syrup. Egg white from pasteurized eggs for safety. Aquafaba (chickpea water) is perfect vegan substitute—guests can''t tell the difference. Grey Goose chosen for its clean profile that doesn''t compete with florals.', 3);
+
+    -- Insert whiskey cocktails (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_whiskey, 'Tokyo Sour', E'**East meets West in a glass**\n\n*Suntory Toki · yuzu · egg white · shiso · matcha dust*\n\n---\n\nA Japanese-inspired whisky sour featuring Suntory Toki (a blend designed for mixing), fresh yuzu juice imported from Japan, and silky egg white foam. Aromatic shiso leaf adds an herbaceous, slightly minty note.\n\nThe drink is dry shaken first for foam, then wet shaken with ice. Finished with a delicate dusting of ceremonial-grade matcha from Uji, Kyoto.\n\n---\n\n🥃 **Spirit:** Japanese Whisky\n📊 **Strength:** Medium\n🍬 **Profile:** Citrus-forward, creamy, aromatic\n\n**$17**\n\n🌿 *Can be made vegan with aquafaba*', NULL, 'Created by head bartender James after his training trip to Tokyo in 2019. Yuzu juice is 10x price of lemon but irreplaceable—nothing else has that floral citrus quality. Shiso (perilla) leaf from local Japanese grocery. Matcha is ceremonial grade (about $30/oz)—culinary grade is too bitter. Suntory Toki was designed as a mixing whisky—smooth, approachable, plays well with citrus. Very popular with Japanese whisky curious guests.', 1),
+    
+    (v_card_id, v_cat_whiskey, 'Midnight Manhattan', E'**Dark, brooding, sophisticated**\n\n*Rittenhouse Rye · Carpano Antica · Cynar · Luxardo cherry*\n\n---\n\nOur twist on the classic Manhattan adds Cynar (an artichoke-based amaro) for earthy depth and intriguing complexity. Rittenhouse Rye at 100 proof stands up to the rich sweet vermouth, while the Cynar adds a subtle bitter-vegetal note.\n\nStirred exactly 50 rotations until silky, strained into a chilled coupe, and garnished with a single Luxardo cherry that''s worth the import cost.\n\n---\n\n🥃 **Spirit:** Rye Whiskey\n📊 **Strength:** Strong\n🍬 **Profile:** Spirit-forward, complex, slightly bitter\n\n**$17**\n\n*"A Manhattan for people who find Manhattans boring."*', NULL, 'Rittenhouse 100 proof is bartender''s choice for Manhattan variations—high proof means flavor isn''t buried. Carpano Antica is the gold standard of sweet vermouth ($40/bottle vs $10 for Martini). Cynar adds artichoke-based earthiness that rounds out sweetness. Luxardo cherries ($25/jar) are essential—maraschinos are banned from this bar. Named Midnight because of the dark, mysterious quality. James'' personal favorite after a long shift.', 2),
+    
+    (v_card_id, v_cat_whiskey, 'Penicillin', E'**The modern classic that cures what ails you**\n\n*Monkey Shoulder blended Scotch · lemon · honey-ginger · Laphroaig float*\n\n---\n\nInvented in 2005 by Sam Ross at Milk & Honey, the Penicillin has already earned its place among the classics. A blended Scotch base with homemade honey-ginger syrup (we cook fresh ginger into raw honey), fresh lemon, and a dramatic float of peaty Laphroaig.\n\nThe float hits your nose before your lips—smoke announces the drink before you taste it.\n\n---\n\n🥃 **Spirit:** Scotch Whisky\n📊 **Strength:** Medium-Strong\n🍬 **Profile:** Sweet, smoky, warming\n\n**$16**\n\n*Often ordered by Scotch skeptics who discover they love it*', NULL, 'Sam Ross created this at Milk & Honey NYC—one of the most influential bars of the 21st century. Honey-ginger syrup made weekly: fresh ginger cooked into honey (1:1) for 30 minutes. Monkey Shoulder is a blend of 3 Speyside malts—smooth, approachable, designed for mixing. Laphroaig float (1/4 oz) adds dramatic peat smoke aroma. Not stirred in—layered on top. Great cold remedy (though not medical advice!). We''ve converted many Scotch skeptics with this drink.', 3),
+    
+    (v_card_id, v_cat_whiskey, 'Paper Plane', E'**Equal parts everything—perfectly balanced**\n\n*Bourbon · Aperol · Amaro Nonino · lemon*\n\n---\n\nThe Paper Plane proves that equal parts can create perfect harmony. Four ingredients, each playing their role: bourbon''s warmth, Aperol''s bitter orange, Amaro Nonino''s honey-herb complexity, lemon''s brightness.\n\nCreated in 2007 by Sam Ross (also creator of the Penicillin), named after the M.I.A. song playing when he made it.\n\n---\n\n🥃 **Spirit:** Bourbon\n📊 **Strength:** Medium\n🍬 **Profile:** Bittersweet, complex, balanced\n\n**$16**\n\n*No garnish needed—the drink speaks for itself*', NULL, 'Another Sam Ross creation (Violet Hour, Chicago). Equal parts (3/4 oz each) is the key—changing ratios throws off balance. Amaro Nonino has honey and herb notes unavailable in other amari. Named when M.I.A.''s "Paper Planes" came on the bar speakers. Shaken hard with ice, strained into coupe. No garnish by design—Ross believed the drink was complete. Popular with amaro lovers discovering bourbon, and bourbon lovers discovering amaro. Gateway drink to the bitter world.', 4);
+
+    -- Insert gin cocktails (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_gin, 'Garden Party', E'**Summer in a glass, any time of year**\n\n*Hendrick''s gin · elderflower · cucumber · lemon · prosecco*\n\n---\n\nA spritz-style cocktail that''s light, floral, and impossibly refreshing. Hendrick''s gin provides the cucumber-rose base, lifted with St-Germain elderflower liqueur and brightened with fresh lemon. Topped with prosecco for effervescence.\n\nBuilt over ice, stirred gently, garnished with a ribbon of fresh cucumber.\n\n---\n\n🥃 **Spirit:** Gin\n📊 **Strength:** Light (easy drinking)\n🍬 **Profile:** Floral, refreshing, effervescent\n\n**$15**\n\n*Our most popular brunch cocktail*', NULL, 'Hendrick''s chosen for its cucumber and rose notes—complements rather than competes with elderflower. St-Germain elderflower liqueur (the "bartender''s ketchup" because it goes with everything). Fresh cucumber ribbon as garnish—essential for aroma. Prosecco added last to preserve bubbles. Can substitute Sipsmith for more juniper-forward version, or Aviation for more floral. Very popular with gin lovers and cocktail newcomers alike. Outsells mimosas at brunch 3:1.', 1),
+    
+    (v_card_id, v_cat_gin, 'Honey Bee', E'**Sweet sophistication with a botanical twist**\n\n*Beefeater gin · local honey · lavender · lemon*\n\n---\n\nA Bee''s Knees (the Prohibition-era classic) upgraded with house-made lavender tincture. Local wildflower honey brings floral sweetness that changes with the seasons, while the lavender adds aromatic complexity without overwhelming.\n\nShaken, strained, served up with a dried lavender sprig.\n\n---\n\n🥃 **Spirit:** Gin\n📊 **Strength:** Medium\n🍬 **Profile:** Sweet, floral, balanced\n\n**$15**\n\n*Popular with guests who find gin "too juniper-y"*', NULL, 'Honey from local apiary 20 miles north—changes seasonally (currently clover, spring is wildflower, fall is buckwheat). Lavender tincture uses culinary lavender steeped for 1 week—only 3 drops per drink or it tastes like soap. The Bee''s Knees was invented during Prohibition to mask bathtub gin. We use Beefeater for its botanical balance—juniper present but not aggressive. Popular with guests transitioning from vodka to gin. The honey sweetness eases them in.', 2),
+    
+    (v_card_id, v_cat_gin, 'The Last Word', E'**Equal parts, bold complexity**\n\n*Gin · Green Chartreuse · Maraschino · lime*\n\n---\n\nA pre-Prohibition classic from the Detroit Athletic Club, lost for decades until resurrected by Murray Stenson in Seattle. Four equal parts create an improbably harmonious whole—herbaceous, sweet, tart, and spirit-forward.\n\nGreen Chartreuse (130 herbs, made by monks) does the heavy lifting, balanced by maraschino''s cherry sweetness and lime''s brightness.\n\n---\n\n🥃 **Spirit:** Gin\n📊 **Strength:** Strong\n🍬 **Profile:** Herbaceous, complex, bold\n\n**$17**\n\n*"The bartender''s handshake—order this and we know you''re serious."*', NULL, 'Pre-Prohibition recipe from Detroit Athletic Club (1920s), lost until Murray Stenson found it in an old book and revived it at Zig Zag Café Seattle (2004). Green Chartreuse is made by Carthusian monks from 130 herbs—recipe known by only 2 monks at a time. Luxardo Maraschino is different from cherry liqueur—it''s made from Marasca cherries, pit and all. Equal parts (3/4 oz each) is essential. Very spirit-forward—know your guest before recommending. Bartender handshake: order this and we know you know cocktails.', 3);
+
+    -- Insert agave cocktails (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_agave, 'Oaxacan Negroni', E'**A smoky twist on the Italian classic**\n\n*Del Maguey Vida mezcal · Campari · Carpano Antica*\n\n---\n\nThe classic Negroni reimagined with mezcal instead of gin. The smokiness of the mezcal adds incredible depth to the bitter-sweet balance, creating something that feels both familiar and entirely new.\n\nEqual parts stirred, served over a large ice cube, garnished with an expressed orange twist.\n\n---\n\n🥃 **Spirit:** Mezcal\n📊 **Strength:** Strong\n🍬 **Profile:** Bitter, smoky, complex\n\n**$16**\n\n*"The drink that converted me to mezcal."* — approximately 100 guests', NULL, 'Phil Ward (Death & Co) is often credited with popularizing this variation. Del Maguey Vida chosen for smoke that enhances rather than overwhelms. Campari''s bitter orange loves the smoky backdrop. Carpano Antica (premium sweet vermouth) adds vanilla and spice notes. Large ice cube (cut from 300lb block) for slow dilution—this drink improves as it opens up. Orange twist expressed over drink to release oils. One of our most successful "conversion" drinks—turns mezcal skeptics into believers.', 1),
+    
+    (v_card_id, v_cat_agave, 'Mezcal Mule', E'**Smoke meets spice**\n\n*Del Maguey Vida · house ginger beer · lime · sal de gusano rim*\n\n---\n\nOur take on the Moscow Mule swaps vodka for mezcal and amps up the ginger. House-made ginger beer (2 lbs fresh ginger per batch) brings serious heat that plays beautifully against the smoke.\n\nServed in a copper mug with a sal de gusano (worm salt) half-rim for those who want it.\n\n---\n\n🥃 **Spirit:** Mezcal\n📊 **Strength:** Medium\n🍬 **Profile:** Smoky, spicy, refreshing\n\n**$15**\n\n*The ginger beer has serious heat—we can dial it back on request*', NULL, 'House ginger beer made weekly: 2 lbs fresh ginger, sugar, water, champagne yeast. Ferments for 48 hours—much spicier than commercial. Sal de gusano is traditional Oaxacan seasoning—dried maguey worms, chilies, salt ground together. Sounds scary, tastes amazing. Copper mug keeps drink colder longer. Can reduce ginger heat by mixing with commercial ginger beer. Good entry point for mezcal curious—the ginger provides familiar comfort.', 2);
+
+    -- Insert rum cocktails (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_rum, 'Dark & Stormy', E'**The perfect storm of rum and ginger**\n\n*Gosling''s Black Seal rum · house ginger beer · lime*\n\n---\n\nThe official drink of Bermuda, made with the only rum legally allowed to be called a Dark & Stormy: Gosling''s Black Seal. Our house-made ginger beer has serious heat—not for the faint-hearted.\n\nLayered (not stirred) for visual drama—the rum floats on top like a storm cloud.\n\n---\n\n🥃 **Spirit:** Dark Rum\n📊 **Strength:** Medium\n🍬 **Profile:** Spicy, sweet, bold\n\n**$14**\n\n*Gosling''s trademarked the name—it''s the only legally protected cocktail*', NULL, 'Gosling''s has trademark on "Dark & Stormy" name—must use their rum. House ginger beer made fresh weekly with 2lbs fresh ginger per batch. Much spicier than commercial. Layered, not stirred—rum floats on top for visual effect and first-sip punch. The "storm" effect when you stir it yourself. Lime wedge essential for balance. Can reduce ginger heat on request by mixing with commercial. Popular with people who think they don''t like rum—the ginger does the talking.', 1),
+    
+    (v_card_id, v_cat_rum, 'Jungle Bird', E'**Tiki meets Italian bitter**\n\n*Blackstrap rum · Campari · pineapple · lime · simple syrup*\n\n---\n\nCreated at the Kuala Lumpur Hilton in 1978, the Jungle Bird bridges tiki and the bitter cocktail world. Funky Blackstrap rum meets Campari''s bitter orange, with tropical pineapple and lime keeping things bright.\n\nShaken hard, served over crushed ice, garnished with pineapple frond.\n\n---\n\n🥃 **Spirit:** Rum\n📊 **Strength:** Medium\n🍬 **Profile:** Tropical, bitter, funky\n\n**$15**\n\n*"The drink that taught me rum could be complex."*', NULL, 'Created in 1978 at KL Hilton, forgotten for decades, revived by Giuseppe González at Dutch Kills (NYC). Blackstrap rum (Cruzan or Plantation) has molasses-heavy, almost burnt sugar quality. Campari seems odd with tropical flavors but works perfectly—the bitter balances the sweet. Fresh pineapple juice essential (never canned). Crushed ice dilutes faster—intended for quick drinking before it waters down. Gateway drink to both tiki and amaro worlds.', 2),
+    
+    (v_card_id, v_cat_rum, 'Hemingway Daiquiri', E'**The writer''s favorite, perfected**\n\n*White rum · lime · grapefruit · Luxardo Maraschino*\n\n---\n\nErnest Hemingway supposedly drank these by the pitcher at El Floridita in Havana. Our version honors the original: white rum, fresh lime, pink grapefruit, and just enough Maraschino for complexity.\n\nDouble-strained into a chilled coupe, served bone-dry as Hemingway preferred.\n\n---\n\n🥃 **Spirit:** White Rum\n📊 **Strength:** Medium\n🍬 **Profile:** Tart, complex, refreshing\n\n**$15**\n\n*"A daiquiri for people who think daiquiris are too sweet."*\n\n🩸 Also called "Papa Doble" (double) because Hemingway drank them large', NULL, 'Hemingway was diabetic—he asked for daiquiris without sugar, double rum, extra lime. Constantino Ribalaigua at El Floridita added grapefruit and Maraschino to balance. Our version uses fresh Ruby Red grapefruit. Served "bone-dry" means no added sugar—the Maraschino provides enough sweetness. Luxardo Maraschino is made from whole cherries including pit—dry, not sweet like cherry liqueur. Often surprises guests expecting a sweet frozen drink. We''ve successfully converted many daiquiri skeptics.', 3);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('cocktail-bar', v_card_id, 'restaurant', true, true, 2);
+
+    RAISE NOTICE 'Successfully created Cocktail Bar template with card ID: %', v_card_id;
+
+END $body$;
+-- Conference - Grouped List Mode (Digital Access)
+-- Template: Tech conference with sessions by day
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_day1 UUID;
+    v_day2 UUID;
+    v_day3 UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, image_url,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'TechSummit 2025 - Conference Guide',
+        E'Welcome to **TechSummit 2025**! 🚀\n\nDecember 10-12 | Convention Center\n\nBrowse sessions by day, track, and speaker. Build your personalized schedule with our AI assistant.',
+        'list',
+        true,
+        'expanded',
+        'digital',
+        true,
+        'You are a helpful conference assistant. Help attendees find relevant sessions based on their interests, navigate the venue, and answer questions about speakers and topics. Be enthusiastic about tech and help people discover talks they might not have considered.',
+        E'TechSummit 2025 - Annual Technology Conference\nDates: December 10-12, 2025\nVenue: Downtown Convention Center\nAttendees: 5,000 expected\n\nVenue layout:\n- Main Hall: Keynotes (capacity 3,000)\n- Room A: AI & ML Track (500)\n- Room B: Web & Mobile Track (500)\n- Room C: Cloud & DevOps Track (500)\n- Room D: Workshops (100)\n- Expo Hall: Sponsor booths\n\nWiFi: TechSummit2025 / password: innovate2025\nApp: Download TechSummit app for live schedule updates\nMeals: Breakfast 8-9am, Lunch 12:30-2pm, Coffee breaks 10:30am & 3:30pm',
+        'Welcome to TechSummit 2025! I''m here to help you navigate the conference. What topics are you most interested in?',
+        'Great choice! "{name}" is one of our featured sessions. Would you like to know more about the speaker or related sessions?',
+        NULL,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Day 1
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Day 1 - December 10', '', 
+        'Day 1 focus: Opening keynote and foundational sessions. Theme: "The Future of Technology". Special events: Welcome reception 6-8pm in Expo Hall. Early bird workshop: "Intro to AI" 7:30am (pre-registration required).', 1)
+    RETURNING id INTO v_day1;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_day1, 'Opening Keynote: The Next Decade of Tech', E'**🎤 Sarah Chen, CEO of FutureTech**\n\n📍 Main Hall | ⏰ 9:00 AM - 10:15 AM\n\nJoin us as Sarah Chen shares her vision for the next decade of technology. From AI breakthroughs to sustainable computing, discover what''s coming and how to prepare.\n\nSarah has led FutureTech to a $50B valuation and was named "Most Influential Tech Leader" by Wired Magazine.\n\n---\n\n🏷️ **Track:** Keynote\n📊 **Level:** All Levels\n⭐ **Featured Speaker**', NULL, 'Sarah Chen founded FutureTech in 2015, grew to 10,000 employees. Previous roles: VP Engineering at Google, CTO at Stripe. Stanford CS PhD focused on distributed systems. Known for accurate predictions - called the smartphone revolution in 2005. Will discuss: AI regulation, quantum computing timeline, climate tech, and workforce evolution.', 1),
+    
+    (v_card_id, v_day1, 'Building Production ML Systems', E'**🎤 Dr. James Liu, ML Lead at DataScale**\n\n📍 Room A | ⏰ 10:45 AM - 11:30 AM\n\nLearn the architectural patterns and best practices for deploying machine learning models at scale. James shares lessons from running ML systems serving 100M+ predictions daily.\n\n---\n\n**Topics Covered:**\n- Feature stores and real-time inference\n- Model versioning and A/B testing\n- Monitoring and debugging ML in production\n- Cost optimization strategies\n\n🏷️ **Track:** AI & Machine Learning\n📊 **Level:** Intermediate\n💻 **Slides:** Available in app after session', NULL, 'James Liu has 12 years ML experience. PhD from MIT in predictive systems. DataScale processes 50TB data daily. Session includes live demo of their monitoring dashboard. Will share their open-source feature store framework. Good for engineers moving from prototype to production ML.', 2),
+    
+    (v_card_id, v_day1, 'Modern Web Performance in 2025', E'**🎤 Elena Rodriguez, Performance Engineer at Shopify**\n\n📍 Room B | ⏰ 10:45 AM - 11:30 AM\n\nWeb performance directly impacts user experience and business metrics. Discover the latest techniques for building blazing-fast web applications.\n\n---\n\n**Topics Covered:**\n- Core Web Vitals optimization\n- Image and font loading strategies\n- JavaScript bundling in 2025\n- Edge computing and CDN strategies\n\n🏷️ **Track:** Web & Mobile\n📊 **Level:** Intermediate\n🔗 **Resources:** github.com/elena/webperf-2025', NULL, 'Elena improved Shopify''s LCP by 40% last year. Previously at Google Chrome team working on performance metrics. Active contributor to web standards. Will demo real Shopify optimizations. Includes hands-on exercises if you bring laptop.', 3),
+    
+    (v_card_id, v_day1, 'Zero Trust Security Architecture', E'**🎤 Marcus Thompson, CISO at FinanceCloud**\n\n📍 Room C | ⏰ 10:45 AM - 11:30 AM\n\nTraditional perimeter security is dead. Learn how to implement zero trust architecture to protect your cloud infrastructure in an age of sophisticated threats.\n\n---\n\n**Topics Covered:**\n- Zero trust principles and frameworks\n- Identity-based access control\n- Micro-segmentation strategies\n- Real-world implementation case studies\n\n🏷️ **Track:** Cloud & DevOps\n📊 **Level:** Advanced\n📋 **Prerequisite:** Cloud security fundamentals', NULL, 'Marcus led security for $2T in transactions at FinanceCloud. 20+ years in cybersecurity, former NSA. Will discuss actual breach attempts and how zero trust prevented them. Covers AWS, Azure, and GCP implementations. Highly rated speaker from last year.', 4);
+
+    -- Day 2
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Day 2 - December 11', '', 
+        'Day 2 focus: Deep dive technical sessions and hands-on workshops. Theme: "Building for Scale". Special events: Speaker dinner (invite only), Birds of a Feather sessions 5-6pm. Evening: Hackathon kickoff 7pm (48-hour event).', 2)
+    RETURNING id INTO v_day2;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_day2, 'Keynote: Responsible AI - Building Trust', E'**🎤 Dr. Aisha Patel, Chief Ethics Officer at TechGiant**\n\n📍 Main Hall | ⏰ 9:00 AM - 10:00 AM\n\nAs AI becomes ubiquitous, how do we ensure it serves humanity? Dr. Patel shares frameworks for ethical AI development and responsible deployment.\n\nNamed one of TIME''s 100 Most Influential People in AI.\n\n---\n\n🏷️ **Track:** Keynote\n📊 **Level:** All Levels\n⭐ **Featured Speaker**', NULL, 'Dr. Patel wrote the book "AI Ethics in Practice" (bestseller). Advises EU on AI regulation. TechGiant''s ethics board has veto power on products. Will discuss: bias in hiring algorithms, AI in healthcare decisions, deepfake detection, and open-source AI governance. Q&A session follows.', 1),
+    
+    (v_card_id, v_day2, 'Workshop: Building Your First LLM Application', E'**🎤 David Kim, Developer Advocate at OpenAI**\n\n📍 Room D | ⏰ 10:30 AM - 12:30 PM | **2 Hours**\n\n**⚠️ Pre-registration required - Limited to 100 attendees**\n\nHands-on workshop building a real application using GPT-4 API. You''ll leave with a working chatbot deployed to production.\n\n---\n\n**What You''ll Build:**\n- Custom chatbot with RAG (Retrieval Augmented Generation)\n- Semantic search over your documents\n- Streaming responses with proper error handling\n\n**Bring:** Laptop with Python 3.9+ installed\n\n🏷️ **Track:** Workshop\n📊 **Level:** Beginner-Intermediate\n💰 **Included:** $100 OpenAI API credits', NULL, 'David Kim created the popular "LLM in a Weekend" course (50K students). 5 years at OpenAI, worked on GPT-3 and GPT-4 launches. Workshop uses LangChain framework. Prerequisites: basic Python knowledge. Assistants will be available for troubleshooting. Complete code provided in GitHub repo.', 2),
+    
+    (v_card_id, v_day2, 'Panel: The Future of Work in the AI Era', E'**Moderated by Tech Reporter Maya Johnson**\n\n📍 Room A | ⏰ 2:00 PM - 3:00 PM\n\nHow will AI transform jobs over the next decade? Industry leaders debate automation, augmentation, and the skills that matter.\n\n---\n\n**Panelists:**\n- Sarah Chen, CEO, FutureTech\n- Dr. Robert Garcia, Labor Economist, Stanford\n- Lisa Wang, Chief People Officer, MegaCorp\n- Tom O''Brien, Union President, Tech Workers United\n\n🏷️ **Track:** AI & Machine Learning\n📊 **Level:** All Levels\n📱 **Live Q&A:** Submit questions via app', NULL, 'Controversial topic - expect heated debate. Garcia''s research shows 30% of jobs will be transformed by 2030. Wang believes AI creates more jobs than it eliminates. O''Brien advocates for retraining programs. Audience voting on predictions built into session.', 3);
+
+    -- Day 3
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Day 3 - December 12', '', 
+        'Day 3 focus: Advanced topics and closing ceremonies. Theme: "Looking Ahead". Special events: Hackathon judging 10am-12pm, Award ceremony 4pm. Early departure: Luggage storage available at registration desk.', 3)
+    RETURNING id INTO v_day3;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_day3, 'Closing Keynote: What I Wish I Knew', E'**🎤 Michael Torres, Founder of five unicorn startups**\n\n📍 Main Hall | ⏰ 2:00 PM - 3:00 PM\n\nAfter building five billion-dollar companies, Michael shares the lessons that shaped his journey—and the mistakes he hopes you''ll avoid.\n\nAn honest, unfiltered conversation about entrepreneurship in tech.\n\n---\n\n🏷️ **Track:** Keynote\n📊 **Level:** All Levels\n⭐ **Featured Speaker**', NULL, 'Michael Torres founded StreamTech (acquired by Netflix), CloudBase (IPO), DataFlow (acquired by Salesforce), RoboInvest (current), and GreenEnergy (current). Forbes 400 list. Known for brutally honest talks. Will discuss: failed companies he doesn''t mention, mental health challenges, family sacrifices, and what success really means. Standing ovation expected.', 1),
+    
+    (v_card_id, v_day3, 'TechSummit Awards & Closing', E'**🏆 Celebrating Excellence in Tech**\n\n📍 Main Hall | ⏰ 4:00 PM - 5:00 PM\n\nJoin us as we recognize outstanding achievements and innovations from the past year.\n\n---\n\n**Award Categories:**\n- Startup of the Year\n- Best Open Source Project\n- Diversity & Inclusion Champion\n- Breakthrough Innovation\n- Community Impact Award\n\n**Hackathon Winners:** Announced during ceremony\n\n🏷️ **Track:** All Attendees\n🍾 **Reception follows**', NULL, 'Award finalists announced via app day before. Past winners include now-famous startups like DataBridge and AIAssist. Hackathon prizes total $50,000. Closing reception 5-7pm with open bar and networking. Photo booth with speakers available. Swag bag pickup at exit.', 2);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('conference', v_card_id, 'event', true, true, 11);
+
+    RAISE NOTICE 'Successfully created Conference template with card ID: %', v_card_id;
+
+END $body$;
+
+-- Fashion Show - Grouped List Mode (Digital Access)
+-- Template: Fashion show lookbook with looks by segment
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_seg_cocoon UUID;
+    v_seg_emergence UUID;
+    v_seg_flight UUID;
+    v_seg_finale UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, image_url,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'MAISON ÉLISE - Spring/Summer 2025',
+        E'**Spring/Summer 2025 Collection**\n\n*"Metamorphosis"*\n\nA journey through transformation, rebirth, and the beauty of change.\n\nParis Fashion Week | March 2025',
+        'list',
+        true,
+        'expanded',
+        'digital',
+        true,
+        'You are the creative director''s assistant at a haute couture fashion house. Share the artistic vision, craftsmanship details, and inspiration behind each look. Speak with sophistication about fabrics, techniques, and fashion history. Be passionate about the creative process while remaining approachable.',
+        E'MAISON ÉLISE - Spring/Summer 2025 "Metamorphosis" Collection\nCreative Director: Élise Dubois\n\nShow Details:\n- Date: March 3, 2025, 8:00 PM\n- Venue: Palais de Tokyo, Paris\n- Looks: 45 total across 4 segments\n- Models: 32\n- Duration: 18 minutes\n\nCollection Inspiration:\nThe lifecycle of the butterfly—from cocoon to flight. Explores themes of transformation, vulnerability, and emerging beauty. Influenced by Art Nouveau, Japanese origami, and organic architecture.\n\nKey Materials:\n- Sustainable silk from Italian mills\n- Recycled ocean plastics transformed into sequins\n- Hand-painted organza\n- 3D-printed biodegradable elements\n\nAtelier: 47 artisans, 12,000+ hours of handwork',
+        'Welcome to Maison Élise. I''m thrilled to guide you through our Spring/Summer 2025 collection. What would you like to explore?',
+        'Ah, Look {name} - this piece is extraordinary. Let me share the story behind it.',
+        NULL,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Segment 1: Cocoon
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'I. Cocoon', '', 
+        'Opening segment represents the protective cocoon phase. Enveloping silhouettes, wrapped constructions, muted chrysalis tones. Models emerge from darkened backstage into soft spotlight. Music: ambient electronic by Ólafur Arnalds. 8 looks, 4 minutes.', 1)
+    RETURNING id INTO v_seg_cocoon;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_seg_cocoon, 'Look 1', E'**Opening Look**\n\n*The Awakening*\n\n---\n\nSculptural cocoon coat in pearl-grey duchesse satin with internal boning creating organic, pod-like silhouette. Underneath: nude mesh bodysuit with hand-sewn crystal "dew drops."\n\n**Fabrication:**\n- Duchesse satin: 15 meters\n- Hand-sewn Swarovski crystals: 2,847\n- Construction hours: 340\n\n**Styling:**\n- Hair: Slicked back, wet look\n- Makeup: Dewy, no-makeup makeup\n- Shoes: Custom nude platforms (hidden)', NULL, 'Opening look sets the tone for entire collection. Élise wanted something that felt "between sleeping and waking." The coat structure was technically challenging - 4 muslin prototypes before final. Crystals placed to catch light as model moves. Model: Adut Akech, specifically requested by Élise for the opening.', 1),
+    
+    (v_card_id, v_seg_cocoon, 'Look 2', E'**Wrapped Silhouette**\n\n*Suspended*\n\n---\n\nAsymmetric draped gown in layers of silk organza, ranging from ivory to soft blush. Origami-inspired pleating creates sculptural dimension at shoulder and hip.\n\n**Fabrication:**\n- Silk organza layers: 7\n- Hand-pleating hours: 120\n- Invisible boning structure\n\n**Styling:**\n- Hair: Low chignon with silk ribbon\n- Makeup: Soft peach tones\n- Jewelry: Single pearl ear cuff', NULL, 'Inspired by paper wasp nests - those incredible organic structures. Pleating technique developed specifically for this collection, now called "Élise pleat" by the atelier. Each layer is a slightly different shade - creates depth and movement. Takes 2 fittings per garment to get drape exactly right.', 2),
+    
+    (v_card_id, v_seg_cocoon, 'Look 5', E'**Statement Outerwear**\n\n*Protection*\n\n---\n\nOversized coat in cream double-faced cashmere with cocoon-shaped sleeves. Interior reveals hand-painted butterfly wing motif in watercolor technique on silk lining.\n\n**Fabrication:**\n- Double-faced cashmere from Loro Piana\n- Hand-painted silk lining: 40 hours\n- Horn buttons from sustainable source\n\n**Styling:**\n- Worn over: Nude column dress\n- Hair: Loose, natural texture\n- Bag: Cocoon-shaped minaudière', NULL, 'The "hidden butterfly" concept - exterior is minimal, interior reveals true beauty. Each coat lining is unique, hand-painted by atelier artist Marie Lefevre. Cashmere is sustainably sourced, we can trace to specific Italian farms. This piece has already received pre-orders from 12 clients.', 3);
+
+    -- Segment 2: Emergence
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'II. Emergence', '', 
+        'Second segment represents emergence from the cocoon - vulnerability, first moments of transformation. More body-conscious silhouettes, translucent fabrics, delicate construction. Colors shift to soft pastels. Music: string quartet. 12 looks, 5 minutes.', 2)
+    RETURNING id INTO v_seg_emergence;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_seg_emergence, 'Look 12', E'**Sheer Layering**\n\n*Vulnerability*\n\n---\n\nFloor-length gown in 12 layers of hand-dyed silk tulle, gradient from pale pink to deep rose. Strategic placement of embroidered butterfly wing fragments for coverage.\n\n**Fabrication:**\n- Silk tulle layers: 12 (each hand-dyed)\n- 3D embroidered wing elements: 28\n- Total embroidery hours: 180\n\n**Styling:**\n- Hair: Romantic waves\n- Makeup: Rose-tinted glass skin\n- Shoes: Crystal-encrusted sandals', NULL, 'Élise wanted to explore "protective vulnerability" - the contrast between being exposed yet beautiful. Each tulle layer dyed separately then layered for gradient effect. Butterfly fragments are 3D embroidery technique from our Lesage atelier partnership. This look took 3 weeks to complete. Expected to be red carpet favorite.', 1),
+    
+    (v_card_id, v_seg_emergence, 'Look 15', E'**Daywear Interpretation**\n\n*First Flight*\n\n---\n\nTailored suit in pale lavender wool crepe with exaggerated shoulder and nipped waist. Jacket features laser-cut wing pattern revealing silk charmeuse lining.\n\n**Fabrication:**\n- Wool crepe from Dormeuil\n- Laser-cut wing pattern: 847 cuts\n- Silk charmeuse contrast lining\n\n**Styling:**\n- Worn with: Silk camisole\n- Hair: Sleek ponytail\n- Shoes: Pointed-toe pumps\n- Bag: Structured top-handle', NULL, 'Élise believes haute couture should include wearable pieces. This suit is designed for the client who wants art in her everyday. Laser-cutting technology combined with traditional tailoring. The wing pattern took 3 months to perfect - cutting too deep weakens structure, too shallow doesn''t show. Commercial department creating ready-to-wear version.', 2);
+
+    -- Segment 3: Flight
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'III. Flight', '', 
+        'Third segment celebrates full transformation - joy, freedom, color. Movement-focused designs, bold butterfly colors, dramatic silhouettes. Music: orchestral crescendo. 15 looks, 6 minutes. Includes the collection''s most photographed pieces.', 3)
+    RETURNING id INTO v_seg_flight;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_seg_flight, 'Look 25', E'**Dramatic Evening**\n\n*Monarch*\n\n---\n\nStrapless ballgown with hand-painted monarch butterfly wing print on silk faille. Structured bodice with boning, full skirt with horsehair hem. 25 meters of fabric.\n\n**Fabrication:**\n- Silk faille: 25 meters\n- Hand-painting: 200 hours\n- Internal structure: Corsetry and crinolines\n\n**Styling:**\n- Hair: Voluminous updo\n- Makeup: Dramatic orange-black eye\n- Jewelry: Vintage Cartier butterfly brooch', NULL, 'The "hero" look of the collection - every show needs one. Hand-painting by our textile artist took 200 hours - each scale of the butterfly wing individually painted. Monarch chosen for its symbolism of migration and transformation. The vintage Cartier brooch belongs to Élise personally, from her grandmother.', 1),
+    
+    (v_card_id, v_seg_flight, 'Look 28', E'**Sculptural Drama**\n\n*Wingspan*\n\n---\n\nArchitectural gown with 3D-printed wing structure emerging from back. Base gown in black silk crepe, wings in iridescent recycled ocean plastic. Wings span 2 meters.\n\n**Fabrication:**\n- 3D-printed wings: Biodegradable PLA\n- Recycled ocean plastic sequins: 5,000+\n- Wingspan: 2 meters\n- Engineering collaboration with MIT Media Lab\n\n**Styling:**\n- Hair: Severe bun\n- Makeup: Graphic black liner\n- Shoes: Platform boots (for height/balance)', NULL, 'Our sustainability statement piece. Collaborated with MIT Media Lab on the wing structure - had to be light enough to wear yet dramatic on runway. Each sequin is made from recycled ocean plastic collected from Pacific cleanup. Model trained for 2 days to walk with wings. Wings detach - gown wearable without them.', 2),
+    
+    (v_card_id, v_seg_flight, 'Look 32', E'**Red Carpet Statement**\n\n*Chrysalis to Flight*\n\n---\n\nColor-gradient gown transitioning from cocoon grey at hem to vibrant butterfly blue at bodice. 3D fabric manipulation creates emerging wing effect at shoulders.\n\n**Fabrication:**\n- Gradient-dyed silk gazar\n- 3D fabric origami: 80 hours\n- Crystal dewdrops: 1,200\n\n**Styling:**\n- Hair: Wet-look waves\n- Makeup: Blue-toned highlight\n- Jewelry: Statement ear cuff', NULL, 'This gown tells the entire collection story in one piece - the gradient represents the metamorphosis journey. Custom dye process using natural indigo. The 3D shoulder elements were inspired by butterfly emerging from chrysalis. Already requested by 3 A-list actresses for upcoming awards season.', 3);
+
+    -- Segment 4: Finale
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'IV. Finale', '', 
+        'Closing segment: the bride and finale looks. Ultimate transformation and celebration. All-white segment, maximum drama. Music: silence then applause. 10 looks including bride, 3 minutes. Designer bow after bride.', 4)
+    RETURNING id INTO v_seg_finale;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_seg_finale, 'Look 42 - Bride', E'**Bridal**\n\n*Eternal Metamorphosis*\n\n---\n\nBridal gown in ivory silk mikado with detachable cape featuring 3D hand-sculpted butterfly garden. 50 individual silk butterflies, each unique, appear to be taking flight from the train.\n\n**Fabrication:**\n- Silk mikado gown with boning\n- Detachable cape: 4 meters\n- Hand-sculpted silk butterflies: 50\n- Total creation hours: 800\n\n**Styling:**\n- Hair: Natural, flowing\n- Makeup: Fresh, glowing\n- Veil: Tulle with scattered crystals\n- Shoes: Ivory satin platforms', NULL, 'The bridal look is always the most anticipated. Each butterfly is hand-sculpted from silk, wired to "flutter" as the model walks. 50 unique butterflies - no two alike. Concept: bride as the ultimate transformation, surrounded by fellow creatures in flight. Cape detaches for reception. This gown will be made-to-order for clients.', 1),
+    
+    (v_card_id, v_seg_finale, 'Look 45 - Finale', E'**Designer Bow**\n\n*Élise Dubois*\n\n---\n\nCreative Director Élise Dubois takes her bow accompanied by the full cast of models in the finale walk.\n\nÉlise wears: Black silk shirt, tailored trousers, bare feet—her signature bow look. A single monarch butterfly pin on her collar.\n\n---\n\n🦋 *"Fashion is metamorphosis. We are all becoming."*\n— Élise Dubois', NULL, 'Élise always takes her bow barefoot - she says it keeps her grounded after months of work. The monarch pin was a gift from her first atelier teacher. This is her 15th collection for the house. Standing ovation lasted 3 minutes. Anna Wintour, Carine Roitfeld, and Edward Enninful all in attendance.', 2);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('fashion-show', v_card_id, 'event', true, true, 9);
+
+    RAISE NOTICE 'Successfully created Fashion Show template with card ID: %', v_card_id;
+
+END $body$;
+
+-- Fine Dining Restaurant - Grouped List Mode (Digital Access)
+-- Template: Tasting menu organized by course
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_cat_amuse UUID;
+    v_cat_first UUID;
+    v_cat_second UUID;
+    v_cat_fish UUID;
+    v_cat_meat UUID;
+    v_cat_predessert UUID;
+    v_cat_dessert UUID;
+    v_cat_petitfours UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, daily_scan_limit,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'AURUM - Seasonal Tasting Menu',
+        E'Welcome to **AURUM**, where culinary artistry meets seasonal excellence.\n\nOur 8-course tasting menu celebrates the finest ingredients of the season, crafted by Executive Chef Isabella Chen and her team.\n\n🍷 Wine pairing available · 🌿 Dietary modifications upon request',
+        'list',
+        true,
+        'expanded',
+        'digital',
+        true,
+        'You are a refined sommelier and maitre d'' at an upscale restaurant. Speak elegantly but warmly about dishes, ingredients, and wine pairings. Be helpful with dietary restrictions and allergies. Recommend dishes based on guest preferences. Never be pretentious—guests should feel welcomed, not judged.',
+        E'AURUM Restaurant - 2 Michelin Stars\nExecutive Chef: Isabella Chen (trained at Noma, Eleven Madison Park)\nCuisine: Modern European with Asian influences\n\nDietary accommodations: Vegetarian tasting menu available, gluten-free modifications possible for most courses, please inform staff of allergies.\n\nWine program: 800+ labels, emphasis on biodynamic and natural wines.\nSommelier: Marcus Thompson, Master Sommelier\n\nDress code: Smart casual (jackets not required)\nReservations: Required, 2-3 weeks in advance recommended\n\nAll produce sourced within 100 miles. Sustainable seafood certified.\nKitchen uses only pasture-raised meats and heritage breeds.',
+        'Welcome to AURUM. I''m here to guide you through our tasting menu and help with any questions about dishes, ingredients, or wine pairings.',
+        'Excellent choice. Let me tell you more about our "{name}" and suggest the perfect wine pairing.',
+        500,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Course 1: Amuse-Bouche
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Amuse-Bouche', '', 
+        'The amuse-bouche ("mouth amuser") is a complimentary bite to awaken the palate. Changes daily based on chef''s inspiration. Not listed on printed menus to maintain element of surprise.', 1)
+    RETURNING id INTO v_cat_amuse;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_amuse, 'Chef''s Daily Inspiration', E'**A gift from the kitchen**\n\nToday''s amuse-bouche features a single bite that encapsulates our culinary philosophy: precision, seasonality, and surprise.\n\n*Changes daily—ask your server about today''s creation*\n\n---\n\n🌿 Always includes a vegetarian option\n⚠️ Please inform us of any allergies', NULL, 'Current rotation includes: black truffle gougère, hamachi tartare on rice cracker, beet meringue with goat cheese. Served on custom ceramic spoons by local artist Mia Santos. Designed to be consumed in one bite. Sets the tone for the entire meal.', 1);
+
+    -- Course 2: First Course
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'First Course', '', 
+        'First courses are designed to be light and awakening, featuring delicate flavors and often raw or lightly cooked preparations. Portion size: 3-4 bites.', 2)
+    RETURNING id INTO v_cat_first;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_first, 'Hokkaido Scallop', E'**Diver scallop · yuzu kosho · apple · fennel**\n\nHand-harvested Hokkaido scallop served raw, dressed with house-made yuzu kosho and accompanied by paper-thin Granny Smith apple and shaved baby fennel.\n\nThe natural sweetness of the scallop plays against the citrus heat of the yuzu kosho, while the apple adds brightness and crunch.\n\n---\n\n🍷 **Wine Pairing:** Domaine Leflaive Puligny-Montrachet 2020\n🌿 Gluten-free', NULL, 'Scallops flown in twice weekly from Hokkaido, Japan. Only the adductor muscle used—coral reserved for staff meal. Yuzu kosho made in-house with fresh yuzu from California. Apple sliced to order to prevent oxidation. Can substitute with hamachi for scallop allergy.', 1),
+    
+    (v_card_id, v_cat_first, 'Heirloom Tomato', E'**Cherokee purple · burrata · basil · aged balsamic**\n\nThe peak of summer captured in a dish. Cherokee Purple heirloom tomatoes from Oak Hill Farm paired with creamy burrata, purple basil, and 25-year aged balsamic vinegar.\n\nA celebration of simplicity—when ingredients are this perfect, restraint becomes the highest technique.\n\n---\n\n🍷 **Wine Pairing:** Domaine Tempier Bandol Rosé 2022\n🌿 Vegetarian · Gluten-free', NULL, 'Cherokee Purple tomatoes only available July-September. Burrata made fresh daily by local creamery. Balsamic from single producer in Modena, Italy—we buy their entire annual allocation. Purple basil grown in restaurant''s rooftop garden. Can omit burrata for vegan version.', 2);
+
+    -- Course 3: Second Course
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Second Course', '', 
+        'Second courses introduce more complexity and often feature our signature techniques. Typically includes a sauce or reduction. Portion size: 4-5 bites.', 3)
+    RETURNING id INTO v_cat_second;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_second, 'Duck Liver Parfait', E'**Foie gras · Sauternes gelée · toasted brioche · smoked salt**\n\nSilky duck liver parfait with a delicate Sauternes gelée, served with house-made brioche toast. The parfait is torchon-style, wrapped and poached for 48 hours to achieve its impossibly smooth texture.\n\n---\n\n🍷 **Wine Pairing:** Château d''Yquem 2015 (1oz pour)\n⚠️ Contains: Dairy, Gluten, Eggs', NULL, 'Foie gras from Hudson Valley Foie Gras, only producer using humane gavage-free methods. Sauternes gelée uses same wine as pairing. Brioche recipe from Chef Isabella''s grandmother. Smoked salt made in-house using applewood. Can substitute with chicken liver for cost-conscious guests.', 1),
+    
+    (v_card_id, v_cat_second, 'Roasted Cauliflower', E'**Whole-roasted · almond · golden raisin · brown butter**\n\nA whole baby cauliflower roasted until deeply caramelized, served with marcona almond cream, golden raisins plumped in verjus, and nutty brown butter.\n\nOur vegetarian guests'' favorite—proof that vegetables can be the star of any table.\n\n---\n\n🍷 **Wine Pairing:** Kistler Chardonnay 2021\n🌿 Vegetarian · Can be made vegan', NULL, 'Cauliflower roasted at 500°F for 45 minutes until charred exterior and creamy interior. Almond cream uses marcona almonds from Spain. Vegan version substitutes olive oil for brown butter. One of most Instagrammed dishes. Staff favorite for family meal.', 2);
+
+    -- Course 4: Fish Course
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Fish Course', '', 
+        'Our fish course showcases sustainable seafood prepared with precision. All seafood is Monterey Bay Aquarium Seafood Watch approved. Fish changes based on daily catch and sustainability.', 4)
+    RETURNING id INTO v_cat_fish;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_fish, 'Black Cod', E'**Miso-glazed · bok choy · shiitake · dashi**\n\nAlaskan black cod marinated for 72 hours in our house white miso blend, then broiled until caramelized. Served with baby bok choy, shiitake mushrooms, and a light dashi broth.\n\nInspired by the legendary Nobu dish, refined with our own techniques.\n\n---\n\n🍷 **Wine Pairing:** Trimbach Riesling Grand Cru 2019\n🌿 Gluten-free with tamari substitution', NULL, 'Black cod (sablefish) from sustainable Alaskan fishery. Miso blend includes white miso, sake, mirin, and a touch of yuzu. 72-hour marinade breaks down proteins for buttery texture. Dashi made fresh daily with kombu and bonito. Can substitute with halibut for different texture.', 1);
+
+    -- Course 5: Meat Course
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Meat Course', '', 
+        'Our meat courses feature heritage breeds and dry-aged cuts. All beef is from grass-fed, pasture-raised cattle. We work directly with three family farms within 100 miles.', 5)
+    RETURNING id INTO v_cat_meat;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_meat, 'Wagyu Ribeye', E'**A5 Miyazaki · bone marrow · porcini · red wine jus**\n\nJapanese A5 Wagyu from Miyazaki Prefecture, seared tableside and served with roasted bone marrow, wild porcini mushrooms, and an intense red wine reduction.\n\nThe pinnacle of beef—intricately marbled, impossibly tender, served in 2oz portions to appreciate without overwhelming.\n\n---\n\n🍷 **Wine Pairing:** Château Margaux 2010\n⚠️ Supplement: +$85', NULL, 'A5 is highest grade—only 3% of Japanese beef qualifies. Miyazaki has won "Wagyu Olympics" multiple times. We receive 2 ribeyes per week. Served at exactly medium-rare (130°F internal). Bone marrow from grass-fed cattle. Red wine jus uses same wine as pairing.', 1),
+    
+    (v_card_id, v_cat_meat, 'Berkshire Pork', E'**Heritage pork belly · apple mostarda · crispy sage**\n\nSlow-braised Berkshire pork belly from Newman Farm, finished with a honey glaze and served with spiced apple mostarda and fried sage.\n\nBerkshire pigs are the "Wagyu of pork"—rich, succulent, and incomparably flavorful.\n\n---\n\n🍷 **Wine Pairing:** Domaine de la Côte Pinot Noir 2020\n🌿 Gluten-free', NULL, 'Berkshire (Kurobuta) pigs raised by Newman Farm in Missouri. Heritage breed with higher intramuscular fat. Braised for 8 hours at 275°F. Apple mostarda uses local heirloom apples. Sage grown in rooftop garden. Popular alternative to beef course.', 2);
+
+    -- Course 6: Pre-Dessert
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Pre-Dessert', '', 
+        'Pre-dessert cleanses the palate between savory and sweet courses. Typically features citrus, herbs, or light dairy. Serves as a gentle transition.', 6)
+    RETURNING id INTO v_cat_predessert;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_predessert, 'Lemon Verbena Sorbet', E'**Lemon verbena · champagne · elderflower**\n\nA refreshing interlude: lemon verbena sorbet with a splash of vintage Champagne and elderflower essence.\n\nDesigned to cleanse and prepare the palate for our final sweet courses.\n\n---\n\n🌿 Vegan · Gluten-free', NULL, 'Lemon verbena grown in rooftop garden. Sorbet churned to order. Champagne added tableside (Krug Grande Cuvée). Elderflower from St-Germain. Can omit Champagne for non-alcoholic version. Presented in frozen ceramic bowl.', 1);
+
+    -- Course 7: Dessert
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Dessert', '', 
+        'Desserts are created by Pastry Chef David Kim (James Beard Award semifinalist 2023). Focus on balanced sweetness and seasonal ingredients. All desserts pair with our dessert wine or house-made digestif selection.', 7)
+    RETURNING id INTO v_cat_dessert;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_dessert, 'Dark Chocolate Soufflé', E'**Valrhona dark chocolate · crème fraîche · fleur de sel**\n\nOur signature dessert: a perfectly risen soufflé made with 70% Valrhona dark chocolate, served with house-made crème fraîche and a whisper of fleur de sel.\n\n*Requires 20 minutes preparation—ordered at start of meal*\n\n---\n\n🍷 **Pairing:** Banyuls Grand Cru 2018\n⚠️ Contains: Eggs, Dairy, Gluten', NULL, 'Valrhona Guanaja 70% chocolate from Venezuela beans. Soufflé must be ordered at meal start—precisely timed to rise as guests finish previous course. Crème fraîche cultured in-house for 48 hours. Fleur de sel from Guérande, France. Most popular dessert by far.', 1),
+    
+    (v_card_id, v_cat_dessert, 'Seasonal Fruit Tart', E'**Stone fruit · vanilla pastry cream · almond frangipane**\n\nA delicate tart showcasing the best stone fruits of the season: white peaches, apricots, and cherries atop silky vanilla pastry cream and almond frangipane.\n\nLighter option for those saving room for our petit fours.\n\n---\n\n🍷 **Pairing:** Moscato d''Asti 2022\n⚠️ Contains: Eggs, Dairy, Gluten, Nuts', NULL, 'Fruits change weekly during summer season. Winter version uses poached pears and citrus. Pastry cream uses Madagascar vanilla beans. Frangipane made with marcona almonds. Tart shell is pâte sucrée, blind-baked to perfect crispness. Can make nut-free version.', 2);
+
+    -- Course 8: Petit Fours
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Petit Fours', '', 
+        'Petit fours ("small oven") are bite-sized confections served with coffee or digestifs. Included with tasting menu. Selection changes weekly.', 8)
+    RETURNING id INTO v_cat_petitfours;
+
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_petitfours, 'Chef''s Selection', E'**Handcrafted confections to conclude your meal**\n\nA selection of house-made petit fours served with coffee or tea:\n\n- Dark chocolate truffles with sea salt\n- Lavender shortbread\n- Candied citrus peel\n- Housemade marshmallow\n\n---\n\n☕ **Recommended:** Double espresso or chamomile tea\n🥃 **Digestif:** House limoncello or aged grappa', NULL, 'All petit fours made in-house daily. Truffles use same Valrhona chocolate as soufflé. Lavender from Provence. Citrus peel candied over 3 days. Marshmallow flavored with rose water. Coffee is single-origin from Intelligentsia. Complimentary with tasting menu.', 1);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('fine-dining', v_card_id, 'restaurant', true, true, 12);
+
+    RAISE NOTICE 'Successfully created Fine Dining template with card ID: %', v_card_id;
+
+END $body$;
+
+-- Football Match - Single Page Mode (Digital Access)
+-- Template: Sports event single-page guide
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_default_category UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, image_url,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'Match Day Guide - City FC vs United',
+        E'🏟️ **Welcome to City Stadium!**\n\nYour complete guide for today''s Premier League clash.\n\nTap below for kickoff time, team lineups, stadium map, and more.',
+        'single',
+        false,
+        'expanded',
+        'digital',
+        true,
+        'You are an enthusiastic football fan and stadium guide. Help visitors with directions, match information, and general stadium questions. Be excited about the match but remain neutral - fans of both teams are attending! Know the rules of football and can explain them simply.',
+        E'City FC vs Manchester United - Premier League Matchday 15\nDate: December 7, 2025 · Kickoff: 3:00 PM\nVenue: City Stadium, 60,000 capacity\n\nStadium opened 2012, sustainable design with solar panels\n4 entry gates: North (home), South (away), East & West (general)\n\nFood options: Main concourse has 12 vendors\nAlcohol: Beer available in concourse areas only, not at seats\n\nParking: Lots A-D around stadium, £15 per vehicle\nPublic transport: Stadium Station on Blue Line (5 min walk)\n\nFan zone opens 2 hours before kickoff with entertainment',
+        'Welcome to City Stadium! I''m here to help you have an amazing match day. Ask me about the teams, stadium facilities, or anything else!',
+        'Let me help you with all the match day information. What would you like to know?',
+        NULL,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Create default category (hidden in flat mode, holds all content items)
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'General', '', '', 1)
+    RETURNING id INTO v_default_category;
+
+    -- Insert single content item (layer 2 under default category)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_default_category, 'Match Day Guide', E'# City FC vs Manchester United\n## Premier League · Matchday 15\n\n---\n\n## ⏰ Schedule\n\n| Time | Event |\n|------|-------|\n| 1:00 PM | Gates open |\n| 1:30 PM | Fan Zone entertainment begins |\n| 2:30 PM | Teams warm-up |\n| 2:45 PM | Team announcements |\n| 2:55 PM | National anthem |\n| **3:00 PM** | **KICKOFF** |\n| 3:45 PM | Half-time (15 minutes) |\n| ~4:45 PM | Full-time |\n\n---\n\n## 🏟️ Stadium Map\n\n**Your Section:** Check your ticket for block, row, and seat number\n\n### Entry Gates\n- **North Gate** → Blocks 101-120 (Home supporters)\n- **South Gate** → Blocks 201-220 (Away supporters)\n- **East Gate** → Blocks 301-340\n- **West Gate** → Blocks 401-440\n\n### Key Locations\n- 🍔 **Food & Drink** → Every concourse level\n- 🚻 **Restrooms** → Behind every section\n- 🏥 **First Aid** → Gates N1, S1, E1, W1\n- 👕 **Team Shop** → North Concourse\n- 📸 **Photo Opportunity** → West Concourse (giant shirt display)\n\n---\n\n## ⚽ Team Lineups\n\n### City FC (Home - Blue)\n\n**Manager:** Antonio García\n\n| # | Position | Player |\n|---|----------|--------|\n| 1 | GK | David Martinez |\n| 2 | RB | James Wilson |\n| 5 | CB | Michael Brown |\n| 6 | CB | Carlos Silva |\n| 3 | LB | Ahmed Hassan |\n| 8 | CM | Thomas Mueller |\n| 10 | CM | Paolo Rossi |\n| 7 | RW | Marcus Sterling |\n| 11 | LW | Yuki Tanaka |\n| 9 | ST | **Emmanuel Okonkwo** (C) |\n| 20 | ST | Lucas Fernandez |\n\n**Bench:** 13-Rodriguez, 4-Chen, 14-O''Brien, 16-Kowalski, 17-Nguyen, 19-Anderson, 21-Petrov\n\n### Manchester United (Away - Red)\n\n**Manager:** Roberto Mancini\n\n| # | Position | Player |\n|---|----------|--------|\n| 1 | GK | Peter Schmeichel Jr. |\n| 2 | RB | Kyle Walker-Peters |\n| 4 | CB | Virgil van Berg |\n| 5 | CB | Harry Stone |\n| 3 | LB | Luke Shaw Jr. |\n| 6 | DM | Declan Rice |\n| 8 | CM | Bruno Fernandes Jr. |\n| 7 | RW | Jadon Sancho Jr. |\n| 11 | LW | Marcus Rashford Jr. |\n| 10 | AM | **Mason Mount Jr.** (C) |\n| 9 | ST | Erling Larsen |\n\n**Bench:** 22-Henderson, 15-Maguire Jr., 17-Fred Jr., 18-Eriksen, 19-Antony Jr., 20-Pellistri, 21-Garnacho Jr.\n\n---\n\n## 📊 Head to Head\n\n| Stat | City FC | Man Utd |\n|------|---------|--------|\n| League Position | 2nd | 4th |\n| Points | 32 | 28 |\n| Last 5 Games | W W D W L | W D W L W |\n| Goals Scored | 34 | 29 |\n| Goals Conceded | 12 | 15 |\n\n**Last Meeting:** City FC 2-1 Man Utd (April 2025)\n\n**All-Time Record:**\n- City FC wins: 54\n- Man Utd wins: 61\n- Draws: 38\n\n---\n\n## 🍔 Food & Drink\n\n### Concourse Options\n- **Stadium Burger** - Classic burgers and hot dogs\n- **Pizza Corner** - Slices and whole pies\n- **The Noodle Bar** - Asian street food\n- **Fish & Chips** - Traditional British\n- **Vegan Kitchen** - Plant-based options\n- **Coffee Station** - Hot drinks and pastries\n\n### Prices\n- Beer (pint): £6.50\n- Burger meal: £12.00\n- Hot dog: £6.00\n- Pizza slice: £5.00\n- Coffee: £3.50\n- Water bottle: £2.50\n\n**📱 Mobile ordering available - skip the queue!**\nDownload the City FC app and order to your seat (Blocks 101-140 only)\n\n---\n\n## 📍 Getting Home\n\n### Public Transport\n- **Stadium Station** → Blue Line services every 5 minutes\n- **Special match buses** → City Centre (£3 fare)\n- Allow 20-30 minutes to reach station after final whistle\n\n### Driving\n- Exit via your designated gate to reduce congestion\n- **Lot A & B** → North exit (Highway 1)\n- **Lot C & D** → South exit (Highway 2)\n- Expected clear time: 45-60 minutes post-match\n\n### Rideshare\n- **Pickup zone** → East Gate car park\n- Surge pricing likely for 30 min after match\n\n---\n\n## 📱 Stay Connected\n\n- **WiFi:** `CityStadium_Guest` (free, no password)\n- **Official App:** Live stats, replays, mobile ordering\n- **Social:** @CityFC on all platforms\n- **Match Hashtag:** #CityVsUnited\n\n---\n\n## ⚠️ Important Information\n\n### Prohibited Items\n❌ Outside food & drinks\n❌ Bags larger than A4 size\n❌ Umbrellas\n❌ Professional cameras (lens > 20cm)\n❌ Drones\n❌ Weapons of any kind\n\n### Emergency\n- **Emergency services:** Dial 999\n- **Stadium security:** Text 66777\n- **Lost children:** Report to nearest steward\n- **Medical emergency:** Nearest first aid point\n\n---\n\n## 🎉 Enjoy the Match!\n\nThank you for supporting City FC. Sing loud, respect fellow fans, and may the best team win!\n\n*This card is your souvenir of today''s match. Collect the whole season!*', NULL, E'Key players to watch:\n- Emmanuel Okonkwo (City): 12 goals this season, top scorer\n- Erling Larsen (United): Hat-trick last match\n\nTactical preview: City likely to press high, United may counter-attack\n\nWeather forecast: 12°C, partly cloudy, 10% chance of rain\n\nReferee: Michael Oliver - tends to let game flow, averages 3.2 yellows/match\n\nVAR: Howard Webb - controversial offside decisions recently\n\nStadium records: Largest crowd 59,847 vs Liverpool 2023\n\nClub history: City FC founded 1892, 3 league titles, 2 FA Cups\nManchester United: Founded 1878, 20 league titles, 12 FA Cups', 1);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('football-match', v_card_id, 'event', true, true, 8);
+
+    RAISE NOTICE 'Successfully created Football Match template with card ID: %', v_card_id;
+
+END $body$;
+
+-- History Museum - Grouped List Mode (Digital Access)
+-- Template: Museum with categorized exhibits by era
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_cat_ancient UUID;
+    v_cat_medieval UUID;
+    v_cat_exploration UUID;
+    v_cat_industrial UUID;
+    v_cat_modern UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, image_url,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'Journey Through Time: City Heritage Museum',
+        E'Discover **5,000 years of history** at the City Heritage Museum.\n\nFrom ancient civilizations to modern innovations, explore artifacts, stories, and interactive displays that bring our shared past to life.\n\n🏛️ Tap any category to browse exhibits, or use the AI guide for personalized tours.',
+        'list',
+        true,
+        'expanded',
+        'digital',
+        true,
+        'You are a knowledgeable museum guide with expertise in world history. Share fascinating stories and lesser-known facts about exhibits. Connect historical events to modern life. Be engaging and educational without being dry or overly academic. Encourage curiosity and questions.',
+        E'City Heritage Museum - Founded 1892\n\nCollection: Over 50,000 artifacts spanning 5 millennia\nFloors: 4 exhibition floors plus basement archives\n\nVisitor facilities: Café on ground floor, gift shop near exit, accessible restrooms on all floors, wheelchair loan available at reception.\n\nSpecial programs: School groups welcome, senior discounts on Tuesdays, free admission first Sunday of each month.\n\nPhotography allowed without flash. Some artifacts have handling restrictions for conservation.',
+        'Welcome to the City Heritage Museum! I''m your personal history guide. Ask me about any era, artifact, or get recommendations based on your interests!',
+        'Let me tell you the fascinating story behind "{name}". What aspect interests you most?',
+        NULL,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Category 1: Ancient Civilizations
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Ancient Civilizations', '', 
+        'The Ancient Civilizations gallery covers Mesopotamia, Egypt, Greece, Rome, and early Chinese dynasties. Highlights include genuine cuneiform tablets, Egyptian shabtis, Greek pottery, and Roman coins. Climate controlled at 21°C with 45% humidity for artifact preservation.', 1)
+    RETURNING id INTO v_cat_ancient;
+
+    -- Ancient items
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_ancient, 'Cuneiform Tablet - Trade Record', E'**Origin:** Mesopotamia (modern-day Iraq)\n**Date:** c. 2100 BCE\n**Material:** Clay\n\nThis clay tablet records a shipment of barley and wool between merchants in the ancient city of Ur. The cuneiform script, one of humanity''s earliest writing systems, was pressed into wet clay using a reed stylus.\n\nThe tablet provides rare insight into daily commerce in ancient Sumer, showing that trade networks, contracts, and accounting existed over 4,000 years ago.', NULL, 'Found during excavations at Ur in 1928. Translated by Professor Samuel Kramer. Records 50 bushels of barley and 3 bolts of wool. Mentions a merchant named Ur-Nammu (not the king). Shows early math - Sumerians used base-60 number system, which is why we have 60 seconds in a minute today.', 1),
+    
+    (v_card_id, v_cat_ancient, 'Egyptian Shabti Figure', E'**Origin:** Thebes, Egypt\n**Date:** c. 1300 BCE (New Kingdom)\n**Material:** Faience (glazed ceramic)\n\nShabtis were placed in tombs to serve the deceased in the afterlife. Ancient Egyptians believed these small figures would magically come to life to perform manual labor for their owner in the next world.\n\nThis shabti bears hieroglyphic inscriptions identifying it as belonging to a scribe named Amenhotep.', NULL, 'Wealthy Egyptians were buried with 365 shabtis - one for each day of the year. This example is 15cm tall, typical for a middle-class official. The blue-green faience glaze was associated with rebirth and the Nile''s life-giving waters. Acquired by the museum in 1905 from the Egypt Exploration Fund.', 2),
+    
+    (v_card_id, v_cat_ancient, 'Greek Black-Figure Amphora', E'**Origin:** Athens, Greece\n**Date:** c. 530 BCE\n**Material:** Terracotta\n\nThis storage vessel depicts Heracles battling the Nemean lion, one of his famous Twelve Labors. The "black-figure" technique involves painting figures in slip that turns black when fired, with details incised to reveal the red clay beneath.\n\nSuch vessels were prized throughout the Mediterranean and often exported filled with olive oil or wine.', NULL, 'Attributed to the Antimenes Painter, one of the most prolific black-figure artists. 52cm tall, holds approximately 30 liters. Found in an Etruscan tomb in Italy - showing how Greek goods spread across the ancient world. The scene shows the moment Heracles realizes arrows won''t pierce the lion''s hide.', 3);
+
+    -- Category 2: Medieval World
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Medieval World', '', 
+        'The Medieval gallery explores European, Islamic, and Asian civilizations during this period. Includes armor, manuscripts, religious art, and trade goods. Features a reconstructed monk''s scriptorium and interactive knight''s armor display.', 2)
+    RETURNING id INTO v_cat_medieval;
+
+    -- Medieval items
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_medieval, 'Illuminated Manuscript Page', E'**Origin:** England\n**Date:** c. 1150 CE\n**Material:** Vellum (calfskin), gold leaf, mineral pigments\n\nThis page from a psalter (book of psalms) showcases the incredible artistry of medieval monks. The large decorated initial "B" (for "Beatus") contains intricate interlacing patterns and gold leaf highlights.\n\nCreating such manuscripts was painstaking work—a single book could take years to complete.', NULL, 'From a psalter produced at Canterbury Cathedral. The blue pigment is ultramarine, made from lapis lazuli imported from Afghanistan - more expensive than gold. Red is vermilion from cinnabar. The gold is 23-karat, hammered into leaf 1/10,000th of a millimeter thick. Acquired from a private collection in 1956.', 1),
+    
+    (v_card_id, v_cat_medieval, 'Knight''s Great Helm', E'**Origin:** Germany\n**Date:** c. 1350 CE\n**Material:** Steel, brass rivets\n\nThe "great helm" or "pot helm" offered maximum protection for knights in tournament combat. This example features a flat top and narrow eye slits, typical of 14th-century design.\n\nWeighing 3.2kg, it would have been worn over a padded cap and chainmail coif. The restricted vision and ventilation made it impractical for battlefield use, so it was primarily ceremonial and for jousting.', NULL, 'Shows hammer marks from hand-forging. The brass rivets are original. Originally had a crest mount on top for identifying the knight. Could withstand lance impact but cooking hot in summer sun. Knights often collapsed from heat exhaustion rather than wounds. Purchased at Sotheby''s auction in 1972.', 2),
+    
+    (v_card_id, v_cat_medieval, 'Islamic Astrolabe', E'**Origin:** Toledo, Spain\n**Date:** c. 1100 CE\n**Material:** Brass, silver inlay\n\nThis sophisticated astronomical instrument was used for navigation, timekeeping, and determining the direction of Mecca for prayer. Islamic scholars preserved and advanced Greek astronomical knowledge during the medieval period.\n\nThe Arabic inscriptions include star names and astronomical tables—many of which are still used in Western astronomy today.', NULL, 'Made during Islamic rule of Spain (Al-Andalus). Signed by craftsman Ibrahim ibn Sa''id al-Sahli. Could determine latitude to within 1 degree. Star names like Betelgeuse, Rigel, and Aldebaran come from Arabic. This instrument type wasn''t surpassed until the invention of the sextant in the 18th century.', 3);
+
+    -- Category 3: Age of Exploration
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Age of Exploration', '', 
+        'This gallery covers European expansion, colonial trade, the Scientific Revolution, and the Enlightenment. Features navigation instruments, trade goods, early scientific equipment, and art from the period.', 3)
+    RETURNING id INTO v_cat_exploration;
+
+    -- Exploration items
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_exploration, 'Dutch East India Company Porcelain', E'**Origin:** Jingdezhen, China (exported to Europe)\n**Date:** c. 1720\n**Material:** Hard-paste porcelain, cobalt blue glaze\n\nThis plate was commissioned by the Dutch East India Company (VOC) for export to wealthy European households. Chinese artisans adapted their traditional blue-and-white designs to suit European tastes.\n\nThe VOC shipped millions of pieces of porcelain westward, making Chinese porcelain so fashionable that European factories spent decades trying to recreate the secret formula.', NULL, 'Part of a set of 200 pieces ordered for a Dutch merchant family. "Kraak" style porcelain with panels radiating from center. The VOC mark on bottom verified authenticity. Took 18 months from order to delivery via ship around Cape of Good Hope. Europeans didn''t discover how to make true porcelain until 1708 at Meissen.', 1),
+    
+    (v_card_id, v_cat_exploration, 'Mariner''s Compass', E'**Origin:** London, England\n**Date:** 1753\n**Maker:** Henry Gregory\n\nThis brass mariner''s compass helped navigate the world''s oceans during the height of British naval power. The gimbal mount keeps the compass level despite the ship''s rolling motion.\n\nSuch instruments were essential for the trade routes that connected continents and transformed global commerce.', NULL, 'Maker Henry Gregory was official instrument maker to the Royal Navy. The compass card is hand-painted on mica. The gimbal design prevents tilting up to 45 degrees. Would have been used alongside charts, sextant, and log line. Donated by descendants of Captain James Harewood in 1891.', 2);
+
+    -- Category 4: Industrial Revolution
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Industrial Revolution', '', 
+        'The Industrial Revolution gallery showcases the transformation from agrarian society to industrial power. Features machinery, photographs, worker artifacts, and items showing daily life during rapid change. Includes a working steam engine demonstration (Saturdays at 2pm).', 4)
+    RETURNING id INTO v_cat_industrial;
+
+    -- Industrial items
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_industrial, 'Spinning Jenny Model', E'**Origin:** Lancashire, England\n**Date:** c. 1785 (replica of 1764 original)\n**Material:** Wood, metal, cotton thread\n\nJames Hargreaves'' Spinning Jenny revolutionized textile production by allowing one worker to operate eight spindles simultaneously. This working model demonstrates the mechanism that helped spark the Industrial Revolution.\n\nBefore the Jenny, spinning thread was slow hand-work. After, cloth production increased dramatically, transforming the global economy.', NULL, 'Working replica built by museum workshop in 1923. Original could produce 8 threads at once vs. 1 on a spinning wheel - 8x productivity. Named "Jenny" possibly after Hargreaves'' daughter. Hand-spinners initially attacked the machines, fearing job losses. Led to factory system replacing cottage industry.', 1),
+    
+    (v_card_id, v_cat_industrial, 'Victorian Factory Worker''s Lunch Pail', E'**Origin:** Birmingham, England\n**Date:** c. 1890\n**Material:** Tin-plated steel\n\nThis humble lunch pail tells the story of ordinary workers who powered the Industrial Revolution. Factory shifts of 12-14 hours meant workers brought meals from home.\n\nThe two-compartment design kept food separate—typically bread and cheese in one section, cold tea or water in the other. Scratched initials "J.W." are visible on the bottom.', NULL, 'Found during demolition of old textile mill in 1967. J.W. possibly John or James Williams - common names in factory records. Factory workers earned 10-15 shillings per week. Women and children earned less. Lunch breaks were often just 30 minutes. No refrigeration meant food spoiled quickly in summer heat of factories.', 2);
+
+    -- Category 5: Modern Era
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'Modern Era', '', 
+        'The Modern Era gallery covers both World Wars, social movements, technological innovation, and contemporary history. Includes oral history stations with video testimonies. Sensitive content warnings at gallery entrance.', 5)
+    RETURNING id INTO v_cat_modern;
+
+    -- Modern items
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_modern, 'WWI Soldier''s Trench Art', E'**Origin:** Western Front, France\n**Date:** c. 1917\n**Material:** Brass artillery shell casing, hand-engraved\n\nSoldiers on both sides of WWI created "trench art" from battlefield debris during quiet moments. This shell casing has been transformed into a decorative vase, engraved with flowers and the word "VERDUN."\n\nSuch items served as both souvenirs and coping mechanisms for trauma. They remain powerful reminders of the human experience amid industrial warfare.', NULL, '18-pounder British artillery shell. Verdun was one of the war''s longest battles - 10 months, 700,000 casualties. Soldier identity unknown but style suggests British or Canadian maker. Donated by soldier''s grandson in 1998. Trench art ranged from simple ashtrays to elaborate sculptures. Created during long periods of waiting between attacks.', 1),
+    
+    (v_card_id, v_cat_modern, 'Original Apple Macintosh (1984)', E'**Origin:** Cupertino, California, USA\n**Date:** January 1984\n**Material:** Plastic housing, CRT monitor, electronics\n\nThe Apple Macintosh introduced millions to personal computing with its revolutionary graphical user interface and mouse. Steve Jobs'' vision of "a computer for the rest of us" transformed how humans interact with technology.\n\nThis unit is one of the first 1,000 produced, still in working condition.', NULL, 'Serial number indicates production in January 1984, first month of manufacture. Cost $2,495 - equivalent to about $7,500 today. 128KB RAM, 9-inch black & white screen. Came with MacWrite and MacPaint software. The "1984" Super Bowl commercial is considered one of the greatest ads ever made. Donated by the original owner in 2010.', 2);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('history-museum', v_card_id, 'museum', true, true, 13);
+
+    RAISE NOTICE 'Successfully created History Museum template with card ID: %', v_card_id;
+
+END $body$;
+
+-- Hotel Services - Grouped List Mode (Digital Access)
+-- Template: Hotel guest services directory with categories
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_cat_dining UUID;
+    v_cat_wellness UUID;
+    v_cat_services UUID;
+    v_cat_business UUID;
+    v_cat_information UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, daily_scan_limit,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'Grand Plaza Hotel - Guest Services',
+        E'Welcome to **Grand Plaza Hotel** ⭐⭐⭐⭐⭐\n\nYour complete guide to hotel services and amenities.\n\n📞 Front Desk: Dial 0 · 🛎️ Concierge: Dial 1',
+        'list',
+        true,
+        'expanded',
+        'digital',
+        true,
+        'You are a helpful hotel concierge. Assist guests with any questions about hotel services, local recommendations, or general inquiries. Be warm, professional, and anticipate guest needs. For urgent matters, always direct guests to call the front desk.',
+        E'Grand Plaza Hotel - 5-star luxury hotel\nAddress: 100 Plaza Avenue, Downtown\nBuilt: 1925, renovated 2022\nRooms: 450 rooms and suites across 25 floors\n\nCheck-in: 3:00 PM · Check-out: 11:00 AM\nLate checkout available (fee may apply)\n\nConcierge desk: 24 hours, can arrange anything\nValet parking: $45/night, self-park $30/night\n\nPet policy: Dogs under 25 lbs welcome, $75 fee per stay\nSmoking: Non-smoking property, designated outdoor areas',
+        'Welcome to Grand Plaza Hotel! I''m your virtual concierge. How may I assist you today?',
+        'I''d be happy to help you with {name}. What would you like to know?',
+        2000,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Create categories (Layer 1)
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🍽️ Dining', 'Restaurant and in-room dining options', 'Dining services include 24-hour room service and our award-winning restaurant.', 1)
+    RETURNING id INTO v_cat_dining;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '💆 Wellness', 'Spa, fitness, and relaxation facilities', 'Our wellness facilities are complimentary for all hotel guests.', 2)
+    RETURNING id INTO v_cat_wellness;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🛎️ Guest Services', 'Concierge, housekeeping, and more', 'Our team is available 24/7 to assist with any request.', 3)
+    RETURNING id INTO v_cat_services;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '💼 Business', 'Business center and meeting facilities', 'Full business services available for corporate travelers.', 4)
+    RETURNING id INTO v_cat_business;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'ℹ️ Information', 'Local attractions and emergency info', 'Everything you need to explore and stay safe.', 5)
+    RETURNING id INTO v_cat_information;
+
+    -- Insert dining items (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_dining, 'Room Service', E'**24-Hour In-Room Dining**\n\n📞 **Dial 4** from your room phone\n\nEnjoy breakfast, lunch, dinner, or late-night snacks delivered directly to your room.\n\n**Hours:** 24 hours (limited menu midnight-6am)\n\n**Delivery Time:** 30-45 minutes\n\n**Tray Pickup:** Place tray outside door or call for pickup\n\n---\n\n**Popular Items:**\n- Continental Breakfast: $28\n- Club Sandwich: $24\n- Caesar Salad: $18\n- Wagyu Burger: $42\n- Kids Menu: $15\n\n*Full menu in your room''s tablet or call for paper menu*', NULL, 'Room service uses restaurant kitchens. Executive Chef Marco prepares all items fresh. 20% service charge automatically added. Special dietary requests accommodated with advance notice. Champagne and wine available. Birthday cakes can be ordered with 24hr notice.', 1),
+    
+    (v_card_id, v_cat_dining, 'The Grand Restaurant', E'**Fine Dining Experience**\n\n📍 **Location:** Lobby Level\n\n**Hours:**\n- Breakfast: 6:30 AM - 10:30 AM\n- Lunch: 12:00 PM - 2:30 PM\n- Dinner: 6:00 PM - 10:30 PM\n\n**Dress Code:** Smart casual (no shorts/flip-flops at dinner)\n\n**Reservations:** Dial 2 or speak to concierge\n\n---\n\n**The Plaza Bar**\n\n📍 Adjacent to restaurant\n\n**Hours:** 4:00 PM - 1:00 AM\n\nLive jazz Thursday-Saturday, 8-11 PM', NULL, 'Executive Chef Marco Bellini - 2 Michelin stars. Restaurant seats 120. Private dining room available for up to 20 guests. Vegetarian and vegan tasting menus available. Wine list curated by sommelier Anna Chen - 800 labels. Happy hour 4-7pm with $15 cocktails. Hotel guests receive 10% discount.', 2);
+
+    -- Insert wellness items (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_wellness, 'Spa & Wellness Center', E'**Relax and Rejuvenate**\n\n📍 **Location:** 4th Floor\n\n📞 **Reservations:** Dial 5\n\n**Hours:** 7:00 AM - 9:00 PM daily\n\n---\n\n**Services:**\n- Swedish Massage (60 min): $180\n- Deep Tissue Massage (60 min): $200\n- Aromatherapy Facial (75 min): $165\n- Body Scrub & Wrap (90 min): $220\n- Couples Massage (60 min): $350\n\n**Facilities (complimentary for hotel guests):**\n- Heated indoor pool\n- Jacuzzi and steam room\n- Sauna (dry and wet)\n- Relaxation lounge\n\n*Advance booking recommended, especially weekends*', NULL, 'Spa has 8 treatment rooms including couples suite. Pool is 25m lap pool, heated to 82°F. Steam room infused with eucalyptus. Spa director is certified aromatherapist. Hotel guests can use facilities free; day passes available for non-guests ($50). Robes and slippers provided. Gratuity not included in prices.', 1),
+    
+    (v_card_id, v_cat_wellness, 'Fitness Center', E'**24-Hour Gym Access**\n\n📍 **Location:** 4th Floor (adjacent to Spa)\n\n**Hours:** Open 24/7\n\n**Access:** Use your room key card\n\n---\n\n**Equipment:**\n- Cardio machines (treadmills, bikes, ellipticals)\n- Free weights (up to 100 lbs)\n- Weight machines\n- Yoga mats and props\n- Stretching area\n\n**Complimentary:**\n- Towels and water\n- Fitness classes (schedule at concierge)\n- Personal trainer consultation\n\n*Gym wear and athletic shoes required*', NULL, 'Gym equipped with Technogym equipment. Morning yoga classes 7am weekdays (free for guests). Personal training $100/hour, book 24hr in advance. Running maps of local routes available at front desk. Lockers available, bring your own lock or purchase at front desk ($10).', 2);
+
+    -- Insert services items (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_services, 'Concierge Services', E'**Your Personal Assistant**\n\n📍 **Location:** Lobby\n\n📞 **Dial 1** or visit in person\n\n**Hours:** 24 hours\n\n---\n\n**We can arrange:**\n- Restaurant reservations\n- Theater and event tickets\n- Airport transfers\n- Car rentals\n- Tours and activities\n- Flowers and gifts\n- Babysitting services\n- Dry cleaning and laundry\n- Business services\n\n**Local Expertise:**\nOur concierge team knows the city inside out. Let us create a personalized itinerary for your stay.\n\n*No request is too big or too small*', NULL, 'Head Concierge: Michelle Torres, Les Clefs d''Or member (golden keys - elite concierge organization). Team of 6 multilingual concierges. Can get reservations at fully-booked restaurants. Theater tickets usually available same-day. Airport transfer in Mercedes sedan $85, SUV $120. 24hr turnaround on dry cleaning.', 1),
+    
+    (v_card_id, v_cat_services, 'Housekeeping', E'**Keeping Your Room Perfect**\n\n📞 **Dial 8** for any housekeeping needs\n\n**Daily Service:** 9:00 AM - 4:00 PM\n\n---\n\n**Request:**\n- Extra towels or pillows\n- Additional toiletries\n- Iron and ironing board\n- Crib or rollaway bed\n- Room refresh\n\n**Green Program:**\nHang your towels to reuse them. Place the green card on your bed if you don''t need sheets changed.\n\n*Help us reduce our environmental impact*\n\n**Do Not Disturb:**\nUse the sign or press the button by your door', NULL, 'Housekeeping manager: Rosa Martinez. Team of 50 housekeepers. Turndown service available 6-9pm on request. Hypoallergenic pillows and bedding available. Baby amenities (crib, bottle warmer, baby bath) free of charge. Lost items held for 90 days. Laundry returned same day if submitted by 9am.', 2),
+    
+    (v_card_id, v_cat_services, 'WiFi & Technology', E'**Stay Connected**\n\n**WiFi Network:** GrandPlaza_Guest\n\n**Password:** Your room number + last name\n*(Example: 1234Smith)*\n\n---\n\n**In-Room Technology:**\n- Smart TV with streaming apps\n- USB charging ports (bedside and desk)\n- Bluetooth speaker (ask housekeeping)\n- Universal power adapters (at front desk)\n\n**Troubleshooting:**\n📞 **Dial 0** for technical support (24 hours)\n\n**Tip:** For fastest speeds, connect to the 5GHz network (GrandPlaza_Guest_5G)', NULL, 'WiFi speed: 100 Mbps throughout property. Premium WiFi available for high-bandwidth needs ($15/day, 500 Mbps). Smart TV has Netflix, Prime, Disney+ - sign in with your accounts. Chromecast in all rooms for screen mirroring. IT support can assist with video conferencing setup.', 3),
+    
+    (v_card_id, v_cat_services, 'Transportation', E'**Getting Around**\n\n📞 **Valet:** Dial 9\n\n---\n\n**Parking:**\n- Valet: $45/night (in and out privileges)\n- Self-park: $30/night (garage level P2)\n- Electric charging: 4 stations available\n\n**Airport Transfers:**\n- Sedan: $85 one-way\n- SUV: $120 one-way\n- Book through concierge (Dial 1)\n\n**Car Rental:**\nHertz desk in lobby, 7am-7pm daily\n\n**Rideshare:**\nPickup zone at East entrance\n\n**Public Transit:**\nMetro station 2 blocks north (Plaza Station)', NULL, 'Valet uses secure underground garage. Airport is 25 minutes in normal traffic, allow 45 minutes during rush hour. Hertz offers hotel guest discount (code: GRANDPLAZA). Bike rentals available through concierge - city bike share station across street. Private driver available for hourly hire ($75/hour, 4hr minimum).', 4);
+
+    -- Insert business items (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_business, 'Business Center', E'**Work Away From Home**\n\n📍 **Location:** Mezzanine Level\n\n📞 **Dial 6** for assistance\n\n**Hours:** 6:00 AM - 10:00 PM (after hours access with room key)\n\n---\n\n**Complimentary Services:**\n- High-speed WiFi\n- Computer workstations (Mac & PC)\n- Printing (first 20 pages free)\n- Scanning and faxing\n- Phone charging stations\n\n**Paid Services:**\n- Printing over 20 pages: $0.25/page\n- Binding and laminating\n- Courier services\n- Notary (by appointment)\n\n**Meeting Rooms:**\nAvailable for rent - see Meetings & Events', NULL, 'Business center has 6 private workstations with dividers. Complimentary coffee and tea. Secretarial services available $50/hour. International calling cards at front desk. Printer is color laser, accepts USB drives. WiFi password is room number + last name (case sensitive).', 1),
+    
+    (v_card_id, v_cat_business, 'Meetings & Events', E'**Professional Event Spaces**\n\n📞 **Events Team:** Dial 7\n\n📧 **events@grandplaza.com**\n\n---\n\n**Venues:**\n\n| Room | Capacity | Size |\n|------|----------|------|\n| Grand Ballroom | 500 | 8,000 sq ft |\n| Plaza Room | 150 | 2,500 sq ft |\n| Boardroom A | 20 | 600 sq ft |\n| Boardroom B | 12 | 400 sq ft |\n| Executive Suite | 8 | 300 sq ft |\n\n**Services:**\n- A/V equipment and technician\n- Catering and bar service\n- Event planning assistance\n- Breakout rooms\n\n*Request a proposal for your next event*', NULL, 'Events Director: Sarah Chen. Grand Ballroom perfect for weddings (up to 250 seated dinner). Corporate rate: 20% off for 10+ room nights. Packages include AV, WiFi, coffee breaks. Popular for conferences and product launches. Rooftop terrace available for cocktail events (weather permitting, max 100 guests).', 2);
+
+    -- Insert information items (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_information, 'Local Attractions', E'**Explore the City**\n\n*Ask our concierge to book tours or tickets*\n\n---\n\n**Walking Distance (< 15 min):**\n- City Museum - 5 min\n- Central Park - 8 min\n- Theater District - 10 min\n- Shopping Mall - 12 min\n\n**Worth the Trip:**\n- Art Gallery - 20 min by taxi\n- Historic District - 25 min by metro\n- Beach - 40 min by car\n- Wine Country - 1 hour by car\n\n**Hotel Tours:**\n- City Walking Tour: Daily 10am ($35)\n- Food Tour: Sat/Sun 2pm ($75)\n- Wine Tasting: Fri 4pm ($95)\n\n*Book through concierge*', NULL, 'Top restaurant recommendations: La Maison (French, $$$), Sake House (Japanese, $$), Taco Loco (Mexican, $). Best brunch: Sunny Side Café (15 min walk). Museum free on Thursdays after 5pm. Central Park has free summer concerts. Hotel has partnership with Broadway - can often get last-minute tickets.', 1),
+    
+    (v_card_id, v_cat_information, 'Emergency Information', E'**Safety First**\n\n🚨 **Emergency:** Dial 911\n\n🏥 **Hotel Security:** Dial 0 (24 hours)\n\n---\n\n**Fire Safety:**\n- Fire exits marked on back of room door\n- Do not use elevators during fire\n- Meet at designated assembly point (front of hotel)\n\n**Medical:**\n- First aid available at front desk\n- Nearest hospital: City General (10 min by car)\n- 24-hour pharmacy: CVS, 2 blocks east\n\n**Lost & Found:**\n- Items found in hotel: Front desk\n- Items left after checkout: Call (555) 123-4567\n\n**Safe Deposit:**\nIn-room safe included. Front desk safe for valuables.', NULL, 'Hotel has full sprinkler system and smoke detectors in all rooms. AED machines on every floor. Security team includes former police officers. Doctor on call 24 hours (house call $150). Wheelchair accessible throughout. Service animals welcome. In-room safes hold standard laptop size.', 2);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('hotel-services', v_card_id, 'hospitality', true, true, 6);
+
+    RAISE NOTICE 'Successfully created Hotel Services template with card ID: %', v_card_id;
+
+END $body$;
+-- Illustrator Portfolio - Grouped Grid Mode (Digital Access)
+-- Template: Creative portfolio organized by project type
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_cat_editorial UUID;
+    v_cat_books UUID;
+    v_cat_brand UUID;
+    v_cat_personal UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, daily_scan_limit,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'Luna Chen - Illustration Portfolio',
+        E'✨ **Hello, I''m Luna!**\n\nFreelance illustrator specializing in editorial, book covers, and brand illustration.\n\n📧 hello@lunachen.art | 🌐 lunachen.art',
+        'grid',
+        true,
+        'expanded',
+        'digital',
+        true,
+        'You are Luna Chen, a friendly freelance illustrator. Talk about your creative process, inspirations, and the stories behind your work. Help potential clients understand your style, turnaround times, and how to commission work. Be warm, creative, and enthusiastic about illustration.',
+        E'Luna Chen - Freelance Illustrator\nBased in: Brooklyn, NY\nExperience: 8 years professional illustration\n\nSpecialties: Editorial illustration, book covers, brand illustration, packaging design, children''s book illustration\n\nClients: The New York Times, Penguin Random House, Apple, Airbnb, Spotify, The New Yorker, Wired Magazine\n\nEducation: BFA Illustration, School of Visual Arts\nAwards: Society of Illustrators Silver Medal 2023, Communication Arts Illustration Annual 2022\n\nStyle: Whimsical, colorful, narrative-driven, blend of digital and traditional media\n\nAvailability: Currently booking for Q2 2025\nCommission inquiry: hello@lunachen.art',
+        'Hi there! I''m Luna. Thanks for checking out my portfolio! Feel free to ask about any piece, my process, or how we might work together.',
+        'Ah, "{name}" - I love this one! Want to hear the story behind it?',
+        NULL,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Create categories by project type (Layer 1)
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '📰 Editorial Work', 'Magazine and newspaper illustrations', 'Editorial work includes commissions for magazines, newspapers, and online publications. Typical turnaround: 1-2 weeks.', 1)
+    RETURNING id INTO v_cat_editorial;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '📚 Book Covers', 'Fiction and non-fiction cover art', 'Book cover work ranges from literary fiction to children''s books. Typical project: 4-8 weeks including revisions.', 2)
+    RETURNING id INTO v_cat_books;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🏢 Brand & Commercial', 'Branding and advertising illustration', 'Brand work includes campaigns, packaging, and identity systems. Often involves usage licensing discussions.', 3)
+    RETURNING id INTO v_cat_brand;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '✨ Personal Projects', 'Self-initiated creative work', 'Personal projects are where I experiment with new techniques and explore themes I''m passionate about. Prints available in shop.', 4)
+    RETURNING id INTO v_cat_personal;
+
+    -- Insert editorial work (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_editorial, 'Dreams of Summer', E'**Editorial Illustration**\n\n*The New York Times Magazine*\nSummer Reading Issue, June 2024\n\n---\n\nA dreamy, sun-drenched scene capturing the essence of lazy summer afternoons and the escapism of a good book.\n\n**Medium:** Digital (Procreate + Photoshop)\n**Art Direction:** Matt Dorfman\n\n🏆 *Featured in Communication Arts Illustration Annual 2024*', NULL, 'Commission for NYT Summer Reading Issue. Brief was "the feeling of getting lost in a book during summer." Inspired by childhood summers at my grandmother''s house. Color palette: warm yellows, peachy pinks, deep shadows. Took about 3 days from sketch to final.', 1),
+    
+    (v_card_id, v_cat_editorial, 'Tech Giants', E'**Editorial Illustration**\n\n*Wired Magazine*\n"The Future of Big Tech" Feature, March 2024\n\n---\n\nConceptual piece exploring the outsized influence of technology companies on our daily lives. Tiny humans navigate through a landscape of massive, looming tech symbols.\n\n**Medium:** Digital (Photoshop)\n**Art Direction:** Victor Ng', NULL, 'Challenging brief - had to visualize "tech power" without being too obvious or clichéd. Inspired by Magritte and surrealist juxtaposition. Turnaround was tight - 5 days from brief to final.', 2),
+    
+    (v_card_id, v_cat_editorial, 'Cafe Culture', E'**Editorial Illustration**\n\n*The New Yorker*\n"The Third Place" Feature, September 2024\n\n---\n\nIllustration for an essay about the importance of cafes and coffee shops as community gathering spaces in an increasingly isolated world.\n\n**Medium:** Ink + Digital color\n**Art Direction:** Françoise Mouly', NULL, 'Dream assignment - I''ve always wanted to work with The New Yorker. Françoise''s direction was minimal but precise: "capture the feeling of overhearing strangers'' conversations." Used traditional ink linework, then colored digitally.', 3);
+
+    -- Insert book covers (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_books, 'Midnight Garden', E'**Book Cover**\n\n*"Midnight Garden" by Eleanor Rose*\nPenguin Random House, 2024\n\n---\n\nCover illustration for a magical realism novel about a woman who discovers she can enter a mysterious garden that only appears at night.\n\n**Medium:** Gouache + Digital finishing\n**Art Direction:** Emily Mahon\n\n📚 *New York Times Bestseller*', NULL, 'My first cover for Penguin. Went through 5 sketch rounds - publisher wanted to balance "magical" with "literary fiction credibility." Traditional gouache for organic textures, digital for glowing elements.', 1),
+    
+    (v_card_id, v_cat_books, 'Wonder World', E'**Children''s Book**\n\n*"Wonder World" written by James Park*\nLittle Brown Books for Young Readers, 2023\n\n---\n\n32-page picture book about a child who discovers that imagination can transform the ordinary into the extraordinary.\n\n**Medium:** Digital (Procreate)\n**Format:** 32 pages, full color\n\n⭐ *School Library Journal Starred Review*', NULL, 'My first picture book! 9-month project from contract to final art. Created over 40 sketches for 32 pages. Color palette shifts from muted to vibrant as child''s imagination takes over.', 2);
+
+    -- Insert brand work (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_brand, 'Spotify Wrapped 2024', E'**Brand Illustration**\n\n*Spotify*\nWrapped Campaign 2024\n\n---\n\nSeries of 8 illustrations for Spotify''s annual Wrapped campaign, visualizing different listening moods and musical journeys.\n\n**Medium:** Digital (Procreate + After Effects)\n**Agency:** Collins\n\n🎵 *Seen by millions of Spotify users worldwide*', NULL, 'Biggest commercial project to date. Collins agency approached me for the "emotional" illustration style. Created 8 hero illustrations plus animated versions for the app. Project took 2 months.', 1),
+    
+    (v_card_id, v_cat_brand, 'Airbnb Experiences', E'**Brand Illustration**\n\n*Airbnb*\nExperiences Marketing Campaign, 2024\n\n---\n\nSeries of illustrations representing different Airbnb Experience categories: cooking classes, outdoor adventures, arts & culture, and local tours.\n\n**Medium:** Digital (Illustrator + Procreate)\n**Agency:** In-house Airbnb Design', NULL, 'Worked directly with Airbnb''s in-house design team. Brief was "make experiences feel personal and authentic, not touristy." Created 12 illustrations for the campaign.', 2);
+
+    -- Insert personal projects (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_personal, 'Kitchen Stories', E'**Personal Project**\n\nA series of 12 illustrations celebrating food memories and the stories we share around the table.\n\n---\n\nEach piece captures a specific moment: grandmother''s soup, late-night ramen, birthday cakes, Sunday morning pancakes.\n\n**Medium:** Gouache on paper\n**Size:** 9×12 inches each\n\n🖼️ *Exhibited at Giant Robot Gallery, Los Angeles*', NULL, 'Personal project I worked on during the pandemic. Each illustration based on my own food memories or stories from friends. The series took 6 months. This series led to several food/restaurant commissions.', 1),
+    
+    (v_card_id, v_cat_personal, 'Wild Things', E'**Personal Project / Prints**\n\nA series celebrating the weird and wonderful creatures of the natural world.\n\n---\n\nEach illustration reimagines a real animal through a surreal, colorful lens while staying true to their fascinating biology.\n\n**Medium:** Risograph prints\n**Size:** 11×14 inches\n**Edition:** 100 each\n\n🛒 *Available in my shop*', NULL, 'Passion project combining my love of nature documentaries with illustration. Animals featured: axolotl, pangolin, mantis shrimp, deep sea anglerfish, peacock spider, star-nosed mole. Limited edition of 100 per design.', 2);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('illustrator-portfolio', v_card_id, 'portfolio', true, true, 5);
+
+    RAISE NOTICE 'Successfully created Illustrator Portfolio template with card ID: %', v_card_id;
+
+END $body$;
+-- Shopping Mall - Grouped List Mode (Digital Access)
+-- Template: Mall store directory organized by category
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_cat_fashion UUID;
+    v_cat_electronics UUID;
+    v_cat_dining UUID;
+    v_cat_services UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, daily_scan_limit,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'Central Plaza Mall - Store Directory',
+        E'🛍️ Welcome to **Central Plaza Mall**\n\n200+ stores across 4 floors. Find your favorite brands below.\n\n📍 Guest Services: Level 1 near Main Entrance',
+        'list',
+        true,
+        'expanded',
+        'digital',
+        true,
+        'You are a friendly mall concierge. Help shoppers find stores, restaurants, and services. Give directions, share current promotions, and suggest alternatives if a store doesn''t have what they need. Be helpful and enthusiastic about shopping!',
+        E'Central Plaza Mall - Premier Shopping Destination\nAddress: 500 Central Avenue\nHours: Mon-Sat 10am-9pm, Sun 11am-7pm\nStores: 200+ retail locations\nFloors: 4 levels + parking garage\n\nLayout:\n- Level 1: Fashion, accessories, main entrances\n- Level 2: Electronics, home goods, food court\n- Level 3: Entertainment, kids, services\n- Level 4: Department stores, specialty retail\n\nParking: 3 hours free with validation, $3/hour after\nWiFi: CentralPlaza_Guest (free)\n\nGuest Services: Wheelchair rental, stroller rental, gift cards, package holding, lost & found',
+        'Welcome to Central Plaza Mall! I''m here to help you find stores, restaurants, or anything you need. What are you shopping for today?',
+        'I''d be happy to help you with {name}. Would you like directions or information about their current promotions?',
+        NULL,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Create categories by store type (Layer 1)
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '👗 Fashion & Apparel', 'Clothing, shoes, and accessories', 'Fashion stores are primarily on Level 1 and Level 4. Most accept mall gift cards.', 1)
+    RETURNING id INTO v_cat_fashion;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '📱 Electronics & Tech', 'Phones, computers, and gadgets', 'Electronics stores are on Level 2. Most offer price matching and tech support.', 2)
+    RETURNING id INTO v_cat_electronics;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🍽️ Dining', 'Restaurants and food court', 'Dining options range from quick bites in the food court to sit-down restaurants on Level 2.', 3)
+    RETURNING id INTO v_cat_dining;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, 'ℹ️ Services & Facilities', 'Guest services and amenities', 'Services are spread throughout the mall. Guest Services desk is on Level 1.', 4)
+    RETURNING id INTO v_cat_services;
+
+    -- Insert fashion stores (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_fashion, 'Zara', E'**Fast Fashion & Trendy Styles**\n\n📍 Level 1, Store #112\n⏰ Mall Hours\n\nLatest runway-inspired fashion at accessible prices. New arrivals twice weekly.\n\n---\n\n🏷️ Women''s, Men''s, Kids\n💳 Mall gift cards accepted', NULL, 'Zara is one of mall''s largest stores (8,000 sq ft). Located near central entrance. New inventory Tuesdays and Fridays. Return policy: 30 days with receipt.', 1),
+    
+    (v_card_id, v_cat_fashion, 'H&M', E'**Affordable Fashion for Everyone**\n\n📍 Level 1, Store #108\n⏰ Mall Hours\n\nTrendy, sustainable fashion at great prices. Features Conscious Collection made from recycled materials.\n\n---\n\n🏷️ Women''s, Men''s, Kids, Home\n💳 Student discount 15% (with ID)', NULL, 'H&M has 10,000 sq ft on Level 1. Garment recycling program - bring old clothes for 15% off coupon. Member rewards program offers free shipping online.', 2),
+    
+    (v_card_id, v_cat_fashion, 'Nordstrom', E'**Premium Department Store**\n\n📍 Level 4, Anchor Store\n⏰ 10am-9pm Mon-Sat, 11am-7pm Sun\n\nDesigner brands, exceptional service, and free alterations. Personal stylists available by appointment.\n\n---\n\n🏷️ Full Department Store\n💳 Nordstrom Card earns 3x points\n🛋️ Café & Espresso Bar inside', NULL, 'Nordstrom is anchor store with 3 floors. Best shoe selection in mall. Alterations free on full-price items. Anniversary Sale in July - biggest discounts of year.', 3),
+    
+    (v_card_id, v_cat_fashion, 'J.Crew', E'**Classic American Style**\n\n📍 Level 1, Store #124\n⏰ Mall Hours\n\nTimeless preppy fashion with modern updates. Known for quality basics and excellent suiting.\n\n---\n\n🏷️ Men''s, Women''s\n💳 J.Crew Rewards: 15% off first order', NULL, 'J.Crew men''s section is comprehensive. Ludlow suit is bestseller for weddings and interviews. Free hemming on full-price pants.', 4);
+
+    -- Insert electronics stores (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_electronics, 'Apple Store', E'**Official Apple Retail Location**\n\n📍 Level 2, Store #215\n⏰ Mall Hours\n\nLatest iPhones, Macs, iPads, and accessories. Genius Bar support and Today at Apple workshops.\n\n---\n\n🏷️ Electronics\n🔧 Genius Bar: Book online\n📱 Trade-in available', NULL, 'Apple Store is always busy - book Genius Bar online before visiting. Today at Apple workshops are free. Education discount for students.', 1),
+    
+    (v_card_id, v_cat_electronics, 'Best Buy', E'**Electronics Superstore**\n\n📍 Level 2, Store #201\n⏰ Mall Hours\n\nTVs, computers, appliances, and smart home tech. Expert advice and installation services.\n\n---\n\n🏷️ Electronics, Appliances\n🛠️ Geek Squad support\n💳 Best Buy Credit: 18 months 0% APR', NULL, 'Best Buy is 25,000 sq ft, mall''s largest electronics store. Price match policy - they''ll match Amazon. Open-box deals in dedicated section near entrance.', 2);
+
+    -- Insert dining options (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_dining, 'Food Court', E'**Quick Bites & Global Flavors**\n\n📍 Level 2, Center Court\n⏰ 10am-9pm daily\n\n**12 Restaurants:**\n- Panda Express (Chinese)\n- Chick-fil-A (Chicken)\n- Sbarro (Pizza)\n- Chipotle (Mexican)\n- Subway (Sandwiches)\n- Auntie Anne''s (Pretzels)\n- + 6 more\n\n---\n\n🪑 Seating: 500+ seats\n👶 High chairs available', NULL, 'Food court busiest 12-2pm, try going at 11:30 or after 2pm. Chick-fil-A closed Sundays. Halal option: Gyro Palace. Vegetarian-friendly: Chipotle, Indian Kitchen.', 1),
+    
+    (v_card_id, v_cat_dining, 'The Cheesecake Factory', E'**Full-Service Restaurant**\n\n📍 Level 2, Store #250\n⏰ 11am-11pm Mon-Thu, 11am-12am Fri-Sat, 10am-10pm Sun\n\n250+ menu items and legendary cheesecakes. Reservations recommended for dinner.\n\n---\n\n🏷️ American, Full Bar\n📱 Waitlist: Yelp app\n🎂 30+ cheesecake varieties', NULL, 'Cheesecake Factory has huge portions - shareable. Average wait Friday/Saturday dinner is 45-60 minutes. Get on Yelp waitlist remotely. SkinnyLicious menu for lighter options.', 2);
+
+    -- Insert services (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_services, 'Guest Services', E'**We''re Here to Help**\n\n📍 Level 1, Near Main Entrance\n⏰ Mall Hours\n\n**Services:**\n- Wheelchair & stroller rental\n- Gift cards (accepted at all stores)\n- Package holding\n- Lost & found\n- Information & directions\n\n---\n\n📞 Call: (555) 123-MALL\n💳 Mall gift cards: $10-$500', NULL, 'Guest Services staffed with multilingual associates (Spanish, Mandarin). Strollers $5/day, wheelchairs free with ID. Will hold packages while you shop (free, up to 4 hours).', 1),
+    
+    (v_card_id, v_cat_services, 'Parking & Transportation', E'**Getting Here & Getting Around**\n\n🚗 **Parking Garage:**\n- 3 hours free with store validation\n- $3/hour after (max $15/day)\n- Electric charging stations Level P1\n\n🚌 **Public Transit:**\n- Bus routes 12, 15, 22 stop at mall\n- Metro Red Line: Central Plaza station (2 blocks)\n\n🚕 **Rideshare:**\n- Pickup zone at East Entrance\n- Designated Uber/Lyft area', NULL, 'Parking garage has 3,500 spaces across 4 levels. Busiest on weekends - try Level P3 for faster spots. Electric charging is ChargePoint network. Valet parking available $20 at Main Entrance.', 2);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('shopping-mall', v_card_id, 'retail', true, true, 4);
+
+    RAISE NOTICE 'Successfully created Shopping Mall template with card ID: %', v_card_id;
+
+END $body$;
+-- Tourist Landmark - Grouped Cards Mode (Digital Access)
+-- Template: Walking tour organized by area/theme
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_cat_museums UUID;
+    v_cat_historic UUID;
+    v_cat_waterfront UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, image_url,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'Historic Harbor District - Walking Tour',
+        E'Discover the **Historic Harbor District**, where centuries of maritime history come alive along cobblestone streets and waterfront views.\n\n🚶 Self-guided tour · ⏱️ 2-3 hours · 📍 8 stops',
+        'cards',
+        true,
+        'expanded',
+        'digital',
+        true,
+        'You are an enthusiastic local historian and tour guide. Share fascinating stories about the harbor''s past, answer questions about the architecture and history, and help visitors discover hidden gems. Make history come alive with vivid storytelling and interesting anecdotes.',
+        E'Historic Harbor District - National Historic Landmark since 1966\nOriginal settlement: 1634\nPeak whaling era: 1820-1870\nMaritime museum collection: 50,000 artifacts\n\nWalking tour route: Start at Visitor Center (stop 1), proceed clockwise around harbor. Total distance: 1.5 miles.\n\nBest times to visit: Early morning for photos, sunset for ambiance\n\nAccessibility: Most paths are cobblestone. Accessible route available (ask at Visitor Center). Benches every 200 feet.\n\nLocal tip: The harbor lights up beautifully at dusk. Many visitors return for evening photos.',
+        'Welcome to the Historic Harbor District! I''m your virtual guide with centuries of stories to share. Ready to explore?',
+        'You''ve found one of my favorite spots! Let me tell you about "{name}" - there''s a fascinating story here.',
+        NULL,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Create categories by area (Layer 1)
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🏛️ Museums & Cultural Sites', 'Learn about maritime heritage', 'Museums in the district offer deep dives into the region''s history. Allow 1-2 hours for each museum.', 1)
+    RETURNING id INTO v_cat_museums;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🏠 Historic Buildings', 'Architecture from centuries past', 'Historic buildings span from 1700s to 1900s. Many are original structures, others faithfully restored.', 2)
+    RETURNING id INTO v_cat_historic;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '⚓ Waterfront & Harbor', 'Where commerce meets the sea', 'The waterfront remains a working harbor with fishing boats alongside historic vessels. Great for photos.', 3)
+    RETURNING id INTO v_cat_waterfront;
+
+    -- Insert museums (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_museums, 'Harbor Visitor Center', E'**Start Your Journey Here** 📍\n\n---\n\nBuilt in 1892 as the Harbor Master''s office, this beautifully restored building now serves as your gateway to the historic district.\n\n**Inside You''ll Find:**\n- Free maps and audio guides\n- Historical exhibits on harbor life\n- Restrooms and accessibility services\n- Gift shop with local crafts\n\n---\n\n⏰ **Hours:** 9am-5pm daily\n🎟️ **Admission:** Free\n♿ **Fully accessible**', NULL, 'Building originally 1892, restored in 1978. Harbor Master Captain William Shaw occupied this building for 40 years. Volunteer docents available 10am-3pm daily.', 1),
+    
+    (v_card_id, v_cat_museums, 'Maritime & Whaling Museum', E'**A Living Testament to Seafaring History** ⚓\n\n---\n\nHoused in a restored 1830s candleworks factory, this museum tells the story of when this harbor was the whaling capital of the world.\n\n**Highlights:**\n- 46-foot sperm whale skeleton\n- Fully restored whaleboat with original harpoons\n- Scrimshaw collection (largest in the world)\n- Captain''s quarters recreation\n\n---\n\n⏰ **Hours:** 10am-5pm (closed Tuesdays)\n🎟️ **Admission:** $18 adults, $12 children\n♿ **Elevator to all floors**', NULL, 'Museum founded 1904, one of oldest maritime museums in US. Whale skeleton is "Kobo," a sperm whale that beached in 1891. Docent tours at 11am and 2pm included with admission.', 2),
+    
+    (v_card_id, v_cat_museums, 'Seamen''s Bethel Chapel', E'**Sanctuary for Sailors** ⛪\n\n---\n\nThis 1832 chapel was built as a place of worship and refuge for sailors far from home. Herman Melville visited here, and the chapel features prominently in *Moby-Dick*.\n\n**Inside:**\n- Pulpit shaped like a ship''s bow (as described in Melville)\n- Memorial tablets to sailors lost at sea\n- Original pews with names of ships carved by sailors\n\n---\n\n⏰ **Hours:** 10am-4pm Mon-Sat\n🎟️ **Admission:** Donation suggested\n🤫 **Please maintain respectful silence**', NULL, 'Melville visited December 1840 before his own whaling voyage. Memorial tablets list 2,847 sailors lost from this port. Chapel still holds services Sundays 10am.', 3);
+
+    -- Insert historic buildings (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_historic, 'Old Harbor Lighthouse', E'**Guiding Ships Since 1802** 🏠\n\n---\n\nThis iconic lighthouse has stood sentinel over the harbor entrance for over 200 years. Climb 87 steps to the top for stunning views of the coastline.\n\n**The Lighthouse Story:**\nOriginally built in 1802, the current tower dates from 1857 when a storm destroyed the original structure. The Fresnel lens, imported from France, remains operational today.\n\n---\n\n⏰ **Hours:** 9am-4pm (last climb 3:30pm)\n🎟️ **Tower climb:** $8\n⚠️ **87 steps, not accessible**', NULL, 'Light visible 14 miles at sea. Fresnel lens is 3rd order, weighs 1,000 lbs. Last staffed keeper retired 1986. Ghost stories: Keeper Thomas Cobb allegedly still walks the tower on foggy nights.', 1),
+    
+    (v_card_id, v_cat_historic, 'Captain''s Row Historic Houses', E'**Where Fortunes Were Made** 🏛️\n\n---\n\nThis elegant street of Federal and Greek Revival mansions was home to the wealthy sea captains who commanded whaling fleets and trading ships.\n\n**Notable Houses:**\n- **#15 Coffin House (1834):** Home of Captain Nathaniel Coffin, who circumnavigated the globe four times\n- **#23 Macy Mansion (1841):** Built with profits from Pacific whale oil trade\n- **#31 Starbuck Hall (1846):** Largest house on the street, now a bed & breakfast\n\n---\n\n🏠 **Interior tours:** Select homes open seasonally\n📸 **Photo tip:** Best lighting mid-afternoon', NULL, 'Coffin, Macy, and Starbuck families dominated harbor commerce. The cobblestones are original—carried as ship ballast from European ports. Most houses built 1830-1850 during whaling boom.', 2),
+    
+    (v_card_id, v_cat_historic, 'Historic Shipyard', E'**Where Great Ships Were Born** ⚙️\n\n---\n\nFrom 1780 to 1920, this shipyard launched over 400 vessels. Today, traditional shipbuilding skills are still taught and practiced.\n\n**Live Demonstrations:**\n- Traditional wooden boat building (daily)\n- Sail making and rigging (weekends)\n- Blacksmith forge work (Wed & Sat)\n\n---\n\n⏰ **Hours:** 9am-5pm daily\n🎟️ **Admission:** $12 adults, $8 children\n👷 **Try boat building yourself (additional fee)**', NULL, 'Shipyard founded by Jedidiah Barlow, built famous clipper ship "Sea Witch" (1846). Current program trains 20 apprentices annually in traditional skills.', 3);
+
+    -- Insert waterfront (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_waterfront, 'Straight Wharf & Fish Market', E'**Where Commerce Meets the Sea** 🐟\n\n---\n\nFor 350 years, this wharf has been the commercial heart of the harbor. Today, fishing boats still unload their daily catch.\n\n**What to See:**\n- Morning fish auction (5am-7am)\n- Working fishing boats and lobster traps\n- Historic ship chandlery (now a museum shop)\n- Artist studios in converted warehouses\n\n**What to Eat:**\nTry the legendary lobster rolls from the waterfront shack.\n\n---\n\n🐟 **Fish market:** 6am-6pm\n🦞 **Lobster shack:** 11am-8pm (cash only)', NULL, 'Wharf originally built 1670. Fish auction is oldest continuous market in the country. Lobster shack run by same family for 4 generations - the MacNeils.', 1),
+    
+    (v_card_id, v_cat_waterfront, 'Harbor View Park & Memorial', E'**Reflection and Remembrance** 🌅\n\n---\n\nEnd your tour at this peaceful waterfront park, where benches face the harbor and the memorial honors those who shaped this community''s history.\n\n**The Memorial:**\nBronze sculptures depict a whaler, a captain, a lighthouse keeper, and a fisherman''s wife—representing the people who built this town.\n\n**The View:**\nOn clear days, you can see 15 miles out to sea. Watch for seals on the outer rocks (bring binoculars).\n\n---\n\n⏰ **Park hours:** Dawn to dusk\n🎟️ **Admission:** Free\n🪑 **Benches throughout park**', NULL, 'Park created 1956 on site of old rope walk factory. Memorial dedicated 1976 for Bicentennial. Best sunset watching is late June. Ice cream shop Flanagan''s open since 1889.', 2);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('tourist-landmark', v_card_id, 'tourism', true, true, 3);
+
+    RAISE NOTICE 'Successfully created Tourist Landmark template with card ID: %', v_card_id;
+
+END $body$;
+-- Zoo - Grouped Grid Gallery Mode (Digital Access)
+-- Template: Zoo visitor guide with animal exhibits organized by habitat zone
+-- 
+-- INSTRUCTIONS:
+-- 1. Replace 'YOUR_USER_ID_HERE' with actual user UUID
+-- 2. Update image_url values with actual uploaded image URLs
+-- 3. Run this SQL in Supabase SQL Editor or via psql
+
+DO $body$
+DECLARE
+    v_user_id UUID := 'YOUR_USER_ID_HERE'::UUID;
+    v_card_id UUID;
+    v_cat_african UUID;
+    v_cat_asian UUID;
+    v_cat_polar UUID;
+    v_cat_tropical UUID;
+    v_cat_australian UUID;
+BEGIN
+    -- Insert the card
+    INSERT INTO cards (
+        id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
+        conversation_ai_enabled, ai_instruction, ai_knowledge_base,
+        ai_welcome_general, ai_welcome_item, image_url,
+        is_access_enabled, access_token
+    ) VALUES (
+        gen_random_uuid(),
+        v_user_id,
+        'City Zoo - Animal Explorer Card',
+        E'Welcome to **City Zoo**! Home to over 500 animals from 6 continents.\n\nUse this card to learn about our amazing animals. Tap any photo to discover fascinating facts, conservation status, and feeding times.\n\n🦁 AI Guide available for questions about any animal!',
+        'grid',
+        true,
+        'expanded',
+        'digital',
+        true,
+        'You are an enthusiastic zoo educator who loves sharing animal facts. Be engaging for all ages—from curious kids to adult learners. Share fun facts, conservation information, and help visitors plan their route. Encourage respect for animals and their habitats.',
+        E'City Zoo - Founded 1920\nAnimals: 500+ individuals, 120 species\nArea: 80 acres with themed habitats\n\nZones: African Savanna, Asian Forest, Australian Outback, Polar World, Tropical Rainforest, North American Wildlife\n\nDaily shows: Sea lion show 11am & 2pm, Bird flight 12pm & 3pm\nFeeding times: Penguins 10:30am, Elephants 1pm, Big cats 3:30pm\n\nFacilities: Gift shop, 3 cafés, stroller rental, accessibility services\nConservation: Partner with WWF, Species Survival Plan participant',
+        'Welcome to City Zoo! I''m your animal guide. Ask me about any animal, get feeding times, or let me help you plan your visit!',
+        'Let me tell you about our {name}! They''re one of my favorites. What would you like to know?',
+        NULL,
+        TRUE,
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+    ) RETURNING id INTO v_card_id;
+
+    -- Create habitat zone categories (Layer 1)
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🦁 African Savanna', 'Lions, giraffes, and more from the African plains', 'The African Savanna zone features animals from sub-Saharan Africa in a 15-acre naturalistic habitat.', 1)
+    RETURNING id INTO v_cat_african;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🐼 Asian Forest', 'Pandas, elephants, and red pandas', 'The Asian Forest zone showcases wildlife from across Asia in lush bamboo forests.', 2)
+    RETURNING id INTO v_cat_asian;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🐧 Polar World', 'Penguins, polar bears, and arctic animals', 'Polar World features climate-controlled habitats replicating Arctic and Antarctic conditions.', 3)
+    RETURNING id INTO v_cat_polar;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🦍 Tropical Rainforest', 'Gorillas, komodo dragons, and more', 'The Tropical Rainforest zone recreates humid jungle environments from around the world.', 4)
+    RETURNING id INTO v_cat_tropical;
+
+    INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)
+    VALUES (gen_random_uuid(), v_card_id, NULL, '🐨 Australian Outback', 'Koalas and Australian wildlife', 'The Australian Outback zone features unique marsupials and wildlife from down under.', 5)
+    RETURNING id INTO v_cat_australian;
+
+    -- Insert African Savanna animals (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_african, 'African Lion', E'**King of the Jungle** 🦁\n\n**Scientific Name:** *Panthera leo*\n**Conservation Status:** Vulnerable\n\nMeet Simba and Nala, our resident lion pride. Lions are the only cats that live in social groups called prides. Our pride includes 1 male and 2 females.\n\n**Did you know?** A lion''s roar can be heard from 5 miles away!\n\n⏰ **Feeding Time:** 3:30 PM daily', NULL, 'Simba (male, 8 years) arrived from San Diego Zoo in 2019. Nala and Sarabi (females, 6 years) are sisters from Dallas Zoo. Lions sleep 16-20 hours per day. Only 20,000 wild lions remain - down from 200,000 in 1950. Main threats: habitat loss, human-wildlife conflict. Our zoo supports lion conservation in Kenya.', 1),
+    
+    (v_card_id, v_cat_african, 'Reticulated Giraffe', E'**Towering Beauties** 🦒\n\n**Scientific Name:** *Giraffa camelopardalis reticulata*\n**Conservation Status:** Endangered\n\nAt 18 feet tall, our giraffes are the tallest animals at the zoo! Their long necks have the same number of vertebrae as humans - just much bigger.\n\n**Did you know?** A giraffe''s tongue is 18 inches long and prehensile (can grip things)!\n\n⏰ **Giraffe Feeding Experience:** 11:30 AM ($5 per person)', NULL, 'Tower of 4 giraffes: Twiga (female, 12), her daughter Amara (4), plus Geoffrey and Stretch (males). "Reticulated" refers to their net-like pattern. Each giraffe''s pattern is unique. They only need 30 minutes of sleep per day, taken in short naps. Heart weighs 25 pounds to pump blood up that long neck. Giraffe populations declined 40% in 30 years - a "silent extinction."', 2);
+
+    -- Insert Asian Forest animals (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_asian, 'Giant Panda', E'**Beloved Bamboo Muncher** 🐼\n\n**Scientific Name:** *Ailuropoda melanoleuca*\n**Conservation Status:** Vulnerable\n\nMei Mei spends up to 14 hours a day eating bamboo! Pandas have a specialized wrist bone that acts like a thumb to grip bamboo stalks.\n\n**Did you know?** Pandas poop up to 40 times a day!\n\n⏰ **Feeding Time:** 10:00 AM, 2:00 PM, 5:00 PM', NULL, 'Mei Mei (female, 12 years) on loan from China. Pandas are solitary in the wild. They eat 26-84 pounds of bamboo daily but digest only 20%. Conservation success story - upgraded from Endangered in 2016. China''s panda conservation program has increased wild population to 1,800+. Mei Mei''s favorite bamboo variety is arrow bamboo.', 1),
+    
+    (v_card_id, v_cat_asian, 'Asian Elephant', E'**Gentle Giants** 🐘\n\n**Scientific Name:** *Elephas maximus*\n**Conservation Status:** Endangered\n\nRuby (42) and Jade (18) are our two Asian elephants. Smaller than African elephants, they have smaller ears and only males have visible tusks.\n\n**Did you know?** Elephants can recognize themselves in mirrors - a sign of self-awareness!\n\n⏰ **Feeding Time:** 1:00 PM daily (Public feeding experience available)', NULL, 'Ruby arrived 1985, one of zoo''s oldest residents. Jade is her adopted daughter (not biological). Asian elephants smaller than African (8,000 vs 14,000 lbs). Only 40,000 remain in wild. Our elephants have 3-acre habitat with pool, mud wallow, and enrichment puzzles. They eat 200 lbs of food daily including hay, vegetables, and browse (tree branches).', 2),
+    
+    (v_card_id, v_cat_asian, 'Red Panda', E'**Firefox in the Trees** 🔴\n\n**Scientific Name:** *Ailurus fulgens*\n**Conservation Status:** Endangered\n\nDespite their name, red pandas are not closely related to giant pandas! Rusty and Scarlet spend most of their time in trees, using their long bushy tails for balance.\n\n**Did you know?** Red pandas were discovered 50 years before giant pandas and were the original "panda"!\n\n⏰ **Most Active:** Early morning and late afternoon', NULL, 'Rusty (male, 5) and Scarlet (female, 4) arrived from Cincinnati Zoo in 2021. Red pandas are closer relatives to raccoons than giant pandas. They have a false thumb like giant pandas - example of convergent evolution. Firefox browser was named after them! Fewer than 10,000 in wild. They primarily eat bamboo like giant pandas but are more omnivorous.', 3);
+
+    -- Insert Polar World animals (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_polar, 'Emperor Penguin', E'**Antarctic Survivor** 🐧\n\n**Scientific Name:** *Aptenodytes forsteri*\n**Conservation Status:** Near Threatened\n\nOur colony of 15 emperor penguins lives in a climate-controlled habitat that replicates Antarctic conditions. They''re the tallest penguin species, standing up to 4 feet tall!\n\n**Did you know?** Male emperors incubate eggs on their feet for 2 months without eating!\n\n⏰ **Feeding Time:** 10:30 AM daily', NULL, 'Colony established in 2010 with birds from Sea World. Can dive to 1,800 feet - deepest of any bird. They huddle together in -40°F temperatures, rotating positions so everyone gets warm center. Our habitat is kept at 28°F with artificial snow. Popular with kids - often their favorite animal. Climate change is primary threat.', 1),
+    
+    (v_card_id, v_cat_polar, 'Polar Bear', E'**Arctic Apex Predator** 🐻‍❄️\n\n**Scientific Name:** *Ursus maritimus*\n**Conservation Status:** Vulnerable\n\nNanook weighs 1,200 pounds and is an excellent swimmer. Polar bears are the largest land carnivores and are perfectly adapted to life on Arctic ice.\n\n**Did you know?** Polar bear fur isn''t white - it''s transparent! It just appears white because it reflects light.\n\n⏰ **Enrichment Time:** 2:30 PM daily (watch Nanook solve puzzles!)', NULL, 'Nanook (male, 18) born at zoo, never lived in wild. Polar bears are marine mammals - spend most of life on sea ice hunting seals. Black skin under transparent fur helps absorb heat. Only 26,000 polar bears remain. Climate change is existential threat - sea ice shrinking means less hunting time. Our habitat includes 100,000-gallon pool for swimming.', 2);
+
+    -- Insert Tropical Rainforest animals (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_tropical, 'Western Lowland Gorilla', E'**Our Closest Relatives** 🦍\n\n**Scientific Name:** *Gorilla gorilla gorilla*\n**Conservation Status:** Critically Endangered\n\nOur gorilla troop is led by Koko, a 380-pound silverback. Gorillas share 98% of their DNA with humans and live in family groups led by a dominant male.\n\n**Did you know?** Each gorilla has unique nose prints, like human fingerprints!\n\n⏰ **Best Viewing:** 11:00 AM - 1:00 PM (when most active)', NULL, 'Koko (silverback, 28) leads troop of 6 including 3 females and 2 juveniles. Born at zoo in 1996. Gorillas are gentle despite their size - primarily herbivorous. Silverback name comes from silver hair that develops on mature males'' backs. Only 100,000 western lowland gorillas remain. Main threats: poaching, disease, habitat loss. Zoo participates in Species Survival Plan.', 1),
+    
+    (v_card_id, v_cat_tropical, 'Komodo Dragon', E'**Living Dinosaur** 🦎\n\n**Scientific Name:** *Varanus komodoensis*\n**Conservation Status:** Endangered\n\nRaja is our 8-foot Komodo dragon - the world''s largest living lizard. These ancient predators have venomous saliva and can detect prey from 6 miles away.\n\n**Did you know?** Komodo dragons can eat 80% of their body weight in a single meal!\n\n⏰ **Feeding Time:** Fridays 2:00 PM (whole prey demonstration)', NULL, 'Raja (male, 15) arrived from Denver Zoo in 2015. Komodos only found on 4 Indonesian islands. Venomous bite prevents blood clotting - prey bleeds to death. Can run 13 mph in short bursts. Females can reproduce without males (parthenogenesis). Only 3,000-5,000 in wild. Feeding demonstration uses whole rabbits (warning given for sensitive viewers).', 2);
+
+    -- Insert Australian Outback animals (Layer 2)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, ai_knowledge_base, sort_order) VALUES
+    (v_card_id, v_cat_australian, 'Koala', E'**Sleepy Eucalyptus Lover** 🐨\n\n**Scientific Name:** *Phascolarctos cinereus*\n**Conservation Status:** Vulnerable\n\nBindi and Bluey are our resident koalas, sleeping up to 22 hours a day. They''re not actually bears - they''re marsupials who carry their babies in pouches!\n\n**Did you know?** Koalas have fingerprints nearly identical to human fingerprints!\n\n⏰ **Most Active:** Early morning (around opening time)', NULL, 'Bindi (female, 7) and Bluey (male, 5) both from Australian breeding program. Koalas sleep so much because eucalyptus is low in nutrition and takes lots of energy to digest. They have special bacteria in their gut to process eucalyptus toxins. Australian bushfires in 2019-2020 killed 30% of population. We grow 5 species of eucalyptus on-site for their diet.', 1);
+
+    -- Insert into content_templates for template library management
+    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    VALUES ('zoo', v_card_id, 'tourism', true, true, 7);
+
+    RAISE NOTICE 'Successfully created Zoo template with card ID: %', v_card_id;
+
+END $body$;

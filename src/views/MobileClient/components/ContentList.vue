@@ -31,17 +31,6 @@
         <div class="card-content">
           <h3 class="item-title">{{ item.content_item_name }}</h3>
           <p class="item-description">{{ item.content_item_content }}</p>
-          
-          <div class="card-footer">
-            <span class="explore-hint">
-              <i class="pi pi-arrow-right" />
-              {{ $t('mobile.tap_to_explore') }}
-            </span>
-            <span v-if="cardAiEnabled" class="ai-badge">
-              <i class="pi pi-microphone" />
-              {{ $t('mobile.ai_chat') }}
-            </span>
-          </div>
         </div>
       </div>
     </div>
@@ -59,9 +48,11 @@ interface ContentItem {
   content_item_id: string
   content_item_parent_id: string | null
   content_item_name: string
-  content_item_content: string
+  content_item_content?: string       // Full content (optional for optimized loading)
+  content_preview?: string            // Truncated preview (optimized)
+  content_length?: number             // Full content length (optimized)
   content_item_image_url: string
-  content_item_ai_knowledge_base: string
+  content_item_ai_knowledge_base?: string
   content_item_ai_metadata?: string
   content_item_sort_order: number
   crop_parameters?: any
@@ -207,27 +198,6 @@ onMounted(() => {
   word-break: break-word;
 }
 
-/* Card Footer */
-.card-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.75rem;
-}
-
-.explore-hint {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.ai-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  color: #60a5fa;
-}
 
 /* Responsive */
 @media (min-width: 640px) {

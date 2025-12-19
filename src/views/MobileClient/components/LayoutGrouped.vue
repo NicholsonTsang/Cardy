@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-grouped" :class="{ 'has-header': hasHeader }">
+  <div class="layout-grouped" :class="{ 'has-header': hasHeader, 'has-ai': card.conversation_ai_enabled }">
     <!-- Grouped Content: Categories with sub-items -->
     <div class="categories-container">
       <div 
@@ -39,33 +39,44 @@
       <p>{{ $t('mobile.no_categories') }}</p>
     </div>
 
-    <!-- AI Assistant (if enabled) -->
+    <!-- General AI Assistant (if enabled) - For navigation/browsing questions -->
+    <CardLevelAssistant
+      v-if="card.conversation_ai_enabled"
+      :card-data="cardDataForAssistant"
+      :show-button="false"
+      ref="cardAssistantRef"
+    />
+    
+    <!-- AI Badge at bottom for easy access -->
     <div v-if="card.conversation_ai_enabled" class="ai-section">
-      <MobileAIAssistant 
-        :content-item-name="card.card_name"
-        :content-item-content="card.card_description"
-        :content-item-knowledge-base="card.ai_knowledge_base || ''"
-        :parent-content-knowledge-base="''"
-        :card-data="card"
-      />
+      <button @click="openAssistant" class="ai-browse-badge">
+        <span class="ai-badge-icon">✨</span>
+        <span class="ai-badge-text">{{ $t('mobile.tap_to_chat_with_ai') }}</span>
+        <i class="pi pi-chevron-right ai-badge-arrow" />
+      </button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { MobileAIAssistant } from './AIAssistant'
+import { CardLevelAssistant } from './AIAssistant'
 
 const { t } = useI18n()
+
+// Card Level Assistant ref
+const cardAssistantRef = ref<InstanceType<typeof CardLevelAssistant> | null>(null)
 
 interface ContentItem {
   content_item_id: string
   content_item_parent_id: string | null
   content_item_name: string
-  content_item_content: string
+  content_item_content?: string       // Full content (optional for optimized loading)
+  content_preview?: string            // Truncated preview (optimized)
+  content_length?: number             // Full content length (optimized)
   content_item_image_url: string
-  content_item_ai_knowledge_base: string
+  content_item_ai_knowledge_base?: string
   content_item_sort_order: number
 }
 
@@ -92,6 +103,22 @@ const props = withDefaults(defineProps<Props>(), {
 const emit = defineEmits<{
   select: [item: ContentItem]
 }>()
+
+// Card data formatted for General AI assistant
+const cardDataForAssistant = computed(() => ({
+  card_name: props.card.card_name,
+  card_description: props.card.card_description,
+  card_image_url: props.card.card_image_url,
+  conversation_ai_enabled: props.card.conversation_ai_enabled,
+  ai_instruction: props.card.ai_instruction || '',
+  ai_knowledge_base: props.card.ai_knowledge_base || '',
+  is_activated: props.card.is_activated
+}))
+
+// Open the General Assistant
+function openAssistant() {
+  cardAssistantRef.value?.openModal()
+}
 
 // Get child items for a category
 function getChildItems(parentId: string): ContentItem[] {
@@ -129,6 +156,11 @@ function handleItemClick(item: ContentItem) {
   padding-top: calc(6.5rem + env(safe-area-inset-top));
 }
 
+/* Extra bottom padding when AI assistant is present (fixed at bottom) */
+.layout-grouped.has-ai {
+  padding-bottom: calc(5rem + max(1rem, env(safe-area-inset-bottom)));
+}
+
 .categories-container {
   flex: 1;
   display: flex;
@@ -138,17 +170,37 @@ function handleItemClick(item: ContentItem) {
 
 .category-section {
   animation: fadeIn 0.5s ease-out;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .category-title {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin: 0 0 0.75rem 0;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  letter-spacing: 0.08em;
+  margin: 0 0 0.875rem 0;
+  padding-bottom: 0.625rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.category-title::before {
+  content: '';
+  width: 4px;
+  height: 16px;
+  background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+  border-radius: 2px;
 }
 
 .category-items {
@@ -160,24 +212,42 @@ function handleItemClick(item: ContentItem) {
 .item-button {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.875rem;
   width: 100%;
   padding: 0.875rem 1rem;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.06);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.875rem;
   color: white;
   text-align: left;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+}
+
+.item-button::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 0;
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.15), transparent);
+  transition: width 0.3s;
 }
 
 .item-button:active {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.12);
   transform: scale(0.98);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.item-button:active::before {
+  width: 100%;
 }
 
 .item-image {
@@ -239,12 +309,70 @@ function handleItemClick(item: ContentItem) {
   font-size: 3rem;
 }
 
+/* Fixed AI Section at bottom */
 .ai-section {
-  margin-top: 1.5rem;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 1rem 1.25rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.8) 70%, transparent 100%);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  z-index: 100;
+}
+
+/* AI Browse Badge - General Assistant trigger */
+.ai-browse-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
   width: 100%;
   max-width: 400px;
-  margin-left: auto;
-  margin-right: auto;
+  margin: 0 auto;
+  padding: 0.875rem 1.125rem;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.4);
+  border-radius: 1rem;
+  color: white;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+}
+
+.ai-browse-badge:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35) 0%, rgba(59, 130, 246, 0.35) 100%);
+  border-color: rgba(139, 92, 246, 0.5);
+}
+
+.ai-browse-badge:active {
+  transform: scale(0.98);
+}
+
+.ai-browse-badge .ai-badge-icon {
+  font-size: 1.125rem;
+}
+
+.ai-browse-badge .ai-badge-text {
+  flex: 1;
+  text-align: left;
+  font-weight: 600;
+}
+
+.ai-browse-badge .ai-badge-arrow {
+  font-size: 0.875rem;
+  opacity: 0.6;
+  transition: transform 0.2s ease;
+}
+
+.ai-browse-badge:hover .ai-badge-arrow {
+  transform: translateX(3px);
+  opacity: 0.9;
 }
 </style>
 

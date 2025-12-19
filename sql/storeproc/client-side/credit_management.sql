@@ -90,53 +90,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Create a pending credit purchase record
-CREATE OR REPLACE FUNCTION create_credit_purchase_record(
-    p_stripe_session_id VARCHAR,
-    p_amount_usd DECIMAL,
-    p_credits_amount DECIMAL,
-    p_metadata JSONB DEFAULT NULL,
-    p_user_id UUID DEFAULT NULL
-)
-RETURNS UUID AS $$
-DECLARE
-    v_user_id UUID;
-    v_purchase_id UUID;
-BEGIN
-    -- Use provided user_id or fall back to auth.uid()
-    v_user_id := COALESCE(p_user_id, auth.uid());
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Not authenticated';
-    END IF;
-
-    -- Insert pending purchase record
-    INSERT INTO credit_purchases (
-        user_id,
-        stripe_session_id,
-        amount_usd,
-        credits_amount,
-        status,
-        metadata
-    ) VALUES (
-        v_user_id,
-        p_stripe_session_id,
-        p_amount_usd,
-        p_credits_amount,
-        'pending',
-        p_metadata
-    )
-    RETURNING id INTO v_purchase_id;
-
-    -- Log operation
-    PERFORM log_operation(
-        format('Credit purchase initiated: %s credits ($%s USD) - Session: %s', 
-            p_credits_amount, p_amount_usd, p_stripe_session_id)
-    );
-
-    RETURN v_purchase_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- Generic function to consume credits
 CREATE OR REPLACE FUNCTION consume_credits(
     p_credits_to_consume DECIMAL,
@@ -543,6 +496,178 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =====================================================================
+-- DIGITAL ACCESS CREDIT CONSUMPTION
+-- =====================================================================
+-- Consume credits for digital access scan with DAILY AGGREGATION
+-- Called internally by get_public_card_content when a non-owner accesses a digital card
+-- 
+-- BEST PRACTICE: Instead of creating a new record per scan (fragmented),
+-- we aggregate all scans for the same card on the same day into ONE record.
+-- This reduces 1000 scans/day from 2000 records to just 2 records!
+--
+-- Daily Aggregation Logic:
+-- 1. First scan of day for a card → INSERT new consumption record
+-- 2. Subsequent scans → UPDATE existing record (increment quantity & total)
+-- 3. Transaction log: One entry per day per card (updated in place)
+--
+-- Returns JSONB with success status and error details
+CREATE OR REPLACE FUNCTION consume_credit_for_digital_scan(
+    p_card_id UUID,
+    p_owner_id UUID,
+    p_credit_rate DECIMAL DEFAULT 0.03
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_current_balance DECIMAL;
+    v_new_balance DECIMAL;
+    v_consumption_id UUID;
+    v_transaction_id UUID;
+    v_card_name TEXT;
+    v_today DATE := CURRENT_DATE;
+    v_existing_consumption_id UUID;
+    v_existing_transaction_id UUID;
+    v_existing_quantity INT;
+    v_existing_total_credits DECIMAL;
+    v_balance_before_today DECIMAL;
+BEGIN
+    -- Get card name for logging
+    SELECT name INTO v_card_name FROM cards WHERE id = p_card_id;
+
+    -- Lock the owner's credits row for update
+    SELECT balance INTO v_current_balance
+    FROM user_credits
+    WHERE user_id = p_owner_id
+    FOR UPDATE;
+
+    -- Check if owner has credits initialized
+    IF v_current_balance IS NULL THEN
+        -- Try to initialize credits for owner
+        INSERT INTO user_credits (user_id, balance, total_purchased, total_consumed)
+        VALUES (p_owner_id, 0, 0, 0)
+        ON CONFLICT (user_id) DO NOTHING;
+        
+        SELECT balance INTO v_current_balance
+        FROM user_credits
+        WHERE user_id = p_owner_id;
+        
+        IF v_current_balance IS NULL THEN
+            v_current_balance := 0;
+        END IF;
+    END IF;
+
+    -- Check if owner has sufficient credits
+    IF v_current_balance < p_credit_rate THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'credits_insufficient',
+            'message', 'Card owner has insufficient credits',
+            'required', p_credit_rate,
+            'available', v_current_balance
+        );
+    END IF;
+
+    v_new_balance := v_current_balance - p_credit_rate;
+
+    -- Update owner's credits (real-time balance update)
+    UPDATE user_credits
+    SET 
+        balance = v_new_balance,
+        total_consumed = total_consumed + p_credit_rate,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = p_owner_id;
+
+    -- ===== DAILY AGGREGATION FOR CONSUMPTIONS =====
+    -- Check if there's already a consumption record for this card today
+    SELECT id, quantity, total_credits INTO v_existing_consumption_id, v_existing_quantity, v_existing_total_credits
+    FROM credit_consumptions
+    WHERE user_id = p_owner_id 
+      AND card_id = p_card_id 
+      AND consumption_type = 'digital_scan'
+      AND DATE(created_at) = v_today
+    LIMIT 1;
+
+    IF v_existing_consumption_id IS NOT NULL THEN
+        -- UPDATE existing record (aggregate scans)
+        UPDATE credit_consumptions
+        SET 
+            quantity = v_existing_quantity + 1,
+            total_credits = v_existing_total_credits + p_credit_rate,
+            description = format('Digital access: %s (%s scans today)', 
+                                 COALESCE(v_card_name, p_card_id::TEXT), 
+                                 v_existing_quantity + 1),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = v_existing_consumption_id;
+        
+        v_consumption_id := v_existing_consumption_id;
+    ELSE
+        -- INSERT new record for today (first scan)
+        INSERT INTO credit_consumptions (
+            user_id, card_id, consumption_type, quantity, 
+            credits_per_unit, total_credits, description
+        ) VALUES (
+            p_owner_id, p_card_id, 'digital_scan', 1,
+            p_credit_rate, p_credit_rate,
+            format('Digital access: %s (1 scan today)', COALESCE(v_card_name, p_card_id::TEXT))
+        ) RETURNING id INTO v_consumption_id;
+    END IF;
+
+    -- ===== DAILY AGGREGATION FOR TRANSACTIONS =====
+    -- Check if there's already a transaction record for this card today
+    SELECT id, amount, balance_before INTO v_existing_transaction_id, v_existing_total_credits, v_balance_before_today
+    FROM credit_transactions
+    WHERE user_id = p_owner_id 
+      AND reference_type = 'digital_scan'
+      AND reference_id = p_card_id
+      AND DATE(created_at) = v_today
+      AND type = 'consumption'
+    LIMIT 1;
+
+    IF v_existing_transaction_id IS NOT NULL THEN
+        -- UPDATE existing transaction (aggregate daily spend)
+        UPDATE credit_transactions
+        SET 
+            amount = v_existing_total_credits + p_credit_rate,
+            balance_after = v_new_balance,
+            description = format('Digital access: %s (%s credits today)', 
+                                 COALESCE(v_card_name, 'Card'), 
+                                 ROUND(v_existing_total_credits + p_credit_rate, 2)::TEXT),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = v_existing_transaction_id;
+        
+        v_transaction_id := v_existing_transaction_id;
+    ELSE
+        -- INSERT new transaction for today (first scan)
+        INSERT INTO credit_transactions (
+            user_id, type, amount, balance_before, balance_after,
+            reference_type, reference_id, description
+        ) VALUES (
+            p_owner_id, 'consumption', p_credit_rate, v_current_balance, v_new_balance,
+            'digital_scan', p_card_id,
+            format('Digital access: %s (%s credits today)', COALESCE(v_card_name, 'Card'), ROUND(p_credit_rate, 2)::TEXT)
+        ) RETURNING id INTO v_transaction_id;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'consumption_id', v_consumption_id,
+        'transaction_id', v_transaction_id,
+        'credits_consumed', p_credit_rate,
+        'new_balance', v_new_balance,
+        'aggregation', 'daily'
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute to service_role (called internally by get_public_card_content)
+GRANT EXECUTE ON FUNCTION consume_credit_for_digital_scan(UUID, UUID, DECIMAL) TO service_role, authenticated;
+
+COMMENT ON FUNCTION consume_credit_for_digital_scan(UUID, UUID, DECIMAL) IS 
+  'Consumes credits from card owner for digital access scan with DAILY AGGREGATION. 
+   Instead of creating one record per scan, aggregates all scans for the same card 
+   on the same day into a single record. This prevents table fragmentation and keeps 
+   the credit management UI clean. Called internally by get_public_card_content.';
+
+-- =====================================================================
 -- GRANT PERMISSIONS
 -- =====================================================================
 -- NOTE: Some functions use a "dual-use pattern" with COALESCE(p_user_id, auth.uid())
@@ -579,4 +704,55 @@ COMMENT ON FUNCTION get_credit_statistics() IS
 
 COMMENT ON FUNCTION get_user_credits() IS 
   'CLIENT-ONLY: Uses auth.uid() from user JWT. Returns current credit balance for authenticated user.';
+
+-- =================================================================
+-- BATCH CREDIT CHECKING
+-- =================================================================
+
+-- Check if user has enough credits to issue a batch
+CREATE OR REPLACE FUNCTION can_issue_batch(p_quantity INTEGER)
+RETURNS JSONB AS $$
+DECLARE
+    v_user_id UUID;
+    v_balance DECIMAL;
+    v_cost_per_card DECIMAL := 1.00; -- Cost per physical card
+    v_total_cost DECIMAL;
+    v_can_issue BOOLEAN;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RETURN jsonb_build_object(
+            'can_issue', false,
+            'reason', 'Not authenticated'
+        );
+    END IF;
+    
+    -- Get current balance
+    SELECT balance INTO v_balance
+    FROM user_credits
+    WHERE user_id = v_user_id;
+    
+    IF v_balance IS NULL THEN
+        v_balance := 0;
+    END IF;
+    
+    -- Calculate cost
+    v_total_cost := p_quantity * v_cost_per_card;
+    v_can_issue := v_balance >= v_total_cost;
+    
+    RETURN jsonb_build_object(
+        'can_issue', v_can_issue,
+        'current_balance', v_balance,
+        'required_credits', v_total_cost,
+        'quantity', p_quantity,
+        'cost_per_card', v_cost_per_card
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION can_issue_batch(INTEGER) TO authenticated;
+
+COMMENT ON FUNCTION can_issue_batch(INTEGER) IS 
+  'CLIENT-ONLY: Checks if authenticated user has enough credits to issue a batch of physical cards.';
 

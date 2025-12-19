@@ -14,8 +14,13 @@
                                 {{ cardProp.billing_type === 'digital' ? $t('dashboard.digital_access') : $t('dashboard.physical_card') }}
                             </span>
                             <span class="badge badge-mode">
-                                <i :class="getContentModeIcon(cardProp.content_mode)" class="mr-1"></i>
                                 {{ getContentModeLabel(cardProp.content_mode) }}
+                            </span>
+                            <span v-if="cardProp.is_grouped" class="badge badge-grouped">
+                                {{ $t('dashboard.badge_grouped') }}
+                            </span>
+                            <span v-else class="badge badge-flat">
+                                {{ $t('dashboard.badge_flat') }}
                             </span>
                         </div>
                         <h1 class="hero-title">{{ displayedCardName }}</h1>
@@ -220,6 +225,13 @@
                             <div class="config-info">
                                 <span class="config-label">{{ $t('dashboard.content_mode') }}</span>
                                 <span class="config-value">{{ getContentModeLabel(cardProp.content_mode) }}</span>
+                            </div>
+                        </div>
+                        <div class="config-item">
+                            <i :class="cardProp.is_grouped ? 'pi pi-folder' : 'pi pi-list'"></i>
+                            <div class="config-info">
+                                <span class="config-label">{{ $t('dashboard.grouping') }}</span>
+                                <span class="config-value">{{ cardProp.is_grouped ? $t('dashboard.badge_grouped') : $t('dashboard.badge_flat') }}</span>
                             </div>
                         </div>
                         <div v-if="cardProp.billing_type !== 'digital'" class="config-item">
@@ -497,10 +509,9 @@ const getQrCodePositionClass = (position) => {
 const getContentModeLabel = (mode) => {
     const modeLabels = {
         'single': t('dashboard.mode_single'),
-        'grouped': t('dashboard.mode_grouped'),
         'list': t('dashboard.mode_list'),
         'grid': t('dashboard.mode_grid'),
-        'inline': t('dashboard.mode_inline')
+        'cards': t('dashboard.mode_cards')
     };
     return modeLabels[mode] || t('dashboard.mode_list');
 };
@@ -508,10 +519,9 @@ const getContentModeLabel = (mode) => {
 const getContentModeIcon = (mode) => {
     const modeIcons = {
         'single': 'pi pi-file',
-        'grouped': 'pi pi-folder',
         'list': 'pi pi-list',
         'grid': 'pi pi-th-large',
-        'inline': 'pi pi-clone'
+        'cards': 'pi pi-id-card'
     };
     return modeIcons[mode] || 'pi pi-list';
 };
@@ -624,6 +634,16 @@ onMounted(() => {
 .badge-mode {
     background: #dbeafe;
     color: #2563eb;
+}
+
+.badge-grouped {
+    background: #f3e8ff;
+    color: #7c3aed;
+}
+
+.badge-flat {
+    background: #f1f5f9;
+    color: #64748b;
 }
 
 .hero-title {

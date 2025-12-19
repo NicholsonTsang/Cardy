@@ -112,9 +112,7 @@
                     // User Management
                     activity.action_type === 'USER_REGISTRATION' ? 'bg-green-100 text-green-600' :
                     activity.action_type === 'ROLE_CHANGE' ? 'bg-red-100 text-red-600' :
-                    activity.action_type === 'VERIFICATION_REVIEW' ? 'bg-teal-100 text-teal-600' :
                     activity.action_type === 'VERIFICATION_RESET' ? 'bg-cyan-100 text-cyan-600' :
-                    activity.action_type === 'MANUAL_VERIFICATION' ? 'bg-emerald-100 text-emerald-600' :
                     // Card Management
                     activity.action_type === 'CARD_CREATION' ? 'bg-blue-100 text-blue-600' :
                     activity.action_type === 'CARD_UPDATE' ? 'bg-amber-100 text-amber-600' :
@@ -125,6 +123,7 @@
                     activity.action_type === 'CONTENT_ITEM_CREATION' ? 'bg-sky-100 text-sky-600' :
                     activity.action_type === 'CONTENT_ITEM_UPDATE' ? 'bg-yellow-100 text-yellow-600' :
                     activity.action_type === 'CONTENT_ITEM_DELETION' ? 'bg-rose-100 text-rose-600' :
+                    activity.action_type === 'CONTENT_ITEM_REORDER' ? 'bg-amber-100 text-amber-600' :
                     // Batch Management
                     activity.action_type === 'BATCH_ISSUANCE' ? 'bg-indigo-100 text-indigo-600' :
                     activity.action_type === 'BATCH_STATUS_CHANGE' ? 'bg-orange-100 text-orange-600' :
@@ -146,9 +145,7 @@
                       // User Management
                       activity.action_type === 'USER_REGISTRATION' ? 'pi pi-user-plus' :
                       activity.action_type === 'ROLE_CHANGE' ? 'pi pi-users' :
-                      activity.action_type === 'VERIFICATION_REVIEW' ? 'pi pi-shield' :
                       activity.action_type === 'VERIFICATION_RESET' ? 'pi pi-refresh' :
-                      activity.action_type === 'MANUAL_VERIFICATION' ? 'pi pi-check-circle' :
                       // Card Management
                       activity.action_type === 'CARD_CREATION' ? 'pi pi-plus-circle' :
                       activity.action_type === 'CARD_UPDATE' ? 'pi pi-pencil' :
@@ -159,6 +156,7 @@
                       activity.action_type === 'CONTENT_ITEM_CREATION' ? 'pi pi-file-plus' :
                       activity.action_type === 'CONTENT_ITEM_UPDATE' ? 'pi pi-file-edit' :
                       activity.action_type === 'CONTENT_ITEM_DELETION' ? 'pi pi-file-minus' :
+                      activity.action_type === 'CONTENT_ITEM_REORDER' ? 'pi pi-sort-alt' :
                       // Batch Management
                       activity.action_type === 'BATCH_ISSUANCE' ? 'pi pi-box' :
                       activity.action_type === 'BATCH_STATUS_CHANGE' ? 'pi pi-refresh' :
@@ -263,9 +261,7 @@ const activityTypes = computed(() => [
   // User Management
   { label: t('admin.activity_types.user_registration'), value: ACTION_TYPES.USER_REGISTRATION },
   { label: t('admin.activity_types.role_changes'), value: ACTION_TYPES.ROLE_CHANGE },
-  { label: t('admin.activity_types.verification_reviews'), value: ACTION_TYPES.VERIFICATION_REVIEW },
   { label: t('admin.activity_types.verification_resets'), value: ACTION_TYPES.VERIFICATION_RESET },
-  { label: t('admin.activity_types.manual_verifications'), value: ACTION_TYPES.MANUAL_VERIFICATION },
   // Card Management
   { label: t('admin.activity_types.card_creation'), value: ACTION_TYPES.CARD_CREATION },
   { label: t('admin.activity_types.card_updates'), value: ACTION_TYPES.CARD_UPDATE },
@@ -276,6 +272,7 @@ const activityTypes = computed(() => [
   { label: t('admin.activity_types.content_item_creation'), value: ACTION_TYPES.CONTENT_ITEM_CREATION },
   { label: t('admin.activity_types.content_item_updates'), value: ACTION_TYPES.CONTENT_ITEM_UPDATE },
   { label: t('admin.activity_types.content_item_deletions'), value: ACTION_TYPES.CONTENT_ITEM_DELETION },
+  { label: t('admin.activity_types.content_item_reorder'), value: ACTION_TYPES.CONTENT_ITEM_REORDER },
   // Batch Management
   { label: t('admin.activity_types.batch_issuance'), value: ACTION_TYPES.BATCH_ISSUANCE },
   { label: t('admin.activity_types.batch_status_changes'), value: ACTION_TYPES.BATCH_STATUS_CHANGE },
@@ -340,8 +337,8 @@ const loadActivity = async () => {
     console.error('Error loading activity:', error)
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load activity data',
+      summary: t('common.error'),
+      detail: t('messages.failed_to_load_activity_data'),
       life: 5000
     })
   } finally {
@@ -396,8 +393,8 @@ const exportData = async () => {
     if (!allData || allData.length === 0) {
       toast.add({
         severity: 'warn',
-        summary: 'No Data',
-        detail: 'No activities to export',
+        summary: t('common.no_data'),
+        detail: t('messages.no_activities_to_export'),
         life: 3000
       })
       return
@@ -429,8 +426,8 @@ const exportData = async () => {
 
     toast.add({
       severity: 'success',
-      summary: 'Export Complete',
-      detail: 'History logs exported successfully',
+      summary: t('messages.export_complete'),
+      detail: t('messages.history_logs_exported'),
       life: 3000
     })
 
@@ -438,8 +435,8 @@ const exportData = async () => {
     console.error('Error exporting data:', error)
     toast.add({
       severity: 'error',
-      summary: 'Export Failed',
-      detail: 'Failed to export history logs',
+      summary: t('messages.export_failed'),
+      detail: t('messages.failed_to_export_history_logs'),
       life: 5000
     })
   }

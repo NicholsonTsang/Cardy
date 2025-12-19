@@ -2,6 +2,7 @@ import { defineStore } from 'pinia';
 import { ref } from 'vue';
 import { supabase } from '@/lib/supabase';
 import { v4 as uuidv4 } from 'uuid';
+import { getPageSize, getPreviewLength } from '@/utils/paginationConfig';
 
 // Interfaces for ContentItem data
 export interface ContentItem {
@@ -17,6 +18,29 @@ export interface ContentItem {
     sort_order: number;
     created_at: string;
     updated_at: string;
+}
+
+// Paginated content item with preview (for list views)
+export interface ContentItemPreview {
+    id: string;
+    card_id: string;
+    parent_id: string | null;
+    name: string;
+    content_preview: string;      // Truncated content
+    content_length: number;       // Full content length
+    image_url: string | null;
+    ai_knowledge_base_length: number;
+    sort_order: number;
+    created_at: string;
+    total_count: number;          // Total items for pagination
+}
+
+// Pagination state
+export interface PaginationState {
+    page: number;
+    limit: number;
+    totalCount: number;
+    hasMore: boolean;
 }
 
 export interface ContentItemFormData {
@@ -41,9 +65,25 @@ if (!USER_FILES_BUCKET) {
 
 export const useContentItemStore = defineStore('contentItem', () => {
   const contentItems = ref<ContentItem[]>([]);
+  const contentItemPreviews = ref<ContentItemPreview[]>([]);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
+  
+  // Pagination state
+  const pagination = ref<PaginationState>({
+    page: 1,
+    limit: getPageSize(),
+    totalCount: 0,
+    hasMore: true
+  });
 
+  // Reset pagination state
+  const resetPagination = () => {
+    pagination.value = { page: 1, limit: getPageSize(), totalCount: 0, hasMore: true };
+    contentItemPreviews.value = [];
+  };
+
+  // Get ALL content items (existing - for backward compatibility)
   const getContentItems = async (cardId: string): Promise<ContentItem[]> => {
     try {
       isLoading.value = true;
@@ -82,6 +122,125 @@ export const useContentItemStore = defineStore('contentItem', () => {
       return null;
     } finally {
       isLoading.value = false;
+    }
+  };
+
+  // =================================================================
+  // PAGINATION & LAZY LOADING METHODS
+  // =================================================================
+
+  /**
+   * Get paginated content items with preview (truncated content)
+   * For list views - reduces payload by ~90%
+   */
+  const getContentItemsPaginated = async (
+    cardId: string,
+    page: number = 1,
+    limit: number = getPageSize(),
+    previewLength: number = getPreviewLength(),
+    append: boolean = false
+  ): Promise<ContentItemPreview[]> => {
+    try {
+      isLoading.value = true;
+      error.value = null;
+      
+      const offset = (page - 1) * limit;
+      
+      const { data, error: err } = await supabase
+        .rpc('get_card_content_items_paginated', {
+          p_card_id: cardId,
+          p_limit: limit,
+          p_offset: offset,
+          p_preview_length: previewLength
+        });
+      
+      if (err) throw err;
+      
+      const items = data as ContentItemPreview[] || [];
+      const totalCount = items.length > 0 ? items[0].total_count : 0;
+      
+      // Update pagination state
+      pagination.value = {
+        page,
+        limit,
+        totalCount,
+        hasMore: offset + items.length < totalCount
+      };
+      
+      // Append or replace
+      if (append) {
+        contentItemPreviews.value = [...contentItemPreviews.value, ...items];
+      } else {
+        contentItemPreviews.value = items;
+      }
+      
+      return items;
+    } catch (err: any) {
+      console.error('Error fetching paginated content items:', err);
+      error.value = err.message || 'An unknown error occurred';
+      return [];
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  /**
+   * Load more content items (infinite scroll)
+   */
+  const loadMoreContentItems = async (
+    cardId: string,
+    previewLength: number = getPreviewLength()
+  ): Promise<ContentItemPreview[]> => {
+    if (!pagination.value.hasMore || isLoading.value) {
+      return [];
+    }
+    
+    const nextPage = pagination.value.page + 1;
+    return getContentItemsPaginated(cardId, nextPage, pagination.value.limit, previewLength, true);
+  };
+
+  /**
+   * Get FULL content item details (for detail view / lazy loading)
+   * Call when user taps on an item to see full content
+   */
+  const getContentItemFull = async (contentItemId: string): Promise<ContentItem | null> => {
+    try {
+      isLoading.value = true;
+      error.value = null;
+      
+      const { data, error: err } = await supabase
+        .rpc('get_content_item_full', { p_content_item_id: contentItemId });
+      
+      if (err) throw err;
+      
+      return data?.[0] as ContentItem || null;
+    } catch (err: any) {
+      console.error('Error fetching full content item:', err);
+      error.value = err.message || 'An unknown error occurred';
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  /**
+   * Get content items count for a card
+   */
+  const getContentItemsCount = async (cardId: string): Promise<{
+    total_count: number;
+    parent_count: number;
+    child_count: number;
+  } | null> => {
+    try {
+      const { data, error: err } = await supabase
+        .rpc('get_content_items_count', { p_card_id: cardId });
+      
+      if (err) throw err;
+      
+      return data?.[0] || null;
+    } catch (err: any) {
+      console.error('Error fetching content items count:', err);
+      return null;
     }
   };
 
@@ -275,16 +434,143 @@ export const useContentItemStore = defineStore('contentItem', () => {
     }
   };
 
+  // Migration response interface
+  interface MigrationResult {
+    success: boolean;
+    message: string;
+    category_id?: string | null;
+    items_moved?: number;
+    categories_removed?: number;
+  }
+
+  // Move item response interface
+  interface MoveItemResult {
+    success: boolean;
+    message: string;
+    item_id: string;
+    old_parent_id: string | null;
+    new_parent_id: string | null;
+    new_sort_order: number;
+  }
+
+  // Migrate content from flat mode to grouped mode
+  // Creates a default category and moves all top-level items under it
+  const migrateToGrouped = async (cardId: string, defaultCategoryName: string = 'Default Category'): Promise<MigrationResult | null> => {
+    try {
+      isLoading.value = true;
+      error.value = null;
+      
+      const { data, error: err } = await supabase
+        .rpc('migrate_content_to_grouped', { 
+          p_card_id: cardId,
+          p_default_category_name: defaultCategoryName
+        });
+      
+      if (err) throw err;
+      
+      // Refresh content items after migration
+      await getContentItems(cardId);
+      
+      return data as MigrationResult;
+    } catch (err: any) {
+      console.error('Error migrating to grouped mode:', err);
+      error.value = err.message || 'An unknown error occurred';
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // Migrate content from grouped mode to flat mode
+  // Moves all child items to top level, optionally removes empty categories
+  const migrateToFlat = async (cardId: string, removeEmptyCategories: boolean = true): Promise<MigrationResult | null> => {
+    try {
+      isLoading.value = true;
+      error.value = null;
+      
+      const { data, error: err } = await supabase
+        .rpc('migrate_content_to_flat', { 
+          p_card_id: cardId,
+          p_remove_empty_categories: removeEmptyCategories
+        });
+      
+      if (err) throw err;
+      
+      // Refresh content items after migration
+      await getContentItems(cardId);
+      
+      return data as MigrationResult;
+    } catch (err: any) {
+      console.error('Error migrating to flat mode:', err);
+      error.value = err.message || 'An unknown error occurred';
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
+  // Move a content item to a different parent (for cross-parent drag & drop)
+  const moveItemToParent = async (
+    contentItemId: string, 
+    newParentId: string | null, 
+    newSortOrder?: number,
+    cardId?: string
+  ): Promise<MoveItemResult | null> => {
+    try {
+      isLoading.value = true;
+      error.value = null;
+      
+      const { data, error: err } = await supabase
+        .rpc('move_content_item_to_parent', { 
+          p_content_item_id: contentItemId,
+          p_new_parent_id: newParentId,
+          p_new_sort_order: newSortOrder || null
+        });
+      
+      if (err) throw err;
+      
+      // Refresh content items after move if cardId provided
+      if (cardId) {
+        await getContentItems(cardId);
+      }
+      
+      return data as MoveItemResult;
+    } catch (err: any) {
+      console.error('Error moving content item:', err);
+      error.value = err.message || 'An unknown error occurred';
+      return null;
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   return {
+    // State
     contentItems,
+    contentItemPreviews,
     isLoading,
     error,
+    pagination,
+    
+    // Full data methods (backward compatible)
     getContentItems,
     getContentItemById,
     createContentItem,
     updateContentItem,
     deleteContentItem,
     uploadContentItemImage,
-    updateContentItemOrder
+    updateContentItemOrder,
+    
+    // Pagination & lazy loading methods
+    resetPagination,
+    getContentItemsPaginated,
+    loadMoreContentItems,
+    getContentItemFull,
+    getContentItemsCount,
+    
+    // Migration methods
+    migrateToGrouped,
+    migrateToFlat,
+    moveItemToParent
   };
 }); 

@@ -34,10 +34,14 @@
                         v-model:selectedMonth="selectedMonth"
                         :currentPage="currentPage"
                         :itemsPerPage="itemsPerPage"
-                        @create-card="showAddCardDialog = true"
+                        :experienceCount="subscriptionStore.experienceCount"
+                        :experienceLimit="subscriptionStore.experienceLimit"
+                        @create-card="handleCreateCardClick"
                         @select-card="handleSelectCard"
                         @clear-date-filters="clearDateFilters"
                         @page-change="handlePageChange"
+                        @delete-cards="handleBulkDelete"
+                        @export-cards="handleBulkExport"
                     />
                 </div>
 
@@ -78,10 +82,15 @@ import CardListPanel from '@/components/Card/CardListPanel.vue';
 import CardDetailPanel from '@/components/Card/CardDetailPanel.vue';
 import Button from 'primevue/button';
 import { useI18n } from 'vue-i18n';
+import { exportCardsToExcel } from '@/utils/excelHandler.js';
+import { useContentItemStore } from '@/stores/contentItem';
+import { useSubscriptionStore } from '@/stores/subscription';
 
 // Stores and composables
 const { t } = useI18n();
 const cardStore = useCardStore();
+const contentItemStore = useContentItemStore();
+const subscriptionStore = useSubscriptionStore();
 const { cards, isLoading } = storeToRefs(cardStore);
 const { handleError, handleAsyncError } = useErrorHandler();
 const confirm = useConfirm();
@@ -263,6 +272,37 @@ const initializeFromURL = () => {
     }
 };
 
+// Check if user can create new experience based on subscription tier
+const handleCreateCardClick = async () => {
+    // Fetch latest subscription status
+    await subscriptionStore.fetchSubscription();
+    
+    if (!subscriptionStore.canCreateExperience) {
+        toast.add({
+            severity: 'warn',
+            summary: t('subscription.limit_reached'),
+            detail: t('subscription.upgrade_to_create_more', {
+                limit: subscriptionStore.experienceLimit,
+                current: subscriptionStore.experienceCount
+            }),
+            life: 5000
+        });
+        
+        // Offer to navigate to subscription page
+        confirm.require({
+            message: t('subscription.upgrade_prompt'),
+            header: t('subscription.free_tier_limit'),
+            icon: 'pi pi-star',
+            acceptLabel: t('subscription.view_plans'),
+            rejectLabel: t('common.cancel'),
+            accept: () => router.push('/cms/plan')
+        });
+        return;
+    }
+    
+    showAddCardDialog.value = true;
+};
+
 const handleAddCard = async () => {
     if (!cardCreateEditRef.value) {
         throw new Error("Form component not ready.");
@@ -276,6 +316,9 @@ const handleAddCard = async () => {
     await handleAsyncError(async () => {
         const newCardId = await cardStore.addCard(payload);
         await cardStore.fetchCards();
+        
+        // Refresh subscription count
+        subscriptionStore.fetchSubscription();
         
         // Auto-select the newly created card
         if (newCardId) {
@@ -355,8 +398,8 @@ const handleBulkImport = async (importResults) => {
                 // Show helpful toast to guide user
                 toast.add({
                     severity: 'success',
-                    summary: 'Import Complete!',
-                    detail: 'Your example card has been imported and selected. Explore the different tabs to see the structure.',
+                    summary: t('messages.import_complete'),
+                    detail: t('messages.import_complete_message'),
                     life: 6000
                 });
             }
@@ -376,10 +419,96 @@ const handleCardImported = async () => {
     }
 };
 
+// Bulk operations handlers
+const handleBulkDelete = async (cardIds) => {
+    const count = cardIds.length;
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const cardId of cardIds) {
+        try {
+            await cardStore.deleteCard(cardId);
+            successCount++;
+            
+            // Clear selection if deleted card was selected
+            if (selectedCardId.value === cardId) {
+                selectedCardId.value = null;
+            }
+        } catch (error) {
+            failCount++;
+            console.error(`Failed to delete card ${cardId}:`, error);
+        }
+    }
+    
+    await cardStore.fetchCards();
+    
+    if (successCount > 0) {
+        toast.add({
+            severity: failCount > 0 ? 'warn' : 'success',
+            summary: t('dashboard.cards_deleted', { count: successCount }),
+            detail: failCount > 0 ? t('dashboard.some_cards_failed', { count: failCount }) : undefined,
+            life: 4000
+        });
+    } else {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: t('messages.operation_failed'),
+            life: 4000
+        });
+    }
+    
+    // Clear URL params if selected card was deleted
+    if (!selectedCardId.value) {
+        router.replace({ name: route.name, query: {} });
+    }
+};
+
+const handleBulkExport = async ({ cards: cardsToExport, singleFile }) => {
+    const count = cardsToExport.length;
+    
+    try {
+        toast.add({
+            severity: 'info',
+            summary: t('dashboard.exporting_cards', { count }),
+            life: 2000
+        });
+        
+        // For each card, fetch its content items
+        const exportData = [];
+        for (const card of cardsToExport) {
+            // Fetch content items for this card
+            const contentItems = await contentItemStore.getContentItems(card.id);
+            
+            exportData.push({
+                card,
+                contentItems: contentItems || []
+            });
+        }
+        
+        // Export with chosen option
+        await exportCardsToExcel(exportData, {
+            singleFile,
+            filename: `cards_export_${new Date().toISOString().split('T')[0]}.xlsx`
+        });
+        
+        toast.add({
+            severity: 'success',
+            summary: t('dashboard.cards_exported', { count }),
+            life: 4000
+        });
+    } catch (error) {
+        handleError(error, 'exporting cards');
+    }
+};
+
 // Lifecycle
 onMounted(async () => {
     await handleAsyncError(async () => {
-        await cardStore.fetchCards();
+        await Promise.all([
+            cardStore.fetchCards(),
+            subscriptionStore.fetchSubscription()
+        ]);
         initializeFromURL();
     }, 'loading cards');
 });

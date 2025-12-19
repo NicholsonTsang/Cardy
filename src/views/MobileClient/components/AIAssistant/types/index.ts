@@ -26,17 +26,44 @@ export interface CardData {
   card_description: string
   card_image_url: string
   conversation_ai_enabled: boolean
-  ai_instruction: string
-  ai_knowledge_base: string
+  ai_instruction?: string
+  ai_knowledge_base?: string
+  ai_welcome_general?: string  // Custom welcome message for General AI Assistant
+  ai_welcome_item?: string  // Custom welcome message for Content Item AI Assistant
   ai_prompt?: string  // Legacy field, mapped from ai_instruction
   is_activated: boolean
 }
 
-export interface AIAssistantProps {
+// Assistant mode types
+export type AssistantMode = 'card-level' | 'content-item'
+
+// Props for Card-Level Assistant (General)
+export interface CardLevelAssistantProps {
+  mode: 'card-level'
+  cardData: CardData
+}
+
+// Props for Content Item Assistant
+export interface ContentItemAssistantProps {
+  mode: 'content-item'
   contentItemName: string
   contentItemContent: string
   contentItemKnowledgeBase: string // Content item's own knowledge (max 500 words)
-  parentContentKnowledgeBase: string // Parent content item's knowledge (for sub-items)
+  parentContentName?: string // Parent content item name (for sub-items)
+  parentContentDescription?: string // Parent content item description (for sub-items)
+  parentContentKnowledgeBase?: string // Parent content item's knowledge (for sub-items)
+  cardData: CardData
+}
+
+// Union type for AI Assistant props
+export type AIAssistantProps = CardLevelAssistantProps | ContentItemAssistantProps
+
+// Legacy props interface for backward compatibility
+export interface LegacyAIAssistantProps {
+  contentItemName: string
+  contentItemContent: string
+  contentItemKnowledgeBase: string
+  parentContentKnowledgeBase: string
   cardData: CardData
 }
 

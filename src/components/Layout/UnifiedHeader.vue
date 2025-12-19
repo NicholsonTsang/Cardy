@@ -44,7 +44,7 @@
               @click="toggleMainMenu"
               class="main-menu-button"
               text
-              aria-label="Main Menu"
+              :aria-label="$t('common.main_menu')"
             >
               <div class="flex items-center gap-3">
                 <div class="w-10 h-10 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-medium shadow-md">
@@ -247,6 +247,11 @@ const cardIssuerMenuItems = computed(() => [
     label: t('dashboard.my_cards'),
     icon: 'pi pi-folder',
     command: () => router.push('/cms/mycards')
+  },
+  {
+    label: t('subscription.title'),
+    icon: 'pi pi-star',
+    command: () => router.push('/cms/plan')
   },
   {
     label: t('credits.title'),

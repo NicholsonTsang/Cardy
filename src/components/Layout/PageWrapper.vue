@@ -3,12 +3,12 @@
     <!-- Page Header -->
     <div v-if="showHeader" class="page-header">
       <div class="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 py-4 sm:py-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h1 v-if="title" class="text-xl sm:text-2xl font-bold text-slate-900">{{ title }}</h1>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+          <div class="min-w-0">
+            <h1 v-if="title" class="text-xl sm:text-2xl font-bold text-slate-900 truncate">{{ title }}</h1>
             <p v-if="description" class="text-sm sm:text-base text-slate-600 mt-1">{{ description }}</p>
           </div>
-          <div v-if="$slots.actions" class="flex items-center space-x-2 sm:space-x-3">
+          <div v-if="$slots.actions" class="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
             <slot name="actions" />
           </div>
         </div>

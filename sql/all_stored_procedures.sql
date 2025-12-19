@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Tue Dec  2 23:53:27 HKT 2025
+-- Generated: Fri Dec 19 16:01:41 HKT 2025
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -54,6 +54,7 @@ END;
 $$;
 
 -- Function to get recent operations log (admin only)
+-- PERFORMANCE: Hard limit cap prevents runaway queries
 CREATE OR REPLACE FUNCTION get_operations_log(
     p_limit INTEGER DEFAULT 100,
     p_offset INTEGER DEFAULT 0,
@@ -73,6 +74,9 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     caller_role TEXT;
+    -- PERFORMANCE: Maximum allowed limit to prevent abuse
+    MAX_LIMIT CONSTANT INTEGER := 1000;
+    v_effective_limit INTEGER;
 BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
@@ -82,6 +86,9 @@ BEGIN
     IF caller_role != 'admin' THEN
         RAISE EXCEPTION 'Only admins can view operations log.';
     END IF;
+
+    -- SECURITY: Cap the limit to prevent excessive data retrieval
+    v_effective_limit := LEAST(COALESCE(p_limit, 100), MAX_LIMIT);
 
     RETURN QUERY
     SELECT 
@@ -102,7 +109,7 @@ BEGIN
         AND (p_start_date IS NULL OR ol.created_at >= p_start_date)
         AND (p_end_date IS NULL OR ol.created_at <= p_end_date)
     ORDER BY ol.created_at DESC
-    LIMIT p_limit OFFSET p_offset;
+    LIMIT v_effective_limit OFFSET p_offset;
 END;
 $$;
 
@@ -206,6 +213,8 @@ DROP FUNCTION IF EXISTS create_card CASCADE;
 DROP FUNCTION IF EXISTS get_card_by_id CASCADE;
 DROP FUNCTION IF EXISTS update_card CASCADE;
 DROP FUNCTION IF EXISTS delete_card CASCADE;
+DROP FUNCTION IF EXISTS toggle_card_access CASCADE;
+DROP FUNCTION IF EXISTS regenerate_access_token CASCADE;
 
 -- =================================================================
 -- CARD MANAGEMENT FUNCTIONS
@@ -213,6 +222,7 @@ DROP FUNCTION IF EXISTS delete_card CASCADE;
 -- =================================================================
 
 -- Get all cards for the current user (more secure)
+-- Includes is_template flag to indicate if card is linked to a template
 CREATE OR REPLACE FUNCTION get_user_cards()
 RETURNS TABLE (
     id UUID,
@@ -224,17 +234,27 @@ RETURNS TABLE (
     conversation_ai_enabled BOOLEAN,
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
+    ai_welcome_general TEXT,
+    ai_welcome_item TEXT,
     qr_code_position TEXT,
     translations JSONB,
     original_language VARCHAR(10),
     content_hash TEXT,
     last_content_update TIMESTAMPTZ,
     content_mode TEXT,
+    is_grouped BOOLEAN,
+    group_display TEXT,
     billing_type TEXT,
     max_scans INTEGER,
     current_scans INTEGER,
+    daily_scan_limit INTEGER,
+    daily_scans INTEGER,
+    is_access_enabled BOOLEAN,
+    access_token TEXT,
     created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
+    updated_at TIMESTAMPTZ,
+    is_template BOOLEAN,
+    template_slug TEXT
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     RETURN QUERY
@@ -248,18 +268,29 @@ BEGIN
         c.conversation_ai_enabled,
         c.ai_instruction,
         c.ai_knowledge_base,
+        c.ai_welcome_general,
+        c.ai_welcome_item,
         c.qr_code_position::TEXT,
         c.translations,
         c.original_language,
         c.content_hash,
         c.last_content_update,
         c.content_mode,
+        c.is_grouped,
+        c.group_display,
         c.billing_type,
         c.max_scans,
         c.current_scans,
+        c.daily_scan_limit,
+        c.daily_scans,
+        c.is_access_enabled,
+        c.access_token,
         c.created_at,
-        c.updated_at
+        c.updated_at,
+        (ct.id IS NOT NULL) AS is_template,
+        ct.slug AS template_slug
     FROM cards c
+    LEFT JOIN content_templates ct ON ct.card_id = c.id
     WHERE c.user_id = auth.uid()
     ORDER BY c.created_at DESC;
 END;
@@ -277,17 +308,29 @@ CREATE OR REPLACE FUNCTION create_card(
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
     p_ai_instruction TEXT DEFAULT '',
     p_ai_knowledge_base TEXT DEFAULT '',
+    p_ai_welcome_general TEXT DEFAULT '',
+    p_ai_welcome_item TEXT DEFAULT '',
     p_qr_code_position TEXT DEFAULT 'BR',
     p_original_language VARCHAR(10) DEFAULT 'en',
     p_content_hash TEXT DEFAULT NULL,  -- For import: preserve original hash
     p_translations JSONB DEFAULT NULL,  -- For import: restore translations
-    p_content_mode TEXT DEFAULT 'list',  -- Content rendering mode: single, grouped, list, grid, inline
+    p_content_mode TEXT DEFAULT 'list',  -- Content rendering mode: single, grid, list, cards
+    p_is_grouped BOOLEAN DEFAULT FALSE,  -- Whether content is organized into categories
+    p_group_display TEXT DEFAULT 'expanded',  -- How grouped items display: expanded or collapsed
     p_billing_type TEXT DEFAULT 'physical',  -- Billing model: physical or digital
-    p_max_scans INTEGER DEFAULT NULL  -- NULL = unlimited (physical), Integer = limit (digital)
+    p_max_scans INTEGER DEFAULT NULL,  -- NULL = unlimited (physical), Integer = limit (digital)
+    p_daily_scan_limit INTEGER DEFAULT 500  -- Daily scan limit for digital access (default: 500)
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
+    v_check JSONB;
 BEGIN
+    -- Check subscription limit
+    v_check := can_create_experience(auth.uid());
+    IF NOT (v_check->>'can_create')::BOOLEAN THEN
+        RAISE EXCEPTION '%', (v_check->>'message');
+    END IF;
+
     INSERT INTO cards (
         user_id,
         name,
@@ -298,14 +341,23 @@ BEGIN
         conversation_ai_enabled,
         ai_instruction,
         ai_knowledge_base,
+        ai_welcome_general,
+        ai_welcome_item,
         qr_code_position,
         original_language,
         content_hash,  -- May be NULL (trigger calculates) or provided (import)
         translations,  -- May be NULL (normal) or provided (import)
         content_mode,
+        is_grouped,
+        group_display,
         billing_type,
         max_scans,
-        current_scans
+        current_scans,
+        daily_scan_limit,
+        daily_scans,
+        last_scan_date,
+        is_access_enabled,
+        access_token
     ) VALUES (
         auth.uid(),
         p_name,
@@ -316,14 +368,23 @@ BEGIN
         p_conversation_ai_enabled,
         p_ai_instruction,
         p_ai_knowledge_base,
+        COALESCE(p_ai_welcome_general, ''),
+        COALESCE(p_ai_welcome_item, ''),
         p_qr_code_position::"QRCodePosition",
         p_original_language,
         p_content_hash,  -- Trigger will calculate if NULL
         COALESCE(p_translations, '{}'::JSONB),  -- Default to empty object
         COALESCE(p_content_mode, 'list'),
+        COALESCE(p_is_grouped, FALSE),
+        COALESCE(p_group_display, 'expanded'),
         COALESCE(p_billing_type, 'physical'),
         p_max_scans,  -- NULL for physical (unlimited), set for digital
-        0  -- Start with 0 scans
+        0,  -- Start with 0 total scans
+        CASE WHEN p_billing_type = 'digital' THEN COALESCE(p_daily_scan_limit, 500) ELSE NULL END,  -- Daily limit for digital
+        0,  -- Start with 0 daily scans
+        CURRENT_DATE,  -- Today
+        TRUE,  -- is_access_enabled defaults to true
+        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')  -- Generate access_token
     )
     RETURNING id INTO v_card_id;
     
@@ -337,7 +398,7 @@ BEGIN
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, TEXT, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 CREATE OR REPLACE FUNCTION get_card_by_id(p_card_id UUID)
@@ -353,14 +414,22 @@ RETURNS TABLE (
     conversation_ai_enabled BOOLEAN,
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
+    ai_welcome_general TEXT,
+    ai_welcome_item TEXT,
     translations JSONB,
     original_language VARCHAR(10),
     content_hash TEXT,
     last_content_update TIMESTAMPTZ,
     content_mode TEXT,
+    is_grouped BOOLEAN,
+    group_display TEXT,
     billing_type TEXT,
     max_scans INTEGER,
     current_scans INTEGER,
+    daily_scan_limit INTEGER,
+    daily_scans INTEGER,
+    is_access_enabled BOOLEAN,
+    access_token TEXT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -378,14 +447,22 @@ BEGIN
         c.conversation_ai_enabled,
         c.ai_instruction,
         c.ai_knowledge_base,
+        c.ai_welcome_general,
+        c.ai_welcome_item,
         c.translations,
         c.original_language,
         c.content_hash,
         c.last_content_update,
         c.content_mode,
+        c.is_grouped,
+        c.group_display,
         c.billing_type,
         c.max_scans,
         c.current_scans,
+        c.daily_scan_limit,
+        c.daily_scans,
+        c.is_access_enabled,
+        c.access_token,
         c.created_at, 
         c.updated_at
     FROM cards c
@@ -405,11 +482,16 @@ CREATE OR REPLACE FUNCTION update_card(
     p_conversation_ai_enabled BOOLEAN DEFAULT NULL,
     p_ai_instruction TEXT DEFAULT NULL,
     p_ai_knowledge_base TEXT DEFAULT NULL,
+    p_ai_welcome_general TEXT DEFAULT NULL,
+    p_ai_welcome_item TEXT DEFAULT NULL,
     p_qr_code_position TEXT DEFAULT NULL,
     p_original_language VARCHAR(10) DEFAULT NULL,
     p_content_mode TEXT DEFAULT NULL,
+    p_is_grouped BOOLEAN DEFAULT NULL,
+    p_group_display TEXT DEFAULT NULL,
     p_billing_type TEXT DEFAULT NULL,
-    p_max_scans INTEGER DEFAULT NULL
+    p_max_scans INTEGER DEFAULT NULL,
+    p_daily_scan_limit INTEGER DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_old_record RECORD;
@@ -427,11 +509,16 @@ BEGIN
         conversation_ai_enabled,
         ai_instruction,
         ai_knowledge_base,
+        ai_welcome_general,
+        ai_welcome_item,
         qr_code_position,
         original_language,
         content_mode,
+        is_grouped,
+        group_display,
         billing_type,
         max_scans,
+        daily_scan_limit,
         user_id,
         updated_at
     INTO v_old_record
@@ -483,6 +570,16 @@ BEGIN
         has_changes := TRUE;
     END IF;
     
+    IF p_ai_welcome_general IS NOT NULL AND p_ai_welcome_general != v_old_record.ai_welcome_general THEN
+        v_changes_made := v_changes_made || jsonb_build_object('ai_welcome_general', jsonb_build_object('from', v_old_record.ai_welcome_general, 'to', p_ai_welcome_general));
+        has_changes := TRUE;
+    END IF;
+    
+    IF p_ai_welcome_item IS NOT NULL AND p_ai_welcome_item != v_old_record.ai_welcome_item THEN
+        v_changes_made := v_changes_made || jsonb_build_object('ai_welcome_item', jsonb_build_object('from', v_old_record.ai_welcome_item, 'to', p_ai_welcome_item));
+        has_changes := TRUE;
+    END IF;
+    
     IF p_qr_code_position IS NOT NULL AND p_qr_code_position != v_old_record.qr_code_position::TEXT THEN
         v_changes_made := v_changes_made || jsonb_build_object('qr_code_position', jsonb_build_object('from', v_old_record.qr_code_position, 'to', p_qr_code_position));
         has_changes := TRUE;
@@ -498,11 +595,24 @@ BEGIN
         has_changes := TRUE;
     END IF;
     
+    IF p_is_grouped IS NOT NULL AND p_is_grouped != v_old_record.is_grouped THEN
+        v_changes_made := v_changes_made || jsonb_build_object('is_grouped', jsonb_build_object('from', v_old_record.is_grouped, 'to', p_is_grouped));
+        has_changes := TRUE;
+    END IF;
+    
+    IF p_group_display IS NOT NULL AND p_group_display != v_old_record.group_display THEN
+        v_changes_made := v_changes_made || jsonb_build_object('group_display', jsonb_build_object('from', v_old_record.group_display, 'to', p_group_display));
+        has_changes := TRUE;
+    END IF;
+    
     -- NOTE: billing_type cannot be changed after card creation
     -- Silently ignore any attempt to change billing_type
-    -- IF p_billing_type IS NOT NULL AND p_billing_type != v_old_record.billing_type THEN
-    --     RAISE EXCEPTION 'Access mode (billing_type) cannot be changed after card creation.';
-    -- END IF;
+    
+    -- Track daily_scan_limit changes (only for digital cards)
+    IF p_daily_scan_limit IS NOT NULL AND (v_old_record.daily_scan_limit IS NULL OR p_daily_scan_limit != v_old_record.daily_scan_limit) THEN
+        v_changes_made := v_changes_made || jsonb_build_object('daily_scan_limit', jsonb_build_object('from', v_old_record.daily_scan_limit, 'to', p_daily_scan_limit));
+        has_changes := TRUE;
+    END IF;
     
     -- Only proceed if there are actual changes
     IF NOT has_changes THEN
@@ -521,11 +631,16 @@ BEGIN
         conversation_ai_enabled = COALESCE(p_conversation_ai_enabled, conversation_ai_enabled),
         ai_instruction = COALESCE(p_ai_instruction, ai_instruction),
         ai_knowledge_base = COALESCE(p_ai_knowledge_base, ai_knowledge_base),
+        ai_welcome_general = COALESCE(p_ai_welcome_general, ai_welcome_general),
+        ai_welcome_item = COALESCE(p_ai_welcome_item, ai_welcome_item),
         qr_code_position = COALESCE(p_qr_code_position::"QRCodePosition", qr_code_position),
         original_language = COALESCE(p_original_language, original_language),
         content_mode = COALESCE(p_content_mode, content_mode),
+        is_grouped = COALESCE(p_is_grouped, is_grouped),
+        group_display = COALESCE(p_group_display, group_display),
         -- billing_type is immutable - not updated here
         max_scans = CASE WHEN billing_type = 'digital' THEN COALESCE(p_max_scans, max_scans) ELSE NULL END,
+        daily_scan_limit = CASE WHEN billing_type = 'digital' THEN COALESCE(p_daily_scan_limit, daily_scan_limit) ELSE NULL END,
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
     
@@ -535,7 +650,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, VARCHAR, TEXT, TEXT, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
@@ -572,7 +687,85 @@ BEGIN
 
     RETURN TRUE;
 END;
-$$; 
+$$;
+
+-- Toggle access enabled/disabled for a digital card
+CREATE OR REPLACE FUNCTION toggle_card_access(
+    p_card_id UUID,
+    p_is_enabled BOOLEAN
+) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_card_record RECORD;
+BEGIN
+    -- Get card information
+    SELECT id, name, billing_type, is_access_enabled
+    INTO v_card_record
+    FROM cards
+    WHERE id = p_card_id AND user_id = auth.uid();
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Card not found or not authorized.';
+    END IF;
+    
+    -- Only digital cards can toggle access
+    IF v_card_record.billing_type != 'digital' THEN
+        RAISE EXCEPTION 'Access toggle is only available for digital cards.';
+    END IF;
+    
+    -- Update the access status
+    UPDATE cards
+    SET is_access_enabled = p_is_enabled,
+        updated_at = now()
+    WHERE id = p_card_id AND user_id = auth.uid();
+    
+    -- Log operation
+    PERFORM log_operation(format('Toggled access for card %s: %s', v_card_record.name, 
+        CASE WHEN p_is_enabled THEN 'enabled' ELSE 'disabled' END));
+    
+    RETURN TRUE;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION toggle_card_access(UUID, BOOLEAN) TO authenticated;
+
+-- Regenerate access token for a digital card (invalidates old QR codes)
+CREATE OR REPLACE FUNCTION regenerate_access_token(
+    p_card_id UUID
+) RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_card_record RECORD;
+    v_new_token TEXT;
+BEGIN
+    -- Get card information
+    SELECT id, name, billing_type, access_token
+    INTO v_card_record
+    FROM cards
+    WHERE id = p_card_id AND user_id = auth.uid();
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Card not found or not authorized.';
+    END IF;
+    
+    -- Only digital cards can regenerate tokens
+    IF v_card_record.billing_type != 'digital' THEN
+        RAISE EXCEPTION 'Token regeneration is only available for digital cards.';
+    END IF;
+    
+    -- Generate new short 12-char URL-safe token (base64url encoding)
+    v_new_token := replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_');
+    
+    -- Update the access token
+    UPDATE cards
+    SET access_token = v_new_token,
+        updated_at = now()
+    WHERE id = p_card_id AND user_id = auth.uid();
+    
+    -- Log operation
+    PERFORM log_operation(format('Regenerated access token for card: %s', v_card_record.name));
+    
+    RETURN v_new_token;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION regenerate_access_token(UUID) TO authenticated;
 
 -- File: 03_content_management.sql
 -- -----------------------------------------------------------------
@@ -897,10 +1090,709 @@ BEGIN
 END;
 $$; 
 
+-- File: 03b_content_migration.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS migrate_content_to_grouped CASCADE;
+DROP FUNCTION IF EXISTS migrate_content_to_flat CASCADE;
+DROP FUNCTION IF EXISTS move_content_item_to_parent CASCADE;
+
+-- =================================================================
+-- CONTENT ITEM MIGRATION FUNCTIONS
+-- Functions for migrating content between flat and grouped modes
+-- =================================================================
+
+-- Migrate content from flat mode to grouped mode
+-- Creates a default category and moves all top-level items under it
+CREATE OR REPLACE FUNCTION migrate_content_to_grouped(
+    p_card_id UUID,
+    p_default_category_name TEXT DEFAULT 'Default Category'
+) RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+    v_category_id UUID;
+    v_items_moved INTEGER := 0;
+BEGIN
+    -- Check if the user owns the card
+    SELECT user_id INTO v_user_id
+    FROM cards
+    WHERE id = p_card_id;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to migrate content for this card';
+    END IF;
+    
+    -- Count top-level items (potential items to move)
+    SELECT COUNT(*) INTO v_items_moved
+    FROM content_items
+    WHERE card_id = p_card_id AND parent_id IS NULL;
+    
+    -- If no items to migrate, return early
+    IF v_items_moved = 0 THEN
+        RETURN json_build_object(
+            'success', true,
+            'message', 'No items to migrate',
+            'category_id', NULL,
+            'items_moved', 0
+        );
+    END IF;
+    
+    -- Create the default category
+    INSERT INTO content_items (
+        card_id,
+        parent_id,
+        name,
+        content,
+        sort_order
+    ) VALUES (
+        p_card_id,
+        NULL,
+        p_default_category_name,
+        '',
+        1
+    )
+    RETURNING id INTO v_category_id;
+    
+    -- Move all existing top-level items under the new category
+    -- (except the category we just created)
+    UPDATE content_items
+    SET 
+        parent_id = v_category_id,
+        updated_at = now()
+    WHERE card_id = p_card_id 
+    AND parent_id IS NULL 
+    AND id != v_category_id;
+    
+    -- Re-number sort orders for moved items
+    WITH numbered AS (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY sort_order, created_at) as new_order
+        FROM content_items
+        WHERE card_id = p_card_id AND parent_id = v_category_id
+    )
+    UPDATE content_items ci
+    SET sort_order = numbered.new_order
+    FROM numbered
+    WHERE ci.id = numbered.id;
+    
+    -- Log operation
+    PERFORM log_operation(format('Migrated %s items to grouped mode with category: %s', v_items_moved, p_default_category_name));
+    
+    RETURN json_build_object(
+        'success', true,
+        'message', format('Migrated %s items to grouped mode', v_items_moved),
+        'category_id', v_category_id,
+        'items_moved', v_items_moved
+    );
+END;
+$$;
+GRANT EXECUTE ON FUNCTION migrate_content_to_grouped(UUID, TEXT) TO authenticated;
+
+-- Migrate content from grouped mode to flat mode
+-- Moves all child items to top level, optionally removes empty categories
+CREATE OR REPLACE FUNCTION migrate_content_to_flat(
+    p_card_id UUID,
+    p_remove_empty_categories BOOLEAN DEFAULT true
+) RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+    v_items_moved INTEGER := 0;
+    v_categories_removed INTEGER := 0;
+BEGIN
+    -- Check if the user owns the card
+    SELECT user_id INTO v_user_id
+    FROM cards
+    WHERE id = p_card_id;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to migrate content for this card';
+    END IF;
+    
+    -- Count items that will be moved (items with parent_id)
+    SELECT COUNT(*) INTO v_items_moved
+    FROM content_items
+    WHERE card_id = p_card_id AND parent_id IS NOT NULL;
+    
+    -- Move all child items to top level
+    UPDATE content_items
+    SET 
+        parent_id = NULL,
+        updated_at = now()
+    WHERE card_id = p_card_id AND parent_id IS NOT NULL;
+    
+    -- Optionally remove categories (items that had children but now are empty parents)
+    -- We identify categories as items that have no content and were originally parents
+    IF p_remove_empty_categories THEN
+        -- Delete categories (items with empty content that don't have images)
+        WITH deleted AS (
+            DELETE FROM content_items
+            WHERE card_id = p_card_id 
+            AND parent_id IS NULL
+            AND (content IS NULL OR content = '')
+            AND image_url IS NULL
+            RETURNING id
+        )
+        SELECT COUNT(*) INTO v_categories_removed FROM deleted;
+    END IF;
+    
+    -- Re-number sort orders for all remaining top-level items
+    WITH numbered AS (
+        SELECT id, ROW_NUMBER() OVER (ORDER BY sort_order, created_at) as new_order
+        FROM content_items
+        WHERE card_id = p_card_id AND parent_id IS NULL
+    )
+    UPDATE content_items ci
+    SET sort_order = numbered.new_order
+    FROM numbered
+    WHERE ci.id = numbered.id;
+    
+    -- Log operation
+    PERFORM log_operation(format('Migrated to flat mode: %s items moved, %s categories removed', v_items_moved, v_categories_removed));
+    
+    RETURN json_build_object(
+        'success', true,
+        'message', format('Migrated to flat mode'),
+        'items_moved', v_items_moved,
+        'categories_removed', v_categories_removed
+    );
+END;
+$$;
+GRANT EXECUTE ON FUNCTION migrate_content_to_flat(UUID, BOOLEAN) TO authenticated;
+
+-- Move a content item to a different parent (for cross-parent drag & drop)
+-- new_parent_id can be NULL to move to top level
+CREATE OR REPLACE FUNCTION move_content_item_to_parent(
+    p_content_item_id UUID,
+    p_new_parent_id UUID DEFAULT NULL,
+    p_new_sort_order INTEGER DEFAULT NULL
+) RETURNS JSON LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_id UUID;
+    v_old_parent_id UUID;
+    v_next_sort_order INTEGER;
+    v_item_name TEXT;
+BEGIN
+    -- Get content item details and check ownership
+    SELECT c.user_id, ci.card_id, ci.parent_id, ci.name 
+    INTO v_user_id, v_card_id, v_old_parent_id, v_item_name
+    FROM content_items ci
+    JOIN cards c ON ci.card_id = c.id
+    WHERE ci.id = p_content_item_id;
+    
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Content item not found';
+    END IF;
+    
+    IF v_user_id != auth.uid() THEN
+        RAISE EXCEPTION 'Not authorized to move this content item';
+    END IF;
+    
+    -- Prevent moving to self
+    IF p_content_item_id = p_new_parent_id THEN
+        RAISE EXCEPTION 'Cannot move an item to itself';
+    END IF;
+    
+    -- If new parent specified, verify it exists and belongs to the same card
+    IF p_new_parent_id IS NOT NULL THEN
+        IF NOT EXISTS (
+            SELECT 1 FROM content_items 
+            WHERE id = p_new_parent_id 
+            AND card_id = v_card_id
+            AND parent_id IS NULL  -- Parent must be a top-level item (category)
+        ) THEN
+            RAISE EXCEPTION 'New parent must be a top-level category in the same card';
+        END IF;
+    END IF;
+    
+    -- Prevent circular references (moving a parent under its own child)
+    IF p_new_parent_id IS NOT NULL THEN
+        IF EXISTS (
+            WITH RECURSIVE descendants AS (
+                SELECT id, parent_id FROM content_items WHERE id = p_content_item_id
+                UNION ALL
+                SELECT ci.id, ci.parent_id 
+                FROM content_items ci
+                JOIN descendants d ON ci.parent_id = d.id
+            )
+            SELECT 1 FROM descendants WHERE id = p_new_parent_id
+        ) THEN
+            RAISE EXCEPTION 'Cannot create circular reference';
+        END IF;
+    END IF;
+    
+    -- Calculate next sort order if not provided
+    IF p_new_sort_order IS NULL THEN
+        SELECT COALESCE(MAX(sort_order), 0) + 1 INTO v_next_sort_order
+        FROM content_items
+        WHERE card_id = v_card_id 
+        AND (
+            (p_new_parent_id IS NULL AND parent_id IS NULL) OR 
+            (p_new_parent_id IS NOT NULL AND parent_id = p_new_parent_id)
+        );
+    ELSE
+        v_next_sort_order := p_new_sort_order;
+    END IF;
+    
+    -- Update the content item's parent and sort order
+    UPDATE content_items
+    SET 
+        parent_id = p_new_parent_id,
+        sort_order = v_next_sort_order,
+        updated_at = now()
+    WHERE id = p_content_item_id;
+    
+    -- Re-number sort orders in the old parent's children (if old parent existed)
+    IF v_old_parent_id IS NOT NULL THEN
+        WITH numbered AS (
+            SELECT id, ROW_NUMBER() OVER (ORDER BY sort_order, created_at) as new_order
+            FROM content_items
+            WHERE card_id = v_card_id AND parent_id = v_old_parent_id
+        )
+        UPDATE content_items ci
+        SET sort_order = numbered.new_order
+        FROM numbered
+        WHERE ci.id = numbered.id;
+    END IF;
+    
+    -- Log operation
+    PERFORM log_operation(format('Moved content item "%s" to new parent', v_item_name));
+    
+    RETURN json_build_object(
+        'success', true,
+        'message', 'Item moved successfully',
+        'item_id', p_content_item_id,
+        'old_parent_id', v_old_parent_id,
+        'new_parent_id', p_new_parent_id,
+        'new_sort_order', v_next_sort_order
+    );
+END;
+$$;
+GRANT EXECUTE ON FUNCTION move_content_item_to_parent(UUID, UUID, INTEGER) TO authenticated;
+
+
+
+-- File: 03c_content_pagination.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_card_content_items_paginated CASCADE;
+DROP FUNCTION IF EXISTS get_content_item_full CASCADE;
+DROP FUNCTION IF EXISTS get_public_card_info CASCADE;
+DROP FUNCTION IF EXISTS get_public_content_items_paginated CASCADE;
+DROP FUNCTION IF EXISTS get_public_content_item_full CASCADE;
+DROP FUNCTION IF EXISTS get_content_items_count CASCADE;
+
+-- =================================================================
+-- CONTENT ITEM PAGINATION & LAZY LOADING
+-- Optimizes performance for cards with many/large content items
+-- =================================================================
+
+-- -----------------------------------------------------------------
+-- Get paginated content items with PREVIEW (truncated content)
+-- For list views - reduces payload by ~90%
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION get_card_content_items_paginated(
+    p_card_id UUID,
+    p_limit INTEGER DEFAULT 20,
+    p_offset INTEGER DEFAULT 0,
+    p_preview_length INTEGER DEFAULT 200  -- Characters to include in preview
+)
+RETURNS TABLE (
+    id UUID,
+    card_id UUID,
+    parent_id UUID,
+    name TEXT,
+    content_preview TEXT,          -- Truncated content for list view
+    content_length INTEGER,        -- Full content length (for "read more" indicator)
+    image_url TEXT,
+    ai_knowledge_base_length INTEGER, -- Length only (not full content)
+    sort_order INTEGER,
+    created_at TIMESTAMPTZ,
+    total_count BIGINT             -- Total items for pagination UI
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_total BIGINT;
+BEGIN
+    -- Get total count first
+    SELECT COUNT(*) INTO v_total
+    FROM content_items ci
+    JOIN cards c ON ci.card_id = c.id
+    WHERE ci.card_id = p_card_id AND c.user_id = auth.uid();
+    
+    RETURN QUERY
+    SELECT 
+        ci.id, 
+        ci.card_id,
+        ci.parent_id,
+        ci.name, 
+        -- Truncate content for preview
+        CASE 
+            WHEN LENGTH(ci.content) > p_preview_length 
+            THEN LEFT(ci.content, p_preview_length) || '...'
+            ELSE ci.content
+        END AS content_preview,
+        LENGTH(ci.content)::INTEGER AS content_length,
+        ci.image_url,
+        LENGTH(ci.ai_knowledge_base)::INTEGER AS ai_knowledge_base_length,
+        ci.sort_order,
+        ci.created_at,
+        v_total AS total_count
+    FROM content_items ci
+    JOIN cards c ON ci.card_id = c.id
+    WHERE ci.card_id = p_card_id AND c.user_id = auth.uid()
+    ORDER BY 
+        CASE WHEN ci.parent_id IS NULL THEN ci.sort_order ELSE 999999 END,
+        ci.parent_id NULLS FIRST,
+        ci.sort_order ASC,
+        ci.created_at ASC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION get_card_content_items_paginated(UUID, INTEGER, INTEGER, INTEGER) TO authenticated;
+
+-- -----------------------------------------------------------------
+-- Get FULL content item details (for detail view / lazy loading)
+-- Called when user taps on an item to see full content
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION get_content_item_full(p_content_item_id UUID)
+RETURNS TABLE (
+    id UUID,
+    card_id UUID,
+    parent_id UUID,
+    name TEXT,
+    content TEXT,                  -- Full content
+    image_url TEXT,
+    original_image_url TEXT,
+    crop_parameters JSONB,
+    ai_knowledge_base TEXT,        -- Full AI knowledge base
+    sort_order INTEGER,
+    translations JSONB,
+    content_hash TEXT,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ci.id, 
+        ci.card_id,
+        ci.parent_id,
+        ci.name, 
+        ci.content,
+        ci.image_url, 
+        ci.original_image_url,
+        ci.crop_parameters,
+        ci.ai_knowledge_base,
+        ci.sort_order,
+        ci.translations,
+        ci.content_hash,
+        ci.created_at,
+        ci.updated_at
+    FROM content_items ci
+    JOIN cards c ON ci.card_id = c.id
+    WHERE ci.id = p_content_item_id AND c.user_id = auth.uid();
+END;
+$$;
+GRANT EXECUTE ON FUNCTION get_content_item_full(UUID) TO authenticated;
+
+-- -----------------------------------------------------------------
+-- PUBLIC: Get card info only (no content items)
+-- First call for mobile client - minimal payload (~5KB)
+-- SECURITY: Credit rate is hardcoded to prevent bypass attacks
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION get_public_card_info(
+    p_issue_card_id UUID,
+    p_language VARCHAR(10) DEFAULT 'en'
+)
+RETURNS TABLE (
+    card_name TEXT,
+    card_description TEXT,
+    card_image_url TEXT,
+    card_crop_parameters JSONB,
+    card_conversation_ai_enabled BOOLEAN,
+    card_ai_instruction TEXT,
+    card_ai_knowledge_base TEXT,
+    card_ai_welcome_general TEXT,
+    card_ai_welcome_item TEXT,
+    card_original_language VARCHAR(10),
+    card_has_translation BOOLEAN,
+    card_available_languages TEXT[],
+    card_content_mode TEXT,
+    card_is_grouped BOOLEAN,
+    card_group_display TEXT,
+    card_billing_type TEXT,
+    card_max_scans INTEGER,
+    card_current_scans INTEGER,
+    card_daily_scan_limit INTEGER,
+    card_daily_scans INTEGER,
+    card_scan_limit_reached BOOLEAN,
+    card_daily_limit_exceeded BOOLEAN,
+    card_credits_insufficient BOOLEAN,
+    card_id UUID,
+    content_item_count BIGINT,
+    is_activated BOOLEAN
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    -- SECURITY: Hardcoded credit rate to prevent bypass attacks
+    CREDIT_RATE CONSTANT DECIMAL := 0.03;
+    
+    v_card_design_id UUID;
+    v_is_card_active BOOLEAN;
+    v_card_owner_id UUID;
+    v_caller_id UUID;
+    v_is_owner_access BOOLEAN := FALSE;
+    v_billing_type TEXT;
+    v_max_scans INTEGER;
+    v_current_scans INTEGER;
+    v_daily_scan_limit INTEGER;
+    v_daily_scans INTEGER;
+    v_last_scan_date DATE;
+    v_scan_limit_reached BOOLEAN := FALSE;
+    v_daily_limit_exceeded BOOLEAN := FALSE;
+    v_credits_insufficient BOOLEAN := FALSE;
+    v_credit_result JSONB;
+    v_content_count BIGINT;
+BEGIN
+    v_caller_id := auth.uid();
+    
+    -- Get card information
+    SELECT ic.card_id, ic.active, c.user_id, c.billing_type, c.max_scans, c.current_scans,
+           c.daily_scan_limit, c.daily_scans, c.last_scan_date
+    INTO v_card_design_id, v_is_card_active, v_card_owner_id, v_billing_type, v_max_scans, v_current_scans,
+         v_daily_scan_limit, v_daily_scans, v_last_scan_date
+    FROM issue_cards ic
+    JOIN cards c ON ic.card_id = c.id
+    WHERE ic.id = p_issue_card_id;
+
+    IF NOT FOUND THEN
+        RETURN;
+    END IF;
+
+    -- Check owner access
+    IF v_caller_id IS NOT NULL AND v_caller_id = v_card_owner_id THEN
+        v_is_owner_access := TRUE;
+        v_is_card_active := TRUE;
+    END IF;
+
+    -- Handle digital card billing (same logic as get_public_card_content)
+    IF v_billing_type = 'digital' AND NOT v_is_owner_access THEN
+        IF v_last_scan_date IS NULL OR v_last_scan_date < CURRENT_DATE THEN
+            UPDATE cards SET daily_scans = 0, last_scan_date = CURRENT_DATE WHERE id = v_card_design_id;
+            v_daily_scans := 0;
+        END IF;
+        
+        IF v_max_scans IS NOT NULL AND v_current_scans >= v_max_scans THEN
+            v_scan_limit_reached := TRUE;
+        ELSIF v_daily_scan_limit IS NOT NULL AND v_daily_scans >= v_daily_scan_limit THEN
+            v_daily_limit_exceeded := TRUE;
+        ELSE
+            -- Using hardcoded credit rate for security
+            SELECT consume_credit_for_digital_scan(v_card_design_id, v_card_owner_id, CREDIT_RATE)
+            INTO v_credit_result;
+            
+            IF (v_credit_result->>'success')::BOOLEAN = FALSE THEN
+                v_credits_insufficient := TRUE;
+            ELSE
+                UPDATE cards SET current_scans = current_scans + 1, daily_scans = daily_scans + 1, last_scan_date = CURRENT_DATE
+                WHERE id = v_card_design_id;
+                v_current_scans := v_current_scans + 1;
+                v_daily_scans := v_daily_scans + 1;
+            END IF;
+        END IF;
+    END IF;
+
+    -- Auto-activate if needed
+    IF NOT v_is_card_active THEN
+        UPDATE issue_cards SET active = true, activated_at = NOW() WHERE id = p_issue_card_id;
+        v_is_card_active := TRUE;
+    END IF;
+    
+    -- Get content item count
+    SELECT COUNT(*) INTO v_content_count FROM content_items WHERE card_id = v_card_design_id;
+
+    RETURN QUERY
+    SELECT 
+        COALESCE(c.translations->p_language->>'name', c.name)::TEXT,
+        COALESCE(c.translations->p_language->>'description', c.description)::TEXT,
+        c.image_url,
+        c.crop_parameters,
+        c.conversation_ai_enabled,
+        c.ai_instruction,
+        c.ai_knowledge_base,
+        c.ai_welcome_general,
+        c.ai_welcome_item,
+        c.original_language::VARCHAR(10),
+        (c.translations ? p_language)::BOOLEAN,
+        (ARRAY[c.original_language] || ARRAY(SELECT jsonb_object_keys(c.translations)))::TEXT[],
+        COALESCE(c.content_mode, 'list')::TEXT,
+        COALESCE(c.is_grouped, FALSE)::BOOLEAN,
+        COALESCE(c.group_display, 'expanded')::TEXT,
+        COALESCE(c.billing_type, 'physical')::TEXT,
+        c.max_scans,
+        v_current_scans,
+        c.daily_scan_limit,
+        v_daily_scans,
+        v_scan_limit_reached,
+        v_daily_limit_exceeded,
+        v_credits_insufficient,
+        v_card_design_id,
+        v_content_count,
+        v_is_card_active
+    FROM cards c
+    WHERE c.id = v_card_design_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION get_public_card_info(UUID, VARCHAR) TO anon, authenticated;
+
+-- -----------------------------------------------------------------
+-- PUBLIC: Get paginated content items with PREVIEW
+-- For mobile list views - reduces initial payload significantly
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION get_public_content_items_paginated(
+    p_card_id UUID,
+    p_language VARCHAR(10) DEFAULT 'en',
+    p_limit INTEGER DEFAULT 20,
+    p_offset INTEGER DEFAULT 0,
+    p_preview_length INTEGER DEFAULT 200
+)
+RETURNS TABLE (
+    content_item_id UUID,
+    content_item_parent_id UUID,
+    content_item_name TEXT,
+    content_preview TEXT,
+    content_length INTEGER,
+    content_item_image_url TEXT,
+    content_item_sort_order INTEGER,
+    crop_parameters JSONB,
+    total_count BIGINT
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_total BIGINT;
+BEGIN
+    -- Get total count
+    SELECT COUNT(*) INTO v_total FROM content_items WHERE card_id = p_card_id;
+    
+    RETURN QUERY
+    SELECT 
+        ci.id AS content_item_id,
+        ci.parent_id AS content_item_parent_id,
+        COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
+        CASE 
+            WHEN LENGTH(COALESCE(ci.translations->p_language->>'content', ci.content)) > p_preview_length 
+            THEN LEFT(COALESCE(ci.translations->p_language->>'content', ci.content), p_preview_length) || '...'
+            ELSE COALESCE(ci.translations->p_language->>'content', ci.content)
+        END AS content_preview,
+        LENGTH(COALESCE(ci.translations->p_language->>'content', ci.content))::INTEGER AS content_length,
+        ci.image_url AS content_item_image_url,
+        ci.sort_order AS content_item_sort_order,
+        ci.crop_parameters,
+        v_total AS total_count
+    FROM content_items ci
+    WHERE ci.card_id = p_card_id
+    ORDER BY 
+        CASE WHEN ci.parent_id IS NULL THEN ci.sort_order ELSE 999999 END,
+        ci.parent_id NULLS FIRST,
+        ci.sort_order ASC,
+        ci.created_at ASC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION get_public_content_items_paginated(UUID, VARCHAR, INTEGER, INTEGER, INTEGER) TO anon, authenticated;
+
+-- -----------------------------------------------------------------
+-- PUBLIC: Get FULL content item details (for detail view)
+-- Called when user taps on an item
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION get_public_content_item_full(
+    p_content_item_id UUID,
+    p_language VARCHAR(10) DEFAULT 'en'
+)
+RETURNS TABLE (
+    content_item_id UUID,
+    content_item_parent_id UUID,
+    content_item_name TEXT,
+    content_item_content TEXT,       -- Full content
+    content_item_image_url TEXT,
+    content_item_ai_knowledge_base TEXT,
+    content_item_sort_order INTEGER,
+    crop_parameters JSONB,
+    -- Include parent info for breadcrumb/navigation
+    parent_name TEXT,
+    -- Include sibling info for next/prev navigation
+    prev_item_id UUID,
+    next_item_id UUID
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_card_id UUID;
+    v_parent_id UUID;
+    v_sort_order INTEGER;
+BEGIN
+    -- Get item's card_id, parent_id, and sort_order for navigation
+    SELECT ci.card_id, ci.parent_id, ci.sort_order 
+    INTO v_card_id, v_parent_id, v_sort_order
+    FROM content_items ci 
+    WHERE ci.id = p_content_item_id;
+    
+    IF NOT FOUND THEN
+        RETURN;
+    END IF;
+    
+    RETURN QUERY
+    SELECT 
+        ci.id AS content_item_id,
+        ci.parent_id AS content_item_parent_id,
+        COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
+        COALESCE(ci.translations->p_language->>'content', ci.content)::TEXT AS content_item_content,
+        ci.image_url AS content_item_image_url,
+        COALESCE(ci.translations->p_language->>'ai_knowledge_base', ci.ai_knowledge_base)::TEXT AS content_item_ai_knowledge_base,
+        ci.sort_order AS content_item_sort_order,
+        ci.crop_parameters,
+        -- Get parent name
+        (SELECT COALESCE(p.translations->p_language->>'name', p.name)::TEXT 
+         FROM content_items p WHERE p.id = ci.parent_id) AS parent_name,
+        -- Get previous sibling
+        (SELECT prev.id FROM content_items prev 
+         WHERE prev.card_id = v_card_id 
+         AND ((v_parent_id IS NULL AND prev.parent_id IS NULL) OR prev.parent_id = v_parent_id)
+         AND prev.sort_order < v_sort_order
+         ORDER BY prev.sort_order DESC LIMIT 1) AS prev_item_id,
+        -- Get next sibling
+        (SELECT next.id FROM content_items next 
+         WHERE next.card_id = v_card_id 
+         AND ((v_parent_id IS NULL AND next.parent_id IS NULL) OR next.parent_id = v_parent_id)
+         AND next.sort_order > v_sort_order
+         ORDER BY next.sort_order ASC LIMIT 1) AS next_item_id
+    FROM content_items ci
+    WHERE ci.id = p_content_item_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION get_public_content_item_full(UUID, VARCHAR) TO anon, authenticated;
+
+-- -----------------------------------------------------------------
+-- Get content items count by card (utility function)
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION get_content_items_count(p_card_id UUID)
+RETURNS TABLE (
+    total_count BIGINT,
+    parent_count BIGINT,
+    child_count BIGINT
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        COUNT(*)::BIGINT AS total_count,
+        COUNT(*) FILTER (WHERE parent_id IS NULL)::BIGINT AS parent_count,
+        COUNT(*) FILTER (WHERE parent_id IS NOT NULL)::BIGINT AS child_count
+    FROM content_items
+    WHERE card_id = p_card_id;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION get_content_items_count(UUID) TO anon, authenticated;
+
+
+
 -- File: 04_batch_management.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS get_next_batch_number CASCADE;
-DROP FUNCTION IF EXISTS issue_card_batch CASCADE;
 DROP FUNCTION IF EXISTS issue_card_batch_with_credits CASCADE;
 DROP FUNCTION IF EXISTS get_card_batches CASCADE;
 DROP FUNCTION IF EXISTS get_issued_cards_with_batch CASCADE;
@@ -938,78 +1830,7 @@ BEGIN
 END;
 $$;
 
--- Create a new card batch and issue cards (Legacy - Stripe payment)
--- This function is kept for backward compatibility
-CREATE OR REPLACE FUNCTION issue_card_batch(
-    p_card_id UUID,
-    p_quantity INTEGER
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_batch_id UUID;
-    v_batch_number INTEGER;
-    v_batch_name TEXT;
-    v_card_owner_id UUID;
-BEGIN
-    -- Validate inputs
-    IF p_quantity <= 0 OR p_quantity > 1000 THEN
-        RAISE EXCEPTION 'Quantity must be between 1 and 1000';
-    END IF;
-    
-    -- Check if the user owns the card
-    SELECT user_id INTO v_card_owner_id
-    FROM cards
-    WHERE id = p_card_id;
-    
-    IF v_card_owner_id IS NULL THEN
-        RAISE EXCEPTION 'Card not found.';
-    END IF;
-
-    IF v_card_owner_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to issue cards for this card.';
-    END IF;
-    
-    -- Get next batch number
-    SELECT get_next_batch_number(p_card_id) INTO v_batch_number;
-    v_batch_name := 'batch-' || v_batch_number;
-    
-    -- Create the batch (Step 1: Batch creation only)
-    INSERT INTO card_batches (
-        card_id,
-        batch_name,
-        batch_number,
-        cards_count,
-        created_by,
-        payment_required,
-        payment_completed,
-        payment_amount_cents,
-        payment_waived,
-        cards_generated
-    ) VALUES (
-        p_card_id,
-        v_batch_name,
-        v_batch_number,
-        p_quantity,
-        auth.uid(),
-        TRUE,
-        FALSE,
-        p_quantity * 200, -- $2 USD per card = 200 cents per card
-        FALSE,
-        FALSE -- Cards not generated yet
-    )
-    RETURNING id INTO v_batch_id;
-    
-    -- NOTE: Cards are NOT created here in the two-step process
-    -- Cards will only be created after payment is confirmed via confirm_batch_payment()
-    -- OR when admin waives payment via admin_waive_batch_payment()
-    
-    -- Log operation
-    PERFORM log_operation(format('Issued batch "%s" with %s cards', v_batch_name, p_quantity));
-    
-    RETURN v_batch_id;
-END;
-$$;
-
--- Issue card batch using credits (New credit system)
+-- Issue card batch using credits
 CREATE OR REPLACE FUNCTION issue_card_batch_with_credits(
     p_card_id UUID,
     p_quantity INTEGER,
@@ -1448,102 +2269,6 @@ BEGIN
 END;
 $$; 
 
--- File: 05_payment_management_client.sql
--- -----------------------------------------------------------------
-DROP FUNCTION IF EXISTS get_batch_payment_info CASCADE;
-DROP FUNCTION IF EXISTS get_pending_batch_payment_info CASCADE;
-
--- =================================================================
--- PAYMENT MANAGEMENT FUNCTIONS (CLIENT-SIDE)
--- Functions called by Vue.js frontend application
--- =================================================================
-
--- Get batch payment information (Used by frontend)
-CREATE OR REPLACE FUNCTION get_batch_payment_info(p_batch_id UUID)
-RETURNS TABLE (
-    payment_id UUID,
-    stripe_checkout_session_id TEXT,
-    stripe_payment_intent_id TEXT,
-    amount_cents INTEGER,
-    currency TEXT,
-    payment_status TEXT,
-    payment_method TEXT,
-    failure_reason TEXT,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_batch_owner_id UUID;
-BEGIN
-    -- Check batch ownership
-    SELECT created_by INTO v_batch_owner_id
-    FROM card_batches 
-    WHERE id = p_batch_id;
-    
-    IF v_batch_owner_id IS NULL THEN
-        RAISE EXCEPTION 'Batch not found.';
-    END IF;
-    
-    IF v_batch_owner_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to view payment info for this batch.';
-    END IF;
-    
-    RETURN QUERY
-    SELECT 
-        bp.id as payment_id,
-        bp.stripe_checkout_session_id,
-        bp.stripe_payment_intent_id,
-        bp.amount_cents,
-        bp.currency,
-        bp.payment_status,
-        bp.payment_method,
-        bp.failure_reason,
-        bp.created_at,
-        bp.updated_at
-    FROM batch_payments bp
-    WHERE bp.batch_id = p_batch_id;
-END;
-$$;
-
--- Get pending batch payment information by session ID (Used by frontend for payment-first flow)
-CREATE OR REPLACE FUNCTION get_pending_batch_payment_info(p_session_id TEXT)
-RETURNS TABLE (
-    payment_id UUID,
-    card_id UUID,
-    stripe_checkout_session_id TEXT,
-    stripe_payment_intent_id TEXT,
-    amount_cents INTEGER,
-    currency TEXT,
-    payment_status TEXT,
-    payment_method TEXT,
-    batch_name TEXT,
-    cards_count INTEGER,
-    failure_reason TEXT,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        bp.id as payment_id,
-        bp.card_id,
-        bp.stripe_checkout_session_id,
-        bp.stripe_payment_intent_id,
-        bp.amount_cents,
-        bp.currency,
-        bp.payment_status,
-        bp.payment_method,
-        bp.batch_name,
-        bp.cards_count,
-        bp.failure_reason,
-        bp.created_at,
-        bp.updated_at
-    FROM batch_payments bp
-    WHERE bp.stripe_checkout_session_id = p_session_id
-    AND bp.user_id = auth.uid();
-END;
-$$;
-
 -- File: 06_print_requests.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS request_card_printing CASCADE;
@@ -1744,6 +2469,7 @@ $$;
 -- File: 07_public_access.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS get_public_card_content CASCADE;
+DROP FUNCTION IF EXISTS get_digital_card_content CASCADE;
 DROP FUNCTION IF EXISTS get_card_preview_access CASCADE;
 DROP FUNCTION IF EXISTS get_card_preview_content CASCADE;
 
@@ -1755,6 +2481,8 @@ DROP FUNCTION IF EXISTS get_card_preview_content CASCADE;
 -- Get public card content by issue card ID
 -- Updated to support translations via p_language parameter
 -- Updated to include billing_type for routing and scan tracking
+-- Updated to include daily limit checking and real-time credit consumption for digital access
+-- SECURITY: Credit rate is hardcoded to prevent bypass attacks
 CREATE OR REPLACE FUNCTION get_public_card_content(
     p_issue_card_id UUID,
     p_language VARCHAR(10) DEFAULT 'en'
@@ -1767,14 +2495,22 @@ RETURNS TABLE (
     card_conversation_ai_enabled BOOLEAN,
     card_ai_instruction TEXT,
     card_ai_knowledge_base TEXT,
+    card_ai_welcome_general TEXT,
+    card_ai_welcome_item TEXT,
     card_original_language VARCHAR(10),
     card_has_translation BOOLEAN,
     card_available_languages TEXT[], -- Array of available language codes
-    card_content_mode TEXT, -- Content rendering mode (single, grouped, list, grid, inline)
+    card_content_mode TEXT, -- Content rendering mode (single, grid, list, cards)
+    card_is_grouped BOOLEAN, -- Whether content is organized into categories
+    card_group_display TEXT, -- How grouped items display: expanded or collapsed
     card_billing_type TEXT, -- Billing model: physical or digital
-    card_max_scans INTEGER, -- NULL for physical (unlimited), Integer for digital
-    card_current_scans INTEGER, -- Current scan count
-    card_scan_limit_reached BOOLEAN, -- TRUE if digital card has reached scan limit
+    card_max_scans INTEGER, -- NULL for physical (unlimited), Integer for digital (total limit)
+    card_current_scans INTEGER, -- Current total scan count
+    card_daily_scan_limit INTEGER, -- Daily scan limit (NULL = unlimited)
+    card_daily_scans INTEGER, -- Today's scan count
+    card_scan_limit_reached BOOLEAN, -- TRUE if digital card has reached total scan limit
+    card_daily_limit_exceeded BOOLEAN, -- TRUE if digital card has reached daily limit
+    card_credits_insufficient BOOLEAN, -- TRUE if card owner has insufficient credits
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -1786,6 +2522,9 @@ RETURNS TABLE (
     is_activated BOOLEAN
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
+    -- SECURITY: Hardcoded credit rate to prevent bypass attacks
+    CREDIT_RATE CONSTANT DECIMAL := 0.03;
+    
     v_card_design_id UUID;
     v_is_card_active BOOLEAN;
     v_card_owner_id UUID;
@@ -1794,14 +2533,22 @@ DECLARE
     v_billing_type TEXT;
     v_max_scans INTEGER;
     v_current_scans INTEGER;
+    v_daily_scan_limit INTEGER;
+    v_daily_scans INTEGER;
+    v_last_scan_date DATE;
     v_scan_limit_reached BOOLEAN := FALSE;
+    v_daily_limit_exceeded BOOLEAN := FALSE;
+    v_credits_insufficient BOOLEAN := FALSE;
+    v_credit_result JSONB;
 BEGIN
     -- Get the caller's user ID
     v_caller_id := auth.uid();
     
     -- Get card information by issue card ID
-    SELECT ic.card_id, ic.active, c.user_id, c.billing_type, c.max_scans, c.current_scans
-    INTO v_card_design_id, v_is_card_active, v_card_owner_id, v_billing_type, v_max_scans, v_current_scans
+    SELECT ic.card_id, ic.active, c.user_id, c.billing_type, c.max_scans, c.current_scans,
+           c.daily_scan_limit, c.daily_scans, c.last_scan_date
+    INTO v_card_design_id, v_is_card_active, v_card_owner_id, v_billing_type, v_max_scans, v_current_scans,
+         v_daily_scan_limit, v_daily_scans, v_last_scan_date
     FROM issue_cards ic
     JOIN cards c ON ic.card_id = c.id
     WHERE ic.id = p_issue_card_id;
@@ -1818,19 +2565,44 @@ BEGIN
         v_is_card_active := TRUE;
     END IF;
 
-    -- For digital cards, check scan limit and increment counter (only for non-owner access)
+    -- For digital cards, handle daily reset, limits, and credit consumption (only for non-owner access)
     IF v_billing_type = 'digital' AND NOT v_is_owner_access THEN
-        -- Check if limit reached
+        -- Reset daily counter if it's a new day
+        IF v_last_scan_date IS NULL OR v_last_scan_date < CURRENT_DATE THEN
+            UPDATE cards 
+            SET daily_scans = 0, last_scan_date = CURRENT_DATE 
+            WHERE id = v_card_design_id;
+            v_daily_scans := 0;
+        END IF;
+        
+        -- Check total scan limit
         IF v_max_scans IS NOT NULL AND v_current_scans >= v_max_scans THEN
             v_scan_limit_reached := TRUE;
+        -- Check daily scan limit
+        ELSIF v_daily_scan_limit IS NOT NULL AND v_daily_scans >= v_daily_scan_limit THEN
+            v_daily_limit_exceeded := TRUE;
         ELSE
-            -- Increment scan counter
-            BEGIN
-                UPDATE cards SET current_scans = current_scans + 1 WHERE id = v_card_design_id;
-                v_current_scans := v_current_scans + 1;
-            EXCEPTION
-                WHEN others THEN NULL;
-            END;
+            -- Try to consume credit from card owner (using hardcoded rate)
+            SELECT consume_credit_for_digital_scan(v_card_design_id, v_card_owner_id, CREDIT_RATE)
+            INTO v_credit_result;
+            
+            IF (v_credit_result->>'success')::BOOLEAN = FALSE THEN
+                -- Credit consumption failed
+                v_credits_insufficient := TRUE;
+            ELSE
+                -- Credit consumed successfully, increment counters
+                BEGIN
+                    UPDATE cards 
+                    SET current_scans = current_scans + 1,
+                        daily_scans = daily_scans + 1,
+                        last_scan_date = CURRENT_DATE
+                    WHERE id = v_card_design_id;
+                    v_current_scans := v_current_scans + 1;
+                    v_daily_scans := v_daily_scans + 1;
+                EXCEPTION
+                    WHEN others THEN NULL;
+                END;
+            END IF;
         END IF;
     END IF;
 
@@ -1859,6 +2631,8 @@ BEGIN
         c.conversation_ai_enabled AS card_conversation_ai_enabled,
         c.ai_instruction AS card_ai_instruction,
         c.ai_knowledge_base AS card_ai_knowledge_base,
+        c.ai_welcome_general AS card_ai_welcome_general,
+        c.ai_welcome_item AS card_ai_welcome_item,
         c.original_language::VARCHAR(10) AS card_original_language,
         (c.translations ? p_language)::BOOLEAN AS card_has_translation,
         -- Get array of available translation languages (original + translated languages)
@@ -1867,10 +2641,16 @@ BEGIN
             ARRAY(SELECT jsonb_object_keys(c.translations))
         )::TEXT[] AS card_available_languages,
         COALESCE(c.content_mode, 'list')::TEXT AS card_content_mode, -- Content rendering mode
+        COALESCE(c.is_grouped, FALSE)::BOOLEAN AS card_is_grouped, -- Grouping mode
+        COALESCE(c.group_display, 'expanded')::TEXT AS card_group_display, -- Group display
         COALESCE(c.billing_type, 'physical')::TEXT AS card_billing_type, -- Billing model
         c.max_scans AS card_max_scans,
-        c.current_scans AS card_current_scans,
+        v_current_scans AS card_current_scans,
+        c.daily_scan_limit AS card_daily_scan_limit,
+        v_daily_scans AS card_daily_scans,
         v_scan_limit_reached AS card_scan_limit_reached,
+        v_daily_limit_exceeded AS card_daily_limit_exceeded,
+        v_credits_insufficient AS card_credits_insufficient,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
@@ -1892,6 +2672,225 @@ BEGIN
 END;
 $$;
 
+
+-- Get digital card content by access token (for digital cards with refreshable URLs)
+-- This function validates access_token and is_access_enabled
+-- SECURITY: Credit rate is hardcoded to prevent bypass attacks
+-- DEDUPLICATION: p_visitor_hash prevents multiple charges for same visitor within 5 min
+CREATE OR REPLACE FUNCTION get_digital_card_content(
+    p_access_token TEXT,
+    p_language VARCHAR(10) DEFAULT 'en',
+    p_visitor_hash TEXT DEFAULT NULL  -- Optional: visitor identifier for deduplication
+)
+RETURNS TABLE (
+    card_name TEXT,
+    card_description TEXT,
+    card_image_url TEXT,
+    card_crop_parameters JSONB,
+    card_conversation_ai_enabled BOOLEAN,
+    card_ai_instruction TEXT,
+    card_ai_knowledge_base TEXT,
+    card_ai_welcome_general TEXT,
+    card_ai_welcome_item TEXT,
+    card_original_language VARCHAR(10),
+    card_has_translation BOOLEAN,
+    card_available_languages TEXT[],
+    card_content_mode TEXT,
+    card_is_grouped BOOLEAN,
+    card_group_display TEXT,
+    card_billing_type TEXT,
+    card_max_scans INTEGER,
+    card_current_scans INTEGER,
+    card_daily_scan_limit INTEGER,
+    card_daily_scans INTEGER,
+    card_scan_limit_reached BOOLEAN,
+    card_daily_limit_exceeded BOOLEAN,
+    card_credits_insufficient BOOLEAN,
+    card_access_disabled BOOLEAN,
+    content_item_id UUID,
+    content_item_parent_id UUID,
+    content_item_name TEXT,
+    content_item_content TEXT,
+    content_item_image_url TEXT,
+    content_item_ai_knowledge_base TEXT,
+    content_item_sort_order INTEGER,
+    crop_parameters JSONB
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    -- SECURITY: Hardcoded credit rate to prevent bypass attacks
+    CREDIT_RATE CONSTANT DECIMAL := 0.03;
+    -- DEDUPLICATION: Same visitor within 5 minutes = 1 scan
+    DEDUP_WINDOW CONSTANT INTERVAL := INTERVAL '5 minutes';
+    
+    v_card_id UUID;
+    v_card_owner_id UUID;
+    v_caller_id UUID;
+    v_is_owner_access BOOLEAN := FALSE;
+    v_is_access_enabled BOOLEAN;
+    v_max_scans INTEGER;
+    v_current_scans INTEGER;
+    v_daily_scan_limit INTEGER;
+    v_daily_scans INTEGER;
+    v_last_scan_date DATE;
+    v_scan_limit_reached BOOLEAN := FALSE;
+    v_daily_limit_exceeded BOOLEAN := FALSE;
+    v_credits_insufficient BOOLEAN := FALSE;
+    v_access_disabled BOOLEAN := FALSE;
+    v_credit_result JSONB;
+    v_recent_access_exists BOOLEAN := FALSE;
+    v_effective_visitor_hash TEXT;
+BEGIN
+    -- Get caller's user ID
+    v_caller_id := auth.uid();
+    
+    -- Find card by access token (must be a digital card)
+    SELECT id, user_id, is_access_enabled, max_scans, current_scans,
+           daily_scan_limit, daily_scans, last_scan_date
+    INTO v_card_id, v_card_owner_id, v_is_access_enabled, v_max_scans, v_current_scans,
+         v_daily_scan_limit, v_daily_scans, v_last_scan_date
+    FROM cards
+    WHERE access_token = p_access_token AND billing_type = 'digital';
+    
+    IF NOT FOUND THEN
+        -- Invalid or expired token
+        RETURN;
+    END IF;
+    
+    -- Check if caller is the card owner
+    IF v_caller_id IS NOT NULL AND v_caller_id = v_card_owner_id THEN
+        v_is_owner_access := TRUE;
+    END IF;
+    
+    -- Check if access is enabled (owners can always access)
+    IF NOT v_is_access_enabled AND NOT v_is_owner_access THEN
+        v_access_disabled := TRUE;
+        -- Return with access_disabled flag but no content
+        RETURN QUERY
+        SELECT 
+            NULL::TEXT, NULL::TEXT, NULL::TEXT, NULL::JSONB, NULL::BOOLEAN, 
+            NULL::TEXT, NULL::TEXT, NULL::TEXT, NULL::TEXT, NULL::VARCHAR(10), 
+            NULL::BOOLEAN, NULL::TEXT[], NULL::TEXT, NULL::BOOLEAN, NULL::TEXT,
+            NULL::TEXT, NULL::INTEGER, NULL::INTEGER, NULL::INTEGER, NULL::INTEGER,
+            FALSE, FALSE, FALSE, TRUE,
+            NULL::UUID, NULL::UUID, NULL::TEXT, NULL::TEXT, NULL::TEXT, NULL::TEXT,
+            NULL::INTEGER, NULL::JSONB;
+        RETURN;
+    END IF;
+    
+    -- For non-owner access, handle scan counting and credit consumption
+    IF NOT v_is_owner_access THEN
+        -- Generate effective visitor hash for deduplication
+        v_effective_visitor_hash := COALESCE(
+            p_visitor_hash, 
+            COALESCE(v_caller_id::TEXT, 'anon-' || md5(random()::TEXT))
+        );
+        
+        -- Check for recent access from same visitor (deduplication)
+        SELECT EXISTS(
+            SELECT 1 FROM card_access_log
+            WHERE card_id = v_card_id
+              AND visitor_hash = v_effective_visitor_hash
+              AND accessed_at > NOW() - DEDUP_WINDOW
+        ) INTO v_recent_access_exists;
+        
+        -- Log this access (if table exists)
+        BEGIN
+            INSERT INTO card_access_log (card_id, visitor_hash, credit_charged, is_owner_access)
+            VALUES (v_card_id, v_effective_visitor_hash, NOT v_recent_access_exists, FALSE);
+        EXCEPTION
+            WHEN undefined_table THEN 
+                -- Table doesn't exist yet, skip logging
+                NULL;
+        END;
+        
+        -- If recent access exists, skip credit consumption (deduplication)
+        IF NOT v_recent_access_exists THEN
+            -- Reset daily counter if it's a new day
+            IF v_last_scan_date IS NULL OR v_last_scan_date < CURRENT_DATE THEN
+                UPDATE cards 
+                SET daily_scans = 0, last_scan_date = CURRENT_DATE 
+                WHERE id = v_card_id;
+                v_daily_scans := 0;
+            END IF;
+            
+            -- Check total scan limit
+            IF v_max_scans IS NOT NULL AND v_current_scans >= v_max_scans THEN
+                v_scan_limit_reached := TRUE;
+            -- Check daily scan limit
+            ELSIF v_daily_scan_limit IS NOT NULL AND v_daily_scans >= v_daily_scan_limit THEN
+                v_daily_limit_exceeded := TRUE;
+            ELSE
+                -- Try to consume credit from card owner (using hardcoded rate)
+                SELECT consume_credit_for_digital_scan(v_card_id, v_card_owner_id, CREDIT_RATE)
+                INTO v_credit_result;
+                
+                IF (v_credit_result->>'success')::BOOLEAN = FALSE THEN
+                    v_credits_insufficient := TRUE;
+                ELSE
+                    -- Credit consumed successfully, increment counters
+                    BEGIN
+                        UPDATE cards 
+                        SET current_scans = current_scans + 1,
+                            daily_scans = daily_scans + 1,
+                            last_scan_date = CURRENT_DATE
+                        WHERE id = v_card_id;
+                        v_current_scans := v_current_scans + 1;
+                        v_daily_scans := v_daily_scans + 1;
+                    EXCEPTION
+                        WHEN others THEN NULL;
+                    END;
+                END IF;
+            END IF;
+        END IF;
+        -- If recent access exists (v_recent_access_exists = TRUE), just return content without charging
+    END IF;
+    
+    -- Return card content
+    RETURN QUERY
+    SELECT 
+        COALESCE(c.translations->p_language->>'name', c.name)::TEXT AS card_name,
+        COALESCE(c.translations->p_language->>'description', c.description)::TEXT AS card_description,
+        c.image_url AS card_image_url,
+        c.crop_parameters AS card_crop_parameters,
+        c.conversation_ai_enabled AS card_conversation_ai_enabled,
+        c.ai_instruction AS card_ai_instruction,
+        c.ai_knowledge_base AS card_ai_knowledge_base,
+        c.ai_welcome_general AS card_ai_welcome_general,
+        c.ai_welcome_item AS card_ai_welcome_item,
+        c.original_language::VARCHAR(10) AS card_original_language,
+        (c.translations ? p_language)::BOOLEAN AS card_has_translation,
+        (ARRAY[c.original_language] || ARRAY(SELECT jsonb_object_keys(c.translations)))::TEXT[] AS card_available_languages,
+        COALESCE(c.content_mode, 'list')::TEXT AS card_content_mode,
+        COALESCE(c.is_grouped, FALSE)::BOOLEAN AS card_is_grouped,
+        COALESCE(c.group_display, 'expanded')::TEXT AS card_group_display,
+        'digital'::TEXT AS card_billing_type,
+        c.max_scans AS card_max_scans,
+        v_current_scans AS card_current_scans,
+        c.daily_scan_limit AS card_daily_scan_limit,
+        v_daily_scans AS card_daily_scans,
+        v_scan_limit_reached AS card_scan_limit_reached,
+        v_daily_limit_exceeded AS card_daily_limit_exceeded,
+        v_credits_insufficient AS card_credits_insufficient,
+        v_access_disabled AS card_access_disabled,
+        ci.id AS content_item_id,
+        ci.parent_id AS content_item_parent_id,
+        COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
+        COALESCE(ci.translations->p_language->>'content', ci.content)::TEXT AS content_item_content,
+        ci.image_url AS content_item_image_url,
+        COALESCE(ci.translations->p_language->>'ai_knowledge_base', ci.ai_knowledge_base)::TEXT AS content_item_ai_knowledge_base,
+        ci.sort_order AS content_item_sort_order,
+        ci.crop_parameters
+    FROM cards c
+    LEFT JOIN content_items ci ON c.id = ci.card_id
+    WHERE c.id = v_card_id 
+    ORDER BY 
+        CASE WHEN ci.parent_id IS NULL THEN ci.sort_order ELSE 999999 END,
+        ci.parent_id NULLS FIRST,
+        ci.sort_order ASC,
+        ci.created_at ASC;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION get_digital_card_content(TEXT, VARCHAR, TEXT) TO anon, authenticated;
 
 -- Get card preview URL without requiring issued cards (for card owners)
 CREATE OR REPLACE FUNCTION get_card_preview_access(p_card_id UUID)
@@ -1930,7 +2929,7 @@ $$;
 
 -- Get card content for preview mode (card owner or admin)
 -- Updated to support translations via p_language parameter
--- Updated to include billing_type for preview
+-- Updated to include billing_type and daily limit fields for preview
 CREATE OR REPLACE FUNCTION get_card_preview_content(
     p_card_id UUID,
     p_language VARCHAR(10) DEFAULT 'en'
@@ -1943,13 +2942,19 @@ RETURNS TABLE (
     card_conversation_ai_enabled BOOLEAN,
     card_ai_instruction TEXT,
     card_ai_knowledge_base TEXT,
+    card_ai_welcome_general TEXT,
+    card_ai_welcome_item TEXT,
     card_original_language VARCHAR(10),
     card_has_translation BOOLEAN,
     card_available_languages TEXT[], -- Array of available language codes
-    card_content_mode TEXT, -- Content rendering mode (single, grouped, list, grid, inline)
+    card_content_mode TEXT, -- Content rendering mode (single, grid, list, cards)
+    card_is_grouped BOOLEAN, -- Whether content is organized into categories
+    card_group_display TEXT, -- How grouped items display: expanded or collapsed
     card_billing_type TEXT, -- Billing model: physical or digital
     card_max_scans INTEGER, -- NULL for physical (unlimited), Integer for digital
-    card_current_scans INTEGER, -- Current scan count
+    card_current_scans INTEGER, -- Current total scan count
+    card_daily_scan_limit INTEGER, -- Daily scan limit (NULL = unlimited)
+    card_daily_scans INTEGER, -- Today's scan count
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -2001,6 +3006,8 @@ BEGIN
         c.conversation_ai_enabled AS card_conversation_ai_enabled,
         c.ai_instruction AS card_ai_instruction,
         c.ai_knowledge_base AS card_ai_knowledge_base,
+        c.ai_welcome_general AS card_ai_welcome_general,
+        c.ai_welcome_item AS card_ai_welcome_item,
         c.original_language::VARCHAR(10) AS card_original_language,
         (c.translations ? p_language)::BOOLEAN AS card_has_translation,
         -- Get array of available translation languages (original + translated languages)
@@ -2009,9 +3016,13 @@ BEGIN
             ARRAY(SELECT jsonb_object_keys(c.translations))
         )::TEXT[] AS card_available_languages,
         COALESCE(c.content_mode, 'list')::TEXT AS card_content_mode, -- Content rendering mode
+        COALESCE(c.is_grouped, FALSE)::BOOLEAN AS card_is_grouped, -- Grouping mode
+        COALESCE(c.group_display, 'expanded')::TEXT AS card_group_display, -- Group display
         COALESCE(c.billing_type, 'physical')::TEXT AS card_billing_type, -- Billing model
         c.max_scans AS card_max_scans,
         c.current_scans AS card_current_scans,
+        c.daily_scan_limit AS card_daily_scan_limit,
+        c.daily_scans AS card_daily_scans,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
@@ -2032,31 +3043,904 @@ BEGIN
 END;
 $$; 
 
+-- File: 10_template_library.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS list_content_templates CASCADE;
+DROP FUNCTION IF EXISTS get_content_template CASCADE;
+DROP FUNCTION IF EXISTS get_template_venue_types CASCADE;
+DROP FUNCTION IF EXISTS import_content_template CASCADE;
+DROP FUNCTION IF EXISTS create_template_from_card CASCADE;
+DROP FUNCTION IF EXISTS update_template_settings CASCADE;
+DROP FUNCTION IF EXISTS delete_content_template CASCADE;
+DROP FUNCTION IF EXISTS toggle_template_status CASCADE;
+DROP FUNCTION IF EXISTS admin_list_all_templates CASCADE;
+DROP FUNCTION IF EXISTS batch_update_template_order CASCADE;
+DROP FUNCTION IF EXISTS get_admin_template_cards CASCADE;
+DROP FUNCTION IF EXISTS get_demo_templates CASCADE;
+
+-- =================================================================
+-- TEMPLATE LIBRARY STORED PROCEDURES
+-- =================================================================
+-- Templates link to actual cards records in the database
+-- This allows full reuse of card/content item components
+-- When users import a template, the linked card and its content items are copied
+
+-- -----------------------------------------------------------------
+-- List all available templates with filtering
+-- Joins with cards table to get card data
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.list_content_templates(
+    p_venue_type TEXT DEFAULT NULL,
+    p_content_mode TEXT DEFAULT NULL,
+    p_search TEXT DEFAULT NULL,
+    p_featured_only BOOLEAN DEFAULT FALSE
+)
+RETURNS TABLE (
+    id UUID,
+    slug TEXT,
+    card_id UUID,
+    name TEXT,
+    description TEXT,
+    venue_type TEXT,
+    thumbnail_url TEXT,
+    content_mode TEXT,
+    is_grouped BOOLEAN,
+    group_display TEXT,
+    billing_type TEXT,
+    item_count BIGINT,
+    is_featured BOOLEAN,
+    created_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ct.id,
+        ct.slug,
+        ct.card_id,
+        c.name,
+        COALESCE(c.description, '')::TEXT,
+        ct.venue_type,
+        COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
+        COALESCE(c.content_mode, 'list')::TEXT,
+        COALESCE(c.is_grouped, false),
+        COALESCE(c.group_display, 'expanded')::TEXT,
+        COALESCE(c.billing_type, 'digital')::TEXT,
+        (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
+        ct.is_featured,
+        ct.created_at
+    FROM content_templates ct
+    JOIN cards c ON ct.card_id = c.id
+    WHERE ct.is_active = true
+        AND (p_venue_type IS NULL OR ct.venue_type = p_venue_type)
+        AND (p_content_mode IS NULL OR c.content_mode = p_content_mode)
+        AND (p_featured_only = FALSE OR ct.is_featured = true)
+        AND (
+            p_search IS NULL 
+            OR c.name ILIKE '%' || p_search || '%'
+            OR c.description ILIKE '%' || p_search || '%'
+        )
+    ORDER BY 
+        ct.is_featured DESC,
+        ct.sort_order ASC,
+        c.name ASC;
+END;
+$$;
+
+-- -----------------------------------------------------------------
+-- Get single template by ID or slug with full details
+-- Returns card data and content items
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.get_content_template(
+    p_template_id UUID DEFAULT NULL,
+    p_slug TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+    id UUID,
+    slug TEXT,
+    card_id UUID,
+    name TEXT,
+    description TEXT,
+    venue_type TEXT,
+    thumbnail_url TEXT,
+    content_mode TEXT,
+    is_grouped BOOLEAN,
+    group_display TEXT,
+    billing_type TEXT,
+    conversation_ai_enabled BOOLEAN,
+    ai_instruction TEXT,
+    ai_knowledge_base TEXT,
+    ai_welcome_general TEXT,
+    ai_welcome_item TEXT,
+    item_count BIGINT,
+    is_featured BOOLEAN,
+    created_at TIMESTAMPTZ,
+    content_items JSONB
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ct.id,
+        ct.slug,
+        ct.card_id,
+        c.name,
+        COALESCE(c.description, '')::TEXT,
+        ct.venue_type,
+        COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
+        COALESCE(c.content_mode, 'list')::TEXT,
+        COALESCE(c.is_grouped, false),
+        COALESCE(c.group_display, 'expanded')::TEXT,
+        COALESCE(c.billing_type, 'digital')::TEXT,
+        COALESCE(c.conversation_ai_enabled, true),
+        COALESCE(c.ai_instruction, '')::TEXT,
+        COALESCE(c.ai_knowledge_base, '')::TEXT,
+        COALESCE(c.ai_welcome_general, '')::TEXT,
+        COALESCE(c.ai_welcome_item, '')::TEXT,
+        (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
+        ct.is_featured,
+        ct.created_at,
+        -- Get content items as JSON array
+        COALESCE(
+            (SELECT jsonb_agg(
+                jsonb_build_object(
+                    'id', ci.id,
+                    'parent_id', ci.parent_id,
+                    'name', ci.name,
+                    'content', ci.content,
+                    'image_url', ci.image_url,
+                    'original_image_url', ci.original_image_url,
+                    'ai_knowledge_base', ci.ai_knowledge_base,
+                    'sort_order', ci.sort_order
+                ) ORDER BY ci.sort_order
+            )
+            FROM content_items ci 
+            WHERE ci.card_id = c.id),
+            '[]'::JSONB
+        ) AS content_items
+    FROM content_templates ct
+    JOIN cards c ON ct.card_id = c.id
+    WHERE ct.is_active = true
+        AND (
+            (p_template_id IS NOT NULL AND ct.id = p_template_id)
+            OR (p_slug IS NOT NULL AND ct.slug = p_slug)
+        );
+END;
+$$;
+
+-- -----------------------------------------------------------------
+-- Get available venue types for filtering
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.get_template_venue_types()
+RETURNS TABLE (
+    venue_type TEXT,
+    template_count BIGINT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ct.venue_type,
+        COUNT(*)::BIGINT as template_count
+    FROM content_templates ct
+    WHERE ct.is_active = true AND ct.venue_type IS NOT NULL
+    GROUP BY ct.venue_type
+    ORDER BY template_count DESC, ct.venue_type ASC;
+END;
+$$;
+
+-- -----------------------------------------------------------------
+-- Import a template to create a new card
+-- Copies the linked card and all its content items to a new card owned by the user
+-- PERFORMANCE: Uses bulk insert with CTE for better performance
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.import_content_template(
+    p_user_id UUID,
+    p_template_id UUID,
+    p_card_name TEXT DEFAULT NULL,
+    p_billing_type TEXT DEFAULT NULL
+)
+RETURNS TABLE (
+    success BOOLEAN,
+    card_id UUID,
+    message TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_template RECORD;
+    v_new_card_id UUID;
+    v_final_name TEXT;
+    v_final_billing TEXT;
+    v_check JSONB;
+BEGIN
+    -- Check subscription limit
+    v_check := can_create_experience(p_user_id);
+    IF NOT (v_check->>'can_create')::BOOLEAN THEN
+        RETURN QUERY SELECT FALSE, NULL::UUID, (v_check->>'message')::TEXT;
+        RETURN;
+    END IF;
+
+    -- Get the template and its linked card
+    SELECT ct.*, c.*
+    INTO v_template
+    FROM content_templates ct
+    JOIN cards c ON ct.card_id = c.id
+    WHERE ct.id = p_template_id AND ct.is_active = true;
+    
+    IF NOT FOUND THEN
+        RETURN QUERY SELECT FALSE, NULL::UUID, 'Template not found or inactive'::TEXT;
+        RETURN;
+    END IF;
+    
+    -- Use custom name or template card's name
+    v_final_name := COALESCE(NULLIF(p_card_name, ''), v_template.name);
+    
+    -- Use provided billing type or template card's billing type
+    v_final_billing := COALESCE(NULLIF(p_billing_type, ''), v_template.billing_type, 'digital');
+    
+    -- Create the new card by copying the template's card
+    INSERT INTO cards (
+        user_id,
+        name,
+        description,
+        content_mode,
+        is_grouped,
+        group_display,
+        billing_type,
+        conversation_ai_enabled,
+        ai_instruction,
+        ai_knowledge_base,
+        ai_welcome_general,
+        ai_welcome_item,
+        image_url,
+        original_image_url,
+        crop_parameters
+    ) VALUES (
+        p_user_id,
+        v_final_name,
+        v_template.description,
+        v_template.content_mode,
+        v_template.is_grouped,
+        v_template.group_display,
+        v_final_billing,
+        v_template.conversation_ai_enabled,
+        v_template.ai_instruction,
+        v_template.ai_knowledge_base,
+        v_template.ai_welcome_general,
+        v_template.ai_welcome_item,
+        v_template.image_url,
+        v_template.original_image_url,
+        v_template.crop_parameters
+    ) RETURNING id INTO v_new_card_id;
+    
+    -- PERFORMANCE: Bulk copy content items using CTE with ID mapping
+    -- This avoids N+1 individual INSERT statements
+    WITH 
+    -- Step 1: Insert parent items (no parent_id) with bulk insert
+    parent_items AS (
+        INSERT INTO content_items (card_id, parent_id, name, content, image_url, original_image_url, crop_parameters, ai_knowledge_base, sort_order)
+        SELECT 
+            v_new_card_id,
+            NULL,
+            ci.name,
+            ci.content,
+            ci.image_url,
+            ci.original_image_url,
+            ci.crop_parameters,
+            ci.ai_knowledge_base,
+            ci.sort_order
+        FROM content_items ci
+        WHERE ci.card_id = v_template.card_id AND ci.parent_id IS NULL
+        ORDER BY ci.sort_order
+        RETURNING id, sort_order
+    ),
+    -- Step 2: Build mapping from original parent items to new ones (by sort_order since we preserve it)
+    parent_mapping AS (
+        SELECT 
+            orig.id AS old_id,
+            new_item.id AS new_id
+        FROM content_items orig
+        JOIN parent_items new_item ON orig.sort_order = new_item.sort_order
+        WHERE orig.card_id = v_template.card_id AND orig.parent_id IS NULL
+    )
+    -- Step 3: Insert child items with mapped parent_ids
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, original_image_url, crop_parameters, ai_knowledge_base, sort_order)
+    SELECT 
+        v_new_card_id,
+        pm.new_id,
+        ci.name,
+        ci.content,
+        ci.image_url,
+        ci.original_image_url,
+        ci.crop_parameters,
+        ci.ai_knowledge_base,
+        ci.sort_order
+    FROM content_items ci
+    JOIN parent_mapping pm ON ci.parent_id = pm.old_id
+    WHERE ci.card_id = v_template.card_id AND ci.parent_id IS NOT NULL
+    ORDER BY ci.sort_order;
+    
+    -- Update import count
+    UPDATE content_templates 
+    SET import_count = import_count + 1
+    WHERE id = p_template_id;
+    
+    -- Log the operation
+    INSERT INTO operations_log (user_id, user_role, operation)
+    SELECT 
+        p_user_id,
+        COALESCE((au.raw_user_meta_data->>'role')::"UserRole", 'user'::"UserRole"),
+        'Imported template: ' || v_template.name || ' as card: ' || v_final_name
+    FROM auth.users au
+    WHERE au.id = p_user_id;
+    
+    RETURN QUERY SELECT TRUE, v_new_card_id, 'Template imported successfully'::TEXT;
+    
+EXCEPTION WHEN OTHERS THEN
+    RETURN QUERY SELECT FALSE, NULL::UUID, ('Import failed: ' || SQLERRM)::TEXT;
+END;
+$$;
+
+-- =================================================================
+-- ADMIN FUNCTIONS (require admin role)
+-- =================================================================
+
+-- -----------------------------------------------------------------
+-- Create a new template by linking to an existing card (admin only)
+-- The card should already exist (created via normal card creation flow)
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.create_template_from_card(
+    p_admin_user_id UUID,
+    p_card_id UUID,
+    p_slug TEXT,
+    p_venue_type TEXT DEFAULT NULL,
+    p_is_featured BOOLEAN DEFAULT FALSE,
+    p_sort_order INTEGER DEFAULT 0
+)
+RETURNS TABLE (
+    success BOOLEAN,
+    template_id UUID,
+    message TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_user_role TEXT;
+    v_card_exists BOOLEAN;
+    v_slug_exists BOOLEAN;
+    v_result_id UUID;
+    v_card_name TEXT;
+BEGIN
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_user_role
+    FROM auth.users
+    WHERE auth.users.id = p_admin_user_id;
+    
+    IF v_user_role IS NULL OR v_user_role != 'admin' THEN
+        RETURN QUERY SELECT FALSE, NULL::UUID, 'Unauthorized: Admin access required'::TEXT;
+        RETURN;
+    END IF;
+    
+    -- Check if card exists
+    SELECT EXISTS(SELECT 1 FROM cards WHERE id = p_card_id), name
+    INTO v_card_exists, v_card_name
+    FROM cards WHERE id = p_card_id;
+    
+    IF NOT v_card_exists THEN
+        RETURN QUERY SELECT FALSE, NULL::UUID, 'Card not found'::TEXT;
+        RETURN;
+    END IF;
+    
+    -- Check if slug is already taken
+    SELECT EXISTS(SELECT 1 FROM content_templates WHERE slug = p_slug)
+    INTO v_slug_exists;
+    
+    IF v_slug_exists THEN
+        RETURN QUERY SELECT FALSE, NULL::UUID, 'Slug already exists'::TEXT;
+        RETURN;
+    END IF;
+    
+    -- Create the template linking to the card
+    INSERT INTO content_templates (
+        slug, card_id, venue_type, is_featured, sort_order
+    ) VALUES (
+        p_slug, p_card_id, p_venue_type, p_is_featured, p_sort_order
+    ) RETURNING id INTO v_result_id;
+    
+    -- Log the operation
+    INSERT INTO operations_log (user_id, user_role, operation)
+    VALUES (p_admin_user_id, 'admin', 'Created template: ' || v_card_name || ' (slug: ' || p_slug || ')');
+    
+    RETURN QUERY SELECT TRUE, v_result_id, 'Template created successfully'::TEXT;
+    
+EXCEPTION WHEN OTHERS THEN
+    RETURN QUERY SELECT FALSE, NULL::UUID, ('Error: ' || SQLERRM)::TEXT;
+END;
+$$;
+
+-- -----------------------------------------------------------------
+-- Update template admin fields (admin only)
+-- Card data is updated via normal card update flow
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.update_template_settings(
+    p_admin_user_id UUID,
+    p_template_id UUID,
+    p_slug TEXT DEFAULT NULL,
+    p_venue_type TEXT DEFAULT NULL,
+    p_is_featured BOOLEAN DEFAULT NULL,
+    p_is_active BOOLEAN DEFAULT NULL,
+    p_sort_order INTEGER DEFAULT NULL
+)
+RETURNS TABLE (
+    success BOOLEAN,
+    message TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_user_role TEXT;
+    v_template_name TEXT;
+    v_slug_exists BOOLEAN;
+BEGIN
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_user_role
+    FROM auth.users
+    WHERE auth.users.id = p_admin_user_id;
+    
+    IF v_user_role IS NULL OR v_user_role != 'admin' THEN
+        RETURN QUERY SELECT FALSE, 'Unauthorized: Admin access required'::TEXT;
+        RETURN;
+    END IF;
+    
+    -- Get template name for logging
+    SELECT c.name INTO v_template_name
+    FROM content_templates ct
+    JOIN cards c ON ct.card_id = c.id
+    WHERE ct.id = p_template_id;
+    
+    IF v_template_name IS NULL THEN
+        RETURN QUERY SELECT FALSE, 'Template not found'::TEXT;
+        RETURN;
+    END IF;
+    
+    -- Check if new slug is already taken (if changing slug)
+    IF p_slug IS NOT NULL THEN
+        SELECT EXISTS(
+            SELECT 1 FROM content_templates 
+            WHERE slug = p_slug AND id != p_template_id
+        ) INTO v_slug_exists;
+        
+        IF v_slug_exists THEN
+            RETURN QUERY SELECT FALSE, 'Slug already exists'::TEXT;
+            RETURN;
+        END IF;
+    END IF;
+    
+    -- Update template settings
+    UPDATE content_templates SET
+        slug = COALESCE(p_slug, slug),
+        venue_type = COALESCE(p_venue_type, venue_type),
+        is_featured = COALESCE(p_is_featured, is_featured),
+        is_active = COALESCE(p_is_active, is_active),
+        sort_order = COALESCE(p_sort_order, sort_order),
+        updated_at = NOW()
+    WHERE id = p_template_id;
+    
+    -- Log the operation
+    INSERT INTO operations_log (user_id, user_role, operation)
+    VALUES (p_admin_user_id, 'admin', 'Updated template settings: ' || v_template_name);
+    
+    RETURN QUERY SELECT TRUE, 'Template settings updated successfully'::TEXT;
+    
+EXCEPTION WHEN OTHERS THEN
+    RETURN QUERY SELECT FALSE, ('Error: ' || SQLERRM)::TEXT;
+END;
+$$;
+
+-- -----------------------------------------------------------------
+-- Delete a content template (admin only)
+-- Optionally delete the linked card as well
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.delete_content_template(
+    p_admin_user_id UUID,
+    p_template_id UUID,
+    p_delete_card BOOLEAN DEFAULT FALSE
+)
+RETURNS TABLE (
+    success BOOLEAN,
+    message TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_user_role TEXT;
+    v_template_name TEXT;
+    v_card_id UUID;
+BEGIN
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_user_role
+    FROM auth.users
+    WHERE auth.users.id = p_admin_user_id;
+    
+    IF v_user_role IS NULL OR v_user_role != 'admin' THEN
+        RETURN QUERY SELECT FALSE, 'Unauthorized: Admin access required'::TEXT;
+        RETURN;
+    END IF;
+    
+    -- Get template details
+    SELECT c.name, ct.card_id INTO v_template_name, v_card_id
+    FROM content_templates ct
+    JOIN cards c ON ct.card_id = c.id
+    WHERE ct.id = p_template_id;
+    
+    IF v_template_name IS NULL THEN
+        RETURN QUERY SELECT FALSE, 'Template not found'::TEXT;
+        RETURN;
+    END IF;
+    
+    -- Delete the template
+    DELETE FROM content_templates WHERE id = p_template_id;
+    
+    -- Optionally delete the linked card
+    IF p_delete_card AND v_card_id IS NOT NULL THEN
+        DELETE FROM cards WHERE id = v_card_id;
+    END IF;
+    
+    -- Log the operation
+    INSERT INTO operations_log (user_id, user_role, operation)
+    VALUES (
+        p_admin_user_id, 
+        'admin', 
+        'Deleted template: ' || v_template_name || 
+        CASE WHEN p_delete_card THEN ' (with card)' ELSE '' END
+    );
+    
+    RETURN QUERY SELECT TRUE, 'Template deleted successfully'::TEXT;
+    
+EXCEPTION WHEN OTHERS THEN
+    RETURN QUERY SELECT FALSE, ('Error: ' || SQLERRM)::TEXT;
+END;
+$$;
+
+-- -----------------------------------------------------------------
+-- Toggle template active status (admin only)
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.toggle_template_status(
+    p_admin_user_id UUID,
+    p_template_id UUID,
+    p_is_active BOOLEAN
+)
+RETURNS TABLE (
+    success BOOLEAN,
+    message TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_user_role TEXT;
+    v_template_name TEXT;
+BEGIN
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_user_role
+    FROM auth.users
+    WHERE auth.users.id = p_admin_user_id;
+    
+    IF v_user_role IS NULL OR v_user_role != 'admin' THEN
+        RETURN QUERY SELECT FALSE, 'Unauthorized: Admin access required'::TEXT;
+        RETURN;
+    END IF;
+    
+    -- Get template name for logging
+    SELECT c.name INTO v_template_name
+    FROM content_templates ct
+    JOIN cards c ON ct.card_id = c.id
+    WHERE ct.id = p_template_id;
+    
+    IF v_template_name IS NULL THEN
+        RETURN QUERY SELECT FALSE, 'Template not found'::TEXT;
+        RETURN;
+    END IF;
+    
+    -- Update status
+    UPDATE content_templates 
+    SET is_active = p_is_active, updated_at = NOW()
+    WHERE id = p_template_id;
+    
+    -- Log the operation
+    INSERT INTO operations_log (user_id, user_role, operation)
+    VALUES (
+        p_admin_user_id, 
+        'admin', 
+        CASE WHEN p_is_active 
+            THEN 'Activated template: ' 
+            ELSE 'Deactivated template: ' 
+        END || v_template_name
+    );
+    
+    RETURN QUERY SELECT TRUE, 
+        CASE WHEN p_is_active 
+            THEN 'Template activated' 
+            ELSE 'Template deactivated' 
+        END::TEXT;
+    
+EXCEPTION WHEN OTHERS THEN
+    RETURN QUERY SELECT FALSE, ('Error: ' || SQLERRM)::TEXT;
+END;
+$$;
+
+-- -----------------------------------------------------------------
+-- List all templates including inactive (admin only)
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.admin_list_all_templates(
+    p_admin_user_id UUID
+)
+RETURNS TABLE (
+    id UUID,
+    slug TEXT,
+    card_id UUID,
+    name TEXT,
+    description TEXT,
+    venue_type TEXT,
+    thumbnail_url TEXT,
+    content_mode TEXT,
+    is_grouped BOOLEAN,
+    group_display TEXT,
+    billing_type TEXT,
+    item_count BIGINT,
+    is_featured BOOLEAN,
+    is_active BOOLEAN,
+    sort_order INTEGER,
+    import_count INTEGER,
+    created_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_user_role TEXT;
+BEGIN
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_user_role
+    FROM auth.users
+    WHERE auth.users.id = p_admin_user_id;
+    
+    IF v_user_role IS NULL OR v_user_role != 'admin' THEN
+        RAISE EXCEPTION 'Unauthorized: Admin access required';
+    END IF;
+    
+    RETURN QUERY
+    SELECT 
+        ct.id,
+        ct.slug,
+        ct.card_id,
+        c.name,
+        COALESCE(c.description, '')::TEXT,
+        ct.venue_type,
+        COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
+        COALESCE(c.content_mode, 'list')::TEXT,
+        COALESCE(c.is_grouped, false),
+        COALESCE(c.group_display, 'expanded')::TEXT,
+        COALESCE(c.billing_type, 'digital')::TEXT,
+        (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
+        ct.is_featured,
+        ct.is_active,
+        ct.sort_order,
+        ct.import_count,
+        ct.created_at,
+        ct.updated_at
+    FROM content_templates ct
+    JOIN cards c ON ct.card_id = c.id
+    ORDER BY ct.sort_order ASC, c.name ASC;
+END;
+$$;
+
+-- -----------------------------------------------------------------
+-- Batch update template sort_order (admin only)
+-- Used for drag-and-drop reordering
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.batch_update_template_order(
+    p_admin_user_id UUID,
+    p_updates JSONB -- Array of {id: uuid, sort_order: int}
+)
+RETURNS TABLE (
+    success BOOLEAN,
+    message TEXT,
+    updated_count INTEGER
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_user_role TEXT;
+    v_update JSONB;
+    v_count INTEGER := 0;
+BEGIN
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_user_role
+    FROM auth.users
+    WHERE auth.users.id = p_admin_user_id;
+    
+    IF v_user_role IS NULL OR v_user_role != 'admin' THEN
+        RETURN QUERY SELECT FALSE, 'Unauthorized: Admin access required'::TEXT, 0;
+        RETURN;
+    END IF;
+    
+    -- Update each template's sort_order
+    FOR v_update IN SELECT * FROM jsonb_array_elements(p_updates)
+    LOOP
+        UPDATE content_templates 
+        SET sort_order = (v_update->>'sort_order')::INTEGER,
+            updated_at = NOW()
+        WHERE id = (v_update->>'id')::UUID;
+        
+        IF FOUND THEN
+            v_count := v_count + 1;
+        END IF;
+    END LOOP;
+    
+    -- Log the operation
+    INSERT INTO operations_log (user_id, user_role, operation)
+    VALUES (p_admin_user_id, 'admin', 'Reordered ' || v_count || ' templates');
+    
+    RETURN QUERY SELECT TRUE, 'Order updated successfully'::TEXT, v_count;
+    
+EXCEPTION WHEN OTHERS THEN
+    RETURN QUERY SELECT FALSE, ('Error: ' || SQLERRM)::TEXT, 0;
+END;
+$$;
+
+-- -----------------------------------------------------------------
+-- Get admin's template cards (cards owned by admin that are linked to templates)
+-- Helps admin manage which cards are templates
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.get_admin_template_cards(
+    p_admin_user_id UUID
+)
+RETURNS TABLE (
+    card_id UUID,
+    card_name TEXT,
+    is_template BOOLEAN,
+    template_id UUID,
+    template_slug TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    v_user_role TEXT;
+BEGIN
+    -- Check if user is admin
+    SELECT raw_user_meta_data->>'role' INTO v_user_role
+    FROM auth.users
+    WHERE auth.users.id = p_admin_user_id;
+    
+    IF v_user_role IS NULL OR v_user_role != 'admin' THEN
+        RAISE EXCEPTION 'Unauthorized: Admin access required';
+    END IF;
+    
+    RETURN QUERY
+    SELECT 
+        c.id AS card_id,
+        c.name AS card_name,
+        (ct.id IS NOT NULL) AS is_template,
+        ct.id AS template_id,
+        ct.slug AS template_slug
+    FROM cards c
+    LEFT JOIN content_templates ct ON c.id = ct.card_id
+    WHERE c.user_id = p_admin_user_id
+    ORDER BY c.name ASC;
+END;
+$$;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN) TO anon;
+GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_template_venue_types() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.import_content_template(UUID, UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.create_template_from_card(UUID, UUID, TEXT, TEXT, BOOLEAN, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.update_template_settings(UUID, UUID, TEXT, TEXT, BOOLEAN, BOOLEAN, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.delete_content_template(UUID, UUID, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.toggle_template_status(UUID, UUID, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.admin_list_all_templates(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.batch_update_template_order(UUID, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_admin_template_cards(UUID) TO authenticated;
+
+-- -----------------------------------------------------------------
+-- Get featured demo templates for landing page (public access)
+-- Returns templates with their public access URLs
+-- -----------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.get_demo_templates(
+    p_limit INTEGER DEFAULT 100
+)
+RETURNS TABLE (
+    id UUID,
+    slug TEXT,
+    name TEXT,
+    description TEXT,
+    venue_type TEXT,
+    thumbnail_url TEXT,
+    content_mode TEXT,
+    item_count BIGINT,
+    access_url TEXT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ct.id,
+        ct.slug,
+        c.name,
+        COALESCE(c.description, '')::TEXT,
+        ct.venue_type,
+        COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
+        COALESCE(c.content_mode, 'list')::TEXT,
+        (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
+        CASE 
+            WHEN c.is_access_enabled AND c.access_token IS NOT NULL 
+            THEN c.access_token
+            ELSE NULL
+        END AS access_url
+    FROM content_templates ct
+    JOIN cards c ON ct.card_id = c.id
+    WHERE ct.is_active = true
+      AND ct.is_featured = true
+      AND c.is_access_enabled = true
+      AND c.access_token IS NOT NULL
+    ORDER BY ct.sort_order ASC, c.name ASC
+    LIMIT p_limit;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.get_demo_templates(INTEGER) TO anon;
+GRANT EXECUTE ON FUNCTION public.get_demo_templates(INTEGER) TO authenticated;
+
+
 -- File: 11_admin_functions.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS admin_issue_free_batch CASCADE;
-DROP FUNCTION IF EXISTS create_admin_feedback CASCADE;
-DROP FUNCTION IF EXISTS get_admin_feedback_history CASCADE;
 DROP FUNCTION IF EXISTS admin_get_system_stats_enhanced CASCADE;
-DROP FUNCTION IF EXISTS admin_get_all_print_requests CASCADE;
 DROP FUNCTION IF EXISTS admin_update_print_request_status CASCADE;
-DROP FUNCTION IF EXISTS admin_get_pending_verifications CASCADE;
-DROP FUNCTION IF EXISTS get_all_users_with_details CASCADE;
 DROP FUNCTION IF EXISTS get_admin_batches_requiring_attention CASCADE;
 DROP FUNCTION IF EXISTS get_admin_all_batches CASCADE;
 DROP FUNCTION IF EXISTS get_all_print_requests CASCADE;
-DROP FUNCTION IF EXISTS admin_change_user_role CASCADE;
-DROP FUNCTION IF EXISTS get_verification_feedbacks CASCADE;
-DROP FUNCTION IF EXISTS get_print_request_feedbacks CASCADE;
-DROP FUNCTION IF EXISTS reset_user_verification CASCADE;
-DROP FUNCTION IF EXISTS get_user_activity_summary CASCADE;
 DROP FUNCTION IF EXISTS admin_get_all_users CASCADE;
+DROP FUNCTION IF EXISTS admin_update_user_subscription CASCADE;
+DROP FUNCTION IF EXISTS admin_get_subscription_stats CASCADE;
 DROP FUNCTION IF EXISTS admin_update_user_role CASCADE;
 DROP FUNCTION IF EXISTS admin_get_user_by_email CASCADE;
 DROP FUNCTION IF EXISTS admin_get_user_cards CASCADE;
 DROP FUNCTION IF EXISTS admin_get_card_content CASCADE;
 DROP FUNCTION IF EXISTS admin_get_card_batches CASCADE;
 DROP FUNCTION IF EXISTS admin_get_batch_issued_cards CASCADE;
+DROP FUNCTION IF EXISTS get_admin_audit_logs CASCADE;
 
 -- =================================================================
 -- ADMIN FUNCTIONS
@@ -2170,124 +4054,6 @@ BEGIN
 END;
 $$;
 
--- =================================================================
--- LEGACY ADMIN AUDIT FUNCTIONS (DEPRECATED - Use operations_log instead)
--- These functions are kept for backward compatibility but redirect to operations_log
--- =================================================================
-
--- Simple feedback creation for verification and print requests
-CREATE OR REPLACE FUNCTION create_admin_feedback(
-    p_target_user_id UUID,
-    p_entity_type VARCHAR(20), -- 'verification' or 'print_request'
-    p_entity_id UUID,
-    p_message TEXT
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_feedback_id UUID;
-    v_admin_email VARCHAR(255);
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can create feedback entries.';
-    END IF;
-
-    -- Validate entity type
-    IF p_entity_type NOT IN ('verification', 'print_request') THEN
-        RAISE EXCEPTION 'Invalid entity type. Must be verification or print_request.';
-    END IF;
-
-    -- Get admin email
-    SELECT email INTO v_admin_email FROM auth.users WHERE auth.users.id = auth.uid();
-
-    -- Insert into appropriate feedback table
-    IF p_entity_type = 'verification' THEN
-        INSERT INTO verification_feedbacks (
-            user_id,
-            admin_user_id,
-            admin_email,
-            message
-        ) VALUES (
-            p_entity_id, -- For verification, entity_id is the user_id
-            auth.uid(),
-            v_admin_email,
-            p_message
-        )
-        RETURNING id INTO v_feedback_id;
-    ELSE -- print_request
-        INSERT INTO print_request_feedbacks (
-            print_request_id,
-            admin_user_id,
-            admin_email,
-            message
-        ) VALUES (
-            p_entity_id,
-            auth.uid(),
-            v_admin_email,
-            p_message
-        )
-        RETURNING id INTO v_feedback_id;
-    END IF;
-    
-    RETURN v_feedback_id;
-END;
-$$;
-
--- Get feedback history for verification or print request
-CREATE OR REPLACE FUNCTION get_admin_feedback_history(
-    p_entity_type VARCHAR(20),
-    p_entity_id UUID
-) RETURNS TABLE (
-    id UUID,
-    admin_user_id UUID,
-    admin_email VARCHAR(255),
-    message TEXT,
-    created_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view feedback history.';
-    END IF;
-
-    IF p_entity_type = 'verification' THEN
-        RETURN QUERY
-        SELECT 
-            vf.id,
-            vf.admin_user_id,
-            vf.admin_email,
-            vf.message,
-            vf.created_at
-        FROM verification_feedbacks vf
-        WHERE vf.user_id = p_entity_id
-        ORDER BY vf.created_at ASC; -- Chronological order for conversation flow
-    ELSIF p_entity_type = 'print_request' THEN
-        RETURN QUERY
-        SELECT 
-            pf.id,
-            pf.admin_user_id,
-            pf.admin_email,
-            pf.message,
-            pf.created_at
-        FROM print_request_feedbacks pf
-        WHERE pf.print_request_id = p_entity_id
-        ORDER BY pf.created_at ASC; -- Chronological order for conversation flow
-    ELSE
-        RAISE EXCEPTION 'Invalid entity type. Must be verification or print_request.';
-    END IF;
-END;
-$$;
-
 -- Enhanced system statistics function
 CREATE OR REPLACE FUNCTION admin_get_system_stats_enhanced()
 RETURNS TABLE (
@@ -2319,7 +4085,30 @@ RETURNS TABLE (
     total_audit_entries BIGINT,
     critical_actions_today BIGINT,
     high_severity_actions_week BIGINT,
-    unique_admin_users_month BIGINT
+    unique_admin_users_month BIGINT,
+    -- ACCESS MODE METRICS (NEW)
+    physical_cards_count BIGINT,
+    digital_cards_count BIGINT,
+    -- DIGITAL ACCESS METRICS (NEW)
+    total_digital_scans BIGINT,
+    daily_digital_scans BIGINT,
+    weekly_digital_scans BIGINT,
+    monthly_digital_scans BIGINT,
+    digital_credits_consumed NUMERIC,
+    -- CONTENT MODE DISTRIBUTION
+    content_mode_single BIGINT,
+    content_mode_list BIGINT,
+    content_mode_grid BIGINT,
+    content_mode_cards BIGINT,
+    is_grouped_count BIGINT,
+    -- SUBSCRIPTION METRICS (NEW)
+    total_free_users BIGINT,
+    total_premium_users BIGINT,
+    active_subscriptions BIGINT,
+    estimated_mrr_cents BIGINT,
+    -- ACCESS LOG METRICS (NEW)
+    monthly_total_accesses BIGINT,
+    monthly_overage_accesses BIGINT
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     caller_role TEXT;
@@ -2349,8 +4138,8 @@ BEGIN
         (SELECT COUNT(*) FROM print_requests WHERE status = 'SUBMITTED') as print_requests_submitted,
         (SELECT COUNT(*) FROM print_requests WHERE status = 'PROCESSING') as print_requests_processing,
         (SELECT COUNT(*) FROM print_requests WHERE status = 'SHIPPED') as print_requests_shipping,
-        -- Revenue metrics (based on credit purchases, not legacy batch payments)
-        -- Note: amount_usd is in dollars, so multiply by 100 to get cents for consistency with old system
+        -- Revenue metrics (based on credit purchases + estimated MRR)
+        -- Note: credit_purchases amount_usd is in dollars, so multiply by 100 to get cents
         (SELECT COALESCE(SUM(amount_usd * 100), 0)::BIGINT FROM credit_purchases WHERE status = 'completed' AND created_at >= CURRENT_DATE) as daily_revenue_cents,
         (SELECT COALESCE(SUM(amount_usd * 100), 0)::BIGINT FROM credit_purchases WHERE status = 'completed' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_revenue_cents,
         (SELECT COALESCE(SUM(amount_usd * 100), 0)::BIGINT FROM credit_purchases WHERE status = 'completed' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_revenue_cents,
@@ -2369,81 +4158,36 @@ BEGIN
         (SELECT COUNT(*) FROM operations_log) as total_audit_entries,
         (SELECT COUNT(*) FROM operations_log WHERE operation LIKE '%Waived payment%' AND created_at >= CURRENT_DATE) as payment_waivers_today,
         (SELECT COUNT(*) FROM operations_log WHERE operation LIKE '%Changed user role%' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as role_changes_week,
-        (SELECT COUNT(DISTINCT user_id) FROM operations_log WHERE user_role = 'admin' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as unique_admin_users_month;
+        (SELECT COUNT(DISTINCT user_id) FROM operations_log WHERE user_role = 'admin' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as unique_admin_users_month,
+        -- ACCESS MODE METRICS (Physical vs Digital cards)
+        (SELECT COUNT(*) FROM cards WHERE billing_type = 'physical') as physical_cards_count,
+        (SELECT COUNT(*) FROM cards WHERE billing_type = 'digital') as digital_cards_count,
+        -- DIGITAL ACCESS METRICS (Scan counts and credit consumption)
+        (SELECT COALESCE(SUM(current_scans), 0)::BIGINT FROM cards WHERE billing_type = 'digital') as total_digital_scans,
+        (SELECT COALESCE(SUM(daily_scans), 0)::BIGINT FROM cards WHERE billing_type = 'digital' AND last_scan_date = CURRENT_DATE) as daily_digital_scans,
+        (SELECT COALESCE(SUM(cc.quantity), 0)::BIGINT FROM credit_consumptions cc WHERE cc.consumption_type = 'digital_scan' AND cc.created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_digital_scans,
+        (SELECT COALESCE(SUM(cc.quantity), 0)::BIGINT FROM credit_consumptions cc WHERE cc.consumption_type = 'digital_scan' AND cc.created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_digital_scans,
+        (SELECT COALESCE(SUM(cc.total_credits), 0)::NUMERIC FROM credit_consumptions cc WHERE cc.consumption_type = 'digital_scan') as digital_credits_consumed,
+        -- CONTENT MODE DISTRIBUTION
+        (SELECT COUNT(*) FROM cards WHERE content_mode = 'single') as content_mode_single,
+        (SELECT COUNT(*) FROM cards WHERE content_mode = 'list') as content_mode_list,
+        (SELECT COUNT(*) FROM cards WHERE content_mode = 'grid') as content_mode_grid,
+        (SELECT COUNT(*) FROM cards WHERE content_mode = 'cards') as content_mode_cards,
+        (SELECT COUNT(*) FROM cards WHERE is_grouped = true) as is_grouped_count,
+        -- SUBSCRIPTION METRICS
+        (SELECT COUNT(*) FROM auth.users) - (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as total_free_users,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as total_premium_users,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium' AND status = 'active') as active_subscriptions,
+        (SELECT COUNT(*) * 5000 FROM subscriptions WHERE tier = 'premium' AND status = 'active') as estimated_mrr_cents,
+        -- ACCESS LOG METRICS
+        (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= date_trunc('month', CURRENT_DATE)) as monthly_total_accesses,
+        (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= date_trunc('month', CURRENT_DATE) AND was_overage = true) as monthly_overage_accesses;
 END;
 $$;
 
 -- =================================================================
--- UPDATED EXISTING FUNCTIONS
+-- PRINT REQUEST MANAGEMENT
 -- =================================================================
-
--- (Admin) Get all print requests for review
-CREATE OR REPLACE FUNCTION admin_get_all_print_requests(
-    p_status "PrintRequestStatus" DEFAULT NULL,
-    p_search_query TEXT DEFAULT NULL,
-    p_limit INTEGER DEFAULT 100,
-    p_offset INTEGER DEFAULT 0
-)
-RETURNS TABLE (
-    request_id UUID,
-    batch_id UUID,
-    user_id UUID,
-    user_email TEXT,
-    user_public_name TEXT,
-    card_name TEXT,
-    batch_name TEXT,
-    cards_count INTEGER,
-    status "PrintRequestStatus",
-    shipping_address TEXT,
-    contact_email TEXT,
-    contact_whatsapp TEXT,
-    requested_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view all print requests.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        pr.id AS request_id,
-        pr.batch_id AS batch_id,
-        pr.user_id AS user_id,
-        au.email::text AS user_email,
-        SPLIT_PART(au.email, '@', 1)::text AS user_public_name, -- Use email username as display name
-        c.name AS card_name,
-        cb.batch_name AS batch_name,
-        cb.cards_count AS cards_count,
-        pr.status AS status,
-        pr.shipping_address AS shipping_address,
-        pr.contact_email AS contact_email,
-        pr.contact_whatsapp AS contact_whatsapp,
-        pr.requested_at AS requested_at,
-        pr.updated_at AS updated_at
-    FROM print_requests pr
-    JOIN card_batches cb ON pr.batch_id = cb.id
-    JOIN cards c ON cb.card_id = c.id
-    LEFT JOIN auth.users au ON pr.user_id = au.id
-    WHERE 
-        (p_status IS NULL OR pr.status = p_status)
-        AND (p_search_query IS NULL OR (
-            au.email ILIKE '%' || p_search_query || '%' OR
-            c.name ILIKE '%' || p_search_query || '%' OR
-            cb.batch_name ILIKE '%' || p_search_query || '%' OR
-            pr.shipping_address ILIKE '%' || p_search_query || '%'
-        ))
-    ORDER BY pr.requested_at DESC
-    LIMIT p_limit OFFSET p_offset;
-END;
-$$;
 
 -- (Admin) Update print request status
 CREATE OR REPLACE FUNCTION admin_update_print_request_status(
@@ -2512,115 +4256,9 @@ BEGIN
 END;
 $$;
 
-
--- (Admin) Get pending verification requests
-CREATE OR REPLACE FUNCTION admin_get_pending_verifications(p_limit INTEGER DEFAULT 50)
-RETURNS TABLE (
-    user_id UUID,
-    email VARCHAR(255),
-    public_name TEXT,
-    company_name TEXT,
-    full_name TEXT,
-    supporting_documents TEXT[],
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view pending verifications.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        up.user_id,
-        au.email,
-        up.public_name,
-        up.company_name,
-        up.full_name,
-        up.supporting_documents,
-        up.created_at,
-        up.updated_at
-    FROM user_profiles up
-    JOIN auth.users au ON up.user_id = au.id
-    WHERE up.verification_status = 'PENDING_REVIEW'
-    ORDER BY up.updated_at ASC
-    LIMIT p_limit;
-END;
-$$;
-
-
-
--- Legacy functions removed - Use operations_log functions instead:
--- - Use get_operations_log() instead of get_admin_audit_logs()
--- - Use get_operations_log_stats() instead of get_admin_audit_logs_count()
--- See 00_logging.sql for new functions
-
--- Verification functions removed - feature was never implemented
--- No frontend components, routes, or calls to these functions exist
--- Related tables (user_profiles, verification_feedbacks) also don't exist
-
--- (Admin) Get all users with detailed information including activity stats
--- Note: Removed verification/profile fields - user_profiles table doesn't exist
-CREATE OR REPLACE FUNCTION get_all_users_with_details()
-RETURNS TABLE (
-    user_id UUID,
-    user_email VARCHAR(255),
-    role TEXT,
-    created_at TIMESTAMPTZ,
-    last_sign_in_at TIMESTAMPTZ,
-    cards_count INTEGER,
-    issued_cards_count INTEGER,
-    print_requests_count INTEGER
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if caller is admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view all users.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        au.id AS user_id,
-        au.email AS user_email,
-        au.raw_user_meta_data->>'role' AS role,
-        au.created_at,
-        au.last_sign_in_at,
-        COALESCE(card_stats.cards_count, 0)::INTEGER AS cards_count,
-        COALESCE(issued_stats.issued_cards_count, 0)::INTEGER AS issued_cards_count,
-        COALESCE(print_stats.print_requests_count, 0)::INTEGER AS print_requests_count
-    FROM auth.users au
-    LEFT JOIN (
-        SELECT c.user_id, COUNT(*) AS cards_count
-        FROM public.cards c
-        GROUP BY c.user_id
-    ) card_stats ON au.id = card_stats.user_id
-    LEFT JOIN (
-        SELECT cb.created_by, COUNT(ic.*) AS issued_cards_count
-        FROM public.card_batches cb
-        LEFT JOIN public.issue_cards ic ON cb.id = ic.batch_id
-        GROUP BY cb.created_by
-    ) issued_stats ON au.id = issued_stats.created_by
-    LEFT JOIN (
-        SELECT pr.user_id, COUNT(*) AS print_requests_count
-        FROM public.print_requests pr
-        GROUP BY pr.user_id
-    ) print_stats ON au.id = print_stats.user_id
-    ORDER BY au.created_at DESC;
-END;
-$$;
+-- =================================================================
+-- BATCH MANAGEMENT
+-- =================================================================
 
 -- (Admin) Get batches requiring attention
 CREATE OR REPLACE FUNCTION get_admin_batches_requiring_attention()
@@ -2741,7 +4379,7 @@ BEGIN
 END;
 $$;
 
--- Alias function for backward compatibility
+-- (Admin) Get all print requests for review
 CREATE OR REPLACE FUNCTION get_all_print_requests(
     p_status "PrintRequestStatus" DEFAULT NULL,
     p_search_query TEXT DEFAULT NULL,
@@ -2764,106 +4402,6 @@ RETURNS TABLE (
     requested_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-    -- This function simply calls the admin version with search support.
-    -- This provides a consistent, simplified interface for clients.
-    RETURN QUERY
-    SELECT
-        apr.request_id as id,
-        apr.batch_id,
-        apr.user_id,
-        apr.user_email,
-        apr.user_public_name,
-        apr.card_name,
-        apr.batch_name,
-        apr.cards_count,
-        apr.status,
-        apr.shipping_address,
-        apr.contact_email,
-        apr.contact_whatsapp,
-        apr.requested_at,
-        apr.updated_at
-    FROM admin_get_all_print_requests(p_status, p_search_query, p_limit, p_offset) apr;
-END;
-$$;
-
--- (Admin) Change user role with comprehensive audit logging
-CREATE OR REPLACE FUNCTION admin_change_user_role(
-    p_target_user_id UUID,
-    p_new_role TEXT,
-    p_reason TEXT
-)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-    current_role TEXT;
-    target_user_email TEXT;
-    valid_roles TEXT[] := ARRAY['card_issuer', 'admin'];
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can change user roles.';
-    END IF;
-
-    -- Validate new role
-    IF p_new_role != ALL(valid_roles) THEN
-        RAISE EXCEPTION 'Invalid role. Valid roles are: %', array_to_string(valid_roles, ', ');
-    END IF;
-
-    -- Get current role and email of target user
-    SELECT 
-        raw_user_meta_data->>'role',
-        email
-    INTO current_role, target_user_email
-    FROM auth.users
-    WHERE id = p_target_user_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Target user not found.';
-    END IF;
-
-    -- Check if role is actually changing
-    IF current_role = p_new_role THEN
-        RAISE EXCEPTION 'User already has role: %', p_new_role;
-    END IF;
-
-    -- Prevent self-demotion from admin
-    IF auth.uid() = p_target_user_id AND current_role = 'admin' AND p_new_role != 'admin' THEN
-        RAISE EXCEPTION 'Admins cannot demote themselves. Another admin must perform this action.';
-    END IF;
-
-    -- Update user role
-    UPDATE auth.users
-    SET 
-        raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('role', p_new_role),
-        updated_at = NOW()
-    WHERE id = p_target_user_id;
-
-    -- Log role change
-    PERFORM log_operation(
-        format('Changed user role from %s to %s for user: %s', 
-            COALESCE(current_role, 'none'), p_new_role, target_user_email)
-    );
-    
-    RETURN FOUND;
-END;
-$$;
-
--- (Admin) Get feedbacks for a verification user
-CREATE OR REPLACE FUNCTION get_verification_feedbacks(
-    p_user_id UUID
-)
-RETURNS TABLE (
-    id UUID,
-    admin_user_id UUID,
-    admin_email VARCHAR(255),
-    message TEXT,
-    created_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     caller_role TEXT;
 BEGIN
@@ -2873,170 +4411,47 @@ BEGIN
     WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view verification feedbacks.';
+        RAISE EXCEPTION 'Only admins can view all print requests.';
     END IF;
 
     RETURN QUERY
     SELECT 
-        vf.id,
-        vf.admin_user_id,
-        vf.admin_email,
-        vf.message,
-        vf.created_at
-    FROM verification_feedbacks vf
-    WHERE vf.user_id = p_user_id
-    ORDER BY vf.created_at ASC;
-END;
-$$;
-
--- (Admin) Get feedbacks for a print request
-CREATE OR REPLACE FUNCTION get_print_request_feedbacks(
-    p_request_id UUID
-)
-RETURNS TABLE (
-    id UUID,
-    admin_user_id UUID,
-    admin_email VARCHAR(255),
-    message TEXT,
-    created_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view print request feedbacks.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        pf.id,
-        pf.admin_user_id,
-        pf.admin_email,
-        pf.message,
-        pf.created_at
-    FROM print_request_feedbacks pf
-    WHERE pf.print_request_id = p_request_id
-    ORDER BY pf.created_at ASC;
-END;
-$$;
-
--- (Admin) Reset user verification status
-CREATE OR REPLACE FUNCTION reset_user_verification(
-    p_user_id UUID
-)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-    v_user_email TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can reset user verification.';
-    END IF;
-
-    -- Get target user email for audit logging
-    SELECT email INTO v_user_email
-    FROM auth.users
-    WHERE id = p_user_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'User not found.';
-    END IF;
-
-    -- Reset verification status
-    UPDATE user_profiles
-    SET 
-        verification_status = 'NOT_SUBMITTED',
-        supporting_documents = NULL,
-        verified_at = NULL,
-        updated_at = NOW()
-    WHERE user_id = p_user_id;
-
-    -- Log operation
-    PERFORM log_operation(format('Reset verification for user: %s', v_user_email));
-    
-    RETURN FOUND;
-END;
-$$;
-
--- admin_manual_verification() removed - references non-existent user_profiles table
--- Verification feature was never implemented in frontend
-
--- (Admin) Get user activity summary
-CREATE OR REPLACE FUNCTION get_user_activity_summary(
-    p_user_id UUID
-)
-RETURNS TABLE (
-    cards_count INTEGER,
-    batches_count INTEGER,
-    issued_cards_count INTEGER,
-    print_requests_count INTEGER,
-    total_revenue_cents BIGINT,
-    last_activity_date TIMESTAMPTZ,
-    account_age_days INTEGER
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-    v_user_created_at TIMESTAMPTZ;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view user activity summary.';
-    END IF;
-
-    -- Get user creation date
-    SELECT created_at INTO v_user_created_at
-    FROM auth.users
-    WHERE id = p_user_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'User not found.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        COALESCE((SELECT COUNT(*)::INTEGER FROM cards WHERE user_id = p_user_id), 0) as cards_count,
-        COALESCE((SELECT COUNT(*)::INTEGER FROM card_batches WHERE created_by = p_user_id), 0) as batches_count,
-        COALESCE((
-            SELECT COUNT(ic.*)::INTEGER 
-            FROM card_batches cb
-            LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
-            WHERE cb.created_by = p_user_id
-        ), 0) as issued_cards_count,
-        COALESCE((SELECT COUNT(*)::INTEGER FROM print_requests WHERE user_id = p_user_id), 0) as print_requests_count,
-        COALESCE((
-            SELECT SUM(bp.amount_cents)
-            FROM card_batches cb
-            LEFT JOIN batch_payments bp ON cb.id = bp.batch_id
-            WHERE cb.created_by = p_user_id AND bp.payment_status = 'succeeded'
-        ), 0) as total_revenue_cents,
-        GREATEST(
-            (SELECT MAX(updated_at) FROM cards WHERE user_id = p_user_id),
-            (SELECT MAX(updated_at) FROM card_batches WHERE created_by = p_user_id),
-            (SELECT MAX(updated_at) FROM print_requests WHERE user_id = p_user_id)
-        ) as last_activity_date,
-        EXTRACT(DAY FROM NOW() - v_user_created_at)::INTEGER as account_age_days;
+        pr.id,
+        pr.batch_id,
+        pr.user_id,
+        au.email::text AS user_email,
+        SPLIT_PART(au.email, '@', 1)::text AS user_public_name,
+        c.name AS card_name,
+        cb.batch_name,
+        cb.cards_count,
+        pr.status,
+        pr.shipping_address,
+        pr.contact_email,
+        pr.contact_whatsapp,
+        pr.requested_at,
+        pr.updated_at
+    FROM print_requests pr
+    JOIN card_batches cb ON pr.batch_id = cb.id
+    JOIN cards c ON cb.card_id = c.id
+    LEFT JOIN auth.users au ON pr.user_id = au.id
+    WHERE 
+        (p_status IS NULL OR pr.status = p_status)
+        AND (p_search_query IS NULL OR (
+            au.email ILIKE '%' || p_search_query || '%' OR
+            c.name ILIKE '%' || p_search_query || '%' OR
+            cb.batch_name ILIKE '%' || p_search_query || '%' OR
+            pr.shipping_address ILIKE '%' || p_search_query || '%'
+        ))
+    ORDER BY pr.requested_at DESC
+    LIMIT p_limit OFFSET p_offset;
 END;
 $$;
 
 -- =================================================================
--- USER MANAGEMENT FUNCTIONS (without profile/verification)
+-- USER MANAGEMENT FUNCTIONS
 -- =================================================================
 
--- Get all users with basic info and activity stats
+-- Get all users with basic info, activity stats, and subscription data
 CREATE OR REPLACE FUNCTION admin_get_all_users()
 RETURNS TABLE (
     user_id UUID,
@@ -3046,7 +4461,14 @@ RETURNS TABLE (
     issued_cards_count INTEGER,
     created_at TIMESTAMP WITH TIME ZONE,
     last_sign_in_at TIMESTAMP WITH TIME ZONE,
-    email_confirmed_at TIMESTAMP WITH TIME ZONE
+    email_confirmed_at TIMESTAMP WITH TIME ZONE,
+    -- Subscription fields
+    subscription_tier TEXT,
+    subscription_status TEXT,
+    stripe_subscription_id TEXT,
+    current_period_start TIMESTAMPTZ,
+    current_period_end TIMESTAMPTZ,
+    cancel_at_period_end BOOLEAN
 )
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -3070,13 +4492,161 @@ BEGIN
         COUNT(DISTINCT ic.id)::INTEGER as issued_cards_count,
         au.created_at,
         au.last_sign_in_at,
-        au.email_confirmed_at
+        au.email_confirmed_at,
+        -- Subscription data (default to 'free' if no subscription)
+        COALESCE(s.tier::TEXT, 'free') as subscription_tier,
+        COALESCE(s.status::TEXT, 'active') as subscription_status,
+        s.stripe_subscription_id,
+        s.current_period_start,
+        s.current_period_end,
+        COALESCE(s.cancel_at_period_end, false) as cancel_at_period_end
     FROM auth.users au
     LEFT JOIN cards c ON c.user_id = au.id
     LEFT JOIN card_batches cb ON cb.created_by = au.id
     LEFT JOIN issue_cards ic ON ic.batch_id = cb.id
-    GROUP BY au.id, au.email, au.raw_user_meta_data, au.created_at, au.last_sign_in_at, au.email_confirmed_at
+    LEFT JOIN subscriptions s ON s.user_id = au.id
+    GROUP BY au.id, au.email, au.raw_user_meta_data, au.created_at, au.last_sign_in_at, 
+             au.email_confirmed_at, s.tier, s.status, s.stripe_subscription_id, 
+             s.current_period_start, s.current_period_end, s.cancel_at_period_end
     ORDER BY au.created_at DESC;
+END;
+$$;
+
+-- Update user subscription tier (admin only)
+-- This creates or updates a subscription record for manual tier management
+CREATE OR REPLACE FUNCTION admin_update_user_subscription(
+    p_user_id UUID,
+    p_new_tier TEXT,
+    p_reason TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+    v_user_email VARCHAR(255);
+    v_old_tier TEXT;
+    v_subscription_exists BOOLEAN;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can update user subscriptions.';
+    END IF;
+
+    -- Validate new tier
+    IF p_new_tier NOT IN ('free', 'premium') THEN
+        RAISE EXCEPTION 'Invalid tier. Must be: free or premium.';
+    END IF;
+
+    -- Get current user info
+    SELECT email INTO v_user_email
+    FROM auth.users
+    WHERE id = p_user_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'User not found.';
+    END IF;
+
+    -- Check if subscription exists
+    SELECT EXISTS(SELECT 1 FROM subscriptions WHERE user_id = p_user_id) INTO v_subscription_exists;
+    
+    -- Get old tier if exists
+    IF v_subscription_exists THEN
+        SELECT tier::TEXT INTO v_old_tier
+        FROM subscriptions
+        WHERE user_id = p_user_id;
+    ELSE
+        v_old_tier := 'free';
+    END IF;
+
+    -- Create or update subscription
+    IF v_subscription_exists THEN
+        UPDATE subscriptions
+        SET 
+            tier = p_new_tier::"SubscriptionTier",
+            status = 'active'::subscription_status,
+            -- Clear Stripe fields when admin manually sets tier
+            -- (this means it's not a Stripe-managed subscription anymore)
+            stripe_subscription_id = CASE 
+                WHEN p_new_tier = 'free' THEN NULL 
+                ELSE stripe_subscription_id 
+            END,
+            current_period_start = CASE 
+                WHEN p_new_tier = 'premium' AND stripe_subscription_id IS NULL THEN NOW()
+                ELSE current_period_start
+            END,
+            current_period_end = CASE 
+                WHEN p_new_tier = 'premium' AND stripe_subscription_id IS NULL THEN NOW() + INTERVAL '1 year'
+                ELSE current_period_end
+            END,
+            cancel_at_period_end = false,
+            updated_at = NOW()
+        WHERE user_id = p_user_id;
+    ELSE
+        INSERT INTO subscriptions (
+            user_id,
+            tier,
+            status,
+            current_period_start,
+            current_period_end,
+            cancel_at_period_end
+        ) VALUES (
+            p_user_id,
+            p_new_tier::"SubscriptionTier",
+            'active'::subscription_status,
+            CASE WHEN p_new_tier = 'premium' THEN NOW() ELSE NULL END,
+            CASE WHEN p_new_tier = 'premium' THEN NOW() + INTERVAL '1 year' ELSE NULL END,
+            false
+        );
+    END IF;
+
+    -- Log operation
+    PERFORM log_operation(
+        'Admin changed subscription tier from ' || COALESCE(v_old_tier, 'none') || 
+        ' to ' || p_new_tier || ' for user: ' || v_user_email || 
+        ' - Reason: ' || p_reason
+    );
+
+    RETURN TRUE;
+END;
+$$;
+
+-- Get subscription statistics for admin dashboard
+CREATE OR REPLACE FUNCTION admin_get_subscription_stats()
+RETURNS TABLE (
+    total_users BIGINT,
+    free_users BIGINT,
+    premium_users BIGINT,
+    active_premium BIGINT,
+    canceled_pending BIGINT,
+    past_due BIGINT,
+    estimated_mrr_cents BIGINT
+)
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view subscription statistics.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        (SELECT COUNT(*) FROM auth.users) as total_users,
+        (SELECT COUNT(*) FROM auth.users) - (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as free_users,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as premium_users,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium' AND status = 'active' AND cancel_at_period_end = false) as active_premium,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium' AND cancel_at_period_end = true) as canceled_pending,
+        (SELECT COUNT(*) FROM subscriptions WHERE status = 'past_due') as past_due,
+        (SELECT COUNT(*) * 5000 FROM subscriptions WHERE tier = 'premium' AND status = 'active') as estimated_mrr_cents;
 END;
 $$;
 
@@ -3184,6 +4754,12 @@ RETURNS TABLE (
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
     qr_code_position TEXT,
+    content_mode TEXT,
+    billing_type TEXT,
+    max_scans INT,
+    current_scans INT,
+    daily_scan_limit INT,
+    daily_scans INT,
     batches_count BIGINT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
@@ -3214,6 +4790,12 @@ BEGIN
         c.ai_instruction,
         c.ai_knowledge_base,
         c.qr_code_position::TEXT,
+        c.content_mode::TEXT,
+        c.billing_type::TEXT,
+        c.max_scans,
+        c.current_scans,
+        c.daily_scan_limit,
+        c.daily_scans,
         COUNT(cb.id)::BIGINT AS batches_count,
         c.created_at,
         c.updated_at,
@@ -3224,7 +4806,8 @@ BEGIN
     WHERE c.user_id = p_user_id
     GROUP BY c.id, c.name, c.description, c.image_url, c.original_image_url,
              c.crop_parameters, c.conversation_ai_enabled, c.ai_instruction, c.ai_knowledge_base,
-             c.qr_code_position, c.created_at, c.updated_at, au.email
+             c.qr_code_position, c.content_mode, c.billing_type, c.max_scans, c.current_scans,
+             c.daily_scan_limit, c.daily_scans, c.created_at, c.updated_at, au.email
     ORDER BY c.created_at DESC;
 END;
 $$;
@@ -3367,6 +4950,290 @@ BEGIN
     ORDER BY ic.issue_at DESC;
 END;
 $$;
+
+-- =================================================================
+-- AUDIT LOG FUNCTIONS
+-- =================================================================
+
+-- Get admin audit logs (wraps operations_log for admin dashboard)
+-- Note: operations_log has simple structure: user_id, user_role, operation, created_at
+CREATE OR REPLACE FUNCTION get_admin_audit_logs(
+    p_action_type TEXT DEFAULT NULL,
+    p_admin_user_id UUID DEFAULT NULL,
+    p_limit INTEGER DEFAULT 50,
+    p_offset INTEGER DEFAULT 0
+)
+RETURNS TABLE (
+    id UUID,
+    user_id UUID,
+    user_email TEXT,
+    user_role "UserRole",
+    operation TEXT,
+    created_at TIMESTAMPTZ
+) AS $$
+DECLARE
+    v_caller_role TEXT;
+BEGIN
+    -- Check if caller is admin
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
+    IF v_caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view audit logs';
+    END IF;
+    
+    -- Return from operations_log table
+    RETURN QUERY
+    SELECT 
+        ol.id,
+        ol.user_id,
+        au.email::TEXT AS user_email,
+        ol.user_role,
+        ol.operation,
+        ol.created_at
+    FROM operations_log ol
+    LEFT JOIN auth.users au ON ol.user_id = au.id
+    WHERE (p_action_type IS NULL OR ol.operation ILIKE '%' || p_action_type || '%')
+      AND (p_admin_user_id IS NULL OR ol.user_id = p_admin_user_id)
+    ORDER BY ol.created_at DESC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION get_admin_audit_logs(TEXT, UUID, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_update_user_subscription(UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_subscription_stats() TO authenticated;
+
+-- File: 12_subscription.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_or_create_subscription CASCADE;
+DROP FUNCTION IF EXISTS can_create_experience CASCADE;
+DROP FUNCTION IF EXISTS can_use_translations CASCADE;
+DROP FUNCTION IF EXISTS get_subscription_details CASCADE;
+
+-- =================================================================
+-- SUBSCRIPTION MANAGEMENT - CLIENT-SIDE STORED PROCEDURES
+-- =================================================================
+-- These functions are accessible by authenticated users
+-- Usage tracking is handled by Redis (source of truth)
+-- =================================================================
+
+-- =================================================================
+-- FUNCTION: Get or create subscription
+-- Creates free tier subscription if none exists
+-- =================================================================
+CREATE OR REPLACE FUNCTION get_or_create_subscription(
+    p_user_id UUID DEFAULT NULL
+)
+RETURNS subscriptions AS $$
+DECLARE
+    v_user_id UUID := COALESCE(p_user_id, auth.uid());
+    v_subscription subscriptions%ROWTYPE;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Try to get existing subscription
+    SELECT * INTO v_subscription 
+    FROM subscriptions 
+    WHERE user_id = v_user_id;
+    
+    -- Create free tier if none exists
+    IF NOT FOUND THEN
+        INSERT INTO subscriptions (user_id, tier, status)
+        VALUES (v_user_id, 'free', 'active')
+        RETURNING * INTO v_subscription;
+    END IF;
+    
+    RETURN v_subscription;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =================================================================
+-- FUNCTION: Can create project
+-- Business parameters passed from calling application
+-- =================================================================
+CREATE OR REPLACE FUNCTION can_create_experience(
+    p_user_id UUID DEFAULT NULL,
+    p_free_limit INTEGER DEFAULT 3,
+    p_premium_limit INTEGER DEFAULT 15
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_user_id UUID := COALESCE(p_user_id, auth.uid());
+    v_subscription subscriptions%ROWTYPE;
+    v_experience_count INTEGER;
+    v_limit INTEGER;
+    v_user_role TEXT;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Check if user is admin
+    v_user_role := get_user_role(v_user_id);
+    IF v_user_role = 'admin' THEN
+        RETURN jsonb_build_object(
+            'can_create', TRUE,
+            'current_count', (SELECT COUNT(*) FROM cards WHERE user_id = v_user_id),
+            'limit', 999999,
+            'tier', 'admin',
+            'message', 'Admin bypass'
+        );
+    END IF;
+    
+    -- Get subscription
+    v_subscription := get_or_create_subscription(v_user_id);
+    
+    -- Count existing experiences
+    SELECT COUNT(*) INTO v_experience_count FROM cards WHERE user_id = v_user_id;
+    
+    -- Determine limit based on tier
+    IF v_subscription.tier = 'premium' THEN
+        v_limit := p_premium_limit;
+    ELSE
+        v_limit := p_free_limit;
+    END IF;
+    
+    RETURN jsonb_build_object(
+        'can_create', v_experience_count < v_limit,
+        'current_count', v_experience_count,
+        'limit', v_limit,
+        'tier', v_subscription.tier::TEXT,
+        'message', CASE 
+            WHEN v_experience_count < v_limit THEN 'OK'
+            WHEN v_subscription.tier = 'free' THEN 'Upgrade to Premium to create more projects'
+            ELSE 'Project limit reached'
+        END
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =================================================================
+-- FUNCTION: Can use translations
+-- Premium-only feature check
+-- =================================================================
+CREATE OR REPLACE FUNCTION can_use_translations(
+    p_user_id UUID DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_user_id UUID := COALESCE(p_user_id, auth.uid());
+    v_subscription subscriptions%ROWTYPE;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Get subscription
+    v_subscription := get_or_create_subscription(v_user_id);
+    
+    RETURN jsonb_build_object(
+        'can_translate', v_subscription.tier = 'premium',
+        'tier', v_subscription.tier::TEXT,
+        'message', CASE 
+            WHEN v_subscription.tier = 'premium' THEN 'Translations available'
+            ELSE 'Upgrade to Premium to access multi-language translations'
+        END
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =================================================================
+-- FUNCTION: Get subscription details
+-- All business parameters passed from calling application
+-- NOTE: Usage stats (monthly_access_used) returned as 0 here
+--       Backend fills in actual values from Redis (source of truth)
+-- =================================================================
+CREATE OR REPLACE FUNCTION get_subscription_details(
+    p_user_id UUID DEFAULT NULL,
+    p_free_experience_limit INTEGER DEFAULT 3,
+    p_premium_experience_limit INTEGER DEFAULT 15,
+    p_free_monthly_access INTEGER DEFAULT 50,
+    p_premium_monthly_access INTEGER DEFAULT 3000,
+    p_premium_monthly_fee DECIMAL DEFAULT 50,
+    p_overage_credits_per_batch INTEGER DEFAULT 5,
+    p_overage_access_per_batch INTEGER DEFAULT 100
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_user_id UUID := COALESCE(p_user_id, auth.uid());
+    v_subscription subscriptions%ROWTYPE;
+    v_experience_count INTEGER;
+    v_monthly_limit INTEGER;
+BEGIN
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Get subscription
+    v_subscription := get_or_create_subscription(v_user_id);
+    
+    -- Count experiences
+    SELECT COUNT(*) INTO v_experience_count FROM cards WHERE user_id = v_user_id;
+    
+    -- Determine monthly limit based on tier
+    IF v_subscription.tier = 'premium' THEN
+        v_monthly_limit := p_premium_monthly_access;
+    ELSE
+        v_monthly_limit := p_free_monthly_access;
+    END IF;
+    
+    RETURN jsonb_build_object(
+        'tier', v_subscription.tier::TEXT,
+        'status', v_subscription.status,
+        'is_premium', v_subscription.tier = 'premium',
+        
+        -- Stripe info
+        'stripe_subscription_id', v_subscription.stripe_subscription_id,
+        'current_period_start', v_subscription.current_period_start,
+        'current_period_end', v_subscription.current_period_end,
+        'cancel_at_period_end', v_subscription.cancel_at_period_end,
+        
+        -- Usage (returned as 0 - backend fills from Redis)
+        'monthly_access_limit', v_monthly_limit,
+        'monthly_access_used', 0,  -- Redis is source of truth
+        'monthly_access_remaining', v_monthly_limit,  -- Backend recalculates from Redis
+        
+        -- Experience limits (using parameters)
+        'experience_count', v_experience_count,
+        'experience_limit', CASE 
+            WHEN v_subscription.tier = 'premium' THEN p_premium_experience_limit 
+            ELSE p_free_experience_limit 
+        END,
+        
+        -- Features
+        'features', jsonb_build_object(
+            'translations_enabled', v_subscription.tier = 'premium',
+            'can_buy_overage', v_subscription.tier = 'premium'
+        ),
+        
+        -- Pricing info (using parameters)
+        'pricing', jsonb_build_object(
+            'monthly_fee_usd', CASE WHEN v_subscription.tier = 'premium' THEN p_premium_monthly_fee ELSE 0 END,
+            'monthly_access_limit', v_monthly_limit,
+            'overage_credits_per_batch', CASE WHEN v_subscription.tier = 'premium' THEN p_overage_credits_per_batch ELSE NULL END,
+            'overage_access_per_batch', CASE WHEN v_subscription.tier = 'premium' THEN p_overage_access_per_batch ELSE NULL END,
+            'overage_cost_per_access', CASE WHEN v_subscription.tier = 'premium' 
+                THEN ROUND(p_overage_credits_per_batch::DECIMAL / p_overage_access_per_batch, 4) 
+                ELSE NULL END
+        )
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =================================================================
+-- GRANTS
+-- =================================================================
+GRANT EXECUTE ON FUNCTION get_or_create_subscription(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION can_create_experience(UUID, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION can_use_translations(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_subscription_details(UUID, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, INTEGER, INTEGER) TO authenticated;
+
+
 
 -- File: 12_translation_management.sql
 -- -----------------------------------------------------------------
@@ -4524,7 +6391,6 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 DROP FUNCTION IF EXISTS initialize_user_credits CASCADE;
 DROP FUNCTION IF EXISTS get_user_credits CASCADE;
 DROP FUNCTION IF EXISTS check_credit_balance CASCADE;
-DROP FUNCTION IF EXISTS create_credit_purchase_record CASCADE;
 DROP FUNCTION IF EXISTS consume_credits CASCADE;
 DROP FUNCTION IF EXISTS consume_credits_for_batch CASCADE;
 DROP FUNCTION IF EXISTS get_credit_transactions CASCADE;
@@ -4532,6 +6398,8 @@ DROP FUNCTION IF EXISTS get_credit_purchases CASCADE;
 DROP FUNCTION IF EXISTS get_credit_consumptions CASCADE;
 DROP FUNCTION IF EXISTS create_credit_purchase CASCADE;
 DROP FUNCTION IF EXISTS get_credit_statistics CASCADE;
+DROP FUNCTION IF EXISTS consume_credit_for_digital_scan CASCADE;
+DROP FUNCTION IF EXISTS can_issue_batch CASCADE;
 
 -- Credit Management Stored Procedures
 -- Client-side functions for credit purchase, consumption, and management
@@ -4622,53 +6490,6 @@ BEGIN
 
     -- Return the actual balance (not a boolean check)
     RETURN v_balance;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Create a pending credit purchase record
-CREATE OR REPLACE FUNCTION create_credit_purchase_record(
-    p_stripe_session_id VARCHAR,
-    p_amount_usd DECIMAL,
-    p_credits_amount DECIMAL,
-    p_metadata JSONB DEFAULT NULL,
-    p_user_id UUID DEFAULT NULL
-)
-RETURNS UUID AS $$
-DECLARE
-    v_user_id UUID;
-    v_purchase_id UUID;
-BEGIN
-    -- Use provided user_id or fall back to auth.uid()
-    v_user_id := COALESCE(p_user_id, auth.uid());
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Not authenticated';
-    END IF;
-
-    -- Insert pending purchase record
-    INSERT INTO credit_purchases (
-        user_id,
-        stripe_session_id,
-        amount_usd,
-        credits_amount,
-        status,
-        metadata
-    ) VALUES (
-        v_user_id,
-        p_stripe_session_id,
-        p_amount_usd,
-        p_credits_amount,
-        'pending',
-        p_metadata
-    )
-    RETURNING id INTO v_purchase_id;
-
-    -- Log operation
-    PERFORM log_operation(
-        format('Credit purchase initiated: %s credits ($%s USD) - Session: %s', 
-            p_credits_amount, p_amount_usd, p_stripe_session_id)
-    );
-
-    RETURN v_purchase_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -5078,6 +6899,178 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =====================================================================
+-- DIGITAL ACCESS CREDIT CONSUMPTION
+-- =====================================================================
+-- Consume credits for digital access scan with DAILY AGGREGATION
+-- Called internally by get_public_card_content when a non-owner accesses a digital card
+-- 
+-- BEST PRACTICE: Instead of creating a new record per scan (fragmented),
+-- we aggregate all scans for the same card on the same day into ONE record.
+-- This reduces 1000 scans/day from 2000 records to just 2 records!
+--
+-- Daily Aggregation Logic:
+-- 1. First scan of day for a card → INSERT new consumption record
+-- 2. Subsequent scans → UPDATE existing record (increment quantity & total)
+-- 3. Transaction log: One entry per day per card (updated in place)
+--
+-- Returns JSONB with success status and error details
+CREATE OR REPLACE FUNCTION consume_credit_for_digital_scan(
+    p_card_id UUID,
+    p_owner_id UUID,
+    p_credit_rate DECIMAL DEFAULT 0.03
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_current_balance DECIMAL;
+    v_new_balance DECIMAL;
+    v_consumption_id UUID;
+    v_transaction_id UUID;
+    v_card_name TEXT;
+    v_today DATE := CURRENT_DATE;
+    v_existing_consumption_id UUID;
+    v_existing_transaction_id UUID;
+    v_existing_quantity INT;
+    v_existing_total_credits DECIMAL;
+    v_balance_before_today DECIMAL;
+BEGIN
+    -- Get card name for logging
+    SELECT name INTO v_card_name FROM cards WHERE id = p_card_id;
+
+    -- Lock the owner's credits row for update
+    SELECT balance INTO v_current_balance
+    FROM user_credits
+    WHERE user_id = p_owner_id
+    FOR UPDATE;
+
+    -- Check if owner has credits initialized
+    IF v_current_balance IS NULL THEN
+        -- Try to initialize credits for owner
+        INSERT INTO user_credits (user_id, balance, total_purchased, total_consumed)
+        VALUES (p_owner_id, 0, 0, 0)
+        ON CONFLICT (user_id) DO NOTHING;
+        
+        SELECT balance INTO v_current_balance
+        FROM user_credits
+        WHERE user_id = p_owner_id;
+        
+        IF v_current_balance IS NULL THEN
+            v_current_balance := 0;
+        END IF;
+    END IF;
+
+    -- Check if owner has sufficient credits
+    IF v_current_balance < p_credit_rate THEN
+        RETURN jsonb_build_object(
+            'success', false,
+            'error', 'credits_insufficient',
+            'message', 'Card owner has insufficient credits',
+            'required', p_credit_rate,
+            'available', v_current_balance
+        );
+    END IF;
+
+    v_new_balance := v_current_balance - p_credit_rate;
+
+    -- Update owner's credits (real-time balance update)
+    UPDATE user_credits
+    SET 
+        balance = v_new_balance,
+        total_consumed = total_consumed + p_credit_rate,
+        updated_at = CURRENT_TIMESTAMP
+    WHERE user_id = p_owner_id;
+
+    -- ===== DAILY AGGREGATION FOR CONSUMPTIONS =====
+    -- Check if there's already a consumption record for this card today
+    SELECT id, quantity, total_credits INTO v_existing_consumption_id, v_existing_quantity, v_existing_total_credits
+    FROM credit_consumptions
+    WHERE user_id = p_owner_id 
+      AND card_id = p_card_id 
+      AND consumption_type = 'digital_scan'
+      AND DATE(created_at) = v_today
+    LIMIT 1;
+
+    IF v_existing_consumption_id IS NOT NULL THEN
+        -- UPDATE existing record (aggregate scans)
+        UPDATE credit_consumptions
+        SET 
+            quantity = v_existing_quantity + 1,
+            total_credits = v_existing_total_credits + p_credit_rate,
+            description = format('Digital access: %s (%s scans today)', 
+                                 COALESCE(v_card_name, p_card_id::TEXT), 
+                                 v_existing_quantity + 1),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = v_existing_consumption_id;
+        
+        v_consumption_id := v_existing_consumption_id;
+    ELSE
+        -- INSERT new record for today (first scan)
+        INSERT INTO credit_consumptions (
+            user_id, card_id, consumption_type, quantity, 
+            credits_per_unit, total_credits, description
+        ) VALUES (
+            p_owner_id, p_card_id, 'digital_scan', 1,
+            p_credit_rate, p_credit_rate,
+            format('Digital access: %s (1 scan today)', COALESCE(v_card_name, p_card_id::TEXT))
+        ) RETURNING id INTO v_consumption_id;
+    END IF;
+
+    -- ===== DAILY AGGREGATION FOR TRANSACTIONS =====
+    -- Check if there's already a transaction record for this card today
+    SELECT id, amount, balance_before INTO v_existing_transaction_id, v_existing_total_credits, v_balance_before_today
+    FROM credit_transactions
+    WHERE user_id = p_owner_id 
+      AND reference_type = 'digital_scan'
+      AND reference_id = p_card_id
+      AND DATE(created_at) = v_today
+      AND type = 'consumption'
+    LIMIT 1;
+
+    IF v_existing_transaction_id IS NOT NULL THEN
+        -- UPDATE existing transaction (aggregate daily spend)
+        UPDATE credit_transactions
+        SET 
+            amount = v_existing_total_credits + p_credit_rate,
+            balance_after = v_new_balance,
+            description = format('Digital access: %s (%s credits today)', 
+                                 COALESCE(v_card_name, 'Card'), 
+                                 ROUND(v_existing_total_credits + p_credit_rate, 2)::TEXT),
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = v_existing_transaction_id;
+        
+        v_transaction_id := v_existing_transaction_id;
+    ELSE
+        -- INSERT new transaction for today (first scan)
+        INSERT INTO credit_transactions (
+            user_id, type, amount, balance_before, balance_after,
+            reference_type, reference_id, description
+        ) VALUES (
+            p_owner_id, 'consumption', p_credit_rate, v_current_balance, v_new_balance,
+            'digital_scan', p_card_id,
+            format('Digital access: %s (%s credits today)', COALESCE(v_card_name, 'Card'), ROUND(p_credit_rate, 2)::TEXT)
+        ) RETURNING id INTO v_transaction_id;
+    END IF;
+
+    RETURN jsonb_build_object(
+        'success', true,
+        'consumption_id', v_consumption_id,
+        'transaction_id', v_transaction_id,
+        'credits_consumed', p_credit_rate,
+        'new_balance', v_new_balance,
+        'aggregation', 'daily'
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execute to service_role (called internally by get_public_card_content)
+GRANT EXECUTE ON FUNCTION consume_credit_for_digital_scan(UUID, UUID, DECIMAL) TO service_role, authenticated;
+
+COMMENT ON FUNCTION consume_credit_for_digital_scan(UUID, UUID, DECIMAL) IS 
+  'Consumes credits from card owner for digital access scan with DAILY AGGREGATION. 
+   Instead of creating one record per scan, aggregates all scans for the same card 
+   on the same day into a single record. This prevents table fragmentation and keeps 
+   the credit management UI clean. Called internally by get_public_card_content.';
+
+-- =====================================================================
 -- GRANT PERMISSIONS
 -- =====================================================================
 -- NOTE: Some functions use a "dual-use pattern" with COALESCE(p_user_id, auth.uid())
@@ -5115,11 +7108,496 @@ COMMENT ON FUNCTION get_credit_statistics() IS
 COMMENT ON FUNCTION get_user_credits() IS 
   'CLIENT-ONLY: Uses auth.uid() from user JWT. Returns current credit balance for authenticated user.';
 
+-- =================================================================
+-- BATCH CREDIT CHECKING
+-- =================================================================
+
+-- Check if user has enough credits to issue a batch
+CREATE OR REPLACE FUNCTION can_issue_batch(p_quantity INTEGER)
+RETURNS JSONB AS $$
+DECLARE
+    v_user_id UUID;
+    v_balance DECIMAL;
+    v_cost_per_card DECIMAL := 1.00; -- Cost per physical card
+    v_total_cost DECIMAL;
+    v_can_issue BOOLEAN;
+BEGIN
+    v_user_id := auth.uid();
+    
+    IF v_user_id IS NULL THEN
+        RETURN jsonb_build_object(
+            'can_issue', false,
+            'reason', 'Not authenticated'
+        );
+    END IF;
+    
+    -- Get current balance
+    SELECT balance INTO v_balance
+    FROM user_credits
+    WHERE user_id = v_user_id;
+    
+    IF v_balance IS NULL THEN
+        v_balance := 0;
+    END IF;
+    
+    -- Calculate cost
+    v_total_cost := p_quantity * v_cost_per_card;
+    v_can_issue := v_balance >= v_total_cost;
+    
+    RETURN jsonb_build_object(
+        'can_issue', v_can_issue,
+        'current_balance', v_balance,
+        'required_credits', v_total_cost,
+        'quantity', p_quantity,
+        'cost_per_card', v_cost_per_card
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION can_issue_batch(INTEGER) TO authenticated;
+
+COMMENT ON FUNCTION can_issue_batch(INTEGER) IS 
+  'CLIENT-ONLY: Checks if authenticated user has enough credits to issue a batch of physical cards.';
+
 
 
 -- =================================================================
 -- SERVER-SIDE PROCEDURES
 -- =================================================================
+
+-- File: access_logging.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_recent_access_logs_server CASCADE;
+DROP FUNCTION IF EXISTS get_daily_access_stats_server CASCADE;
+DROP FUNCTION IF EXISTS insert_access_log_server CASCADE;
+
+-- =================================================================
+-- ACCESS LOGGING - SERVER-SIDE STORED PROCEDURES
+-- =================================================================
+-- All access log related database operations from Express backend.
+-- Called by backend Express server with service_role permissions.
+-- =================================================================
+
+-- Get recent access logs for user
+DROP FUNCTION IF EXISTS get_recent_access_logs_server CASCADE;
+CREATE OR REPLACE FUNCTION get_recent_access_logs_server(
+    p_user_id UUID,
+    p_limit INTEGER DEFAULT 10
+)
+RETURNS TABLE (
+    id UUID,
+    card_id UUID,
+    visitor_hash TEXT,
+    accessed_at TIMESTAMPTZ,
+    subscription_tier TEXT,
+    was_overage BOOLEAN,
+    is_owner_access BOOLEAN
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        cal.id,
+        cal.card_id,
+        cal.visitor_hash,
+        cal.accessed_at,
+        cal.subscription_tier::TEXT,
+        cal.was_overage,
+        cal.is_owner_access
+    FROM card_access_log cal
+    WHERE cal.card_owner_id = p_user_id
+    ORDER BY cal.accessed_at DESC
+    LIMIT p_limit;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get daily access stats for chart
+DROP FUNCTION IF EXISTS get_daily_access_stats_server CASCADE;
+CREATE OR REPLACE FUNCTION get_daily_access_stats_server(
+    p_user_id UUID,
+    p_start_date TIMESTAMPTZ,
+    p_end_date TIMESTAMPTZ
+)
+RETURNS TABLE (
+    accessed_at TIMESTAMPTZ,
+    was_overage BOOLEAN
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT cal.accessed_at, cal.was_overage
+    FROM card_access_log cal
+    WHERE cal.card_owner_id = p_user_id
+      AND cal.is_owner_access = FALSE
+      AND cal.accessed_at >= p_start_date
+      AND cal.accessed_at <= p_end_date
+    ORDER BY cal.accessed_at ASC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Insert access log
+DROP FUNCTION IF EXISTS insert_access_log_server CASCADE;
+CREATE OR REPLACE FUNCTION insert_access_log_server(
+    p_card_id UUID,
+    p_visitor_hash TEXT,
+    p_card_owner_id UUID,
+    p_subscription_tier TEXT,
+    p_is_owner_access BOOLEAN,
+    p_was_overage BOOLEAN,
+    p_credit_charged BOOLEAN
+)
+RETURNS UUID AS $$
+DECLARE
+    v_id UUID;
+BEGIN
+    INSERT INTO card_access_log (
+        card_id, visitor_hash, card_owner_id,
+        subscription_tier, is_owner_access, was_overage, credit_charged
+    ) VALUES (
+        p_card_id, p_visitor_hash, p_card_owner_id,
+        p_subscription_tier, p_is_owner_access, p_was_overage, p_credit_charged
+    )
+    RETURNING id INTO v_id;
+    
+    RETURN v_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =================================================================
+-- GRANTS - Only service_role can execute these
+-- =================================================================
+REVOKE ALL ON FUNCTION get_recent_access_logs_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_recent_access_logs_server TO service_role;
+
+REVOKE ALL ON FUNCTION get_daily_access_stats_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_daily_access_stats_server TO service_role;
+
+REVOKE ALL ON FUNCTION insert_access_log_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION insert_access_log_server TO service_role;
+
+
+
+-- File: card_content.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_card_by_access_token_server CASCADE;
+DROP FUNCTION IF EXISTS get_card_content_server CASCADE;
+DROP FUNCTION IF EXISTS get_content_items_server CASCADE;
+DROP FUNCTION IF EXISTS get_issue_card_server CASCADE;
+DROP FUNCTION IF EXISTS activate_issue_card_server CASCADE;
+
+-- =================================================================
+-- CARD CONTENT - SERVER-SIDE STORED PROCEDURES
+-- =================================================================
+-- All card and content item retrieval from Express backend.
+-- Called by backend Express server with service_role permissions.
+-- Used primarily for mobile client access and translation operations.
+-- =================================================================
+
+-- Get card by access token (for digital access)
+DROP FUNCTION IF EXISTS get_card_by_access_token_server CASCADE;
+CREATE OR REPLACE FUNCTION get_card_by_access_token_server(
+    p_access_token TEXT
+)
+RETURNS TABLE (
+    id UUID,
+    user_id UUID,
+    is_access_enabled BOOLEAN,
+    billing_type TEXT,
+    max_scans INTEGER,
+    current_scans INTEGER,
+    daily_scan_limit INTEGER,
+    daily_scans INTEGER,
+    last_scan_date DATE
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.id,
+        c.user_id,
+        c.is_access_enabled,
+        c.billing_type::TEXT,
+        c.max_scans,
+        c.current_scans,
+        c.daily_scan_limit,
+        c.daily_scans,
+        c.last_scan_date
+    FROM cards c
+    WHERE c.access_token = p_access_token;
+    -- Note: Removed billing_type = 'digital' filter to allow
+    -- any card with an access_token to be accessed via QR code
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get full card content
+DROP FUNCTION IF EXISTS get_card_content_server CASCADE;
+CREATE OR REPLACE FUNCTION get_card_content_server(
+    p_card_id UUID
+)
+RETURNS TABLE (
+    name TEXT,
+    description TEXT,
+    image_url TEXT,
+    crop_parameters JSONB,
+    conversation_ai_enabled BOOLEAN,
+    ai_instruction TEXT,
+    ai_knowledge_base TEXT,
+    ai_welcome_general TEXT,
+    ai_welcome_item TEXT,
+    original_language TEXT,
+    translations JSONB,
+    content_mode TEXT,
+    is_grouped BOOLEAN,
+    group_display TEXT,
+    billing_type TEXT,
+    max_scans INTEGER,
+    current_scans INTEGER,
+    daily_scan_limit INTEGER,
+    daily_scans INTEGER
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.name,
+        c.description,
+        c.image_url,
+        c.crop_parameters,
+        c.conversation_ai_enabled,
+        c.ai_instruction,
+        c.ai_knowledge_base,
+        c.ai_welcome_general,
+        c.ai_welcome_item,
+        c.original_language::TEXT,  -- Cast to TEXT (column is varchar(10))
+        c.translations,
+        c.content_mode::TEXT,
+        c.is_grouped,
+        c.group_display::TEXT,
+        c.billing_type::TEXT,
+        c.max_scans,
+        c.current_scans,
+        c.daily_scan_limit,
+        c.daily_scans
+    FROM cards c
+    WHERE c.id = p_card_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get content items for card
+DROP FUNCTION IF EXISTS get_content_items_server CASCADE;
+CREATE OR REPLACE FUNCTION get_content_items_server(
+    p_card_id UUID
+)
+RETURNS TABLE (
+    id UUID,
+    parent_id UUID,
+    name TEXT,
+    content TEXT,
+    image_url TEXT,
+    ai_knowledge_base TEXT,
+    sort_order INTEGER,
+    crop_parameters JSONB,
+    translations JSONB
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        ci.id,
+        ci.parent_id,
+        ci.name,
+        ci.content,
+        ci.image_url,
+        ci.ai_knowledge_base,
+        ci.sort_order,
+        ci.crop_parameters,
+        ci.translations
+    FROM content_items ci
+    WHERE ci.card_id = p_card_id
+    ORDER BY ci.sort_order ASC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get issue card by ID (for physical card access)
+DROP FUNCTION IF EXISTS get_issue_card_server CASCADE;
+CREATE OR REPLACE FUNCTION get_issue_card_server(
+    p_issue_card_id UUID
+)
+RETURNS TABLE (
+    card_id UUID,
+    active BOOLEAN,
+    activated_at TIMESTAMPTZ
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT ic.card_id, ic.active, ic.activated_at
+    FROM issue_cards ic
+    WHERE ic.id = p_issue_card_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Activate issue card
+DROP FUNCTION IF EXISTS activate_issue_card_server CASCADE;
+CREATE OR REPLACE FUNCTION activate_issue_card_server(
+    p_issue_card_id UUID
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE issue_cards
+    SET active = TRUE, activated_at = NOW()
+    WHERE id = p_issue_card_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =================================================================
+-- GRANTS - Only service_role can execute these
+-- =================================================================
+REVOKE ALL ON FUNCTION get_card_by_access_token_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_card_by_access_token_server TO service_role;
+
+REVOKE ALL ON FUNCTION get_card_content_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_card_content_server TO service_role;
+
+REVOKE ALL ON FUNCTION get_content_items_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_content_items_server TO service_role;
+
+REVOKE ALL ON FUNCTION get_issue_card_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_issue_card_server TO service_role;
+
+REVOKE ALL ON FUNCTION activate_issue_card_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION activate_issue_card_server TO service_role;
+
+
+
+-- File: credit_operations.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_user_credit_balance_server CASCADE;
+DROP FUNCTION IF EXISTS deduct_overage_credits_server CASCADE;
+DROP FUNCTION IF EXISTS get_credit_purchase_by_intent_server CASCADE;
+
+-- =================================================================
+-- CREDIT OPERATIONS - SERVER-SIDE STORED PROCEDURES
+-- =================================================================
+-- All credit-related database operations from Express backend.
+-- Called by backend Express server with service_role permissions.
+-- These are atomic operations for credit balance management.
+-- =================================================================
+
+-- Get user credit balance
+DROP FUNCTION IF EXISTS get_user_credit_balance_server CASCADE;
+CREATE OR REPLACE FUNCTION get_user_credit_balance_server(
+    p_user_id UUID
+)
+RETURNS DECIMAL AS $$
+DECLARE
+    v_balance DECIMAL;
+BEGIN
+    SELECT balance INTO v_balance
+    FROM user_credits
+    WHERE user_id = p_user_id;
+    
+    RETURN COALESCE(v_balance, 0);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Deduct credits for overage (atomic operation)
+DROP FUNCTION IF EXISTS deduct_overage_credits_server CASCADE;
+CREATE OR REPLACE FUNCTION deduct_overage_credits_server(
+    p_user_id UUID,
+    p_card_id UUID,
+    p_credits_amount DECIMAL,
+    p_access_granted INTEGER
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_current_balance DECIMAL;
+    v_new_balance DECIMAL;
+BEGIN
+    -- Get current balance with lock
+    SELECT balance INTO v_current_balance
+    FROM user_credits
+    WHERE user_id = p_user_id
+    FOR UPDATE;
+    
+    IF v_current_balance IS NULL THEN
+        v_current_balance := 0;
+    END IF;
+    
+    -- Check if sufficient balance
+    IF v_current_balance < p_credits_amount THEN
+        RETURN jsonb_build_object(
+            'success', FALSE,
+            'error', 'Insufficient credits',
+            'current_balance', v_current_balance,
+            'required', p_credits_amount
+        );
+    END IF;
+    
+    -- Calculate new balance
+    v_new_balance := v_current_balance - p_credits_amount;
+    
+    -- Update balance
+    UPDATE user_credits
+    SET balance = v_new_balance, updated_at = NOW()
+    WHERE user_id = p_user_id;
+    
+    -- Record consumption
+    INSERT INTO credit_consumptions (
+        user_id, card_id, quantity, credits_per_unit, total_credits,
+        consumption_type, description
+    ) VALUES (
+        p_user_id, p_card_id, p_access_granted, 
+        p_credits_amount / p_access_granted, p_credits_amount,
+        'subscription_overage_batch',
+        format('Purchased %s overage access for %s credits', p_access_granted, p_credits_amount)
+    );
+    
+    -- Record transaction
+    INSERT INTO credit_transactions (
+        user_id, amount, balance_before, balance_after, type,
+        reference_type, description
+    ) VALUES (
+        p_user_id, -p_credits_amount, v_current_balance, v_new_balance,
+        'consumption', 'subscription_overage_batch',
+        format('Overage batch: %s access for %s credits', p_access_granted, p_credits_amount)
+    );
+    
+    RETURN jsonb_build_object(
+        'success', TRUE,
+        'balance_before', v_current_balance,
+        'balance_after', v_new_balance,
+        'credits_deducted', p_credits_amount,
+        'access_granted', p_access_granted
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get credit purchase by payment intent
+DROP FUNCTION IF EXISTS get_credit_purchase_by_intent_server CASCADE;
+CREATE OR REPLACE FUNCTION get_credit_purchase_by_intent_server(
+    p_payment_intent_id TEXT
+)
+RETURNS TABLE (
+    id UUID,
+    user_id UUID,
+    credits_amount DECIMAL
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT cp.id, cp.user_id, cp.credits_amount
+    FROM credit_purchases cp
+    WHERE cp.stripe_payment_intent_id = p_payment_intent_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =================================================================
+-- GRANTS - Only service_role can execute these
+-- =================================================================
+REVOKE ALL ON FUNCTION get_user_credit_balance_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_user_credit_balance_server TO service_role;
+
+REVOKE ALL ON FUNCTION deduct_overage_credits_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION deduct_overage_credits_server TO service_role;
+
+REVOKE ALL ON FUNCTION get_credit_purchase_by_intent_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_credit_purchase_by_intent_server TO service_role;
+
+
 
 -- File: credit_purchase_completion.sql
 -- -----------------------------------------------------------------
@@ -5347,6 +7825,373 @@ GRANT EXECUTE ON FUNCTION complete_credit_purchase(UUID, VARCHAR, VARCHAR, INTEG
 GRANT EXECUTE ON FUNCTION refund_credit_purchase(UUID, UUID, DECIMAL, TEXT) TO service_role;
 
 
+-- File: mobile_access.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS update_card_scan_counters_server CASCADE;
+DROP FUNCTION IF EXISTS reset_subscription_usage_server CASCADE;
+DROP FUNCTION IF EXISTS activate_premium_subscription_server CASCADE;
+DROP FUNCTION IF EXISTS cancel_subscription_server CASCADE;
+
+-- =================================================================
+-- SERVER-SIDE MOBILE ACCESS FUNCTIONS
+-- Called by Express backend with service role (not client-callable)
+-- =================================================================
+-- NOTE: Usage tracking is handled by Redis-first approach in usage-tracker.ts
+-- These functions handle card info retrieval and subscription management
+-- =================================================================
+-- NOTE: get_card_by_access_token_server is defined in card_content.sql
+-- to avoid duplication
+-- =================================================================
+
+
+-- =================================================================
+-- Update card scan counters (server-side)
+-- Still used for total scan tracking
+-- =================================================================
+CREATE OR REPLACE FUNCTION update_card_scan_counters_server(
+    p_card_id UUID,
+    p_increment_total BOOLEAN DEFAULT TRUE
+)
+RETURNS VOID AS $$
+BEGIN
+    IF p_increment_total THEN
+        UPDATE cards
+        SET current_scans = current_scans + 1
+        WHERE id = p_card_id;
+    END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE ALL ON FUNCTION update_card_scan_counters_server(UUID, BOOLEAN) FROM PUBLIC;
+REVOKE ALL ON FUNCTION update_card_scan_counters_server(UUID, BOOLEAN) FROM authenticated;
+REVOKE ALL ON FUNCTION update_card_scan_counters_server(UUID, BOOLEAN) FROM anon;
+
+
+-- =================================================================
+-- SUBSCRIPTION MANAGEMENT FUNCTIONS (Server-side)
+-- Usage is tracked in Redis - these just manage subscription metadata
+-- =================================================================
+
+-- Reset subscription period (called by Stripe webhook)
+-- Redis usage is reset separately by usage-tracker.ts
+CREATE OR REPLACE FUNCTION reset_subscription_usage_server(
+    p_stripe_subscription_id TEXT,
+    p_new_period_start TIMESTAMPTZ,
+    p_new_period_end TIMESTAMPTZ
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_subscription subscriptions%ROWTYPE;
+BEGIN
+    -- Get subscription
+    SELECT * INTO v_subscription 
+    FROM subscriptions 
+    WHERE stripe_subscription_id = p_stripe_subscription_id;
+    
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', FALSE, 'reason', 'Subscription not found');
+    END IF;
+    
+    -- Update period dates only (usage is tracked in Redis)
+    UPDATE subscriptions
+    SET current_period_start = p_new_period_start,
+        current_period_end = p_new_period_end,
+        updated_at = NOW()
+    WHERE id = v_subscription.id;
+    
+    RETURN jsonb_build_object(
+        'success', TRUE,
+        'user_id', v_subscription.user_id,
+        'new_period_start', p_new_period_start,
+        'new_period_end', p_new_period_end
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE ALL ON FUNCTION reset_subscription_usage_server(TEXT, TIMESTAMPTZ, TIMESTAMPTZ) FROM PUBLIC;
+REVOKE ALL ON FUNCTION reset_subscription_usage_server(TEXT, TIMESTAMPTZ, TIMESTAMPTZ) FROM authenticated;
+REVOKE ALL ON FUNCTION reset_subscription_usage_server(TEXT, TIMESTAMPTZ, TIMESTAMPTZ) FROM anon;
+
+
+-- Activate premium subscription (called by Stripe webhook)
+-- Modified to support cancel_at_period_end parameter
+DROP FUNCTION IF EXISTS activate_premium_subscription_server(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ) CASCADE;
+DROP FUNCTION IF EXISTS activate_premium_subscription_server(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, BOOLEAN) CASCADE;
+
+CREATE OR REPLACE FUNCTION activate_premium_subscription_server(
+    p_user_id UUID,
+    p_stripe_customer_id TEXT,
+    p_stripe_subscription_id TEXT,
+    p_stripe_price_id TEXT,
+    p_period_start TIMESTAMPTZ,
+    p_period_end TIMESTAMPTZ,
+    p_cancel_at_period_end BOOLEAN DEFAULT FALSE
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_subscription_id UUID;
+BEGIN
+    -- Upsert subscription
+    INSERT INTO subscriptions (
+        user_id, tier, status, stripe_customer_id, 
+        stripe_subscription_id, stripe_price_id,
+        current_period_start, current_period_end,
+        cancel_at_period_end
+    ) VALUES (
+        p_user_id, 'premium', 'active', p_stripe_customer_id,
+        p_stripe_subscription_id, p_stripe_price_id,
+        p_period_start, p_period_end,
+        p_cancel_at_period_end
+    )
+    ON CONFLICT (user_id) DO UPDATE SET
+        tier = 'premium',
+        status = 'active',
+        stripe_customer_id = p_stripe_customer_id,
+        stripe_subscription_id = p_stripe_subscription_id,
+        stripe_price_id = p_stripe_price_id,
+        current_period_start = p_period_start,
+        current_period_end = p_period_end,
+        cancel_at_period_end = p_cancel_at_period_end,
+        -- Don't clear canceled_at if we're cancelling
+        canceled_at = CASE WHEN p_cancel_at_period_end THEN COALESCE(subscriptions.canceled_at, NOW()) ELSE NULL END,
+        updated_at = NOW()
+    RETURNING id INTO v_subscription_id;
+    
+    RETURN jsonb_build_object(
+        'success', TRUE,
+        'subscription_id', v_subscription_id,
+        'tier', 'premium',
+        'cancel_at_period_end', p_cancel_at_period_end
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE ALL ON FUNCTION activate_premium_subscription_server(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, BOOLEAN) FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION activate_premium_subscription_server(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, BOOLEAN) TO service_role;
+
+
+-- Cancel/downgrade subscription (called by Stripe webhook or cancel endpoint)
+-- Supports lookup by stripe_subscription_id or user_id
+DROP FUNCTION IF EXISTS cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN) CASCADE;
+DROP FUNCTION IF EXISTS cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID) CASCADE;
+CREATE OR REPLACE FUNCTION cancel_subscription_server(
+    p_stripe_subscription_id TEXT DEFAULT NULL,
+    p_cancel_at_period_end BOOLEAN DEFAULT TRUE,
+    p_immediate BOOLEAN DEFAULT FALSE,
+    p_user_id UUID DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_subscription subscriptions%ROWTYPE;
+BEGIN
+    -- Try to find by stripe_subscription_id first, then by user_id
+    IF p_stripe_subscription_id IS NOT NULL THEN
+        SELECT * INTO v_subscription 
+        FROM subscriptions 
+        WHERE stripe_subscription_id = p_stripe_subscription_id;
+    END IF;
+    
+    -- Fallback to user_id if not found by stripe_subscription_id
+    IF NOT FOUND AND p_user_id IS NOT NULL THEN
+        SELECT * INTO v_subscription 
+        FROM subscriptions 
+        WHERE user_id = p_user_id;
+    END IF;
+    
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', FALSE, 'reason', 'Subscription not found');
+    END IF;
+    
+    IF p_immediate THEN
+        -- Immediate cancellation - downgrade to free
+        UPDATE subscriptions
+        SET tier = 'free',
+            status = 'canceled',
+            cancel_at_period_end = FALSE,
+            canceled_at = NOW(),
+            updated_at = NOW()
+        WHERE id = v_subscription.id;
+    ELSE
+        -- Cancel at period end
+        UPDATE subscriptions
+        SET cancel_at_period_end = TRUE,
+            canceled_at = NOW(),
+            updated_at = NOW()
+        WHERE id = v_subscription.id;
+    END IF;
+    
+    RETURN jsonb_build_object(
+        'success', TRUE,
+        'user_id', v_subscription.user_id,
+        'cancel_at_period_end', p_cancel_at_period_end,
+        'immediate', p_immediate
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE ALL ON FUNCTION cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID) FROM authenticated;
+REVOKE ALL ON FUNCTION cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID) FROM anon;
+GRANT EXECUTE ON FUNCTION cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID) TO service_role;
+
+
+-- File: subscription_management.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_subscription_by_user_server CASCADE;
+DROP FUNCTION IF EXISTS get_subscription_stripe_customer_server CASCADE;
+DROP FUNCTION IF EXISTS update_subscription_cancel_status_server CASCADE;
+DROP FUNCTION IF EXISTS update_subscription_status_server CASCADE;
+DROP FUNCTION IF EXISTS count_user_experiences_server CASCADE;
+DROP FUNCTION IF EXISTS check_premium_subscription_server CASCADE;
+
+-- =================================================================
+-- SUBSCRIPTION MANAGEMENT - SERVER-SIDE STORED PROCEDURES
+-- =================================================================
+-- All subscription-related database operations from Express backend.
+-- Called by backend Express server with service_role permissions.
+-- =================================================================
+
+-- Get subscription by user ID
+DROP FUNCTION IF EXISTS get_subscription_by_user_server CASCADE;
+CREATE OR REPLACE FUNCTION get_subscription_by_user_server(
+    p_user_id UUID
+)
+RETURNS TABLE (
+    id UUID,
+    user_id UUID,
+    tier TEXT,
+    status TEXT,
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
+    current_period_start TIMESTAMPTZ,
+    current_period_end TIMESTAMPTZ,
+    cancel_at_period_end BOOLEAN
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        s.id,
+        s.user_id,
+        s.tier::TEXT,
+        s.status::TEXT,
+        s.stripe_customer_id,
+        s.stripe_subscription_id,
+        s.current_period_start,
+        s.current_period_end,
+        s.cancel_at_period_end
+    FROM subscriptions s
+    WHERE s.user_id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get subscription Stripe customer ID
+DROP FUNCTION IF EXISTS get_subscription_stripe_customer_server CASCADE;
+CREATE OR REPLACE FUNCTION get_subscription_stripe_customer_server(
+    p_user_id UUID
+)
+RETURNS TEXT AS $$
+DECLARE
+    v_customer_id TEXT;
+BEGIN
+    SELECT stripe_customer_id INTO v_customer_id
+    FROM subscriptions
+    WHERE user_id = p_user_id;
+    
+    RETURN v_customer_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Update subscription cancel_at_period_end
+DROP FUNCTION IF EXISTS update_subscription_cancel_status_server CASCADE;
+CREATE OR REPLACE FUNCTION update_subscription_cancel_status_server(
+    p_user_id UUID,
+    p_cancel_at_period_end BOOLEAN,
+    p_canceled_at TIMESTAMPTZ DEFAULT NULL
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE subscriptions
+    SET 
+        cancel_at_period_end = p_cancel_at_period_end,
+        canceled_at = p_canceled_at,
+        updated_at = NOW()
+    WHERE user_id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Update subscription status (for payment failures)
+DROP FUNCTION IF EXISTS update_subscription_status_server CASCADE;
+CREATE OR REPLACE FUNCTION update_subscription_status_server(
+    p_stripe_subscription_id TEXT,
+    p_status TEXT
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE subscriptions
+    SET 
+        status = p_status::subscription_status,
+        updated_at = NOW()
+    WHERE stripe_subscription_id = p_stripe_subscription_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Count user experiences
+DROP FUNCTION IF EXISTS count_user_experiences_server CASCADE;
+CREATE OR REPLACE FUNCTION count_user_experiences_server(
+    p_user_id UUID
+)
+RETURNS INTEGER AS $$
+DECLARE
+    v_count INTEGER;
+BEGIN
+    SELECT COUNT(*) INTO v_count
+    FROM cards
+    WHERE user_id = p_user_id;
+    
+    RETURN v_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Check if user has premium subscription
+DROP FUNCTION IF EXISTS check_premium_subscription_server CASCADE;
+CREATE OR REPLACE FUNCTION check_premium_subscription_server(
+    p_user_id UUID
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_tier TEXT;
+BEGIN
+    SELECT tier::TEXT INTO v_tier
+    FROM subscriptions
+    WHERE user_id = p_user_id;
+    
+    RETURN v_tier = 'premium';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =================================================================
+-- GRANTS - Only service_role can execute these
+-- =================================================================
+REVOKE ALL ON FUNCTION get_subscription_by_user_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_subscription_by_user_server TO service_role;
+
+REVOKE ALL ON FUNCTION get_subscription_stripe_customer_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_subscription_stripe_customer_server TO service_role;
+
+REVOKE ALL ON FUNCTION update_subscription_cancel_status_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION update_subscription_cancel_status_server TO service_role;
+
+REVOKE ALL ON FUNCTION update_subscription_status_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION update_subscription_status_server TO service_role;
+
+REVOKE ALL ON FUNCTION count_user_experiences_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION count_user_experiences_server TO service_role;
+
+REVOKE ALL ON FUNCTION check_premium_subscription_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION check_premium_subscription_server TO service_role;
+
+
+
 -- File: translation_credit_consumption.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS consume_translation_credits CASCADE;
@@ -5516,6 +8361,185 @@ $$ LANGUAGE plpgsql;
 
 GRANT EXECUTE ON FUNCTION consume_translation_credits(UUID, UUID, VARCHAR, DECIMAL) TO service_role;
 GRANT EXECUTE ON FUNCTION record_translation_completion(UUID, UUID, TEXT[], DECIMAL, VARCHAR, TEXT, JSONB) TO service_role;
+
+
+
+-- File: translation_operations.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_card_for_translation_server CASCADE;
+DROP FUNCTION IF EXISTS get_content_items_for_translation_server CASCADE;
+DROP FUNCTION IF EXISTS get_card_content_hash_server CASCADE;
+DROP FUNCTION IF EXISTS update_card_translations_server CASCADE;
+DROP FUNCTION IF EXISTS get_content_item_for_update_server CASCADE;
+DROP FUNCTION IF EXISTS update_content_item_translations_server CASCADE;
+DROP FUNCTION IF EXISTS insert_translation_history_server CASCADE;
+
+-- =================================================================
+-- TRANSLATION OPERATIONS - SERVER-SIDE STORED PROCEDURES
+-- =================================================================
+-- All translation-related database operations from Express backend.
+-- Called by backend Express server with service_role permissions.
+-- Used for fetching content for translation and saving results.
+-- =================================================================
+
+-- Get card for translation
+DROP FUNCTION IF EXISTS get_card_for_translation_server CASCADE;
+CREATE OR REPLACE FUNCTION get_card_for_translation_server(
+    p_card_id UUID
+)
+RETURNS TABLE (
+    id UUID,
+    name TEXT,
+    description TEXT,
+    content_hash TEXT,
+    translations JSONB,
+    user_id UUID,
+    original_language TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.id, c.name, c.description, c.content_hash,
+        c.translations, c.user_id, c.original_language
+    FROM cards c
+    WHERE c.id = p_card_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get content items for translation
+DROP FUNCTION IF EXISTS get_content_items_for_translation_server CASCADE;
+CREATE OR REPLACE FUNCTION get_content_items_for_translation_server(
+    p_card_id UUID
+)
+RETURNS TABLE (
+    id UUID,
+    name TEXT,
+    content TEXT,
+    content_hash TEXT,
+    translations JSONB
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT ci.id, ci.name, ci.content, ci.content_hash, ci.translations
+    FROM content_items ci
+    WHERE ci.card_id = p_card_id
+    ORDER BY ci.sort_order;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get fresh card content hash
+DROP FUNCTION IF EXISTS get_card_content_hash_server CASCADE;
+CREATE OR REPLACE FUNCTION get_card_content_hash_server(
+    p_card_id UUID
+)
+RETURNS TEXT AS $$
+DECLARE
+    v_hash TEXT;
+BEGIN
+    SELECT content_hash INTO v_hash
+    FROM cards
+    WHERE id = p_card_id;
+    
+    RETURN v_hash;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Update card translations
+DROP FUNCTION IF EXISTS update_card_translations_server CASCADE;
+CREATE OR REPLACE FUNCTION update_card_translations_server(
+    p_card_id UUID,
+    p_translations JSONB
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE cards
+    SET translations = p_translations
+    WHERE id = p_card_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get content item for translation update
+DROP FUNCTION IF EXISTS get_content_item_for_update_server CASCADE;
+CREATE OR REPLACE FUNCTION get_content_item_for_update_server(
+    p_item_id UUID
+)
+RETURNS TABLE (
+    translations JSONB,
+    content_hash TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT ci.translations, ci.content_hash
+    FROM content_items ci
+    WHERE ci.id = p_item_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Update content item translations
+DROP FUNCTION IF EXISTS update_content_item_translations_server CASCADE;
+CREATE OR REPLACE FUNCTION update_content_item_translations_server(
+    p_item_id UUID,
+    p_translations JSONB
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE content_items
+    SET translations = p_translations
+    WHERE id = p_item_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Insert translation history
+DROP FUNCTION IF EXISTS insert_translation_history_server CASCADE;
+CREATE OR REPLACE FUNCTION insert_translation_history_server(
+    p_card_id UUID,
+    p_user_id UUID,
+    p_target_languages TEXT[],
+    p_credit_cost DECIMAL,
+    p_status TEXT,
+    p_error_message TEXT,
+    p_metadata JSONB
+)
+RETURNS UUID AS $$
+DECLARE
+    v_id UUID;
+BEGIN
+    INSERT INTO translation_history (
+        card_id, translated_by, target_languages, credit_cost,
+        translated_at, status, error_message, metadata
+    ) VALUES (
+        p_card_id, p_user_id, p_target_languages, p_credit_cost,
+        NOW(), p_status, p_error_message, p_metadata
+    )
+    RETURNING id INTO v_id;
+    
+    RETURN v_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =================================================================
+-- GRANTS - Only service_role can execute these
+-- =================================================================
+REVOKE ALL ON FUNCTION get_card_for_translation_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_card_for_translation_server TO service_role;
+
+REVOKE ALL ON FUNCTION get_content_items_for_translation_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_content_items_for_translation_server TO service_role;
+
+REVOKE ALL ON FUNCTION get_card_content_hash_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_card_content_hash_server TO service_role;
+
+REVOKE ALL ON FUNCTION update_card_translations_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION update_card_translations_server TO service_role;
+
+REVOKE ALL ON FUNCTION get_content_item_for_update_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_content_item_for_update_server TO service_role;
+
+REVOKE ALL ON FUNCTION update_content_item_translations_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION update_content_item_translations_server TO service_role;
+
+REVOKE ALL ON FUNCTION insert_translation_history_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION insert_translation_history_server TO service_role;
 
 
 

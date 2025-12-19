@@ -65,10 +65,18 @@
                 />
               </div>
               
-              <!-- QR & Access Tab -->
-              <div v-if="getTabComponent(index) === 'qr'">
+              <!-- QR & Access Tab (Physical Cards - batch-based) -->
+              <div v-if="getTabComponent(index) === 'qr' && selectedCard.billing_type !== 'digital'">
                 <CardAccessQR
                   :cardId="selectedCard.id"
+                  :cardName="selectedCard.name"
+                />
+              </div>
+              
+              <!-- QR & Access Tab (Digital Cards - single QR) -->
+              <div v-if="getTabComponent(index) === 'qr' && selectedCard.billing_type === 'digital'">
+                <DigitalAccessQR
+                  :card="selectedCard"
                   :cardName="selectedCard.name"
                 />
               </div>
@@ -99,25 +107,37 @@ import AdminCardGeneral from './AdminCardGeneral.vue'
 import AdminCardContent from './AdminCardContent.vue'
 import AdminCardIssuance from './AdminCardIssuance.vue'
 import CardAccessQR from '@/components/CardComponents/CardAccessQR.vue'
+import DigitalAccessQR from '@/components/DigitalAccess/DigitalAccessQR.vue'
+import MobilePreview from '@/components/CardComponents/MobilePreview.vue'
 
 const { t } = useI18n()
-import MobilePreview from '@/components/CardComponents/MobilePreview.vue'
 
 interface Card {
   id: string
+  user_id: string
   name: string
-  description: string | null
+  description: string
   image_url: string | null
   original_image_url: string | null
   crop_parameters: any
   conversation_ai_enabled: boolean
-  ai_instruction: string | null
-  ai_knowledge_base: string | null
+  ai_instruction: string
+  ai_knowledge_base: string
   qr_code_position: string
-  content_mode?: 'solo' | 'stack' | 'catalog' | 'guide'
-  billing_type?: 'physical' | 'digital'
-  max_scans?: number | null
-  current_scans?: number
+  translations?: Record<string, any>
+  original_language?: string
+  content_hash?: string
+  last_content_update?: string
+  content_mode: 'single' | 'grid' | 'list' | 'cards'
+  is_grouped: boolean
+  group_display: 'expanded' | 'collapsed'
+  billing_type: 'physical' | 'digital'
+  max_scans: number | null
+  current_scans: number
+  daily_scan_limit: number | null
+  daily_scans: number
+  is_access_enabled: boolean
+  access_token: string
   created_at: string
   updated_at: string
 }

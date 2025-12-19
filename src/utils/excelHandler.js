@@ -37,20 +37,158 @@ export async function exportCardToExcel(cardData, contentItems = [], options = {
 }
 
 /**
- * Import Excel file and extract card data with images
- * @param {File} file - Excel file
+ * Export multiple cards to Excel
+ * @param {Array} cardsData - Array of { card, contentItems }
+ * @param {Object} options - Export options
+ * @param {boolean} options.singleFile - If true, export all cards to one file; if false, separate files
+ * @param {string} options.filename - Base filename
+ */
+export async function exportCardsToExcel(cardsData, options = {}) {
+  const { singleFile = true, filename = 'cards_export.xlsx' } = options;
+  
+  if (singleFile) {
+    // Export all cards to a single file
+    await exportMultipleCardsToSingleFile(cardsData, filename);
+  } else {
+    // Export each card as a separate file
+    await exportCardsToSeparateFiles(cardsData);
+  }
+}
+
+/**
+ * Export multiple cards to a single Excel file
+ * Uses indexed sheets: "Card 1", "Content 1", "Card 2", "Content 2", etc.
+ */
+async function exportMultipleCardsToSingleFile(cardsData, filename) {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'CardStudio';
+  workbook.created = new Date();
+  
+  // Create index/summary sheet
+  const indexSheet = workbook.addWorksheet('Index');
+  indexSheet.columns = [
+    { header: '#', key: 'index', width: 5 },
+    { header: 'Card Name', key: 'name', width: 30 },
+    { header: 'Description', key: 'description', width: 40 },
+    { header: 'Content Mode', key: 'content_mode', width: 15 },
+    { header: 'Billing Type', key: 'billing_type', width: 15 },
+    { header: 'Content Items', key: 'item_count', width: 15 },
+    { header: 'Card Sheet', key: 'card_sheet', width: 15 },
+    { header: 'Content Sheet', key: 'content_sheet', width: 15 }
+  ];
+  
+  // Style header row
+  indexSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+  indexSheet.getRow(1).fill = {
+    type: 'pattern',
+    pattern: 'solid',
+    fgColor: { argb: 'FF4472C4' }
+  };
+  
+  // Add each card
+  for (let i = 0; i < cardsData.length; i++) {
+    const { card, contentItems } = cardsData[i];
+    const cardIndex = i + 1;
+    const cardSheetName = `Card ${cardIndex}`;
+    const contentSheetName = `Content ${cardIndex}`;
+    
+    // Add to index
+    indexSheet.addRow({
+      index: cardIndex,
+      name: card.name || '',
+      description: (card.description || '').substring(0, 50),
+      content_mode: card.content_mode || 'list',
+      billing_type: card.billing_type || 'physical',
+      item_count: contentItems?.length || 0,
+      card_sheet: cardSheetName,
+      content_sheet: contentItems?.length > 0 ? contentSheetName : 'N/A'
+    });
+    
+    // Create card sheet
+    await createCardSheet(workbook, card, { sheetName: cardSheetName });
+    
+    // Create content sheet if has content
+    if (contentItems && contentItems.length > 0) {
+      await createContentSheet(workbook, contentItems, { sheetName: contentSheetName });
+    }
+  }
+  
+  // Download the file
+  const buffer = await workbook.xlsx.writeBuffer();
+  downloadExcelFile(buffer, filename);
+}
+
+/**
+ * Export each card as a separate file
+ */
+async function exportCardsToSeparateFiles(cardsData) {
+  for (let i = 0; i < cardsData.length; i++) {
+    const { card, contentItems } = cardsData[i];
+    
+    // Generate filename based on card name
+    const safeName = (card.name || 'card').replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30);
+    const filename = `${safeName}_${new Date().toISOString().split('T')[0]}.xlsx`;
+    
+    // Use the standard single-card export (with proper sheet names for re-import)
+    const buffer = await exportCardToExcel(card, contentItems || []);
+    downloadExcelFile(buffer, filename);
+    
+    // Small delay between downloads to prevent browser blocking
+    if (i < cardsData.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+  }
+}
+
+/**
+ * Helper to download Excel buffer as file
+ */
+function downloadExcelFile(buffer, filename) {
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * Import Excel file(s) and extract card data with images
+ * Supports: single card file, multi-card file, or array of files
+ * @param {File|File[]} files - Excel file(s)
  * @returns {Object} Parsed data with validation
  */
-export async function importExcelToCardData(file) {
+export async function importExcelToCardData(files) {
+  // Handle array of files
+  const fileArray = Array.isArray(files) ? files : [files];
+  
+  // If multiple files, process each and combine results
+  if (fileArray.length > 1) {
+    return await importMultipleFiles(fileArray);
+  }
+  
+  // Single file - check if it contains multiple cards
+  const file = fileArray[0];
   const workbook = new ExcelJS.Workbook();
   const buffer = await file.arrayBuffer();
   await workbook.xlsx.load(buffer);
   
+  // Check for multi-card format (has "Index" sheet or "Card 1" sheet)
+  const indexSheet = workbook.getWorksheet('Index');
+  const card1Sheet = workbook.getWorksheet('Card 1');
+  
+  if (indexSheet || card1Sheet) {
+    return await parseMultiCardWorkbook(workbook);
+  }
+  
+  // Standard single-card format
   const result = {
     isValid: true,
     errors: [],
     warnings: [],
-    cardData: null,
+    cards: [], // Array of { cardData, contentItems, images }
+    cardData: null, // Backward compatibility
     contentItems: [],
     images: new Map()
   };
@@ -77,6 +215,144 @@ export async function importExcelToCardData(file) {
     }
   } else {
     result.errors.push('Missing "Content Items" sheet');
+  }
+  
+  result.isValid = result.errors.length === 0;
+  
+  // Add to cards array for consistency with multi-card format
+  if (result.cardData) {
+    result.cards.push({
+      cardData: result.cardData,
+      contentItems: result.contentItems,
+      images: result.images
+    });
+  }
+  
+  return result;
+}
+
+/**
+ * Import multiple Excel files
+ * @param {File[]} files - Array of Excel files
+ * @returns {Object} Combined parsed data
+ */
+async function importMultipleFiles(files) {
+  const combinedResult = {
+    isValid: true,
+    errors: [],
+    warnings: [],
+    cards: [],
+    cardData: null,
+    contentItems: [],
+    images: new Map()
+  };
+  
+  for (let i = 0; i < files.length; i++) {
+    const file = files[i];
+    try {
+      const fileResult = await importExcelToCardData(file);
+      
+      // Add all cards from this file
+      if (fileResult.cards && fileResult.cards.length > 0) {
+        combinedResult.cards.push(...fileResult.cards);
+      }
+      
+      // Collect errors/warnings with file context
+      fileResult.errors.forEach(err => {
+        combinedResult.errors.push(`[${file.name}] ${err}`);
+      });
+      fileResult.warnings.forEach(warn => {
+        combinedResult.warnings.push(`[${file.name}] ${warn}`);
+      });
+    } catch (error) {
+      combinedResult.errors.push(`[${file.name}] Failed to parse: ${error.message}`);
+    }
+  }
+  
+  // Set backward compatibility fields from first card
+  if (combinedResult.cards.length > 0) {
+    combinedResult.cardData = combinedResult.cards[0].cardData;
+    combinedResult.contentItems = combinedResult.cards[0].contentItems;
+    combinedResult.images = combinedResult.cards[0].images;
+  }
+  
+  combinedResult.isValid = combinedResult.errors.length === 0;
+  return combinedResult;
+}
+
+/**
+ * Parse a workbook with multiple cards (Card 1, Card 2, etc.)
+ * @param {ExcelJS.Workbook} workbook
+ * @returns {Object} Parsed data with multiple cards
+ */
+async function parseMultiCardWorkbook(workbook) {
+  const result = {
+    isValid: true,
+    errors: [],
+    warnings: [],
+    cards: [],
+    cardData: null,
+    contentItems: [],
+    images: new Map()
+  };
+  
+  // Find all card sheets (Card 1, Card 2, etc.)
+  let cardIndex = 1;
+  while (true) {
+    const cardSheet = workbook.getWorksheet(`Card ${cardIndex}`);
+    if (!cardSheet) break;
+    
+    const cardResult = {
+      errors: [],
+      warnings: [],
+      images: new Map()
+    };
+    
+    // Parse card sheet
+    const cardData = await parseCardSheet(cardSheet, cardResult);
+    
+    // Parse corresponding content sheet
+    let contentItems = [];
+    const contentSheet = workbook.getWorksheet(`Content ${cardIndex}`);
+    if (contentSheet) {
+      const contentResult = await parseContentSheet(contentSheet, cardResult);
+      contentItems = contentResult.contentItems || [];
+      
+      // Merge images
+      if (contentResult.images) {
+        contentResult.images.forEach((value, key) => {
+          cardResult.images.set(key, value);
+        });
+      }
+    }
+    
+    // Add to cards array
+    result.cards.push({
+      cardData,
+      contentItems,
+      images: cardResult.images
+    });
+    
+    // Collect errors/warnings with card context
+    cardResult.errors.forEach(err => {
+      result.errors.push(`[Card ${cardIndex}] ${err}`);
+    });
+    cardResult.warnings.forEach(warn => {
+      result.warnings.push(`[Card ${cardIndex}] ${warn}`);
+    });
+    
+    cardIndex++;
+  }
+  
+  if (result.cards.length === 0) {
+    result.errors.push('No valid cards found in workbook');
+  }
+  
+  // Set backward compatibility fields from first card
+  if (result.cards.length > 0) {
+    result.cardData = result.cards[0].cardData;
+    result.contentItems = result.cards[0].contentItems;
+    result.images = result.cards[0].images;
   }
   
   result.isValid = result.errors.length === 0;
@@ -108,8 +384,9 @@ export async function generateImportTemplate() {
 /**
  * Create Card Information sheet
  */
-async function createCardSheet(workbook, cardData, options) {
-  const worksheet = workbook.addWorksheet(EXCEL_CONFIG.CARD_SHEET.NAME);
+async function createCardSheet(workbook, cardData, options = {}) {
+  const sheetName = options.sheetName || EXCEL_CONFIG.CARD_SHEET.NAME;
+  const worksheet = workbook.addWorksheet(sheetName);
   
   // Row 1: Branded title with icons
   const titleCell = worksheet.getCell('A1');
@@ -120,7 +397,7 @@ async function createCardSheet(workbook, cardData, options) {
   
   // Row 2: Clear user instructions
   const instructionCell = worksheet.getCell('A2');
-  instructionCell.value = `${EXCEL_CONFIG.ICONS.INSTRUCTIONS} Fill in your card details below. Required fields marked with *. Use dropdowns for validation.`;
+  instructionCell.value = `${EXCEL_CONFIG.ICONS.INSTRUCTIONS} Fill in your experience details below. Required fields marked with *. Use dropdowns for validation.`;
   styleInstructions(instructionCell);
   worksheet.mergeCells('A2:F2');
   worksheet.getRow(2).height = 25;
@@ -147,6 +424,10 @@ async function createCardSheet(workbook, cardData, options) {
     'Original content language (en, zh-Hant, etc.)',
     'Select true/false from dropdown',
     'Select QR position: TL/TR/BL/BR',
+    'Content mode: single/grouped/list/grid/inline',
+    'Access mode: physical/digital',
+    'Total scan limit (null = unlimited)',
+    'Daily scan limit (null = unlimited)',
     'Paste image or leave blank',
     'Auto-generated crop data (do not edit)',
     'Translation data in JSON format (auto-managed)',
@@ -167,6 +448,10 @@ async function createCardSheet(workbook, cardData, options) {
     cardData.original_language || 'en',
     cardData.conversation_ai_enabled,
     cardData.qr_code_position || 'BR',
+    cardData.content_mode || 'list', // Content rendering mode
+    cardData.billing_type || 'physical', // Access mode
+    cardData.max_scans !== null && cardData.max_scans !== undefined ? cardData.max_scans : '', // Total scan limit
+    cardData.daily_scan_limit !== null && cardData.daily_scan_limit !== undefined ? cardData.daily_scan_limit : '', // Daily scan limit
     '', // Placeholder for image
     cardData.crop_parameters ? JSON.stringify(cardData.crop_parameters) : '', // Hidden crop parameters
     cardData.translations ? JSON.stringify(cardData.translations) : '{}', // Hidden translations data
@@ -194,7 +479,7 @@ async function createCardSheet(workbook, cardData, options) {
   // Embed card image with proper sizing (use original image if available, otherwise use cropped)
   const imageToEmbed = cardData.original_image_url || cardData.image_url;
   if (imageToEmbed) {
-    await embedImages(workbook, worksheet, [imageToEmbed], EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW, 8);
+    await embedImages(workbook, worksheet, [imageToEmbed], EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW, 12); // Column L (Card Image)
   }
   
   // Professional column widths (same as template)
@@ -206,6 +491,10 @@ async function createCardSheet(workbook, cardData, options) {
     { width: 15 }, // Original Language
     { width: 15 }, // AI Enabled
     { width: 15 }, // QR Position
+    { width: 15 }, // Content Mode
+    { width: 15 }, // Access Mode
+    { width: 12 }, // Max Scans
+    { width: 15 }, // Daily Scan Limit
     { width: 25 }, // Card Image
     { width: 0 },  // Crop Data (hidden)
     { width: 0 },  // Translations (hidden)
@@ -213,13 +502,17 @@ async function createCardSheet(workbook, cardData, options) {
   ];
   
   // Add helpful cell comments (same as template)
-  dataRow.getCell(1).note = 'This will be the main title displayed on your card';
+  dataRow.getCell(1).note = 'This will be the main title displayed on your experience';
   dataRow.getCell(3).note = 'Define the AI\'s role, personality, and restrictions (max 100 words)';
   dataRow.getCell(4).note = 'Provide detailed background knowledge for the AI (max 2000 words)';
   dataRow.getCell(5).note = 'ISO 639-1 language code (en, zh-Hant, zh-Hans, ja, ko, etc.)';
   dataRow.getCell(6).note = 'Enable voice conversations with visitors';
   dataRow.getCell(7).note = 'Where QR code appears on physical card';
-  dataRow.getCell(8).note = 'Right-click and paste image, or drag and drop';
+  dataRow.getCell(8).note = 'Content mode: single, grouped, list, grid, or inline';
+  dataRow.getCell(9).note = 'Access mode: physical (printed card) or digital (QR only)';
+  dataRow.getCell(10).note = 'Total scan limit for digital access (leave empty for unlimited)';
+  dataRow.getCell(11).note = 'Daily scan limit for digital access (leave empty for unlimited)';
+  dataRow.getCell(12).note = 'Right-click and paste image, or drag and drop';
   
   // Freeze headers
   worksheet.views = [{ state: 'frozen', ySplit: EXCEL_CONFIG.CARD_SHEET.DESCRIPTIONS_ROW }];
@@ -230,8 +523,9 @@ async function createCardSheet(workbook, cardData, options) {
 /**
  * Create Content Items sheet with embedded images
  */
-async function createContentSheet(workbook, contentItems) {
-  const worksheet = workbook.addWorksheet(EXCEL_CONFIG.CONTENT_SHEET.NAME);
+async function createContentSheet(workbook, contentItems, options = {}) {
+  const sheetName = options.sheetName || EXCEL_CONFIG.CONTENT_SHEET.NAME;
+  const worksheet = workbook.addWorksheet(sheetName);
   const layer1Items = contentItems.filter(item => !item.parent_id);
   const layer1ItemNames = layer1Items.map(item => item.name || 'Unnamed Item');
   
@@ -384,7 +678,7 @@ async function createTemplateCardSheet(workbook) {
   
   // Row 2: Clear user instructions
   const instructionCell = worksheet.getCell('A2');
-  instructionCell.value = `${EXCEL_CONFIG.ICONS.INSTRUCTIONS} Fill in your card details below. Required fields marked with *. Use dropdowns for validation.`;
+  instructionCell.value = `${EXCEL_CONFIG.ICONS.INSTRUCTIONS} Fill in your experience details below. Required fields marked with *. Use dropdowns for validation.`;
   styleInstructions(instructionCell);
   worksheet.mergeCells('A2:F2');
   worksheet.getRow(2).height = 25;
@@ -411,6 +705,10 @@ async function createTemplateCardSheet(workbook) {
     'Original content language (en, zh-Hant, etc.)',
     'Select true/false from dropdown',
     'Select QR position: TL/TR/BL/BR',
+    'Content mode: single/grouped/list/grid/inline',
+    'Access mode: physical/digital',
+    'Total scan limit (null = unlimited)',
+    'Daily scan limit (null = unlimited)',
     'Paste image or leave blank',
     'Auto-generated crop data (do not edit)',
     'Translation data in JSON format (auto-managed)',
@@ -430,6 +728,10 @@ async function createTemplateCardSheet(workbook) {
     '', // Original Language
     '', // AI Enabled
     '', // QR Position
+    '', // Content Mode
+    '', // Access Mode
+    '', // Max Scans
+    '', // Daily Scan Limit
     '', // Card Image
     '', // Crop Data (hidden)
     '', // Translations (hidden)
@@ -453,13 +755,17 @@ async function createTemplateCardSheet(workbook) {
   // No data validation for simplicity
   
   // Add helpful cell comments
-  dataRow.getCell(1).note = 'This will be the main title displayed on your card';
+  dataRow.getCell(1).note = 'This will be the main title displayed on your experience';
   dataRow.getCell(3).note = 'Define the AI\'s role, personality, and restrictions (max 100 words)';
   dataRow.getCell(4).note = 'Provide detailed background knowledge for the AI (max 2000 words)';
   dataRow.getCell(5).note = 'ISO 639-1 language code (en, zh-Hant, zh-Hans, ja, ko, etc.)';
   dataRow.getCell(6).note = 'Enable voice conversations with visitors';
   dataRow.getCell(7).note = 'Where QR code appears on physical card';
-  dataRow.getCell(8).note = 'Right-click and paste image, or drag and drop';
+  dataRow.getCell(8).note = 'Content mode: single, grouped, list, grid, or inline';
+  dataRow.getCell(9).note = 'Access mode: physical (printed card) or digital (QR only)';
+  dataRow.getCell(10).note = 'Total scan limit for digital access (leave empty for unlimited)';
+  dataRow.getCell(11).note = 'Daily scan limit for digital access (leave empty for unlimited)';
+  dataRow.getCell(12).note = 'Right-click and paste image, or drag and drop';
   
   dataRow.height = 35; // Larger row for better readability
   
@@ -472,6 +778,10 @@ async function createTemplateCardSheet(workbook) {
     { width: 15 }, // Original Language
     { width: 15 }, // AI Enabled
     { width: 15 }, // QR Position
+    { width: 15 }, // Content Mode
+    { width: 15 }, // Access Mode
+    { width: 12 }, // Max Scans
+    { width: 15 }, // Daily Scan Limit
     { width: 25 }, // Card Image
     { width: 0 },  // Crop Data (hidden)
     { width: 0 },  // Translations (hidden)
@@ -621,6 +931,10 @@ async function parseCardSheet(worksheet, result) {
         'Original Language': 'original_language',
         'AI Enabled': 'conversation_ai_enabled',
         'QR Position': 'qr_code_position',
+        'Content Mode': 'content_mode',
+        'Access Mode': 'billing_type',
+        'Max Scans': 'max_scans',
+        'Daily Scan Limit': 'daily_scan_limit',
         'Crop Data': 'crop_parameters_json',
         'Translations': 'translations_json',
         'Content Hash': 'content_hash'
@@ -651,6 +965,42 @@ async function parseCardSheet(worksheet, result) {
             cardData[dbField] = 'BR';
             result.warnings.push(`Invalid QR Position '${processedValue}' - using default 'BR' (Bottom Right). Valid options: TL, TR, BL, BR`);
           }
+        } else if (dbField === 'content_mode') {
+          // Validate content mode
+          const validModes = ['single', 'grouped', 'list', 'grid', 'inline'];
+          const lowerValue = processedValue.toString().toLowerCase();
+          if (validModes.includes(lowerValue)) {
+            cardData[dbField] = lowerValue;
+          } else {
+            console.warn(`Invalid content mode '${processedValue}', defaulting to 'list'`);
+            cardData[dbField] = 'list';
+            result.warnings.push(`Invalid Content Mode '${processedValue}' - using default 'list'. Valid options: single, grouped, list, grid, inline`);
+          }
+        } else if (dbField === 'billing_type') {
+          // Validate access mode (billing_type)
+          const validTypes = ['physical', 'digital'];
+          const lowerValue = processedValue.toString().toLowerCase();
+          if (validTypes.includes(lowerValue)) {
+            cardData[dbField] = lowerValue;
+          } else {
+            console.warn(`Invalid access mode '${processedValue}', defaulting to 'physical'`);
+            cardData[dbField] = 'physical';
+            result.warnings.push(`Invalid Access Mode '${processedValue}' - using default 'physical'. Valid options: physical, digital`);
+          }
+        } else if (dbField === 'max_scans' || dbField === 'daily_scan_limit') {
+          // Handle scan limits - can be null/empty or a number
+          if (processedValue === '' || processedValue === null || processedValue === undefined) {
+            cardData[dbField] = null;
+          } else {
+            const numValue = parseInt(processedValue, 10);
+            if (!isNaN(numValue) && numValue >= 0) {
+              cardData[dbField] = numValue;
+            } else {
+              console.warn(`Invalid ${dbField} '${processedValue}', setting to null (unlimited)`);
+              cardData[dbField] = null;
+              result.warnings.push(`Invalid ${dbField} '${processedValue}' - setting to null (unlimited). Expected a positive number.`);
+            }
+          }
         } else {
           cardData[dbField] = processedValue;
         }
@@ -659,7 +1009,7 @@ async function parseCardSheet(worksheet, result) {
     
     // Extract card image if embedded
     const cardImageRow = EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW;
-    const cardImageCol = 8; // Column H (Card Image)
+    const cardImageCol = 12; // Column L (Card Image) - updated after adding Content Mode, Access Mode, Max Scans, Daily Scan Limit
     const extractedImages = await extractImagesFromRow(worksheet, cardImageRow, cardImageCol);
     if (extractedImages.length > 0) {
       result.images = result.images || new Map();

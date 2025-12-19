@@ -267,8 +267,8 @@
                           <template #empty>
                             <div class="text-center py-12">
                               <i class="pi pi-shopping-bag text-6xl text-slate-400 mb-4"></i>
-                              <p class="text-lg font-medium text-slate-900 mb-2">No Purchases Found</p>
-                              <p class="text-slate-600">This user has not made any credit purchases yet</p>
+                              <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('credits.admin.noPurchasesFound') }}</p>
+                              <p class="text-slate-600">{{ $t('credits.admin.noPurchasesYet') }}</p>
                             </div>
                           </template>
                   <template #loading>
@@ -320,7 +320,7 @@
                       <Button 
                         v-if="data.receipt_url" 
                         icon="pi pi-file-pdf" 
-                        label="Receipt"
+                        :label="$t('common.receipt')"
                         text 
                         size="small"
                         severity="secondary"
@@ -363,8 +363,8 @@
                           <template #empty>
                             <div class="text-center py-12">
                               <i class="pi pi-chart-bar text-6xl text-slate-400 mb-4"></i>
-                              <p class="text-lg font-medium text-slate-900 mb-2">No Consumptions Found</p>
-                              <p class="text-slate-600">This user has not consumed any credits yet</p>
+                              <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('credits.admin.noConsumptionsFound') }}</p>
+                              <p class="text-slate-600">{{ $t('credits.admin.noConsumptionsYet') }}</p>
                             </div>
                           </template>
                   <template #loading>
@@ -460,8 +460,8 @@
                           <template #empty>
                             <div class="text-center py-12">
                               <i class="pi pi-inbox text-6xl text-slate-400 mb-4"></i>
-                              <p class="text-lg font-medium text-slate-900 mb-2">No Transactions Found</p>
-                              <p class="text-slate-600">This user has no credit transaction history yet</p>
+                              <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('credits.admin.noTransactionsFound') }}</p>
+                              <p class="text-slate-600">{{ $t('credits.admin.noTransactionsYet') }}</p>
                             </div>
                           </template>
                   <template #loading>
@@ -528,7 +528,7 @@
         </div>
         <div>
           <h3 class="text-xl font-bold text-slate-900">{{ $t('admin.credits.adjustUserCredits') }}</h3>
-          <p class="text-sm text-slate-500 mt-1">Modify user credit balance</p>
+          <p class="text-sm text-slate-500 mt-1">{{ $t('credits.admin.modifyUserBalance') }}</p>
         </div>
       </div>
     </template>

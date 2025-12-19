@@ -110,124 +110,6 @@ BEGIN
 END;
 $$;
 
--- =================================================================
--- LEGACY ADMIN AUDIT FUNCTIONS (DEPRECATED - Use operations_log instead)
--- These functions are kept for backward compatibility but redirect to operations_log
--- =================================================================
-
--- Simple feedback creation for verification and print requests
-CREATE OR REPLACE FUNCTION create_admin_feedback(
-    p_target_user_id UUID,
-    p_entity_type VARCHAR(20), -- 'verification' or 'print_request'
-    p_entity_id UUID,
-    p_message TEXT
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_feedback_id UUID;
-    v_admin_email VARCHAR(255);
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can create feedback entries.';
-    END IF;
-
-    -- Validate entity type
-    IF p_entity_type NOT IN ('verification', 'print_request') THEN
-        RAISE EXCEPTION 'Invalid entity type. Must be verification or print_request.';
-    END IF;
-
-    -- Get admin email
-    SELECT email INTO v_admin_email FROM auth.users WHERE auth.users.id = auth.uid();
-
-    -- Insert into appropriate feedback table
-    IF p_entity_type = 'verification' THEN
-        INSERT INTO verification_feedbacks (
-            user_id,
-            admin_user_id,
-            admin_email,
-            message
-        ) VALUES (
-            p_entity_id, -- For verification, entity_id is the user_id
-            auth.uid(),
-            v_admin_email,
-            p_message
-        )
-        RETURNING id INTO v_feedback_id;
-    ELSE -- print_request
-        INSERT INTO print_request_feedbacks (
-            print_request_id,
-            admin_user_id,
-            admin_email,
-            message
-        ) VALUES (
-            p_entity_id,
-            auth.uid(),
-            v_admin_email,
-            p_message
-        )
-        RETURNING id INTO v_feedback_id;
-    END IF;
-    
-    RETURN v_feedback_id;
-END;
-$$;
-
--- Get feedback history for verification or print request
-CREATE OR REPLACE FUNCTION get_admin_feedback_history(
-    p_entity_type VARCHAR(20),
-    p_entity_id UUID
-) RETURNS TABLE (
-    id UUID,
-    admin_user_id UUID,
-    admin_email VARCHAR(255),
-    message TEXT,
-    created_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view feedback history.';
-    END IF;
-
-    IF p_entity_type = 'verification' THEN
-        RETURN QUERY
-        SELECT 
-            vf.id,
-            vf.admin_user_id,
-            vf.admin_email,
-            vf.message,
-            vf.created_at
-        FROM verification_feedbacks vf
-        WHERE vf.user_id = p_entity_id
-        ORDER BY vf.created_at ASC; -- Chronological order for conversation flow
-    ELSIF p_entity_type = 'print_request' THEN
-        RETURN QUERY
-        SELECT 
-            pf.id,
-            pf.admin_user_id,
-            pf.admin_email,
-            pf.message,
-            pf.created_at
-        FROM print_request_feedbacks pf
-        WHERE pf.print_request_id = p_entity_id
-        ORDER BY pf.created_at ASC; -- Chronological order for conversation flow
-    ELSE
-        RAISE EXCEPTION 'Invalid entity type. Must be verification or print_request.';
-    END IF;
-END;
-$$;
-
 -- Enhanced system statistics function
 CREATE OR REPLACE FUNCTION admin_get_system_stats_enhanced()
 RETURNS TABLE (
@@ -259,7 +141,30 @@ RETURNS TABLE (
     total_audit_entries BIGINT,
     critical_actions_today BIGINT,
     high_severity_actions_week BIGINT,
-    unique_admin_users_month BIGINT
+    unique_admin_users_month BIGINT,
+    -- ACCESS MODE METRICS (NEW)
+    physical_cards_count BIGINT,
+    digital_cards_count BIGINT,
+    -- DIGITAL ACCESS METRICS (NEW)
+    total_digital_scans BIGINT,
+    daily_digital_scans BIGINT,
+    weekly_digital_scans BIGINT,
+    monthly_digital_scans BIGINT,
+    digital_credits_consumed NUMERIC,
+    -- CONTENT MODE DISTRIBUTION
+    content_mode_single BIGINT,
+    content_mode_list BIGINT,
+    content_mode_grid BIGINT,
+    content_mode_cards BIGINT,
+    is_grouped_count BIGINT,
+    -- SUBSCRIPTION METRICS (NEW)
+    total_free_users BIGINT,
+    total_premium_users BIGINT,
+    active_subscriptions BIGINT,
+    estimated_mrr_cents BIGINT,
+    -- ACCESS LOG METRICS (NEW)
+    monthly_total_accesses BIGINT,
+    monthly_overage_accesses BIGINT
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     caller_role TEXT;
@@ -289,8 +194,8 @@ BEGIN
         (SELECT COUNT(*) FROM print_requests WHERE status = 'SUBMITTED') as print_requests_submitted,
         (SELECT COUNT(*) FROM print_requests WHERE status = 'PROCESSING') as print_requests_processing,
         (SELECT COUNT(*) FROM print_requests WHERE status = 'SHIPPED') as print_requests_shipping,
-        -- Revenue metrics (based on credit purchases, not legacy batch payments)
-        -- Note: amount_usd is in dollars, so multiply by 100 to get cents for consistency with old system
+        -- Revenue metrics (based on credit purchases + estimated MRR)
+        -- Note: credit_purchases amount_usd is in dollars, so multiply by 100 to get cents
         (SELECT COALESCE(SUM(amount_usd * 100), 0)::BIGINT FROM credit_purchases WHERE status = 'completed' AND created_at >= CURRENT_DATE) as daily_revenue_cents,
         (SELECT COALESCE(SUM(amount_usd * 100), 0)::BIGINT FROM credit_purchases WHERE status = 'completed' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_revenue_cents,
         (SELECT COALESCE(SUM(amount_usd * 100), 0)::BIGINT FROM credit_purchases WHERE status = 'completed' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_revenue_cents,
@@ -309,81 +214,36 @@ BEGIN
         (SELECT COUNT(*) FROM operations_log) as total_audit_entries,
         (SELECT COUNT(*) FROM operations_log WHERE operation LIKE '%Waived payment%' AND created_at >= CURRENT_DATE) as payment_waivers_today,
         (SELECT COUNT(*) FROM operations_log WHERE operation LIKE '%Changed user role%' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as role_changes_week,
-        (SELECT COUNT(DISTINCT user_id) FROM operations_log WHERE user_role = 'admin' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as unique_admin_users_month;
+        (SELECT COUNT(DISTINCT user_id) FROM operations_log WHERE user_role = 'admin' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as unique_admin_users_month,
+        -- ACCESS MODE METRICS (Physical vs Digital cards)
+        (SELECT COUNT(*) FROM cards WHERE billing_type = 'physical') as physical_cards_count,
+        (SELECT COUNT(*) FROM cards WHERE billing_type = 'digital') as digital_cards_count,
+        -- DIGITAL ACCESS METRICS (Scan counts and credit consumption)
+        (SELECT COALESCE(SUM(current_scans), 0)::BIGINT FROM cards WHERE billing_type = 'digital') as total_digital_scans,
+        (SELECT COALESCE(SUM(daily_scans), 0)::BIGINT FROM cards WHERE billing_type = 'digital' AND last_scan_date = CURRENT_DATE) as daily_digital_scans,
+        (SELECT COALESCE(SUM(cc.quantity), 0)::BIGINT FROM credit_consumptions cc WHERE cc.consumption_type = 'digital_scan' AND cc.created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_digital_scans,
+        (SELECT COALESCE(SUM(cc.quantity), 0)::BIGINT FROM credit_consumptions cc WHERE cc.consumption_type = 'digital_scan' AND cc.created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_digital_scans,
+        (SELECT COALESCE(SUM(cc.total_credits), 0)::NUMERIC FROM credit_consumptions cc WHERE cc.consumption_type = 'digital_scan') as digital_credits_consumed,
+        -- CONTENT MODE DISTRIBUTION
+        (SELECT COUNT(*) FROM cards WHERE content_mode = 'single') as content_mode_single,
+        (SELECT COUNT(*) FROM cards WHERE content_mode = 'list') as content_mode_list,
+        (SELECT COUNT(*) FROM cards WHERE content_mode = 'grid') as content_mode_grid,
+        (SELECT COUNT(*) FROM cards WHERE content_mode = 'cards') as content_mode_cards,
+        (SELECT COUNT(*) FROM cards WHERE is_grouped = true) as is_grouped_count,
+        -- SUBSCRIPTION METRICS
+        (SELECT COUNT(*) FROM auth.users) - (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as total_free_users,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as total_premium_users,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium' AND status = 'active') as active_subscriptions,
+        (SELECT COUNT(*) * 5000 FROM subscriptions WHERE tier = 'premium' AND status = 'active') as estimated_mrr_cents,
+        -- ACCESS LOG METRICS
+        (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= date_trunc('month', CURRENT_DATE)) as monthly_total_accesses,
+        (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= date_trunc('month', CURRENT_DATE) AND was_overage = true) as monthly_overage_accesses;
 END;
 $$;
 
 -- =================================================================
--- UPDATED EXISTING FUNCTIONS
+-- PRINT REQUEST MANAGEMENT
 -- =================================================================
-
--- (Admin) Get all print requests for review
-CREATE OR REPLACE FUNCTION admin_get_all_print_requests(
-    p_status "PrintRequestStatus" DEFAULT NULL,
-    p_search_query TEXT DEFAULT NULL,
-    p_limit INTEGER DEFAULT 100,
-    p_offset INTEGER DEFAULT 0
-)
-RETURNS TABLE (
-    request_id UUID,
-    batch_id UUID,
-    user_id UUID,
-    user_email TEXT,
-    user_public_name TEXT,
-    card_name TEXT,
-    batch_name TEXT,
-    cards_count INTEGER,
-    status "PrintRequestStatus",
-    shipping_address TEXT,
-    contact_email TEXT,
-    contact_whatsapp TEXT,
-    requested_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view all print requests.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        pr.id AS request_id,
-        pr.batch_id AS batch_id,
-        pr.user_id AS user_id,
-        au.email::text AS user_email,
-        SPLIT_PART(au.email, '@', 1)::text AS user_public_name, -- Use email username as display name
-        c.name AS card_name,
-        cb.batch_name AS batch_name,
-        cb.cards_count AS cards_count,
-        pr.status AS status,
-        pr.shipping_address AS shipping_address,
-        pr.contact_email AS contact_email,
-        pr.contact_whatsapp AS contact_whatsapp,
-        pr.requested_at AS requested_at,
-        pr.updated_at AS updated_at
-    FROM print_requests pr
-    JOIN card_batches cb ON pr.batch_id = cb.id
-    JOIN cards c ON cb.card_id = c.id
-    LEFT JOIN auth.users au ON pr.user_id = au.id
-    WHERE 
-        (p_status IS NULL OR pr.status = p_status)
-        AND (p_search_query IS NULL OR (
-            au.email ILIKE '%' || p_search_query || '%' OR
-            c.name ILIKE '%' || p_search_query || '%' OR
-            cb.batch_name ILIKE '%' || p_search_query || '%' OR
-            pr.shipping_address ILIKE '%' || p_search_query || '%'
-        ))
-    ORDER BY pr.requested_at DESC
-    LIMIT p_limit OFFSET p_offset;
-END;
-$$;
 
 -- (Admin) Update print request status
 CREATE OR REPLACE FUNCTION admin_update_print_request_status(
@@ -452,115 +312,9 @@ BEGIN
 END;
 $$;
 
-
--- (Admin) Get pending verification requests
-CREATE OR REPLACE FUNCTION admin_get_pending_verifications(p_limit INTEGER DEFAULT 50)
-RETURNS TABLE (
-    user_id UUID,
-    email VARCHAR(255),
-    public_name TEXT,
-    company_name TEXT,
-    full_name TEXT,
-    supporting_documents TEXT[],
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view pending verifications.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        up.user_id,
-        au.email,
-        up.public_name,
-        up.company_name,
-        up.full_name,
-        up.supporting_documents,
-        up.created_at,
-        up.updated_at
-    FROM user_profiles up
-    JOIN auth.users au ON up.user_id = au.id
-    WHERE up.verification_status = 'PENDING_REVIEW'
-    ORDER BY up.updated_at ASC
-    LIMIT p_limit;
-END;
-$$;
-
-
-
--- Legacy functions removed - Use operations_log functions instead:
--- - Use get_operations_log() instead of get_admin_audit_logs()
--- - Use get_operations_log_stats() instead of get_admin_audit_logs_count()
--- See 00_logging.sql for new functions
-
--- Verification functions removed - feature was never implemented
--- No frontend components, routes, or calls to these functions exist
--- Related tables (user_profiles, verification_feedbacks) also don't exist
-
--- (Admin) Get all users with detailed information including activity stats
--- Note: Removed verification/profile fields - user_profiles table doesn't exist
-CREATE OR REPLACE FUNCTION get_all_users_with_details()
-RETURNS TABLE (
-    user_id UUID,
-    user_email VARCHAR(255),
-    role TEXT,
-    created_at TIMESTAMPTZ,
-    last_sign_in_at TIMESTAMPTZ,
-    cards_count INTEGER,
-    issued_cards_count INTEGER,
-    print_requests_count INTEGER
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if caller is admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view all users.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        au.id AS user_id,
-        au.email AS user_email,
-        au.raw_user_meta_data->>'role' AS role,
-        au.created_at,
-        au.last_sign_in_at,
-        COALESCE(card_stats.cards_count, 0)::INTEGER AS cards_count,
-        COALESCE(issued_stats.issued_cards_count, 0)::INTEGER AS issued_cards_count,
-        COALESCE(print_stats.print_requests_count, 0)::INTEGER AS print_requests_count
-    FROM auth.users au
-    LEFT JOIN (
-        SELECT c.user_id, COUNT(*) AS cards_count
-        FROM public.cards c
-        GROUP BY c.user_id
-    ) card_stats ON au.id = card_stats.user_id
-    LEFT JOIN (
-        SELECT cb.created_by, COUNT(ic.*) AS issued_cards_count
-        FROM public.card_batches cb
-        LEFT JOIN public.issue_cards ic ON cb.id = ic.batch_id
-        GROUP BY cb.created_by
-    ) issued_stats ON au.id = issued_stats.created_by
-    LEFT JOIN (
-        SELECT pr.user_id, COUNT(*) AS print_requests_count
-        FROM public.print_requests pr
-        GROUP BY pr.user_id
-    ) print_stats ON au.id = print_stats.user_id
-    ORDER BY au.created_at DESC;
-END;
-$$;
+-- =================================================================
+-- BATCH MANAGEMENT
+-- =================================================================
 
 -- (Admin) Get batches requiring attention
 CREATE OR REPLACE FUNCTION get_admin_batches_requiring_attention()
@@ -681,7 +435,7 @@ BEGIN
 END;
 $$;
 
--- Alias function for backward compatibility
+-- (Admin) Get all print requests for review
 CREATE OR REPLACE FUNCTION get_all_print_requests(
     p_status "PrintRequestStatus" DEFAULT NULL,
     p_search_query TEXT DEFAULT NULL,
@@ -704,106 +458,6 @@ RETURNS TABLE (
     requested_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-    -- This function simply calls the admin version with search support.
-    -- This provides a consistent, simplified interface for clients.
-    RETURN QUERY
-    SELECT
-        apr.request_id as id,
-        apr.batch_id,
-        apr.user_id,
-        apr.user_email,
-        apr.user_public_name,
-        apr.card_name,
-        apr.batch_name,
-        apr.cards_count,
-        apr.status,
-        apr.shipping_address,
-        apr.contact_email,
-        apr.contact_whatsapp,
-        apr.requested_at,
-        apr.updated_at
-    FROM admin_get_all_print_requests(p_status, p_search_query, p_limit, p_offset) apr;
-END;
-$$;
-
--- (Admin) Change user role with comprehensive audit logging
-CREATE OR REPLACE FUNCTION admin_change_user_role(
-    p_target_user_id UUID,
-    p_new_role TEXT,
-    p_reason TEXT
-)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-    current_role TEXT;
-    target_user_email TEXT;
-    valid_roles TEXT[] := ARRAY['card_issuer', 'admin'];
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can change user roles.';
-    END IF;
-
-    -- Validate new role
-    IF p_new_role != ALL(valid_roles) THEN
-        RAISE EXCEPTION 'Invalid role. Valid roles are: %', array_to_string(valid_roles, ', ');
-    END IF;
-
-    -- Get current role and email of target user
-    SELECT 
-        raw_user_meta_data->>'role',
-        email
-    INTO current_role, target_user_email
-    FROM auth.users
-    WHERE id = p_target_user_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Target user not found.';
-    END IF;
-
-    -- Check if role is actually changing
-    IF current_role = p_new_role THEN
-        RAISE EXCEPTION 'User already has role: %', p_new_role;
-    END IF;
-
-    -- Prevent self-demotion from admin
-    IF auth.uid() = p_target_user_id AND current_role = 'admin' AND p_new_role != 'admin' THEN
-        RAISE EXCEPTION 'Admins cannot demote themselves. Another admin must perform this action.';
-    END IF;
-
-    -- Update user role
-    UPDATE auth.users
-    SET 
-        raw_user_meta_data = COALESCE(raw_user_meta_data, '{}'::jsonb) || jsonb_build_object('role', p_new_role),
-        updated_at = NOW()
-    WHERE id = p_target_user_id;
-
-    -- Log role change
-    PERFORM log_operation(
-        format('Changed user role from %s to %s for user: %s', 
-            COALESCE(current_role, 'none'), p_new_role, target_user_email)
-    );
-    
-    RETURN FOUND;
-END;
-$$;
-
--- (Admin) Get feedbacks for a verification user
-CREATE OR REPLACE FUNCTION get_verification_feedbacks(
-    p_user_id UUID
-)
-RETURNS TABLE (
-    id UUID,
-    admin_user_id UUID,
-    admin_email VARCHAR(255),
-    message TEXT,
-    created_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     caller_role TEXT;
 BEGIN
@@ -813,170 +467,47 @@ BEGIN
     WHERE auth.users.id = auth.uid();
 
     IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view verification feedbacks.';
+        RAISE EXCEPTION 'Only admins can view all print requests.';
     END IF;
 
     RETURN QUERY
     SELECT 
-        vf.id,
-        vf.admin_user_id,
-        vf.admin_email,
-        vf.message,
-        vf.created_at
-    FROM verification_feedbacks vf
-    WHERE vf.user_id = p_user_id
-    ORDER BY vf.created_at ASC;
-END;
-$$;
-
--- (Admin) Get feedbacks for a print request
-CREATE OR REPLACE FUNCTION get_print_request_feedbacks(
-    p_request_id UUID
-)
-RETURNS TABLE (
-    id UUID,
-    admin_user_id UUID,
-    admin_email VARCHAR(255),
-    message TEXT,
-    created_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view print request feedbacks.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        pf.id,
-        pf.admin_user_id,
-        pf.admin_email,
-        pf.message,
-        pf.created_at
-    FROM print_request_feedbacks pf
-    WHERE pf.print_request_id = p_request_id
-    ORDER BY pf.created_at ASC;
-END;
-$$;
-
--- (Admin) Reset user verification status
-CREATE OR REPLACE FUNCTION reset_user_verification(
-    p_user_id UUID
-)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-    v_user_email TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can reset user verification.';
-    END IF;
-
-    -- Get target user email for audit logging
-    SELECT email INTO v_user_email
-    FROM auth.users
-    WHERE id = p_user_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'User not found.';
-    END IF;
-
-    -- Reset verification status
-    UPDATE user_profiles
-    SET 
-        verification_status = 'NOT_SUBMITTED',
-        supporting_documents = NULL,
-        verified_at = NULL,
-        updated_at = NOW()
-    WHERE user_id = p_user_id;
-
-    -- Log operation
-    PERFORM log_operation(format('Reset verification for user: %s', v_user_email));
-    
-    RETURN FOUND;
-END;
-$$;
-
--- admin_manual_verification() removed - references non-existent user_profiles table
--- Verification feature was never implemented in frontend
-
--- (Admin) Get user activity summary
-CREATE OR REPLACE FUNCTION get_user_activity_summary(
-    p_user_id UUID
-)
-RETURNS TABLE (
-    cards_count INTEGER,
-    batches_count INTEGER,
-    issued_cards_count INTEGER,
-    print_requests_count INTEGER,
-    total_revenue_cents BIGINT,
-    last_activity_date TIMESTAMPTZ,
-    account_age_days INTEGER
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-    v_user_created_at TIMESTAMPTZ;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view user activity summary.';
-    END IF;
-
-    -- Get user creation date
-    SELECT created_at INTO v_user_created_at
-    FROM auth.users
-    WHERE id = p_user_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'User not found.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        COALESCE((SELECT COUNT(*)::INTEGER FROM cards WHERE user_id = p_user_id), 0) as cards_count,
-        COALESCE((SELECT COUNT(*)::INTEGER FROM card_batches WHERE created_by = p_user_id), 0) as batches_count,
-        COALESCE((
-            SELECT COUNT(ic.*)::INTEGER 
-            FROM card_batches cb
-            LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
-            WHERE cb.created_by = p_user_id
-        ), 0) as issued_cards_count,
-        COALESCE((SELECT COUNT(*)::INTEGER FROM print_requests WHERE user_id = p_user_id), 0) as print_requests_count,
-        COALESCE((
-            SELECT SUM(bp.amount_cents)
-            FROM card_batches cb
-            LEFT JOIN batch_payments bp ON cb.id = bp.batch_id
-            WHERE cb.created_by = p_user_id AND bp.payment_status = 'succeeded'
-        ), 0) as total_revenue_cents,
-        GREATEST(
-            (SELECT MAX(updated_at) FROM cards WHERE user_id = p_user_id),
-            (SELECT MAX(updated_at) FROM card_batches WHERE created_by = p_user_id),
-            (SELECT MAX(updated_at) FROM print_requests WHERE user_id = p_user_id)
-        ) as last_activity_date,
-        EXTRACT(DAY FROM NOW() - v_user_created_at)::INTEGER as account_age_days;
+        pr.id,
+        pr.batch_id,
+        pr.user_id,
+        au.email::text AS user_email,
+        SPLIT_PART(au.email, '@', 1)::text AS user_public_name,
+        c.name AS card_name,
+        cb.batch_name,
+        cb.cards_count,
+        pr.status,
+        pr.shipping_address,
+        pr.contact_email,
+        pr.contact_whatsapp,
+        pr.requested_at,
+        pr.updated_at
+    FROM print_requests pr
+    JOIN card_batches cb ON pr.batch_id = cb.id
+    JOIN cards c ON cb.card_id = c.id
+    LEFT JOIN auth.users au ON pr.user_id = au.id
+    WHERE 
+        (p_status IS NULL OR pr.status = p_status)
+        AND (p_search_query IS NULL OR (
+            au.email ILIKE '%' || p_search_query || '%' OR
+            c.name ILIKE '%' || p_search_query || '%' OR
+            cb.batch_name ILIKE '%' || p_search_query || '%' OR
+            pr.shipping_address ILIKE '%' || p_search_query || '%'
+        ))
+    ORDER BY pr.requested_at DESC
+    LIMIT p_limit OFFSET p_offset;
 END;
 $$;
 
 -- =================================================================
--- USER MANAGEMENT FUNCTIONS (without profile/verification)
+-- USER MANAGEMENT FUNCTIONS
 -- =================================================================
 
--- Get all users with basic info and activity stats
+-- Get all users with basic info, activity stats, and subscription data
 CREATE OR REPLACE FUNCTION admin_get_all_users()
 RETURNS TABLE (
     user_id UUID,
@@ -986,7 +517,14 @@ RETURNS TABLE (
     issued_cards_count INTEGER,
     created_at TIMESTAMP WITH TIME ZONE,
     last_sign_in_at TIMESTAMP WITH TIME ZONE,
-    email_confirmed_at TIMESTAMP WITH TIME ZONE
+    email_confirmed_at TIMESTAMP WITH TIME ZONE,
+    -- Subscription fields
+    subscription_tier TEXT,
+    subscription_status TEXT,
+    stripe_subscription_id TEXT,
+    current_period_start TIMESTAMPTZ,
+    current_period_end TIMESTAMPTZ,
+    cancel_at_period_end BOOLEAN
 )
 LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -1010,13 +548,161 @@ BEGIN
         COUNT(DISTINCT ic.id)::INTEGER as issued_cards_count,
         au.created_at,
         au.last_sign_in_at,
-        au.email_confirmed_at
+        au.email_confirmed_at,
+        -- Subscription data (default to 'free' if no subscription)
+        COALESCE(s.tier::TEXT, 'free') as subscription_tier,
+        COALESCE(s.status::TEXT, 'active') as subscription_status,
+        s.stripe_subscription_id,
+        s.current_period_start,
+        s.current_period_end,
+        COALESCE(s.cancel_at_period_end, false) as cancel_at_period_end
     FROM auth.users au
     LEFT JOIN cards c ON c.user_id = au.id
     LEFT JOIN card_batches cb ON cb.created_by = au.id
     LEFT JOIN issue_cards ic ON ic.batch_id = cb.id
-    GROUP BY au.id, au.email, au.raw_user_meta_data, au.created_at, au.last_sign_in_at, au.email_confirmed_at
+    LEFT JOIN subscriptions s ON s.user_id = au.id
+    GROUP BY au.id, au.email, au.raw_user_meta_data, au.created_at, au.last_sign_in_at, 
+             au.email_confirmed_at, s.tier, s.status, s.stripe_subscription_id, 
+             s.current_period_start, s.current_period_end, s.cancel_at_period_end
     ORDER BY au.created_at DESC;
+END;
+$$;
+
+-- Update user subscription tier (admin only)
+-- This creates or updates a subscription record for manual tier management
+CREATE OR REPLACE FUNCTION admin_update_user_subscription(
+    p_user_id UUID,
+    p_new_tier TEXT,
+    p_reason TEXT
+)
+RETURNS BOOLEAN
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+    v_user_email VARCHAR(255);
+    v_old_tier TEXT;
+    v_subscription_exists BOOLEAN;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can update user subscriptions.';
+    END IF;
+
+    -- Validate new tier
+    IF p_new_tier NOT IN ('free', 'premium') THEN
+        RAISE EXCEPTION 'Invalid tier. Must be: free or premium.';
+    END IF;
+
+    -- Get current user info
+    SELECT email INTO v_user_email
+    FROM auth.users
+    WHERE id = p_user_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'User not found.';
+    END IF;
+
+    -- Check if subscription exists
+    SELECT EXISTS(SELECT 1 FROM subscriptions WHERE user_id = p_user_id) INTO v_subscription_exists;
+    
+    -- Get old tier if exists
+    IF v_subscription_exists THEN
+        SELECT tier::TEXT INTO v_old_tier
+        FROM subscriptions
+        WHERE user_id = p_user_id;
+    ELSE
+        v_old_tier := 'free';
+    END IF;
+
+    -- Create or update subscription
+    IF v_subscription_exists THEN
+        UPDATE subscriptions
+        SET 
+            tier = p_new_tier::"SubscriptionTier",
+            status = 'active'::subscription_status,
+            -- Clear Stripe fields when admin manually sets tier
+            -- (this means it's not a Stripe-managed subscription anymore)
+            stripe_subscription_id = CASE 
+                WHEN p_new_tier = 'free' THEN NULL 
+                ELSE stripe_subscription_id 
+            END,
+            current_period_start = CASE 
+                WHEN p_new_tier = 'premium' AND stripe_subscription_id IS NULL THEN NOW()
+                ELSE current_period_start
+            END,
+            current_period_end = CASE 
+                WHEN p_new_tier = 'premium' AND stripe_subscription_id IS NULL THEN NOW() + INTERVAL '1 year'
+                ELSE current_period_end
+            END,
+            cancel_at_period_end = false,
+            updated_at = NOW()
+        WHERE user_id = p_user_id;
+    ELSE
+        INSERT INTO subscriptions (
+            user_id,
+            tier,
+            status,
+            current_period_start,
+            current_period_end,
+            cancel_at_period_end
+        ) VALUES (
+            p_user_id,
+            p_new_tier::"SubscriptionTier",
+            'active'::subscription_status,
+            CASE WHEN p_new_tier = 'premium' THEN NOW() ELSE NULL END,
+            CASE WHEN p_new_tier = 'premium' THEN NOW() + INTERVAL '1 year' ELSE NULL END,
+            false
+        );
+    END IF;
+
+    -- Log operation
+    PERFORM log_operation(
+        'Admin changed subscription tier from ' || COALESCE(v_old_tier, 'none') || 
+        ' to ' || p_new_tier || ' for user: ' || v_user_email || 
+        ' - Reason: ' || p_reason
+    );
+
+    RETURN TRUE;
+END;
+$$;
+
+-- Get subscription statistics for admin dashboard
+CREATE OR REPLACE FUNCTION admin_get_subscription_stats()
+RETURNS TABLE (
+    total_users BIGINT,
+    free_users BIGINT,
+    premium_users BIGINT,
+    active_premium BIGINT,
+    canceled_pending BIGINT,
+    past_due BIGINT,
+    estimated_mrr_cents BIGINT
+)
+LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    caller_role TEXT;
+BEGIN
+    -- Check if the caller is an admin
+    SELECT raw_user_meta_data->>'role' INTO caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+
+    IF caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view subscription statistics.';
+    END IF;
+
+    RETURN QUERY
+    SELECT 
+        (SELECT COUNT(*) FROM auth.users) as total_users,
+        (SELECT COUNT(*) FROM auth.users) - (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as free_users,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as premium_users,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium' AND status = 'active' AND cancel_at_period_end = false) as active_premium,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium' AND cancel_at_period_end = true) as canceled_pending,
+        (SELECT COUNT(*) FROM subscriptions WHERE status = 'past_due') as past_due,
+        (SELECT COUNT(*) * 5000 FROM subscriptions WHERE tier = 'premium' AND status = 'active') as estimated_mrr_cents;
 END;
 $$;
 
@@ -1124,6 +810,12 @@ RETURNS TABLE (
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
     qr_code_position TEXT,
+    content_mode TEXT,
+    billing_type TEXT,
+    max_scans INT,
+    current_scans INT,
+    daily_scan_limit INT,
+    daily_scans INT,
     batches_count BIGINT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
@@ -1154,6 +846,12 @@ BEGIN
         c.ai_instruction,
         c.ai_knowledge_base,
         c.qr_code_position::TEXT,
+        c.content_mode::TEXT,
+        c.billing_type::TEXT,
+        c.max_scans,
+        c.current_scans,
+        c.daily_scan_limit,
+        c.daily_scans,
         COUNT(cb.id)::BIGINT AS batches_count,
         c.created_at,
         c.updated_at,
@@ -1164,7 +862,8 @@ BEGIN
     WHERE c.user_id = p_user_id
     GROUP BY c.id, c.name, c.description, c.image_url, c.original_image_url,
              c.crop_parameters, c.conversation_ai_enabled, c.ai_instruction, c.ai_knowledge_base,
-             c.qr_code_position, c.created_at, c.updated_at, au.email
+             c.qr_code_position, c.content_mode, c.billing_type, c.max_scans, c.current_scans,
+             c.daily_scan_limit, c.daily_scans, c.created_at, c.updated_at, au.email
     ORDER BY c.created_at DESC;
 END;
 $$;
@@ -1307,3 +1006,58 @@ BEGIN
     ORDER BY ic.issue_at DESC;
 END;
 $$;
+
+-- =================================================================
+-- AUDIT LOG FUNCTIONS
+-- =================================================================
+
+-- Get admin audit logs (wraps operations_log for admin dashboard)
+-- Note: operations_log has simple structure: user_id, user_role, operation, created_at
+CREATE OR REPLACE FUNCTION get_admin_audit_logs(
+    p_action_type TEXT DEFAULT NULL,
+    p_admin_user_id UUID DEFAULT NULL,
+    p_limit INTEGER DEFAULT 50,
+    p_offset INTEGER DEFAULT 0
+)
+RETURNS TABLE (
+    id UUID,
+    user_id UUID,
+    user_email TEXT,
+    user_role "UserRole",
+    operation TEXT,
+    created_at TIMESTAMPTZ
+) AS $$
+DECLARE
+    v_caller_role TEXT;
+BEGIN
+    -- Check if caller is admin
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
+    IF v_caller_role != 'admin' THEN
+        RAISE EXCEPTION 'Only admins can view audit logs';
+    END IF;
+    
+    -- Return from operations_log table
+    RETURN QUERY
+    SELECT 
+        ol.id,
+        ol.user_id,
+        au.email::TEXT AS user_email,
+        ol.user_role,
+        ol.operation,
+        ol.created_at
+    FROM operations_log ol
+    LEFT JOIN auth.users au ON ol.user_id = au.id
+    WHERE (p_action_type IS NULL OR ol.operation ILIKE '%' || p_action_type || '%')
+      AND (p_admin_user_id IS NULL OR ol.user_id = p_admin_user_id)
+    ORDER BY ol.created_at DESC
+    LIMIT p_limit
+    OFFSET p_offset;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+GRANT EXECUTE ON FUNCTION get_admin_audit_logs(TEXT, UUID, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_update_user_subscription(UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_subscription_stats() TO authenticated;

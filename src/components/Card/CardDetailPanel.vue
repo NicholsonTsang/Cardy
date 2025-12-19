@@ -80,7 +80,9 @@
                                 v-if="getTabComponent(index) === 'content'" 
                                 :cardId="selectedCard.id" 
                                 :cardAiEnabled="selectedCard.conversation_ai_enabled"
-                                :contentMode="selectedCard.content_mode || 'catalog'" 
+                                :contentMode="selectedCard.content_mode || 'list'" 
+                                :isGrouped="selectedCard.is_grouped || false"
+                                :groupDisplay="selectedCard.group_display || 'expanded'"
                                 :key="selectedCard.id + '-content'" 
                             />
                             <!-- Issuance Tab (Physical Cards Only) -->
@@ -90,14 +92,29 @@
                                 :key="selectedCard.id + '-issurance'"
                                 @batch-created="handleBatchCreated"
                             />
-                            <!-- QR & Access Tab -->
+                            <!-- QR & Access Tab (Physical Cards - batch-based) -->
                             <CardAccessQR 
-                                v-if="getTabComponent(index) === 'qr'"
+                                v-if="getTabComponent(index) === 'qr' && selectedCard.billing_type !== 'digital'"
                                 :cardId="selectedCard.id"
                                 :cardName="selectedCard.name"
                                 :selectedBatchId="selectedBatchId"
                                 @batch-changed="$emit('batch-changed', $event)"
                                 :key="`${selectedCard.id}-access-qr-${accessQRRefreshKey}`" 
+                            />
+                            <!-- QR & Access Tab (Digital Cards - single QR) -->
+                            <DigitalAccessQR 
+                                v-if="getTabComponent(index) === 'qr' && selectedCard.billing_type === 'digital'"
+                                :card="selectedCard"
+                                :cardName="selectedCard.name"
+                                :key="`${selectedCard.id}-digital-qr`"
+                                @updated="handleDigitalAccessUpdated"
+                            />
+                            <!-- Digital Access Settings Tab (Digital Cards Only) -->
+                            <DigitalAccessSettings 
+                                v-if="getTabComponent(index) === 'digital-access'"
+                                :card="selectedCard"
+                                :key="selectedCard.id + '-digital-access'"
+                                @updated="handleDigitalAccessUpdated"
                             />
                             <!-- Preview Tab -->
                             <MobilePreview 
@@ -127,8 +144,10 @@ import CardGeneral from '@/components/CardComponents/Card.vue';
 import CardContent from '@/components/CardContent/CardContent.vue';
 import CardIssuanceCheckout from '@/components/CardIssuanceCheckout.vue';
 import CardAccessQR from '@/components/CardComponents/CardAccessQR.vue';
+import DigitalAccessQR from '@/components/DigitalAccess/DigitalAccessQR.vue';
 import MobilePreview from '@/components/CardComponents/MobilePreview.vue';
 import CardExport from '@/components/Card/Export/CardExport.vue';
+import DigitalAccessSettings from '@/components/DigitalAccess/DigitalAccessSettings.vue';
 
 const { t } = useI18n();
 
@@ -208,6 +227,9 @@ const tabs = computed(() => {
     // Physical cards have Issuance tab (for batch printing)
     if (props.selectedCard?.billing_type !== 'digital') {
         baseTabs.push({ label: t('dashboard.card_issuance'), icon: 'pi pi-credit-card' });
+    } else {
+        // Digital cards have Control Settings tab
+        baseTabs.push({ label: t('digital_access.control_settings'), icon: 'pi pi-sliders-h' });
     }
     
     // Both have QR & Access tab
@@ -227,9 +249,10 @@ const getTabComponent = (index) => {
     if (index === 1) return 'content';
     
     if (isDigital) {
-        // Digital: [General, Content, QR, Preview]
-        if (index === 2) return 'qr';
-        if (index === 3) return 'preview';
+        // Digital: [General, Content, Digital Access, QR, Preview]
+        if (index === 2) return 'digital-access';
+        if (index === 3) return 'qr';
+        if (index === 4) return 'preview';
     } else {
         // Physical: [General, Content, Issuance, QR, Preview]
         if (index === 2) return 'issuance';
@@ -237,6 +260,11 @@ const getTabComponent = (index) => {
         if (index === 4) return 'preview';
     }
     return null;
+};
+
+// Handle digital access settings update
+const handleDigitalAccessUpdated = (updatedCard) => {
+    emit('update-card', updatedCard);
 };
 
 const emptyStateTitle = computed(() => {

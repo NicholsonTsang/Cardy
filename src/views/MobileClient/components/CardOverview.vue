@@ -89,13 +89,33 @@
           <div class="button-bg"></div>
         </button>
         
-        <!-- AI Indicator -->
-        <div v-if="card.conversation_ai_enabled" class="ai-indicator">
-          <i class="pi pi-microphone" />
-          <span>{{ t('mobile.ai_voice_guide') }}</span>
-        </div>
+        <!-- AI Indicator - Now tappable to open assistant -->
+        <button 
+          v-if="card.conversation_ai_enabled" 
+          @click="openAIAssistant"
+          class="ai-indicator-button"
+        >
+          <div class="ai-indicator-content">
+            <div class="ai-indicator-icon">
+              <i class="pi pi-sparkles" />
+            </div>
+            <div class="ai-indicator-text">
+              <span class="ai-indicator-title">{{ t('mobile.ai_voice_guide') }}</span>
+              <span class="ai-indicator-subtitle">{{ t('mobile.tap_to_chat_with_ai') }}</span>
+            </div>
+          </div>
+          <i class="pi pi-chevron-right ai-indicator-arrow" />
+        </button>
       </div>
     </div>
+    
+    <!-- Card Level AI Assistant (hidden button, triggered programmatically) -->
+    <CardLevelAssistant
+      v-if="card.conversation_ai_enabled"
+      ref="cardLevelAssistantRef"
+      :card-data="cardDataForAssistant"
+      :show-button="false"
+    />
     
     <!-- Language Selector Modal -->
     <UnifiedLanguageModal
@@ -114,10 +134,12 @@ import { renderMarkdown } from '@/utils/markdownRenderer'
 import { getCardAspectRatio } from '@/utils/cardConfig'
 import { useMobileLanguageStore } from '@/stores/language'
 import UnifiedLanguageModal from './UnifiedLanguageModal.vue'
+import { CardLevelAssistant } from './AIAssistant'
 
 const { t } = useI18n()
 const languageStore = useMobileLanguageStore()
 const showLanguageSelector = ref(false)
+const cardLevelAssistantRef = ref<InstanceType<typeof CardLevelAssistant> | null>(null)
 
 interface Props {
   card: {
@@ -142,6 +164,17 @@ const emit = defineEmits<{
   explore: []
 }>()
 
+// Card data formatted for AI assistant
+const cardDataForAssistant = computed(() => ({
+  card_name: props.card.card_name,
+  card_description: props.card.card_description,
+  card_image_url: props.card.card_image_url,
+  conversation_ai_enabled: props.card.conversation_ai_enabled,
+  ai_instruction: props.card.ai_instruction || '',
+  ai_knowledge_base: props.card.ai_knowledge_base || '',
+  is_activated: props.card.is_activated
+}))
+
 // Render markdown description
 const renderedDescription = computed(() => {
   if (!props.card.card_description) return ''
@@ -154,6 +187,11 @@ function handleExplore() {
 
 function handleLanguageSelect() {
   showLanguageSelector.value = false
+}
+
+// Open AI assistant
+function openAIAssistant() {
+  cardLevelAssistantRef.value?.openModal()
 }
 
 // Set up CSS custom property for card aspect ratio
@@ -880,24 +918,82 @@ onMounted(() => {
   transform: scale(1.05);
 }
 
-/* AI Indicator */
-.ai-indicator {
+/* AI Indicator Button - Tappable */
+.ai-indicator-button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.875rem 1rem;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.ai-indicator-button:hover {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%);
+  border-color: rgba(139, 92, 246, 0.4);
+  transform: translateY(-1px);
+}
+
+.ai-indicator-button:active {
+  transform: scale(0.98);
+}
+
+.ai-indicator-content {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.ai-indicator-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  background: rgba(59, 130, 246, 0.12);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 0.75rem;
-  color: #93c5fd;
-  font-size: 16px; /* Minimum 16px to prevent iOS zoom */
-  font-weight: 500;
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
 }
 
-.ai-indicator i {
-  color: #60a5fa;
+.ai-indicator-icon i {
+  color: white;
+  font-size: 1.125rem;
+}
+
+.ai-indicator-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+}
+
+.ai-indicator-title {
+  color: white;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.ai-indicator-subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.8125rem;
+  font-weight: 400;
+}
+
+.ai-indicator-arrow {
+  color: rgba(255, 255, 255, 0.5);
   font-size: 0.875rem;
+  transition: transform 0.2s ease;
+}
+
+.ai-indicator-button:hover .ai-indicator-arrow {
+  transform: translateX(2px);
 }
 
 /* Responsive */

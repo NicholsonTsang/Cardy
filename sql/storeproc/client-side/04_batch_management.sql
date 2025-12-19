@@ -26,78 +26,7 @@ BEGIN
 END;
 $$;
 
--- Create a new card batch and issue cards (Legacy - Stripe payment)
--- This function is kept for backward compatibility
-CREATE OR REPLACE FUNCTION issue_card_batch(
-    p_card_id UUID,
-    p_quantity INTEGER
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_batch_id UUID;
-    v_batch_number INTEGER;
-    v_batch_name TEXT;
-    v_card_owner_id UUID;
-BEGIN
-    -- Validate inputs
-    IF p_quantity <= 0 OR p_quantity > 1000 THEN
-        RAISE EXCEPTION 'Quantity must be between 1 and 1000';
-    END IF;
-    
-    -- Check if the user owns the card
-    SELECT user_id INTO v_card_owner_id
-    FROM cards
-    WHERE id = p_card_id;
-    
-    IF v_card_owner_id IS NULL THEN
-        RAISE EXCEPTION 'Card not found.';
-    END IF;
-
-    IF v_card_owner_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to issue cards for this card.';
-    END IF;
-    
-    -- Get next batch number
-    SELECT get_next_batch_number(p_card_id) INTO v_batch_number;
-    v_batch_name := 'batch-' || v_batch_number;
-    
-    -- Create the batch (Step 1: Batch creation only)
-    INSERT INTO card_batches (
-        card_id,
-        batch_name,
-        batch_number,
-        cards_count,
-        created_by,
-        payment_required,
-        payment_completed,
-        payment_amount_cents,
-        payment_waived,
-        cards_generated
-    ) VALUES (
-        p_card_id,
-        v_batch_name,
-        v_batch_number,
-        p_quantity,
-        auth.uid(),
-        TRUE,
-        FALSE,
-        p_quantity * 200, -- $2 USD per card = 200 cents per card
-        FALSE,
-        FALSE -- Cards not generated yet
-    )
-    RETURNING id INTO v_batch_id;
-    
-    -- NOTE: Cards are NOT created here in the two-step process
-    -- Cards will only be created after payment is confirmed via confirm_batch_payment()
-    -- OR when admin waives payment via admin_waive_batch_payment()
-    
-    -- Log operation
-    PERFORM log_operation(format('Issued batch "%s" with %s cards', v_batch_name, p_quantity));
-    
-    RETURN v_batch_id;
-END;
-$$;
-
--- Issue card batch using credits (New credit system)
+-- Issue card batch using credits
 CREATE OR REPLACE FUNCTION issue_card_batch_with_credits(
     p_card_id UUID,
     p_quantity INTEGER,

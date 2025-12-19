@@ -20,39 +20,63 @@
 
     <div class="space-y-6">
       <!-- Statistics Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-medium text-slate-600 mb-2">{{ $t('admin.total_users') }}</h3>
-              <p class="text-3xl font-bold text-slate-900">{{ userStats.total }}</p>
+              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.total_users') }}</h3>
+              <p class="text-2xl font-bold text-slate-900">{{ userStats.total }}</p>
             </div>
-            <div class="p-4 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
-              <i class="pi pi-users text-white text-2xl"></i>
+            <div class="p-3 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl">
+              <i class="pi pi-users text-white text-xl"></i>
             </div>
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
+        <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-medium text-slate-600 mb-2">{{ $t('admin.card_issuers') || 'Card Issuers' }}</h3>
-              <p class="text-3xl font-bold text-slate-900">{{ userStats.cardIssuers }}</p>
+              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.card_issuers') || 'Experience Creators' }}</h3>
+              <p class="text-2xl font-bold text-slate-900">{{ userStats.cardIssuers }}</p>
             </div>
-            <div class="p-4 bg-gradient-to-r from-green-500 to-green-600 rounded-xl">
-              <i class="pi pi-id-card text-white text-2xl"></i>
+            <div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl">
+              <i class="pi pi-id-card text-white text-xl"></i>
             </div>
           </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6 hover:shadow-medium transition-shadow duration-200">
+        <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-medium text-slate-600 mb-2">{{ $t('admin.admins') || 'Admins' }}</h3>
-              <p class="text-3xl font-bold text-slate-900">{{ userStats.admins }}</p>
+              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.admins') || 'Admins' }}</h3>
+              <p class="text-2xl font-bold text-slate-900">{{ userStats.admins }}</p>
             </div>
-            <div class="p-4 bg-gradient-to-r from-purple-500 to-violet-500 rounded-xl">
-              <i class="pi pi-shield text-white text-2xl"></i>
+            <div class="p-3 bg-gradient-to-r from-purple-500 to-violet-500 rounded-xl">
+              <i class="pi pi-shield text-white text-xl"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.premium_users') || 'Premium Users' }}</h3>
+              <p class="text-2xl font-bold text-amber-600">{{ userStats.premiumUsers }}</p>
+            </div>
+            <div class="p-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl">
+              <i class="pi pi-star-fill text-white text-xl"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.free_users') || 'Free Users' }}</h3>
+              <p class="text-2xl font-bold text-slate-700">{{ userStats.freeUsers }}</p>
+            </div>
+            <div class="p-3 bg-gradient-to-r from-slate-400 to-slate-500 rounded-xl">
+              <i class="pi pi-user text-white text-xl"></i>
             </div>
           </div>
         </div>
@@ -61,7 +85,7 @@
       <!-- Filters and Search -->
       <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-6">
         <h3 class="text-lg font-semibold text-slate-900 mb-4">{{ $t('admin.filters_search') || 'Filters & Search' }}</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div class="md:col-span-2">
             <IconField>
               <InputIcon class="pi pi-search" />
@@ -80,6 +104,18 @@
               optionLabel="label"
               optionValue="value"
               :placeholder="$t('admin.filter_by_role') || 'Filter by Role'"
+              class="w-full"
+              @change="filterUsers"
+              showClear
+            />
+          </div>
+          <div>
+            <Select 
+              v-model="selectedTier"
+              :options="tierOptions"
+              optionLabel="label"
+              optionValue="value"
+              :placeholder="$t('admin.filter_by_tier') || 'Filter by Tier'"
               class="w-full"
               @change="filterUsers"
               showClear
@@ -166,6 +202,32 @@
             </template>
           </Column>
 
+          <Column field="subscription_tier" :header="$t('admin.subscription_tier') || 'Tier'" sortable :style="{ width: '120px', minWidth: '120px' }">
+            <template #body="{ data }">
+              <Tag 
+                :value="getTierLabel(data.subscription_tier)"
+                :severity="getTierSeverity(data.subscription_tier)"
+                class="whitespace-nowrap"
+              >
+                <template #icon>
+                  <i :class="data.subscription_tier === 'premium' ? 'pi pi-star-fill mr-1' : 'pi pi-user mr-1'" style="font-size: 0.7rem;"></i>
+                </template>
+              </Tag>
+            </template>
+          </Column>
+
+          <Column field="subscription_status" :header="$t('admin.subscription_status') || 'Sub Status'" sortable :style="{ width: '120px', minWidth: '120px' }">
+            <template #body="{ data }">
+              <div class="flex items-center gap-1">
+                <Tag 
+                  :value="getSubscriptionStatusLabel(data)"
+                  :severity="getSubscriptionStatusSeverity(data)"
+                  class="whitespace-nowrap text-xs"
+                />
+              </div>
+            </template>
+          </Column>
+
           <Column field="last_sign_in_at" :header="$t('admin.last_sign_in') || 'Last Sign In'" sortable :style="{ width: '140px', minWidth: '140px' }">
             <template #body="{ data }">
               <span class="text-sm text-slate-600 whitespace-nowrap">
@@ -174,9 +236,9 @@
             </template>
           </Column>
 
-          <Column :header="$t('common.actions')" :style="{ width: '100px', minWidth: '100px' }" frozen alignFrozen="right" class="text-center">
+          <Column :header="$t('common.actions')" :style="{ width: '140px', minWidth: '140px' }" frozen alignFrozen="right" class="text-center">
             <template #body="{ data }">
-              <div class="flex items-center justify-center gap-2">
+              <div class="flex items-center justify-center gap-1">
                 <Button 
                   icon="pi pi-cog"
                   size="small"
@@ -184,6 +246,14 @@
                   severity="secondary"
                   @click="manageUserRole(data)"
                   v-tooltip.top="$t('admin.manage_role')"
+                />
+                <Button 
+                  icon="pi pi-star"
+                  size="small"
+                  outlined
+                  :severity="data.subscription_tier === 'premium' ? 'warning' : 'info'"
+                  @click="manageUserSubscription(data)"
+                  v-tooltip.top="$t('admin.manage_subscription') || 'Manage Subscription'"
                 />
               </div>
             </template>
@@ -247,6 +317,155 @@
           />
         </template>
       </Dialog>
+
+      <!-- Subscription Management Dialog -->
+      <Dialog 
+        v-model:visible="showSubscriptionDialog"
+        modal
+        :header="$t('admin.manage_subscription') || 'Manage Subscription'"
+        :style="{ width: '90vw', maxWidth: '550px' }"
+        @hide="closeSubscriptionDialog"
+      >
+        <div v-if="selectedUser" class="space-y-4">
+          <!-- User Info -->
+          <div>
+            <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('admin.user') || 'User' }}</label>
+            <div class="p-3 bg-slate-50 rounded-lg">
+              <p class="font-medium text-slate-900">{{ selectedUser.user_email }}</p>
+              <div class="flex items-center gap-2 mt-1">
+                <Tag 
+                  :value="getTierLabel(selectedUser.subscription_tier)"
+                  :severity="getTierSeverity(selectedUser.subscription_tier)"
+                  size="small"
+                >
+                  <template #icon>
+                    <i :class="selectedUser.subscription_tier === 'premium' ? 'pi pi-star-fill mr-1' : 'pi pi-user mr-1'" style="font-size: 0.65rem;"></i>
+                  </template>
+                </Tag>
+                <Tag 
+                  :value="getSubscriptionStatusLabel(selectedUser)"
+                  :severity="getSubscriptionStatusSeverity(selectedUser)"
+                  size="small"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- Current Subscription Info -->
+          <div v-if="selectedUser.subscription_tier === 'premium'" class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div class="flex items-center gap-2 mb-2">
+              <i class="pi pi-info-circle text-amber-600"></i>
+              <span class="font-medium text-amber-800">{{ $t('admin.current_subscription_info') || 'Current Subscription Info' }}</span>
+            </div>
+            <div class="text-sm text-amber-700 space-y-1">
+              <p v-if="selectedUser.stripe_subscription_id">
+                <span class="font-medium">{{ $t('admin.stripe_managed') || 'Stripe Managed' }}:</span> 
+                <code class="bg-amber-100 px-1 rounded text-xs">{{ selectedUser.stripe_subscription_id }}</code>
+              </p>
+              <p v-else>
+                <span class="font-medium">{{ $t('admin.admin_managed') || 'Admin Managed' }}</span> ({{ $t('admin.no_stripe_subscription') || 'No Stripe subscription' }})
+              </p>
+              <p v-if="selectedUser.current_period_end">
+                <span class="font-medium">{{ $t('admin.period_ends') || 'Period Ends' }}:</span> 
+                {{ formatDate(selectedUser.current_period_end) }}
+              </p>
+              <p v-if="selectedUser.cancel_at_period_end" class="text-red-600">
+                <i class="pi pi-exclamation-triangle mr-1"></i>
+                {{ $t('admin.scheduled_cancellation') || 'Scheduled for cancellation at period end' }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Tier Selection -->
+          <div>
+            <label for="newTier" class="block text-sm font-medium text-slate-700 mb-2">
+              {{ $t('admin.new_tier') || 'New Tier' }} <span class="text-red-500">*</span>
+            </label>
+            <div class="grid grid-cols-2 gap-3">
+              <div 
+                @click="newSubscriptionTier = 'free'"
+                :class="[
+                  'p-4 border-2 rounded-xl cursor-pointer transition-all duration-200',
+                  newSubscriptionTier === 'free' 
+                    ? 'border-slate-500 bg-slate-50' 
+                    : 'border-slate-200 hover:border-slate-300'
+                ]"
+              >
+                <div class="flex items-center gap-2 mb-2">
+                  <i class="pi pi-user text-slate-600"></i>
+                  <span class="font-semibold text-slate-900">{{ $t('subscription.free_plan') || 'Free' }}</span>
+                </div>
+                <ul class="text-xs text-slate-600 space-y-1">
+                  <li>• {{ $t('admin.free_tier_experiences') || '3 experiences' }}</li>
+                  <li>• {{ $t('admin.free_tier_access') || '50 monthly access' }}</li>
+                  <li>• {{ $t('admin.no_translations') || 'No translations' }}</li>
+                </ul>
+              </div>
+              <div 
+                @click="newSubscriptionTier = 'premium'"
+                :class="[
+                  'p-4 border-2 rounded-xl cursor-pointer transition-all duration-200',
+                  newSubscriptionTier === 'premium' 
+                    ? 'border-amber-500 bg-amber-50' 
+                    : 'border-slate-200 hover:border-amber-200'
+                ]"
+              >
+                <div class="flex items-center gap-2 mb-2">
+                  <i class="pi pi-star-fill text-amber-500"></i>
+                  <span class="font-semibold text-slate-900">{{ $t('subscription.premium_plan') || 'Premium' }}</span>
+                </div>
+                <ul class="text-xs text-slate-600 space-y-1">
+                  <li>• {{ $t('admin.premium_tier_experiences') || '15 experiences' }}</li>
+                  <li>• {{ $t('admin.premium_tier_access') || '3,000 monthly access' }}</li>
+                  <li>• {{ $t('admin.full_translations') || 'Full translations' }}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Reason -->
+          <div>
+            <label for="subscriptionReason" class="block text-sm font-medium text-slate-700 mb-2">
+              {{ $t('admin.reason_for_change') || 'Reason for Change' }} <span class="text-red-500">*</span>
+            </label>
+            <Textarea 
+              id="subscriptionReason"
+              v-model="subscriptionChangeReason"
+              rows="3"
+              :placeholder="$t('admin.subscription_reason_placeholder') || 'Explain why this subscription change is necessary (e.g., promotional upgrade, support case, etc.)'"
+              class="w-full"
+            />
+          </div>
+
+          <!-- Warning for Stripe-managed subscriptions -->
+          <div v-if="selectedUser.stripe_subscription_id && newSubscriptionTier !== selectedUser.subscription_tier" class="p-3 bg-red-50 border border-red-200 rounded-lg">
+            <div class="flex items-start gap-2">
+              <i class="pi pi-exclamation-triangle text-red-600 mt-0.5"></i>
+              <div class="text-sm text-red-700">
+                <p class="font-medium">{{ $t('admin.stripe_warning_title') || 'Warning: Stripe-managed subscription' }}</p>
+                <p class="mt-1">
+                  {{ $t('admin.stripe_warning_desc') || 'This user has an active Stripe subscription. Manually changing the tier will not affect their Stripe billing. Consider using Stripe Dashboard to manage billing changes.' }}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <template #footer>
+          <Button :label="$t('common.cancel')" text severity="secondary" @click="closeSubscriptionDialog" />
+          <Button 
+            :label="$t('admin.update_subscription') || 'Update Subscription'" 
+            :severity="newSubscriptionTier === 'premium' ? 'warning' : 'primary'"
+            @click="updateUserSubscription"
+            :disabled="!newSubscriptionTier || !subscriptionChangeReason || newSubscriptionTier === selectedUser?.subscription_tier"
+            :loading="isUpdatingSubscription"
+          >
+            <template #icon>
+              <i :class="newSubscriptionTier === 'premium' ? 'pi pi-star-fill mr-2' : 'pi pi-user mr-2'"></i>
+            </template>
+          </Button>
+        </template>
+      </Dialog>
     </div>
   </PageWrapper>
 </template>
@@ -277,25 +496,36 @@ const allUsers = ref([])
 const filteredUsers = ref([])
 const searchQuery = ref('')
 const selectedRole = ref(null)
+const selectedTier = ref(null)
 const currentPage = ref(0)
 const pageSize = ref(20)
 
-// Dialog state
+// Dialog state - Role
 const showRoleDialog = ref(false)
 const selectedUser = ref(null)
 const newUserRole = ref('')
 const roleChangeReason = ref('')
+
+// Dialog state - Subscription
+const showSubscriptionDialog = ref(false)
+const newSubscriptionTier = ref('')
+const subscriptionChangeReason = ref('')
+const isUpdatingSubscription = ref(false)
 
 // Computed
 const userStats = computed(() => {
   const total = allUsers.value.length
   const cardIssuers = allUsers.value.filter(u => u.role === 'cardIssuer' || u.role === 'card_issuer').length
   const admins = allUsers.value.filter(u => u.role === 'admin').length
+  const premiumUsers = allUsers.value.filter(u => u.subscription_tier === 'premium').length
+  const freeUsers = total - premiumUsers
 
   return {
     total,
     cardIssuers,
-    admins
+    admins,
+    premiumUsers,
+    freeUsers
   }
 })
 
@@ -306,7 +536,7 @@ const paginatedUsers = computed(() => {
 })
 
 const hasActiveFilters = computed(() => {
-  return searchQuery.value || selectedRole.value
+  return searchQuery.value || selectedRole.value || selectedTier.value
 })
 
 // Options
@@ -321,6 +551,12 @@ const roleChangeOptions = computed(() => [
   { label: t('common.card_issuer'), value: 'cardIssuer' },
   { label: t('common.admin'), value: 'admin' },
   { label: t('admin.user'), value: 'user' }
+])
+
+const tierOptions = computed(() => [
+  { label: t('admin.all_tiers') || 'All Tiers', value: null },
+  { label: t('subscription.premium_plan') || 'Premium', value: 'premium' },
+  { label: t('subscription.free_plan') || 'Free', value: 'free' }
 ])
 
 // Methods
@@ -361,6 +597,11 @@ const filterUsers = () => {
     filtered = filtered.filter(user => user.role === selectedRole.value)
   }
 
+  // Tier filter
+  if (selectedTier.value) {
+    filtered = filtered.filter(user => user.subscription_tier === selectedTier.value)
+  }
+
   filteredUsers.value = filtered
   currentPage.value = 0 // Reset to first page
 }
@@ -368,6 +609,7 @@ const filterUsers = () => {
 const clearFilters = () => {
   searchQuery.value = ''
   selectedRole.value = null
+  selectedTier.value = null
   filterUsers()
 }
 
@@ -384,10 +626,14 @@ const exportUsers = () => {
   const csvData = filteredUsers.value.map(user => ({
     Email: user.user_email,
     Role: user.role || 'cardIssuer',
+    'Subscription Tier': user.subscription_tier || 'free',
+    'Subscription Status': user.subscription_status || 'active',
     'Cards Count': user.cards_count || 0,
     'Issued Cards': user.issued_cards_count || 0,
     'Created Date': formatDate(user.created_at),
-    'Last Sign In': user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Never'
+    'Last Sign In': user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Never',
+    'Stripe Subscription ID': user.stripe_subscription_id || '',
+    'Period End': user.current_period_end ? formatDate(user.current_period_end) : ''
   }))
 
   const csv = [
@@ -450,6 +696,58 @@ const updateUserRole = async () => {
   }
 }
 
+// Subscription management methods
+const manageUserSubscription = (user) => {
+  selectedUser.value = user
+  newSubscriptionTier.value = user.subscription_tier || 'free'
+  subscriptionChangeReason.value = ''
+  showSubscriptionDialog.value = true
+}
+
+const closeSubscriptionDialog = () => {
+  selectedUser.value = null
+  newSubscriptionTier.value = ''
+  subscriptionChangeReason.value = ''
+  showSubscriptionDialog.value = false
+}
+
+const updateUserSubscription = async () => {
+  if (!selectedUser.value || !newSubscriptionTier.value || !subscriptionChangeReason.value) return
+  if (newSubscriptionTier.value === selectedUser.value.subscription_tier) return
+
+  isUpdatingSubscription.value = true
+  
+  try {
+    const { error } = await supabase.rpc('admin_update_user_subscription', {
+      p_user_id: selectedUser.value.user_id,
+      p_new_tier: newSubscriptionTier.value,
+      p_reason: subscriptionChangeReason.value
+    })
+
+    if (error) throw error
+
+    toast.add({
+      severity: 'success',
+      summary: t('common.success'),
+      detail: t('admin.subscription_updated_successfully') || 'Subscription updated successfully',
+      life: 3000
+    })
+
+    closeSubscriptionDialog()
+    await refreshData()
+  } catch (error) {
+    console.error('Error updating user subscription:', error)
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: t('admin.failed_to_update_subscription') || 'Failed to update subscription',
+      life: 3000
+    })
+  } finally {
+    isUpdatingSubscription.value = false
+  }
+}
+
 // Helper functions
 const getRoleLabel = (role) => {
   if (role === 'cardIssuer' || role === 'card_issuer') return t('common.card_issuer')
@@ -461,6 +759,48 @@ const getRoleSeverity = (role) => {
   if (role === 'admin') return 'danger'
   if (role === 'cardIssuer' || role === 'card_issuer') return 'success'
   return 'secondary'
+}
+
+const getTierLabel = (tier) => {
+  if (tier === 'premium') return t('subscription.premium_plan') || 'Premium'
+  return t('subscription.free_plan') || 'Free'
+}
+
+const getTierSeverity = (tier) => {
+  if (tier === 'premium') return 'warning'
+  return 'secondary'
+}
+
+const getSubscriptionStatusLabel = (user) => {
+  if (!user) return 'Active'
+  
+  if (user.cancel_at_period_end) {
+    return t('admin.canceling') || 'Canceling'
+  }
+  
+  const status = user.subscription_status || 'active'
+  switch (status) {
+    case 'active': return t('common.active') || 'Active'
+    case 'past_due': return t('admin.past_due') || 'Past Due'
+    case 'canceled': return t('admin.canceled') || 'Canceled'
+    case 'trialing': return t('admin.trialing') || 'Trialing'
+    default: return status
+  }
+}
+
+const getSubscriptionStatusSeverity = (user) => {
+  if (!user) return 'success'
+  
+  if (user.cancel_at_period_end) return 'warning'
+  
+  const status = user.subscription_status || 'active'
+  switch (status) {
+    case 'active': return 'success'
+    case 'past_due': return 'danger'
+    case 'canceled': return 'secondary'
+    case 'trialing': return 'info'
+    default: return 'secondary'
+  }
 }
 
 const formatDate = (dateString) => {
