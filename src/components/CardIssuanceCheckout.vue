@@ -1372,7 +1372,7 @@ const navigateToCreditPurchase = () => {
 
 const viewBatchCards = (batch) => {
   // Navigate to the access tab with the specific batch selected
-  router.push(`/cms/mycards?cardId=${props.cardId}&tab=access&batchId=${batch.id}`)
+  router.push(`/cms/projects?cardId=${props.cardId}&tab=access&batchId=${batch.id}`)
 }
 
 const viewBatchDetails = async (batch) => {

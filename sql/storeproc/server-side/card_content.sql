@@ -20,7 +20,8 @@ RETURNS TABLE (
     current_scans INTEGER,
     daily_scan_limit INTEGER,
     daily_scans INTEGER,
-    last_scan_date DATE
+    last_scan_date DATE,
+    is_template BOOLEAN
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -33,8 +34,10 @@ BEGIN
         c.current_scans,
         c.daily_scan_limit,
         c.daily_scans,
-        c.last_scan_date
+        c.last_scan_date,
+        (ct.id IS NOT NULL) AS is_template
     FROM cards c
+    LEFT JOIN content_templates ct ON ct.card_id = c.id
     WHERE c.access_token = p_access_token;
     -- Note: Removed billing_type = 'digital' filter to allow
     -- any card with an access_token to be accessed via QR code

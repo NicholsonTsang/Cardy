@@ -88,13 +88,16 @@ const renderedContent = computed(() => {
 
 <style scoped>
 .layout-single {
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* Fill parent flex container */
+  flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0; /* Allow flex shrinking */
   padding: 1.5rem 1.25rem;
   padding-top: calc(1.5rem + env(safe-area-inset-top));
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
+  /* Extend background to fill container when content is short */
+  background: transparent;
 }
 
 .layout-single.has-header {

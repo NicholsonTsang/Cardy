@@ -1,5 +1,8 @@
 <template>
-  <div id="app" class="min-h-screen bg-slate-50">
+  <!-- NOTE: Do NOT use id="app" here.
+       The real mount point is the div#app in index.html.
+       Duplicating the id creates invalid DOM and breaks iOS background/viewport behavior. -->
+  <div class="app-root min-h-screen bg-slate-50">
     <router-view />
     <Toast position="top-right" />
     <Toast position="bottom-right" group="br" />

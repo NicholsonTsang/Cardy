@@ -14,14 +14,19 @@ const router = createRouter({
         // Default redirect - will be handled by navigation guard
         {
           path: '',
-          redirect: { name: 'mycards' }
+          redirect: { name: 'projects' }
         },
-        // Experience Creator Routes (accessible by both cardIssuer and admin)
+        // Project Creator Routes (accessible by both cardIssuer and admin)
         {
-          path: 'mycards',
-          name: 'mycards',
+          path: 'projects',
+          name: 'projects',
           component: () => import('@/views/Dashboard/CardIssuer/MyCards.vue'),
           meta: { requiredRoles: ['cardIssuer', 'admin'] }
+        },
+        // Backward compatibility redirect
+        {
+          path: 'mycards',
+          redirect: { name: 'projects' }
         },
         {
           path: 'credits',
@@ -30,10 +35,15 @@ const router = createRouter({
           meta: { requiredRoles: ['cardIssuer', 'admin'] }
         },
         {
-          path: 'plan',
-          name: 'plan',
+          path: 'subscription',
+          name: 'subscription',
           component: () => import('@/views/Dashboard/CardIssuer/SubscriptionManagement.vue'),
           meta: { requiredRoles: ['cardIssuer', 'admin'] }
+        },
+        // Backward compatibility redirect
+        {
+          path: 'plan',
+          redirect: { name: 'subscription' }
         },
         
         // Admin Routes (now using the same DashboardLayout)
@@ -73,10 +83,15 @@ const router = createRouter({
           meta: { requiredRole: 'admin' }
         },
         {
-          path: 'admin/user-cards',
-          name: 'admin-user-cards',
+          path: 'admin/user-projects',
+          name: 'admin-user-projects',
           component: () => import('@/views/Dashboard/Admin/UserCardsView.vue'),
           meta: { requiredRole: 'admin' }
+        },
+        // Backward compatibility redirect
+        {
+          path: 'admin/user-cards',
+          redirect: { name: 'admin-user-projects' }
         },
         {
           path: 'admin/templates',
@@ -140,6 +155,11 @@ const router = createRouter({
       name: 'landing',
       component: () => import('@/views/Public/LandingPage.vue')
     },
+    {
+      path: '/docs',
+      name: 'documentation',
+      component: () => import('@/views/Public/Documentation.vue')
+    },
     // Catch-all for any other routes
     {
       path: '/:pathMatch(.*)*',
@@ -192,10 +212,10 @@ const getDefaultRouteForRole = (userRole: string | undefined): { name: string } 
     return { name: 'admin-dashboard' };
   }
   if (userRole === 'cardIssuer') {
-    return { name: 'mycards' };
+    return { name: 'projects' };
   }
-  // If no role is found, default to mycards (most users are cardIssuer)
-  return { name: 'mycards' };
+  // If no role is found, default to projects (most users are cardIssuer)
+  return { name: 'projects' };
 };
 
 // Track if auth has been initialized to avoid redundant checks

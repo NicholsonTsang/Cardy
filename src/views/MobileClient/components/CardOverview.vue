@@ -202,14 +202,14 @@ onMounted(() => {
 </script>
 
 <style scoped>
-/* Base Container */
+/* Base Container - Fill parent flex container */
 .card-overview {
-  min-height: 100vh;
-  min-height: var(--viewport-height, 100vh); /* Use dynamic viewport height */
-  min-height: 100dvh;
+  /* Fill parent container */
+  flex: 1;
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 50%, #312e81 100%);
+  min-height: 0; /* Allow flex shrinking */
+  background: transparent; /* Parent has background */
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -217,12 +217,9 @@ onMounted(() => {
   touch-action: manipulation; /* Disable double-tap zoom */
 }
 
-/* Digital mode uses fixed height to keep info panel at bottom */
+/* Digital mode - no special handling needed, parent container handles sizing */
 .card-overview.digital-mode {
-  height: 100vh;
-  height: var(--viewport-height, 100vh);
-  height: 100dvh;
-  min-height: auto;
+  /* Same as base, parent container handles fixed height */
 }
 
 /* Hero Section (Physical cards) */
@@ -238,20 +235,21 @@ onMounted(() => {
 }
 
 /* ============================================== */
-/* Welcome Section (Digital - Full-screen Immersive) */
+/* Welcome Section (Digital - Dynamic Hero) */
 /* ============================================== */
 
 .welcome-section {
+  /* Dynamic height - fills remaining space after info panel */
   flex: 1 1 auto;
+  min-height: 120px; /* Minimum to keep icon visible */
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1.5rem;
-  padding-top: calc(2rem + env(safe-area-inset-top));
+  padding: 0.75rem 1.5rem 0.5rem;
+  padding-top: calc(0.5rem + env(safe-area-inset-top));
   position: relative;
   overflow: visible;
-  min-height: 0; /* Allow flex shrinking */
 }
 
 /* Immersive Background */
@@ -386,29 +384,29 @@ onMounted(() => {
   }
 }
 
-/* Icon Container */
+/* Icon Container - Compact */
 .welcome-icon-container {
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 80px;
+  height: 80px;
 }
 
 .icon-glow-ring {
   position: absolute;
-  inset: -15px;
-  border: 2px solid rgba(99, 102, 241, 0.4);
+  inset: -10px;
+  border: 1.5px solid rgba(99, 102, 241, 0.4);
   border-radius: 50%;
   animation: ringPulse 3s ease-in-out infinite;
 }
 
 .icon-glow-ring-2 {
-  inset: -35px;
+  inset: -24px;
   border-color: rgba(139, 92, 246, 0.25);
   animation-delay: -1s;
 }
 
 .icon-glow-ring-3 {
-  inset: -55px;
+  inset: -38px;
   border-color: rgba(99, 102, 241, 0.15);
   animation-delay: -2s;
 }
@@ -441,7 +439,7 @@ onMounted(() => {
 }
 
 .icon-main i {
-  font-size: 3rem;
+  font-size: 2rem;
   color: white;
   text-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
 }
@@ -667,22 +665,24 @@ onMounted(() => {
   font-size: 4rem;
 }
 
-/* Info Panel */
+/* Info Panel - Takes only needed space, hero fills the rest */
 .info-panel {
-  flex: 0 0 auto;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.95) 0%, rgba(30, 58, 138, 0.95) 100%);
+  flex: 0 0 auto; /* Don't grow - take only needed space */
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 58, 138, 0.95) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 1.5rem 1.25rem 2rem;
-  padding-bottom: max(2rem, env(safe-area-inset-bottom)); /* Account for home indicator */
+  padding: 1.5rem 1.25rem 1.5rem;
+  padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 0.75rem)); /* Account for home indicator */
   animation: slideUp 0.5s ease-out 0.2s both;
   z-index: 2;
-  border-top-left-radius: 1.5rem;
-  border-top-right-radius: 1.5rem;
+  border-top-left-radius: 2rem;
+  border-top-right-radius: 2rem;
 }
 
-/* Digital mode - push info panel to bottom */
+/* Digital mode - no special handling needed */
 .digital-mode .info-panel {
-  margin-top: auto;
+  /* Info panel takes only needed space, hero section fills the rest */
 }
 
 @keyframes slideUp {
@@ -701,7 +701,8 @@ onMounted(() => {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 0.75rem; /* Compact gap */
+  width: 100%;
 }
 
 /* Language Selection Chip */
@@ -709,18 +710,18 @@ onMounted(() => {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.625rem 1.25rem;
+  padding: 0.5rem 1rem;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 9999px;
   color: white;
-  font-size: 1rem; /* 16px base */
+  font-size: 0.9375rem; /* 15px */
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  margin: 0 auto 0.5rem;
+  margin: 0 auto 0.25rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
 }
@@ -752,36 +753,45 @@ onMounted(() => {
   line-height: 1;
 }
 
-/* Card Title */
+/* Card Title - Compact with 2-line max */
 .card-title {
-  font-size: 1.625rem;
-  font-weight: 800;
+  font-size: 1.25rem;
+  font-weight: 700;
   color: white;
   margin: 0;
-  line-height: 1.25;
+  line-height: 1.3;
   text-align: center;
   letter-spacing: -0.01em;
+  /* Limit to 2 lines with ellipsis */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0; /* Don't shrink title */
 }
 
-/* Description */
+/* Description - Scrollable with max height */
 .description-wrapper {
-  max-height: 5.5rem;
+  max-height: 20vh; /* Cap description height */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
 .card-description {
-  font-size: 16px; /* Minimum 16px to prevent iOS zoom */
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.5;
+  font-size: 15px; /* Slightly smaller for compact mobile view */
+  color: rgba(255, 255, 255, 0.88);
+  line-height: 1.6; /* Increased for better readability */
+  letter-spacing: 0.01em; /* Slight letter-spacing for clarity */
   margin: 0;
   text-align: center;
   word-break: break-word;
 }
 
-/* Markdown Content Styling */
+/* Markdown Content Styling - Optimized for mobile readability */
 .markdown-content :deep(p) {
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.75em 0; /* Use em for consistent spacing relative to font-size */
 }
 
 .markdown-content :deep(p:last-child) {
@@ -789,51 +799,53 @@ onMounted(() => {
 }
 
 .markdown-content :deep(strong) {
-  font-weight: 700;
+  font-weight: 600; /* Semi-bold for better contrast without being too heavy */
   color: rgba(255, 255, 255, 0.95);
 }
 
 .markdown-content :deep(em) {
   font-style: italic;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .markdown-content :deep(a) {
   color: #93c5fd;
   text-decoration: underline;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-underline-offset: 2px; /* Better underline positioning */
   word-break: break-word;
 }
 
 .markdown-content :deep(ul),
 .markdown-content :deep(ol) {
-  margin: 0.5rem 0;
-  padding-left: 1.5rem;
+  margin: 0.625em 0;
+  padding-left: 1.25em; /* Tighter indent for mobile */
   text-align: left;
 }
 
 .markdown-content :deep(li) {
-  margin: 0.25rem 0;
+  margin: 0.375em 0; /* Slightly more spacing between items */
+  line-height: 1.5;
+}
+
+.markdown-content :deep(li::marker) {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .markdown-content :deep(h1),
 .markdown-content :deep(h2),
 .markdown-content :deep(h3) {
-  font-weight: 700;
+  font-weight: 600;
   color: rgba(255, 255, 255, 0.95);
-  margin: 0.75rem 0 0.5rem 0;
+  margin: 0.875em 0 0.5em 0;
+  line-height: 1.3;
 }
 
 .markdown-content :deep(h1) {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
 }
 
 .markdown-content :deep(h2) {
-  font-size: 1.125rem;
+  font-size: 1.0625rem;
 }
 
 .markdown-content :deep(h3) {
@@ -841,19 +853,26 @@ onMounted(() => {
 }
 
 .markdown-content :deep(code) {
-  background: rgba(255, 255, 255, 0.1);
-  padding: 0.125rem 0.25rem;
-  border-radius: 0.25rem;
-  font-family: 'Courier New', monospace;
-  font-size: 0.875rem;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9em; /* Relative to parent */
 }
 
 .markdown-content :deep(blockquote) {
-  border-left: 3px solid rgba(255, 255, 255, 0.3);
-  padding-left: 1rem;
-  margin: 0.75rem 0;
+  border-left: 3px solid rgba(139, 92, 246, 0.5); /* Purple accent */
+  padding-left: 0.875em;
+  margin: 0.75em 0;
   font-style: italic;
-  color: rgba(255, 255, 255, 0.75);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Horizontal rule */
+.markdown-content :deep(hr) {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  margin: 1em 0;
 }
 
 /* Custom Scrollbar */
@@ -875,7 +894,7 @@ onMounted(() => {
 .action-button {
   position: relative;
   width: 100%;
-  padding: 1.125rem;
+  padding: 1rem;
   border: none;
   border-radius: 1rem;
   color: white;
@@ -889,6 +908,7 @@ onMounted(() => {
     0 8px 16px rgba(0, 0, 0, 0.2);
   -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
   touch-action: manipulation; /* Disable double-tap zoom */
+  flex-shrink: 0; /* Don't shrink button */
 }
 
 .button-label {
@@ -924,7 +944,7 @@ onMounted(() => {
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 0.875rem 1rem;
+  padding: 0.75rem 1rem;
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
   border: 1px solid rgba(139, 92, 246, 0.3);
   border-radius: 1rem;
@@ -932,6 +952,7 @@ onMounted(() => {
   transition: all 0.2s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  flex-shrink: 0; /* Don't shrink button */
 }
 
 .ai-indicator-button:hover {
@@ -954,10 +975,10 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
 }
 
@@ -1011,11 +1032,12 @@ onMounted(() => {
   }
   
   .card-description {
-    font-size: 17px; /* Keep ≥16px on larger screens too */
+    font-size: 16px; /* Slightly larger on bigger screens */
+    line-height: 1.65;
   }
   
   .description-wrapper {
-    max-height: 7rem;
+    max-height: 25vh; /* More room on larger screens */
   }
   
   .info-panel {

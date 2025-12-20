@@ -295,7 +295,7 @@ const handleCreateCardClick = async () => {
             icon: 'pi pi-star',
             acceptLabel: t('subscription.view_plans'),
             rejectLabel: t('common.cancel'),
-            accept: () => router.push('/cms/plan')
+            accept: () => router.push('/cms/subscription')
         });
         return;
     }

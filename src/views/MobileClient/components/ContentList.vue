@@ -89,14 +89,18 @@ onMounted(() => {
 
 <style scoped>
 .content-list {
+  /* Fill parent flex container */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Allow flex shrinking */
   padding-top: calc(5rem + env(safe-area-inset-top)); /* Account for header + notch */
   padding-left: max(1.25rem, env(safe-area-inset-left));
   padding-right: max(1.25rem, env(safe-area-inset-right));
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
-  min-height: 100vh;
-  min-height: var(--viewport-height, 100vh); /* Dynamic viewport */
-  min-height: 100dvh;
   -webkit-text-size-adjust: 100%; /* Prevent text scaling */
+  /* Extend background to fill container when content is short */
+  background: transparent;
 }
 
 .content-grid {

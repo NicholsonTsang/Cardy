@@ -156,7 +156,14 @@
     "group_display_expanded": "同页显示",
     "group_display_expanded_desc": "项目直接显示在分类标题下的同一页面",
     "group_display_collapsed": "导航显示",
-    "group_display_collapsed_desc": "点击分类后导航查看内容项目"
+    "group_display_collapsed_desc": "点击分类后导航查看内容项目",
+    "multi_select": "选择多个",
+    "export_options": "导出选项"
+  },
+
+  "templates": {
+    "library_title": "模板库",
+    "browse_templates": "浏览模板"
   },
 
   "content": {

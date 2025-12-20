@@ -23,6 +23,8 @@
     "admin": "Admin",
     "card_issuer": "Creator",
     "loading": "Loading...",
+    "load_error": "Failed to load content",
+    "retry": "Retry",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -1289,9 +1291,8 @@
     "credits_insufficient": "Content Temporarily Unavailable",
     "credits_insufficient_message": "The content owner's credits have been exhausted.",
     "try_again_later": "Please try again later.",
-    "daily_limit_exceeded": "Daily Access Limit Reached",
-    "daily_limit_message": "This content has reached its daily access limit.",
-    "resets_tomorrow": "Resets at midnight",
+    "monthly_limit_exceeded": "Access Limit Reached",
+    "monthly_limit_message": "This content is temporarily unavailable. Please try again later.",
     "content_details": "Content Details",
     "back_to_list": "Back to List",
     "no_sub_items": "No sub-items available",
@@ -1496,8 +1497,10 @@
       "about": "About",
       "demo": "Demo",
       "features": "Features",
+      "how_it_works": "How It Works",
       "pricing": "Pricing",
       "contact": "Contact",
+      "docs": "Docs",
       "sign_in": "Sign In",
       "start_free_trial": "Start Free Trial",
       "start_free": "Start Free",
@@ -1579,7 +1582,21 @@
       "scan_or_click": "Scan QR code or click to open",
       "view_all": "Explore More Templates",
       "showing": "Showing",
-      "of": "of"
+      "of": "of",
+      "venue_types": {
+        "cultural": "Cultural & Arts",
+        "food": "Food & Beverage",
+        "events": "Events & Entertainment",
+        "hospitality": "Hospitality & Wellness",
+        "retail": "Shopping & Showrooms",
+        "tours": "Tours & Education",
+        "general": "General"
+      },
+      "select_template": "Select a template to preview",
+      "open_full": "Open Full Experience",
+      "scan_qr_hint": "Or scan the QR code on your phone",
+      "scan_to_view": "Scan to view on your phone",
+      "scan_hint": "Use your mobile camera to scan and experience this demo"
     },
     "content_modes": {
       "title": "Flexible",
@@ -1634,16 +1651,14 @@
     "how_it_works": {
       "title": "Simple",
       "title_highlight": "Three-Step Process",
-      "subtitle": "From purchase to lasting memory—designed for seamless visitor engagement.",
+      "subtitle": "Launch your AI-powered digital experience in minutes—no technical skills required.",
       "steps": {
-        "purchase_title": "Purchase",
-        "purchase_desc": "Visitors receive or purchase a collectible card.",
-        "scan_title": "Scan",
-        "scan_desc": "They scan the QR code to instantly unlock the AI guide.",
-        "explore_title": "Experience",
-        "explore_desc": "Your AI assistant tells stories, answers questions, and guides them.",
-        "collect_title": "Collect",
-        "collect_desc": "Visitors keep the card as a lasting digital & physical souvenir."
+        "create_title": "Create",
+        "create_desc": "Build your project and add content through our intuitive dashboard.",
+        "share_title": "Share",
+        "share_desc": "Display the QR code on signage, menus, or marketing materials.",
+        "engage_title": "Engage",
+        "engage_desc": "Visitors scan and instantly interact with your AI-powered guide."
       }
     },
     "features": {
@@ -2374,6 +2389,8 @@
       "deleteFailed": "Delete Failed",
       "confirmDeleteMessage": "Are you sure you want to delete the {language} translation? This action cannot be undone.",
       "confirmDeleteTitle": "Delete Translation",
+      "confirmTranslateTitle": "Confirm Translation",
+      "confirmTranslateMessage": "You are about to translate to {count} language(s). This is included with your Premium subscription. Continue?",
       "noTranslations": "No translations yet",
       "selectedLanguages": "Selected Languages",
       "translationDetails": "Translation Details",
@@ -2708,6 +2725,90 @@
       "info_description": "Templates are linked to your cards. Create cards in My Cards, then link them as templates here. Users who import templates get a full copy of your card and its content.",
       "already_template": "Already Template",
       "instruction_hint": "📝 Fill in your project details below. Required fields marked with *. Use dropdowns for validation."
+    }
+  },
+  "docs": {
+    "title": "Documentation",
+    "search_placeholder": "Search documentation...",
+    "previous": "Previous",
+    "next": "Next",
+    "screenshot_placeholder": "Screenshot coming soon",
+    "feedback": {
+      "title": "Was this helpful?",
+      "subtitle": "Help us improve our documentation",
+      "yes": "Yes",
+      "no": "No",
+      "thanks": "Thank you for your feedback!"
+    },
+    "categories": {
+      "getting_started": {
+        "title": "Getting Started",
+        "articles": {
+          "overview": {
+            "title": "Platform Overview",
+            "description": "Learn what ExperienceQR is and how it can transform your venue into an interactive AI-powered experience."
+          },
+          "create_project": {
+            "title": "Create Your First Project",
+            "description": "Step-by-step guide to creating your first project on ExperienceQR."
+          },
+          "add_content": {
+            "title": "Adding Content Items",
+            "description": "Learn how to add exhibits, menu items, or points of interest to your project."
+          }
+        }
+      },
+      "project_management": {
+        "title": "Project Management",
+        "articles": {
+          "settings": {
+            "title": "Project Settings",
+            "description": "Configure your project settings including appearance, access control, and more."
+          },
+          "content_modes": {
+            "title": "Content Display Modes",
+            "description": "Choose the best way to display your content with five different layout options."
+          },
+          "ai_config": {
+            "title": "AI Configuration",
+            "description": "Set up and customize the AI assistant for engaging visitor conversations."
+          }
+        }
+      },
+      "features": {
+        "title": "Features",
+        "articles": {
+          "translations": {
+            "title": "Multi-Language Translations",
+            "description": "Translate your content into multiple languages to reach international visitors."
+          },
+          "qr_sharing": {
+            "title": "QR Code & Sharing",
+            "description": "Generate QR codes and share your project with visitors."
+          },
+          "bulk_import": {
+            "title": "Bulk Import",
+            "description": "Import multiple projects and content items from Excel spreadsheets."
+          },
+          "templates": {
+            "title": "Template Library",
+            "description": "Jumpstart your project with pre-built templates for various venue types."
+          }
+        }
+      },
+      "billing": {
+        "title": "Billing & Credits",
+        "articles": {
+          "subscription": {
+            "title": "Subscription Plans",
+            "description": "Understand our subscription tiers and choose the best plan for your needs."
+          },
+          "credits": {
+            "title": "Credit Management",
+            "description": "Learn how credits work and how to purchase more for translations and features."
+          }
+        }
+      }
     }
   }
 }

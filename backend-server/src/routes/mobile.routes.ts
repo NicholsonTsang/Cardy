@@ -56,7 +56,7 @@ interface CardContentResponse {
     dailyScanLimit: number | null;
     dailyScans: number;
     scanLimitReached: boolean;
-    dailyLimitExceeded: boolean;
+    monthlyLimitExceeded: boolean;
     creditsInsufficient: boolean;
     accessDisabled?: boolean;
   };
@@ -112,19 +112,31 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
     }
     
     // Step 4: Fetch card basic info via stored procedure
+    const startTime = Date.now();
     const { data: cardRows, error: cardError } = await supabase.rpc(
       'get_card_by_access_token_server',
       { p_access_token: accessToken }
     );
+    const queryTime = Date.now() - startTime;
     
     const cardInfo = cardRows?.[0];
     
     if (cardError || !cardInfo) {
+      // Log the actual error for debugging
+      console.error(`[Mobile] Card lookup failed for ${accessToken} (${queryTime}ms):`, {
+        error: cardError,
+        hasData: !!cardRows,
+        rowCount: cardRows?.length || 0,
+        firstRow: cardInfo
+      });
       return res.status(404).json({ 
         error: 'Card not found',
         message: 'Invalid or expired access token'
       });
     }
+    
+    console.log(`[Mobile] Card found for ${accessToken}: ${cardInfo.id} (${queryTime}ms, template: ${cardInfo.is_template})`);
+
     
     // Step 5: Check if access is enabled
     if (!cardInfo.is_access_enabled) {
@@ -145,10 +157,18 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       usage_info: null as any
     };
     let scanLimitReached = false;
-    let dailyLimitExceeded = false;
+    let monthlyLimitExceeded = false;
     let creditsInsufficient = false;
     
-    if (!isRepeatVisit) {
+    // Skip usage tracking for template demo cards - they should always be accessible
+    const isTemplateCard = cardInfo.is_template === true;
+    
+    if (isTemplateCard) {
+      console.log(`[Mobile] Template demo access for ${accessToken} - skipping usage tracking`);
+      accessResult.reason = 'Template demo access (no usage tracking)';
+    }
+    
+    if (!isRepeatVisit && !isTemplateCard) {
       // Redis-first usage tracking - only hits DB when necessary
       const usageCheck = await checkAndIncrementUsage(
         cardInfo.user_id,
@@ -193,7 +213,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
         // Free user over limit
         accessResult.access_allowed = false;
         accessResult.reason = usageCheck.reason;
-        dailyLimitExceeded = true; // Using dailyLimitExceeded for monthly limit (legacy naming)
+        monthlyLimitExceeded = true;
         console.log(`[Mobile] Access denied (limit reached) for ${accessToken}`);
       }
       
@@ -217,7 +237,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       content = cachedContent;
       // Update status fields
       content.card.scanLimitReached = scanLimitReached;
-      content.card.dailyLimitExceeded = dailyLimitExceeded;
+      content.card.monthlyLimitExceeded = monthlyLimitExceeded;
       content.card.creditsInsufficient = creditsInsufficient;
       content.card.currentScans = cardInfo.current_scans + (isRepeatVisit ? 0 : (accessResult.access_allowed ? 1 : 0));
     } else {
@@ -276,7 +296,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           dailyScanLimit: cardData.daily_scan_limit,
           dailyScans: cardData.daily_scans || 0,
           scanLimitReached,
-          dailyLimitExceeded,
+          monthlyLimitExceeded,
           creditsInsufficient,
         },
         contentItems: (contentItems || []).map((item: any) => {
@@ -302,7 +322,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
         card: {
           ...content.card,
           scanLimitReached: false,
-          dailyLimitExceeded: false,
+          monthlyLimitExceeded: false,
           creditsInsufficient: false,
         },
       };
@@ -427,7 +447,7 @@ router.get('/card/physical/:issueCardId', async (req: Request, res: Response) =>
         dailyScanLimit: null,
         dailyScans: 0,
         scanLimitReached: false,
-        dailyLimitExceeded: false,
+        monthlyLimitExceeded: false,
         creditsInsufficient: false,
       },
       contentItems: (contentItems || []).map((item: any) => {

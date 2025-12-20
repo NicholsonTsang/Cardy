@@ -157,14 +157,18 @@ onMounted(() => {
 
 <style scoped>
 .content-detail {
+  /* Fill parent flex container */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Allow flex shrinking */
   padding-top: calc(5rem + env(safe-area-inset-top)); /* Account for header + notch */
   padding-left: max(1.25rem, env(safe-area-inset-left));
   padding-right: max(1.25rem, env(safe-area-inset-right));
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
-  min-height: 100vh;
-  min-height: var(--viewport-height, 100vh); /* Dynamic viewport */
-  min-height: 100dvh;
   -webkit-text-size-adjust: 100%; /* Prevent text scaling */
+  /* Extend background to fill container when content is short */
+  background: transparent;
 }
 
 /* Extra bottom padding when AI assistant is present (fixed at bottom) */
@@ -230,41 +234,101 @@ onMounted(() => {
 .content-description {
   font-size: 1rem; /* 16px base */
   color: rgba(255, 255, 255, 0.9);
-  line-height: 1.7;
+  line-height: 1.65; /* Optimal for readability */
+  letter-spacing: 0.01em; /* Improved clarity */
   margin: 0;
   word-break: break-word;
 }
 
 .content-description :deep(p) {
-  margin: 0 0 0.5rem 0;
+  margin: 0 0 0.875em 0; /* Comfortable paragraph spacing */
+}
+
+.content-description :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.content-description :deep(strong) {
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.content-description :deep(em) {
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .content-description :deep(h1),
 .content-description :deep(h2),
 .content-description :deep(h3),
 .content-description :deep(h4) {
+  font-weight: 600;
   color: white;
-  margin: 0.75rem 0 0.5rem 0;
+  margin: 1em 0 0.5em 0;
+  line-height: 1.3;
+}
+
+.content-description :deep(h1) {
+  font-size: 1.25rem;
+}
+
+.content-description :deep(h2) {
+  font-size: 1.125rem;
+}
+
+.content-description :deep(h3) {
+  font-size: 1.0625rem;
+}
+
+.content-description :deep(h4) {
+  font-size: 1rem;
 }
 
 .content-description :deep(ul),
 .content-description :deep(ol) {
-  margin: 0.5rem 0;
-  padding-left: 1.5rem;
+  margin: 0.75em 0;
+  padding-left: 1.25em;
+}
+
+.content-description :deep(li) {
+  margin: 0.375em 0;
+  line-height: 1.55;
+}
+
+.content-description :deep(li::marker) {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .content-description :deep(a) {
   color: #60a5fa;
   text-decoration: underline;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  text-underline-offset: 2px;
   word-break: break-word;
 }
 
-/* Fixed AI Section at bottom */
+.content-description :deep(code) {
+  background: rgba(255, 255, 255, 0.1);
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Courier New', monospace;
+  font-size: 0.9em;
+}
+
+.content-description :deep(blockquote) {
+  border-left: 3px solid rgba(139, 92, 246, 0.5);
+  padding-left: 0.875em;
+  margin: 0.875em 0;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.content-description :deep(hr) {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  margin: 1.25em 0;
+}
+
+/* Fixed AI Section at bottom - delayed fade-in to prevent transition flash */
 .ai-section-fixed {
   position: fixed;
   bottom: 0;
@@ -276,6 +340,19 @@ onMounted(() => {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   z-index: 100;
+  /* Delayed fade-in to sync with page transition */
+  animation: aiSectionFadeIn 0.3s ease-out 0.35s both;
+}
+
+@keyframes aiSectionFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Sub Items */

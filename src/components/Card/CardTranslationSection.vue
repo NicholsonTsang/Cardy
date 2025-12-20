@@ -26,7 +26,7 @@
           :label="$t('subscription.upgrade')"
           icon="pi pi-star"
           severity="warning"
-          @click="router.push('/cms/plan')"
+          @click="router.push('/cms/subscription')"
           class="w-full sm:w-auto mt-3 sm:mt-0 shadow-md hover:shadow-lg transition-shadow"
         />
       </div>
@@ -50,7 +50,7 @@
             severity="warning"
             size="small"
             class="mt-3"
-            @click="router.push('/cms/plan')"
+            @click="router.push('/cms/subscription')"
           />
         </div>
       </Message>

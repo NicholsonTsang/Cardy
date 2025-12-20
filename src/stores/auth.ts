@@ -235,10 +235,10 @@ export const useAuthStore = defineStore('auth', () => {
     if (userRole === 'admin') {
       router.push({ name: 'admin-dashboard' })
     } else if (userRole === 'cardIssuer') {
-      router.push({ name: 'mycards' })
+      router.push({ name: 'projects' })
     } else {
-      // Default fallback to mycards for most users
-      router.push({ name: 'mycards' })
+      // Default fallback to projects for most users
+      router.push({ name: 'projects' })
     }
   }
 

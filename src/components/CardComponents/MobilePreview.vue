@@ -35,26 +35,23 @@
                 />
             </div>
 
-
             <!-- Mobile Preview -->
             <div v-else class="preview-wrapper">
-                <VueDevice 
-                    device="iphone-14-pro" 
-                    color="black"
-                    :showHome="false"
-                    :showBtns="true"
-                    class="device-simulator"
-                >
+                <PhoneSimulator :width="phoneWidth" class="device-simulator">
                     <div class="device-content">
-                        <iframe
-                            :src="previewUrl"
-                            :key="previewUrl"
-                            @load="handleIframeLoad"
-                            @error="handleIframeError"
-                            sandbox="allow-scripts allow-same-origin allow-popups"
-                            frameborder="0"
-                            class="mobile-iframe"
-                        ></iframe>
+                        <!-- Iframe wrapper with scaling -->
+                        <div class="iframe-wrapper">
+                            <iframe
+                                :src="previewUrl"
+                                :key="previewUrl"
+                                @load="handleIframeLoad"
+                                @error="handleIframeError"
+                                sandbox="allow-scripts allow-same-origin allow-popups"
+                                frameborder="0"
+                                class="preview-iframe"
+                                :style="iframeStyle"
+                            ></iframe>
+                        </div>
                         
                         <!-- Loading -->
                         <div v-if="iframeLoading" class="mobile-loading">
@@ -62,7 +59,7 @@
                             <p class="loading-text">{{ $t('dashboard.loading_mobile_preview') }}</p>
                         </div>
                     </div>
-                </VueDevice>
+                </PhoneSimulator>
                 
                 <!-- Preview Info -->
                 <div class="preview-info">
@@ -79,7 +76,7 @@ import { useI18n } from 'vue-i18n';
 import { supabase } from '@/lib/supabase';
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
-import { VueDevice } from 'vue-devices';
+import PhoneSimulator from '@/components/common/PhoneSimulator.vue';
 
 const { t } = useI18n();
 
@@ -93,12 +90,20 @@ const props = defineProps({
 const isLoading = ref(false);
 const iframeLoading = ref(true);
 const error = ref(null);
-const sampleCard = ref(null);
+const phoneWidth = ref(280); // Default phone width
+
+// Calculate iframe scale based on phone width (fills screen, slight horizontal overflow clipped)
+const iframeScale = computed(() => {
+    return phoneWidth.value / 375;
+});
+
+const iframeStyle = computed(() => ({
+    transform: `translate(-50%, -50%) scale(${iframeScale.value})`
+}));
 
 const previewUrl = computed(() => {
     if (!props.cardProp?.id) return null;
     const baseUrl = window.location.origin;
-    // Always use preview route for the mobile preview
     const url = `${baseUrl}/preview/${props.cardProp.id}`;
     console.log('Preview URL:', url);
     return url;
@@ -111,7 +116,6 @@ const loadPreview = async () => {
     error.value = null;
     
     try {
-        // Verify preview access (optional - checks if user owns the card)
         const { data: previewData, error: previewError } = await supabase.rpc('get_card_preview_access', {
             p_card_id: props.cardProp.id
         });
@@ -125,7 +129,6 @@ const loadPreview = async () => {
             return;
         }
         
-        // Preview URL is already set via computed property
         iframeLoading.value = true;
         
     } catch (err) {
@@ -172,45 +175,39 @@ onMounted(() => {
     align-items: center;
 }
 
-/* Device Simulator Container */
-.device-simulator {
-    max-width: 380px;
-    width: 100%;
-    margin: 0 auto;
-}
-
 /* Device Content Wrapper */
 .device-content {
     position: relative;
     width: 100%;
     height: 100%;
-    background: linear-gradient(180deg, #0f172a 0%, #1e3a8a 50%, #312e81 100%);
+    background: #0f172a;
     overflow: hidden;
     border-radius: inherit;
 }
 
-/* Iframe */
-.mobile-iframe {
+/* Iframe wrapper - offset from top to clear the notch */
+.iframe-wrapper {
     position: absolute;
-    top: 44px;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    height: calc(100% - 44px);
-    border: none;
-    background: transparent;
-    border-radius: 0 0 inherit inherit;
+    inset: 0;
     overflow: hidden;
+}
+
+/* Iframe - renders at mobile size then scaled and centered */
+.preview-iframe {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 375px;
+    height: 812px;
+    border: none;
+    background: white;
+    transform-origin: center center;
 }
 
 /* Loading State */
 .mobile-loading {
     position: absolute;
-    top: 44px;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: linear-gradient(135deg, #f8fafc, #f1f5f9);
     display: flex;
     flex-direction: column;
@@ -240,7 +237,7 @@ onMounted(() => {
 /* Responsive */
 @media (max-width: 640px) {
     .device-simulator {
-        max-width: 340px;
+        --phone-width: 260px;
     }
 }
 
@@ -250,13 +247,13 @@ onMounted(() => {
     }
     
     .device-simulator {
-        max-width: 300px;
+        --phone-width: 240px;
     }
 }
 
 @media (max-width: 360px) {
     .device-simulator {
-        max-width: 280px;
+        --phone-width: 220px;
     }
 }
-</style> 
+</style>

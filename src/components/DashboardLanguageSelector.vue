@@ -108,6 +108,7 @@ function selectLanguage(language: Language) {
 }
 
 .language-name {
+  display: inline !important;
   font-weight: 600;
   font-size: 0.75rem;
   color: #475569;

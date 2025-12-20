@@ -739,7 +739,7 @@ function getModeSeverity(mode: string): string {
 function openCardEditor(template: AdminContentTemplate) {
   // Navigate to MyCards page and select this card
   router.push({
-    name: 'mycards',
+    name: 'projects',
     query: { cardId: template.card_id }
   })
 }

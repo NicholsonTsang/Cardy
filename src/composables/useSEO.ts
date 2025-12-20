@@ -41,7 +41,7 @@ const isoLangMap: Record<string, string> = {
 }
 
 export function useSEO() {
-  const { t, locale } = useI18n()
+  const { t, tm, locale } = useI18n()
   const route = useRoute()
 
   const baseUrl = import.meta.env.VITE_APP_URL || 'https://cardstudio.org'
@@ -189,7 +189,7 @@ export function useSEO() {
           }
         }
       },
-      "featureList": t('seo.features', { returnObjects: true }),
+      "featureList": (tm('seo.features') as string[]) || [],
       "audience": {
         "@type": "Audience",
         "audienceType": t('seo.audience')

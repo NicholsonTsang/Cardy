@@ -40,7 +40,7 @@
       <LayoutList 
         v-else-if="detectedLayout === 'list'"
         :card="card"
-        :items="items"
+        :items="flatLayoutItems"
         :available-languages="availableLanguages"
         :has-header="hasHeader"
         :has-more="hasMore"
@@ -54,7 +54,7 @@
       <LayoutGrid 
         v-else-if="detectedLayout === 'grid'"
         :card="card"
-        :items="items"
+        :items="flatLayoutItems"
         :all-items="allItems || items"
         :available-languages="availableLanguages"
         :has-header="hasHeader"
@@ -65,7 +65,7 @@
       <LayoutInline 
         v-else
         :card="card"
-        :items="items"
+        :items="flatLayoutItems"
         :all-items="allItems || items"
         :available-languages="availableLanguages"
         :has-header="hasHeader"
@@ -139,10 +139,37 @@ const emit = defineEmits<{
   loadMore: []
 }>()
 
+// Get all items (props.items may be pre-filtered, use allItems for full picture)
+const allItemsSource = computed(() => props.allItems || props.items)
+
 // Get parent items (top-level, no parent_id)
 const parentItems = computed(() => {
   return props.items.filter(item => !item.content_item_parent_id)
     .sort((a, b) => a.content_item_sort_order - b.content_item_sort_order)
+})
+
+// Get all child items (items with a parent_id) from allItems source
+const allChildItems = computed(() => {
+  return allItemsSource.value.filter(item => item.content_item_parent_id !== null)
+    .sort((a, b) => a.content_item_sort_order - b.content_item_sort_order)
+})
+
+// Check if content has a parent-child hierarchy
+const hasHierarchy = computed(() => {
+  return allChildItems.value.length > 0
+})
+
+// Get items for flat layouts (list, grid, cards when is_grouped=false)
+// If content has hierarchy but is_grouped=false, show only children (the actual content)
+// If no hierarchy, show all items as-is
+const flatLayoutItems = computed(() => {
+  if (hasHierarchy.value && !isGrouped.value) {
+    // Has hierarchy but not grouped mode - show only leaf items (children)
+    // Parents are just categories, not actual content to display
+    return allChildItems.value
+  }
+  // No hierarchy - show items as passed (they're all leaf items)
+  return props.items
 })
 
 // Get single item for single mode
@@ -208,7 +235,10 @@ onMounted(() => {
 
 <style scoped>
 .smart-content-renderer {
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* Fill parent flex container */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Allow flex shrinking */
 }
 </style>

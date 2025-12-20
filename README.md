@@ -57,6 +57,78 @@ ExperienceQR supports two access modes (selected first when creating, **cannot b
 | **Physical Card** | Printed souvenir cards | Card Overview → Content | Museums, exhibitions, events |
 | **Digital Access** | QR-code only (no physical card) | Welcome Page → Content | Link-in-bio, menus, campaigns |
 
+### Creator Documentation
+
+ExperienceQR includes a comprehensive **Documentation Center** (`/docs`) that provides step-by-step guides for creators. The documentation is designed similar to Microsoft Office support documentation with:
+
+**Structure:**
+- **Sidebar Navigation**: Organized categories with expandable article lists
+- **Article Pages**: Detailed guides with screenshots, tips, and step-by-step instructions
+- **Search**: Full-text search across all documentation articles
+- **Previous/Next Navigation**: Easy navigation between related articles
+- **Feedback System**: Helpful/Not helpful feedback buttons
+
+**Documentation Categories:**
+
+| Category | Topics Covered |
+|----------|----------------|
+| **Getting Started** | Platform overview, create first project, add content items |
+| **Project Management** | Project settings, content display modes, AI configuration |
+| **Features** | Multi-language translations, QR code sharing, bulk import, template library |
+| **Billing & Credits** | Subscription plans, credit management |
+
+**Implementation:**
+- **Markdown-based Content**: Documentation content stored in `.md` files under `src/views/Public/docs/content/`
+- **Multi-language**: Content organized by locale (`en/`, `zh-Hant/`) with automatic fallback to English
+- **Custom Directives**: Support for `:::info`, `:::tip`, `:::warning`, `:::important` tip boxes
+- **Markdown Rendering**: Uses the `marked` library with custom styling
+- URL-based navigation with query parameters for deep linking
+- Mobile-responsive design with collapsible sidebar
+
+**Content Structure:**
+```
+src/views/Public/docs/
+├── content/
+│   ├── en/                          # English content
+│   │   ├── getting-started/
+│   │   │   ├── overview.md
+│   │   │   ├── create-first-project.md
+│   │   │   └── add-content-items.md
+│   │   ├── project-management/
+│   │   ├── features/
+│   │   └── billing/
+│   └── zh-Hant/                     # Traditional Chinese content
+│       └── (same structure)
+├── components/
+│   ├── MarkdownRenderer.vue         # Renders markdown with custom directives
+│   ├── ScreenshotFrame.vue
+│   └── TipBox.vue
+└── *.vue                            # Article wrapper components
+```
+
+**Adding New Articles:**
+1. Create markdown file in appropriate locale folder (e.g., `content/en/features/new-feature.md`)
+2. Create Traditional Chinese version in `content/zh-Hant/` (or use English fallback)
+3. Create a Vue wrapper component that imports the markdown file
+4. Add route in `router/index.ts` and article entry in `Documentation.vue`
+5. Add i18n entries for title/description in locale files
+6. Screenshots go in `public/Image/docs/`
+
+**Markdown Custom Directives:**
+```markdown
+:::info Title (optional)
+This is an info box with blue styling.
+:::
+
+:::tip Pro Tip
+This is a tip box with green styling.
+:::
+
+:::warning Caution
+This is a warning box with amber styling.
+:::
+```
+
 ## Authentication & Role System
 
 The platform uses Supabase Auth for user management.
@@ -96,8 +168,16 @@ Five base layouts are available to structure your content:
 | **Inline** | N items | Full-width cards | Featured items, blog posts, news |
 
 **Grouping Logic:**
-- `Grouped` mode enables hierarchical organization with parent items serving as category headers
+- `is_grouped: true` enables hierarchical organization with parent items serving as category headers
 - `group_display` option controls whether categories are 'expanded' (items visible inline) or 'collapsed' (navigate to view items)
+- `is_grouped: false` with hierarchical content → only leaf items (children) are displayed; parent categories are hidden since they're organizational containers, not actual content
+
+**Content Hierarchy Handling:**
+| `is_grouped` | Content Structure | Display Behavior |
+|--------------|-------------------|------------------|
+| `true` | Parent + Children | Parents as headers, children as items |
+| `false` | Parent + Children | **Only children shown** (parents hidden) |
+| `false` | Flat (no parents) | All items shown as-is |
 
 See `planning_docs/BILLING_AND_CONTENT_MODES.md` for complete documentation.
 

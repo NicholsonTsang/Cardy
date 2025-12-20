@@ -28,17 +28,13 @@
       <p class="error-hint">{{ $t('mobile.try_again_later') }}</p>
     </div>
 
-    <!-- Daily Limit Exceeded State (for digital cards) -->
-    <div v-else-if="cardData?.daily_limit_exceeded" class="error-container daily-limit-container">
-      <div class="error-icon-wrapper daily-limit-icon">
+    <!-- Monthly Limit Exceeded State (for digital cards) -->
+    <div v-else-if="cardData?.monthly_limit_exceeded" class="error-container monthly-limit-container">
+      <div class="error-icon-wrapper monthly-limit-icon">
         <i class="pi pi-clock" />
       </div>
-      <h2 class="error-title">{{ $t('mobile.daily_limit_exceeded') }}</h2>
-      <p class="error-message">{{ $t('mobile.daily_limit_message') }}</p>
-      <div class="countdown-hint">
-        <i class="pi pi-refresh" />
-        <span>{{ $t('mobile.resets_tomorrow') }}</span>
-      </div>
+      <h2 class="error-title">{{ $t('mobile.monthly_limit_exceeded') }}</h2>
+      <p class="error-message">{{ $t('mobile.monthly_limit_message') }}</p>
     </div>
 
     <!-- Scan Limit Reached State (for digital cards - total limit) -->
@@ -60,7 +56,7 @@
     </div>
 
     <!-- Main Content -->
-    <div v-else-if="cardData && !cardData.scan_limit_reached && !cardData.daily_limit_exceeded && !cardData.credits_insufficient && !cardData.access_disabled" class="content-wrapper">
+    <div v-else-if="cardData && !cardData.scan_limit_reached && !cardData.monthly_limit_exceeded && !cardData.credits_insufficient && !cardData.access_disabled" class="content-wrapper">
       <!-- Navigation Header (show when not on overview page) -->
       <MobileHeader 
         v-if="!isCardView"
@@ -148,7 +144,7 @@ interface CardData {
   daily_scan_limit?: number | null // Daily scan limit for digital
   daily_scans?: number // Today's scan count
   scan_limit_reached?: boolean // TRUE if digital card has reached total limit
-  daily_limit_exceeded?: boolean // TRUE if digital card has reached daily limit
+  monthly_limit_exceeded?: boolean // TRUE if monthly subscription access limit exceeded
   credits_insufficient?: boolean // TRUE if card owner has insufficient credits
   access_disabled?: boolean // TRUE if digital card access has been disabled by owner
 }
@@ -342,7 +338,7 @@ async function fetchCardData() {
       daily_scan_limit: firstRow.card_daily_scan_limit,
       daily_scans: firstRow.card_daily_scans,
       scan_limit_reached: firstRow.card_scan_limit_reached || false,
-      daily_limit_exceeded: firstRow.card_daily_limit_exceeded || false,
+      monthly_limit_exceeded: firstRow.card_monthly_limit_exceeded || false,
       credits_insufficient: firstRow.card_credits_insufficient || false
     }
 
@@ -436,19 +432,27 @@ onMounted(() => {
   fetchCardData()
   
   // Set dark background for mobile client (prevents white flash in browser chrome)
-  document.body.style.setProperty('background-color', '#0f172a', 'important')
-  document.documentElement.style.setProperty('background-color', '#0f172a', 'important')
+  // Must set on all layers: html, body, #app (mount point), and .app-root (Vue wrapper)
+  const darkBg = '#0f172a'
+  document.body.style.setProperty('background-color', darkBg, 'important')
+  document.documentElement.style.setProperty('background-color', darkBg, 'important')
   
-  // Override #app background (which is slate-50/white by default)
+  // Override #app background (mount point in index.html)
   const appElement = document.getElementById('app')
   if (appElement) {
-    appElement.style.setProperty('background-color', '#0f172a', 'important')
+    appElement.style.setProperty('background-color', darkBg, 'important')
+  }
+  
+  // Override .app-root background (Vue template wrapper with bg-slate-50)
+  const appRoot = document.querySelector('.app-root') as HTMLElement
+  if (appRoot) {
+    appRoot.style.setProperty('background-color', darkBg, 'important')
   }
   
   // Update theme-color meta tag for mobile browser chrome
   const metaThemeColor = document.querySelector('meta[name="theme-color"]')
   if (metaThemeColor) {
-    metaThemeColor.setAttribute('content', '#0f172a')
+    metaThemeColor.setAttribute('content', darkBg)
   }
 })
 
@@ -477,6 +481,12 @@ onUnmounted(() => {
   const appElement = document.getElementById('app')
   if (appElement) {
     appElement.style.removeProperty('background-color')
+  }
+  
+  // Reset .app-root background
+  const appRoot = document.querySelector('.app-root') as HTMLElement
+  if (appRoot) {
+    appRoot.style.removeProperty('background-color')
   }
   
   // Reset theme-color to default brand blue
@@ -512,22 +522,36 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
   min-height: 100vh;
   min-height: var(--viewport-height, 100vh); /* Use dynamic viewport height */
   min-height: 100dvh;
-  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
   position: relative;
   overflow: hidden;
   -webkit-text-size-adjust: 100%; /* Prevent text size adjustment */
   touch-action: manipulation; /* Disable double-tap zoom */
+  /* No background here - it's on the fixed ::before pseudo-element */
 }
 
-/* Digital mode on card overview only: Fixed height to prevent scroll beyond viewport */
+/* Fixed gradient background layer - prevents rubber-band from shifting the background */
+.mobile-card-container::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
+  z-index: -1; /* Behind all content but visible */
+  pointer-events: none; /* Don't interfere with touch events */
+}
+
+/* Digital mode on card overview only: Fill entire viewport */
 .mobile-card-container.digital-mode.card-overview-view {
-  height: 100vh;
-  height: var(--viewport-height, 100vh);
-  height: 100dvh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: auto;
   min-height: auto;
-  max-height: 100vh;
-  max-height: var(--viewport-height, 100vh);
-  max-height: 100dvh;
+  max-height: none;
   overflow: hidden;
 }
 
@@ -659,12 +683,12 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
   box-shadow: 0 8px 32px rgba(245, 158, 11, 0.3);
 }
 
-/* Daily Limit Exceeded */
-.daily-limit-container {
+/* Monthly Limit Exceeded */
+.monthly-limit-container {
   background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
 }
 
-.daily-limit-icon {
+.monthly-limit-icon {
   background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
 }
@@ -724,10 +748,17 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
 
 /* Digital mode card overview content wrapper */
 .digital-mode.card-overview-view .content-wrapper {
-  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: auto;
   min-height: auto;
-  max-height: 100%;
+  max-height: none;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 /* Digital mode other pages content wrapper - allow scrolling */

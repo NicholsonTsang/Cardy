@@ -175,7 +175,7 @@ function handleImported(result: { cardId: string }) {
   if (props.dialogMode) {
     emit('imported', result)
   } else {
-    router.push(`/cms/mycards?card=${result.cardId}`)
+    router.push(`/cms/projects?card=${result.cardId}`)
   }
 }
 

@@ -813,9 +813,11 @@ GRANT EXECUTE ON FUNCTION public.get_admin_template_cards(UUID) TO authenticated
 -- -----------------------------------------------------------------
 -- Get featured demo templates for landing page (public access)
 -- Returns templates with their public access URLs
+-- Supports multilingual display via p_language parameter
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_demo_templates(
-    p_limit INTEGER DEFAULT 100
+    p_limit INTEGER DEFAULT 100,
+    p_language VARCHAR(10) DEFAULT 'en'
 )
 RETURNS TABLE (
     id UUID,
@@ -837,8 +839,9 @@ BEGIN
     SELECT 
         ct.id,
         ct.slug,
-        c.name,
-        COALESCE(c.description, '')::TEXT,
+        -- Use translation if available, fallback to original
+        COALESCE(c.translations->p_language->>'name', c.name)::TEXT AS name,
+        COALESCE(c.translations->p_language->>'description', c.description, '')::TEXT AS description,
         ct.venue_type,
         COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
         COALESCE(c.content_mode, 'list')::TEXT,
@@ -859,5 +862,5 @@ BEGIN
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.get_demo_templates(INTEGER) TO anon;
-GRANT EXECUTE ON FUNCTION public.get_demo_templates(INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_demo_templates(INTEGER, VARCHAR) TO anon;
+GRANT EXECUTE ON FUNCTION public.get_demo_templates(INTEGER, VARCHAR) TO authenticated;

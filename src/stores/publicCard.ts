@@ -65,7 +65,7 @@ export interface PublicCardInfo {
     card_daily_scan_limit: number | null;
     card_daily_scans: number;
     card_scan_limit_reached: boolean;
-    card_daily_limit_exceeded: boolean;
+    card_monthly_limit_exceeded: boolean;
     card_credits_insufficient: boolean;
     card_id: string;
     content_item_count: number;

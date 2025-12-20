@@ -143,13 +143,16 @@ function handleItemClick(item: ContentItem) {
 
 <style scoped>
 .layout-grouped {
-  min-height: 100vh;
-  min-height: 100dvh;
+  /* Fill parent flex container */
+  flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0; /* Allow flex shrinking */
   padding: 1.5rem 1.25rem;
   padding-top: calc(1.5rem + env(safe-area-inset-top));
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
+  /* Extend background to fill container when content is short */
+  background: transparent;
 }
 
 .layout-grouped.has-header {
@@ -309,7 +312,7 @@ function handleItemClick(item: ContentItem) {
   font-size: 3rem;
 }
 
-/* Fixed AI Section at bottom */
+/* Fixed AI Section at bottom - delayed fade-in to prevent transition flash */
 .ai-section {
   position: fixed;
   bottom: 0;
@@ -321,6 +324,19 @@ function handleItemClick(item: ContentItem) {
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   z-index: 100;
+  /* Delayed fade-in to sync with page transition */
+  animation: aiSectionFadeIn 0.3s ease-out 0.35s both;
+}
+
+@keyframes aiSectionFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* AI Browse Badge - General Assistant trigger */

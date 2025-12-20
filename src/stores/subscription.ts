@@ -227,7 +227,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     error.value = null;
     
     try {
-      const baseUrl = `${window.location.origin}/cms/plan`;
+      const baseUrl = `${window.location.origin}/cms/subscription`;
       
       const response = await fetch(`${backendUrl}/api/subscriptions/create-checkout`, {
         method: 'POST',
@@ -325,7 +325,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     error.value = null;
     
     try {
-      const returnUrl = `${window.location.origin}/cms/plan`;
+      const returnUrl = `${window.location.origin}/cms/subscription`;
       
       const response = await fetch(`${backendUrl}/api/subscriptions/portal?returnUrl=${encodeURIComponent(returnUrl)}`, {
         headers: {
@@ -357,7 +357,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     error.value = null;
     
     try {
-      const baseUrl = `${window.location.origin}/cms/plan`;
+      const baseUrl = `${window.location.origin}/cms/subscription`;
       
       const response = await fetch(`${backendUrl}/api/subscriptions/buy-credits`, {
         method: 'POST',

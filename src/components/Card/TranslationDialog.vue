@@ -144,43 +144,6 @@
         </ul>
       </div>
 
-      <!-- Cost Calculation -->
-      <div v-if="selectedLanguages.length > 0" class="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-        <div class="flex items-start gap-3">
-          <i class="pi pi-info-circle text-blue-600 text-xl mt-1"></i>
-          <div class="flex-1">
-            <h4 class="font-semibold text-blue-900 mb-2">{{ $t('translation.dialog.costTitle') }}</h4>
-            <div class="space-y-1 text-sm text-blue-800">
-              <div class="flex justify-between">
-                <span>{{ $t('translation.dialog.languages', { count: selectedLanguages.length }) }}</span>
-                <span class="font-mono">{{ selectedLanguages.length }} × 1 = {{ selectedLanguages.length }} {{ $t('common.credits') }}</span>
-              </div>
-              <div class="flex justify-between font-semibold">
-                <span>{{ $t('translation.dialog.total') }}</span>
-                <span class="font-mono">{{ selectedLanguages.length }} {{ $t('common.credits') }}</span>
-              </div>
-              <div class="border-t border-blue-300 pt-2 mt-2">
-                <div class="flex justify-between">
-                  <span>{{ $t('translation.dialog.currentBalance') }}</span>
-                  <span class="font-mono">{{ creditStore.balance }} {{ $t('common.credits') }}</span>
-                </div>
-                <div class="flex justify-between" :class="remainingBalance < 0 ? 'text-red-600' : ''">
-                  <span>{{ $t('translation.dialog.afterTranslation') }}</span>
-                  <span class="font-mono font-semibold">{{ remainingBalance }} {{ $t('common.credits') }}</span>
-                </div>
-              </div>
-            </div>
-            <div v-if="remainingBalance < 0" class="mt-3 p-2 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-              <i class="pi pi-exclamation-triangle mr-2"></i>
-              {{ $t('translation.dialog.insufficientCredits') }}
-              <router-link to="/cms/credits" class="underline font-semibold ml-1">
-                {{ $t('translation.dialog.purchaseCredits') }}
-              </router-link>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <!-- Large Content Warning -->
       <div v-if="contentItemsCount > 20" class="text-sm text-yellow-700 bg-yellow-50 p-3 rounded border border-yellow-200">
         <i class="pi pi-exclamation-triangle mr-2"></i>
@@ -460,18 +423,6 @@
           />
         </div>
 
-        <!-- Credit Summary -->
-        <div v-if="completedLanguages.length > 0" class="bg-blue-50 border border-blue-200 rounded-lg p-4 text-left max-w-md mx-auto">
-          <div class="flex justify-between text-sm mb-1">
-            <span class="text-gray-600">{{ $t('translation.dialog.creditsUsed') }}</span>
-            <span class="font-semibold">{{ completedLanguages.length }}</span>
-          </div>
-          <div class="flex justify-between text-sm">
-            <span class="text-gray-600">{{ $t('translation.dialog.remainingBalance') }}</span>
-            <span class="font-semibold">{{ creditStore.balance }} {{ $t('common.credits') }}</span>
-          </div>
-        </div>
-
         <p v-if="completedLanguages.length > 0" class="text-sm text-gray-500 mt-4">
           {{ $t('translation.dialog.availableMessage') }}
         </p>
@@ -493,7 +444,7 @@
           v-if="currentStep === 1 && viewMode === 'translate'"
           :label="$t('translation.dialog.translate', { count: selectedLanguages.length })"
           icon="pi pi-language"
-          :disabled="selectedLanguages.length === 0 || remainingBalance < 0"
+          :disabled="selectedLanguages.length === 0"
           @click="showConfirmation"
         />
         <Button
@@ -508,32 +459,6 @@
 
   <!-- Confirmation Dialog -->
   <ConfirmDialog />
-
-  <!-- Credit Confirmation Dialog -->
-  <CreditConfirmationDialog
-    v-model:visible="showCreditConfirmation"
-    :credits-to-consume="selectedLanguages.length"
-    :current-balance="creditStore.balance"
-    :loading="translationStore.isTranslating"
-    :action-description="$t('translation.dialog.creditActionDescription', { count: selectedLanguages.length })"
-    :confirmation-question="$t('translation.dialog.creditConfirmQuestion')"
-    :confirm-label="$t('translation.dialog.confirmTranslate')"
-    @confirm="handleConfirmTranslation"
-    @cancel="handleCancelConfirmation"
-  >
-    <template #details>
-          <div class="space-y-3">
-            <div class="flex justify-between items-center">
-              <span class="text-slate-600">{{ $t('translation.dialog.languagesToTranslate') }}:</span>
-              <span class="font-semibold text-slate-900">{{ selectedLanguages.length }}</span>
-            </div>
-            <div class="flex justify-between items-center">
-              <span class="text-slate-600">{{ $t('translation.dialog.creditPerLanguage') }}:</span>
-              <span class="font-semibold text-slate-900">1 {{ $t('batches.credit') }}</span>
-        </div>
-      </div>
-    </template>
-  </CreditConfirmationDialog>
 </template>
 
 <script setup lang="ts">
@@ -548,8 +473,6 @@ import ProgressBar from 'primevue/progressbar';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from 'primevue/useconfirm';
 import { useTranslationStore, SUPPORTED_LANGUAGES, type LanguageCode, type TranslationStatus } from '@/stores/translation';
-import { useCreditStore } from '@/stores/credits';
-import CreditConfirmationDialog from '@/components/CreditConfirmationDialog.vue';
 
 // Props & Emits
 const props = defineProps<{
@@ -568,7 +491,6 @@ const { t } = useI18n();
 const toast = useToast();
 const confirm = useConfirm();
 const translationStore = useTranslationStore();
-const creditStore = useCreditStore();
 
 // State
 const viewMode = ref<'translate' | 'manage'>('translate');
@@ -579,7 +501,6 @@ const completedLanguages = ref<LanguageCode[]>([]);
 const failedLanguages = ref<LanguageCode[]>([]);
 const translationProgress = ref(0);
 const contentItemsCount = ref(5); // Will be fetched from card data
-const showCreditConfirmation = ref(false);
 const isDeletingBatch = ref(false);
 const deleteProgress = ref({
   completed: 0,
@@ -615,10 +536,6 @@ const existingTranslations = computed(() => {
 
 const totalFieldsCount = computed(() => {
   return 2 + (contentItemsCount.value * 2); // 2 card fields + N items × 2 fields (name, content)
-});
-
-const remainingBalance = computed(() => {
-  return creditStore.balance - selectedLanguages.value.length;
 });
 
 const overallProgress = computed(() => {
@@ -678,20 +595,15 @@ const selectOutdated = () => {
   selectedLanguages.value = outdatedLanguages.value.map(lang => lang.language as LanguageCode);
 };
 
-// Show credit confirmation dialog
+// Show confirmation dialog before translation
 const showConfirmation = () => {
-  showCreditConfirmation.value = true;
-};
-
-// Handle credit confirmation
-const handleConfirmTranslation = async () => {
-  showCreditConfirmation.value = false;
-  await startTranslation();
-};
-
-// Handle credit confirmation cancel
-const handleCancelConfirmation = () => {
-  showCreditConfirmation.value = false;
+  confirm.require({
+    message: t('translation.dialog.confirmTranslateMessage', { count: selectedLanguages.value.length }),
+    header: t('translation.dialog.confirmTranslateTitle'),
+    icon: 'pi pi-language',
+    acceptClass: 'p-button-primary',
+    accept: () => startTranslation(),
+  });
 };
 
 const startTranslation = async () => {
@@ -913,12 +825,5 @@ const formatRelativeTime = (dateString: string): string => {
   return t('translation.dialog.daysAgo', { count: diffDays });
 };
 
-// Watchers
-watch(() => props.visible, (visible) => {
-  if (visible) {
-    // Refresh credit balance when dialog opens
-    creditStore.fetchCreditBalance();
-  }
-});
 </script>
 

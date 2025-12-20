@@ -23,6 +23,8 @@
     "admin": "管理員",
     "card_issuer": "創作者",
     "loading": "載入中...",
+    "load_error": "載入內容失敗",
+    "retry": "重試",
     "save": "儲存",
     "cancel": "取消",
     "delete": "刪除",
@@ -1234,9 +1236,8 @@
     "credits_insufficient": "內容暫時無法使用",
     "credits_insufficient_message": "內容擁有者的點數已用盡。",
     "try_again_later": "請稍後再試。",
-    "daily_limit_exceeded": "已達每日存取限制",
-    "daily_limit_message": "此內容已達每日存取上限。",
-    "resets_tomorrow": "午夜重置",
+    "monthly_limit_exceeded": "已達存取限制",
+    "monthly_limit_message": "此內容暫時無法使用，請稍後再試。",
     "content_details": "內容詳情",
     "back_to_list": "返回列表",
     "no_sub_items": "沒有可用的子項目",
@@ -1430,8 +1431,10 @@
       "about": "關於我們",
       "demo": "功能演示",
       "features": "核心功能",
+      "how_it_works": "運作方式",
       "pricing": "價格方案",
       "contact": "聯絡我們",
+      "docs": "使用指南",
       "sign_in": "登入",
       "start_free_trial": "開始免費試用",
       "start_free": "免費開始",
@@ -1513,7 +1516,21 @@
       "scan_or_click": "掃描 QR 碼或點擊開啟",
       "view_all": "探索更多模板",
       "showing": "顯示",
-      "of": "共"
+      "of": "共",
+      "venue_types": {
+        "cultural": "文化藝術",
+        "food": "餐飲美食",
+        "events": "活動娛樂",
+        "hospitality": "酒店水療",
+        "retail": "購物展廳",
+        "tours": "導覽教育",
+        "general": "一般"
+      },
+      "select_template": "選擇一個模板預覽",
+      "open_full": "開啟完整體驗",
+      "scan_qr_hint": "或用手機掃描 QR 碼",
+      "scan_to_view": "掃描以在手機上查看",
+      "scan_hint": "使用手機相機掃描體驗此示範"
     },
     "content_modes": {
       "title": "靈活",
@@ -1568,16 +1585,14 @@
     "how_it_works": {
       "title": "使用",
       "title_highlight": "超簡單",
-      "subtitle": "三個步驟，從購買到永久珍藏。",
+      "subtitle": "幾分鐘內啟動您的 AI 數位體驗，無需技術背景。",
       "steps": {
-        "purchase_title": "購買卡片",
-        "purchase_desc": "訪客取得或購買紀念卡。",
-        "scan_title": "掃碼啟用",
-        "scan_desc": "掃描 QR 碼，立即啟動 AI 導覽。",
-        "explore_title": "智能體驗",
-        "explore_desc": "AI 助理提供個人化的語音導覽與問答。",
-        "collect_title": "永久保存",
-        "collect_desc": "保留實體卡片作為永久紀念，數位內容隨時重溫。"
+        "create_title": "建立內容",
+        "create_desc": "透過直覺化後台建立專案並新增內容。",
+        "share_title": "分享連結",
+        "share_desc": "在招牌、菜單或宣傳品上展示 QR 碼。",
+        "engage_title": "互動體驗",
+        "engage_desc": "訪客掃碼即可與您的 AI 導覽助理即時互動。"
       }
     },
     "features": {
@@ -2298,7 +2313,41 @@
       "translatedLanguages": "已翻譯語言",
       "creditsUsed": "已使用點數",
       "remainingBalance": "剩餘餘額",
-      "availableMessage": "您的內容現已以這些語言提供給所有訪客！"
+      "availableMessage": "您的內容現已以這些語言提供給所有訪客！",
+      "confirmTranslateTitle": "確認翻譯",
+      "confirmTranslateMessage": "您即將翻譯為 {count} 種語言。這已包含在您的 Premium 訂閱中。是否繼續？",
+      "addTranslations": "新增翻譯",
+      "manageExisting": "管理現有",
+      "manageMode": "刪除模式",
+      "manageModeWarning": "⚠️ 刪除翻譯是永久性的，無法復原。",
+      "selectAll": "全選",
+      "deselectAll": "取消全選",
+      "deleteSelected": "刪除所選 ({count})",
+      "retranslate": "重新翻譯",
+      "delete": "刪除",
+      "noTranslations": "尚無翻譯",
+      "justNow": "剛才",
+      "minutesAgo": "{count} 分鐘前",
+      "hoursAgo": "{count} 小時前",
+      "daysAgo": "{count} 天前",
+      "confirmDeleteMessage": "您確定要刪除 {language} 翻譯嗎？此操作無法復原。",
+      "confirmDeleteTitle": "刪除翻譯",
+      "deleteFailed": "刪除失敗",
+      "confirmBatchDeleteTitle": "刪除翻譯",
+      "confirmBatchDeleteMessage": "您確定要刪除 {count} 個翻譯（{languages}）嗎？此操作無法復原。",
+      "deletingProgress": "正在刪除翻譯",
+      "deletingLanguage": "正在刪除 {language}...",
+      "batchDeleteFailed": "批量刪除失敗",
+      "allDeletesFailed": "所有刪除嘗試均失敗",
+      "batchDeletePartial": "部分刪除",
+      "partialDeleteResult": "{success} 成功，{failed} 失敗",
+      "partialSuccessTitle": "部分完成",
+      "partialSuccessMessage": "{completed} 種語言翻譯成功，{failed} 種失敗",
+      "failureTitle": "翻譯失敗",
+      "failureMessage": "{count} 種語言翻譯失敗",
+      "successfullyTranslated": "{count} 種語言翻譯成功",
+      "failedTranslations": "{count} 種語言翻譯失敗",
+      "retryFailed": "重試失敗的翻譯"
     },
     "delete": {
       "title": "刪除翻譯",
@@ -2390,5 +2439,89 @@
     "refresh_qr_confirm": "重新整理",
     "token_refreshed": "QR 碼已重新整理 - 已產生新的存取連結",
     "refresh_failed": "重新整理 QR 碼失敗"
+  },
+  "docs": {
+    "title": "使用指南",
+    "search_placeholder": "搜尋文件...",
+    "previous": "上一篇",
+    "next": "下一篇",
+    "screenshot_placeholder": "截圖即將推出",
+    "feedback": {
+      "title": "這篇文章有幫助嗎？",
+      "subtitle": "幫助我們改善文件品質",
+      "yes": "有幫助",
+      "no": "需改進",
+      "thanks": "感謝您的回饋！"
+    },
+    "categories": {
+      "getting_started": {
+        "title": "快速入門",
+        "articles": {
+          "overview": {
+            "title": "平台概覽",
+            "description": "了解 ExperienceQR 是什麼，以及如何將您的場館轉變為 AI 驅動的互動體驗。"
+          },
+          "create_project": {
+            "title": "建立您的第一個專案",
+            "description": "逐步指南教您如何在 ExperienceQR 上建立第一個專案。"
+          },
+          "add_content": {
+            "title": "新增內容項目",
+            "description": "學習如何為專案新增展品、菜單項目或景點資訊。"
+          }
+        }
+      },
+      "project_management": {
+        "title": "專案管理",
+        "articles": {
+          "settings": {
+            "title": "專案設定",
+            "description": "配置專案設定，包括外觀、存取控制等。"
+          },
+          "content_modes": {
+            "title": "內容顯示模式",
+            "description": "選擇最適合的方式顯示內容，提供五種不同的版面選項。"
+          },
+          "ai_config": {
+            "title": "AI 配置",
+            "description": "設定和自訂 AI 助理以進行引人入勝的訪客對話。"
+          }
+        }
+      },
+      "features": {
+        "title": "功能介紹",
+        "articles": {
+          "translations": {
+            "title": "多語言翻譯",
+            "description": "將內容翻譯成多種語言，以觸及國際訪客。"
+          },
+          "qr_sharing": {
+            "title": "QR 碼與分享",
+            "description": "產生 QR 碼並與訪客分享您的專案。"
+          },
+          "bulk_import": {
+            "title": "批次匯入",
+            "description": "從 Excel 試算表匯入多個專案和內容項目。"
+          },
+          "templates": {
+            "title": "範本庫",
+            "description": "使用各種場館類型的預建範本快速啟動專案。"
+          }
+        }
+      },
+      "billing": {
+        "title": "帳單與點數",
+        "articles": {
+          "subscription": {
+            "title": "訂閱方案",
+            "description": "了解我們的訂閱層級，選擇最適合您需求的方案。"
+          },
+          "credits": {
+            "title": "點數管理",
+            "description": "了解點數如何運作以及如何購買更多用於翻譯和功能。"
+          }
+        }
+      }
+    }
   }
 }
