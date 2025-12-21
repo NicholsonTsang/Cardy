@@ -74,11 +74,6 @@
             <i class="pi pi-chevron-down language-chip-icon"></i>
           </button>
         </div>
-        <!-- Translation availability indicator -->
-        <div v-if="card.has_translation" class="translation-indicator">
-          <i class="pi pi-globe"></i>
-          <span>{{ t('mobile.translated_content_available') }}</span>
-        </div>
         
         <!-- Card Title (Both modes now) -->
         <h1 class="card-title">{{ card.card_name }}</h1>
@@ -222,7 +217,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0; /* Allow flex shrinking */
-  background: transparent; /* Parent has background */
+  /* Dark background to prevent flash during view transitions */
+  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -483,8 +479,8 @@ onMounted(() => {
 
 /* Digital mode panel adjustments */
 .digital-panel {
-  border-top-left-radius: 2rem;
-  border-top-right-radius: 2rem;
+  border-top-left-radius: 1.5rem;
+  border-top-right-radius: 1.5rem;
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
 }
@@ -685,12 +681,12 @@ onMounted(() => {
   flex-direction: column;
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 58, 138, 0.95) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 1.5rem 1.25rem 1.5rem;
-  padding-bottom: max(1.5rem, calc(env(safe-area-inset-bottom) + 0.75rem)); /* Account for home indicator */
+  padding: 1.25rem 1.125rem 1.25rem;
+  padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.625rem)); /* Account for home indicator */
   animation: slideUp 0.5s ease-out 0.2s both;
   z-index: 2;
-  border-top-left-radius: 2rem;
-  border-top-right-radius: 2rem;
+  border-top-left-radius: 1.5rem;
+  border-top-right-radius: 1.5rem;
 }
 
 /* Digital mode - no special handling needed */
@@ -714,7 +710,7 @@ onMounted(() => {
   margin: 0 auto;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem; /* Compact gap */
+  gap: 0.625rem; /* More compact gap for more screen space */
   width: 100%;
 }
 
@@ -732,27 +728,6 @@ onMounted(() => {
   font-size: 0.875rem;
   font-weight: 500;
   letter-spacing: 0.02em;
-}
-
-/* Translation availability indicator */
-.translation-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.375rem;
-  margin-bottom: 0.75rem;
-  padding: 0.25rem 0.625rem;
-  background: rgba(34, 197, 94, 0.15);
-  border: 1px solid rgba(34, 197, 94, 0.3);
-  border-radius: 9999px;
-  color: rgba(134, 239, 172, 0.9);
-  font-size: 0.75rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-}
-
-.translation-indicator i {
-  font-size: 0.625rem;
 }
 
 /* Language Selection Chip */
@@ -940,25 +915,26 @@ onMounted(() => {
   border-radius: 2px;
 }
 
-/* Action Button */
+/* Action Button - Condensed for more screen space */
 .action-button {
   position: relative;
   width: 100%;
-  padding: 1rem;
+  padding: 0.875rem;
   border: none;
-  border-radius: 1rem;
+  border-radius: 0.875rem;
   color: white;
-  font-size: 17px; /* 17px for buttons is Apple's recommended size */
-  font-weight: 700;
+  font-size: 1rem;
+  font-weight: 600;
   overflow: hidden;
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 
     0 0 0 1px rgba(255, 255, 255, 0.1),
-    0 8px 16px rgba(0, 0, 0, 0.2);
-  -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
-  touch-action: manipulation; /* Disable double-tap zoom */
-  flex-shrink: 0; /* Don't shrink button */
+    0 6px 12px rgba(0, 0, 0, 0.2);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  flex-shrink: 0;
+  min-height: 48px; /* Maintain touch target */
 }
 
 .button-label {
@@ -988,21 +964,22 @@ onMounted(() => {
   transform: scale(1.05);
 }
 
-/* AI Indicator Button - Tappable */
+/* AI Indicator Button - Condensed */
 .ai-indicator-button {
   display: flex;
   align-items: center;
   justify-content: space-between;
   width: 100%;
-  padding: 0.75rem 1rem;
+  padding: 0.625rem 0.875rem;
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
   border: 1px solid rgba(139, 92, 246, 0.3);
-  border-radius: 1rem;
+  border-radius: 0.875rem;
   cursor: pointer;
   transition: all 0.2s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  flex-shrink: 0; /* Don't shrink button */
+  flex-shrink: 0;
+  min-height: 52px; /* Maintain touch target */
 }
 
 .ai-indicator-button:hover {
@@ -1025,35 +1002,35 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.3);
 }
 
 .ai-indicator-icon i {
   color: white;
-  font-size: 1.125rem;
+  font-size: 1rem;
 }
 
 .ai-indicator-text {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 0.125rem;
+  gap: 0.0625rem;
 }
 
 .ai-indicator-title {
   color: white;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1.2;
 }
 
 .ai-indicator-subtitle {
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.75rem;
   font-weight: 400;
 }
 

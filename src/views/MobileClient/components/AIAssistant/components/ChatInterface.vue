@@ -3,7 +3,7 @@
     <!-- Messages -->
     <div ref="messagesContainer" class="messages-container">
       <MessageBubble
-        v-for="message in messages"
+        v-for="(message, index) in messages"
         :key="message.id"
         :message="message"
         :is-playing="currentPlayingMessageId === message.id"
@@ -13,12 +13,12 @@
       
       <!-- Loading Indicator (only if not streaming) -->
       <div v-if="isLoading && !hasStreaming" class="message assistant">
-        <div class="message-avatar message-avatar-pulse">
+        <div class="message-avatar">
           <i class="pi pi-sparkles" />
         </div>
         <div class="message-content">
-          <div class="message-bubble">
-            <div class="typing-dots">
+          <div class="message-bubble loading-bubble">
+            <div class="typing-indicator">
               <span></span>
               <span></span>
               <span></span>
@@ -34,7 +34,7 @@
           @click="$emit('clear-chat')"
           class="clear-chat-button"
         >
-          <i class="pi pi-trash" />
+          <i class="pi pi-refresh" />
           <span>{{ $t('mobile.clear_chat') }}</span>
         </button>
       </div>
@@ -44,6 +44,9 @@
     <div v-if="error" class="error-banner">
       <i class="pi pi-exclamation-triangle" />
       <p>{{ error }}</p>
+      <button @click="$emit('clear-chat')" class="error-dismiss">
+        <i class="pi pi-times" />
+      </button>
     </div>
 
     <!-- Input Area -->
@@ -53,24 +56,26 @@
         <template v-if="inputMode === 'text'">
           <button 
             @click="$emit('toggle-input-mode')" 
-            class="input-icon-button"
+            class="input-mode-button"
             :title="$t('mobile.switch_to_voice')"
           >
             <i class="pi pi-microphone" />
           </button>
           
-          <input 
-            v-model="textInput"
-            type="text"
-            :placeholder="$t('mobile.type_message')"
-            class="text-input"
-            @keypress.enter="handleSendText"
-            :disabled="isLoading"
-          />
+          <div class="text-input-wrapper">
+            <input 
+              v-model="textInput"
+              type="text"
+              :placeholder="$t('mobile.type_message')"
+              class="text-input"
+              @keypress.enter="handleSendText"
+              :disabled="isLoading"
+            />
+          </div>
           
           <button 
             @click="handleSendText"
-            class="input-icon-button send-icon"
+            class="send-button"
             :disabled="!textInput.trim() || isLoading"
           >
             <i class="pi pi-send" />
@@ -99,12 +104,9 @@
 
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
-import { useI18n } from 'vue-i18n'
 import MessageBubble from './MessageBubble.vue'
 import VoiceInputButton from './VoiceInputButton.vue'
 import type { Message } from '../types'
-
-const { t } = useI18n()
 
 const props = defineProps<{
   messages: Message[]
@@ -189,39 +191,152 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: #f9fafb;
-  /* Important: Allow container to be flexible */
+  background: #0f172a;
   min-height: 0;
 }
 
 .messages-container {
-  flex: 1 1 auto; /* Allow shrinking when keyboard appears */
+  flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 1.5rem;
+  padding: 1.25rem;
   display: flex;
   flex-direction: column;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-  overscroll-behavior: contain; /* Prevent pull-to-refresh inside messages */
-  min-height: 0; /* Critical: Allow flex item to shrink below content size */
+  gap: 0.75rem;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  min-height: 0;
+  /* Custom scrollbar for dark theme */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
+.messages-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.messages-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.messages-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Loading Indicator */
+.message {
+  display: flex;
+  gap: 0.625rem;
+  animation: messageIn 0.25s ease-out;
+}
+
+@keyframes messageIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.message.assistant {
+  align-items: flex-start;
+}
+
+.message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
+}
+
+.message-content {
+  flex: 1;
+  max-width: 80%;
+}
+
+.message-bubble {
+  padding: 0.875rem 1rem;
+  border-radius: 16px;
+  border-top-left-radius: 4px;
+}
+
+.loading-bubble {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 4px 0;
+}
+
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.4);
+  border-radius: 50%;
+  animation: typingBounce 1.4s ease-in-out infinite;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.typing-indicator span:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
+@keyframes typingBounce {
+  0%, 60%, 100% {
+    transform: translateY(0);
+    opacity: 0.4;
+  }
+  30% {
+    transform: translateY(-8px);
+    opacity: 1;
+  }
+}
+
+.loading-status {
+  margin: 0.5rem 0 0 0;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* Clear Chat Button */
 .clear-chat-wrapper {
   display: flex;
   justify-content: center;
-  margin-top: 1.5rem;
-  padding-top: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .clear-chat-button {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.375rem 0.75rem;
-  background: transparent;
-  border: none;
-  border-radius: 6px;
-  color: #9ca3af;
+  padding: 0.5rem 0.875rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 0.8125rem;
   font-weight: 500;
   cursor: pointer;
@@ -229,241 +344,244 @@ onUnmounted(() => {
 }
 
 .clear-chat-button:hover {
-  background: #fef2f2;
-  color: #dc2626;
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
 }
 
 .clear-chat-button i {
   font-size: 0.75rem;
 }
 
+/* Error Banner */
 .error-banner {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 1rem;
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 8px;
-  color: #991b1b;
-  margin: 0 1rem 1rem;
+  padding: 0.75rem 1rem;
+  margin: 0 1rem 0.75rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  color: #fca5a5;
+  animation: slideDown 0.2s ease-out;
 }
 
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.error-banner i {
+  font-size: 1rem;
+  color: #f87171;
+}
+
+.error-banner p {
+  margin: 0;
+  flex: 1;
+  font-size: 0.875rem;
+}
+
+.error-dismiss {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  padding: 0.25rem;
+  font-size: 0.875rem;
+  transition: color 0.2s;
+}
+
+.error-dismiss:hover {
+  color: white;
+}
+
+/* Input Area */
 .input-area {
   padding: 1rem;
-  background: white;
-  border-top: 1px solid #e5e7eb;
-  flex-shrink: 0; /* Never compress - always visible */
-  flex-grow: 0; /* Never grow */
-  /* Ensure input area stays at bottom */
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  flex-grow: 0;
   position: relative;
   z-index: 10;
 }
 
 .input-container {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.625rem;
   align-items: center;
+  padding: 0.375rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.text-input-wrapper {
+  flex: 1;
+  position: relative;
 }
 
 .text-input {
-  flex: 1;
-  padding: 0.5rem 0.75rem;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 10px;
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 12px;
   font-size: 16px; /* Minimum 16px to prevent iOS zoom */
+  color: white;
   outline: none;
   transition: all 0.2s;
-  background: #f9fafb;
+}
+
+.text-input::placeholder {
+  color: rgba(255, 255, 255, 0.35);
 }
 
 .text-input:focus {
-  border-color: #3b82f6;
-  background: white;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .text-input:disabled {
-  background: #f3f4f6;
+  opacity: 0.5;
   cursor: not-allowed;
-  opacity: 0.6;
 }
 
-.input-icon-button {
-  width: 40px;
-  height: 40px;
+.input-mode-button {
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: white;
-  border: 1.5px solid #e5e7eb;
-  border-radius: 10px;
-  color: #6b7280;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: rgba(255, 255, 255, 0.5);
   font-size: 1.125rem;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
 }
 
-.input-icon-button:hover:not(:disabled) {
-  background: #f3f4f6;
-  border-color: #9ca3af;
-  transform: translateY(-1px);
+.input-mode-button:hover {
+  background: rgba(139, 92, 246, 0.15);
+  border-color: rgba(139, 92, 246, 0.3);
+  color: #c4b5fd;
+  transform: scale(1.05);
 }
 
-.input-icon-button:active:not(:disabled) {
-  transform: translateY(0);
+.input-mode-button:active {
+  transform: scale(0.95);
 }
 
-.input-icon-button:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.input-icon-button.send-icon {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-  border-color: transparent;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
-}
-
-.input-icon-button.send-icon:hover:not(:disabled) {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-  box-shadow: 0 4px 6px rgba(59, 130, 246, 0.3);
-  transform: translateY(-1px);
-}
-
-.input-icon-button.send-icon:disabled {
-  opacity: 0.5;
-  box-shadow: none;
-}
-
-/* Loading Indicator Styles (for non-streaming) */
-.message {
-  display: flex;
-  gap: 0.75rem;
-  margin-bottom: 1rem;
-}
-
-.message-avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
+.send-button {
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
-  font-size: 0.875rem;
+  box-shadow: 
+    0 4px 12px rgba(99, 102, 241, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
 }
 
-.message-avatar-pulse {
-  animation: pulse 1.5s ease-in-out infinite;
+.send-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.25s;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.9;
-  }
+.send-button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 
+    0 8px 20px rgba(99, 102, 241, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
-.message-content {
-  flex: 1;
-  max-width: 75%;
+.send-button:hover:not(:disabled)::before {
+  opacity: 1;
 }
 
-.message-bubble {
-  padding: 0.875rem 1rem;
-  border-radius: 16px;
-  background: white;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+.send-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
 }
 
-.typing-dots {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 0.5rem;
+.send-button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+  background: rgba(99, 102, 241, 0.3);
 }
 
-.typing-dots span {
-  width: 8px;
-  height: 8px;
-  background: #9ca3af;
-  border-radius: 50%;
-  animation: typingDots 1.4s ease-in-out infinite;
-}
-
-.typing-dots span:nth-child(2) {
-  animation-delay: 0.2s;
-}
-
-.typing-dots span:nth-child(3) {
-  animation-delay: 0.4s;
-}
-
-@keyframes typingDots {
-  0%, 60%, 100% {
-    transform: translateY(0);
-    opacity: 0.7;
-  }
-  30% {
-    transform: translateY(-10px);
-    opacity: 1;
-  }
-}
-
-.loading-status {
-  margin: 0;
-  font-size: 0.875rem;
-  color: #6b7280;
-}
-
+/* Mobile Optimizations */
 @media (max-width: 640px) {
   .chat-container {
-    /* Ensure container uses full height efficiently */
     max-height: 100%;
   }
   
   .messages-container {
     padding: 1rem;
-    /* Ensure messages can scroll even when keyboard is visible */
-    overflow-y: scroll;
-    /* iOS: Prevent elastic scrolling at boundaries */
-    overscroll-behavior-y: contain;
+    /* Add subtle gradient at edges to indicate scrollability */
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 2%,
+      black 98%,
+      transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      black 2%,
+      black 98%,
+      transparent 100%
+    );
   }
   
   .input-area {
     padding: 0.75rem;
-    /* Account for iPhone home indicator */
     padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
-    /* Ensure input area is always visible and at bottom */
     position: sticky;
     bottom: 0;
-    background: white;
-    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+    box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.3);
   }
   
   .input-container {
-    gap: 0.375rem;
+    gap: 0.5rem;
+    padding: 0.25rem;
   }
   
   .text-input {
-    padding: 0.5rem 0.75rem;
-    font-size: 16px; /* Keep 16px on mobile to prevent zoom */
-    min-height: 40px;
+    padding: 0.625rem 0.875rem;
+    min-height: 44px;
   }
   
-  .input-icon-button {
-    width: 36px;
-    height: 36px;
-    font-size: 1rem;
+  .input-mode-button,
+  .send-button {
+    width: 44px;
+    height: 44px;
   }
 }
 </style>
-

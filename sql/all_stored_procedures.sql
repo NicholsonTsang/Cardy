@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Sun Dec 21 16:09:30 HKT 2025
+-- Generated: Sun Dec 21 17:36:31 HKT 2025
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -3499,6 +3499,9 @@ GRANT EXECUTE ON FUNCTION public.get_admin_template_cards(UUID) TO authenticated
 -- Get featured demo templates for landing page (public access)
 -- Returns templates with their public access URLs
 -- Supports multilingual display via p_language parameter
+-- Only returns templates available in the requested language:
+--   - original_language matches p_language, OR
+--   - translation exists for p_language
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_demo_templates(
     p_limit INTEGER DEFAULT 100,
@@ -3542,6 +3545,11 @@ BEGIN
       AND ct.is_featured = true
       AND c.is_access_enabled = true
       AND c.access_token IS NOT NULL
+      -- Only show templates available in the requested language
+      AND (
+          c.original_language = p_language
+          OR c.translations ? p_language
+      )
     ORDER BY ct.sort_order ASC, c.name ASC
     LIMIT p_limit;
 END;

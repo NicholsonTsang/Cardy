@@ -226,6 +226,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useTemplateLibraryStore } from '@/stores/templateLibrary'
+import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/stores/translation'
 import { importExcelToCardData } from '@/utils/excelHandler'
 import ExcelJS from 'exceljs'
 
@@ -506,20 +507,22 @@ function getModeSeverity(mode: string): string {
   return severities[mode] || 'secondary'
 }
 
+// Language flags - aligned with SUPPORTED_LANGUAGES from translation store
+const LANGUAGE_FLAGS: Record<LanguageCode, string> = {
+  'en': '🇺🇸',
+  'zh-Hant': '🇭🇰',
+  'zh-Hans': '🇨🇳',
+  'ja': '🇯🇵',
+  'ko': '🇰🇷',
+  'es': '🇪🇸',
+  'fr': '🇫🇷',
+  'ru': '🇷🇺',
+  'ar': '🇸🇦',
+  'th': '🇹🇭'
+}
+
 function getLanguageFlag(lang: string): string {
-  const flags: Record<string, string> = {
-    en: '🇺🇸',
-    'zh-Hant': '🇭🇰',
-    'zh-Hans': '🇨🇳',
-    ja: '🇯🇵',
-    ko: '🇰🇷',
-    es: '🇪🇸',
-    fr: '🇫🇷',
-    de: '🇩🇪',
-    it: '🇮🇹',
-    pt: '🇧🇷'
-  }
-  return flags[lang] || '🌐'
+  return LANGUAGE_FLAGS[lang as LanguageCode] || '🌐'
 }
 
 async function handleBulkImport() {

@@ -152,6 +152,7 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTemplateLibraryStore, type ContentTemplate } from '@/stores/templateLibrary'
 import { useSubscriptionStore } from '@/stores/subscription'
+import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/stores/translation'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
@@ -276,36 +277,26 @@ function getModeLabel(mode: string): string {
   return labels[mode] || mode
 }
 
+// Language flags - aligned with SUPPORTED_LANGUAGES from translation store
+const LANGUAGE_FLAGS: Record<LanguageCode, string> = {
+  'en': '🇺🇸',
+  'zh-Hant': '🇭🇰',
+  'zh-Hans': '🇨🇳',
+  'ja': '🇯🇵',
+  'ko': '🇰🇷',
+  'es': '🇪🇸',
+  'fr': '🇫🇷',
+  'ru': '🇷🇺',
+  'ar': '🇸🇦',
+  'th': '🇹🇭'
+}
+
 function getLanguageFlag(lang: string): string {
-  const flags: Record<string, string> = {
-    en: '🇺🇸',
-    'zh-Hant': '🇭🇰',
-    'zh-Hans': '🇨🇳',
-    ja: '🇯🇵',
-    ko: '🇰🇷',
-    es: '🇪🇸',
-    fr: '🇫🇷',
-    de: '🇩🇪',
-    it: '🇮🇹',
-    pt: '🇧🇷'
-  }
-  return flags[lang] || '🌐'
+  return LANGUAGE_FLAGS[lang as LanguageCode] || '🌐'
 }
 
 function getLanguageName(lang: string): string {
-  const names: Record<string, string> = {
-    en: 'English',
-    'zh-Hant': '繁體中文',
-    'zh-Hans': '简体中文',
-    ja: '日本語',
-    ko: '한국어',
-    es: 'Español',
-    fr: 'Français',
-    de: 'Deutsch',
-    it: 'Italiano',
-    pt: 'Português'
-  }
-  return names[lang] || lang
+  return SUPPORTED_LANGUAGES[lang as LanguageCode] || lang
 }
 
 async function handleImport() {

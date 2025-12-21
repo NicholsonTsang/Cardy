@@ -74,6 +74,13 @@ In addition to monthly subscription limits, each project can have an optional **
 - TTL: 2 days (auto-cleanup)
 - Logic: `usage-tracker.ts` → `checkDailyLimit()`, `recordDailyAccess()`
 
+**Cache Invalidation:**
+When a creator changes the `daily_scan_limit` in project settings:
+1. Frontend updates PostgreSQL via `update_card` stored procedure
+2. Frontend calls backend `/api/mobile/card/:cardId/invalidate-cache`
+3. Backend invalidates Redis cache via `invalidateCardDailyLimit(cardId)`
+4. New limit takes effect immediately for subsequent accesses
+
 ### Access Modes
 
 ExperienceQR supports two access modes (selected first when creating, **cannot be changed after creation**):
@@ -165,10 +172,40 @@ The platform uses Supabase Auth for user management.
     - Requires configuration in Supabase Dashboard → Authentication → Providers → Google.
     - Redirect URL should include `[YOUR_DOMAIN]/cms`.
 
+#### Supabase OAuth URL Configuration (Required for Production)
+
+When deploying to production, you **must** configure the redirect URLs in Supabase Dashboard to ensure OAuth works correctly.
+
+**Supabase Dashboard → Authentication → URL Configuration:**
+
+| Setting | Development | Production |
+|---------|-------------|------------|
+| **Site URL** | `http://localhost:3000` | `https://your-domain.com` |
+| **Redirect URLs** | `http://localhost:3000/**` | `https://your-domain.com/**` |
+
+**Common Issue:** After OAuth login, user is redirected to `localhost` instead of production domain.
+- **Cause:** Site URL in Supabase is still set to `localhost`
+- **Fix:** Update Site URL to your production domain (e.g., `https://cardstudio.org`)
+
+**Google Cloud Console Configuration:**
+- **Authorized redirect URIs** must include: `https://[YOUR_SUPABASE_PROJECT].supabase.co/auth/v1/callback`
+- This is where Google sends users back to Supabase after authentication
+
 ### Roles
 All new users are automatically assigned the `cardIssuer` role via a database trigger (`handle_new_user`).
 - **cardIssuer**: Create and manage their own digital projects.
 - **admin**: Access the admin portal for user management and global settings.
+
+### Default Routes After Login
+
+Users are automatically redirected to their role-appropriate dashboard after login:
+
+| Role | Default Route | Page |
+|------|---------------|------|
+| **admin** | `/cms/admin/dashboard` | Admin Dashboard |
+| **cardIssuer** | `/cms/projects` | My Projects |
+
+This applies to all login methods (email/password, Google OAuth) and when accessing `/cms` directly.
 
 #### Physical Card Mode
 - Unlimited scans after issuance
@@ -293,6 +330,38 @@ content_templates table:
 ```
 
 **Important:** The `card_id` foreign key has `ON DELETE CASCADE`, meaning if you delete a project that is linked to a template, **the template is also automatically deleted**. A warning is shown in the delete confirmation dialog when this applies.
+
+#### Template Visibility Settings (`is_active` vs `is_featured`)
+
+Templates have two visibility flags that control where they appear:
+
+| Field | Purpose | Who sees it? | Where it appears |
+|-------|---------|--------------|------------------|
+| **`is_active`** | Template is available for import | Logged-in creators | Template Library (`/cms/templates`) |
+| **`is_featured`** | Template appears on landing page | Everyone (public) | Landing Page demo section |
+
+**Visibility Matrix:**
+
+| `is_active` | `is_featured` | In Template Library? | On Landing Page? |
+|-------------|---------------|---------------------|------------------|
+| ✅ true | ✅ true | ✅ Yes | ✅ Yes |
+| ✅ true | ❌ false | ✅ Yes | ❌ No |
+| ❌ false | ✅ true | ❌ No | ❌ No |
+| ❌ false | ❌ false | ❌ No | ❌ No |
+
+**Landing Page Requirements:**
+For a template to appear on the landing page (`get_demo_templates` stored procedure), ALL conditions must be met:
+1. `is_active = true`
+2. `is_featured = true`
+3. Linked card has `is_access_enabled = true`
+4. Linked card has `access_token IS NOT NULL`
+
+**Admin Bulk Actions:**
+The Admin Template Management page supports bulk operations:
+- **Activate/Deactivate** - Toggle `is_active` for multiple templates
+- **Feature/Unfeature** - Toggle `is_featured` for multiple templates
+- **Delete** - Remove multiple templates
+- **Export** - Export selected templates to Excel
 
 The linked card contains all the project data:
 - Project info: name, description, content_mode, is_grouped, group_display, billing_type
@@ -905,6 +974,25 @@ ExperienceQR uses a **synchronous translation system** powered by Google Gemini 
 - **Frontend**: `CardTranslationSection.vue` checks `authStore.getUserRole() === 'admin'` OR `subscriptionStore.canTranslate`
 - **Backend**: `translation.routes.direct.ts` calls `check_premium_subscription_server` stored procedure
 - **Database**: `check_premium_subscription_server` returns `true` if user role is `admin` OR subscription tier is `premium`
+
+### Supported Languages
+
+The platform supports **10 languages** for translation. The source of truth is `SUPPORTED_LANGUAGES` in `src/stores/translation.ts`:
+
+| Code | Language | Flag |
+|------|----------|------|
+| `en` | English | 🇺🇸 |
+| `zh-Hant` | Traditional Chinese | 🇭🇰 |
+| `zh-Hans` | Simplified Chinese | 🇨🇳 |
+| `ja` | Japanese | 🇯🇵 |
+| `ko` | Korean | 🇰🇷 |
+| `es` | Spanish | 🇪🇸 |
+| `fr` | French | 🇫🇷 |
+| `ru` | Russian | 🇷🇺 |
+| `ar` | Arabic | 🇸🇦 |
+| `th` | Thai | 🇹🇭 |
+
+> **Important**: When adding language support to UI components, always import `SUPPORTED_LANGUAGES` from `@/stores/translation` instead of hardcoding language lists. This ensures consistency across all components.
 
 ### Translated Fields
 

@@ -70,6 +70,7 @@ import { useVoiceRecording } from './composables/useVoiceRecording'
 import { useCostSafeguards } from './composables/useCostSafeguards'
 import { useInactivityTimer } from './composables/useInactivityTimer'
 import { useMobileLanguageStore } from '@/stores/language'
+import { buildContentItemPrompt } from './utils/promptBuilder'
 import type { Message, ConversationMode, CardData } from './types'
 
 // Content Mode types (includes 'detail' for item detail view)
@@ -156,53 +157,25 @@ const modeContext = computed(() => {
 })
 
 const systemInstructions = computed(() => {
-  const languageName = languageStore.selectedLanguage.name
-  const languageCode = languageStore.selectedLanguage.code
-  
-  // Language-specific emphasis
-  let languageNote = ''
-  if (languageStore.isChinese(languageCode)) {
-    if (languageStore.chineseVoice === 'cantonese') {
-      languageNote = '\n⚠️ CRITICAL: You MUST speak in CANTONESE (廣東話), NOT Mandarin.'
-    } else {
-      languageNote = '\n⚠️ CRITICAL: You MUST speak in MANDARIN (普通話), NOT Cantonese.'
-    }
-  } else {
-    languageNote = `\n⚠️ CRITICAL: You MUST speak EXCLUSIVELY in ${languageName}.`
-  }
-  
-  // Build parent context section if this is a sub-item
-  let parentContext = ''
-  if (props.parentContentName) {
-    parentContext = `\nParent Category: "${props.parentContentName}"
-${props.parentContentDescription ? `Parent Description: ${props.parentContentDescription}` : ''}
-${props.parentContentKnowledgeBase ? `Parent Knowledge: ${props.parentContentKnowledgeBase}` : ''}`
-  }
-
-  return `You are an AI assistant for "${props.cardData.card_name}".
-
-CONTEXT: ${modeContext.value}
-
-Current View:
-- Name: ${props.contentItemName}
-- Description: ${props.contentItemContent}
-${parentContext}
-
-${props.contentItemKnowledgeBase ? `Knowledge Base:
-${props.contentItemKnowledgeBase}` : ''}
-
-${props.cardData.ai_instruction ? `Special Instructions:
-${props.cardData.ai_instruction}` : ''}
-
-PROACTIVE GUIDANCE BEHAVIOR:${languageNote}
-- Be conversational, enthusiastic, and actively helpful
-- Keep responses concise (2-3 sentences) but informative
-- IMPORTANT: When users seem unsure what to ask, proactively suggest specific things you can help with
-- If the conversation pauses, offer a related interesting fact or suggest a follow-up topic
-- Share specific examples from your knowledge base when relevant
-- Guide users by saying things like "I can also tell you about..." or "Many visitors also ask about..."
-- Make users aware of the depth of information available to them
-- If you have knowledge about history, techniques, stories, tips, or recommendations - offer to share them`
+  return buildContentItemPrompt({
+    assistantName: 'AI Assistant',
+    cardName: props.cardData.card_name,
+    cardDescription: props.cardData.card_description,
+    languageName: languageStore.selectedLanguage.name,
+    languageCode: languageStore.selectedLanguage.code,
+    chineseVoice: languageStore.chineseVoice as 'mandarin' | 'cantonese' | undefined,
+    knowledgeBase: props.cardData.ai_knowledge_base,
+    customInstruction: props.cardData.ai_instruction,
+    contentItemName: props.contentItemName,
+    contentItemContent: props.contentItemContent,
+    contentItemKnowledge: props.contentItemKnowledgeBase,
+    parentContext: props.parentContentName ? {
+      name: props.parentContentName,
+      description: props.parentContentDescription,
+      knowledge: props.parentContentKnowledgeBase
+    } : undefined,
+    modeContext: modeContext.value
+  })
 })
 
 // Mode-specific welcome message key

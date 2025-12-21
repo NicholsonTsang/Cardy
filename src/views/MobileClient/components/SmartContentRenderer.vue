@@ -242,5 +242,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0; /* Allow flex shrinking */
+  /* Dark background to prevent flash during view transitions */
+  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
 }
 </style>

@@ -487,22 +487,23 @@ function handleCategoryClick(category: ContentItem) {
 .ai-browse-badge {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.625rem;
   width: 100%;
   max-width: 400px;
   margin: 0 auto;
-  padding: 0.875rem 1.125rem;
+  padding: 0.75rem 1rem;
   background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
   border: 1px solid rgba(139, 92, 246, 0.4);
-  border-radius: 1rem;
+  border-radius: 0.875rem;
   color: white;
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.2);
+  min-height: 48px;
 }
 
 .ai-browse-badge:hover {

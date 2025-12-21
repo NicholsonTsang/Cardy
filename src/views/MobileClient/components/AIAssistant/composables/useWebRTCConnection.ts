@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
+import { buildRealtimeGreetingInstructions } from '../utils/promptBuilder'
 
 export function useWebRTCConnection() {
   // Connection state
@@ -208,46 +209,13 @@ export function useWebRTCConnection() {
         sendMessage(sessionConfig)
         
         // Trigger AI's proactive greeting after session is configured
-        // Custom welcome provides context/hints for what to suggest; AI generates natural greeting
+        // Use streamlined greeting instructions that are concise for voice
         setTimeout(() => {
-          let greetingInstructions: string
-          
-          if (customWelcome) {
-            // Custom welcome provides guidance - AI generates natural greeting informed by it
-            greetingInstructions = `CRITICAL: Respond ONLY in ${languageNames[language] || 'English'}. DO NOT use any other language.
-
-PROACTIVE GREETING INSTRUCTIONS:
-The experience creator has provided this welcome message as guidance for what to mention:
-"${customWelcome}"
-
-Use this as REFERENCE to understand:
-- The tone and personality they want
-- What specific topics or features to highlight
-- What questions or options to suggest to users
-
-NOW generate your own natural, spoken greeting that:
-1. Warmly welcomes the user in a friendly tone
-2. Briefly introduces yourself based on the context
-3. Suggests 2-3 SPECIFIC things they can ask about (inspired by the welcome message above)
-4. Ends with an inviting question
-
-Keep it concise (2-3 sentences), natural for voice, and make sure users clearly understand what they can ask you about!`
-          } else {
-            // No custom welcome - generate proactive greeting from knowledge base
-            greetingInstructions = `CRITICAL: Respond ONLY in ${languageNames[language] || 'English'}. DO NOT use any other language.
-
-PROACTIVE GREETING INSTRUCTIONS:
-1. Warmly greet the user in a friendly, enthusiastic tone
-2. Briefly introduce yourself as their personal guide
-3. IMPORTANT: Proactively suggest 2-3 SPECIFIC things they can ask you about, based on your knowledge. For example:
-   - If you know about an artist: "You can ask me about the artist's life, their techniques, or what inspired this work"
-   - If you know about a restaurant: "I can tell you about our signature dishes, chef recommendations, or dietary accommodations"
-   - If you know about an exhibit: "Feel free to ask about the history, the artifacts, or interesting stories behind what you're seeing"
-   - If you know about a location: "I can share opening hours, nearby attractions, or insider tips"
-4. End with an inviting question like "What interests you most?" or "What would you like to know?"
-
-Keep it concise (2-3 sentences max) but make sure to give CONCRETE examples of what you can help with based on your knowledge base. Users don't know what information you have - show them!`
-          }
+          const greetingInstructions = buildRealtimeGreetingInstructions(
+            languageNames[language] || 'English',
+            customWelcome,
+            false // isItemMode - will be passed from caller if needed
+          )
           
           const greetingConfig = {
             type: 'response.create',

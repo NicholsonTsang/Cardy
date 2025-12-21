@@ -10,6 +10,9 @@ export { default as LanguageSelector } from './components/LanguageSelector.vue'
 export { default as MessageBubble } from './components/MessageBubble.vue'
 export { default as VoiceInputButton } from './components/VoiceInputButton.vue'
 
+// Utilities
+export { buildCardLevelPrompt, buildContentItemPrompt, buildRealtimeGreetingInstructions } from './utils/promptBuilder'
+
 // Composables
 export { useWebRTCConnection } from './composables/useWebRTCConnection'
 export { useChatCompletion } from './composables/useChatCompletion'

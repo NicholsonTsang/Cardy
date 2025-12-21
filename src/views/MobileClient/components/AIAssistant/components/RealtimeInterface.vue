@@ -1,78 +1,80 @@
 <template>
   <div class="realtime-container">
-    <!-- Error Warning (only show for actual connection failures) -->
-    <div v-if="error" class="connection-error-warning">
-      <div class="error-icon">
+    <!-- Error Warning -->
+    <div v-if="error" class="connection-error">
+      <div class="error-icon-wrapper">
         <i class="pi pi-exclamation-triangle"></i>
       </div>
       <div class="error-content">
-        <h4 class="error-title">{{ $t('common.connection_failed') }}</h4>
-        <p class="error-message">{{ error }}</p>
+        <h4>{{ $t('common.connection_failed') }}</h4>
+        <p>{{ error }}</p>
       </div>
     </div>
 
-    <!-- Main Realtime UI -->
+    <!-- Main Content -->
     <div class="realtime-content">
-      <!-- AI Avatar with Waveform -->
-      <div class="realtime-avatar-section">
-        <!-- Avatar Circle -->
-        <div class="realtime-avatar" :class="{ 
-          'speaking': isSpeaking,
-          'listening': isConnected && !isSpeaking,
-          'connecting': status === 'connecting'
-        }">
-          <div class="avatar-circle">
-            <i class="pi pi-sparkles avatar-icon" />
+      <!-- Avatar Section -->
+      <div class="avatar-section">
+        <div class="avatar-container" :class="avatarState">
+          <!-- Main avatar with glow effect -->
+          <div class="avatar-core">
+            <i class="pi pi-sparkles" />
           </div>
         </div>
         
-        <!-- Status Text -->
-        <div class="realtime-status-text">
-          <h3 v-if="status === 'disconnected'">{{ $t('mobile.ready_to_connect') }}</h3>
-          <h3 v-else-if="status === 'connecting'">{{ $t('mobile.connecting') }}</h3>
-          <h3 v-else-if="isSpeaking">{{ $t('mobile.ai_speaking') }}</h3>
-          <h3 v-else-if="isConnected">{{ $t('mobile.listening') }}</h3>
+        <!-- Status -->
+        <div class="status-badge" :class="statusBadgeClass">
+          <span class="status-dot"></span>
+          <span class="status-text">{{ statusText }}</span>
         </div>
       </div>
 
-      <!-- Live Transcript -->
-      <div ref="transcriptContainer" class="realtime-transcript">
-        <div v-if="messages.length === 0" class="transcript-placeholder">
+      <!-- Transcript -->
+      <div ref="transcriptContainer" class="transcript-section">
+        <div v-if="messages.length === 0" class="transcript-empty">
+          <i class="pi pi-comments" />
           <p>{{ $t('mobile.transcript_appears_here') }}</p>
         </div>
         <div v-else class="transcript-messages">
-          <div v-for="message in messages" :key="message.id" 
-               class="transcript-message" :class="message.role">
-            <span class="transcript-role">{{ message.role === 'user' ? $t('mobile.you') : $t('mobile.ai') }}:</span>
-            <span class="transcript-content">{{ message.content }}</span>
+          <div 
+            v-for="message in messages" 
+            :key="message.id" 
+            class="transcript-message" 
+            :class="message.role"
+          >
+            <span class="message-role">{{ message.role === 'user' ? $t('mobile.you') : $t('mobile.ai') }}</span>
+            <span class="message-text">{{ message.content }}</span>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Realtime Controls -->
+    <!-- Controls -->
     <div class="realtime-controls">
       <!-- Connect Button -->
       <button 
         v-if="!isConnected"
         @click="$emit('connect')"
-        class="realtime-connect-button"
+        class="call-button connect"
         :disabled="status === 'connecting'"
       >
-        <i class="pi pi-phone" />
+        <div class="button-icon">
+          <i class="pi pi-phone" />
+        </div>
         <span>{{ status === 'connecting' ? $t('mobile.connecting') : $t('mobile.start_live_call') }}</span>
       </button>
 
-      <!-- Talk Controls (when connected) -->
-      <div v-else class="realtime-talk-controls">
-        <button 
-          @click="$emit('disconnect')"
-          class="realtime-disconnect-button"
-        >
+      <!-- Disconnect Button -->
+      <button 
+        v-else
+        @click="$emit('disconnect')"
+        class="call-button disconnect"
+      >
+        <div class="button-icon">
           <i class="pi pi-phone" style="transform: rotate(135deg);" />
-          <span>{{ $t('mobile.end_call') }}</span>
-        </button>
-      </div>
+        </div>
+        <span>{{ $t('mobile.end_call') }}</span>
+      </button>
     </div>
   </div>
 </template>
@@ -100,7 +102,31 @@ defineEmits<{
 
 const transcriptContainer = ref<HTMLDivElement | null>(null)
 
-// Scroll during streaming (not just on message creation)
+// Computed avatar state
+const avatarState = computed(() => ({
+  'speaking': props.isSpeaking,
+  'listening': props.isConnected && !props.isSpeaking,
+  'connecting': props.status === 'connecting',
+  'idle': props.status === 'disconnected'
+}))
+
+// Computed status badge class
+const statusBadgeClass = computed(() => ({
+  'connected': props.isConnected,
+  'connecting': props.status === 'connecting',
+  'speaking': props.isSpeaking
+}))
+
+// Status text
+const statusText = computed(() => {
+  if (props.status === 'disconnected') return t('mobile.ready_to_connect')
+  if (props.status === 'connecting') return t('mobile.connecting')
+  if (props.isSpeaking) return t('mobile.ai_speaking')
+  if (props.isConnected) return t('mobile.listening')
+  return ''
+})
+
+// Scroll during streaming
 const streamingProgressKey = computed(() => {
   return props.messages
     .filter(m => m.isStreaming)
@@ -121,47 +147,61 @@ watch(streamingProgressKey, async () => {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: linear-gradient(180deg, #f9fafb 0%, #ffffff 100%);
+  background: 
+    radial-gradient(ellipse at 50% 0%, rgba(139, 92, 246, 0.15) 0%, transparent 50%),
+    linear-gradient(180deg, #0f172a 0%, #1e1b4b 50%, #0f172a 100%);
+  position: relative;
 }
 
-/* Connection Error Warning */
-.connection-error-warning {
+/* Ambient background effect - contained in its own layer */
+.realtime-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: 
+    radial-gradient(circle at 30% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+    radial-gradient(circle at 70% 80%, rgba(139, 92, 246, 0.08) 0%, transparent 40%);
+  animation: ambientMove 20s ease-in-out infinite;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes ambientMove {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
+/* Error */
+.connection-error {
   display: flex;
   gap: 0.75rem;
   margin: 0.75rem 1rem;
-  padding: 0.75rem 1rem;
-  background: #fee2e2;
-  border: 2px solid #fca5a5;
+  padding: 0.875rem 1rem;
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.3);
   border-radius: 12px;
-  box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.1);
-  animation: slideDown 0.3s ease-out;
+  animation: slideDown 0.25s ease-out;
 }
 
 @keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.error-icon {
-  flex-shrink: 0;
+.error-icon-wrapper {
   width: 32px;
   height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fef2f2;
-  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.2);
+  border-radius: 8px;
+  flex-shrink: 0;
 }
 
-.error-icon i {
-  font-size: 1.125rem;
-  color: #dc2626;
+.error-icon-wrapper i {
+  font-size: 1rem;
+  color: #fca5a5;
 }
 
 .error-content {
@@ -169,215 +209,579 @@ watch(streamingProgressKey, async () => {
   min-width: 0;
 }
 
-.error-title {
+.error-content h4 {
   margin: 0 0 0.125rem 0;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #991b1b;
+  color: #fca5a5;
 }
 
-.error-message {
+.error-content p {
   margin: 0;
   font-size: 0.8125rem;
   line-height: 1.4;
-  color: #7f1d1d;
+  color: rgba(252, 165, 165, 0.7);
 }
 
+/* Main Content */
 .realtime-content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 0.75rem 1rem;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch; /* Smooth scrolling on iOS */
-  overscroll-behavior: contain; /* Prevent pull-to-refresh */
+  padding: 1rem 1rem 1rem;
+  gap: 1rem;
+  overflow: visible;
+  position: relative;
+  z-index: 1;
 }
 
-.realtime-avatar-section {
-  text-align: center;
-  margin-bottom: 1rem;
-}
-
-.realtime-avatar {
-  display: inline-flex;
+/* Avatar Section */
+.avatar-section {
+  display: flex;
+  flex-direction: column;
   align-items: center;
+  flex: 1;
   justify-content: center;
-  margin-top: 10px;
-  margin-bottom: 0.5rem;
+  min-height: 140px;
+  padding: 1rem 0;
+  position: relative;
+  z-index: 1;
 }
 
-.avatar-circle {
-  width: 90px;
-  height: 90px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+.avatar-container {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
 }
 
-.realtime-avatar.connecting .avatar-circle {
-  animation: pulse 2s ease-in-out infinite;
+/* Core avatar */
+.avatar-core {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 
+    0 0 30px rgba(139, 92, 246, 0.4),
+    0 4px 20px rgba(0, 0, 0, 0.25),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 2px 8px rgba(255, 255, 255, 0.15);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  animation: idleGlow 3s ease-in-out infinite;
 }
 
-.realtime-avatar.listening .avatar-circle {
-  box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
-  animation: ripple 2s ease-out infinite;
+.avatar-core::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(99, 102, 241, 0.3));
+  z-index: -1;
+  opacity: 0.6;
+  animation: borderGlow 3s ease-in-out infinite;
 }
 
-@keyframes ripple {
-  0% {
-    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7);
+.avatar-core::after {
+  content: '';
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 45%;
+  height: 18%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.35) 0%, transparent 100%);
+  border-radius: 50%;
+}
+
+@keyframes idleGlow {
+  0%, 100% { 
+    box-shadow: 
+      0 0 30px rgba(139, 92, 246, 0.4),
+      0 4px 20px rgba(0, 0, 0, 0.25),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 2px 8px rgba(255, 255, 255, 0.15);
   }
-  100% {
-    box-shadow: 0 0 0 40px rgba(59, 130, 246, 0);
+  50% { 
+    box-shadow: 
+      0 0 45px rgba(139, 92, 246, 0.5),
+      0 4px 20px rgba(0, 0, 0, 0.25),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 2px 8px rgba(255, 255, 255, 0.15);
   }
 }
 
-.avatar-icon {
-  font-size: 2.25rem;
+@keyframes borderGlow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 0.8; transform: scale(1.02); }
+}
+
+/* Avatar states */
+.avatar-container.idle .avatar-core {
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+  box-shadow: 
+    0 0 20px rgba(100, 116, 139, 0.3),
+    0 4px 16px rgba(0, 0, 0, 0.25),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 2px 8px rgba(255, 255, 255, 0.1);
+  animation: none;
+}
+
+.avatar-container.idle .avatar-core::before {
+  background: linear-gradient(135deg, rgba(100, 116, 139, 0.2), rgba(71, 85, 105, 0.2));
+  animation: none;
+}
+
+.avatar-container.listening .avatar-core {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  animation: listeningGlow 2s ease-in-out infinite;
+}
+
+.avatar-container.listening .avatar-core::before {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.4), rgba(37, 99, 235, 0.4));
+  animation: borderGlow 2s ease-in-out infinite;
+}
+
+@keyframes listeningGlow {
+  0%, 100% { 
+    box-shadow: 
+      0 0 35px rgba(59, 130, 246, 0.5),
+      0 4px 20px rgba(0, 0, 0, 0.25),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 2px 8px rgba(255, 255, 255, 0.15);
+  }
+  50% { 
+    box-shadow: 
+      0 0 50px rgba(59, 130, 246, 0.6),
+      0 4px 20px rgba(0, 0, 0, 0.25),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 2px 8px rgba(255, 255, 255, 0.15);
+  }
+}
+
+.avatar-container.speaking .avatar-core {
+  animation: speakingPulse 0.6s ease-in-out infinite;
+}
+
+.avatar-container.speaking .avatar-core::before {
+  animation: speakingBorder 0.6s ease-in-out infinite;
+}
+
+@keyframes speakingPulse {
+  0%, 100% { 
+    transform: scale(1);
+    box-shadow: 
+      0 0 40px rgba(139, 92, 246, 0.5),
+      0 4px 20px rgba(0, 0, 0, 0.25),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 2px 8px rgba(255, 255, 255, 0.15);
+  }
+  50% { 
+    transform: scale(1.06);
+    box-shadow: 
+      0 0 55px rgba(139, 92, 246, 0.65),
+      0 4px 20px rgba(0, 0, 0, 0.25),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 2px 8px rgba(255, 255, 255, 0.15);
+  }
+}
+
+@keyframes speakingBorder {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+.avatar-container.connecting .avatar-core {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  animation: connectingPulse 1s ease-in-out infinite;
+}
+
+.avatar-container.connecting .avatar-core::before {
+  background: linear-gradient(135deg, rgba(251, 191, 36, 0.4), rgba(245, 158, 11, 0.4));
+  animation: connectingBorder 1s ease-in-out infinite;
+}
+
+@keyframes connectingPulse {
+  0%, 100% { 
+    opacity: 1;
+    box-shadow: 
+      0 0 30px rgba(251, 191, 36, 0.4),
+      0 4px 20px rgba(0, 0, 0, 0.25),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 2px 8px rgba(255, 255, 255, 0.15);
+  }
+  50% { 
+    opacity: 0.85;
+    box-shadow: 
+      0 0 45px rgba(251, 191, 36, 0.5),
+      0 4px 20px rgba(0, 0, 0, 0.25),
+      inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+      inset 0 2px 8px rgba(255, 255, 255, 0.15);
+  }
+}
+
+@keyframes connectingBorder {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.8; }
+}
+
+.avatar-core i {
+  font-size: 2rem;
   color: white;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
-.realtime-status-text h3 {
-  font-size: 1.125rem;
+/* Status Badge */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 20px;
+  margin-top: 1rem;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition: all 0.3s ease;
+}
+
+.status-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.5);
+  transition: all 0.3s ease;
+}
+
+.status-badge.connected .status-dot {
+  background: #22c55e;
+  box-shadow: 
+    0 0 12px rgba(34, 197, 94, 0.6),
+    0 0 24px rgba(34, 197, 94, 0.3);
+}
+
+.status-badge.connecting .status-dot {
+  background: #fbbf24;
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.5);
+  animation: dotBlink 0.8s ease-in-out infinite;
+}
+
+.status-badge.speaking .status-dot {
+  background: #a78bfa;
+  box-shadow: 
+    0 0 12px rgba(167, 139, 250, 0.6),
+    0 0 24px rgba(167, 139, 250, 0.3);
+  animation: dotPulse 0.6s ease-in-out infinite;
+}
+
+@keyframes dotBlink {
+  0%, 100% { 
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% { 
+    opacity: 0.4;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes dotPulse {
+  0%, 100% { 
+    transform: scale(1);
+    box-shadow: 
+      0 0 12px rgba(167, 139, 250, 0.6),
+      0 0 24px rgba(167, 139, 250, 0.3);
+  }
+  50% { 
+    transform: scale(1.2);
+    box-shadow: 
+      0 0 16px rgba(167, 139, 250, 0.8),
+      0 0 32px rgba(167, 139, 250, 0.4);
+  }
+}
+
+.status-text {
+  font-size: 0.875rem;
   font-weight: 600;
-  color: #1f2937;
-  margin: 0.5rem 0 0 0;
+  color: rgba(255, 255, 255, 0.85);
+  letter-spacing: 0.01em;
 }
 
-.realtime-transcript {
+/* Transcript */
+.transcript-section {
   flex: 1;
-  background: white;
-  border-radius: 12px;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
   padding: 1rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   overflow-y: auto;
-  min-height: 150px; /* Ensure minimum readable height */
+  min-height: 80px;
+  max-height: 35vh;
+  box-shadow: 
+    0 4px 16px rgba(0, 0, 0, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  position: relative;
+  z-index: 1;
 }
 
-.transcript-placeholder {
+.transcript-empty {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 60px;
+  color: rgba(255, 255, 255, 0.4);
   text-align: center;
-  color: #9ca3af;
-  padding: 1rem;
+  gap: 0.5rem;
+}
+
+.transcript-empty i {
+  font-size: 1.25rem;
+  opacity: 0.7;
+}
+
+.transcript-empty p {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
 }
 
 .transcript-messages {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.625rem;
 }
 
 .transcript-message {
   display: flex;
   gap: 0.5rem;
-  padding: 0.5rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  line-height: 1.5;
+  padding: 0.625rem 0.875rem;
+  border-radius: 12px;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  animation: messageIn 0.25s ease-out;
+}
+
+@keyframes messageIn {
+  from { 
+    opacity: 0; 
+    transform: translateY(8px) scale(0.98);
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1);
+  }
 }
 
 .transcript-message.user {
-  background: #eff6ff;
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.2) 0%,
+    rgba(59, 130, 246, 0.1) 100%
+  );
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
 }
 
 .transcript-message.assistant {
-  background: #f3f4f6;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.18) 0%,
+    rgba(139, 92, 246, 0.08) 100%
+  );
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  box-shadow: 0 2px 8px rgba(139, 92, 246, 0.1);
 }
 
-.transcript-role {
-  font-weight: 600;
-  color: #374151;
+.message-role {
+  font-weight: 700;
   flex-shrink: 0;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.03em;
 }
 
-.transcript-content {
-  color: #4b5563;
+.transcript-message.user .message-role {
+  color: #60a5fa;
 }
 
+.transcript-message.assistant .message-role {
+  color: #a78bfa;
+}
+
+.message-text {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+/* Controls */
 .realtime-controls {
   padding: 1rem;
-  background: white;
-  border-top: 1px solid #e5e7eb;
-  flex-shrink: 0; /* Prevent controls from being compressed */
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(15, 23, 42, 0.95) 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
 }
 
-.realtime-connect-button {
+.call-button {
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
+  gap: 0.625rem;
   padding: 0.875rem 1.25rem;
+  border: none;
+  border-radius: 14px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  color: white;
+  position: relative;
+  overflow: hidden;
+  min-height: 48px;
+}
+
+.call-button::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, transparent 50%);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.call-button.connect {
   background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
+  box-shadow: 
+    0 4px 20px rgba(34, 197, 94, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-.realtime-connect-button:hover:not(:disabled) {
+.call-button.connect:hover:not(:disabled) {
   background: linear-gradient(135deg, #16a34a 0%, #15803d 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(34, 197, 94, 0.3);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 
+    0 8px 28px rgba(34, 197, 94, 0.45),
+    0 0 30px rgba(34, 197, 94, 0.2);
 }
 
-.realtime-connect-button:disabled {
-  opacity: 0.6;
+.call-button.connect:hover::before {
+  opacity: 1;
+}
+
+.call-button.connect:active:not(:disabled) {
+  transform: translateY(0) scale(0.98);
+}
+
+.call-button.connect:disabled {
+  opacity: 0.5;
   cursor: not-allowed;
+  box-shadow: none;
 }
 
-.realtime-disconnect-button {
-  width: 100%;
+.call-button.disconnect {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 
+    0 4px 20px rgba(239, 68, 68, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.call-button.disconnect:hover {
+  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  transform: translateY(-2px) scale(1.01);
+  box-shadow: 
+    0 8px 28px rgba(239, 68, 68, 0.45),
+    0 0 30px rgba(239, 68, 68, 0.2);
+}
+
+.call-button.disconnect:hover::before {
+  opacity: 1;
+}
+
+.call-button.disconnect:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.button-icon {
+  width: 24px;
+  height: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.875rem 1.25rem;
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
 }
 
-.realtime-disconnect-button:hover {
-  background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 6px -1px rgba(239, 68, 68, 0.3);
+.button-icon i {
+  font-size: 1.125rem;
 }
 
+/* Mobile */
 @media (max-width: 640px) {
   .realtime-content {
-    padding: 1.5rem 1rem;
+    padding: 0.75rem;
+    gap: 0.75rem;
   }
   
   .realtime-controls {
-    /* Account for iPhone home indicator */
-    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+    padding: 0.875rem;
+    padding-bottom: max(0.875rem, env(safe-area-inset-bottom));
   }
   
-  .avatar-circle {
-    width: 100px;
-    height: 100px;
+  .avatar-section {
+    min-height: 120px;
+    padding: 1rem 0;
   }
   
-  .avatar-icon {
-    font-size: 2.5rem;
+  .avatar-core {
+    width: 72px;
+    height: 72px;
   }
   
-  .waveform-container {
-    width: 160px;
-    height: 160px;
+  .avatar-core::before {
+    inset: -3px;
+  }
+  
+  .avatar-core i {
+    font-size: 1.75rem;
+  }
+  
+  .transcript-section {
+    border-radius: 14px;
+    padding: 0.875rem;
+    min-height: 70px;
+    max-height: 30vh;
+  }
+  
+  .status-badge {
+    padding: 0.4375rem 0.875rem;
+    margin-top: 0.75rem;
+  }
+  
+  .status-text {
+    font-size: 0.8125rem;
+  }
+  
+  .status-dot {
+    width: 8px;
+    height: 8px;
   }
 }
 </style>
-

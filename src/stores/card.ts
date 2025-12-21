@@ -311,6 +311,24 @@ export const useCardStore = defineStore('card', () => {
                 
             if (updateError) throw updateError;
             
+            // Invalidate backend caches after successful update
+            // This is critical for daily_scan_limit changes to take effect immediately
+            const existingCard = cards.value.find(c => c.id === cardId);
+            if (existingCard?.access_token) {
+                try {
+                    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+                    await fetch(`${backendUrl}/api/mobile/card/${cardId}/invalidate-cache`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ accessToken: existingCard.access_token })
+                    });
+                    console.log('[CardStore] Cache invalidated for card', cardId);
+                } catch (cacheErr) {
+                    // Non-critical - log but don't fail the update
+                    console.warn('[CardStore] Failed to invalidate cache:', cacheErr);
+                }
+            }
+            
             await fetchCards();
             
             return data;

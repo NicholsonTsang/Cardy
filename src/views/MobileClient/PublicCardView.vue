@@ -76,38 +76,36 @@
         @back="handleNavigation"
       />
 
-      <!-- Dynamic View Container -->
-      <transition name="view-transition" mode="out-in">
-        <!-- Card/Welcome Overview (both physical and digital) -->
-        <CardOverview 
-          v-if="isCardView"
-          :card="cardData"
-          :available-languages="availableLanguages"
-          @explore="openContentList"
-        />
+      <!-- Dynamic View Container (no transition to prevent flash) -->
+      <!-- Card/Welcome Overview (both physical and digital) -->
+      <CardOverview 
+        v-if="isCardView"
+        :card="cardData"
+        :available-languages="availableLanguages"
+        @explore="openContentList"
+      />
 
-        <!-- Smart Content Renderer (Auto-detects layout based on content_mode) -->
-        <SmartContentRenderer 
-          v-else-if="isContentListView"
-          :items="topLevelContent"
-          :card-ai-enabled="cardData.conversation_ai_enabled"
-          :all-items="contentItems"
-          :card="cardData"
-          :available-languages="availableLanguages"
-          :has-header="true"
-          @select="selectContent"
-        />
+      <!-- Smart Content Renderer (Auto-detects layout based on content_mode) -->
+      <SmartContentRenderer 
+        v-else-if="isContentListView"
+        :items="topLevelContent"
+        :card-ai-enabled="cardData.conversation_ai_enabled"
+        :all-items="contentItems"
+        :card="cardData"
+        :available-languages="availableLanguages"
+        :has-header="true"
+        @select="selectContent"
+      />
 
-        <!-- Content Detail -->
-        <ContentDetail 
-          v-else-if="isContentDetailView && selectedContent"
-          :content="selectedContent"
-          :sub-items="subContent"
-          :card="cardData"
-          :parent-item="parentOfSelected || null"
-          @select="selectContent"
-        />
-      </transition>
+      <!-- Content Detail -->
+      <ContentDetail 
+        v-else-if="isContentDetailView && selectedContent"
+        :content="selectedContent"
+        :sub-items="subContent"
+        :card="cardData"
+        :parent-item="parentOfSelected || null"
+        @select="selectContent"
+      />
     </div>
   </div>
 </template>
@@ -771,6 +769,8 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
   min-height: 100vh;
   min-height: var(--viewport-height, 100vh); /* Use dynamic viewport height */
   min-height: 100dvh;
+  /* Dark background to prevent flash during view transitions */
+  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
 }
 
 /* Digital mode card overview content wrapper */
@@ -786,28 +786,14 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  /* Dark background to prevent flash during view transitions */
+  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
 }
 
 /* Digital mode other pages content wrapper - allow scrolling */
 .digital-mode:not(.card-overview-view) .content-wrapper {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-}
-
-/* View Transitions */
-.view-transition-enter-active,
-.view-transition-leave-active {
-  transition: all 0.3s ease;
-}
-
-.view-transition-enter-from {
-  opacity: 0;
-  transform: translateX(20px);
-}
-
-.view-transition-leave-to {
-  opacity: 0;
-  transform: translateX(-20px);
 }
 
 /* Global Mobile Optimizations */

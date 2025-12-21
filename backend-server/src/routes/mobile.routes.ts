@@ -25,7 +25,7 @@ import {
   logAccess,
   checkDailyLimit,
   recordDailyAccess,
-  rollbackDailyAccess,
+  invalidateCardDailyLimit,
 } from '../services/usage-tracker';
 
 const router = Router();
@@ -534,12 +534,13 @@ router.get('/card/physical/:issueCardId', async (req: Request, res: Response) =>
 /**
  * POST /api/mobile/card/:cardId/invalidate-cache
  * 
- * Invalidate card content cache (called when card is updated).
- * Requires service role or card owner authentication.
+ * Invalidate card content cache AND daily limit cache (called when card is updated).
+ * This is critical when daily_scan_limit is changed - otherwise the old limit
+ * remains cached in Redis for up to 2 days.
  */
 router.post('/card/:cardId/invalidate-cache', async (req: Request, res: Response) => {
   try {
-    // cardId from params can be used for physical card cache invalidation in the future
+    const { cardId } = req.params;
     const { accessToken } = req.body;
     
     // Import cache delete function
@@ -549,16 +550,20 @@ router.post('/card/:cardId/invalidate-cache', async (req: Request, res: Response
     let deletedCount = 0;
     
     if (accessToken) {
-      // Delete digital card cache
+      // Delete digital card cache (content cache)
       deletedCount += await cacheDeletePattern(`card:content:${accessToken}:*`);
     }
     
-    // Delete physical card cache by card ID (would need to know issue card IDs)
-    // This is a limitation - physical cards would need to be invalidated by issue card ID
+    // CRITICAL: Invalidate daily limit cache for this card
+    // This ensures daily_scan_limit changes take effect immediately
+    if (cardId) {
+      await invalidateCardDailyLimit(cardId);
+      console.log(`[Mobile] Invalidated daily limit cache for card ${cardId.slice(0, 8)}...`);
+    }
     
     return res.json({
       success: true,
-      message: `Invalidated ${deletedCount} cache entries`,
+      message: `Invalidated ${deletedCount} content cache entries and daily limit cache`,
     });
     
   } catch (error) {

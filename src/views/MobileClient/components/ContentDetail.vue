@@ -171,8 +171,8 @@ onMounted(() => {
   padding-right: max(1.25rem, env(safe-area-inset-right));
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
   -webkit-text-size-adjust: 100%; /* Prevent text scaling */
-  /* Extend background to fill container when content is short */
-  background: transparent;
+  /* Dark background to prevent flash during view transitions */
+  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
 }
 
 /* Extra bottom padding when AI assistant is present (fixed at bottom) */

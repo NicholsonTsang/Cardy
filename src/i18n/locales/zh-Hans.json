@@ -227,6 +227,15 @@
     "importing": "导入中...",
     "create_from_template": "创建项目",
     "import_failed": "模板导入失败",
+    "venue_types": {
+      "cultural": "文化与艺术",
+      "food": "餐饮",
+      "events": "活动与娱乐",
+      "hospitality": "酒店与养生",
+      "retail": "购物与展厅",
+      "tours": "导览与教育",
+      "general": "一般"
+    },
     "admin": {
       "management_title": "模板管理",
       "management_description": "为所有用户管理模板库",
@@ -246,6 +255,10 @@
       "bulk_delete_confirm": "确定要删除 {count} 个模板吗？此操作无法撤销。",
       "bulk_activated": "模板已启用",
       "bulk_deactivated": "模板已停用",
+      "bulk_featured": "模板已设为精选",
+      "bulk_unfeatured": "模板已取消精选",
+      "feature_selected": "设为精选",
+      "unfeature_selected": "取消精选",
       "bulk_deleted": "模板已删除",
       "library_tab": "所有模板",
       "import_tab": "导入模板",

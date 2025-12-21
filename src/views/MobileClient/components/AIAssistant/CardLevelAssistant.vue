@@ -81,6 +81,7 @@ import { useVoiceRecording } from './composables/useVoiceRecording'
 import { useCostSafeguards } from './composables/useCostSafeguards'
 import { useInactivityTimer } from './composables/useInactivityTimer'
 import { useMobileLanguageStore } from '@/stores/language'
+import { buildCardLevelPrompt } from './utils/promptBuilder'
 import type { Message, ConversationMode, CardData } from './types'
 
 interface Props {
@@ -124,45 +125,16 @@ const connectionError = ref<string | null>(null)
 // ============================================================================
 
 const systemInstructions = computed(() => {
-  const languageName = languageStore.selectedLanguage.name
-  const languageCode = languageStore.selectedLanguage.code
-  
-  // Language-specific emphasis with voice preference for Chinese
-  let languageNote = ''
-  if (languageStore.isChinese(languageCode)) {
-    if (languageStore.chineseVoice === 'cantonese') {
-      languageNote = '\n⚠️ CRITICAL: You MUST speak in CANTONESE (廣東話), NOT Mandarin. Use Cantonese vocabulary, grammar, and expressions. Respond naturally as a native Cantonese speaker.'
-    } else {
-      languageNote = '\n⚠️ CRITICAL: You MUST speak in MANDARIN (普通話), NOT Cantonese. Use Mandarin vocabulary, grammar, and expressions. Respond naturally as a native Mandarin speaker.'
-    }
-  } else {
-    languageNote = `\n⚠️ CRITICAL: You MUST speak EXCLUSIVELY in ${languageName}. Never use any other language.`
-  }
-  
-  return `You are an AI assistant for "${props.cardData.card_name}".
-
-${props.cardData.ai_instruction ? `Your Role and Guidelines:
-${props.cardData.ai_instruction}` : 'Your role: Provide helpful information about this exhibit/collection to visitors.'}
-
-About "${props.cardData.card_name}":
-${props.cardData.card_description || 'A digital interactive experience.'}
-
-${props.cardData.ai_knowledge_base ? `Background Knowledge:
-${props.cardData.ai_knowledge_base}` : ''}
-
-PROACTIVE GUIDANCE BEHAVIOR:${languageNote}
-- Be conversational, enthusiastic, and actively helpful
-- Provide engaging and educational responses about the overall exhibit/collection
-- Help visitors understand what they can explore and discover
-- IMPORTANT: Proactively suggest specific topics you can help with based on your knowledge
-- When users seem unsure, offer 2-3 concrete examples of questions they could ask
-- Share interesting facts, stories, or recommendations unprompted when relevant
-- Guide users by saying things like "I can also tell you about..." or "Many visitors enjoy learning about..."
-- Make users aware they can ask about: directions, opening hours, highlights, history, tips, recommendations, etc.
-- Keep responses concise but informative (2-3 sentences max for chat)
-- If asked about specific items, encourage visitors to explore them for more details
-
-Remember: You are a proactive personal guide for "${props.cardData.card_name}". Don't just answer questions - anticipate what visitors might want to know and actively offer insights.`
+  return buildCardLevelPrompt({
+    assistantName: 'AI Assistant',
+    cardName: props.cardData.card_name,
+    cardDescription: props.cardData.card_description,
+    languageName: languageStore.selectedLanguage.name,
+    languageCode: languageStore.selectedLanguage.code,
+    chineseVoice: languageStore.chineseVoice as 'mandarin' | 'cantonese' | undefined,
+    knowledgeBase: props.cardData.ai_knowledge_base,
+    customInstruction: props.cardData.ai_instruction
+  })
 })
 
 const welcomeText = computed(() => {

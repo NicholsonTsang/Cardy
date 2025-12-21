@@ -129,6 +129,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useTemplateLibraryStore, type ContentTemplate, type ContentTemplateDetails } from '@/stores/templateLibrary'
+import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/stores/translation'
 import { storeToRefs } from 'pinia'
 
 import Dialog from 'primevue/dialog'
@@ -163,41 +164,43 @@ const showImportDialog = ref(false)
 const selectedTemplate = ref<ContentTemplateDetails | null>(null)
 const templateToImport = ref<ContentTemplate | null>(null)
 
-// Language options for dropdown
-const supportedLanguages = [
-  { code: 'en', name: 'English', flag: '🇺🇸' },
-  { code: 'zh-Hant', name: '繁體中文', flag: '🇭🇰' },
-  { code: 'zh-Hans', name: '简体中文', flag: '🇨🇳' },
-  { code: 'ja', name: '日本語', flag: '🇯🇵' },
-  { code: 'ko', name: '한국어', flag: '🇰🇷' },
-  { code: 'es', name: 'Español', flag: '🇪🇸' },
-  { code: 'fr', name: 'Français', flag: '🇫🇷' },
-  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
-  { code: 'pt', name: 'Português', flag: '🇧🇷' },
-  { code: 'ar', name: 'العربية', flag: '🇸🇦' }
-]
+// Language flags mapping - aligned with SUPPORTED_LANGUAGES from translation store
+const LANGUAGE_FLAGS: Record<LanguageCode, string> = {
+  'en': '🇺🇸',
+  'zh-Hant': '🇭🇰',
+  'zh-Hans': '🇨🇳',
+  'ja': '🇯🇵',
+  'ko': '🇰🇷',
+  'es': '🇪🇸',
+  'fr': '🇫🇷',
+  'ru': '🇷🇺',
+  'ar': '🇸🇦',
+  'th': '🇹🇭'
+}
 
+// Language options for dropdown - using SUPPORTED_LANGUAGES as source of truth
 const languageOptions = computed(() => {
-  return supportedLanguages.map(lang => ({
-    value: lang.code,
-    label: lang.name
+  return Object.entries(SUPPORTED_LANGUAGES).map(([code, name]) => ({
+    value: code,
+    label: name
   }))
 })
 
 function getLanguageFlag(code: string): string {
-  const lang = supportedLanguages.find(l => l.code === code)
-  return lang?.flag || '🌐'
+  return LANGUAGE_FLAGS[code as LanguageCode] || '🌐'
 }
 
 function getLanguageName(code: string): string {
-  const lang = supportedLanguages.find(l => l.code === code)
-  return lang?.name || code
+  return SUPPORTED_LANGUAGES[code as LanguageCode] || code
 }
 
 // Helpers
 function formatVenueType(type: string): string {
-  return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ')
+  // Use i18n translations from templates.venue_types
+  const translationKey = `templates.venue_types.${type}`
+  const translated = t(translationKey)
+  // Fallback to capitalized type if translation not found
+  return translated !== translationKey ? translated : type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ')
 }
 
 // Actions

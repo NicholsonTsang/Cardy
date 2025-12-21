@@ -78,6 +78,24 @@
           :loading="isBulkProcessing"
         />
         <Button 
+          :label="$t('templates.admin.feature_selected')" 
+          icon="pi pi-star" 
+          size="small"
+          severity="info"
+          outlined
+          @click="bulkFeature(true)"
+          :loading="isBulkProcessing"
+        />
+        <Button 
+          :label="$t('templates.admin.unfeature_selected')" 
+          icon="pi pi-star-fill" 
+          size="small"
+          severity="secondary"
+          outlined
+          @click="bulkFeature(false)"
+          :loading="isBulkProcessing"
+        />
+        <Button 
           :label="$t('templates.admin.delete_selected')" 
           icon="pi pi-trash" 
           size="small"
@@ -1215,6 +1233,57 @@ async function bulkActivate(activate: boolean) {
         severity: 'success',
         summary: activate ? t('templates.admin.bulk_activated') : t('templates.admin.bulk_deactivated'),
         detail: `${successCount} ${t('templates.admin.templates')} ${activate ? 'activated' : 'deactivated'}`,
+        life: 3000
+      })
+    }
+    
+    if (failCount > 0) {
+      toast.add({
+        severity: 'warn',
+        summary: t('common.partial_success'),
+        detail: `${failCount} ${t('templates.admin.templates')} failed`,
+        life: 5000
+      })
+    }
+    
+    selectedTemplates.value = []
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: error.message,
+      life: 5000
+    })
+  } finally {
+    isBulkProcessing.value = false
+  }
+}
+
+// Bulk feature/unfeature selected templates
+async function bulkFeature(feature: boolean) {
+  if (selectedTemplates.value.length === 0) return
+  
+  isBulkProcessing.value = true
+  let successCount = 0
+  let failCount = 0
+  
+  try {
+    for (const template of selectedTemplates.value) {
+      const result = await templateStore.updateTemplateSettings(template.id, {
+        is_featured: feature
+      })
+      if (result.success) {
+        successCount++
+      } else {
+        failCount++
+      }
+    }
+    
+    if (successCount > 0) {
+      toast.add({
+        severity: 'success',
+        summary: feature ? t('templates.admin.bulk_featured') : t('templates.admin.bulk_unfeatured'),
+        detail: `${successCount} ${t('templates.admin.templates')} ${feature ? 'featured' : 'unfeatured'}`,
         life: 3000
       })
     }

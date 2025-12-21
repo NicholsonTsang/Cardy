@@ -11,10 +11,23 @@ const router = createRouter({
       component: AppLayout,
       meta: { requiresAuth: true },
       children: [
-        // Default redirect - will be handled by navigation guard
+        // Default redirect - dynamically routes based on user role
         {
           path: '',
-          redirect: { name: 'projects' }
+          name: 'cms-home',
+          redirect: () => {
+            // This will be resolved after auth is checked by the navigation guard
+            // Role-based redirect is handled here
+            const authStore = useAuthStore();
+            const user = authStore.session?.user;
+            const role = user?.app_metadata?.role || user?.user_metadata?.role;
+            
+            if (role === 'admin') {
+              return { name: 'admin-dashboard' };
+            }
+            // Default to projects for cardIssuer and other roles
+            return { name: 'projects' };
+          }
         },
         // Project Creator Routes (accessible by both cardIssuer and admin)
         {

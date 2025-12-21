@@ -13,14 +13,20 @@
         <template v-else>
           <!-- Header -->
           <div class="modal-header" :class="headerModeClass">
-            <div class="header-info">
-              <i :class="headerIconClass" class="header-icon" />
-              <div>
+            <div class="header-left">
+              <div class="header-avatar" :class="avatarModeClass">
+                <i :class="headerIconClass" />
+              </div>
+              <div class="header-text">
                 <h3 class="header-title">{{ headerTitle }}</h3>
                 <p class="header-subtitle">{{ headerSubtitle }}</p>
               </div>
             </div>
             <div class="header-actions">
+              <!-- Language Badge (compact) -->
+              <div class="language-badge-compact" :title="indicatorLanguage">
+                <span class="language-flag">{{ languageStore.selectedLanguage.flag }}</span>
+              </div>
               <!-- Mode Switch Button -->
               <button 
                 @click="$emit('toggle-mode')" 
@@ -33,17 +39,6 @@
               <button @click="$emit('close')" class="action-button close-button">
                 <i class="pi pi-times" />
               </button>
-            </div>
-          </div>
-
-          <!-- Language Indicator -->
-          <div class="language-indicator">
-            <div class="language-badge">
-              <i class="pi pi-globe" />
-              <span class="language-flag">{{ languageStore.selectedLanguage.flag }}</span>
-              <span class="language-text">
-                {{ indicatorPrefix }} <strong>{{ indicatorLanguage }}</strong>
-              </span>
             </div>
           </div>
 
@@ -90,8 +85,13 @@ const headerModeClass = computed(() => ({
   'header-content-item': !isCardLevel.value
 }))
 
+const avatarModeClass = computed(() => ({
+  'avatar-card-level': isCardLevel.value,
+  'avatar-content-item': !isCardLevel.value
+}))
+
 const headerIconClass = computed(() => 
-  isCardLevel.value ? 'pi pi-comments' : 'pi pi-info-circle'
+  isCardLevel.value ? 'pi pi-sparkles' : 'pi pi-info-circle'
 )
 
 const headerTitle = computed(() => {
@@ -119,11 +119,6 @@ const visualViewportHeight = ref<number | null>(null)
 // Computed properties for language indicator
 const isVoiceMode = computed(() => {
   return props.conversationMode === 'realtime' || props.inputMode === 'voice'
-})
-
-const indicatorPrefix = computed(() => {
-  // Use "Speak in" for voice/realtime, "Chat in" for text
-  return isVoiceMode.value ? t('mobile.speak_in') : t('mobile.chat_in')
 })
 
 const indicatorLanguage = computed(() => {
@@ -200,7 +195,9 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -210,143 +207,150 @@ onUnmounted(() => {
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .modal-content {
-  background: white;
-  border-radius: 16px;
+  background: #1e293b;
+  border-radius: 20px;
   width: 100%;
   max-width: 600px;
   max-height: 90vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  animation: slideUp 0.3s ease-out;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   overflow: hidden;
 }
 
 @keyframes slideUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(24px) scale(0.96);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
+/* Header */
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid #e5e7eb;
-  background: white;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 100%);
+  position: relative;
 }
 
-/* Card-Level Assistant Header (Blue-Purple gradient) */
-.modal-header.header-card-level {
-  background: linear-gradient(135deg, #eff6ff 0%, #f3e8ff 100%);
-  border-bottom-color: #c7d2fe;
-}
-
-.modal-header.header-card-level .header-icon {
-  color: #7c3aed;
-}
-
-/* Content-Item Assistant Header (Emerald-Cyan gradient) */
-.modal-header.header-content-item {
-  background: linear-gradient(135deg, #ecfdf5 0%, #ecfeff 100%);
-  border-bottom-color: #a7f3d0;
-}
-
-.modal-header.header-content-item .header-icon {
-  color: #059669;
-}
-
-.header-info {
+.header-left {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.875rem;
+  min-width: 0;
+  flex: 1;
 }
 
-.header-icon {
-  font-size: 1.5rem;
-  color: #3b82f6;
+.header-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 1.25rem;
+  color: white;
+  position: relative;
+  animation: avatarGlow 3s ease-in-out infinite;
+}
+
+/* Card-Level Assistant (Purple-Indigo) */
+.header-avatar.avatar-card-level {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  box-shadow: 
+    0 4px 16px rgba(139, 92, 246, 0.4),
+    0 0 24px rgba(139, 92, 246, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Content-Item Assistant (Emerald-Teal) */
+.header-avatar.avatar-content-item {
+  background: linear-gradient(135deg, #10b981 0%, #14b8a6 100%);
+  box-shadow: 
+    0 4px 16px rgba(16, 185, 129, 0.4),
+    0 0 24px rgba(16, 185, 129, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+@keyframes avatarGlow {
+  0%, 100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  50% {
+    filter: brightness(1.1);
+    transform: scale(1.02);
+  }
+}
+
+.header-text {
+  min-width: 0;
+  flex: 1;
 }
 
 .header-title {
   margin: 0;
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 600;
-  color: #1f2937;
+  color: white;
+  line-height: 1.3;
 }
 
 .header-subtitle {
   margin: 0;
-  font-size: 0.875rem;
-  color: #6b7280;
-  max-width: 180px;
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.6);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-/* Language Indicator */
-.language-indicator {
-  padding: 0.75rem 1.5rem;
-  background: linear-gradient(135deg, #eff6ff 0%, #f3f0ff 100%);
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.language-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.875rem;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.1);
-  font-size: 0.875rem;
-  color: #374151;
-  transition: all 0.2s ease;
-}
-
-.language-badge:hover {
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-  transform: translateY(-1px);
-}
-
-.language-badge .pi-globe {
-  color: #3b82f6;
-  font-size: 1rem;
-}
-
-.language-flag {
-  font-size: 1.25rem;
-  line-height: 1;
-}
-
-.language-text {
-  color: #6b7280;
-}
-
-.language-text strong {
-  color: #1f2937;
-  font-weight: 600;
+  max-width: 180px;
+  line-height: 1.4;
 }
 
 .header-actions {
   display: flex;
+  align-items: center;
   gap: 0.5rem;
   flex-shrink: 0;
+}
+
+/* Compact Language Badge */
+.language-badge-compact {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  cursor: default;
+  transition: all 0.2s;
+}
+
+.language-badge-compact:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.language-badge-compact .language-flag {
+  font-size: 1.25rem;
+  line-height: 1;
 }
 
 .action-button {
@@ -355,29 +359,31 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f3f4f6;
-  border: none;
-  border-radius: 8px;
-  color: #6b7280;
-  font-size: 1.125rem;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 1rem;
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
 }
 
 .action-button:hover {
-  background: #e5e7eb;
-  color: #374151;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
 }
 
 .action-button.active {
-  background: #dbeafe;
-  color: #3b82f6;
+  background: rgba(99, 102, 241, 0.3);
+  border-color: rgba(99, 102, 241, 0.5);
+  color: #a5b4fc;
 }
 
 .action-button.close-button:hover {
-  background: #fee2e2;
-  color: #dc2626;
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
 }
 
 .modal-body {
@@ -388,11 +394,11 @@ onUnmounted(() => {
   min-height: 0;
 }
 
+/* Mobile Full Screen */
 @media (max-width: 640px) {
   .modal-overlay {
     padding: 0;
     align-items: stretch;
-    /* Prevent overscroll/bounce on iOS */
     overflow: hidden;
     touch-action: none;
   }
@@ -401,29 +407,22 @@ onUnmounted(() => {
     max-width: 100%;
     max-height: none;
     border-radius: 0;
-    /* Use visual viewport height to adapt to keyboard */
     height: var(--visual-viewport-height, var(--viewport-height, 100vh));
-    min-height: -webkit-fill-available; /* iOS Safari fallback */
-    /* Enable internal scrolling */
+    min-height: -webkit-fill-available;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
-    /* Smooth transition when keyboard appears */
     transition: height 0.3s ease-out;
   }
   
   .modal-header {
-    /* Ensure header doesn't get hidden by notch */
-    padding-top: max(1.25rem, env(safe-area-inset-top));
-    flex-shrink: 0; /* Never compress header */
+    padding-top: max(1rem, env(safe-area-inset-top));
+    flex-shrink: 0;
   }
   
   .modal-body {
-    /* Account for iPhone home indicator */
     padding-bottom: env(safe-area-inset-bottom);
-    /* Allow body to shrink when keyboard appears */
     flex: 1 1 auto;
     min-height: 0;
   }
 }
 </style>
-
