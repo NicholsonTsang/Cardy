@@ -154,41 +154,43 @@
 
             <!-- Right Column: Details -->
             <div class="right-column">
-                <!-- Content Details with Language Preview -->
+                <!-- Translation Preview Selector (compact inline design) -->
+                <div v-if="availableTranslations.length > 0" class="translation-preview-bar">
+                    <i class="pi pi-language preview-icon"></i>
+                    <span class="preview-label">{{ $t('translation.preview') }}:</span>
+                    <Dropdown
+                        v-model="selectedPreviewLanguage"
+                        :options="languageOptions"
+                        optionLabel="label"
+                        optionValue="value"
+                        class="language-selector-compact"
+                    >
+                        <template #value="slotProps">
+                            <div v-if="slotProps.value" class="lang-option">
+                                <span>{{ getLanguageFlag(slotProps.value) }}</span>
+                                <span>{{ getLanguageName(slotProps.value) }}</span>
+                            </div>
+                            <div v-else class="lang-option">
+                                <span>{{ getLanguageFlag(cardProp?.original_language || 'en') }}</span>
+                                <span>{{ $t('translation.original') }}</span>
+                            </div>
+                        </template>
+                        <template #option="slotProps">
+                            <div class="lang-option">
+                                <span>{{ getLanguageFlag(slotProps.option.value) }}</span>
+                                <span>{{ slotProps.option.label }}</span>
+                            </div>
+                        </template>
+                    </Dropdown>
+                </div>
+
+                <!-- Content Details -->
                 <div class="details-section">
                     <div class="section-header">
                         <div class="header-left">
                             <i class="pi pi-file-edit"></i>
                             <span>{{ $t('dashboard.content_details') }}</span>
                         </div>
-                        <!-- Language Preview Selector -->
-                        <Dropdown
-                            v-if="availableTranslations.length > 0"
-                            v-model="selectedPreviewLanguage"
-                            :options="languageOptions"
-                            optionLabel="label"
-                            optionValue="value"
-                            :placeholder="$t('translation.previewLanguage')"
-                            class="language-selector"
-                            size="small"
-                        >
-                            <template #value="slotProps">
-                                <div v-if="slotProps.value" class="flex items-center gap-2">
-                                    <span>{{ getLanguageFlag(slotProps.value) }}</span>
-                                    <span>{{ getLanguageName(slotProps.value) }}</span>
-                                </div>
-                                <div v-else class="flex items-center gap-2">
-                                    <span>{{ getLanguageFlag(cardProp?.original_language || 'en') }}</span>
-                                    <span>{{ $t('translation.original') }}</span>
-                                </div>
-                            </template>
-                            <template #option="slotProps">
-                                <div class="flex items-center gap-2">
-                                    <span>{{ getLanguageFlag(slotProps.option.value) }}</span>
-                                    <span>{{ slotProps.option.label }}</span>
-                                </div>
-                            </template>
-                        </Dropdown>
                     </div>
                     
                     <div class="details-content">
@@ -259,19 +261,33 @@
                         <span class="ai-badge">{{ $t('common.enabled') }}</span>
                     </div>
                     <div class="ai-content">
-                        <div v-if="cardProp.ai_instruction" class="ai-item">
+                        <div v-if="displayedAiInstruction" class="ai-item">
                             <label>
                                 <i class="pi pi-user"></i>
                                 {{ $t('dashboard.ai_instruction_role') }}
                             </label>
-                            <p>{{ cardProp.ai_instruction }}</p>
+                            <p>{{ displayedAiInstruction }}</p>
                         </div>
-                        <div v-if="cardProp.ai_knowledge_base" class="ai-item">
+                        <div v-if="displayedAiKnowledgeBase" class="ai-item">
                             <label>
                                 <i class="pi pi-book"></i>
                                 {{ $t('dashboard.ai_knowledge_base') }}
                             </label>
-                            <p>{{ cardProp.ai_knowledge_base }}</p>
+                            <p>{{ displayedAiKnowledgeBase }}</p>
+                        </div>
+                        <div v-if="displayedAiWelcomeGeneral" class="ai-item">
+                            <label>
+                                <i class="pi pi-comment"></i>
+                                {{ $t('dashboard.ai_welcome_general') }}
+                            </label>
+                            <p>{{ displayedAiWelcomeGeneral }}</p>
+                        </div>
+                        <div v-if="displayedAiWelcomeItem" class="ai-item">
+                            <label>
+                                <i class="pi pi-comments"></i>
+                                {{ $t('dashboard.ai_welcome_item') }}
+                            </label>
+                            <p>{{ displayedAiWelcomeItem }}</p>
                         </div>
                     </div>
                 </div>
@@ -311,7 +327,6 @@
 import { computed, ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
-import Tag from 'primevue/tag';
 import Dropdown from 'primevue/dropdown';
 import MyDialog from '@/components/MyDialog.vue';
 import CardCreateEditForm from './CardCreateEditForm.vue';
@@ -385,6 +400,38 @@ const displayedCardDescription = computed(() => {
         return props.cardProp?.description || '';
     }
     return props.cardProp.translations[selectedPreviewLanguage.value]?.description || props.cardProp?.description || '';
+});
+
+// Get displayed AI instruction (original or translated)
+const displayedAiInstruction = computed(() => {
+    if (!selectedPreviewLanguage.value || !props.cardProp?.translations?.[selectedPreviewLanguage.value]) {
+        return props.cardProp?.ai_instruction || '';
+    }
+    return props.cardProp.translations[selectedPreviewLanguage.value]?.ai_instruction || props.cardProp?.ai_instruction || '';
+});
+
+// Get displayed AI knowledge base (original or translated)
+const displayedAiKnowledgeBase = computed(() => {
+    if (!selectedPreviewLanguage.value || !props.cardProp?.translations?.[selectedPreviewLanguage.value]) {
+        return props.cardProp?.ai_knowledge_base || '';
+    }
+    return props.cardProp.translations[selectedPreviewLanguage.value]?.ai_knowledge_base || props.cardProp?.ai_knowledge_base || '';
+});
+
+// Get displayed AI welcome general (original or translated)
+const displayedAiWelcomeGeneral = computed(() => {
+    if (!selectedPreviewLanguage.value || !props.cardProp?.translations?.[selectedPreviewLanguage.value]) {
+        return props.cardProp?.ai_welcome_general || '';
+    }
+    return props.cardProp.translations[selectedPreviewLanguage.value]?.ai_welcome_general || props.cardProp?.ai_welcome_general || '';
+});
+
+// Get displayed AI welcome item (original or translated)
+const displayedAiWelcomeItem = computed(() => {
+    if (!selectedPreviewLanguage.value || !props.cardProp?.translations?.[selectedPreviewLanguage.value]) {
+        return props.cardProp?.ai_welcome_item || '';
+    }
+    return props.cardProp.translations[selectedPreviewLanguage.value]?.ai_welcome_item || props.cardProp?.ai_welcome_item || '';
 });
 
 // Helper functions for language display
@@ -693,7 +740,7 @@ onMounted(() => {
 
 @media (min-width: 1024px) {
     .content-grid {
-        grid-template-columns: 320px 1fr;
+        grid-template-columns: 260px 1fr;
     }
 }
 
@@ -967,6 +1014,71 @@ onMounted(() => {
     padding: 1.25rem;
     border: 1px solid #e2e8f0;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Translation Preview Bar - Compact inline design */
+.translation-preview-bar {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.625rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.375rem;
+    margin-bottom: 0.75rem;
+}
+
+.preview-icon {
+    color: #64748b;
+    font-size: 0.875rem;
+}
+
+.preview-label {
+    color: #64748b;
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.language-selector-compact {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    min-width: auto !important;
+}
+
+.language-selector-compact :deep(.p-dropdown-label) {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8125rem;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.25rem;
+}
+
+.language-selector-compact :deep(.p-dropdown-trigger) {
+    width: 1.5rem;
+    padding: 0;
+}
+
+.lang-option {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    font-size: 0.8125rem;
+}
+
+@media (max-width: 768px) {
+    .translation-preview-bar {
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .preview-label {
+        font-size: 0.6875rem;
+    }
+    
+    .lang-option {
+        font-size: 0.75rem;
+    }
 }
 
 .language-selector {

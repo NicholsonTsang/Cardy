@@ -23,6 +23,9 @@ import {
   checkAndIncrementUsage,
   processOverage,
   logAccess,
+  checkDailyLimit,
+  recordDailyAccess,
+  rollbackDailyAccess,
 } from '../services/usage-tracker';
 
 const router = Router();
@@ -57,6 +60,7 @@ interface CardContentResponse {
     dailyScans: number;
     scanLimitReached: boolean;
     monthlyLimitExceeded: boolean;
+    dailyLimitExceeded: boolean;
     creditsInsufficient: boolean;
     accessDisabled?: boolean;
   };
@@ -154,10 +158,12 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       reason: null as string | null,
       subscription_tier: 'free' as string,
       is_overage: false,
-      usage_info: null as any
+      usage_info: null as any,
+      daily_info: null as any
     };
     let scanLimitReached = false;
     let monthlyLimitExceeded = false;
+    let dailyLimitExceeded = false;
     let creditsInsufficient = false;
     
     // Skip usage tracking for template demo cards - they should always be accessible
@@ -169,65 +175,92 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
     }
     
     if (!isRepeatVisit && !isTemplateCard) {
-      // Redis-first usage tracking - only hits DB when necessary
-      const usageCheck = await checkAndIncrementUsage(
-        cardInfo.user_id,
-        cardInfo.id,
-        visitorHash,
-        false // not owner access
-      );
+      // Step 6a: Check DAILY limit first (per-card creator protection)
+      // This is a fast Redis-only check that protects creators from traffic spikes
+      const dailyCheck = await checkDailyLimit(cardInfo.id);
       
-      accessResult.subscription_tier = usageCheck.tier;
-      accessResult.usage_info = {
-        monthly_used: usageCheck.currentUsage,
-        monthly_limit: usageCheck.limit,
-        is_overage: usageCheck.isOverage
+      accessResult.daily_info = {
+        daily_scans: dailyCheck.currentScans,
+        daily_limit: dailyCheck.dailyLimit
       };
       
-      if (usageCheck.allowed) {
-        // Access allowed (within limit)
-        accessResult.access_allowed = true;
-        accessResult.reason = usageCheck.reason;
-        console.log(`[Mobile] Access allowed for ${accessToken}: ${usageCheck.reason}`);
-      } else if (usageCheck.isOverage && usageCheck.tier === 'premium') {
-        // Premium user over limit - purchase overage batch (5 credits = 100 extra access)
-        const overageResult = await processOverage(
+      if (!dailyCheck.allowed) {
+        // Daily limit exceeded - deny access immediately (don't count against monthly)
+        accessResult.access_allowed = false;
+        accessResult.reason = dailyCheck.reason;
+        dailyLimitExceeded = true;
+        console.log(`[Mobile] Access denied (daily limit) for ${accessToken}: ${dailyCheck.currentScans}/${dailyCheck.dailyLimit}`);
+      } else {
+        // Step 6b: Daily limit OK - now check MONTHLY limit (subscription billing)
+        const usageCheck = await checkAndIncrementUsage(
           cardInfo.user_id,
           cardInfo.id,
           visitorHash,
-          0 // Rate is handled internally by batch config
+          false // not owner access
         );
         
-        if (overageResult.allowed) {
+        accessResult.subscription_tier = usageCheck.tier;
+        accessResult.usage_info = {
+          monthly_used: usageCheck.currentUsage,
+          monthly_limit: usageCheck.limit,
+          is_overage: usageCheck.isOverage
+        };
+        
+        if (usageCheck.allowed) {
+          // Access allowed (within limit)
           accessResult.access_allowed = true;
-          accessResult.is_overage = true;
-          accessResult.reason = 'Overage credit charged';
-          console.log(`[Mobile] Overage access for ${accessToken}, new balance: ${overageResult.newBalance}`);
+          accessResult.reason = usageCheck.reason;
+          
+          // Record daily access after successful monthly check
+          const newDailyCount = await recordDailyAccess(cardInfo.id);
+          accessResult.daily_info.daily_scans = newDailyCount;
+          
+          console.log(`[Mobile] Access allowed for ${accessToken}: ${usageCheck.reason}`);
+        } else if (usageCheck.isOverage && usageCheck.tier === 'premium') {
+          // Premium user over limit - purchase overage batch (5 credits = 100 extra access)
+          const overageResult = await processOverage(
+            cardInfo.user_id,
+            cardInfo.id,
+            visitorHash,
+            0 // Rate is handled internally by batch config
+          );
+          
+          if (overageResult.allowed) {
+            accessResult.access_allowed = true;
+            accessResult.is_overage = true;
+            accessResult.reason = 'Overage credit charged';
+            
+            // Record daily access after successful overage
+            const newDailyCount = await recordDailyAccess(cardInfo.id);
+            accessResult.daily_info.daily_scans = newDailyCount;
+            
+            console.log(`[Mobile] Overage access for ${accessToken}, new balance: ${overageResult.newBalance}`);
+          } else {
+            accessResult.access_allowed = false;
+            accessResult.reason = overageResult.reason;
+            creditsInsufficient = true;
+            console.log(`[Mobile] Access denied (no credits) for ${accessToken}`);
+          }
         } else {
+          // Free user over limit
           accessResult.access_allowed = false;
-          accessResult.reason = overageResult.reason;
-          creditsInsufficient = true;
-          console.log(`[Mobile] Access denied (no credits) for ${accessToken}`);
+          accessResult.reason = usageCheck.reason;
+          monthlyLimitExceeded = true;
+          console.log(`[Mobile] Access denied (limit reached) for ${accessToken}`);
         }
-      } else {
-        // Free user over limit
-        accessResult.access_allowed = false;
-        accessResult.reason = usageCheck.reason;
-        monthlyLimitExceeded = true;
-        console.log(`[Mobile] Access denied (limit reached) for ${accessToken}`);
+        
+        // Log access to Redis buffer (instant, no DB hit)
+        // Buffer is flushed to DB when daily-stats is requested
+        logAccess(
+          cardInfo.id,
+          visitorHash,
+          cardInfo.user_id,
+          usageCheck.tier,
+          false, // not owner access
+          accessResult.is_overage,
+          accessResult.is_overage && accessResult.access_allowed
+        ).catch(err => console.error('[Mobile] Failed to log access:', err));
       }
-      
-      // Log access to Redis buffer (instant, no DB hit)
-      // Buffer is flushed to DB when daily-stats is requested
-      logAccess(
-        cardInfo.id,
-        visitorHash,
-        cardInfo.user_id,
-        usageCheck.tier,
-        false, // not owner access
-        accessResult.is_overage,
-        accessResult.is_overage && accessResult.access_allowed
-      ).catch(err => console.error('[Mobile] Failed to log access:', err));
     }
     
     // Step 7: Fetch full card content (from cache or DB)
@@ -238,8 +271,14 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       // Update status fields
       content.card.scanLimitReached = scanLimitReached;
       content.card.monthlyLimitExceeded = monthlyLimitExceeded;
+      content.card.dailyLimitExceeded = dailyLimitExceeded;
       content.card.creditsInsufficient = creditsInsufficient;
       content.card.currentScans = cardInfo.current_scans + (isRepeatVisit ? 0 : (accessResult.access_allowed ? 1 : 0));
+      // Update daily scans from Redis (more accurate than DB)
+      if (accessResult.daily_info) {
+        content.card.dailyScans = accessResult.daily_info.daily_scans;
+        content.card.dailyScanLimit = accessResult.daily_info.daily_limit;
+      }
     } else {
       // Fetch from database via stored procedures
       const { data: cardDataRows, error: fetchError } = await supabase.rpc(
@@ -265,7 +304,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       
       // Build response with translations
       const translations = cardData.translations || {};
-      const hasTranslation = language in translations;
+      const hasTranslation = Object.keys(translations).length > 0; // TRUE if any translations exist
       const langData = translations[language] || {};
       
       const availableLanguages = [
@@ -280,10 +319,11 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           imageUrl: cardData.image_url,
           cropParameters: cardData.crop_parameters,
           conversationAiEnabled: cardData.conversation_ai_enabled,
-          aiInstruction: cardData.ai_instruction,
-          aiKnowledgeBase: cardData.ai_knowledge_base,
-          aiWelcomeGeneral: cardData.ai_welcome_general,
-          aiWelcomeItem: cardData.ai_welcome_item,
+          // Apply translations to ALL AI fields
+          aiInstruction: langData.ai_instruction || cardData.ai_instruction,
+          aiKnowledgeBase: langData.ai_knowledge_base || cardData.ai_knowledge_base,
+          aiWelcomeGeneral: langData.ai_welcome_general || cardData.ai_welcome_general,
+          aiWelcomeItem: langData.ai_welcome_item || cardData.ai_welcome_item,
           originalLanguage: cardData.original_language,
           hasTranslation,
           availableLanguages,
@@ -293,10 +333,12 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           billingType: cardData.billing_type || 'digital',
           maxScans: cardData.max_scans,
           currentScans: cardData.current_scans || 0,
-          dailyScanLimit: cardData.daily_scan_limit,
-          dailyScans: cardData.daily_scans || 0,
+          // Use Redis values for daily scans (more accurate, real-time)
+          dailyScanLimit: accessResult.daily_info?.daily_limit ?? cardData.daily_scan_limit,
+          dailyScans: accessResult.daily_info?.daily_scans ?? cardData.daily_scans ?? 0,
           scanLimitReached,
           monthlyLimitExceeded,
+          dailyLimitExceeded,
           creditsInsufficient,
         },
         contentItems: (contentItems || []).map((item: any) => {
@@ -323,6 +365,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           ...content.card,
           scanLimitReached: false,
           monthlyLimitExceeded: false,
+          dailyLimitExceeded: false,
           creditsInsufficient: false,
         },
       };
@@ -421,7 +464,7 @@ router.get('/card/physical/:issueCardId', async (req: Request, res: Response) =>
     
     // Build response
     const translations = cardData.translations || {};
-    const hasTranslation = language in translations;
+    const hasTranslation = Object.keys(translations).length > 0; // TRUE if any translations exist
     const langData = translations[language] || {};
     
     const content: CardContentResponse = {
@@ -431,10 +474,11 @@ router.get('/card/physical/:issueCardId', async (req: Request, res: Response) =>
         imageUrl: cardData.image_url,
         cropParameters: cardData.crop_parameters,
         conversationAiEnabled: cardData.conversation_ai_enabled,
-        aiInstruction: cardData.ai_instruction,
-        aiKnowledgeBase: cardData.ai_knowledge_base,
-        aiWelcomeGeneral: cardData.ai_welcome_general,
-        aiWelcomeItem: cardData.ai_welcome_item,
+        // Apply translations to ALL AI fields
+        aiInstruction: langData.ai_instruction || cardData.ai_instruction,
+        aiKnowledgeBase: langData.ai_knowledge_base || cardData.ai_knowledge_base,
+        aiWelcomeGeneral: langData.ai_welcome_general || cardData.ai_welcome_general,
+        aiWelcomeItem: langData.ai_welcome_item || cardData.ai_welcome_item,
         originalLanguage: cardData.original_language,
         hasTranslation,
         availableLanguages: [cardData.original_language, ...Object.keys(translations)],
@@ -448,6 +492,7 @@ router.get('/card/physical/:issueCardId', async (req: Request, res: Response) =>
         dailyScans: 0,
         scanLimitReached: false,
         monthlyLimitExceeded: false,
+        dailyLimitExceeded: false,
         creditsInsufficient: false,
       },
       contentItems: (contentItems || []).map((item: any) => {

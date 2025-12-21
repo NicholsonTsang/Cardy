@@ -571,7 +571,7 @@
                                 <p class="text-xs text-slate-500">{{ $t('dashboard.allow_visitors_ask') }}</p>
                             </div>
                             <i class="pi pi-info-circle text-slate-400 cursor-help" 
-                               v-tooltip="'AI assistant helps visitors interact with your content'"></i>
+                               v-tooltip="$t('dashboard.ai_assistant_tooltip')"></i>
                         </div>
 
                         <!-- AI Instruction Field (shown when AI is enabled) -->

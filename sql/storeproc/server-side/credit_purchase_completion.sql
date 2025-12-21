@@ -214,6 +214,37 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Grant execution permissions to service_role only (called by webhooks)
+-- Create credit purchase record (server-side version with explicit user_id)
+-- Called by backend Express server when creating Stripe checkout session
+CREATE OR REPLACE FUNCTION create_credit_purchase_record(
+    p_stripe_session_id VARCHAR,
+    p_amount_usd DECIMAL,
+    p_credits_amount DECIMAL,
+    p_metadata JSONB DEFAULT NULL,
+    p_user_id UUID DEFAULT NULL
+)
+RETURNS UUID AS $$
+DECLARE
+    v_purchase_id UUID;
+BEGIN
+    -- Validate user_id is provided (required for server-side calls)
+    IF p_user_id IS NULL THEN
+        RAISE EXCEPTION 'User ID is required for server-side credit purchase creation';
+    END IF;
+
+    INSERT INTO credit_purchases (
+        user_id, stripe_session_id, amount_usd, credits_amount, 
+        status, metadata
+    ) VALUES (
+        p_user_id, p_stripe_session_id, p_amount_usd, p_credits_amount,
+        'pending', p_metadata
+    ) RETURNING id INTO v_purchase_id;
+
+    RETURN v_purchase_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execution permissions to service_role only (called by webhooks/backend)
 GRANT EXECUTE ON FUNCTION complete_credit_purchase(UUID, VARCHAR, VARCHAR, INTEGER, TEXT, JSONB) TO service_role;
 GRANT EXECUTE ON FUNCTION refund_credit_purchase(UUID, UUID, DECIMAL, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) TO service_role;

@@ -31,6 +31,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 REVOKE ALL ON FUNCTION update_card_scan_counters_server(UUID, BOOLEAN) FROM PUBLIC;
 REVOKE ALL ON FUNCTION update_card_scan_counters_server(UUID, BOOLEAN) FROM authenticated;
 REVOKE ALL ON FUNCTION update_card_scan_counters_server(UUID, BOOLEAN) FROM anon;
+GRANT EXECUTE ON FUNCTION update_card_scan_counters_server(UUID, BOOLEAN) TO service_role;
 
 
 -- =================================================================
@@ -77,6 +78,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 REVOKE ALL ON FUNCTION reset_subscription_usage_server(TEXT, TIMESTAMPTZ, TIMESTAMPTZ) FROM PUBLIC;
 REVOKE ALL ON FUNCTION reset_subscription_usage_server(TEXT, TIMESTAMPTZ, TIMESTAMPTZ) FROM authenticated;
 REVOKE ALL ON FUNCTION reset_subscription_usage_server(TEXT, TIMESTAMPTZ, TIMESTAMPTZ) FROM anon;
+GRANT EXECUTE ON FUNCTION reset_subscription_usage_server(TEXT, TIMESTAMPTZ, TIMESTAMPTZ) TO service_role;
 
 
 -- Activate premium subscription (called by Stripe webhook)

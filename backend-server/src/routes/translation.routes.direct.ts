@@ -44,6 +44,188 @@ interface TranslationRequest {
 }
 
 /**
+ * Attempt to repair malformed JSON from LLM responses
+ * Handles common issues: BOM, unquoted keys, single quotes, trailing commas, unescaped chars, missing brackets
+ */
+function repairJSON(text: string): string {
+  let result = text;
+  
+  // Remove BOM (Byte Order Mark) and other invisible characters at start
+  result = result.replace(/^\uFEFF/, ''); // UTF-8 BOM
+  result = result.replace(/^\u00EF\u00BB\u00BF/, ''); // UTF-8 BOM (alternate)
+  result = result.replace(/^[\u200B-\u200D\uFEFF\u00A0]+/, ''); // Zero-width spaces, NBSP
+  
+  result = result.trim();
+  
+  // Remove markdown code blocks
+  if (result.startsWith('```json')) {
+    result = result.slice(7);
+  } else if (result.startsWith('```')) {
+    result = result.slice(3);
+  }
+  if (result.endsWith('```')) {
+    result = result.slice(0, -3);
+  }
+  result = result.trim();
+  
+  // Fix unescaped backslashes (not part of valid escape sequences)
+  result = result.replace(/\\(?!["\\/bfnrtu])/g, '\\\\');
+  
+  // Remove trailing commas before } or ]
+  result = result.replace(/,(\s*[}\]])/g, '$1');
+  
+  // Add missing commas between property values and next property names
+  // Pattern: "value" followed by whitespace then "propertyName":
+  // This catches: "value"\n    "nextProp": which should be "value",\n    "nextProp":
+  result = result.replace(/(")\s*\n(\s*"[^"]+"\s*:)/g, '$1,\n$2');
+  
+  // Also catch: } followed by whitespace then "propertyName": (missing comma after object)
+  result = result.replace(/(})\s*\n(\s*"[^"]+"\s*:)/g, '$1,\n$2');
+  
+  // And: ] followed by whitespace then "propertyName": (missing comma after array)
+  result = result.replace(/(\])\s*\n(\s*"[^"]+"\s*:)/g, '$1,\n$2');
+  
+  // Try to fix unquoted property names (limited - for simple cases)
+  // Match: { key: or , key: where key is unquoted
+  result = result.replace(/([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)(\s*:)/g, '$1"$2"$3');
+  
+  // Fix single quotes to double quotes (be careful with apostrophes in text)
+  // Only fix quotes around property names and simple string values
+  // This regex is conservative to avoid breaking apostrophes in content
+  result = result.replace(/'([^'\\]*(?:\\.[^'\\]*)*)'/g, (match, content) => {
+    // If content looks like a property value or is short, convert
+    if (content.length < 100 || /^[a-zA-Z0-9_-]+$/.test(content)) {
+      return `"${content.replace(/"/g, '\\"')}"`;
+    }
+    return match; // Leave long text content alone
+  });
+  
+  // Fix missing closing brackets - count brackets and add missing ones
+  const openBraces = (result.match(/{/g) || []).length;
+  const closeBraces = (result.match(/}/g) || []).length;
+  const openBrackets = (result.match(/\[/g) || []).length;
+  const closeBrackets = (result.match(/\]/g) || []).length;
+  
+  // Add missing closing brackets/braces at the end
+  if (openBrackets > closeBrackets) {
+    // Check if it ends with } and needs ] before it
+    if (result.trimEnd().endsWith('}')) {
+      const missingBrackets = openBrackets - closeBrackets;
+      // Insert ] before the last }
+      const lastBraceIndex = result.lastIndexOf('}');
+      result = result.slice(0, lastBraceIndex) + ']'.repeat(missingBrackets) + result.slice(lastBraceIndex);
+    } else {
+      result += ']'.repeat(openBrackets - closeBrackets);
+    }
+  }
+  if (openBraces > closeBraces) {
+    result += '}'.repeat(openBraces - closeBraces);
+  }
+  
+  return result;
+}
+
+/**
+ * Escape control characters inside JSON string values
+ * This handles literal newlines, tabs, etc. that should be escaped
+ */
+function escapeControlCharsInStrings(text: string): string {
+  let result = '';
+  let inString = false;
+  let escaped = false;
+  
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const charCode = char.charCodeAt(0);
+    
+    if (escaped) {
+      result += char;
+      escaped = false;
+      continue;
+    }
+    
+    if (char === '\\' && inString) {
+      escaped = true;
+      result += char;
+      continue;
+    }
+    
+    if (char === '"' && !escaped) {
+      inString = !inString;
+      result += char;
+      continue;
+    }
+    
+    // If inside a string and we find a control character, escape it
+    if (inString && charCode < 32) {
+      if (char === '\n') {
+        result += '\\n';
+      } else if (char === '\r') {
+        result += '\\r';
+      } else if (char === '\t') {
+        result += '\\t';
+      } else {
+        // Other control chars - use unicode escape
+        result += '\\u' + charCode.toString(16).padStart(4, '0');
+      }
+    } else {
+      result += char;
+    }
+  }
+  
+  return result;
+}
+
+/**
+ * Safely parse JSON with multiple repair strategies
+ */
+function safeParseJSON(text: string): any {
+  const strategies = [
+    { name: 'direct', fn: (t: string) => t },
+    { name: 'control-chars-first', fn: (t: string) => escapeControlCharsInStrings(t) },
+    { name: 'repair', fn: (t: string) => repairJSON(t) },
+    { name: 'control-then-repair', fn: (t: string) => repairJSON(escapeControlCharsInStrings(t)) },
+    { name: 'repair-then-control', fn: (t: string) => escapeControlCharsInStrings(repairJSON(t)) },
+  ];
+  
+  let firstError: Error | null = null;
+  
+  for (const strategy of strategies) {
+    try {
+      const processed = strategy.fn(text);
+      const result = JSON.parse(processed);
+      if (strategy.name !== 'direct') {
+        console.log(`      ✅ JSON parsed using '${strategy.name}' strategy`);
+      }
+      return result;
+    } catch (error) {
+      if (!firstError) firstError = error as Error;
+      // Continue to next strategy
+    }
+  }
+  
+  // All strategies failed - log details for debugging
+  console.error('JSON parse failed after all repair strategies');
+  console.error('Original error:', firstError?.message);
+  console.error('First 500 chars:', text.substring(0, 500));
+  console.error('Last 500 chars:', text.substring(Math.max(0, text.length - 500)));
+  
+  // Show character at error position if available
+  const match = firstError?.message.match(/position (\d+)/);
+  if (match) {
+    const pos = parseInt(match[1]);
+    const start = Math.max(0, pos - 30);
+    const end = Math.min(text.length, pos + 30);
+    const context = text.substring(start, end);
+    const marker = ' '.repeat(pos - start) + '^';
+    console.error(`Around position ${pos}:\n${JSON.stringify(context)}\n${marker}`);
+    console.error(`Char at position ${pos}: code=${text.charCodeAt(pos)}, char=${JSON.stringify(text[pos])}`);
+  }
+  
+  throw firstError;
+}
+
+/**
  * POST /api/translations/translate-card
  * Synchronously translate card content to multiple languages
  * Returns translation results after processing completes
@@ -87,10 +269,28 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
     }
 
     // Fetch card data via stored procedure
+    console.log(`   🔍 Calling get_card_for_translation_server for ${cardId}...`);
     const { data: cardDataRows, error: cardError } = await supabaseAdmin.rpc(
       'get_card_for_translation_server',
       { p_card_id: cardId }
     );
+
+    if (cardError) {
+      console.error('   ❌ RPC Error:', JSON.stringify(cardError, null, 2));
+    } else {
+      console.log(`   ✅ RPC returned ${cardDataRows?.length ?? 0} rows`);
+      
+      if (!cardDataRows || cardDataRows.length === 0) {
+        console.log(`   ⚠️ Card not found via RPC. Performing direct DB check...`);
+        // Debug: check if card exists at all using admin client direct query
+        const { data: directCheck, error: directError } = await supabaseAdmin
+           .from('cards')
+           .select('id, user_id')
+           .eq('id', cardId)
+           .single();
+        console.log(`   🕵️ Direct DB check:`, directError ? `Error: ${directError.message}` : `Found: ${JSON.stringify(directCheck)}`);
+      }
+    }
 
     const cardData = cardDataRows?.[0];
 
@@ -195,11 +395,15 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
             isFirstBatch
           );
 
-          // Store translations in shared collection
+          // Store translations in shared collection (include ALL text fields)
           if (isFirstBatch && translations.card) {
             allCardTranslations[targetLang] = {
               name: translations.card.name,
               description: translations.card.description,
+              ai_instruction: translations.card.ai_instruction || '',
+              ai_knowledge_base: translations.card.ai_knowledge_base || '',
+              ai_welcome_general: translations.card.ai_welcome_general || '',
+              ai_welcome_item: translations.card.ai_welcome_item || '',
               content_hash: cardData.content_hash,
               translated_at: new Date().toISOString(),
             };
@@ -214,6 +418,7 @@ router.post('/translate-card', authenticateUser, async (req: Request, res: Respo
               allContentItemsTranslations[originalItem.id][targetLang] = {
                 name: item.name,
                 content: item.content,
+                ai_knowledge_base: item.ai_knowledge_base || '',
                 content_hash: originalItem.content_hash,
                 translated_at: new Date().toISOString(),
               };
@@ -312,12 +517,13 @@ async function translateBatch(
   targetLang: LanguageCode,
   includeCard: boolean
 ): Promise<any> {
-  // Build prompt
+  // Build prompt - include ALL translatable text fields
   const sourceContent: any = {
     contentItems: batchItems.map(item => ({
       id: item.id,
       name: item.name,
       content: item.content,
+      ai_knowledge_base: item.ai_knowledge_base || '', // Content-specific AI knowledge
     }))
   };
 
@@ -325,6 +531,10 @@ async function translateBatch(
     sourceContent.card = {
       name: cardData.name,
       description: cardData.description,
+      ai_instruction: cardData.ai_instruction || '', // AI role/personality
+      ai_knowledge_base: cardData.ai_knowledge_base || '', // AI background knowledge
+      ai_welcome_general: cardData.ai_welcome_general || '', // General AI welcome message
+      ai_welcome_item: cardData.ai_welcome_item || '', // Item AI welcome message
     };
   }
 
@@ -333,24 +543,54 @@ async function translateBatch(
 CRITICAL INSTRUCTIONS:
 1. Return ONLY a valid JSON object matching the input structure exactly
 2. Keep all "id" fields unchanged
-3. Translate "name", "description", and "content" fields naturally
+3. Translate ALL text fields: "name", "description", "content", "ai_instruction", "ai_knowledge_base", "ai_welcome_general", "ai_welcome_item"
 4. Maintain the same structure and number of items
 5. Do not add any explanation or markdown formatting
-6. Ensure cultural appropriateness and natural phrasing`;
+6. Ensure cultural appropriateness and natural phrasing
+7. For empty strings (""), return empty strings - do not translate them
+8. CRITICAL: Ensure all special characters in JSON strings are properly escaped (backslashes as \\\\, quotes as \\", etc.)`;
 
   const prompt = `${systemInstruction}\n\nTranslate this content to ${SUPPORTED_LANGUAGES[targetLang]}:\n\n${JSON.stringify(sourceContent, null, 2)}`;
 
-  // Call Gemini API
-  const data = await geminiClient.generateContent(prompt);
+  // Call Gemini API with retry logic for transient failures
+  const MAX_RETRIES = 2;
+  let lastError: Error | null = null;
   
-  if (!data.candidates || data.candidates.length === 0) {
-    throw new Error('Gemini API returned no candidates');
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      if (attempt > 0) {
+        console.log(`      🔄 Retry attempt ${attempt}/${MAX_RETRIES}...`);
+        // Wait before retry (exponential backoff)
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+      }
+      
+      const data = await geminiClient.generateContent(prompt);
+      
+      if (!data.candidates || data.candidates.length === 0) {
+        throw new Error('Gemini API returned no candidates');
+      }
+
+      const textContent = data.candidates[0].content.parts[0].text;
+      
+      // Use safe JSON parser with automatic repair for LLM output issues
+      const translatedContent = safeParseJSON(textContent);
+
+      return translatedContent;
+    } catch (error: any) {
+      lastError = error;
+      const isRetryable = error.message?.includes('fetch failed') || 
+                          error.message?.includes('ECONNRESET') ||
+                          error.message?.includes('timeout') ||
+                          error.message?.includes('network');
+      
+      if (!isRetryable || attempt === MAX_RETRIES) {
+        throw error;
+      }
+      console.log(`      ⚠️ Transient error: ${error.message}`);
+    }
   }
-
-  const textContent = data.candidates[0].content.parts[0].text;
-  const translatedContent = JSON.parse(textContent);
-
-  return translatedContent;
+  
+  throw lastError || new Error('Translation failed after retries');
 }
 
 /**

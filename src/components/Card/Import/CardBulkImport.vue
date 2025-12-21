@@ -203,9 +203,45 @@
                 <span class="field-label">{{ $t('common.description') }}:</span>
                 <span class="field-value">{{ truncateText(currentCardData.cardData.description, 100) }}</span>
               </div>
-              <div class="preview-field">
-                <span class="field-label">{{ $t('import.ai_enabled') }}:</span>
-                <span class="field-value">{{ currentCardData.cardData.conversation_ai_enabled ? $t('common.yes') : $t('common.no') }}</span>
+              <!-- Card Settings Badges -->
+              <div class="card-settings-badges">
+                <span class="settings-badge badge-mode">
+                  <i :class="getContentModeIcon(currentCardData.cardData.content_mode)"></i>
+                  {{ getContentModeLabel(currentCardData.cardData.content_mode) }}
+                </span>
+                <span v-if="currentCardData.cardData.is_grouped" class="settings-badge badge-grouped">
+                  <i class="pi pi-sitemap"></i>
+                  {{ $t('templates.grouped') }}
+                </span>
+                <span class="settings-badge badge-billing">
+                  <i :class="currentCardData.cardData.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-id-card'"></i>
+                  {{ currentCardData.cardData.billing_type === 'digital' ? $t('templates.billing_digital') : $t('templates.billing_physical') }}
+                </span>
+                <span v-if="currentCardData.cardData.original_language && currentCardData.cardData.original_language !== 'en'" class="settings-badge badge-language">
+                  {{ getLanguageFlag(currentCardData.cardData.original_language) }}
+                  {{ currentCardData.cardData.original_language }}
+                </span>
+                <span v-if="currentCardData.cardData.conversation_ai_enabled" class="settings-badge badge-ai">
+                  <i class="pi pi-sparkles"></i>
+                  {{ $t('import.ai_enabled') }}
+                </span>
+              </div>
+              <!-- Translation badges -->
+              <div v-if="cardTranslationLanguages.length > 0" class="card-translation-badges">
+                <span class="settings-badge badge-translation">
+                  <i class="pi pi-language"></i>
+                  {{ $t('templates.translations_included') }}
+                </span>
+                <span 
+                  v-for="lang in cardTranslationLanguages.slice(0, 4)" 
+                  :key="lang" 
+                  class="settings-badge badge-translation-lang"
+                >
+                  {{ getLanguageFlag(lang) }} {{ lang }}
+                </span>
+                <span v-if="cardTranslationLanguages.length > 4" class="settings-badge badge-translation-more">
+                  +{{ cardTranslationLanguages.length - 4 }}
+                </span>
               </div>
             </div>
           </div>
@@ -514,6 +550,21 @@ const extractedImageCount = computed(() => {
     })
   }
   return count
+})
+
+// Computed for card translation languages
+const cardTranslationLanguages = computed(() => {
+  const cardData = currentCardData.value?.cardData
+  if (!cardData || !cardData.translations_json) return []
+  
+  try {
+    const translations = typeof cardData.translations_json === 'string' 
+      ? JSON.parse(cardData.translations_json) 
+      : cardData.translations_json
+    return Object.keys(translations)
+  } catch (e) {
+    return []
+  }
 })
 
 const organizedContentItems = computed(() => {
@@ -917,12 +968,45 @@ async function importDataToDatabase(importData) {
         }
       }
       
-      // 1-STEP IMPORT: Pass translations and hash directly to create_card
+      // Validate content_mode
+      // 'cards' is legacy DB value, 'inline' is the modern UI term (maps to 'cards' in DB)
+      const validContentModes = ['single', 'list', 'grid', 'cards', 'grouped', 'inline'];
+      let contentMode = importData.cardData.content_mode || 'list';
+      if (!validContentModes.includes(contentMode)) {
+        console.warn(`Invalid content_mode '${contentMode}', defaulting to 'list'`);
+        contentMode = 'list';
+        results.warnings++;
+      } else if (contentMode === 'inline') {
+        // Map 'inline' to 'cards' for DB storage (schema constraint)
+        contentMode = 'cards';
+      }
+      
+      // Validate group_display
+      const validGroupDisplays = ['expanded', 'collapsed'];
+      let groupDisplay = importData.cardData.group_display || 'expanded';
+      if (!validGroupDisplays.includes(groupDisplay)) {
+        console.warn(`Invalid group_display '${groupDisplay}', defaulting to 'expanded'`);
+        groupDisplay = 'expanded';
+        results.warnings++;
+      }
+      
+      // Validate billing_type
+      const validBillingTypes = ['physical', 'digital'];
+      let billingType = importData.cardData.billing_type || 'physical';
+      if (!validBillingTypes.includes(billingType)) {
+        console.warn(`Invalid billing_type '${billingType}', defaulting to 'physical'`);
+        billingType = 'physical';
+        results.warnings++;
+      }
+      
+      // 1-STEP IMPORT: Pass ALL fields to create_card (19 data columns)
       const { data, error } = await supabase.rpc('create_card', {
         p_name: importData.cardData.name,
-        p_description: importData.cardData.description,
+        p_description: importData.cardData.description || '',
         p_ai_instruction: importData.cardData.ai_instruction || '',
         p_ai_knowledge_base: importData.cardData.ai_knowledge_base || '',
+        p_ai_welcome_general: importData.cardData.ai_welcome_general || '',
+        p_ai_welcome_item: importData.cardData.ai_welcome_item || '',
         p_conversation_ai_enabled: importData.cardData.conversation_ai_enabled,
         p_qr_code_position: qrPosition,
         p_image_url: cardImageUrl,
@@ -930,7 +1014,13 @@ async function importDataToDatabase(importData) {
         p_crop_parameters: cardCropParams,
         p_original_language: importData.cardData.original_language || 'en',
         p_content_hash: importData.cardData.content_hash || null,  // Preserve original hash
-        p_translations: translationsData  // Import with translations (hashes already match!)
+        p_translations: translationsData,  // Import with translations (hashes already match!)
+        p_content_mode: contentMode,
+        p_is_grouped: importData.cardData.is_grouped || false,
+        p_group_display: groupDisplay,
+        p_billing_type: billingType,
+        p_max_scans: importData.cardData.max_scans ?? null,
+        p_daily_scan_limit: importData.cardData.daily_scan_limit ?? 500
       })
       
       if (error) throw error
@@ -1225,6 +1315,44 @@ function truncateText(text, maxLength) {
   if (!text) return ''
   if (text.length <= maxLength) return text
   return text.substring(0, maxLength) + '...'
+}
+
+function getContentModeIcon(mode) {
+  const icons = {
+    single: 'pi pi-file',
+    list: 'pi pi-list',
+    grid: 'pi pi-th-large',
+    cards: 'pi pi-clone',
+    inline: 'pi pi-bars'
+  }
+  return icons[mode] || 'pi pi-file'
+}
+
+function getContentModeLabel(mode) {
+  const labels = {
+    single: t('templates.mode_single'),
+    list: t('templates.mode_list'),
+    grid: t('templates.mode_grid'),
+    cards: t('templates.mode_cards'),
+    inline: t('templates.mode_inline')
+  }
+  return labels[mode] || mode
+}
+
+function getLanguageFlag(lang) {
+  const flags = {
+    en: '🇺🇸',
+    'zh-Hant': '🇭🇰',
+    'zh-Hans': '🇨🇳',
+    ja: '🇯🇵',
+    ko: '🇰🇷',
+    es: '🇪🇸',
+    fr: '🇫🇷',
+    de: '🇩🇪',
+    it: '🇮🇹',
+    pt: '🇧🇷'
+  }
+  return flags[lang] || '🌐'
 }
 
 // Function to get card image URL
@@ -1579,6 +1707,50 @@ function getChildImageUrl(child, parentIndex, childIndex) {
 
 .card-details {
   @apply flex-1 min-w-0;
+}
+
+.card-settings-badges {
+  @apply flex flex-wrap gap-2 mt-3;
+}
+
+.settings-badge {
+  @apply inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium;
+}
+
+.badge-mode {
+  @apply bg-blue-100 text-blue-700;
+}
+
+.badge-grouped {
+  @apply bg-purple-100 text-purple-700;
+}
+
+.badge-billing {
+  @apply bg-slate-100 text-slate-700;
+}
+
+.badge-language {
+  @apply bg-amber-100 text-amber-700;
+}
+
+.badge-ai {
+  @apply bg-emerald-100 text-emerald-700;
+}
+
+.card-translation-badges {
+  @apply flex flex-wrap gap-2 mt-2;
+}
+
+.badge-translation {
+  @apply bg-green-100 text-green-700;
+}
+
+.badge-translation-lang {
+  @apply bg-green-50 text-green-600 text-xs;
+}
+
+.badge-translation-more {
+  @apply bg-green-100 text-green-700 text-xs;
 }
 
 /* Mobile responsive styles */

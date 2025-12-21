@@ -325,6 +325,11 @@ const adminMenuItems = computed(() => [
     command: () => router.push('/cms/admin/batches')
   },
   {
+    label: t('templates.admin.management_title'),
+    icon: 'pi pi-copy',
+    command: () => router.push('/cms/admin/templates')
+  },
+  {
     label: t('admin.credits.title'),
     icon: 'pi pi-wallet',
     command: () => router.push('/cms/admin/credits')

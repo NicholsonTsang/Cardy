@@ -6,7 +6,7 @@
       <p class="header-description">{{ $t('templates.explore_description') }}</p>
     </div>
 
-    <!-- Category Tabs + Search Row -->
+    <!-- Category Tabs + Language + Search Row -->
     <div class="filter-bar">
       <div class="category-tabs">
         <button 
@@ -28,15 +28,41 @@
         </button>
       </div>
       
-      <div class="search-box">
-        <i class="pi pi-search search-icon"></i>
-        <input 
-          type="text"
-          v-model="searchQuery" 
-          :placeholder="$t('common.search')"
-          @keyup.enter="handleSearch"
-          class="search-input"
-        />
+      <div class="filter-right">
+        <!-- Language Selector -->
+        <Dropdown
+          v-model="selectedLanguage"
+          :options="languageOptions"
+          optionLabel="label"
+          optionValue="value"
+          :placeholder="$t('templates.browse_language')"
+          class="language-dropdown"
+        >
+          <template #value="slotProps">
+            <div v-if="slotProps.value" class="lang-value">
+              <span>{{ getLanguageFlag(slotProps.value) }}</span>
+              <span>{{ getLanguageName(slotProps.value) }}</span>
+            </div>
+            <span v-else>{{ $t('templates.browse_language') }}</span>
+          </template>
+          <template #option="slotProps">
+            <div class="lang-option">
+              <span>{{ getLanguageFlag(slotProps.option.value) }}</span>
+              <span>{{ slotProps.option.label }}</span>
+            </div>
+          </template>
+        </Dropdown>
+        
+        <div class="search-box">
+          <i class="pi pi-search search-icon"></i>
+          <input 
+            type="text"
+            v-model="searchQuery" 
+            :placeholder="$t('common.search')"
+            @keyup.enter="handleSearch"
+            class="search-input"
+          />
+        </div>
       </div>
     </div>
 
@@ -90,6 +116,7 @@
       <TemplateImportForm 
         v-if="templateToImport"
         :template="templateToImport"
+        :default-language="selectedLanguage"
         @imported="handleImported"
         @cancel="showImportDialog = false"
       />
@@ -98,13 +125,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useTemplateLibraryStore, type ContentTemplate, type ContentTemplateDetails } from '@/stores/templateLibrary'
 import { storeToRefs } from 'pinia'
 
 import Dialog from 'primevue/dialog'
+import Dropdown from 'primevue/dropdown'
 import ProgressSpinner from 'primevue/progressspinner'
 
 import TemplateCard from './TemplateCard.vue'
@@ -121,7 +149,7 @@ const emit = defineEmits<{
   imported: [result: { cardId: string }]
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 const templateStore = useTemplateLibraryStore()
 const { templates, venueTypes, isLoading } = storeToRefs(templateStore)
@@ -129,10 +157,43 @@ const { templates, venueTypes, isLoading } = storeToRefs(templateStore)
 // Local state
 const searchQuery = ref('')
 const selectedVenueType = ref<string | null>(null)
+const selectedLanguage = ref<string | null>(null)  // Will be initialized to user's locale
 const showPreviewDialog = ref(false)
 const showImportDialog = ref(false)
 const selectedTemplate = ref<ContentTemplateDetails | null>(null)
 const templateToImport = ref<ContentTemplate | null>(null)
+
+// Language options for dropdown
+const supportedLanguages = [
+  { code: 'en', name: 'English', flag: '🇺🇸' },
+  { code: 'zh-Hant', name: '繁體中文', flag: '🇭🇰' },
+  { code: 'zh-Hans', name: '简体中文', flag: '🇨🇳' },
+  { code: 'ja', name: '日本語', flag: '🇯🇵' },
+  { code: 'ko', name: '한국어', flag: '🇰🇷' },
+  { code: 'es', name: 'Español', flag: '🇪🇸' },
+  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+  { code: 'it', name: 'Italiano', flag: '🇮🇹' },
+  { code: 'pt', name: 'Português', flag: '🇧🇷' },
+  { code: 'ar', name: 'العربية', flag: '🇸🇦' }
+]
+
+const languageOptions = computed(() => {
+  return supportedLanguages.map(lang => ({
+    value: lang.code,
+    label: lang.name
+  }))
+})
+
+function getLanguageFlag(code: string): string {
+  const lang = supportedLanguages.find(l => l.code === code)
+  return lang?.flag || '🌐'
+}
+
+function getLanguageName(code: string): string {
+  const lang = supportedLanguages.find(l => l.code === code)
+  return lang?.name || code
+}
 
 // Helpers
 function formatVenueType(type: string): string {
@@ -149,12 +210,18 @@ async function fetchTemplates() {
   templateStore.filterVenueType = selectedVenueType.value
   templateStore.filterContentMode = null
   templateStore.searchQuery = searchQuery.value
-  await templateStore.fetchTemplates()
+  templateStore.previewLanguage = selectedLanguage.value
+  await templateStore.fetchTemplates(selectedLanguage.value || undefined)
 }
 
 function handleSearch() {
   fetchTemplates()
 }
+
+// Watch language changes
+watch(selectedLanguage, () => {
+  fetchTemplates()
+})
 
 async function openPreview(template: ContentTemplate) {
   await templateStore.fetchTemplateDetails(template.id)
@@ -186,6 +253,8 @@ watch(searchQuery, () => {
 
 // Initial load
 onMounted(async () => {
+  // Initialize language to user's website locale
+  selectedLanguage.value = locale.value
   await templateStore.fetchVenueTypes()
   await fetchTemplates()
 })
@@ -229,6 +298,20 @@ onMounted(async () => {
 
 .category-tab i {
   @apply mr-1;
+}
+
+/* Filter Right - Language + Search */
+.filter-right {
+  @apply flex items-center gap-3;
+}
+
+/* Language Dropdown */
+.language-dropdown {
+  @apply min-w-[140px];
+}
+
+.lang-value, .lang-option {
+  @apply flex items-center gap-2;
 }
 
 /* Search Box */
@@ -300,7 +383,7 @@ onMounted(async () => {
   }
 
   .filter-bar {
-    @apply flex-col items-start;
+    @apply flex-col items-start gap-3;
   }
 
   .category-tabs {
@@ -311,6 +394,14 @@ onMounted(async () => {
 
   .category-tabs::-webkit-scrollbar {
     display: none;
+  }
+
+  .filter-right {
+    @apply w-full flex-col items-stretch;
+  }
+
+  .language-dropdown {
+    @apply w-full;
   }
 
   .search-box {

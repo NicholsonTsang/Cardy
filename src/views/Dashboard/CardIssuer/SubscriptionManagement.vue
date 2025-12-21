@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { onMounted, computed, ref } from 'vue';
-import { useRoute, useRouter } from 'vue-router'; // Added useRouter
-import { useSubscriptionStore, type DailyAccessData } from '@/stores/subscription';
-import { useCreditStore } from '@/stores/credits'; // Added useCreditStore
-import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
+import { useSubscriptionStore, type DailyAccessData } from '@/stores/subscription';
+import { useCreditStore } from '@/stores/credits';
+import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
 import ProgressBar from 'primevue/progressbar';
@@ -24,11 +24,11 @@ const creditStore = useCreditStore(); // Initialize credit store
 
 // Chart state
 const chartDays = ref(30);
-const chartDaysOptions = [
-  { label: 'Last 7 days', value: 7 },
-  { label: 'Last 14 days', value: 14 },
-  { label: 'Last 30 days', value: 30 }
-];
+const chartDaysOptions = computed(() => [
+  { label: t('subscription.chart.last_7_days'), value: 7 },
+  { label: t('subscription.chart.last_14_days'), value: 14 },
+  { label: t('subscription.chart.last_30_days'), value: 30 }
+]);
 
 // Interactive chart state
 const hoveredDay = ref<DailyAccessData | null>(null);
@@ -314,7 +314,7 @@ async function openPortal() {
           <!-- Premium Plan -->
           <div class="bg-gradient-to-b from-slate-900 to-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden text-white transform hover:scale-[1.02] transition-transform duration-300">
             <div class="absolute top-0 right-0 p-0">
-              <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl shadow-lg">RECOMMENDED</div>
+              <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl shadow-lg uppercase">{{ $t('subscription.recommended') }}</div>
             </div>
             <div class="mb-6">
               <div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4 backdrop-blur-sm">
@@ -416,8 +416,8 @@ async function openPortal() {
                   >
                     <div class="bg-slate-900 text-white text-xs rounded-lg py-2 px-3 shadow-xl whitespace-nowrap text-center">
                       <div class="font-bold border-b border-slate-700 pb-1 mb-1">{{ formatChartDate(day.date) }}</div>
-                      <div class="flex justify-between gap-3"><span class="text-slate-300">Total:</span> <span>{{ day.total }}</span></div>
-                      <div v-if="day.overage > 0" class="flex justify-between gap-3 text-amber-400"><span>Overage:</span> <span>{{ day.overage }}</span></div>
+                      <div class="flex justify-between gap-3"><span class="text-slate-300">{{ $t('subscription.traffic.total') }}:</span> <span>{{ day.total }}</span></div>
+                      <div v-if="day.overage > 0" class="flex justify-between gap-3 text-amber-400"><span>{{ $t('subscription.traffic.overage') }}:</span> <span>{{ day.overage }}</span></div>
                     </div>
                     <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-900 mx-auto"></div>
                   </div>

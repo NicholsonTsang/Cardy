@@ -14,13 +14,20 @@ import { redis, isRedisConfigured } from '../config/redis';
 import { supabaseAdmin } from '../config/supabase';
 import { SubscriptionConfig } from '../config/subscription';
 
-// Redis key patterns
+// Redis key patterns - Monthly (subscription billing)
 const USAGE_KEY = (userId: string, month: string) => `access:user:${userId}:month:${month}`;
 const TIER_KEY = (userId: string) => `access:user:${userId}:tier`;
 const LIMIT_KEY = (userId: string) => `access:user:${userId}:limit`;
 
+// Redis key patterns - Daily (per-card creator protection)
+const DAILY_SCANS_KEY = (cardId: string, date: string) => `access:card:${cardId}:date:${date}:scans`;
+const DAILY_LIMIT_KEY = (cardId: string) => `access:card:${cardId}:daily_limit`;
+
 // Cache TTL (35 days to cover month + buffer)
 const CACHE_TTL = 35 * 24 * 60 * 60;
+
+// Daily limit cache TTL (2 days - covers today + buffer for timezone edge cases)
+const DAILY_CACHE_TTL = 2 * 24 * 60 * 60;
 
 // Threshold for checking PostgreSQL (90% of limit)
 const LIMIT_CHECK_THRESHOLD = 0.9;
@@ -56,6 +63,237 @@ interface OverageResult {
 function getCurrentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * Get current date key (YYYY-MM-DD)
+ */
+function getCurrentDate(): string {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+}
+
+// ============================================================================
+// DAILY ACCESS LIMIT (Per-Card Creator Protection)
+// ============================================================================
+// Purpose: Protect creators from unexpected traffic spikes
+// - Tracked per card, per day in Redis
+// - Configurable limit per card (daily_scan_limit in cards table)
+// - Resets automatically each day (new Redis key per date)
+// - NULL limit = unlimited (no daily restriction)
+// ============================================================================
+
+interface DailyLimitCheckResult {
+  allowed: boolean;
+  currentScans: number;
+  dailyLimit: number | null; // NULL = unlimited
+  reason: string;
+}
+
+/**
+ * Get card's daily scan limit from Redis cache or DB
+ * Returns NULL if no daily limit is set (unlimited)
+ */
+async function getCardDailyLimit(cardId: string): Promise<number | null> {
+  if (!isRedisConfigured()) {
+    // Fallback: get from database
+    return getDailyLimitFromDb(cardId);
+  }
+
+  const cachedLimit = await redis.get(DAILY_LIMIT_KEY(cardId));
+  
+  if (cachedLimit !== null) {
+    // "null" string means unlimited (we cached that there's no limit)
+    if (cachedLimit === 'null') return null;
+    return parseInt(cachedLimit as string, 10);
+  }
+
+  // Not in cache - fetch from database and cache
+  const dbLimit = await getDailyLimitFromDb(cardId);
+  
+  // Cache the limit (store "null" string for unlimited)
+  await redis.set(
+    DAILY_LIMIT_KEY(cardId), 
+    dbLimit === null ? 'null' : dbLimit.toString(), 
+    { ex: DAILY_CACHE_TTL }
+  );
+
+  return dbLimit;
+}
+
+/**
+ * Get daily limit from database
+ */
+async function getDailyLimitFromDb(cardId: string): Promise<number | null> {
+  const { data, error } = await supabaseAdmin
+    .from('cards')
+    .select('daily_scan_limit')
+    .eq('id', cardId)
+    .single();
+
+  if (error || !data) {
+    console.warn(`[UsageTracker] Failed to get daily limit for card ${cardId}:`, error);
+    return null; // Default to unlimited on error
+  }
+
+  return data.daily_scan_limit;
+}
+
+/**
+ * Get current daily scan count from Redis
+ */
+async function getCurrentDailyScans(cardId: string): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+
+  const date = getCurrentDate();
+  const countResult = await redis.get(DAILY_SCANS_KEY(cardId, date));
+  const count = countResult as string | null;
+  return count ? parseInt(count, 10) : 0;
+}
+
+/**
+ * Increment daily scan counter in Redis
+ * Returns the new count after increment
+ */
+async function incrementDailyScans(cardId: string): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+
+  const date = getCurrentDate();
+  const key = DAILY_SCANS_KEY(cardId, date);
+
+  // Atomic increment
+  const newCount = await redis.incr(key);
+  
+  // Set TTL on first access of the day
+  if (newCount === 1) {
+    await redis.expire(key, DAILY_CACHE_TTL);
+  }
+
+  return newCount;
+}
+
+/**
+ * Decrement daily scan counter (used when access is denied after increment)
+ */
+async function decrementDailyScans(cardId: string): Promise<void> {
+  if (!isRedisConfigured()) return;
+
+  const date = getCurrentDate();
+  await redis.decr(DAILY_SCANS_KEY(cardId, date));
+}
+
+/**
+ * Check if card has reached daily scan limit (Redis-first)
+ * 
+ * This is a PRE-CHECK that should be called BEFORE monthly usage check.
+ * Returns immediately if daily limit exceeded - no need to count against monthly.
+ * 
+ * @param cardId - The card being accessed
+ * @returns DailyLimitCheckResult with allowed status and current counts
+ */
+export async function checkDailyLimit(cardId: string): Promise<DailyLimitCheckResult> {
+  const isDebug = process.env.DEBUG_USAGE === 'true';
+
+  // If Redis not configured, allow access (can't enforce limits)
+  if (!isRedisConfigured()) {
+    return {
+      allowed: true,
+      currentScans: 0,
+      dailyLimit: null,
+      reason: 'Redis not configured - daily limit not enforced'
+    };
+  }
+
+  try {
+    // Get card's daily limit (from cache or DB)
+    const dailyLimit = await getCardDailyLimit(cardId);
+
+    // No daily limit configured = unlimited
+    if (dailyLimit === null) {
+      if (isDebug) console.log(`[UsageTracker] Card ${cardId.slice(0, 8)}... has no daily limit`);
+      return {
+        allowed: true,
+        currentScans: 0,
+        dailyLimit: null,
+        reason: 'No daily limit configured'
+      };
+    }
+
+    // Get current daily scan count
+    const currentScans = await getCurrentDailyScans(cardId);
+    
+    if (isDebug) console.log(`[UsageTracker] Card ${cardId.slice(0, 8)}... daily scans: ${currentScans}/${dailyLimit}`);
+
+    // Check if within limit
+    if (currentScans < dailyLimit) {
+      return {
+        allowed: true,
+        currentScans,
+        dailyLimit,
+        reason: 'Within daily limit'
+      };
+    }
+
+    // Daily limit reached
+    console.log(`[UsageTracker] ❌ Daily limit reached for card ${cardId.slice(0, 8)}...: ${currentScans}/${dailyLimit}`);
+    return {
+      allowed: false,
+      currentScans,
+      dailyLimit,
+      reason: `Daily access limit reached (${dailyLimit}/day). Please try again tomorrow.`
+    };
+  } catch (error) {
+    console.error('[UsageTracker] Daily limit check error:', error);
+    // Allow access on error (fail open for better UX)
+    return {
+      allowed: true,
+      currentScans: 0,
+      dailyLimit: null,
+      reason: 'Error checking daily limit - allowing access'
+    };
+  }
+}
+
+/**
+ * Increment daily scan counter after successful access
+ * Should be called AFTER access is confirmed allowed
+ */
+export async function recordDailyAccess(cardId: string): Promise<number> {
+  return incrementDailyScans(cardId);
+}
+
+/**
+ * Rollback daily scan counter if access ultimately denied
+ * Call this if monthly limit check fails after daily check passed
+ */
+export async function rollbackDailyAccess(cardId: string): Promise<void> {
+  await decrementDailyScans(cardId);
+}
+
+/**
+ * Invalidate card's cached daily limit (call when card settings change)
+ */
+export async function invalidateCardDailyLimit(cardId: string): Promise<void> {
+  if (!isRedisConfigured()) return;
+  await redis.del(DAILY_LIMIT_KEY(cardId));
+}
+
+/**
+ * Get daily access stats for a card (for display purposes)
+ */
+export async function getDailyAccessStats(cardId: string): Promise<{
+  dailyLimit: number | null;
+  currentScans: number;
+  remaining: number | null; // NULL if unlimited
+}> {
+  const dailyLimit = await getCardDailyLimit(cardId);
+  const currentScans = await getCurrentDailyScans(cardId);
+
+  return {
+    dailyLimit,
+    currentScans,
+    remaining: dailyLimit === null ? null : Math.max(0, dailyLimit - currentScans)
+  };
 }
 
 /**

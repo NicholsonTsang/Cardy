@@ -6,7 +6,7 @@
 -- Used for fetching content for translation and saving results.
 -- =================================================================
 
--- Get card for translation
+-- Get card for translation (includes ALL translatable text fields)
 DROP FUNCTION IF EXISTS get_card_for_translation_server CASCADE;
 CREATE OR REPLACE FUNCTION get_card_for_translation_server(
     p_card_id UUID
@@ -15,6 +15,10 @@ RETURNS TABLE (
     id UUID,
     name TEXT,
     description TEXT,
+    ai_instruction TEXT,
+    ai_knowledge_base TEXT,
+    ai_welcome_general TEXT,
+    ai_welcome_item TEXT,
     content_hash TEXT,
     translations JSONB,
     user_id UUID,
@@ -23,14 +27,15 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     SELECT 
-        c.id, c.name, c.description, c.content_hash,
-        c.translations, c.user_id, c.original_language
+        c.id, c.name, c.description,
+        c.ai_instruction, c.ai_knowledge_base, c.ai_welcome_general, c.ai_welcome_item,
+        c.content_hash, c.translations, c.user_id, c.original_language::TEXT
     FROM cards c
     WHERE c.id = p_card_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Get content items for translation
+-- Get content items for translation (includes ALL translatable text fields)
 DROP FUNCTION IF EXISTS get_content_items_for_translation_server CASCADE;
 CREATE OR REPLACE FUNCTION get_content_items_for_translation_server(
     p_card_id UUID
@@ -39,12 +44,13 @@ RETURNS TABLE (
     id UUID,
     name TEXT,
     content TEXT,
+    ai_knowledge_base TEXT,
     content_hash TEXT,
     translations JSONB
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT ci.id, ci.name, ci.content, ci.content_hash, ci.translations
+    SELECT ci.id, ci.name, ci.content, ci.ai_knowledge_base, ci.content_hash, ci.translations
     FROM content_items ci
     WHERE ci.card_id = p_card_id
     ORDER BY ci.sort_order;

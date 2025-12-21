@@ -484,7 +484,7 @@
                         <p class="text-xs text-slate-500">{{ formatVenueType(selectedTemplate.venue_type) }}</p>
                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 text-[9px] sm:text-[10px] font-medium rounded">
                           <span class="w-1 h-1 bg-green-500 rounded-full animate-pulse"></span>
-                          Live
+                          {{ $t('landing.demo_templates.live_badge') }}
                         </span>
                       </div>
                     </div>
@@ -509,80 +509,105 @@
                   class="md:hidden flex-shrink-0 inline-flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium rounded-lg border border-slate-200 shadow-sm transition-colors"
                 >
                   <i class="pi pi-external-link text-[10px]"></i>
-                  Open
+                  {{ $t('landing.demo_templates.open_button') }}
                 </button>
               </div>
             </div>
 
-            <!-- Filter Tabs -->
-            <div class="mb-3 sm:mb-4 -mx-1">
-              <div ref="venueFilterScroll" class="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 px-1 scrollbar-hide">
-                <button 
-                  class="flex-shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all"
-                  :class="selectedVenueType === null 
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm' 
-                    : 'text-slate-600 hover:bg-white hover:shadow-sm'"
-                  @click="selectVenueType(null)"
-                >
-                  {{ $t('landing.demo_templates.all_types') }}
-                </button>
-                <button 
-                  v-for="venueType in availableVenueTypes"
-                  :key="venueType"
-                  class="flex-shrink-0 px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap"
-                  :class="selectedVenueType === venueType 
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-sm' 
-                    : 'text-slate-600 hover:bg-white hover:shadow-sm'"
-                  @click="selectVenueType(venueType)"
-                >
-                  {{ formatVenueType(venueType) }}
-                </button>
-              </div>
-            </div>
-
-            <!-- Template List -->
-            <div class="space-y-1.5 sm:space-y-2 max-h-[280px] sm:max-h-[320px] lg:max-h-[360px] overflow-y-auto pr-1 sm:pr-2 demo-template-list">
-              <button 
-                v-for="template in filteredTemplates" 
-                :key="template.id"
-                @click="selectTemplateForPreview(template)"
-                class="w-full text-left p-2 sm:p-3 rounded-lg sm:rounded-xl transition-all duration-200 group"
-                :class="selectedTemplate?.id === template.id 
-                  ? 'bg-gradient-to-r from-blue-50 to-purple-50 border-2 border-blue-400 shadow-sm' 
-                  : 'bg-white/80 border-2 border-transparent hover:bg-white hover:border-slate-200 hover:shadow-sm'"
-              >
-                <div class="flex items-center gap-2 sm:gap-3">
-                  <div 
-                    class="w-7 h-7 sm:w-9 sm:h-9 rounded-md sm:rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
-                    :class="selectedTemplate?.id === template.id 
-                      ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white' 
-                      : 'bg-slate-100 text-slate-500 group-hover:bg-slate-200'"
+            <!-- Template Browser Container -->
+            <div class="template-browser-container bg-white/70 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-lg shadow-slate-200/50 p-3 sm:p-4">
+              <!-- Filter Tabs -->
+              <div class="mb-3 sm:mb-4">
+                <div ref="venueFilterScroll" class="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                  <button 
+                    class="flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-full transition-all"
+                    :class="selectedVenueType === null 
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-500/25' 
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                    @click="selectVenueType(null)"
                   >
-                    <i :class="getVenueIcon(template.venue_type)" class="text-xs sm:text-sm"></i>
-                  </div>
-                  <div class="min-w-0 flex-1">
-                    <h4 
-                      class="font-medium text-sm sm:text-base truncate transition-colors"
-                      :class="selectedTemplate?.id === template.id ? 'text-blue-900' : 'text-slate-900'"
-                    >
-                      {{ template.name }}
-                    </h4>
-                    <p class="text-[10px] sm:text-xs text-slate-500 truncate">{{ formatVenueType(template.venue_type) }}</p>
-                  </div>
-                  <i 
-                    v-if="selectedTemplate?.id === template.id" 
-                    class="pi pi-check-circle text-purple-500 flex-shrink-0 text-sm sm:text-base"
-                  ></i>
-                  <i 
-                    v-else 
-                    class="pi pi-chevron-right text-slate-300 group-hover:text-slate-400 flex-shrink-0 text-xs sm:text-sm"
-                  ></i>
+                    {{ $t('landing.demo_templates.all_types') }}
+                  </button>
+                  <button 
+                    v-for="venueType in availableVenueTypes"
+                    :key="venueType"
+                    class="flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-full transition-all whitespace-nowrap"
+                    :class="selectedVenueType === venueType 
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-500/25' 
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
+                    @click="selectVenueType(venueType)"
+                  >
+                    {{ formatVenueType(venueType) }}
+                  </button>
                 </div>
-              </button>
-              
-              <!-- Empty State -->
-              <div v-if="filteredTemplates.length === 0" class="py-8 text-center">
-                <p class="text-slate-500">{{ $t('landing.demo_templates.no_templates') }}</p>
+              </div>
+
+              <!-- Divider -->
+              <div class="h-px bg-gradient-to-r from-transparent via-slate-200 to-transparent mb-3 sm:mb-4"></div>
+
+              <!-- Template List -->
+              <div class="space-y-1.5 sm:space-y-2 max-h-[260px] sm:max-h-[300px] lg:max-h-[340px] overflow-y-auto pr-1 sm:pr-2 demo-template-list">
+                <button 
+                  v-for="template in filteredTemplates" 
+                  :key="template.id"
+                  @click="selectTemplateForPreview(template)"
+                  class="w-full text-left p-2.5 sm:p-3 rounded-xl transition-all duration-200 group"
+                  :class="selectedTemplate?.id === template.id 
+                    ? 'bg-gradient-to-r from-blue-50 via-indigo-50 to-purple-50 border-2 border-blue-400/70 shadow-md shadow-blue-500/10' 
+                    : 'bg-slate-50/80 border-2 border-transparent hover:bg-white hover:border-slate-200 hover:shadow-sm'"
+                >
+                  <div class="flex items-center gap-2.5 sm:gap-3">
+                    <div 
+                      class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-200"
+                      :class="selectedTemplate?.id === template.id 
+                        ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-md shadow-purple-500/30' 
+                        : 'bg-slate-200/80 text-slate-500 group-hover:bg-slate-300/80'"
+                    >
+                      <i :class="getVenueIcon(template.venue_type)" class="text-sm sm:text-base"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                      <h4 
+                        class="font-semibold text-sm sm:text-base truncate transition-colors"
+                        :class="selectedTemplate?.id === template.id ? 'text-blue-900' : 'text-slate-800 group-hover:text-slate-900'"
+                      >
+                        {{ template.name }}
+                      </h4>
+                      <p class="text-[10px] sm:text-xs text-slate-500 truncate mt-0.5">{{ formatVenueType(template.venue_type) }}</p>
+                    </div>
+                    <div 
+                      class="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-all"
+                      :class="selectedTemplate?.id === template.id 
+                        ? 'bg-purple-100' 
+                        : 'bg-transparent group-hover:bg-slate-100'"
+                    >
+                      <i 
+                        v-if="selectedTemplate?.id === template.id" 
+                        class="pi pi-check text-purple-600 text-xs sm:text-sm"
+                      ></i>
+                      <i 
+                        v-else 
+                        class="pi pi-chevron-right text-slate-400 group-hover:text-slate-500 text-xs"
+                      ></i>
+                    </div>
+                  </div>
+                </button>
+                
+                <!-- Empty State -->
+                <div v-if="filteredTemplates.length === 0" class="py-8 text-center">
+                  <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
+                    <i class="pi pi-inbox text-slate-400 text-xl"></i>
+                  </div>
+                  <p class="text-slate-500 text-sm">{{ $t('landing.demo_templates.no_templates') }}</p>
+                </div>
+              </div>
+
+              <!-- Template Count Footer -->
+              <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span>{{ filteredTemplates.length }} {{ $t('landing.demo_templates.templates_available') }}</span>
+                <span class="flex items-center gap-1">
+                  <i class="pi pi-arrow-up text-[10px]"></i>
+                  {{ $t('landing.demo_templates.scroll_to_explore') }}
+                </span>
               </div>
             </div>
           </div>
@@ -1220,7 +1245,7 @@
           <div>
             <h4 class="font-bold text-lg mb-4">{{ $t('landing.footer.quick_links') }}</h4>
             <ul class="space-y-2">
-              <li><a @click="scrollToSection('about')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.about') }}</a></li>
+              <li><a @click="scrollToSection('features')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.features') }}</a></li>
               <li><a @click="scrollToSection('demo-templates')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.demo') }}</a></li>
               <li><a @click="scrollToSection('pricing')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.pricing') }}</a></li>
             </ul>
@@ -1299,8 +1324,6 @@ const showFloatingCta = ref(false)
 // Demo Templates state
 const demoTemplates = ref([])
 const isLoadingTemplates = ref(false)
-const currentTemplatePage = ref(0)
-const templatesPerPage = 6  // 3 columns x 2 rows
 const selectedVenueType = ref(null)
 const selectedTemplate = ref(null) // Template shown in phone preview
 const iframeLoading = ref(false) // Loading state for phone preview iframe
@@ -1321,17 +1344,8 @@ const updateWindowWidth = () => {
   windowWidth.value = window.innerWidth
 }
 
-// Venue filter scroll indicators (mobile)
+// Venue filter scroll ref
 const venueFilterScroll = ref(null)
-const canScrollLeft = ref(false)
-const canScrollRight = ref(true)
-
-const updateScrollIndicators = () => {
-  if (!venueFilterScroll.value) return
-  const el = venueFilterScroll.value
-  canScrollLeft.value = el.scrollLeft > 10
-  canScrollRight.value = el.scrollLeft < el.scrollWidth - el.clientWidth - 10
-}
 
 // Extract unique venue types from templates
 const availableVenueTypes = computed(() => {
@@ -1348,19 +1362,9 @@ const filteredTemplates = computed(() => {
   return demoTemplates.value.filter(t => t.venue_type === selectedVenueType.value)
 })
 
-// Pagination computed properties (now based on filtered templates)
-const totalTemplatePages = computed(() => Math.ceil(filteredTemplates.value.length / templatesPerPage))
-const paginatedTemplates = computed(() => {
-  const start = currentTemplatePage.value * templatesPerPage
-  return filteredTemplates.value.slice(start, start + templatesPerPage)
-})
-
-// No scroll needed - minimum height on grid prevents layout jump
-
-// Select venue type and reset pagination
+// Select venue type filter
 const selectVenueType = (type) => {
   selectedVenueType.value = type
-  currentTemplatePage.value = 0
   // Auto-select first template of filtered results
   nextTick(() => {
     if (filteredTemplates.value.length > 0) {
@@ -1417,19 +1421,6 @@ const retryIframeLoad = () => {
     setTimeout(() => {
       selectTemplateForPreview(template)
     }, 100)
-  }
-}
-
-// Pagination functions
-const nextTemplatePage = () => {
-  if (currentTemplatePage.value < totalTemplatePages.value - 1) {
-    currentTemplatePage.value++
-  }
-}
-
-const prevTemplatePage = () => {
-  if (currentTemplatePage.value > 0) {
-    currentTemplatePage.value--
   }
 }
 
@@ -1578,11 +1569,6 @@ onMounted(() => {
     })
   }
 
-  // Load Vimeo Player API
-  const vimeoScript = document.createElement('script')
-  vimeoScript.src = "https://player.vimeo.com/api/player.js"
-  vimeoScript.async = true
-  document.body.appendChild(vimeoScript)
 })
 
 onUnmounted(() => {
@@ -1635,6 +1621,7 @@ const handleGetStarted = () => {
 // Demo Templates functions
 const fetchDemoTemplates = async () => {
   isLoadingTemplates.value = true
+  console.log('[LandingPage] Fetching demo templates with language:', locale.value)
   try {
     // Try with language parameter first for multilingual support
     let { data, error } = await supabase.rpc('get_demo_templates', { 
@@ -1644,28 +1631,32 @@ const fetchDemoTemplates = async () => {
     
     // If stored procedure doesn't support p_language yet, fall back to no language
     if (error && error.message?.includes('p_language')) {
-      console.warn('get_demo_templates does not support p_language yet, falling back')
+      console.warn('[LandingPage] get_demo_templates does not support p_language yet, falling back')
       const result = await supabase.rpc('get_demo_templates', { p_limit: 100 })
       data = result.data
       error = result.error
     }
     
     if (error) {
-      console.error('Error fetching demo templates:', error)
+      console.error('[LandingPage] Error fetching demo templates:', error)
+      console.error('[LandingPage] Error details:', JSON.stringify(error, null, 2))
       return
     }
+    
+    console.log('[LandingPage] Demo templates fetched:', data?.length || 0, 'templates')
+    if (data?.length === 0) {
+      console.warn('[LandingPage] No demo templates found. Check that templates have is_featured=true, is_active=true, and linked cards have is_access_enabled=true with access_token set.')
+    }
+    
     demoTemplates.value = data || []
-    currentTemplatePage.value = 0  // Reset to first page
     // Auto-select first template for phone preview
     if (data && data.length > 0) {
       selectTemplateForPreview(data[0])
     }
   } catch (err) {
-    console.error('Failed to fetch demo templates:', err)
+    console.error('[LandingPage] Failed to fetch demo templates:', err)
   } finally {
     isLoadingTemplates.value = false
-    // Initialize scroll indicators after templates load
-    nextTick(() => updateScrollIndicators())
   }
 }
 
@@ -2116,6 +2107,12 @@ html {
   background: linear-gradient(135deg, #f8fafc, #f1f5f9);
 }
 
+/* Template Browser Container */
+.template-browser-container {
+  background: linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.95) 100%);
+  backdrop-filter: blur(12px);
+}
+
 /* Demo Template List */
 .demo-template-list {
   scrollbar-width: thin;
@@ -2123,19 +2120,20 @@ html {
 }
 
 .demo-template-list::-webkit-scrollbar {
-  width: 6px;
+  width: 5px;
 }
 
 .demo-template-list::-webkit-scrollbar-track {
   background: transparent;
+  border-radius: 3px;
 }
 
 .demo-template-list::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: linear-gradient(180deg, #c7d2fe 0%, #ddd6fe 100%);
   border-radius: 3px;
 }
 
 .demo-template-list::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  background: linear-gradient(180deg, #a5b4fc 0%, #c4b5fd 100%);
 }
 </style>

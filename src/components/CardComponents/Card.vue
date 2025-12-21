@@ -1,6 +1,6 @@
 <template>
     <CardCreateEditView
-        :cardProp="card"
+        :cardProp="cardProp"
         modeProp="view"
         :loading="loading"
         :updateCardFn="updateCardFn"
@@ -15,7 +15,7 @@
 import CardCreateEditView from './CardCreateEditView.vue';
 
 const props = defineProps({
-    card: {
+    cardProp: {
         type: Object,
         default: () => null // Allow null if no card is selected/available
     },

@@ -11,7 +11,7 @@
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-2">
           <Tag 
-            :value="activeRequest.status.replace('_', ' ')" 
+            :value="getPrintStatusLabel(activeRequest.status)" 
             :severity="getPrintRequestStatusSeverity(activeRequest.status)"
             class="px-2 py-1 text-xs"
           />
@@ -69,7 +69,7 @@
              :class="{ 'border-red-200 bg-red-50': isWithdrawn(request) }">
           <div class="flex items-center justify-between mb-1">
             <Tag 
-              :value="request.status.replace('_', ' ')" 
+              :value="getPrintStatusLabel(request.status)" 
               :severity="getPrintRequestStatusSeverity(request.status)"
               class="px-1 py-0.5 text-xs"
             />
@@ -143,6 +143,18 @@ const getPrintRequestStatusSeverity = (status) => {
     case 'COMPLETED': return 'success';
     case 'CANCELLED': return 'danger';
     default: return 'secondary';
+  }
+};
+
+const getPrintStatusLabel = (status) => {
+  switch (status) {
+    case 'SUBMITTED': return t('print.submitted');
+    case 'PAYMENT_PENDING': return t('print.payment_pending');
+    case 'PROCESSING': return t('print.in_production');
+    case 'SHIPPED': return t('print.shipped');
+    case 'COMPLETED': return t('print.delivered');
+    case 'CANCELLED': return t('print.cancelled');
+    default: return status;
   }
 };
 

@@ -37,6 +37,16 @@
       <p class="error-message">{{ $t('mobile.monthly_limit_message') }}</p>
     </div>
 
+    <!-- Daily Limit Exceeded State (for digital cards - creator protection) -->
+    <div v-else-if="cardData?.daily_limit_exceeded" class="error-container daily-limit-container">
+      <div class="error-icon-wrapper daily-limit-icon">
+        <i class="pi pi-calendar" />
+      </div>
+      <h2 class="error-title">{{ $t('mobile.daily_limit_exceeded') }}</h2>
+      <p class="error-message">{{ $t('mobile.daily_limit_message') }}</p>
+      <p class="error-hint">{{ $t('mobile.try_again_tomorrow') }}</p>
+    </div>
+
     <!-- Scan Limit Reached State (for digital cards - total limit) -->
     <div v-else-if="cardData?.scan_limit_reached" class="error-container scan-limit-container">
       <div class="error-icon-wrapper scan-limit-icon">
@@ -56,7 +66,7 @@
     </div>
 
     <!-- Main Content -->
-    <div v-else-if="cardData && !cardData.scan_limit_reached && !cardData.monthly_limit_exceeded && !cardData.credits_insufficient && !cardData.access_disabled" class="content-wrapper">
+    <div v-else-if="cardData && !cardData.scan_limit_reached && !cardData.monthly_limit_exceeded && !cardData.daily_limit_exceeded && !cardData.credits_insufficient && !cardData.access_disabled" class="content-wrapper">
       <!-- Navigation Header (show when not on overview page) -->
       <MobileHeader 
         v-if="!isCardView"
@@ -133,6 +143,8 @@ interface CardData {
   ai_instruction: string
   ai_knowledge_base: string
   ai_prompt: string  // For backward compatibility with AI Assistant
+  ai_welcome_general?: string // Custom AI welcome message for general assistant
+  ai_welcome_item?: string // Custom AI welcome message for item assistant
   is_activated: boolean
   is_preview?: boolean
   content_mode?: 'single' | 'grid' | 'list' | 'cards' // Content rendering mode (new: 4 layouts)
@@ -145,8 +157,10 @@ interface CardData {
   daily_scans?: number // Today's scan count
   scan_limit_reached?: boolean // TRUE if digital card has reached total limit
   monthly_limit_exceeded?: boolean // TRUE if monthly subscription access limit exceeded
+  daily_limit_exceeded?: boolean // TRUE if daily access limit reached (creator protection)
   credits_insufficient?: boolean // TRUE if card owner has insufficient credits
   access_disabled?: boolean // TRUE if digital card access has been disabled by owner
+  has_translation?: boolean // TRUE if card has translations available
 }
 
 interface ContentItem {
@@ -327,6 +341,8 @@ async function fetchCardData() {
       ai_instruction: firstRow.card_ai_instruction,
       ai_knowledge_base: firstRow.card_ai_knowledge_base,
       ai_prompt: firstRow.card_ai_instruction, // For backward compatibility with AI Assistant
+      ai_welcome_general: firstRow.card_ai_welcome_general || '', // Custom AI welcome message
+      ai_welcome_item: firstRow.card_ai_welcome_item || '', // Custom AI welcome message for items
       is_activated: isPreviewMode.value ? true : firstRow.is_activated, // Always activated in preview mode
       is_preview: isPreviewMode.value || firstRow.is_preview || false,
       content_mode: (firstRow.card_content_mode || 'list') as 'single' | 'grid' | 'list' | 'cards',
@@ -339,7 +355,8 @@ async function fetchCardData() {
       daily_scans: firstRow.card_daily_scans,
       scan_limit_reached: firstRow.card_scan_limit_reached || false,
       monthly_limit_exceeded: firstRow.card_monthly_limit_exceeded || false,
-      credits_insufficient: firstRow.card_credits_insufficient || false
+      credits_insufficient: firstRow.card_credits_insufficient || false,
+      has_translation: firstRow.card_has_translation || false
     }
 
     // Extract available languages for this card
@@ -691,6 +708,16 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
 .monthly-limit-icon {
   background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
   box-shadow: 0 8px 32px rgba(139, 92, 246, 0.3);
+}
+
+/* Daily Limit Exceeded (creator protection) */
+.daily-limit-container {
+  background: linear-gradient(135deg, #1e3a5f 0%, #0f172a 100%);
+}
+
+.daily-limit-icon {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 0 8px 32px rgba(59, 130, 246, 0.3);
 }
 
 .countdown-hint {

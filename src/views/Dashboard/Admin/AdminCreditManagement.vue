@@ -143,9 +143,9 @@
                   <template #empty>
                     <div class="text-center py-12">
                       <i class="pi pi-inbox text-6xl text-slate-400 mb-4"></i>
-                      <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('admin.no_users_found') || 'No users found' }}</p>
+                      <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('admin.no_users_found') }}</p>
                       <p class="text-slate-600">
-                        {{ userFilter ? 'No users match your current filters.' : 'No users with credits yet.' }}
+                        {{ userFilter ? $t('admin.credits.noUsersMatchFilters') : $t('admin.credits.noUsersWithCreditsYet') }}
                       </p>
                     </div>
                   </template>
@@ -195,7 +195,7 @@
                           outlined
                           severity="primary"
                           @click="viewUserPurchases(data)"
-                          v-tooltip.top="'View Purchases'"
+                          v-tooltip.top="$t('admin.credits.viewPurchases')"
                           class="action-btn"
                         />
                         <Button
@@ -205,7 +205,7 @@
                           outlined
                           severity="info"
                           @click="viewUserConsumptions(data)"
-                          v-tooltip.top="'View Consumptions'"
+                          v-tooltip.top="$t('admin.credits.viewConsumptions')"
                           class="action-btn"
                         />
                         <Button
@@ -215,7 +215,7 @@
                           outlined
                           severity="secondary"
                           @click="viewUserTransactions(data)"
-                          v-tooltip.top="'View Transactions'"
+                          v-tooltip.top="$t('admin.credits.viewTransactions')"
                           class="action-btn"
                         />
                         <Button
@@ -240,7 +240,7 @@
           <Dialog 
             v-model:visible="showPurchasesDialog"
             modal
-            :header="`Purchases - ${viewingUser?.user_name}`"
+            :header="$t('admin.credits.purchasesFor', { name: viewingUser?.user_name })"
             :style="{ width: '90vw', maxWidth: '1200px' }"
             :dismissableMask="true"
           >
@@ -267,8 +267,8 @@
                           <template #empty>
                             <div class="text-center py-12">
                               <i class="pi pi-shopping-bag text-6xl text-slate-400 mb-4"></i>
-                              <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('credits.admin.noPurchasesFound') }}</p>
-                              <p class="text-slate-600">{{ $t('credits.admin.noPurchasesYet') }}</p>
+                              <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('admin.credits.noPurchasesFound') }}</p>
+                              <p class="text-slate-600">{{ $t('admin.credits.noPurchasesYet') }}</p>
                             </div>
                           </template>
                   <template #loading>
@@ -336,7 +336,7 @@
           <Dialog 
             v-model:visible="showConsumptionsDialog"
             modal
-            :header="`Consumptions - ${viewingUser?.user_name}`"
+            :header="$t('admin.credits.consumptionsFor', { name: viewingUser?.user_name })"
             :style="{ width: '90vw', maxWidth: '1200px' }"
             :dismissableMask="true"
           >
@@ -363,8 +363,8 @@
                           <template #empty>
                             <div class="text-center py-12">
                               <i class="pi pi-chart-bar text-6xl text-slate-400 mb-4"></i>
-                              <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('credits.admin.noConsumptionsFound') }}</p>
-                              <p class="text-slate-600">{{ $t('credits.admin.noConsumptionsYet') }}</p>
+                              <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('admin.credits.noConsumptionsFound') }}</p>
+                              <p class="text-slate-600">{{ $t('admin.credits.noConsumptionsYet') }}</p>
                             </div>
                           </template>
                   <template #loading>
@@ -433,7 +433,7 @@
           <Dialog 
             v-model:visible="showTransactionsDialog"
             modal
-            :header="`All Transactions - ${viewingUser?.user_name}`"
+            :header="$t('admin.credits.transactionsFor', { name: viewingUser?.user_name })"
             :style="{ width: '90vw', maxWidth: '1200px' }"
             :dismissableMask="true"
           >
@@ -460,8 +460,8 @@
                           <template #empty>
                             <div class="text-center py-12">
                               <i class="pi pi-inbox text-6xl text-slate-400 mb-4"></i>
-                              <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('credits.admin.noTransactionsFound') }}</p>
-                              <p class="text-slate-600">{{ $t('credits.admin.noTransactionsYet') }}</p>
+                              <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('admin.credits.noTransactionsFound') }}</p>
+                              <p class="text-slate-600">{{ $t('admin.credits.noTransactionsYet') }}</p>
                             </div>
                           </template>
                   <template #loading>
@@ -528,7 +528,7 @@
         </div>
         <div>
           <h3 class="text-xl font-bold text-slate-900">{{ $t('admin.credits.adjustUserCredits') }}</h3>
-          <p class="text-sm text-slate-500 mt-1">{{ $t('credits.admin.modifyUserBalance') }}</p>
+          <p class="text-sm text-slate-500 mt-1">{{ $t('admin.credits.modifyUserBalance') }}</p>
         </div>
       </div>
     </template>
@@ -587,7 +587,7 @@
           </div>
         </div>
         <div class="mt-2 text-xs" :class="adjustAmount > 0 ? 'text-green-700' : 'text-red-700'">
-          {{ adjustAmount > 0 ? '+' : '' }}{{ adjustAmount }} credits
+          {{ adjustAmount > 0 ? '+' : '' }}{{ adjustAmount }} {{ $t('common.credits') }}
         </div>
       </div>
     </div>
@@ -795,28 +795,34 @@ function getConsumptionTypeLabel(type: string) {
 
 function getConsumptionTypeIcon(type: string) {
   switch (type) {
+    case 'subscription_overage_batch': return 'pi-bolt'
     case 'batch_issuance': return 'pi-box'
     case 'translation': return 'pi-language'
     case 'single_card': return 'pi-id-card'
+    case 'digital_scan': return 'pi-qrcode'
     default: return 'pi-circle'
   }
 }
 
 function getConsumptionTypeSeverity(type: string) {
   switch (type) {
+    case 'subscription_overage_batch': return 'warn'
     case 'batch_issuance': return 'info'
     case 'translation': return 'success'
-    case 'single_card': return 'warn'
+    case 'single_card': return 'info'
+    case 'digital_scan': return 'secondary'
     default: return undefined
   }
 }
 
 function getQuantityUnit(type: string) {
   switch (type) {
-    case 'batch_issuance': return 'cards'
-    case 'translation': return 'languages'
-    case 'single_card': return 'card'
-    default: return 'units'
+    case 'subscription_overage_batch': return t('credits.unit.access')
+    case 'batch_issuance': return t('credits.unit.cards')
+    case 'translation': return t('credits.unit.languages')
+    case 'single_card': return t('credits.unit.cards')
+    case 'digital_scan': return t('credits.unit.scans')
+    default: return t('credits.unit.units')
   }
 }
 

@@ -6,7 +6,7 @@
         <i class="pi pi-exclamation-triangle"></i>
       </div>
       <div class="error-content">
-        <h4 class="error-title">Connection Failed</h4>
+        <h4 class="error-title">{{ $t('common.connection_failed') }}</h4>
         <p class="error-message">{{ error }}</p>
       </div>
     </div>

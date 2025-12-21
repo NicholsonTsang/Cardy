@@ -8,12 +8,14 @@
 -- -----------------------------------------------------------------
 -- List all available templates with filtering
 -- Joins with cards table to get card data
+-- All fields included for consistency with Excel export/import
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.list_content_templates(
     p_venue_type TEXT DEFAULT NULL,
     p_content_mode TEXT DEFAULT NULL,
     p_search TEXT DEFAULT NULL,
-    p_featured_only BOOLEAN DEFAULT FALSE
+    p_featured_only BOOLEAN DEFAULT FALSE,
+    p_language TEXT DEFAULT NULL  -- Display templates in this language if translation available
 )
 RETURNS TABLE (
     id UUID,
@@ -27,9 +29,14 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
+    max_scans INTEGER,
+    daily_scan_limit INTEGER,
+    original_language TEXT,
+    qr_code_position TEXT,
     item_count BIGINT,
     is_featured BOOLEAN,
-    created_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ,
+    translation_languages TEXT[]
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -41,17 +48,33 @@ BEGIN
         ct.id,
         ct.slug,
         ct.card_id,
-        c.name,
-        COALESCE(c.description, '')::TEXT,
+        -- Use translated name if language specified and translation exists, else original
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'name', c.name)
+            ELSE c.name
+        END AS name,
+        -- Use translated description if language specified and translation exists, else original
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'description', c.description, '')
+            ELSE COALESCE(c.description, '')
+        END::TEXT AS description,
         ct.venue_type,
         COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
         COALESCE(c.content_mode, 'list')::TEXT,
         COALESCE(c.is_grouped, false),
         COALESCE(c.group_display, 'expanded')::TEXT,
         COALESCE(c.billing_type, 'digital')::TEXT,
+        c.max_scans,
+        c.daily_scan_limit,
+        COALESCE(c.original_language, 'en')::TEXT,
+        COALESCE(c.qr_code_position::TEXT, 'BR'),
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
         ct.is_featured,
-        ct.created_at
+        ct.created_at,
+        -- Extract translation language keys from JSONB
+        COALESCE(ARRAY(SELECT jsonb_object_keys(c.translations)), ARRAY[]::TEXT[]) AS translation_languages
     FROM content_templates ct
     JOIN cards c ON ct.card_id = c.id
     WHERE ct.is_active = true
@@ -62,6 +85,11 @@ BEGIN
             p_search IS NULL 
             OR c.name ILIKE '%' || p_search || '%'
             OR c.description ILIKE '%' || p_search || '%'
+            -- Also search in translated fields if language specified
+            OR (p_language IS NOT NULL AND c.translations ? p_language AND (
+                c.translations->p_language->>'name' ILIKE '%' || p_search || '%'
+                OR c.translations->p_language->>'description' ILIKE '%' || p_search || '%'
+            ))
         )
     ORDER BY 
         ct.is_featured DESC,
@@ -95,6 +123,13 @@ RETURNS TABLE (
     ai_knowledge_base TEXT,
     ai_welcome_general TEXT,
     ai_welcome_item TEXT,
+    original_language TEXT,
+    qr_code_position TEXT,
+    max_scans INTEGER,
+    daily_scan_limit INTEGER,
+    crop_parameters JSONB,
+    translations JSONB,
+    content_hash TEXT,
     item_count BIGINT,
     is_featured BOOLEAN,
     created_at TIMESTAMPTZ,
@@ -123,10 +158,17 @@ BEGIN
         COALESCE(c.ai_knowledge_base, '')::TEXT,
         COALESCE(c.ai_welcome_general, '')::TEXT,
         COALESCE(c.ai_welcome_item, '')::TEXT,
+        COALESCE(c.original_language, 'en')::TEXT,
+        COALESCE(c.qr_code_position::TEXT, 'BR'),
+        c.max_scans,
+        c.daily_scan_limit,
+        c.crop_parameters,
+        COALESCE(c.translations, '{}'::JSONB),
+        c.content_hash,
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
         ct.is_featured,
         ct.created_at,
-        -- Get content items as JSON array
+        -- Get content items as JSON array (includes all fields for export)
         COALESCE(
             (SELECT jsonb_agg(
                 jsonb_build_object(
@@ -137,7 +179,10 @@ BEGIN
                     'image_url', ci.image_url,
                     'original_image_url', ci.original_image_url,
                     'ai_knowledge_base', ci.ai_knowledge_base,
-                    'sort_order', ci.sort_order
+                    'sort_order', ci.sort_order,
+                    'crop_parameters', ci.crop_parameters,
+                    'translations', COALESCE(ci.translations, '{}'::JSONB),
+                    'content_hash', ci.content_hash
                 ) ORDER BY ci.sort_order
             )
             FROM content_items ci 
@@ -187,7 +232,8 @@ CREATE OR REPLACE FUNCTION public.import_content_template(
     p_user_id UUID,
     p_template_id UUID,
     p_card_name TEXT DEFAULT NULL,
-    p_billing_type TEXT DEFAULT NULL
+    p_billing_type TEXT DEFAULT NULL,
+    p_import_language TEXT DEFAULT NULL  -- Language to import content in (uses translated version if available)
 )
 RETURNS TABLE (
     success BOOLEAN,
@@ -203,7 +249,10 @@ DECLARE
     v_new_card_id UUID;
     v_final_name TEXT;
     v_final_billing TEXT;
+    v_final_language TEXT;
     v_check JSONB;
+    v_use_translation BOOLEAN;
+    v_lang_data JSONB;
 BEGIN
     -- Check subscription limit
     v_check := can_create_experience(p_user_id);
@@ -224,13 +273,29 @@ BEGIN
         RETURN;
     END IF;
     
-    -- Use custom name or template card's name
-    v_final_name := COALESCE(NULLIF(p_card_name, ''), v_template.name);
+    -- Determine if we should use translated content
+    -- Use translation if: import_language is specified AND differs from original AND translation exists
+    v_final_language := COALESCE(NULLIF(p_import_language, ''), v_template.original_language);
+    v_use_translation := (v_final_language IS DISTINCT FROM v_template.original_language) 
+                         AND (v_template.translations ? v_final_language);
+    
+    IF v_use_translation THEN
+        v_lang_data := v_template.translations->v_final_language;
+    END IF;
+    
+    -- Use custom name, or translated name, or original name
+    v_final_name := COALESCE(
+        NULLIF(p_card_name, ''),
+        CASE WHEN v_use_translation THEN v_lang_data->>'name' ELSE NULL END,
+        v_template.name
+    );
     
     -- Use provided billing type or template card's billing type
     v_final_billing := COALESCE(NULLIF(p_billing_type, ''), v_template.billing_type, 'digital');
     
     -- Create the new card by copying the template's card
+    -- If importing in a different language, use translated content and set original_language to that language
+    -- DO NOT copy translations - user starts fresh without any translations
     INSERT INTO cards (
         user_id,
         name,
@@ -239,48 +304,73 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
+        max_scans,
+        daily_scan_limit,
         conversation_ai_enabled,
         ai_instruction,
         ai_knowledge_base,
         ai_welcome_general,
         ai_welcome_item,
+        original_language,
+        qr_code_position,
         image_url,
         original_image_url,
-        crop_parameters
+        crop_parameters,
+        translations,  -- Always NULL - no translations copied
+        content_hash   -- NULL since content is new
     ) VALUES (
         p_user_id,
         v_final_name,
-        v_template.description,
+        CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'description', v_template.description) ELSE v_template.description END,
         v_template.content_mode,
         v_template.is_grouped,
         v_template.group_display,
         v_final_billing,
+        v_template.max_scans,
+        v_template.daily_scan_limit,
         v_template.conversation_ai_enabled,
-        v_template.ai_instruction,
-        v_template.ai_knowledge_base,
-        v_template.ai_welcome_general,
-        v_template.ai_welcome_item,
+        CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_instruction', v_template.ai_instruction) ELSE v_template.ai_instruction END,
+        CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_knowledge_base', v_template.ai_knowledge_base) ELSE v_template.ai_knowledge_base END,
+        CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_welcome_general', v_template.ai_welcome_general) ELSE v_template.ai_welcome_general END,
+        CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_welcome_item', v_template.ai_welcome_item) ELSE v_template.ai_welcome_item END,
+        v_final_language,  -- Set to selected language
+        v_template.qr_code_position,
         v_template.image_url,
         v_template.original_image_url,
-        v_template.crop_parameters
+        v_template.crop_parameters,
+        NULL,  -- No translations - start fresh
+        NULL   -- No content_hash - will be calculated on first edit
     ) RETURNING id INTO v_new_card_id;
     
     -- PERFORMANCE: Bulk copy content items using CTE with ID mapping
     -- This avoids N+1 individual INSERT statements
+    -- If importing in different language, use translated content for name/content/ai_knowledge_base
+    -- DO NOT copy translations - user starts fresh
     WITH 
     -- Step 1: Insert parent items (no parent_id) with bulk insert
     parent_items AS (
-        INSERT INTO content_items (card_id, parent_id, name, content, image_url, original_image_url, crop_parameters, ai_knowledge_base, sort_order)
+        INSERT INTO content_items (card_id, parent_id, name, content, image_url, original_image_url, crop_parameters, ai_knowledge_base, sort_order, translations, content_hash)
         SELECT 
             v_new_card_id,
             NULL,
-            ci.name,
-            ci.content,
+            CASE WHEN v_use_translation AND ci.translations ? v_final_language 
+                THEN COALESCE(ci.translations->v_final_language->>'name', ci.name) 
+                ELSE ci.name 
+            END,
+            CASE WHEN v_use_translation AND ci.translations ? v_final_language 
+                THEN COALESCE(ci.translations->v_final_language->>'content', ci.content) 
+                ELSE ci.content 
+            END,
             ci.image_url,
             ci.original_image_url,
             ci.crop_parameters,
-            ci.ai_knowledge_base,
-            ci.sort_order
+            CASE WHEN v_use_translation AND ci.translations ? v_final_language 
+                THEN COALESCE(ci.translations->v_final_language->>'ai_knowledge_base', ci.ai_knowledge_base) 
+                ELSE ci.ai_knowledge_base 
+            END,
+            ci.sort_order,
+            NULL,  -- No translations - start fresh
+            NULL   -- No content_hash
         FROM content_items ci
         WHERE ci.card_id = v_template.card_id AND ci.parent_id IS NULL
         ORDER BY ci.sort_order
@@ -296,17 +386,28 @@ BEGIN
         WHERE orig.card_id = v_template.card_id AND orig.parent_id IS NULL
     )
     -- Step 3: Insert child items with mapped parent_ids
-    INSERT INTO content_items (card_id, parent_id, name, content, image_url, original_image_url, crop_parameters, ai_knowledge_base, sort_order)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, original_image_url, crop_parameters, ai_knowledge_base, sort_order, translations, content_hash)
     SELECT 
         v_new_card_id,
         pm.new_id,
-        ci.name,
-        ci.content,
+        CASE WHEN v_use_translation AND ci.translations ? v_final_language 
+            THEN COALESCE(ci.translations->v_final_language->>'name', ci.name) 
+            ELSE ci.name 
+        END,
+        CASE WHEN v_use_translation AND ci.translations ? v_final_language 
+            THEN COALESCE(ci.translations->v_final_language->>'content', ci.content) 
+            ELSE ci.content 
+        END,
         ci.image_url,
         ci.original_image_url,
         ci.crop_parameters,
-        ci.ai_knowledge_base,
-        ci.sort_order
+        CASE WHEN v_use_translation AND ci.translations ? v_final_language 
+            THEN COALESCE(ci.translations->v_final_language->>'ai_knowledge_base', ci.ai_knowledge_base) 
+            ELSE ci.ai_knowledge_base 
+        END,
+        ci.sort_order,
+        NULL,  -- No translations - start fresh
+        NULL   -- No content_hash
     FROM content_items ci
     JOIN parent_mapping pm ON ci.parent_id = pm.old_id
     WHERE ci.card_id = v_template.card_id AND ci.parent_id IS NOT NULL
@@ -797,11 +898,11 @@ END;
 $$;
 
 -- Grant execute permissions
-GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN) TO anon;
+GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN, TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_template_venue_types() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.import_content_template(UUID, UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.import_content_template(UUID, UUID, TEXT, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_template_from_card(UUID, UUID, TEXT, TEXT, BOOLEAN, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_template_settings(UUID, UUID, TEXT, TEXT, BOOLEAN, BOOLEAN, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_content_template(UUID, UUID, BOOLEAN) TO authenticated;

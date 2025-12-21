@@ -98,6 +98,33 @@
             </template>
         </Column>
         
+        <Column field="original_language" header="Language" style="width: 100px">
+          <template #body="{ data }">
+            <span class="language-badge">
+              {{ getLanguageFlag(data.original_language) }}
+              {{ data.original_language }}
+            </span>
+          </template>
+        </Column>
+        
+        <Column header="Translations" style="min-width: 150px">
+          <template #body="{ data }">
+            <div v-if="data.translation_languages.length > 0" class="translation-badges">
+              <span 
+                v-for="lang in data.translation_languages.slice(0, 3)" 
+                :key="lang" 
+                class="translation-lang-badge"
+              >
+                {{ getLanguageFlag(lang) }} {{ lang }}
+              </span>
+              <span v-if="data.translation_languages.length > 3" class="translation-more-badge">
+                +{{ data.translation_languages.length - 3 }}
+              </span>
+            </div>
+            <span v-else class="text-slate-400 text-sm">—</span>
+          </template>
+        </Column>
+        
         <Column :header="$t('templates.admin.status')" style="width: 100px">
           <template #body="{ data }">
             <Tag 
@@ -200,6 +227,7 @@ import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useTemplateLibraryStore } from '@/stores/templateLibrary'
 import { importExcelToCardData } from '@/utils/excelHandler'
+import ExcelJS from 'exceljs'
 
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
@@ -217,7 +245,9 @@ interface PreviewTemplate {
   is_grouped: boolean
   group_display: string
   billing_type: string
+  original_language: string
   item_count: number
+  translation_languages: string[]
   cardData: any // Full card data for import
   error?: string
 }
@@ -298,6 +328,44 @@ async function processFiles(files: File[]) {
     
     for (const file of validFiles) {
       try {
+        // First, read the file with ExcelJS to extract template metadata
+        const workbook = new ExcelJS.Workbook()
+        const buffer = await file.arrayBuffer()
+        await workbook.xlsx.load(buffer)
+        
+        // Try to extract venue_type from "Template Settings" sheet (single template export)
+        let extractedVenueType: string | null = null
+        const settingsSheet = workbook.getWorksheet('Template Settings')
+        if (settingsSheet) {
+          // Parse the settings sheet (Setting in column A, Value in column B, data starts at row 3)
+          settingsSheet.eachRow((row, rowNumber) => {
+            if (rowNumber >= 3) {
+              const setting = row.getCell(1).value?.toString() || ''
+              const value = row.getCell(2).value?.toString() || ''
+              if (setting === 'Venue Type' && value) {
+                extractedVenueType = value
+              }
+            }
+          })
+        }
+        
+        // For multi-card exports, build a map of card index -> venue_type from Index sheet
+        const venueTypeByIndex: Map<number, string> = new Map()
+        const indexSheet = workbook.getWorksheet('Index')
+        if (indexSheet) {
+          // Index sheet has headers in row 1, data starts at row 2
+          // Column D is venue_type, Column A is index
+          indexSheet.eachRow((row, rowNumber) => {
+            if (rowNumber >= 2) { // Skip header row
+              const indexVal = row.getCell(1).value
+              const venueType = row.getCell(4).value?.toString() || '' // Column D = venue_type
+              if (indexVal && venueType) {
+                venueTypeByIndex.set(Number(indexVal), venueType)
+              }
+            }
+          })
+        }
+        
         // Use existing Excel handler to parse card data
         const result = await importExcelToCardData(file)
         
@@ -308,12 +376,15 @@ async function processFiles(files: File[]) {
           hasCardData: !!result?.cardData,
           contentItemsLength: result?.contentItems?.length,
           errors: result?.errors,
-          warnings: result?.warnings
+          warnings: result?.warnings,
+          extractedVenueType,
+          venueTypeByIndex: Object.fromEntries(venueTypeByIndex)
         })
         
         if (result && result.cards && result.cards.length > 0) {
           // Multi-card export format: { cards: [{ cardData, contentItems }] }
-          for (const cardEntry of result.cards) {
+          for (let i = 0; i < result.cards.length; i++) {
+            const cardEntry = result.cards[i]
             console.log('Processing card entry:', {
               cardName: cardEntry.cardData?.name,
               contentItemsCount: cardEntry.contentItems?.length,
@@ -323,7 +394,9 @@ async function processFiles(files: File[]) {
               ...cardEntry.cardData,
               contentItems: cardEntry.contentItems || []
             }
-            const preview = convertToPreviewTemplate(cardWithItems)
+            // For multi-card, use venue_type from Index sheet by card index (1-based)
+            const cardVenueType = venueTypeByIndex.get(i + 1) || extractedVenueType
+            const preview = convertToPreviewTemplate(cardWithItems, cardVenueType)
             allPreviews.push(preview)
           }
         } else if (result && result.cardData) {
@@ -337,7 +410,7 @@ async function processFiles(files: File[]) {
             ...result.cardData,
             contentItems: result.contentItems || []
           }
-          const preview = convertToPreviewTemplate(cardWithItems)
+          const preview = convertToPreviewTemplate(cardWithItems, extractedVenueType)
           allPreviews.push(preview)
         } else {
           console.error('Invalid format - no cards or cardData found:', result)
@@ -359,7 +432,7 @@ async function processFiles(files: File[]) {
   }
 }
 
-function convertToPreviewTemplate(card: any): PreviewTemplate {
+function convertToPreviewTemplate(card: any, extractedVenueType: string | null = null): PreviewTemplate {
   const slug = generateSlug(card.name || 'untitled')
   
   // Validate card data
@@ -368,16 +441,33 @@ function convertToPreviewTemplate(card: any): PreviewTemplate {
     error = 'Missing card name'
   }
   
+  // Extract translation languages from translations_json
+  let translationLanguages: string[] = []
+  if (card.translations_json) {
+    try {
+      const translations = typeof card.translations_json === 'string'
+        ? JSON.parse(card.translations_json) 
+        : card.translations_json
+      translationLanguages = Object.keys(translations)
+    } catch (e) {
+      console.warn('Failed to parse translations_json:', e)
+    }
+  }
+  
+  // Use venue_type from Excel file directly (no guessing)
+  // Admin can set it manually after import if not present
   return {
     name: card.name || 'Untitled',
     slug,
     description: card.description || '',
-    venue_type: guessVenueType(card),
+    venue_type: extractedVenueType || null,
     content_mode: card.content_mode || 'list',
     is_grouped: card.is_grouped || false,
     group_display: card.group_display || 'expanded',
     billing_type: card.billing_type || 'digital',
+    original_language: card.original_language || 'en',
     item_count: card.contentItems?.length || 0,
+    translation_languages: translationLanguages,
     cardData: card,
     error
   }
@@ -389,23 +479,6 @@ function generateSlug(name: string): string {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .substring(0, 50)
-}
-
-function guessVenueType(card: any): string | null {
-  const name = (card.name || '').toLowerCase()
-  const desc = (card.description || '').toLowerCase()
-  const text = name + ' ' + desc
-  
-  if (text.includes('museum') || text.includes('exhibit')) return 'museum'
-  if (text.includes('restaurant') || text.includes('dining') || text.includes('menu')) return 'restaurant'
-  if (text.includes('gallery') || text.includes('art')) return 'gallery'
-  if (text.includes('hotel') || text.includes('resort')) return 'hospitality'
-  if (text.includes('event') || text.includes('festival')) return 'event'
-  if (text.includes('tour') || text.includes('landmark')) return 'tour'
-  if (text.includes('shop') || text.includes('mall') || text.includes('retail')) return 'retail'
-  if (text.includes('conference') || text.includes('summit')) return 'conference'
-  
-  return null
 }
 
 function formatContentMode(mode: string): string {
@@ -431,6 +504,22 @@ function getModeSeverity(mode: string): string {
     inline: 'secondary' // Grey
   }
   return severities[mode] || 'secondary'
+}
+
+function getLanguageFlag(lang: string): string {
+  const flags: Record<string, string> = {
+    en: '🇺🇸',
+    'zh-Hant': '🇭🇰',
+    'zh-Hans': '🇨🇳',
+    ja: '🇯🇵',
+    ko: '🇰🇷',
+    es: '🇪🇸',
+    fr: '🇫🇷',
+    de: '🇩🇪',
+    it: '🇮🇹',
+    pt: '🇧🇷'
+  }
+  return flags[lang] || '🌐'
 }
 
 async function handleBulkImport() {
@@ -567,5 +656,21 @@ function finishImport() {
 
 .failed-list ul {
   @apply list-disc list-inside;
+}
+
+.language-badge {
+  @apply inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-medium;
+}
+
+.translation-badges {
+  @apply flex flex-wrap gap-1;
+}
+
+.translation-lang-badge {
+  @apply inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs;
+}
+
+.translation-more-badge {
+  @apply inline-flex items-center px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium;
 }
 </style>

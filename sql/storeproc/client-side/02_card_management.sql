@@ -252,6 +252,7 @@ BEGIN
     -- No need to check user_id = auth.uid() as RLS policy will handle this
 END;
 $$;
+GRANT EXECUTE ON FUNCTION get_card_by_id(UUID) TO authenticated;
 
 -- Update an existing card (more secure)
 CREATE OR REPLACE FUNCTION update_card(
@@ -470,6 +471,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
+GRANT EXECUTE ON FUNCTION delete_card(UUID) TO authenticated;
 
 -- Toggle access enabled/disabled for a digital card
 CREATE OR REPLACE FUNCTION toggle_card_access(

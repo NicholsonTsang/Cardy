@@ -68,6 +68,8 @@ interface Props {
     conversation_ai_enabled: boolean
     ai_instruction?: string
     ai_knowledge_base?: string
+    ai_welcome_general?: string
+    ai_welcome_item?: string
     is_activated: boolean
   }
   item: ContentItem | null

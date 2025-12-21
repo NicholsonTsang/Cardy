@@ -78,6 +78,7 @@
                 <DigitalAccessQR
                   :card="selectedCard"
                   :cardName="selectedCard.name"
+                  :readOnly="true"
                 />
               </div>
               
@@ -123,6 +124,8 @@ interface Card {
   conversation_ai_enabled: boolean
   ai_instruction: string
   ai_knowledge_base: string
+  ai_welcome_general: string
+  ai_welcome_item: string
   qr_code_position: string
   translations?: Record<string, any>
   original_language?: string
@@ -149,7 +152,6 @@ interface ContentItem {
   image_url: string | null
   parent_id: string | null
   ai_knowledge_base: string | null
-  ai_metadata: string | null
 }
 
 interface Batch {

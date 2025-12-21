@@ -7,6 +7,9 @@ import { defineStore } from 'pinia';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from './auth';
 
+// Backend URL with fallback for local development
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+
 export interface TranslationStatus {
   language: LanguageCode;
   language_name: string;
@@ -201,7 +204,7 @@ export const useTranslationStore = defineStore('translation', {
 
         // Call Backend API to create translation job
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/translations/translate-card`,
+          `${BACKEND_URL}/api/translations/translate-card`,
           {
             method: 'POST',
             headers: {
@@ -254,7 +257,7 @@ export const useTranslationStore = defineStore('translation', {
         }
 
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URL}/api/translations/job/${jobId}`,
+          `${BACKEND_URL}/api/translations/job/${jobId}`,
           {
             method: 'GET',
             headers: {

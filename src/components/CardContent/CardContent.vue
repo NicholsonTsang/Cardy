@@ -2,59 +2,56 @@
     <div class="grid grid-cols-1 xl:grid-cols-5 gap-4 lg:gap-6">
         <!-- Content Items List -->
         <div class="xl:col-span-2 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
-            <div class="p-3 sm:p-4 border-b border-slate-200" :class="headerConfig.bgClass">
+            <div class="p-2.5 sm:p-3 border-b border-slate-200" :class="headerConfig.bgClass">
                 <div class="flex justify-between items-center gap-2">
                     <div class="flex items-center gap-2 min-w-0">
-                        <div class="p-2 rounded-lg" :class="headerConfig.iconBgClass">
-                            <i :class="['pi', headerConfig.icon, 'text-sm', headerConfig.iconClass]"></i>
+                        <div class="p-1.5 rounded-lg" :class="headerConfig.iconBgClass">
+                            <i :class="['pi', headerConfig.icon, 'text-xs', headerConfig.iconClass]"></i>
                         </div>
                         <div class="min-w-0">
-                            <h2 class="text-base sm:text-lg font-semibold text-slate-900 truncate">{{ headerConfig.title }}</h2>
-                            <div class="flex items-center gap-2 flex-wrap">
-                                <p v-if="displayItemsCount > 0" class="text-xs text-slate-500">
+                            <div class="flex items-center gap-2">
+                                <h2 class="text-sm sm:text-base font-semibold text-slate-900 truncate">{{ headerConfig.title }}</h2>
+                                <!-- Compact count badge -->
+                                <span v-if="displayItemsCount > 0" class="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full whitespace-nowrap">
                                     <template v-if="effectiveIsGrouped">
-                                        {{ contentItems.length }} {{ contentItems.length === 1 ? $t('content.category') : $t('content.categories') }}
-                                        <span v-if="totalChildItems > 0" class="text-slate-400">
-                                            · {{ totalChildItems }} {{ $t('content.items') }}
-                                        </span>
+                                        {{ contentItems.length }}{{ totalChildItems > 0 ? ` · ${totalChildItems}` : '' }}
                                     </template>
-                                    <template v-else>
-                                        {{ displayItemsCount }} {{ displayItemsCount === 1 ? $t('content.item') : $t('content.items') }}
-                                    </template>
-                                </p>
-                                <!-- Mode & Grouping indicator -->
-                                <div class="flex items-center gap-1">
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-slate-100 text-slate-600">
-                                        <i :class="['pi', modeIndicator.icon, 'text-[8px]']"></i>
-                                        {{ modeIndicator.label }}
-                                    </span>
-                                    <span v-if="effectiveIsGrouped" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-100 text-amber-700">
-                                        <i class="pi pi-folder text-[8px]"></i>
-                                        {{ props.groupDisplay === 'collapsed' ? $t('dashboard.group_display_collapsed') : $t('dashboard.group_display_expanded') }}
-                                    </span>
-                                </div>
+                                    <template v-else>{{ displayItemsCount }}</template>
+                                </span>
+                            </div>
+                            <!-- Mode badges - single row, more compact -->
+                            <div class="flex items-center gap-1 mt-0.5">
+                                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-100/80 text-slate-500">
+                                    <i :class="['pi', modeIndicator.icon, 'text-[8px]']"></i>
+                                    {{ modeIndicator.label }}
+                                </span>
+                                <span v-if="effectiveIsGrouped" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-50 text-amber-600">
+                                    <i class="pi pi-folder-open text-[8px]"></i>
+                                    {{ props.groupDisplay === 'collapsed' ? $t('dashboard.group_display_collapsed') : $t('dashboard.group_display_expanded') }}
+                                </span>
                             </div>
                         </div>
                     </div>
                     <Button 
                         v-if="normalizedMode !== 'single' || contentItems.length === 0"
-                        :icon="headerConfig.addIcon" 
-                        :label="headerConfig.addLabel" 
+                        icon="pi pi-plus" 
                         @click="showAddSerieDialog = true" 
                         size="small"
-                        class="shadow-md hover:shadow-lg transition-shadow flex-shrink-0"
+                        rounded
+                        class="!w-8 !h-8 flex-shrink-0"
                         :class="headerConfig.buttonClass"
+                        v-tooltip.left="headerConfig.addLabel"
                     />
                 </div>
-                <!-- Mode hint for Single mode -->
-                <p v-if="normalizedMode === 'single' && contentItems.length >= 1" class="text-xs text-purple-600 mt-2 flex items-center gap-1">
-                    <i class="pi pi-info-circle text-xs"></i>
+                <!-- Mode hint for Single mode - more compact -->
+                <p v-if="normalizedMode === 'single' && contentItems.length >= 1" class="text-[10px] text-purple-600 mt-1.5 flex items-center gap-1">
+                    <i class="pi pi-info-circle text-[10px]"></i>
                     {{ $t('content.single_mode_hint') }}
                 </p>
             </div>
 
             <!-- Content Items List -->
-            <div class="flex-1 overflow-y-auto p-2 sm:p-3">
+            <div class="flex-1 overflow-y-auto p-2">
                 <!-- Empty State - Mode Specific -->
                 <div v-if="(effectiveIsGrouped ? contentItems.length : displayItems.length) === 0" class="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
                     <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mb-3 sm:mb-4" :class="emptyStateConfig.bgClass">
@@ -70,18 +67,15 @@
                     />
                 </div>
 
-                <!-- Drag Hint (dismissible, shown when items exist) -->
-                <div v-if="contentItems.length > 0 && !dragHintDismissed" class="flex items-start gap-2 sm:gap-2.5 px-2.5 sm:px-3 py-2 sm:py-2.5 mb-2 sm:mb-3 bg-blue-50 border border-blue-200 rounded-lg text-xs sm:text-sm text-blue-700">
-                    <i class="pi pi-info-circle text-blue-600 mt-0.5 flex-shrink-0 text-xs sm:text-sm"></i>
-                    <span class="leading-relaxed flex-1">
-                        {{ $t('content.drag_tip') }}
-                    </span>
+                <!-- Drag Hint - compact inline design -->
+                <div v-if="contentItems.length > 1 && !dragHintDismissed" class="flex items-center gap-2 px-2 py-1.5 mb-2 bg-slate-50 rounded-md text-[10px] text-slate-500">
+                    <i class="pi pi-arrows-v text-slate-400 text-[10px]"></i>
+                    <span class="flex-1">{{ $t('content.drag_tip_short') }}</span>
                     <button 
                         @click="dragHintDismissed = true"
-                        class="flex-shrink-0 text-blue-600 hover:text-blue-800 transition-colors"
-                        :title="$t('common.close')"
+                        class="text-slate-400 hover:text-slate-600 transition-colors p-0.5"
                     >
-                        <i class="pi pi-times text-xs"></i>
+                        <i class="pi pi-times text-[9px]"></i>
                     </button>
                 </div>
 
@@ -92,125 +86,116 @@
                     @end="onParentDragEnd"
                     item-key="id"
                     handle=".parent-drag-handle"
-                    class="space-y-2 sm:space-y-3"
+                    class="space-y-1.5"
                 >
                     <template #item="{ element: item, index }">
                         <div class="group">
                             <!-- ========== SINGLE MODE: Full Page Content ========== -->
                             <div 
                                 v-if="normalizedMode === 'single'"
-                                class="relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-md"
+                                class="relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm cursor-pointer"
                                 :class="selectedContentItem === item.id 
-                                    ? 'border-purple-500 border-l-4 shadow-md' 
-                                    : 'border-slate-200 hover:border-purple-300'"
+                                    ? 'border-purple-400 border-l-[3px] shadow-sm bg-purple-50/30' 
+                                    : 'border-slate-200 hover:border-purple-200'"
+                                @click="selectedContentItem = item.id"
                             >
-                                <div class="flex items-start gap-3 p-3">
+                                <div class="flex items-center gap-2.5 p-2.5">
                                     <!-- Page Icon -->
-                                    <div 
-                                        class="flex-shrink-0 w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center cursor-pointer"
-                                        @click="selectedContentItem = item.id"
-                                    >
-                                        <i class="pi pi-file text-purple-600 text-lg"></i>
+                                    <div class="flex-shrink-0 w-9 h-9 bg-purple-100 rounded-md flex items-center justify-center">
+                                        <i class="pi pi-file text-purple-500 text-sm"></i>
                                     </div>
                                     
                                     <!-- Page Info -->
-                                    <div 
-                                        class="flex-1 min-w-0 cursor-pointer"
-                                        @click="selectedContentItem = item.id"
-                                    >
-                                        <div class="font-medium text-slate-900 truncate">{{ item.name }}</div>
-                                        <div v-if="item.content" class="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                                    <div class="flex-1 min-w-0">
+                                        <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
+                                        <div v-if="item.content" class="text-[10px] text-slate-500 line-clamp-1">
                                             {{ stripMarkdown(item.content) }}
-                                            </div>
                                         </div>
+                                    </div>
                                 </div>
-                                        </div>
+                            </div>
                                         
                             <!-- ========== GROUPED MODE: Category Header ========== -->
                             <div 
                                 v-else-if="effectiveIsGrouped"
-                                class="relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-md"
+                                class="category-card group/card relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm"
                                 :class="selectedContentItem === item.id 
-                                    ? 'border-orange-500 border-l-4 shadow-md' 
-                                    : 'border-slate-200 hover:border-orange-300'"
+                                    ? 'border-orange-400 border-l-[3px] shadow-sm bg-orange-50/30' 
+                                    : 'border-slate-200 hover:border-orange-200'"
                             >
-                                <div class="flex items-start gap-3 p-3">
+                                <div class="flex items-center gap-2 p-2">
                                     <!-- Drag Handle -->
                                     <div 
-                                        class="flex-shrink-0 flex items-center justify-center w-6 h-6 mt-1 rounded hover:bg-slate-100 cursor-move parent-drag-handle"
+                                        class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move parent-drag-handle opacity-40 group-hover/card:opacity-100 transition-opacity"
                                         @click.stop
                                     >
-                                        <i class="pi pi-bars text-slate-400 text-xs"></i>
-                                            </div>
+                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
+                                    </div>
                                     
                                     <!-- Category Icon -->
                                     <div 
-                                        class="flex-shrink-0 w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center cursor-pointer"
+                                        class="flex-shrink-0 w-8 h-8 bg-orange-100 rounded-md flex items-center justify-center cursor-pointer"
                                         @click="selectedContentItem = item.id"
                                     >
-                                        <i class="pi pi-folder text-orange-600"></i>
-                                            </div>
+                                        <i class="pi pi-folder text-orange-500 text-sm"></i>
+                                    </div>
                                     
                                     <!-- Category Info -->
                                     <div 
                                         class="flex-1 min-w-0 cursor-pointer"
                                         @click="() => { selectedContentItem = item.id; expandContentItems[index] = !expandContentItems[index]; }"
                                     >
-                                        <div class="font-semibold text-slate-900 truncate">{{ item.name }}</div>
-                                        <div class="text-xs text-slate-500 mt-0.5">
+                                        <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
+                                        <div class="text-[10px] text-slate-500">
                                             <span v-if="item.children && item.children.length > 0">
                                                 {{ item.children.length }} {{ $t('content.items_count') }}
                                             </span>
-                                            <span v-else class="text-amber-600">
+                                            <span v-else class="text-amber-500">
                                                 {{ $t('content.no_items_yet') }}
                                             </span>
                                         </div>
                                     </div>
                                     
+                                    <!-- Add Item Button (visible on hover) -->
+                                    <button
+                                        class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md bg-orange-100 text-orange-600 hover:bg-orange-200 opacity-0 group-hover/card:opacity-100 transition-all"
+                                        @click.stop="() => { showAddItemDialog = true; parentItemId = item.id; }"
+                                        v-tooltip.top="$t('content.add_item')"
+                                    >
+                                        <i class="pi pi-plus text-[10px]"></i>
+                                    </button>
+                                    
                                     <!-- Expand/Collapse -->
                                     <button
-                                        v-if="item.children && item.children.length > 0"
-                                        class="flex-shrink-0 w-6 h-6 mt-1 flex items-center justify-center rounded hover:bg-slate-100"
+                                        class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-100 transition-colors"
+                                        :class="item.children && item.children.length > 0 ? '' : 'invisible'"
                                         @click.stop="expandContentItems[index] = !expandContentItems[index]"
                                     >
-                                        <i :class="expandContentItems[index] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-slate-500 text-xs"></i>
+                                        <i :class="expandContentItems[index] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-slate-400 text-[10px]"></i>
                                     </button>
-                                </div>
-                                
-                                <!-- Add Item Button -->
-                                <div class="px-3 pb-3 border-t border-slate-100">
-                                    <Button 
-                                        icon="pi pi-plus" 
-                                        :label="$t('content.add_item')"
-                                        severity="secondary" 
-                                        outlined
-                                        size="small"
-                                        class="w-full mt-2 text-xs"
-                                        @click.stop="() => { showAddItemDialog = true; parentItemId = item.id; }" 
-                                    />
                                 </div>
                             </div>
 
                             <!-- ========== LIST MODE: Simple List Item ========== -->
                             <div 
                                 v-else-if="normalizedMode === 'list' && !effectiveIsGrouped"
-                                class="relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-md"
+                                class="group/list relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm"
                                 :class="selectedContentItem === item.id 
-                                    ? 'border-blue-500 border-l-4 shadow-md bg-blue-50/30' 
-                                    : 'border-slate-200 hover:border-blue-300'"
+                                    ? 'border-blue-400 border-l-[3px] shadow-sm bg-blue-50/30' 
+                                    : 'border-slate-200 hover:border-blue-200'"
                             >
-                                <div class="flex items-center gap-3 p-3">
+                                <div class="flex items-center gap-2 p-2">
                                     <!-- Drag Handle -->
                                     <div 
-                                        class="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded hover:bg-slate-100 cursor-move parent-drag-handle"
+                                        class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move parent-drag-handle opacity-40 group-hover/list:opacity-100 transition-opacity"
                                         @click.stop
                                     >
-                                        <i class="pi pi-bars text-slate-400 text-xs"></i>
+                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
                                     </div>
                                     
                                     <!-- List Icon -->
-                                    <div class="flex-shrink-0 w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                        <i :class="['pi', getLinkIcon(item.content), 'text-blue-600']"></i>
+                                    <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
+                                        <i :class="['pi', getLinkIcon(item.content), 'text-blue-500 text-sm']"></i>
                                     </div>
                                     
                                     <!-- Item Info -->
@@ -218,8 +203,8 @@
                                         class="flex-1 min-w-0 cursor-pointer"
                                         @click="selectedContentItem = item.id"
                                     >
-                                        <div class="font-medium text-slate-900 truncate">{{ item.name }}</div>
-                                        <div v-if="item.content" class="text-xs text-slate-500 truncate mt-0.5">
+                                        <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
+                                        <div v-if="item.content" class="text-[10px] text-slate-500 truncate">
                                             {{ item.content }}
                                         </div>
                                     </div>
@@ -229,18 +214,18 @@
                             <!-- ========== GRID MODE: Gallery Item ========== -->
                             <div 
                                 v-else-if="normalizedMode === 'grid' && !effectiveIsGrouped"
-                                class="relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-md"
+                                class="group/grid relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm"
                                 :class="selectedContentItem === item.id 
-                                    ? 'border-green-500 border-l-4 shadow-md' 
-                                    : 'border-slate-200 hover:border-green-300'"
+                                    ? 'border-green-400 border-l-[3px] shadow-sm bg-green-50/20' 
+                                    : 'border-slate-200 hover:border-green-200'"
                             >
-                                <div class="flex items-start gap-3 p-3">
+                                <div class="flex items-center gap-2 p-2">
                                     <!-- Drag Handle -->
                                     <div 
-                                        class="flex-shrink-0 flex items-center justify-center w-6 h-6 mt-1 rounded hover:bg-slate-100 cursor-move parent-drag-handle"
+                                        class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move parent-drag-handle opacity-40 group-hover/grid:opacity-100 transition-opacity"
                                         @click.stop
                                     >
-                                        <i class="pi pi-bars text-slate-400 text-xs"></i>
+                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
                                     </div>
                                     
                                     <!-- Thumbnail (Square) -->
@@ -248,25 +233,25 @@
                                         class="flex-shrink-0 cursor-pointer"
                                         @click="selectedContentItem = item.id"
                                     >
-                                        <div v-if="item.image_url" class="w-14 h-14 rounded-lg overflow-hidden border border-slate-200">
+                                        <div v-if="item.image_url" class="w-10 h-10 rounded-md overflow-hidden border border-slate-200">
                                             <img :src="item.image_url" :alt="item.name" class="w-full h-full object-cover" />
                                         </div>
-                                        <div v-else class="w-14 h-14 bg-green-50 rounded-lg border border-green-200 border-dashed flex items-center justify-center">
-                                            <i class="pi pi-image text-green-400"></i>
+                                        <div v-else class="w-10 h-10 bg-green-50 rounded-md border border-green-200 border-dashed flex items-center justify-center">
+                                            <i class="pi pi-image text-green-300 text-xs"></i>
                                         </div>
                                     </div>
                                     
                                     <!-- Item Info -->
                                     <div 
-                                        class="flex-1 min-w-0 cursor-pointer pt-0.5"
+                                        class="flex-1 min-w-0 cursor-pointer"
                                         @click="selectedContentItem = item.id"
                                     >
-                                        <div class="font-medium text-slate-900 truncate">{{ item.name }}</div>
-                                        <div v-if="item.content" class="text-xs text-slate-500 line-clamp-2 mt-0.5">
-                                            {{ stripMarkdown(item.content) }}
-                                        </div>
-                                        <div v-if="!item.image_url" class="text-xs text-amber-600 mt-1">
+                                        <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
+                                        <div v-if="!item.image_url" class="text-[10px] text-amber-500">
                                             {{ $t('content.needs_photo') }}
+                                        </div>
+                                        <div v-else-if="item.content" class="text-[10px] text-slate-500 truncate">
+                                            {{ stripMarkdown(item.content) }}
                                         </div>
                                     </div>
                                 </div>
@@ -275,18 +260,18 @@
                             <!-- ========== CARDS MODE: Full Card Item ========== -->
                             <div 
                                 v-else-if="normalizedMode === 'cards' && !effectiveIsGrouped"
-                                class="relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-md"
+                                class="group/cards relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm"
                                 :class="selectedContentItem === item.id 
-                                    ? 'border-cyan-500 border-l-4 shadow-md' 
-                                    : 'border-slate-200 hover:border-cyan-300'"
+                                    ? 'border-cyan-400 border-l-[3px] shadow-sm bg-cyan-50/20' 
+                                    : 'border-slate-200 hover:border-cyan-200'"
                             >
-                                <div class="flex items-start gap-3 p-3">
+                                <div class="flex items-center gap-2 p-2">
                                     <!-- Drag Handle -->
                                     <div 
-                                        class="flex-shrink-0 flex items-center justify-center w-6 h-6 mt-1 rounded hover:bg-slate-100 cursor-move parent-drag-handle"
+                                        class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move parent-drag-handle opacity-40 group-hover/cards:opacity-100 transition-opacity"
                                         @click.stop
                                     >
-                                        <i class="pi pi-bars text-slate-400 text-xs"></i>
+                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
                                     </div>
                                     
                                     <!-- Thumbnail (16:9) -->
@@ -294,21 +279,21 @@
                                         class="flex-shrink-0 cursor-pointer"
                                         @click="selectedContentItem = item.id"
                                     >
-                                        <div v-if="item.image_url" class="w-20 rounded-lg overflow-hidden border border-slate-200" style="aspect-ratio: 16/9">
+                                        <div v-if="item.image_url" class="w-14 rounded-md overflow-hidden border border-slate-200" style="aspect-ratio: 16/9">
                                             <img :src="item.image_url" :alt="item.name" class="w-full h-full object-cover" />
                                         </div>
-                                        <div v-else class="w-20 bg-cyan-50 rounded-lg border border-cyan-200 border-dashed flex items-center justify-center" style="aspect-ratio: 16/9">
-                                            <i class="pi pi-image text-cyan-400"></i>
+                                        <div v-else class="w-14 bg-cyan-50 rounded-md border border-cyan-200 border-dashed flex items-center justify-center" style="aspect-ratio: 16/9">
+                                            <i class="pi pi-image text-cyan-300 text-xs"></i>
                                         </div>
                                     </div>
                                     
                                     <!-- Item Info -->
                                     <div 
-                                        class="flex-1 min-w-0 cursor-pointer pt-0.5"
+                                        class="flex-1 min-w-0 cursor-pointer"
                                         @click="selectedContentItem = item.id"
                                     >
-                                        <div class="font-medium text-slate-900 truncate">{{ item.name }}</div>
-                                        <div v-if="item.content" class="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                                        <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
+                                        <div v-if="item.content" class="text-[10px] text-slate-500 truncate">
                                             {{ stripMarkdown(item.content) }}
                                         </div>
                                     </div>
@@ -318,36 +303,36 @@
                             <!-- ========== DEFAULT MODE: Generic Item ========== -->
                             <div 
                                 v-else
-                                class="relative rounded-lg border border-slate-200 transition-all duration-200 overflow-hidden bg-white hover:shadow-md hover:border-blue-300"
-                                :class="{ 'border-l-4 border-l-blue-500 shadow-md': selectedContentItem === item.id }"
+                                class="group/default relative rounded-lg border border-slate-200 transition-all duration-200 overflow-hidden bg-white hover:shadow-sm hover:border-blue-200"
+                                :class="{ 'border-l-[3px] border-l-blue-400 shadow-sm bg-blue-50/20': selectedContentItem === item.id }"
                             >
-                                <div class="flex items-start gap-3 p-3">
-                                    <div class="flex-shrink-0 flex items-center justify-center w-6 h-6 mt-1 rounded hover:bg-slate-100 cursor-move parent-drag-handle" @click.stop>
-                                        <i class="pi pi-bars text-slate-400 text-xs"></i>
+                                <div class="flex items-center gap-2 p-2">
+                                    <div class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move parent-drag-handle opacity-40 group-hover/default:opacity-100 transition-opacity" @click.stop>
+                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
                                     </div>
                                     <div v-if="item.image_url" class="flex-shrink-0">
-                                        <div class="w-16 rounded-lg overflow-hidden border border-slate-200" style="aspect-ratio: 4/3">
+                                        <div class="w-10 rounded-md overflow-hidden border border-slate-200" style="aspect-ratio: 4/3">
                                             <img :src="item.image_url" :alt="item.name" class="w-full h-full object-cover" />
                                         </div>
                                     </div>
-                                    <div v-else class="w-16 bg-slate-100 rounded-lg border border-slate-200 flex items-center justify-center flex-shrink-0" style="aspect-ratio: 4/3">
-                                        <i class="pi pi-image text-slate-400"></i>
+                                    <div v-else class="w-10 bg-slate-100 rounded-md border border-slate-200 flex items-center justify-center flex-shrink-0" style="aspect-ratio: 4/3">
+                                        <i class="pi pi-image text-slate-400 text-xs"></i>
                                     </div>
-                                    <div class="flex-1 min-w-0 pt-0.5 cursor-pointer" @click="() => { selectedContentItem = item.id; expandContentItems[index] = !expandContentItems[index]; }">
-                                        <div class="font-medium text-slate-900 truncate">{{ item.name }}</div>
-                                        <div v-if="item.children && item.children.length > 0" class="text-xs text-slate-500 mt-1">
+                                    <div class="flex-1 min-w-0 cursor-pointer" @click="() => { selectedContentItem = item.id; expandContentItems[index] = !expandContentItems[index]; }">
+                                        <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
+                                        <div v-if="item.children && item.children.length > 0" class="text-[10px] text-slate-500">
                                             {{ $t('content.sub_items_count', { count: item.children.length }) }}
                                         </div>
                                     </div>
-                                    <button v-if="item.children && item.children.length > 0" class="flex-shrink-0 w-6 h-6 mt-1 flex items-center justify-center rounded hover:bg-slate-100" @click.stop="expandContentItems[index] = !expandContentItems[index]">
-                                        <i :class="expandContentItems[index] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-slate-500 text-xs"></i>
+                                    <button v-if="item.children && item.children.length > 0" class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-100 transition-colors" @click.stop="expandContentItems[index] = !expandContentItems[index]">
+                                        <i :class="expandContentItems[index] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-slate-400 text-[10px]"></i>
                                     </button>
                                 </div>
                             </div>
 
                             <!-- Sub-items (for Grouped mode - Category Items) -->
                             <Transition name="expand">
-                                <div v-if="expandContentItems[index] && effectiveIsGrouped" class="ml-8 mt-2 space-y-2">
+                                <div v-if="expandContentItems[index] && effectiveIsGrouped" class="ml-6 mt-1.5 space-y-1 border-l-2 border-slate-100 pl-2">
                                     <draggable 
                                         v-model="item.children" 
                                         :group="{ name: 'content-items', pull: true, put: true }"
@@ -356,34 +341,34 @@
                                         @change="(evt) => onCrossParentChange(evt, item.id)"
                                         item-key="id"
                                         handle=".child-drag-handle"
-                                        class="space-y-2 min-h-[40px] rounded-lg transition-colors"
-                                        :class="{ 'bg-amber-50/50 border-2 border-dashed border-amber-200': isDragging }"
+                                        class="space-y-1 min-h-[32px] rounded transition-colors"
+                                        :class="{ 'bg-amber-50/50 border border-dashed border-amber-200': isDragging }"
                                     >
                                         <template #item="{ element: child, index: childIndex }">
                                             <div 
-                                                class="group relative rounded-lg border bg-white transition-all duration-200 hover:shadow-sm"
+                                                class="group/child relative rounded-md border bg-white transition-all duration-150 hover:shadow-sm"
                                                 :class="selectedContentItem === child.id 
-                                                    ? 'border-amber-500 border-l-4 shadow-sm' 
-                                                    : 'border-slate-200 hover:border-amber-300'"
+                                                    ? 'border-amber-400 border-l-2 shadow-sm bg-amber-50/30' 
+                                                    : 'border-slate-150 hover:border-amber-200'"
                                             >
-                                                <div class="flex items-center gap-2.5 p-2.5">
+                                                <div class="flex items-center gap-2 p-1.5">
                                                     <!-- Drag Handle -->
-                                                    <div class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move child-drag-handle" @click.stop>
-                                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
+                                                    <div class="flex-shrink-0 flex items-center justify-center w-4 h-4 rounded hover:bg-slate-100 cursor-move child-drag-handle opacity-30 group-hover/child:opacity-100 transition-opacity" @click.stop>
+                                                        <i class="pi pi-bars text-slate-400 text-[9px]"></i>
                                                     </div>
                                                     
                                                     <!-- Item Thumbnail -->
-                                                    <div v-if="child.image_url" class="flex-shrink-0 w-10 h-10 rounded overflow-hidden border border-slate-200">
+                                                    <div v-if="child.image_url" class="flex-shrink-0 w-7 h-7 rounded overflow-hidden border border-slate-200">
                                                         <img :src="child.image_url" :alt="child.name" class="w-full h-full object-cover" />
                                                     </div>
-                                                    <div v-else class="flex-shrink-0 w-10 h-10 bg-amber-50 rounded flex items-center justify-center">
-                                                        <i class="pi pi-box text-amber-400 text-xs"></i>
+                                                    <div v-else class="flex-shrink-0 w-7 h-7 bg-amber-50 rounded flex items-center justify-center">
+                                                        <i class="pi pi-box text-amber-300 text-[10px]"></i>
                                                     </div>
                                                     
                                                     <!-- Item Info -->
                                                     <div class="flex-1 min-w-0 cursor-pointer" @click="selectedContentItem = child.id">
-                                                        <div class="font-medium text-slate-900 text-sm truncate">{{ child.name }}</div>
-                                                        <div v-if="child.content" class="text-xs text-slate-500 truncate mt-0.5">
+                                                        <div class="font-medium text-slate-800 text-xs truncate">{{ child.name }}</div>
+                                                        <div v-if="child.content" class="text-[10px] text-slate-400 truncate">
                                                             {{ stripMarkdown(child.content) }}
                                                         </div>
                                                     </div>
@@ -396,37 +381,34 @@
 
                             <!-- Sub-items (for Default mode) -->
                             <Transition name="expand">
-                                <div v-if="expandContentItems[index] && !['single', 'list', 'grid', 'cards'].includes(contentMode)" class="ml-8 mt-2 space-y-2">
+                                <div v-if="expandContentItems[index] && !['single', 'list', 'grid', 'cards'].includes(contentMode)" class="ml-6 mt-1.5 space-y-1 border-l-2 border-slate-100 pl-2">
                                     <draggable 
                                         v-model="item.children" 
                                         @end="(evt) => onChildDragEnd(evt, item.id)"
                                         item-key="id"
                                         handle=".child-drag-handle"
-                                        class="space-y-2"
+                                        class="space-y-1"
                                     >
                                         <template #item="{ element: child, index: childIndex }">
                                             <div 
-                                                class="group relative rounded-lg border border-slate-200 bg-white transition-all duration-200 hover:shadow-sm hover:border-blue-300"
-                                                :class="{ 'border-l-4 border-l-blue-500 shadow-sm': selectedContentItem === child.id }"
+                                                class="group/subitem relative rounded-md border border-slate-200 bg-white transition-all duration-150 hover:shadow-sm hover:border-blue-200"
+                                                :class="{ 'border-l-2 border-l-blue-400 shadow-sm bg-blue-50/20': selectedContentItem === child.id }"
                                             >
-                                                <div class="flex items-center gap-2.5 p-2.5">
-                                                    <div class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move child-drag-handle" @click.stop>
-                                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
+                                                <div class="flex items-center gap-2 p-1.5">
+                                                    <div class="flex-shrink-0 flex items-center justify-center w-4 h-4 rounded hover:bg-slate-100 cursor-move child-drag-handle opacity-30 group-hover/subitem:opacity-100 transition-opacity" @click.stop>
+                                                        <i class="pi pi-bars text-slate-400 text-[9px]"></i>
                                                     </div>
                                                     <div class="flex-shrink-0 cursor-pointer" @click="selectedContentItem = child.id">
-                                                        <div v-if="child.image_url" class="w-12 rounded-md overflow-hidden border border-slate-200" style="aspect-ratio: 4/3">
+                                                        <div v-if="child.image_url" class="w-7 rounded overflow-hidden border border-slate-200" style="aspect-ratio: 4/3">
                                                             <img :src="child.image_url" :alt="child.name" class="w-full h-full object-cover" />
                                                         </div>
-                                                        <div v-else class="w-12 bg-slate-100 rounded-md border border-slate-200 flex items-center justify-center" style="aspect-ratio: 4/3">
-                                                            <i class="pi pi-image text-slate-400 text-xs"></i>
+                                                        <div v-else class="w-7 bg-slate-100 rounded border border-slate-200 flex items-center justify-center" style="aspect-ratio: 4/3">
+                                                            <i class="pi pi-image text-slate-400 text-[9px]"></i>
                                                         </div>
                                                     </div>
                                                     <div class="flex-1 min-w-0 cursor-pointer" @click="selectedContentItem = child.id">
-                                                        <div class="font-medium text-sm text-slate-800 truncate group-hover:text-blue-600 transition-colors">
+                                                        <div class="font-medium text-xs text-slate-800 truncate group-hover/subitem:text-blue-600 transition-colors">
                                                             {{ child.name }}
-                                                        </div>
-                                                        <div class="text-xs text-slate-500 mt-0.5">
-                                                            {{ $t('content.sub_item_index', { index: childIndex + 1 }) }}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -446,46 +428,46 @@
                     @end="onFlatItemDragEnd"
                     item-key="id"
                     handle=".flat-drag-handle"
-                    class="space-y-2 sm:space-y-3"
+                    class="space-y-1.5"
                 >
                     <template #item="{ element: item }">
                         <div 
-                            class="group relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-md cursor-pointer"
+                            class="group/flat relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm cursor-pointer"
                             :class="selectedContentItem === item.id 
-                                ? 'border-blue-500 border-l-4 shadow-md' 
-                                : 'border-slate-200 hover:border-blue-300'"
+                                ? 'border-blue-400 border-l-[3px] shadow-sm bg-blue-50/20' 
+                                : 'border-slate-200 hover:border-blue-200'"
                             @click="selectedContentItem = item.id"
                         >
-                            <div class="flex items-start gap-3 p-3">
+                            <div class="flex items-center gap-2 p-2">
                                 <!-- Drag Handle -->
                                 <div 
-                                    class="flex-shrink-0 flex items-center justify-center w-6 h-6 mt-1 rounded hover:bg-slate-100 cursor-move flat-drag-handle"
+                                    class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move flat-drag-handle opacity-40 group-hover/flat:opacity-100 transition-opacity"
                                     @click.stop
                                 >
-                                    <i class="pi pi-bars text-slate-400 text-xs"></i>
+                                    <i class="pi pi-bars text-slate-400 text-[10px]"></i>
                                 </div>
                                 
                                 <!-- Thumbnail based on mode -->
-                                <div v-if="normalizedMode === 'grid' && item.image_url" class="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border border-slate-200">
+                                <div v-if="normalizedMode === 'grid' && item.image_url" class="flex-shrink-0 w-10 h-10 rounded-md overflow-hidden border border-slate-200">
                                     <img :src="item.image_url" :alt="item.name" class="w-full h-full object-cover" />
                                 </div>
-                                <div v-else-if="normalizedMode === 'grid'" class="flex-shrink-0 w-14 h-14 bg-green-50 rounded-lg border border-green-200 border-dashed flex items-center justify-center">
-                                    <i class="pi pi-image text-green-400 text-lg"></i>
+                                <div v-else-if="normalizedMode === 'grid'" class="flex-shrink-0 w-10 h-10 bg-green-50 rounded-md border border-green-200 border-dashed flex items-center justify-center">
+                                    <i class="pi pi-image text-green-300 text-xs"></i>
                                 </div>
-                                <div v-else-if="normalizedMode === 'cards' && item.image_url" class="flex-shrink-0 w-20 rounded-lg overflow-hidden border border-slate-200" style="aspect-ratio: 16/9">
+                                <div v-else-if="normalizedMode === 'cards' && item.image_url" class="flex-shrink-0 w-14 rounded-md overflow-hidden border border-slate-200" style="aspect-ratio: 16/9">
                                     <img :src="item.image_url" :alt="item.name" class="w-full h-full object-cover" />
                                 </div>
-                                <div v-else-if="normalizedMode === 'cards'" class="flex-shrink-0 w-20 bg-cyan-50 rounded-lg border border-cyan-200 border-dashed flex items-center justify-center" style="aspect-ratio: 16/9">
-                                    <i class="pi pi-image text-cyan-400"></i>
+                                <div v-else-if="normalizedMode === 'cards'" class="flex-shrink-0 w-14 bg-cyan-50 rounded-md border border-cyan-200 border-dashed flex items-center justify-center" style="aspect-ratio: 16/9">
+                                    <i class="pi pi-image text-cyan-300 text-xs"></i>
                                 </div>
-                                <div v-else class="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                                    <i class="pi pi-file text-blue-400"></i>
+                                <div v-else class="flex-shrink-0 w-8 h-8 bg-blue-50 rounded-md flex items-center justify-center">
+                                    <i class="pi pi-file text-blue-400 text-xs"></i>
                                 </div>
                                 
                                 <!-- Item Info -->
                                 <div class="flex-1 min-w-0">
-                                    <div class="font-medium text-slate-900 truncate">{{ item.name }}</div>
-                                    <div v-if="item.content" class="text-xs text-slate-500 line-clamp-2 mt-0.5">
+                                    <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
+                                    <div v-if="item.content" class="text-[10px] text-slate-500 truncate">
                                         {{ stripMarkdown(item.content) }}
                                     </div>
                                 </div>

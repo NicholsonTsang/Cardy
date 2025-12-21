@@ -37,6 +37,7 @@ export interface MobileCardResponse {
       dailyScans: number;
       scanLimitReached: boolean;
       monthlyLimitExceeded: boolean;
+      dailyLimitExceeded: boolean;
       creditsInsufficient: boolean;
       accessDisabled?: boolean;
     };
@@ -264,6 +265,7 @@ export function transformCardResponse(response: MobileCardResponse): any {
       card_daily_scans: card.dailyScans,
       card_scan_limit_reached: card.scanLimitReached,
       monthly_limit_exceeded: card.monthlyLimitExceeded,
+      daily_limit_exceeded: card.dailyLimitExceeded,
       card_credits_insufficient: card.creditsInsufficient,
       card_access_disabled: card.accessDisabled || false,
       is_activated: response.data.isActivated ?? true,

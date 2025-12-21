@@ -20,9 +20,9 @@
             <!-- Delete Confirmation Dialog -->
             <ConfirmDialog group="deleteCardConfirmation"></ConfirmDialog>
 
-            <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6 min-h-[calc(100vh-200px)]">
-                <!-- Card List Panel -->
-                <div class="lg:col-span-1">
+            <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-[calc(100vh-200px)]">
+                <!-- Card List Panel - Fixed width sidebar -->
+                <div class="w-full lg:w-[320px] lg:flex-shrink-0">
                     <CardListPanel
                         :cards="cards"
                         :loading="isLoading"
@@ -32,21 +32,22 @@
                         v-model:searchQuery="search"
                         v-model:selectedYear="selectedYear"
                         v-model:selectedMonth="selectedMonth"
+                        v-model:translationFilter="translationFilter"
                         :currentPage="currentPage"
                         :itemsPerPage="itemsPerPage"
                         :experienceCount="subscriptionStore.experienceCount"
-                        :experienceLimit="subscriptionStore.experienceLimit"
+                        :experienceLimit="isAdmin ? 0 : subscriptionStore.experienceLimit"
                         @create-card="handleCreateCardClick"
                         @select-card="handleSelectCard"
-                        @clear-date-filters="clearDateFilters"
+                        @clear-filters="clearFilters"
                         @page-change="handlePageChange"
                         @delete-cards="handleBulkDelete"
                         @export-cards="handleBulkExport"
                     />
                 </div>
 
-                <!-- Card Detail Panel -->
-                <div class="lg:col-span-3">
+                <!-- Card Detail Panel - Takes remaining space -->
+                <div class="flex-1 min-w-0">
                     <CardDetailPanel
                         :selectedCard="selectedCardObject"
                         :hasCards="cards.length > 0"
@@ -80,17 +81,21 @@ import PageWrapper from '@/components/Layout/PageWrapper.vue';
 import CardCreateEditView from '@/components/CardComponents/CardCreateEditView.vue';
 import CardListPanel from '@/components/Card/CardListPanel.vue';
 import CardDetailPanel from '@/components/Card/CardDetailPanel.vue';
-import Button from 'primevue/button';
 import { useI18n } from 'vue-i18n';
 import { exportCardsToExcel } from '@/utils/excelHandler.js';
 import { useContentItemStore } from '@/stores/contentItem';
 import { useSubscriptionStore } from '@/stores/subscription';
+import { useAuthStore } from '@/stores/auth';
 
 // Stores and composables
 const { t } = useI18n();
 const cardStore = useCardStore();
 const contentItemStore = useContentItemStore();
 const subscriptionStore = useSubscriptionStore();
+const authStore = useAuthStore();
+
+// Admin check - admins have no project limits
+const isAdmin = computed(() => authStore.getUserRole() === 'admin');
 const { cards, isLoading } = storeToRefs(cardStore);
 const { handleError, handleAsyncError } = useErrorHandler();
 const confirm = useConfirm();
@@ -109,6 +114,7 @@ const activeTab = ref(0);
 // Filters and pagination
 const selectedYear = ref(null);
 const selectedMonth = ref(null);
+const translationFilter = ref(null); // null = all, 'with' = has translations, 'without' = no translations
 const currentPage = ref(1);
 const itemsPerPage = ref(5);
 
@@ -145,6 +151,17 @@ const filteredCards = computed(() => {
         );
     }
 
+    // Filter by translation status
+    if (translationFilter.value === 'with') {
+        tempCards = tempCards.filter(card => 
+            card.translations && Object.keys(card.translations).length > 0
+        );
+    } else if (translationFilter.value === 'without') {
+        tempCards = tempCards.filter(card => 
+            !card.translations || Object.keys(card.translations).length === 0
+        );
+    }
+
     return tempCards;
 });
 
@@ -158,7 +175,7 @@ const activeTabString = computed({
 });
 
 // Watchers
-watch([search, selectedYear, selectedMonth], () => {
+watch([search, selectedYear, selectedMonth, translationFilter], () => {
     currentPage.value = 1;
 });
 
@@ -208,9 +225,10 @@ const handlePageChange = (event) => {
     currentPage.value = Math.floor(event.first / itemsPerPage.value) + 1;
 };
 
-const clearDateFilters = () => {
+const clearFilters = () => {
     selectedYear.value = null;
     selectedMonth.value = null;
+    translationFilter.value = null;
 };
 
 const updateURL = (cardId = null, tab = 0, batchId = null) => {
@@ -273,7 +291,14 @@ const initializeFromURL = () => {
 };
 
 // Check if user can create new experience based on subscription tier
+// Admins have no project limits
 const handleCreateCardClick = async () => {
+    // Admins bypass all limits
+    if (isAdmin.value) {
+        showAddCardDialog.value = true;
+        return;
+    }
+    
     // Fetch latest subscription status
     await subscriptionStore.fetchSubscription();
     
@@ -357,9 +382,15 @@ const triggerDeleteConfirmation = (cardId) => {
         return;
     }
 
+    // Build confirmation message with template warning if applicable
+    let confirmMessage = t('dashboard.confirm_delete_card_message', { name: cardToDelete.name });
+    if (cardToDelete.is_template) {
+        confirmMessage += '\n\n' + t('dashboard.delete_template_warning');
+    }
+
     confirm.require({
         group: 'deleteCardConfirmation',
-        message: t('dashboard.confirm_delete_card_message', { name: cardToDelete.name }),
+        message: confirmMessage,
         header: t('dashboard.confirm_deletion'),
         icon: 'pi pi-exclamation-triangle',
         acceptLabel: t('dashboard.delete_card'),

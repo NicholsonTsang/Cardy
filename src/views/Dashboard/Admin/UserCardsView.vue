@@ -81,7 +81,7 @@
             </div>
             <div class="hidden sm:flex items-center gap-1 text-xs text-slate-400 ml-2">
               <i class="pi pi-eye"></i>
-              {{ $t('admin.read_only_view') || 'Read-only view' }}
+              {{ $t('admin.read_only_view') }}
             </div>
           </div>
         </div>
@@ -141,7 +141,6 @@ import Button from 'primevue/button'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
-import Tag from 'primevue/tag'
 import AdminCardListPanel from '@/components/Admin/AdminCardListPanel.vue'
 import AdminCardDetailPanel from '@/components/Admin/AdminCardDetailPanel.vue'
 

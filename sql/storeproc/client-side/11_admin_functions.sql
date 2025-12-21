@@ -407,16 +407,17 @@ BEGIN
         RAISE EXCEPTION 'Only admins can view all batches.';
     END IF;
 
+    -- Simplified payment status for credit-based system:
+    -- PAID = user paid with credits (payment_completed = true)
+    -- FREE = admin-issued (payment_waived) or no payment required
     RETURN QUERY
     SELECT 
         cb.id,
         cb.batch_number,
         au.email AS user_email,
         CASE 
-            WHEN cb.payment_waived = true THEN 'WAIVED'
             WHEN cb.payment_completed = true THEN 'PAID'
-            WHEN cb.payment_required = true THEN 'PENDING'
-            ELSE 'FREE'
+            ELSE 'FREE'  -- Admin-issued (waived) or no payment required
         END AS payment_status,
         cb.cards_count,
         cb.created_at
@@ -426,10 +427,8 @@ BEGIN
         (p_email_search IS NULL OR au.email ILIKE '%' || p_email_search || '%')
         AND
         (p_payment_status IS NULL OR 
-         (p_payment_status = 'WAIVED' AND cb.payment_waived = true) OR
-         (p_payment_status = 'PAID' AND cb.payment_completed = true AND cb.payment_waived = false) OR
-         (p_payment_status = 'PENDING' AND cb.payment_required = true AND cb.payment_completed = false AND cb.payment_waived = false) OR
-         (p_payment_status = 'FREE' AND cb.payment_required = false))
+         (p_payment_status = 'PAID' AND cb.payment_completed = true) OR
+         (p_payment_status = 'FREE' AND cb.payment_completed = false))
     ORDER BY cb.created_at DESC
     LIMIT p_limit OFFSET p_offset;
 END;
@@ -797,6 +796,7 @@ END;
 $$;
 
 -- Get all cards for a specific user (admin view)
+-- Updated to include all card fields for complete admin visibility
 CREATE OR REPLACE FUNCTION admin_get_user_cards(p_user_id UUID)
 RETURNS TABLE (
     id UUID,
@@ -809,13 +809,21 @@ RETURNS TABLE (
     conversation_ai_enabled BOOLEAN,
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
+    ai_welcome_general TEXT,
+    ai_welcome_item TEXT,
     qr_code_position TEXT,
     content_mode TEXT,
+    is_grouped BOOLEAN,
+    group_display TEXT,
     billing_type TEXT,
     max_scans INT,
     current_scans INT,
     daily_scan_limit INT,
     daily_scans INT,
+    is_access_enabled BOOLEAN,
+    access_token TEXT,
+    translations JSONB,
+    original_language VARCHAR(10),
     batches_count BIGINT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
@@ -845,13 +853,21 @@ BEGIN
         c.conversation_ai_enabled,
         c.ai_instruction,
         c.ai_knowledge_base,
+        c.ai_welcome_general,
+        c.ai_welcome_item,
         c.qr_code_position::TEXT,
         c.content_mode::TEXT,
+        c.is_grouped,
+        c.group_display::TEXT,
         c.billing_type::TEXT,
         c.max_scans,
         c.current_scans,
         c.daily_scan_limit,
         c.daily_scans,
+        c.is_access_enabled,
+        c.access_token,
+        c.translations,
+        c.original_language,
         COUNT(cb.id)::BIGINT AS batches_count,
         c.created_at,
         c.updated_at,
@@ -862,8 +878,10 @@ BEGIN
     WHERE c.user_id = p_user_id
     GROUP BY c.id, c.name, c.description, c.image_url, c.original_image_url,
              c.crop_parameters, c.conversation_ai_enabled, c.ai_instruction, c.ai_knowledge_base,
-             c.qr_code_position, c.content_mode, c.billing_type, c.max_scans, c.current_scans,
-             c.daily_scan_limit, c.daily_scans, c.created_at, c.updated_at, au.email
+             c.ai_welcome_general, c.ai_welcome_item, c.qr_code_position, c.content_mode, 
+             c.is_grouped, c.group_display, c.billing_type, c.max_scans, c.current_scans,
+             c.daily_scan_limit, c.daily_scans, c.is_access_enabled, c.access_token,
+             c.translations, c.original_language, c.created_at, c.updated_at, au.email
     ORDER BY c.created_at DESC;
 END;
 $$;
@@ -945,6 +963,7 @@ BEGIN
         RAISE EXCEPTION 'Admin access required';
     END IF;
 
+    -- Simplified payment status for credit-based system
     RETURN QUERY
     SELECT 
         cb.id,
@@ -952,10 +971,8 @@ BEGIN
         cb.batch_name,
         cb.batch_number,
         CASE
-            WHEN cb.payment_waived THEN 'WAIVED'
             WHEN cb.payment_completed THEN 'PAID'
-            WHEN cb.payment_required THEN 'PENDING'
-            ELSE 'PENDING'
+            ELSE 'FREE'  -- Admin-issued (waived) or no payment required
         END AS payment_status,
         cb.is_disabled,
         COUNT(ic.id) AS cards_count,
@@ -1058,6 +1075,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-GRANT EXECUTE ON FUNCTION get_admin_audit_logs(TEXT, UUID, INTEGER, INTEGER) TO authenticated;
+-- =================================================================
+-- GRANT STATEMENTS FOR ADMIN FUNCTIONS
+-- =================================================================
+-- All admin functions use SECURITY DEFINER and check role internally
+-- They must be callable by authenticated users, but actual admin check
+-- happens inside each function via auth.uid() role lookup
+
+GRANT EXECUTE ON FUNCTION admin_issue_free_batch(TEXT, UUID, INTEGER, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_system_stats_enhanced() TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_update_print_request_status(UUID, "PrintRequestStatus", TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_admin_batches_requiring_attention() TO authenticated;
+GRANT EXECUTE ON FUNCTION get_admin_all_batches(TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_all_print_requests("PrintRequestStatus", TEXT, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_all_users() TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_update_user_subscription(UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_subscription_stats() TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_update_user_role(UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_user_by_email(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_user_cards(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_card_content(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_card_batches(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_batch_issued_cards(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_admin_audit_logs(TEXT, UUID, INTEGER, INTEGER) TO authenticated;

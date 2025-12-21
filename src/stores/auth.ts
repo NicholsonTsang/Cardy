@@ -330,6 +330,7 @@ export const useAuthStore = defineStore('auth', () => {
     isEmailVerified,
     initialize,
     refreshSession,
+    getUserRole,
     getUserRoleFromDatabase,
     sendPasswordResetEmail,
     updatePassword

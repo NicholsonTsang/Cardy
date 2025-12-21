@@ -60,7 +60,7 @@
                         />
                         <!-- NEW Badge -->
                         <div class="absolute -top-1 -right-1 bg-yellow-400 text-yellow-900 text-xs px-1.5 py-0.5 rounded-full font-bold text-[10px] leading-tight">
-                            NEW
+                            {{ $t('common.new') }}
                         </div>
                     </div>
                     <Button 
@@ -158,35 +158,48 @@
                 </div>
             </Dialog>
             
-            <!-- Date Filters (hidden in multi-select mode) -->
-            <div v-if="!multiSelectMode" class="mt-3 grid grid-cols-2 gap-2">
+            <!-- Filters (hidden in multi-select mode) -->
+            <div v-if="!multiSelectMode" class="mt-3 space-y-2">
+                <!-- Date Filters -->
+                <div class="grid grid-cols-2 gap-2">
+                    <Dropdown 
+                        :model-value="selectedYear"
+                        @update:model-value="$emit('update:selectedYear', $event)"
+                        :options="yearOptions" 
+                        optionLabel="label" 
+                        optionValue="value"
+                        :placeholder="$t('dashboard.year')"
+                        showClear
+                        class="w-full text-sm"
+                    />
+                    <Dropdown 
+                        :model-value="selectedMonth"
+                        @update:model-value="$emit('update:selectedMonth', $event)"
+                        :options="monthOptions" 
+                        optionLabel="label" 
+                        optionValue="value"
+                        :placeholder="$t('dashboard.month')"
+                        showClear
+                        :disabled="!selectedYear" 
+                        class="w-full text-sm"
+                    />
+                </div>
+                <!-- Translation Filter -->
                 <Dropdown 
-                    :model-value="selectedYear"
-                    @update:model-value="$emit('update:selectedYear', $event)"
-                    :options="yearOptions" 
+                    :model-value="translationFilter"
+                    @update:model-value="$emit('update:translationFilter', $event)"
+                    :options="translationFilterOptions" 
                     optionLabel="label" 
                     optionValue="value"
-                    :placeholder="$t('dashboard.year')"
-                    showClear
-                    class="w-full text-sm"
-                />
-                <Dropdown 
-                    :model-value="selectedMonth"
-                    @update:model-value="$emit('update:selectedMonth', $event)"
-                    :options="monthOptions" 
-                    optionLabel="label" 
-                    optionValue="value"
-                    :placeholder="$t('dashboard.month')"
-                    showClear
-                    :disabled="!selectedYear" 
+                    :placeholder="$t('dashboard.filter_translations')"
                     class="w-full text-sm"
                 />
             </div>
             <Button 
-                v-if="(selectedYear || selectedMonth) && !multiSelectMode"
-                :label="$t('dashboard.clear_date_filters')"
+                v-if="hasActiveFilters && !multiSelectMode"
+                :label="$t('dashboard.clear_filters')"
                 icon="pi pi-times"
-                @click="$emit('clear-date-filters')"
+                @click="$emit('clear-filters')"
                 text
                 size="small"
                 class="w-full mt-2 text-blue-600"
@@ -328,6 +341,10 @@ const props = defineProps({
         type: [String, Number],
         default: null
     },
+    translationFilter: {
+        type: String,
+        default: null
+    },
     currentPage: {
         type: Number,
         default: 1
@@ -356,12 +373,25 @@ const emit = defineEmits([
     'update:searchQuery',
     'update:selectedYear',
     'update:selectedMonth',
-    'clear-date-filters',
+    'update:translationFilter',
+    'clear-filters',
     'page-change',
     'cards-imported',
     'delete-cards',
     'export-cards'
 ]);
+
+// Translation filter options
+const translationFilterOptions = computed(() => [
+    { label: t('dashboard.filter_all'), value: null },
+    { label: t('dashboard.filter_with_translations'), value: 'with' },
+    { label: t('dashboard.filter_without_translations'), value: 'without' }
+]);
+
+// Check if any filter is active
+const hasActiveFilters = computed(() => {
+    return props.selectedYear !== null || props.selectedMonth !== null || props.translationFilter !== null;
+});
 
 // Dialog state
 const showImportDialog = ref(false);

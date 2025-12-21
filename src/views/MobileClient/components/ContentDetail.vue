@@ -113,6 +113,8 @@ interface CardData {
   conversation_ai_enabled: boolean
   ai_instruction: string
   ai_knowledge_base: string
+  ai_welcome_general?: string
+  ai_welcome_item?: string
   is_activated: boolean
 }
 
@@ -141,6 +143,8 @@ const cardDataForAssistant = computed(() => ({
   conversation_ai_enabled: props.card.conversation_ai_enabled,
   ai_instruction: props.card.ai_instruction,
   ai_knowledge_base: props.card.ai_knowledge_base,
+  ai_welcome_general: props.card.ai_welcome_general || '',
+  ai_welcome_item: props.card.ai_welcome_item || '',
   is_activated: props.card.is_activated
 }))
 

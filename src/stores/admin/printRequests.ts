@@ -2,6 +2,14 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { supabase } from '@/lib/supabase'
 
+export interface PrintRequestFeedback {
+  id: string;
+  admin_email: string;
+  message: string;
+  is_internal: boolean;
+  created_at: string;
+}
+
 export interface AdminPrintRequest {
   id: string;
   batch_id: string;
@@ -16,9 +24,11 @@ export interface AdminPrintRequest {
   shipping_address: string;
   contact_email?: string;
   contact_whatsapp?: string;
-  admin_notes: string;
   requested_at: string;
   updated_at: string;
+  // Admin feedbacks are now stored in print_request_feedbacks table
+  // Fetch separately via get_print_request_feedbacks stored procedure
+  feedbacks?: PrintRequestFeedback[];
 }
 
 export const useAdminPrintRequestsStore = defineStore('adminPrintRequests', () => {
@@ -100,6 +110,19 @@ export const useAdminPrintRequestsStore = defineStore('adminPrintRequests', () =
     return printRequests.value.find(request => request.id === requestId)
   }
 
+  const fetchPrintRequestFeedbacks = async (requestId: string): Promise<PrintRequestFeedback[]> => {
+    try {
+      const { data, error } = await supabase.rpc('get_print_request_feedbacks', {
+        p_request_id: requestId
+      })
+      if (error) throw error
+      return data || []
+    } catch (error) {
+      console.error('Error fetching print request feedbacks:', error)
+      throw error
+    }
+  }
+
   return {
     // State
     printRequests,
@@ -113,6 +136,7 @@ export const useAdminPrintRequestsStore = defineStore('adminPrintRequests', () =
     fetchAllPrintRequests,
     updatePrintRequestStatus,
     getPrintRequestsByStatus,
-    getPrintRequestById
+    getPrintRequestById,
+    fetchPrintRequestFeedbacks
   }
 }) 

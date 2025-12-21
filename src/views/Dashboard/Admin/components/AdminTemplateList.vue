@@ -1350,8 +1350,8 @@ async function createTemplateSettingsSheet(workbook: ExcelJS.Workbook, template:
 async function createCardSheetStandard(workbook: ExcelJS.Workbook, cardData: any, sheetName = 'Card Information') {
   const sheet = workbook.addWorksheet(sheetName)
   
-  // Row 1: Title
-  sheet.mergeCells('A1:O1')
+  // Row 1: Title (A through S = 19 columns)
+  sheet.mergeCells('A1:S1')
   const titleCell = sheet.getCell('A1')
   titleCell.value = '🎴 CardStudio - Card Export Data'
   titleCell.font = { bold: true, size: 18, color: { argb: 'FF1E40AF' } }
@@ -1359,8 +1359,8 @@ async function createCardSheetStandard(workbook: ExcelJS.Workbook, cardData: any
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
   sheet.getRow(1).height = 30
   
-  // Row 2: Instructions
-  sheet.mergeCells('A2:O2')
+  // Row 2: Instructions (A through S = 19 columns)
+  sheet.mergeCells('A2:S2')
   const instructionCell = sheet.getCell('A2')
   instructionCell.value = '📝 Fill in your project details below. Required fields marked with *. Use dropdowns for validation.'
   instructionCell.font = { bold: true, size: 12, color: { argb: 'FF6B7280' } }
@@ -1368,7 +1368,7 @@ async function createCardSheetStandard(workbook: ExcelJS.Workbook, cardData: any
   sheet.getRow(2).height = 25
   
   // Row 3: Headers (must match EXCEL_CONFIG.COLUMNS.CARD)
-  const headers = ['Name*', 'Description', '🤖 AI Instruction*', '🤖 AI Knowledge Base*', 'Original Language*', 'AI Enabled*', 'QR Position*', 'Content Mode*', 'Access Mode*', 'Max Scans', 'Daily Scan Limit', '📷 Card Image', 'Crop Data', 'Translations', 'Content Hash']
+  const headers = ['Name*', 'Description', '🤖 AI Instruction*', '🤖 AI Knowledge Base*', '🤖 AI Welcome (General)', '🤖 AI Welcome (Item)', 'Original Language*', 'AI Enabled*', 'QR Position*', 'Content Mode*', 'Is Grouped', 'Group Display', 'Access Mode*', 'Max Scans', 'Daily Scan Limit', '📷 Card Image', 'Crop Data', 'Translations', 'Content Hash']
   sheet.getRow(3).values = headers
   sheet.getRow(3).font = { bold: true, color: { argb: 'FFFFFFFF' } }
   sheet.getRow(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } }
@@ -1383,10 +1383,14 @@ async function createCardSheetStandard(workbook: ExcelJS.Workbook, cardData: any
     'Brief description',
     'AI instructions',
     'Background knowledge for AI',
+    'Welcome message for general assistant',
+    'Welcome message for item assistant ({name} placeholder)',
     'Original language (en, zh-Hant, etc.)',
     'Select true/false',
     'QR position: TL/TR/BL/BR',
-    'Content mode: single/grouped/list/grid/inline',
+    'Content mode: single/list/grid/cards',
+    'Group content into categories (true/false)',
+    'Group display: expanded/collapsed',
     'Access mode: physical/digital',
     'Total scan limit',
     'Daily scan limit',
@@ -1406,10 +1410,14 @@ async function createCardSheetStandard(workbook: ExcelJS.Workbook, cardData: any
     cardData.description || '',
     cardData.ai_instruction || '',
     cardData.ai_knowledge_base || '',
+    cardData.ai_welcome_general || '',
+    cardData.ai_welcome_item || '',
     cardData.original_language || 'en',
     cardData.conversation_ai_enabled ? true : false,
     cardData.qr_code_position || 'BR',
     cardData.content_mode || 'list',
+    cardData.is_grouped ? true : false,
+    cardData.group_display || 'expanded',
     cardData.billing_type || 'digital',
     cardData.max_scans ?? '',
     cardData.daily_scan_limit ?? '',
@@ -1422,7 +1430,8 @@ async function createCardSheetStandard(workbook: ExcelJS.Workbook, cardData: any
   // Set column widths
   sheet.columns = [
     { width: 25 }, { width: 40 }, { width: 30 }, { width: 45 },
-    { width: 15 }, { width: 12 }, { width: 12 }, { width: 15 },
+    { width: 35 }, { width: 35 }, { width: 15 }, { width: 12 },
+    { width: 12 }, { width: 15 }, { width: 12 }, { width: 15 },
     { width: 12 }, { width: 12 }, { width: 15 }, { width: 25 },
     { width: 0 }, { width: 0 }, { width: 0 } // Hidden columns
   ]

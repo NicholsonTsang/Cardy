@@ -109,8 +109,10 @@ interface CardData {
   crop_parameters?: any
   conversation_ai_enabled: boolean
   ai_instruction?: string
-  ai_knowledge_base?: string
-  is_activated: boolean
+    ai_knowledge_base?: string
+    ai_welcome_general?: string
+    ai_welcome_item?: string
+    is_activated: boolean
   content_mode?: 'single' | 'grid' | 'list' | 'cards'
   is_grouped?: boolean
   group_display?: 'expanded' | 'collapsed'

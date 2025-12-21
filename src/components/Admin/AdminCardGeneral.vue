@@ -149,7 +149,7 @@
           </div>
 
           <!-- AI Configuration -->
-          <div v-if="card.ai_instruction || card.ai_knowledge_base" class="pt-3 border-t border-slate-100 space-y-3">
+          <div v-if="card.ai_instruction || card.ai_knowledge_base || card.ai_welcome_general || card.ai_welcome_item" class="pt-3 border-t border-slate-100 space-y-3">
             <div v-if="card.ai_instruction">
               <label class="block text-xs font-medium text-blue-600 mb-1 flex items-center gap-1">
                 <i class="pi pi-user text-[10px]"></i>
@@ -167,6 +167,51 @@
               </label>
               <div class="p-3 bg-amber-50 rounded-lg border border-amber-100 text-sm text-slate-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
                 {{ card.ai_knowledge_base }}
+              </div>
+            </div>
+
+            <div v-if="card.ai_welcome_general">
+              <label class="block text-xs font-medium text-purple-600 mb-1 flex items-center gap-1">
+                <i class="pi pi-comments text-[10px]"></i>
+                {{ $t('dashboard.ai_welcome_general') }}
+              </label>
+              <div class="p-3 bg-purple-50 rounded-lg border border-purple-100 text-sm text-slate-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                {{ card.ai_welcome_general }}
+              </div>
+            </div>
+
+            <div v-if="card.ai_welcome_item">
+              <label class="block text-xs font-medium text-teal-600 mb-1 flex items-center gap-1">
+                <i class="pi pi-comment text-[10px]"></i>
+                {{ $t('dashboard.ai_welcome_item') }}
+              </label>
+              <div class="p-3 bg-teal-50 rounded-lg border border-teal-100 text-sm text-slate-700 whitespace-pre-wrap max-h-32 overflow-y-auto">
+                {{ card.ai_welcome_item }}
+              </div>
+            </div>
+          </div>
+
+          <!-- Translation & Language Info -->
+          <div v-if="card.original_language || hasTranslations" class="pt-3 border-t border-slate-100 space-y-2">
+            <div class="flex items-center gap-3 flex-wrap">
+              <div v-if="card.original_language">
+                <label class="block text-xs font-medium text-slate-500 mb-1">{{ $t('dashboard.original_language') }}</label>
+                <span class="inline-flex items-center gap-1 px-2 py-1 rounded bg-slate-100 text-slate-700 text-sm font-medium">
+                  <i class="pi pi-globe text-xs"></i>
+                  {{ card.original_language }}
+                </span>
+              </div>
+              <div v-if="hasTranslations">
+                <label class="block text-xs font-medium text-slate-500 mb-1">{{ $t('dashboard.translations') }}</label>
+                <div class="flex flex-wrap gap-1">
+                  <span 
+                    v-for="lang in translatedLanguages" 
+                    :key="lang"
+                    class="inline-flex items-center px-2 py-0.5 rounded bg-green-100 text-green-700 text-xs font-medium"
+                  >
+                    {{ lang }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -189,6 +234,7 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -201,6 +247,8 @@ interface Card {
   conversation_ai_enabled: boolean
   ai_instruction: string | null
   ai_knowledge_base: string | null
+  ai_welcome_general: string | null
+  ai_welcome_item: string | null
   qr_code_position: string
   content_mode: 'single' | 'grid' | 'list' | 'cards'
   is_grouped: boolean
@@ -212,13 +260,25 @@ interface Card {
   daily_scans: number
   is_access_enabled: boolean
   access_token: string
+  translations?: Record<string, any>
+  original_language?: string
   created_at: string
   updated_at: string
 }
 
-defineProps<{
+const props = defineProps<{
   card: Card
 }>()
+
+// Computed
+const hasTranslations = computed(() => {
+  return props.card.translations && Object.keys(props.card.translations).length > 0
+})
+
+const translatedLanguages = computed(() => {
+  if (!props.card.translations) return []
+  return Object.keys(props.card.translations)
+})
 
 const formatDateTime = (dateString: string) => {
   return new Date(dateString).toLocaleString('en-US', {

@@ -2,6 +2,13 @@
 -- CONTENT ITEM PAGINATION & LAZY LOADING
 -- Optimizes performance for cards with many/large content items
 -- =================================================================
+-- NOTE (Dec 2025): Legacy credit-based access functions have been removed.
+-- Mobile client now uses Express backend (mobile.routes.ts) with Redis-first
+-- usage tracking (usage-tracker.ts) for both monthly and daily limits.
+-- 
+-- Removed functions:
+-- - get_public_card_info (legacy credit model, replaced by mobile API)
+-- =================================================================
 
 -- -----------------------------------------------------------------
 -- Get paginated content items with PREVIEW (truncated content)
@@ -113,157 +120,9 @@ $$;
 GRANT EXECUTE ON FUNCTION get_content_item_full(UUID) TO authenticated;
 
 -- -----------------------------------------------------------------
--- PUBLIC: Get card info only (no content items)
--- First call for mobile client - minimal payload (~5KB)
--- SECURITY: Credit rate is hardcoded to prevent bypass attacks
--- -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION get_public_card_info(
-    p_issue_card_id UUID,
-    p_language VARCHAR(10) DEFAULT 'en'
-)
-RETURNS TABLE (
-    card_name TEXT,
-    card_description TEXT,
-    card_image_url TEXT,
-    card_crop_parameters JSONB,
-    card_conversation_ai_enabled BOOLEAN,
-    card_ai_instruction TEXT,
-    card_ai_knowledge_base TEXT,
-    card_ai_welcome_general TEXT,
-    card_ai_welcome_item TEXT,
-    card_original_language VARCHAR(10),
-    card_has_translation BOOLEAN,
-    card_available_languages TEXT[],
-    card_content_mode TEXT,
-    card_is_grouped BOOLEAN,
-    card_group_display TEXT,
-    card_billing_type TEXT,
-    card_max_scans INTEGER,
-    card_current_scans INTEGER,
-    card_daily_scan_limit INTEGER,
-    card_daily_scans INTEGER,
-    card_scan_limit_reached BOOLEAN,
-    card_daily_limit_exceeded BOOLEAN,
-    card_credits_insufficient BOOLEAN,
-    card_id UUID,
-    content_item_count BIGINT,
-    is_activated BOOLEAN
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    -- SECURITY: Hardcoded credit rate to prevent bypass attacks
-    CREDIT_RATE CONSTANT DECIMAL := 0.03;
-    
-    v_card_design_id UUID;
-    v_is_card_active BOOLEAN;
-    v_card_owner_id UUID;
-    v_caller_id UUID;
-    v_is_owner_access BOOLEAN := FALSE;
-    v_billing_type TEXT;
-    v_max_scans INTEGER;
-    v_current_scans INTEGER;
-    v_daily_scan_limit INTEGER;
-    v_daily_scans INTEGER;
-    v_last_scan_date DATE;
-    v_scan_limit_reached BOOLEAN := FALSE;
-    v_daily_limit_exceeded BOOLEAN := FALSE;
-    v_credits_insufficient BOOLEAN := FALSE;
-    v_credit_result JSONB;
-    v_content_count BIGINT;
-BEGIN
-    v_caller_id := auth.uid();
-    
-    -- Get card information
-    SELECT ic.card_id, ic.active, c.user_id, c.billing_type, c.max_scans, c.current_scans,
-           c.daily_scan_limit, c.daily_scans, c.last_scan_date
-    INTO v_card_design_id, v_is_card_active, v_card_owner_id, v_billing_type, v_max_scans, v_current_scans,
-         v_daily_scan_limit, v_daily_scans, v_last_scan_date
-    FROM issue_cards ic
-    JOIN cards c ON ic.card_id = c.id
-    WHERE ic.id = p_issue_card_id;
-
-    IF NOT FOUND THEN
-        RETURN;
-    END IF;
-
-    -- Check owner access
-    IF v_caller_id IS NOT NULL AND v_caller_id = v_card_owner_id THEN
-        v_is_owner_access := TRUE;
-        v_is_card_active := TRUE;
-    END IF;
-
-    -- Handle digital card billing (same logic as get_public_card_content)
-    IF v_billing_type = 'digital' AND NOT v_is_owner_access THEN
-        IF v_last_scan_date IS NULL OR v_last_scan_date < CURRENT_DATE THEN
-            UPDATE cards SET daily_scans = 0, last_scan_date = CURRENT_DATE WHERE id = v_card_design_id;
-            v_daily_scans := 0;
-        END IF;
-        
-        IF v_max_scans IS NOT NULL AND v_current_scans >= v_max_scans THEN
-            v_scan_limit_reached := TRUE;
-        ELSIF v_daily_scan_limit IS NOT NULL AND v_daily_scans >= v_daily_scan_limit THEN
-            v_daily_limit_exceeded := TRUE;
-        ELSE
-            -- Using hardcoded credit rate for security
-            SELECT consume_credit_for_digital_scan(v_card_design_id, v_card_owner_id, CREDIT_RATE)
-            INTO v_credit_result;
-            
-            IF (v_credit_result->>'success')::BOOLEAN = FALSE THEN
-                v_credits_insufficient := TRUE;
-            ELSE
-                UPDATE cards SET current_scans = current_scans + 1, daily_scans = daily_scans + 1, last_scan_date = CURRENT_DATE
-                WHERE id = v_card_design_id;
-                v_current_scans := v_current_scans + 1;
-                v_daily_scans := v_daily_scans + 1;
-            END IF;
-        END IF;
-    END IF;
-
-    -- Auto-activate if needed
-    IF NOT v_is_card_active THEN
-        UPDATE issue_cards SET active = true, activated_at = NOW() WHERE id = p_issue_card_id;
-        v_is_card_active := TRUE;
-    END IF;
-    
-    -- Get content item count
-    SELECT COUNT(*) INTO v_content_count FROM content_items WHERE card_id = v_card_design_id;
-
-    RETURN QUERY
-    SELECT 
-        COALESCE(c.translations->p_language->>'name', c.name)::TEXT,
-        COALESCE(c.translations->p_language->>'description', c.description)::TEXT,
-        c.image_url,
-        c.crop_parameters,
-        c.conversation_ai_enabled,
-        c.ai_instruction,
-        c.ai_knowledge_base,
-        c.ai_welcome_general,
-        c.ai_welcome_item,
-        c.original_language::VARCHAR(10),
-        (c.translations ? p_language)::BOOLEAN,
-        (ARRAY[c.original_language] || ARRAY(SELECT jsonb_object_keys(c.translations)))::TEXT[],
-        COALESCE(c.content_mode, 'list')::TEXT,
-        COALESCE(c.is_grouped, FALSE)::BOOLEAN,
-        COALESCE(c.group_display, 'expanded')::TEXT,
-        COALESCE(c.billing_type, 'physical')::TEXT,
-        c.max_scans,
-        v_current_scans,
-        c.daily_scan_limit,
-        v_daily_scans,
-        v_scan_limit_reached,
-        v_daily_limit_exceeded,
-        v_credits_insufficient,
-        v_card_design_id,
-        v_content_count,
-        v_is_card_active
-    FROM cards c
-    WHERE c.id = v_card_design_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION get_public_card_info(UUID, VARCHAR) TO anon, authenticated;
-
--- -----------------------------------------------------------------
 -- PUBLIC: Get paginated content items with PREVIEW
 -- For mobile list views - reduces initial payload significantly
+-- NOTE: Access control is handled by Express backend (usage-tracker.ts)
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION get_public_content_items_paginated(
     p_card_id UUID,
@@ -320,6 +179,7 @@ GRANT EXECUTE ON FUNCTION get_public_content_items_paginated(UUID, VARCHAR, INTE
 -- -----------------------------------------------------------------
 -- PUBLIC: Get FULL content item details (for detail view)
 -- Called when user taps on an item
+-- NOTE: Access control is handled by Express backend (usage-tracker.ts)
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION get_public_content_item_full(
     p_content_item_id UUID,
@@ -406,4 +266,3 @@ BEGIN
 END;
 $$;
 GRANT EXECUTE ON FUNCTION get_content_items_count(UUID) TO anon, authenticated;
-

@@ -187,4 +187,68 @@ BEGIN
     
     RETURN TRUE;
 END;
-$$; 
+$$;
+
+
+-- Get feedbacks for a print request (card issuer and admin)
+-- Returns only non-internal feedbacks for card issuers
+CREATE OR REPLACE FUNCTION get_print_request_feedbacks(p_request_id UUID)
+RETURNS TABLE (
+    id UUID,
+    admin_email VARCHAR(255),
+    message TEXT,
+    is_internal BOOLEAN,
+    created_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+    v_caller_role TEXT;
+    v_is_admin BOOLEAN;
+BEGIN
+    -- Get caller role
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
+    v_is_admin := v_caller_role = 'admin';
+
+    -- Check if the user owns the print request or is admin
+    SELECT pr.user_id INTO v_user_id
+    FROM print_requests pr
+    JOIN card_batches cb ON pr.batch_id = cb.id
+    JOIN cards c ON cb.card_id = c.id
+    WHERE pr.id = p_request_id;
+
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Print request not found.';
+    END IF;
+
+    IF v_user_id != auth.uid() AND NOT v_is_admin THEN
+        RAISE EXCEPTION 'Not authorized to view feedbacks for this print request.';
+    END IF;
+
+    -- Return feedbacks (admins see all, users see only non-internal)
+    RETURN QUERY
+    SELECT 
+        prf.id,
+        prf.admin_email,
+        prf.message,
+        prf.is_internal,
+        prf.created_at
+    FROM print_request_feedbacks prf
+    WHERE prf.print_request_id = p_request_id
+      AND (v_is_admin OR prf.is_internal = false)
+    ORDER BY prf.created_at DESC;
+END;
+$$;
+
+-- =================================================================
+-- GRANT STATEMENTS
+-- =================================================================
+-- Print request functions use SECURITY DEFINER for access control
+-- Grant execute to authenticated users - authorization checked inside functions
+
+GRANT EXECUTE ON FUNCTION request_card_printing(UUID, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_print_requests_for_batch(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION withdraw_print_request(UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_print_request_feedbacks(UUID) TO authenticated; 

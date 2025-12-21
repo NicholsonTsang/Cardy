@@ -77,7 +77,7 @@
                     ? 'bg-cyan-100 text-cyan-700' 
                     : 'bg-purple-100 text-purple-700'"
                 >
-                  {{ card.billing_type === 'digital' ? 'Digital' : 'Physical' }}
+                  {{ card.billing_type === 'digital' ? $t('admin.digital') : $t('admin.physical') }}
                 </span>
                 <span 
                   class="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 bg-slate-100 text-slate-600"
@@ -208,6 +208,7 @@ const getContentModeLabel = (mode: string) => {
     'grouped': t('dashboard.mode_grouped'),
     'list': t('dashboard.mode_list'),
     'grid': t('dashboard.mode_grid'),
+    'cards': t('dashboard.mode_cards'),
     'inline': t('dashboard.mode_inline')
   }
   return labels[mode] || mode

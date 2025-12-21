@@ -13,21 +13,13 @@
           </p>
         </div>
         <Button
-          v-if="canTranslate"
           :label="$t('translation.manageTranslations')"
           icon="pi pi-globe"
           severity="primary"
           @click="showTranslationDialog = true"
-          :disabled="loading"
+          :disabled="loading || !canTranslate"
           class="w-full sm:w-auto mt-3 sm:mt-0 shadow-md hover:shadow-lg transition-shadow"
-        />
-        <Button
-          v-else
-          :label="$t('subscription.upgrade')"
-          icon="pi pi-star"
-          severity="warning"
-          @click="router.push('/cms/subscription')"
-          class="w-full sm:w-auto mt-3 sm:mt-0 shadow-md hover:shadow-lg transition-shadow"
+          v-tooltip.left="!canTranslate ? $t('subscription.premium_required') : ''"
         />
       </div>
     </div>
@@ -190,6 +182,7 @@ import Message from 'primevue/message';
 import ProgressSpinner from 'primevue/progressspinner';
 import { useTranslationStore, SUPPORTED_LANGUAGES } from '@/stores/translation';
 import { useSubscriptionStore } from '@/stores/subscription';
+import { useAuthStore } from '@/stores/auth';
 import TranslationDialog from './TranslationDialog.vue';
 
 // Props
@@ -203,14 +196,15 @@ const toast = useToast();
 const router = useRouter();
 const translationStore = useTranslationStore();
 const subscriptionStore = useSubscriptionStore();
+const authStore = useAuthStore();
 
 // State
 const loading = ref(false);
 const showTranslationDialog = ref(false);
 
-// Subscription check
-const canTranslate = computed(() => subscriptionStore.canTranslate);
-const isPremium = computed(() => subscriptionStore.isPremium);
+// Subscription check - Admins can always translate, others need premium
+const isAdmin = computed(() => authStore.getUserRole() === 'admin');
+const canTranslate = computed(() => isAdmin.value || subscriptionStore.canTranslate);
 
 // Fetch subscription on mount
 onMounted(async () => {

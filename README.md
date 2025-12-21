@@ -48,6 +48,32 @@ ExperienceQR uses a **subscription-based pricing model**:
 
 > **Note**: Usage is tracked in Redis (source of truth) for performance. Database stores subscription metadata only.
 
+#### Daily Access Limit (Creator Protection)
+
+In addition to monthly subscription limits, each project can have an optional **daily access limit** to protect creators from unexpected traffic spikes:
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| `daily_scan_limit` | Maximum accesses per day per project | 500 (NULL = unlimited) |
+
+**How it works:**
+- Configurable per project in project settings
+- Tracked in Redis (`access:card:{cardId}:date:{YYYY-MM-DD}:scans`)
+- Resets automatically at midnight (via TTL-based key expiration)
+- When exceeded, visitors see "Daily Limit Reached - Try again tomorrow"
+- Does NOT count against monthly subscription limit when blocked
+
+**Use cases:**
+- Protect against sudden viral traffic consuming monthly quota
+- Rate-limit high-traffic projects without upgrading subscription
+- Prevent DDoS-style access patterns
+
+**Implementation:**
+- Redis key: `access:card:${cardId}:date:${YYYY-MM-DD}:scans`
+- Cache key for limit: `access:card:${cardId}:daily_limit`
+- TTL: 2 days (auto-cleanup)
+- Logic: `usage-tracker.ts` → `checkDailyLimit()`, `recordDailyAccess()`
+
 ### Access Modes
 
 ExperienceQR supports two access modes (selected first when creating, **cannot be changed after creation**):
@@ -150,6 +176,33 @@ All new users are automatically assigned the `cardIssuer` role via a database tr
 - Batch issuance with credit consumption (2 credits per card)
 - Designed for museums, exhibitions, events
 
+##### Print Request Workflow
+
+Physical card batches can be submitted for professional printing:
+
+1. **Create Batch**: Card issuer creates a batch (2 credits per card, minimum 100 cards)
+2. **Submit Print Request**: After batch is created, issuer submits print request with:
+   - Shipping address (required)
+   - Contact email or WhatsApp (at least one required)
+3. **Admin Processing**: Admin reviews and processes through status flow:
+   - `SUBMITTED` → `PROCESSING` → `SHIPPED` → `COMPLETED` (or `CANCELLED`)
+4. **Admin Communication**: Admin can add notes when updating status (stored as feedbacks)
+5. **Status Tracking**: Both admin and card issuer can view status and feedbacks
+
+**Key Tables**:
+- `print_requests`: Core print request data (batch_id, status, shipping_address, contact info)
+- `print_request_feedbacks`: Admin communication history (supports internal notes visible only to admins)
+- `PrintRequestStatus` enum: SUBMITTED, PROCESSING, SHIPPED, COMPLETED, CANCELLED
+- `PAYMENT_PENDING`: Reserved for future deferred payment models (currently unused)
+
+**Key Stored Procedures**:
+- `request_card_printing()`: Card issuer submits print request
+- `get_print_requests_for_batch()`: Get print requests for a batch
+- `get_print_request_feedbacks()`: Get admin feedbacks (non-internal for users)
+- `withdraw_print_request()`: Card issuer cancels (only when SUBMITTED)
+- `get_all_print_requests()`: Admin retrieves all requests with filtering
+- `admin_update_print_request_status()`: Admin updates status and adds feedback
+
 #### Digital Access Mode
 - Access counted against subscription tier limits
 - Welcome page with animated visual (no card image)
@@ -157,20 +210,24 @@ All new users are automatically assigned the `cardIssuer` role via a database tr
 
 ### Content Modes
 
-Five base layouts are available to structure your content:
+Four content layouts are available, optionally combined with grouping:
 
 | Mode | Structure | Layout | Best For |
 |------|-----------|--------|----------|
 | **Single** | 1 content item | Full page | Articles, announcements, event info |
-| **Grouped** | Categories + Items | Category headers with list | Menus, catalogs, service lists |
 | **List** | N items | Vertical list | Link-in-bio, resource lists, contacts |
 | **Grid** | N items | 2-column grid | Photo galleries, portfolios, products |
-| **Inline** | N items | Full-width cards | Featured items, blog posts, news |
+| **Cards** | N items | Full-width cards | Featured items, blog posts, news |
 
-**Grouping Logic:**
-- `is_grouped: true` enables hierarchical organization with parent items serving as category headers
-- `group_display` option controls whether categories are 'expanded' (items visible inline) or 'collapsed' (navigate to view items)
+> **Note**: Database column `content_mode` accepts values: `single`, `list`, `grid`, `cards`
+
+**Grouping Logic (orthogonal to content mode):**
+- `is_grouped: true` - enables hierarchical organization with parent items serving as category headers
+- `group_display: 'expanded'` - categories with items visible inline
+- `group_display: 'collapsed'` - categories that navigate to view items
 - `is_grouped: false` with hierarchical content → only leaf items (children) are displayed; parent categories are hidden since they're organizational containers, not actual content
+
+Any content mode (list, grid, cards) can be combined with grouping for flexible layouts.
 
 **Content Hierarchy Handling:**
 | `is_grouped` | Content Structure | Display Behavior |
@@ -200,7 +257,20 @@ Templates are linked to actual `cards` records in the database. This allows full
 - Filter by content mode (single, grouped, list, grid, inline)
 - Preview template content structure before importing
 - Import templates with custom name and billing type selection
+- **Multilingual Import**: Select which language to import content in
 - Creates a complete project with all content items and AI configuration
+
+**Multilingual Import Feature:**
+When importing a template that has translations available, users can choose which language to import the content in:
+
+| Original Language | Translated Languages Available | User Selection | Result |
+|-------------------|-------------------------------|----------------|--------|
+| English | Japanese, Spanish, Chinese | Japanese | Project created with Japanese content, `original_language: 'ja'`, no translations |
+| English | Japanese, Spanish, Chinese | English (original) | Project created with English content, `original_language: 'en'`, no translations |
+
+- **Content fields applied**: name, description, ai_instruction, ai_knowledge_base, ai_welcome_general, ai_welcome_item (for card), name, content, ai_knowledge_base (for content items)
+- **Translations NOT copied**: The imported project starts fresh without any translation data, allowing users to translate it to their own target languages
+- **original_language updated**: Set to the selected import language so the project's base language is correct
 
 **Admin Features:**
 - Create projects using the normal project creation flow (My Projects)
@@ -215,12 +285,14 @@ Templates are linked to actual `cards` records in the database. This allows full
 ```
 content_templates table:
 ├── slug (unique URL-friendly identifier)
-├── card_id (FK → cards table, contains all card data)
+├── card_id (FK → cards table, ON DELETE CASCADE)
 ├── venue_type (for filtering: museum, restaurant, event, etc.)
 ├── is_featured, is_active
 ├── sort_order, import_count
 └── created_at, updated_at
 ```
+
+**Important:** The `card_id` foreign key has `ON DELETE CASCADE`, meaning if you delete a project that is linked to a template, **the template is also automatically deleted**. A warning is shown in the delete confirmation dialog when this applies.
 
 The linked card contains all the project data:
 - Project info: name, description, content_mode, is_grouped, group_display, billing_type
@@ -308,6 +380,115 @@ The user will immediately have access to Premium features:
 - 3,000 monthly access pool (instead of 50)
 - Full translation support
 - Admin-managed subscriptions are auto-set to 1-year period
+
+### History Logs (Operations Log)
+
+The Admin Portal includes a comprehensive **History Logs** page that tracks all auditable operations across the platform. Logs are stored in the `operations_log` table and recorded by stored procedures via the `log_operation()` helper function.
+
+**Features:**
+- Filter by activity type, date range, or search text
+- Paginated results with CSV export
+- Auto-refresh every 5 minutes
+- Visual icons and color coding by action type
+
+**Action Types vs Stored Procedure Log Messages:**
+
+| Action Type | Search Keyword | Stored Procedure Log Message |
+|-------------|----------------|------------------------------|
+| `USER_REGISTRATION` | `New user registered` | `"New user registered: {email}"` (from `handle_new_user` trigger) |
+| `ROLE_CHANGE` | `Changed user role` | `"Changed user role from X to Y for user: {email}"` |
+| `SUBSCRIPTION_CHANGE` | `Admin changed subscription tier` | `"Admin changed subscription tier from X to Y for user: {email}"` |
+| `CARD_CREATION` | `Created` | `"Created {billing_type} card: {name}"` or `"Imported card with translations: {name}"` |
+| `CARD_UPDATE` | `Updated card:` | `"Updated card: {name}"` |
+| `CARD_DELETION` | `Deleted card:` | `"Deleted card: {name}"` |
+| `CARD_ACTIVATION` | `activated` | `"Toggled access for card {name}: enabled/disabled"` or `"Activated issued card"` |
+| `CARD_GENERATION` | `Generated` | `"Generated {count} cards for batch {name}"` |
+| `CONTENT_ITEM_CREATION` | `Created content item:` | `"Created content item: {name}"` or `"Imported content item with translations: {name}"` |
+| `CONTENT_ITEM_UPDATE` | `Updated content item:` | `"Updated content item: {name}"` |
+| `CONTENT_ITEM_DELETION` | `Deleted content item:` | `"Deleted content item: {name}"` |
+| `CONTENT_ITEM_REORDER` | `Reordered content item` | `"Reordered content item to position {order}"` |
+| `BATCH_ISSUANCE` | `Issued batch` | `"Issued batch {name} with {count} cards using credits"` |
+| `BATCH_STATUS_CHANGE` | `abled batch` | `"Disabled batch {name}"` or `"Enabled batch {name}"` |
+| `FREE_BATCH_ISSUANCE` | `Admin issued free batch` | `"Admin issued free batch: {name} ({count} cards) for {email}"` |
+| `CREDIT_ADJUSTMENT` | `Admin adjusted credits` | `"Admin adjusted credits for user {email}: +/-{amount} credits - {reason}"` |
+| `CREDIT_PURCHASE` | `Credit purchase` | `"Created credit purchase: {amount} credits (${price} USD)"` |
+| `CREDIT_CONSUMPTION` | `Credit consumption` | `"Credit consumption: {amount} credits for {type}"` |
+| `PRINT_REQUEST_SUBMISSION` | `Submitted print request` | `"Submitted print request"` |
+| `PRINT_REQUEST_UPDATE` | `Updated print request` | `"Updated print request status to {status} for batch: {name}"` |
+| `PRINT_REQUEST_WITHDRAWAL` | `Withdrew print request` | `"Withdrew print request for batch {name}"` |
+
+**Key Files:**
+- **Frontend Store**: `src/stores/admin/auditLog.ts` - Action types and search keyword mappings
+- **Frontend Page**: `src/views/Dashboard/Admin/HistoryLogs.vue` - History logs UI with filters
+- **Stored Procedure**: `sql/storeproc/client-side/00_logging.sql` - `log_operation()`, `get_operations_log()`, `get_operations_log_stats()`
+
+### Project Import/Export
+
+The platform supports comprehensive Excel-based import/export for projects (cards) and content items. This allows users to:
+- Backup and restore projects with all settings
+- Transfer projects between accounts via admin export/import
+- Bulk create projects from Excel files
+- Export templates for re-import
+
+**Excel File Structure:**
+
+The Excel file contains two sheets:
+1. **Card Information** - Project settings (19 columns)
+2. **Content Items** - Content hierarchy (10 columns)
+
+**Card Information Columns (19 total):**
+
+| Column | Field | Description |
+|--------|-------|-------------|
+| A | Name* | Project title |
+| B | Description | Brief description |
+| C | AI Instruction | AI role and guidelines |
+| D | AI Knowledge Base | Background knowledge for AI |
+| E | AI Welcome (General) | Welcome message for general assistant |
+| F | AI Welcome (Item) | Welcome message for item assistant |
+| G | Original Language | ISO 639-1 language code (e.g., en, zh-Hant) |
+| H | AI Enabled | Enable voice conversations (true/false) |
+| I | QR Position | QR code position: TL/TR/BL/BR |
+| J | Content Mode | Display mode: single/list/grid/cards |
+| K | Is Grouped | Group content into categories (true/false) |
+| L | Group Display | How grouped items display: expanded/collapsed |
+| M | Access Mode | Billing model: physical/digital |
+| N | Max Scans | Total scan limit (empty = unlimited) |
+| O | Daily Scan Limit | Daily scan limit |
+| P | Card Image | Embedded image |
+| Q | Crop Data | Image crop parameters (auto-managed) |
+| R | Translations | Translation data JSON (auto-managed) |
+| S | Content Hash | Hash for translation tracking (auto-managed) |
+
+**Content Items Columns (10 total):**
+
+| Column | Field | Description |
+|--------|-------|-------------|
+| A | Name* | Item title |
+| B | Content | Main content text |
+| C | AI Knowledge Base | Item-specific AI knowledge |
+| D | Sort Order | Display order |
+| E | Layer* | Layer 1 (parent) or Layer 2 (child) |
+| F | Parent Reference | Cell reference to parent (e.g., A5) |
+| G | Image | Embedded image |
+| H | Crop Data | Image crop parameters (auto-managed) |
+| I | Translations | Translation data JSON (auto-managed) |
+| J | Content Hash | Hash for translation tracking (auto-managed) |
+
+**Translation Preservation:**
+
+When exporting and re-importing projects:
+- Translations are preserved in the `Translations` column as JSON
+- Content hashes are preserved in the `Content Hash` column
+- On import, the system recalculates hashes to ensure translation freshness is accurate
+- This enables full project backup/restore with all translations intact
+
+**Key Files:**
+- `src/utils/excelConstants.js` - Column definitions and Excel styling
+- `src/utils/excelHandler.js` - Import/export logic with image handling
+- `src/components/Card/Import/CardBulkImport.vue` - Bulk import UI
+- `src/components/Card/Export/CardExport.vue` - Export UI
+- `src/views/Dashboard/Admin/components/AdminTemplateList.vue` - Admin template export
 
 ### Mobile Client AI Assistants
 
@@ -711,6 +892,34 @@ ExperienceQR uses a **synchronous translation system** powered by Google Gemini 
 ✅ **Credit Safety** - Credits consumed only after successful translation  
 ✅ **Error Recovery** - Failed languages can be retried individually  
 ✅ **Translation Management** - UI for viewing, deleting, and retranslating content
+
+### Access Control
+
+| User Type | Can Translate |
+|-----------|---------------|
+| **Admin** | ✅ Always (no subscription required) |
+| **Premium Creator** | ✅ Yes |
+| **Free Creator** | ❌ No (button disabled) |
+
+**Validation Layers:**
+- **Frontend**: `CardTranslationSection.vue` checks `authStore.getUserRole() === 'admin'` OR `subscriptionStore.canTranslate`
+- **Backend**: `translation.routes.direct.ts` calls `check_premium_subscription_server` stored procedure
+- **Database**: `check_premium_subscription_server` returns `true` if user role is `admin` OR subscription tier is `premium`
+
+### Translated Fields
+
+**Cards (Projects):**
+- `name` - Project name
+- `description` - Project description
+- `ai_instruction` - AI role/personality instructions
+- `ai_knowledge_base` - AI background knowledge
+- `ai_welcome_general` - General AI Assistant welcome message
+- `ai_welcome_item` - Content Item AI Assistant welcome message
+
+**Content Items:**
+- `name` - Content item name
+- `content` - Content item description/body
+- `ai_knowledge_base` - Content-specific AI knowledge
 
 ### Documentation Links (Archived)
 

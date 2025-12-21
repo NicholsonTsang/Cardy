@@ -29,7 +29,7 @@ export const ACTION_TYPES = {
   // User Management
   USER_REGISTRATION: 'USER_REGISTRATION',
   ROLE_CHANGE: 'ROLE_CHANGE',
-  VERIFICATION_RESET: 'VERIFICATION_RESET', // Still used in admin_functions.sql
+  SUBSCRIPTION_CHANGE: 'SUBSCRIPTION_CHANGE',
   
   // Card Management
   CARD_CREATION: 'CARD_CREATION',
@@ -64,9 +64,9 @@ export const ACTION_TYPES = {
 // This is needed because logs store descriptive text, not action type constants
 export const ACTION_TYPE_SEARCH_KEYWORDS: Record<string, string> = {
   // User Management
-  USER_REGISTRATION: 'USER_REGISTRATION',
+  USER_REGISTRATION: 'New user registered',  // Matches "New user registered: email" from handle_new_user trigger
   ROLE_CHANGE: 'Changed user role',
-  VERIFICATION_RESET: 'Reset verification',
+  SUBSCRIPTION_CHANGE: 'Admin changed subscription tier',  // Matches "Admin changed subscription tier from X to Y"
   
   // Card Management
   CARD_CREATION: 'Created',  // Matches "Created physical card:" and "Created digital card:" and "Imported card"
@@ -212,9 +212,7 @@ export const useAuditLogStore = defineStore('auditLog', () => {
     const labels: Record<string, string> = {
       'USER_REGISTRATION': 'User Registration',
       'ROLE_CHANGE': 'Role Change',
-      'VERIFICATION_REVIEW': 'Verification Review',
-      'VERIFICATION_RESET': 'Verification Reset',
-      'MANUAL_VERIFICATION': 'Manual Verification',
+      'SUBSCRIPTION_CHANGE': 'Subscription Change',
       'PRINT_REQUEST_UPDATE': 'Print Request Update'
     }
     return labels[actionType] || actionType.replace('_', ' ')
@@ -224,10 +222,8 @@ export const useAuditLogStore = defineStore('auditLog', () => {
     const colors: Record<string, string> = {
       'USER_REGISTRATION': 'bg-green-500',
       'ROLE_CHANGE': 'bg-yellow-500',
-      'VERIFICATION_REVIEW': 'bg-blue-500',
-      'VERIFICATION_RESET': 'bg-blue-400',
-      'MANUAL_VERIFICATION': 'bg-blue-600',
-      'PRINT_REQUEST_UPDATE': 'bg-purple-500'
+      'SUBSCRIPTION_CHANGE': 'bg-purple-500',
+      'PRINT_REQUEST_UPDATE': 'bg-blue-500'
     }
     return colors[actionType] || 'bg-slate-500'
   }

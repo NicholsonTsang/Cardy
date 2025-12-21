@@ -12,6 +12,7 @@ export interface AdminUserInfo {
 export interface AdminUserCard {
   id: string
   user_id?: string // Injected from currentUser when needed
+  card_name: string // Alias for name
   name: string
   description: string
   image_url: string | null
@@ -20,11 +21,9 @@ export interface AdminUserCard {
   conversation_ai_enabled: boolean
   ai_instruction: string
   ai_knowledge_base: string
+  ai_welcome_general: string
+  ai_welcome_item: string
   qr_code_position: string
-  translations?: Record<string, any>
-  original_language?: string
-  content_hash?: string
-  last_content_update?: string
   content_mode: 'single' | 'list' | 'grid' | 'cards'
   is_grouped: boolean
   group_display: 'expanded' | 'collapsed'
@@ -35,6 +34,9 @@ export interface AdminUserCard {
   daily_scans: number
   is_access_enabled: boolean
   access_token: string
+  translations: Record<string, any> | null
+  original_language: string | null
+  batches_count: number
   created_at: string
   updated_at: string
   user_email: string
@@ -60,7 +62,7 @@ export interface AdminCardBatch {
   card_id: string
   batch_name: string
   batch_number: number
-  payment_status: string
+  payment_status: 'PAID' | 'FREE'  // PAID = credits, FREE = admin-issued
   is_disabled: boolean
   cards_count: number
   created_at: string

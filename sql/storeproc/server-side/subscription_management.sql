@@ -106,7 +106,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Check if user has premium subscription
+-- Check if user has premium subscription OR is admin
+-- Admins have full translation access without premium subscription
 DROP FUNCTION IF EXISTS check_premium_subscription_server CASCADE;
 CREATE OR REPLACE FUNCTION check_premium_subscription_server(
     p_user_id UUID
@@ -114,7 +115,18 @@ CREATE OR REPLACE FUNCTION check_premium_subscription_server(
 RETURNS BOOLEAN AS $$
 DECLARE
     v_tier TEXT;
+    v_role TEXT;
 BEGIN
+    -- First check if user is admin (admins always have translation access)
+    SELECT raw_user_meta_data->>'role' INTO v_role
+    FROM auth.users
+    WHERE id = p_user_id;
+    
+    IF v_role = 'admin' THEN
+        RETURN TRUE;
+    END IF;
+    
+    -- Check if user has premium subscription
     SELECT tier::TEXT INTO v_tier
     FROM subscriptions
     WHERE user_id = p_user_id;

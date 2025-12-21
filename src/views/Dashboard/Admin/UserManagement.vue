@@ -36,7 +36,7 @@
         <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.card_issuers') || 'Experience Creators' }}</h3>
+              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.card_issuers') }}</h3>
               <p class="text-2xl font-bold text-slate-900">{{ userStats.cardIssuers }}</p>
             </div>
             <div class="p-3 bg-gradient-to-r from-green-500 to-green-600 rounded-xl">
@@ -48,7 +48,7 @@
         <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.admins') || 'Admins' }}</h3>
+              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.admins') }}</h3>
               <p class="text-2xl font-bold text-slate-900">{{ userStats.admins }}</p>
             </div>
             <div class="p-3 bg-gradient-to-r from-purple-500 to-violet-500 rounded-xl">
@@ -60,7 +60,7 @@
         <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.premium_users') || 'Premium Users' }}</h3>
+              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.premium_users') }}</h3>
               <p class="text-2xl font-bold text-amber-600">{{ userStats.premiumUsers }}</p>
             </div>
             <div class="p-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl">
@@ -72,7 +72,7 @@
         <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
-              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.free_users') || 'Free Users' }}</h3>
+              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.free_users') }}</h3>
               <p class="text-2xl font-bold text-slate-700">{{ userStats.freeUsers }}</p>
             </div>
             <div class="p-3 bg-gradient-to-r from-slate-400 to-slate-500 rounded-xl">
@@ -396,8 +396,8 @@
                   <span class="font-semibold text-slate-900">{{ $t('subscription.free_plan') || 'Free' }}</span>
                 </div>
                 <ul class="text-xs text-slate-600 space-y-1">
-                  <li>• {{ $t('admin.free_tier_experiences') || '3 experiences' }}</li>
-                  <li>• {{ $t('admin.free_tier_access') || '50 monthly access' }}</li>
+                  <li>• {{ SubscriptionConfig.free.experienceLimit }} {{ $t('admin.projects_label') || 'projects' }}</li>
+                  <li>• {{ SubscriptionConfig.free.monthlyAccessLimit }} {{ $t('admin.monthly_access_label') || 'monthly access' }}</li>
                   <li>• {{ $t('admin.no_translations') || 'No translations' }}</li>
                 </ul>
               </div>
@@ -415,8 +415,8 @@
                   <span class="font-semibold text-slate-900">{{ $t('subscription.premium_plan') || 'Premium' }}</span>
                 </div>
                 <ul class="text-xs text-slate-600 space-y-1">
-                  <li>• {{ $t('admin.premium_tier_experiences') || '15 experiences' }}</li>
-                  <li>• {{ $t('admin.premium_tier_access') || '3,000 monthly access' }}</li>
+                  <li>• {{ SubscriptionConfig.premium.experienceLimit }} {{ $t('admin.projects_label') || 'projects' }}</li>
+                  <li>• {{ SubscriptionConfig.premium.monthlyAccessLimit.toLocaleString() }} {{ $t('admin.monthly_access_label') || 'monthly access' }}</li>
                   <li>• {{ $t('admin.full_translations') || 'Full translations' }}</li>
                 </ul>
               </div>
@@ -486,6 +486,7 @@ import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
+import { SubscriptionConfig } from '@/config/subscription'
 
 const { t } = useI18n()
 const toast = useToast()

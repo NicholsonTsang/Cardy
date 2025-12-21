@@ -65,12 +65,20 @@
     <!-- Info Panel -->
     <div class="info-panel" :class="{ 'digital-panel': isDigitalAccess }">
       <div class="panel-inner">
-        <!-- Language Selection Chip -->
-        <button @click="showLanguageSelector = true" class="language-chip" :title="t('mobile.select_language')">
-          <span class="language-chip-icon">🌐</span>
-          <span class="language-chip-text">{{ languageStore.selectedLanguage.name }}</span>
-          <span class="language-chip-flag">{{ languageStore.selectedLanguage.flag }}</span>
-        </button>
+        <!-- Language Selection Row - Shows scope of language selection -->
+        <div class="language-row">
+          <span class="language-label">{{ t('mobile.view_in') }}</span>
+          <button @click="showLanguageSelector = true" class="language-chip" :title="t('mobile.select_language')">
+            <span class="language-chip-flag">{{ languageStore.selectedLanguage.flag }}</span>
+            <span class="language-chip-text">{{ languageStore.selectedLanguage.name }}</span>
+            <i class="pi pi-chevron-down language-chip-icon"></i>
+          </button>
+        </div>
+        <!-- Translation availability indicator -->
+        <div v-if="card.has_translation" class="translation-indicator">
+          <i class="pi pi-globe"></i>
+          <span>{{ t('mobile.translated_content_available') }}</span>
+        </div>
         
         <!-- Card Title (Both modes now) -->
         <h1 class="card-title">{{ card.card_name }}</h1>
@@ -150,8 +158,11 @@ interface Props {
     conversation_ai_enabled: boolean
     ai_instruction?: string
     ai_knowledge_base?: string
+    ai_welcome_general?: string
+    ai_welcome_item?: string
     is_activated: boolean
     billing_type?: 'physical' | 'digital'
+    has_translation?: boolean // TRUE if card has translations available
   }
   availableLanguages?: string[] // Languages available for this card
 }
@@ -172,6 +183,8 @@ const cardDataForAssistant = computed(() => ({
   conversation_ai_enabled: props.card.conversation_ai_enabled,
   ai_instruction: props.card.ai_instruction || '',
   ai_knowledge_base: props.card.ai_knowledge_base || '',
+  ai_welcome_general: props.card.ai_welcome_general || '',
+  ai_welcome_item: props.card.ai_welcome_item || '',
   is_activated: props.card.is_activated
 }))
 
@@ -705,23 +718,59 @@ onMounted(() => {
   width: 100%;
 }
 
+/* Language Selection Row */
+.language-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.language-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.875rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* Translation availability indicator */
+.translation-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  margin-bottom: 0.75rem;
+  padding: 0.25rem 0.625rem;
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  border-radius: 9999px;
+  color: rgba(134, 239, 172, 0.9);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.translation-indicator i {
+  font-size: 0.625rem;
+}
+
 /* Language Selection Chip */
 .language-chip {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 9999px;
   color: white;
-  font-size: 0.9375rem; /* 15px */
+  font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  margin: 0 auto 0.25rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   -webkit-tap-highlight-color: transparent; /* Remove tap highlight */
 }
@@ -739,8 +788,9 @@ onMounted(() => {
 }
 
 .language-chip-icon {
-  font-size: 1rem;
-  opacity: 0.9;
+  font-size: 0.625rem;
+  opacity: 0.7;
+  margin-left: 0.125rem;
 }
 
 .language-chip-text {
@@ -749,7 +799,7 @@ onMounted(() => {
 }
 
 .language-chip-flag {
-  font-size: 1.125rem;
+  font-size: 1rem;
   line-height: 1;
 }
 
@@ -1044,9 +1094,13 @@ onMounted(() => {
     padding: 2rem 2rem 2.5rem;
   }
   
+  .language-label {
+    font-size: 0.9375rem;
+  }
+  
   .language-chip {
-    padding: 0.625rem 1.25rem;
-    font-size: 16px; /* Keep ≥16px on larger screens */
+    padding: 0.5rem 1rem;
+    font-size: 0.9375rem;
   }
   
   .language-chip-icon {

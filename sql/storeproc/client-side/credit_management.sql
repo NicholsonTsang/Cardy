@@ -678,8 +678,8 @@ COMMENT ON FUNCTION consume_credit_for_digital_scan(UUID, UUID, DECIMAL) IS
 
 -- Dual-use functions (called from frontend AND Edge Functions with SERVICE_ROLE_KEY)
 GRANT EXECUTE ON FUNCTION check_credit_balance(DECIMAL, UUID) TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION consume_credits(DECIMAL, UUID, VARCHAR, JSONB) TO authenticated, service_role;
+-- Note: create_credit_purchase_record is server-side only (see server-side/credit_purchase_completion.sql)
 
 -- Client-only functions
 GRANT EXECUTE ON FUNCTION initialize_user_credits() TO authenticated;
@@ -689,9 +689,9 @@ GRANT EXECUTE ON FUNCTION get_user_credits() TO authenticated;
 -- Add documentation comments
 COMMENT ON FUNCTION check_credit_balance(DECIMAL, UUID) IS 
   'DUAL-USE PATTERN: Accepts optional p_user_id (for Edge Functions with SERVICE_ROLE_KEY) or falls back to auth.uid() (for frontend with user JWT). Granted to both authenticated and service_role roles.';
-  
-COMMENT ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) IS 
-  'DUAL-USE PATTERN: Accepts optional p_user_id (for Edge Functions with SERVICE_ROLE_KEY) or falls back to auth.uid() (for frontend with user JWT). Granted to both authenticated and service_role roles. Called by create-credit-checkout-session Edge Function.';
+
+-- Note: create_credit_purchase_record is server-side only (see server-side/credit_purchase_completion.sql)
+-- It requires explicit p_user_id and is only accessible via service_role (backend)
   
 COMMENT ON FUNCTION consume_credits(DECIMAL, UUID, VARCHAR, JSONB) IS 
   'DUAL-USE PATTERN: Accepts optional p_user_id (for server-side stored procedures) or falls back to auth.uid() (for direct frontend calls). Granted to both authenticated and service_role roles.';

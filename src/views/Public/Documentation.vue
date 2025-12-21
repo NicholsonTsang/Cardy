@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+  <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white overflow-x-hidden">
     <!-- Header -->
     <UnifiedHeader mode="landing" />
 
@@ -90,8 +90,8 @@
       </transition>
 
       <!-- Main Content -->
-      <main class="flex-1 lg:ml-72 min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)]">
-        <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10 lg:py-14 pb-24 lg:pb-14">
+      <main class="flex-1 lg:ml-72 min-h-[calc(100vh-3.5rem)] sm:min-h-[calc(100vh-4rem)] overflow-x-hidden">
+        <div class="max-w-3xl mx-auto px-4 sm:px-6 py-8 sm:py-10 lg:py-14 pb-24 lg:pb-14 overflow-x-hidden">
           <!-- Breadcrumb -->
           <nav class="flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-slate-500 mb-6 sm:mb-8 flex-wrap">
             <router-link to="/docs" class="hover:text-blue-600 transition-colors flex items-center gap-1 sm:gap-1.5 shrink-0">
@@ -486,5 +486,34 @@ watch(() => route.query, (query) => {
 
 .docs-prose :deep(blockquote) {
   @apply border-l-4 border-blue-500 pl-5 py-1 my-6 italic text-slate-600 bg-blue-50/50 pr-4 rounded-r-lg;
+}
+
+/* Responsive Tables */
+.docs-prose :deep(table) {
+  @apply w-full text-sm mb-6 border-collapse;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.docs-prose :deep(table th),
+.docs-prose :deep(table td) {
+  @apply px-3 py-2 border border-slate-200 text-left;
+  min-width: 120px;
+}
+
+.docs-prose :deep(table th) {
+  @apply bg-slate-50 font-semibold text-slate-700;
+}
+
+.docs-prose :deep(table tr:hover) {
+  @apply bg-slate-50/50;
+}
+
+/* Prevent text overflow */
+.docs-prose :deep(p),
+.docs-prose :deep(li) {
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 </style>

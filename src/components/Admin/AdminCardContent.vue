@@ -81,7 +81,7 @@
                 <div v-if="subItem.ai_knowledge_base" class="mt-2 bg-gradient-to-r from-amber-50 to-orange-50 rounded-lg p-2 border border-amber-200">
                   <div class="flex items-center gap-2 mb-1">
                     <i class="pi pi-database text-amber-600 text-xs"></i>
-                    <span class="text-xs font-medium text-amber-900">AI Knowledge Base</span>
+                    <span class="text-xs font-medium text-amber-900">{{ $t('dashboard.ai_knowledge_base') }}</span>
                   </div>
                   <p class="text-xs text-amber-800 whitespace-pre-wrap leading-relaxed max-h-24 overflow-y-auto">
                     {{ subItem.ai_knowledge_base }}
@@ -99,7 +99,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import Tag from 'primevue/tag'
 import { renderMarkdown } from '@/utils/markdownRenderer'
 
 const { t } = useI18n()

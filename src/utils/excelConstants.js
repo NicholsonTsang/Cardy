@@ -20,7 +20,9 @@ export const EXCEL_CONFIG = {
     DATA_START_ROW: 5
   },
   COLUMNS: {
-    CARD: ['Name', 'Description', 'AI Instruction', 'AI Knowledge Base', 'Original Language', 'AI Enabled', 'QR Position', 'Content Mode', 'Access Mode', 'Max Scans', 'Daily Scan Limit', 'Card Image', 'Crop Data', 'Translations', 'Content Hash'],
+    // IMPORTANT: Keep in sync with excelHandler.js createCardSheet, parseCardSheet, and CardBulkImport.vue
+    // All text fields that should be preserved during import/export
+    CARD: ['Name', 'Description', 'AI Instruction', 'AI Knowledge Base', 'AI Welcome (General)', 'AI Welcome (Item)', 'Original Language', 'AI Enabled', 'QR Position', 'Content Mode', 'Is Grouped', 'Group Display', 'Access Mode', 'Max Scans', 'Daily Scan Limit', 'Card Image', 'Crop Data', 'Translations', 'Content Hash'],
     CONTENT: ['Name', 'Content', 'AI Knowledge Base', 'Sort Order', 'Layer', 'Parent Reference', 'Image', 'Crop Data', 'Translations', 'Content Hash']
   },
   COLORS: {

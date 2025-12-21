@@ -112,7 +112,7 @@
                     // User Management
                     activity.action_type === 'USER_REGISTRATION' ? 'bg-green-100 text-green-600' :
                     activity.action_type === 'ROLE_CHANGE' ? 'bg-red-100 text-red-600' :
-                    activity.action_type === 'VERIFICATION_RESET' ? 'bg-cyan-100 text-cyan-600' :
+                    activity.action_type === 'SUBSCRIPTION_CHANGE' ? 'bg-purple-100 text-purple-600' :
                     // Card Management
                     activity.action_type === 'CARD_CREATION' ? 'bg-blue-100 text-blue-600' :
                     activity.action_type === 'CARD_UPDATE' ? 'bg-amber-100 text-amber-600' :
@@ -145,7 +145,7 @@
                       // User Management
                       activity.action_type === 'USER_REGISTRATION' ? 'pi pi-user-plus' :
                       activity.action_type === 'ROLE_CHANGE' ? 'pi pi-users' :
-                      activity.action_type === 'VERIFICATION_RESET' ? 'pi pi-refresh' :
+                      activity.action_type === 'SUBSCRIPTION_CHANGE' ? 'pi pi-credit-card' :
                       // Card Management
                       activity.action_type === 'CARD_CREATION' ? 'pi pi-plus-circle' :
                       activity.action_type === 'CARD_UPDATE' ? 'pi pi-pencil' :
@@ -261,7 +261,7 @@ const activityTypes = computed(() => [
   // User Management
   { label: t('admin.activity_types.user_registration'), value: ACTION_TYPES.USER_REGISTRATION },
   { label: t('admin.activity_types.role_changes'), value: ACTION_TYPES.ROLE_CHANGE },
-  { label: t('admin.activity_types.verification_resets'), value: ACTION_TYPES.VERIFICATION_RESET },
+  { label: t('admin.activity_types.subscription_changes'), value: ACTION_TYPES.SUBSCRIPTION_CHANGE },
   // Card Management
   { label: t('admin.activity_types.card_creation'), value: ACTION_TYPES.CARD_CREATION },
   { label: t('admin.activity_types.card_updates'), value: ACTION_TYPES.CARD_UPDATE },

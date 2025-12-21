@@ -968,14 +968,24 @@
           </div>
         </div>
 
-        <!-- Admin Notes -->
-        <div v-if="selectedPrintRequestData.admin_notes" class="bg-amber-50 rounded-lg p-4 border border-amber-200">
+        <!-- Admin Feedbacks -->
+        <div v-if="printRequestFeedbacks.length > 0" class="bg-amber-50 rounded-lg p-4 border border-amber-200">
           <h4 class="font-semibold text-amber-900 mb-3 flex items-center gap-2">
             <i class="pi pi-comment text-amber-600"></i>
             {{ $t('batches.updates_from_cardstudio') }}
           </h4>
-          <div class="bg-white rounded border border-amber-200 p-3">
-            <pre class="text-sm text-slate-900 whitespace-pre-wrap font-sans">{{ selectedPrintRequestData.admin_notes }}</pre>
+          <div class="space-y-2">
+            <div 
+              v-for="feedback in printRequestFeedbacks" 
+              :key="feedback.id"
+              class="bg-white rounded border border-amber-200 p-3"
+            >
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-amber-700 font-medium">{{ feedback.admin_email }}</span>
+                <span class="text-xs text-slate-500">{{ formatDate(feedback.created_at) }}</span>
+              </div>
+              <pre class="text-sm text-slate-900 whitespace-pre-wrap font-sans">{{ feedback.message }}</pre>
+            </div>
           </div>
         </div>
       </div>
@@ -1057,6 +1067,7 @@ const showPrintStatusDialog = ref(false)
 const selectedBatchForPrint = ref(null)
 const selectedPrintRequestData = ref(null)
 const isSubmittingPrint = ref(false)
+const printRequestFeedbacks = ref([])
 const printRequestForm = ref({
   shipping_address: '',
   contact_email: '',
@@ -1521,6 +1532,7 @@ const viewPrintRequest = async (batch) => {
 const viewPrintRequestDialog = async (batch) => {
   try {
     loadingPrintStatusBatchId.value = batch.id
+    printRequestFeedbacks.value = [] // Reset feedbacks
     
     const { data: printRequests, error } = await supabase.rpc('get_print_requests_for_batch', {
       p_batch_id: batch.id
@@ -1536,6 +1548,19 @@ const viewPrintRequestDialog = async (batch) => {
         // Fallback to batch.cards_count if not provided by DB
         cards_count: latestRequest.cards_count || batch.cards_count
       }
+      
+      // Fetch feedbacks for this print request
+      try {
+        const { data: feedbacks, error: feedbackError } = await supabase.rpc('get_print_request_feedbacks', {
+          p_request_id: latestRequest.id
+        })
+        if (!feedbackError && feedbacks) {
+          printRequestFeedbacks.value = feedbacks
+        }
+      } catch (feedbackErr) {
+        console.warn('Could not load feedbacks:', feedbackErr)
+      }
+      
       showPrintStatusDialog.value = true
     } else {
       toast.add({
@@ -1579,10 +1604,10 @@ const validatePrintForm = () => {
   
   // Validate shipping address
   if (!printRequestForm.value.shipping_address.trim()) {
-    printRequestForm.value.errors.shipping_address = 'Shipping address is required'
+    printRequestForm.value.errors.shipping_address = t('validation.shipping_address_required')
     isValid = false
   } else if (printRequestForm.value.shipping_address.trim().length < 20) {
-    printRequestForm.value.errors.shipping_address = 'Please provide a complete shipping address'
+    printRequestForm.value.errors.shipping_address = t('validation.shipping_address_incomplete')
     isValid = false
   }
   
@@ -1591,8 +1616,8 @@ const validatePrintForm = () => {
   const hasWhatsApp = printRequestForm.value.contact_whatsapp.trim()
   
   if (!hasEmail && !hasWhatsApp) {
-    printRequestForm.value.errors.contact_email = 'Please provide at least one contact method'
-    printRequestForm.value.errors.contact_whatsapp = 'Please provide at least one contact method'
+    printRequestForm.value.errors.contact_email = t('validation.contact_method_required')
+    printRequestForm.value.errors.contact_whatsapp = t('validation.contact_method_required')
     isValid = false
   }
   
@@ -1600,7 +1625,7 @@ const validatePrintForm = () => {
   if (hasEmail) {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(printRequestForm.value.contact_email.trim())) {
-      printRequestForm.value.errors.contact_email = 'Please enter a valid email address'
+      printRequestForm.value.errors.contact_email = t('validation.invalid_email')
       isValid = false
     }
   }
@@ -1609,7 +1634,7 @@ const validatePrintForm = () => {
   if (hasWhatsApp) {
     const whatsappRegex = /^\+[1-9]\d{1,14}$/
     if (!whatsappRegex.test(printRequestForm.value.contact_whatsapp.trim())) {
-      printRequestForm.value.errors.contact_whatsapp = 'Please enter a valid WhatsApp number with country code (e.g., +1234567890)'
+      printRequestForm.value.errors.contact_whatsapp = t('validation.invalid_whatsapp')
       isValid = false
     }
   }
@@ -1682,16 +1707,16 @@ const getPaymentStatusClass = (status) => {
 }
 
 const formatPaymentStatus = (status) => {
-  const statuses = {
-    pending: 'Pending',
-    completed: 'Paid',
-    succeeded: 'Paid',
-    free: 'Admin Issued',
-    waived: 'Waived',
-    failed: 'Failed',
-    canceled: 'Canceled'
+  switch (status) {
+    case 'pending': return t('batches.pending')
+    case 'completed':
+    case 'succeeded': return t('batches.paid')
+    case 'free': return t('batches.admin_issued')
+    case 'waived': return t('batches.waived')
+    case 'failed': return t('batches.failed')
+    case 'canceled': return t('batches.canceled')
+    default: return t('batches.unknown')
   }
-  return statuses[status] || 'Unknown'
 }
 
 const formatDate = (dateString) => {
@@ -1710,15 +1735,15 @@ const formatNumber = (num) => {
 
 // Print status helpers
 const getPrintStatusLabel = (status) => {
-  const labels = {
-    SUBMITTED: 'Submitted',
-    PAYMENT_PENDING: 'Payment Pending',
-    PROCESSING: 'Processing', 
-    SHIPPED: 'Shipped',
-    COMPLETED: 'Delivered',
-    CANCELLED: 'Cancelled'
+  switch (status) {
+    case 'SUBMITTED': return t('print.submitted')
+    case 'PAYMENT_PENDING': return t('print.payment_pending')
+    case 'PROCESSING': return t('print.in_production')
+    case 'SHIPPED': return t('print.shipped')
+    case 'COMPLETED': return t('print.delivered')
+    case 'CANCELLED': return t('print.cancelled')
+    default: return status
   }
-  return labels[status] || status
 }
 
 const getPrintStatusSeverity = (status) => {
@@ -1782,24 +1807,24 @@ const getPrintProgressWidth = (currentStatus) => {
 }
 
 const getPrintStatusDescription = (status) => {
-  const descriptions = {
-    SUBMITTED: 'Your print request has been received and is being reviewed.',
-    PAYMENT_PENDING: 'Awaiting payment confirmation.',  // Kept for data integrity only
-    PROCESSING: 'Your cards are being printed and prepared for shipping.',
-    SHIPPED: 'Your cards have been shipped and are on their way to you.',
-    COMPLETED: 'Your cards have been delivered successfully.',
-    CANCELLED: 'This print request has been cancelled.'
+  switch (status) {
+    case 'SUBMITTED': return t('print.status_desc_submitted')
+    case 'PAYMENT_PENDING': return t('print.status_desc_payment_pending')
+    case 'PROCESSING': return t('print.status_desc_processing')
+    case 'SHIPPED': return t('print.status_desc_shipped')
+    case 'COMPLETED': return t('print.status_desc_completed')
+    case 'CANCELLED': return t('print.status_desc_cancelled')
+    default: return t('print.status_unknown')
   }
-  return descriptions[status] || 'Status unknown'
 }
 
 // Batch progress helpers
 
 const getBatchProgressText = (batch) => {
   // In payment-first flow, no batches should have pending payment status
-  if (!batch.cards_generated) return 'Generating cards...'
-  if (!batch.has_print_request) return 'Ready for print'
-  return `Print: ${getPrintStatusLabel(batch.print_request_status)}`
+  if (!batch.cards_generated) return t('print.generating_cards')
+  if (!batch.has_print_request) return t('print.ready_for_print')
+  return `${t('print.print_status')}: ${getPrintStatusLabel(batch.print_request_status)}`
 }
 
 

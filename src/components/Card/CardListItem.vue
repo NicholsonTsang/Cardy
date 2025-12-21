@@ -53,7 +53,7 @@
                     <span 
                         v-if="card.is_template"
                         class="flex-shrink-0 text-amber-500 text-sm"
-                        :title="card.template_slug ? `Template: ${card.template_slug}` : 'Linked to Template'"
+                        :title="card.template_slug ? t('dashboard.template_indicator', { slug: card.template_slug }) : t('dashboard.linked_to_template')"
                     >
                         ⭐
                     </span>
@@ -62,14 +62,14 @@
                 <!-- Meta Row: Compact inline info -->
                 <div class="flex items-center gap-1.5 mt-1 text-[11px] font-medium text-slate-500">
                     <span :class="card.billing_type === 'digital' ? 'text-sky-600' : 'text-emerald-600'">
-                        {{ card.billing_type === 'digital' ? 'Digital' : 'Physical' }}
+                        {{ card.billing_type === 'digital' ? t('dashboard.access_digital') : t('dashboard.access_physical') }}
                     </span>
                     <span class="text-slate-300">·</span>
                     <span :class="contentModeColor">
                         {{ contentModeLabel }}
                     </span>
                     <span v-if="card.is_grouped" class="text-slate-300">·</span>
-                    <span v-if="card.is_grouped" class="text-violet-600">Grouped</span>
+                    <span v-if="card.is_grouped" class="text-violet-600">{{ t('common.grouped') }}</span>
                 </div>
                 
                 <!-- Date Row -->
@@ -132,13 +132,13 @@ const displayImage = computed(() => {
         : cardPlaceholder;
 });
 
-// Content mode display
-const contentModeLabels = {
-    single: 'Single',
-    list: 'List',
-    grid: 'Grid',
-    cards: 'Cards'
-};
+// Content mode display (using i18n)
+const contentModeLabels = computed(() => ({
+    single: t('templates.mode_single'),
+    list: t('templates.mode_list'),
+    grid: t('templates.mode_grid'),
+    cards: t('templates.mode_cards')
+}));
 
 const contentModeColors = {
     single: 'text-purple-600',
@@ -149,7 +149,7 @@ const contentModeColors = {
 
 const contentModeLabel = computed(() => {
     const mode = props.card.content_mode || 'list';
-    return contentModeLabels[mode] || 'List';
+    return contentModeLabels.value[mode] || t('templates.mode_list');
 });
 
 const contentModeColor = computed(() => {

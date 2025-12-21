@@ -20,6 +20,8 @@ export interface Card {
     conversation_ai_enabled: boolean;
     ai_instruction: string; // AI role and guidelines (max 100 words)
     ai_knowledge_base: string; // Background knowledge for AI (max 2000 words)
+    ai_welcome_general: string; // Custom welcome message for General AI Assistant (card-level)
+    ai_welcome_item: string; // Custom welcome message for Content Item AI Assistant
     translations?: Record<string, any>; // JSONB translations by language code
     original_language?: string; // Original language code (e.g., 'en')
     content_hash?: string; // MD5 hash for detecting content changes
@@ -36,6 +38,9 @@ export interface Card {
     access_token: string; // Unique token for access URL (can be regenerated)
     created_at: string;
     updated_at: string;
+    // Template library fields (returned by get_user_cards)
+    is_template?: boolean; // Whether this card is linked to a content template
+    template_slug?: string | null; // Template slug if is_template is true
 }
 
 export interface CardFormData {
@@ -49,6 +54,8 @@ export interface CardFormData {
     conversation_ai_enabled: boolean;
     ai_instruction: string; // AI role and guidelines (max 100 words)
     ai_knowledge_base: string; // Background knowledge for AI (max 2000 words)
+    ai_welcome_general?: string; // Custom welcome message for General AI Assistant
+    ai_welcome_item?: string; // Custom welcome message for Content Item AI Assistant
     qr_code_position: string;
     original_language?: string; // Original language code (e.g., 'en')
     content_mode?: ContentMode; // Content rendering mode
@@ -176,6 +183,8 @@ export const useCardStore = defineStore('card', () => {
                     p_conversation_ai_enabled: cardData.conversation_ai_enabled,
                     p_ai_instruction: cardData.ai_instruction,
                     p_ai_knowledge_base: cardData.ai_knowledge_base,
+                    p_ai_welcome_general: cardData.ai_welcome_general || '',
+                    p_ai_welcome_item: cardData.ai_welcome_item || '',
                     p_qr_code_position: cardData.qr_code_position,
                     p_original_language: cardData.original_language || 'en',
                     p_content_mode: cardData.content_mode || 'list',
@@ -285,6 +294,8 @@ export const useCardStore = defineStore('card', () => {
                 p_conversation_ai_enabled: updateData.conversation_ai_enabled,
                 p_ai_instruction: updateData.ai_instruction,
                 p_ai_knowledge_base: updateData.ai_knowledge_base,
+                p_ai_welcome_general: updateData.ai_welcome_general || null,
+                p_ai_welcome_item: updateData.ai_welcome_item || null,
                 p_qr_code_position: updateData.qr_code_position,
                 p_original_language: updateData.original_language || 'en',
                 p_content_mode: updateData.content_mode || null,

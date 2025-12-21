@@ -49,6 +49,14 @@ export const enum PrintRequestStatus {
   CANCELLED = 'CANCELLED',
 }
 
+export interface PrintRequestFeedback {
+  id: string;
+  admin_email: string;
+  message: string;
+  is_internal: boolean;
+  created_at: string;
+}
+
 export interface PrintRequest {
   id: string;
   batch_id: string;
@@ -58,10 +66,9 @@ export interface PrintRequest {
   contact_email: string | null;
   contact_whatsapp: string | null;
   cards_count: number;
-  admin_notes: string | null;
-  payment_details: string | null;
   requested_at: string;
   updated_at: string;
+  feedbacks?: PrintRequestFeedback[];
 }
 
 export interface IssuanceStats {
@@ -71,18 +78,8 @@ export interface IssuanceStats {
   total_batches: number;
 }
 
-export interface BatchPayment {
-  payment_id: string;
-  stripe_checkout_session_id: string;
-  stripe_payment_intent_id: string | null;
-  amount_cents: number;
-  currency: string;
-  payment_status: 'pending' | 'succeeded' | 'failed' | 'canceled';
-  payment_method: string | null;
-  failure_reason: string | null;
-  created_at: string;
-  updated_at: string;
-}
+// Note: BatchPayment interface removed - batch_payments table was dropped in database cleanup
+// Batch issuance now uses credit-based payment model, not a separate payment flow
 
 export const useIssuedCardStore = defineStore('issuedCard', () => {
   const issuedCards = ref<IssuedCard[]>([]);
@@ -229,6 +226,14 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     return data;
   };
 
+  const fetchPrintRequestFeedbacks = async (requestId: string): Promise<PrintRequestFeedback[]> => {
+    const { data, error } = await supabase.rpc('get_print_request_feedbacks', {
+      p_request_id: requestId
+    });
+    if (error) throw error;
+    return data || [];
+  };
+
   const loadCardData = async (cardId: string) => {
     isLoading.value = true;
     try {
@@ -276,6 +281,7 @@ export const useIssuedCardStore = defineStore('issuedCard', () => {
     deleteIssuedCard,
     requestPrintForBatch,
     fetchPrintRequestsForBatch,
+    fetchPrintRequestFeedbacks,
     loadCardData,
     generateBatchCards,
     withdrawPrintRequest

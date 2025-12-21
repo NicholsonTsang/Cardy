@@ -150,7 +150,7 @@
                 <!-- Card Info -->
                 <div class="space-y-2">
                   <div class="flex items-center justify-center gap-2">
-                    <span class="text-sm font-semibold text-slate-900">Card #{{ index + 1 }}</span>
+                    <span class="text-sm font-semibold text-slate-900">{{ $t('common.card_prefix') }}{{ index + 1 }}</span>
                     <span 
                       :class="card.active 
                         ? 'bg-green-100 text-green-700' 

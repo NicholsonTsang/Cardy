@@ -68,7 +68,7 @@
                     <div class="flex flex-col gap-4">
                       <div class="flex justify-between items-center">
                         <span class="text-sm text-slate-600">
-                          {{ $t('common.total') || 'Total' }}: {{ batchesStore.allBatches.length }}
+                          {{ $t('common.total') }}: {{ batchesStore.allBatches.length }}
                         </span>
                       </div>
                       
@@ -91,7 +91,7 @@
                             :options="paymentStatusOptions"
                             optionLabel="label"
                             optionValue="value"
-                            :placeholder="$t('admin.all_statuses') || 'All Statuses'"
+                            :placeholder="$t('admin.all_statuses')"
                             class="w-40"
                             showClear
                             @change="applyBatchFilters"
@@ -100,7 +100,7 @@
                         
                         <Button 
                           icon="pi pi-times"
-                          :label="$t('admin.clear_filters') || 'Clear Filters'"
+                          :label="$t('admin.clear_filters')"
                           @click="clearBatchFilters"
                           size="small"
                           severity="secondary"
@@ -111,7 +111,7 @@
                     </div>
                   </template>
 
-                  <Column field="batch_number" header="Batch #" sortable style="min-width: 140px">
+                  <Column field="batch_number" :header="$t('card.batch_number')" sortable style="min-width: 140px">
                     <template #body="{ data }">
                       <span class="font-mono text-sm font-medium text-slate-900">
                         #{{ data.batch_number.toString().padStart(6, '0') }}
@@ -152,7 +152,7 @@
                     <div class="text-center py-12">
                       <i class="pi pi-inbox text-6xl text-slate-400 mb-4"></i>
                       <p class="text-lg font-medium text-slate-900 mb-2">{{ $t('batches.no_batches_found') }}</p>
-                      <p class="text-slate-600">{{ $t('admin.no_batches_match_filters') || 'No batches match your current filters.' }}</p>
+                      <p class="text-slate-600">{{ $t('admin.no_batches_match_filters') }}</p>
                     </div>
                   </template>
                   <template #loading>
@@ -393,7 +393,7 @@
                         <template #option="{ option }">
                           <div class="flex items-center justify-between w-full">
                             <span>{{ option.card_name }}</span>
-                            <Tag :value="`${option.batches_count || 0} batches`" severity="secondary" class="text-xs" />
+                            <Tag :value="`${option.batches_count || 0} ${$t('batches.batches')}`" severity="secondary" class="text-xs" />
                           </div>
                         </template>
                         <template #empty>
@@ -426,7 +426,7 @@
                       />
                       <small v-if="errors.cardsCount" class="text-red-500">{{ errors.cardsCount }}</small>
                       <small v-else class="text-slate-500">
-                        {{ $t('admin.min_1_max_1000') }}
+                        {{ $t('admin.min_1_max_10000') }}
                         <span v-if="form.cardsCount > 0" class="font-medium text-slate-700">
                           ({{ $t('admin.regular_cost') }}: ${{ (form.cardsCount * 2).toLocaleString() }})
                         </span>
@@ -506,7 +506,7 @@
                         <div class="flex items-center gap-3">
                           <i class="pi pi-check-circle text-green-600"></i>
                           <div>
-                            <p class="text-sm font-medium text-slate-900">{{ issuance.cardsCount }} cards</p>
+                            <p class="text-sm font-medium text-slate-900">{{ issuance.cardsCount }} {{ $t('card.cards_text') }}</p>
                             <p class="text-xs text-slate-600">{{ issuance.userEmail }}</p>
                           </div>
                         </div>
@@ -591,6 +591,32 @@
             <pre class="text-sm text-slate-800 whitespace-pre-wrap">{{ selectedPrintRequest.shipping_address }}</pre>
           </div>
         </div>
+
+        <!-- Admin Feedbacks History -->
+        <div v-if="selectedPrintRequestFeedbacks.length > 0">
+          <h4 class="font-semibold text-slate-900 mb-3">{{ $t('admin.admin_feedbacks') }}</h4>
+          <div class="space-y-2">
+            <div 
+              v-for="feedback in selectedPrintRequestFeedbacks" 
+              :key="feedback.id"
+              class="bg-amber-50 rounded-lg p-3 border border-amber-200"
+            >
+              <div class="flex items-center justify-between mb-1">
+                <span class="text-xs text-amber-700 font-medium">{{ feedback.admin_email }}</span>
+                <div class="flex items-center gap-2">
+                  <Tag 
+                    v-if="feedback.is_internal" 
+                    :value="$t('admin.internal_note')" 
+                    severity="secondary" 
+                    class="text-xs"
+                  />
+                  <span class="text-xs text-slate-500">{{ formatDate(feedback.created_at) }}</span>
+                </div>
+              </div>
+              <pre class="text-sm text-slate-800 whitespace-pre-wrap">{{ feedback.message }}</pre>
+            </div>
+          </div>
+        </div>
       </div>
 
       <template #footer>
@@ -646,7 +672,6 @@ const emailSearch = ref('')
 const paymentStatusFilter = ref(null)
 
 const paymentStatusOptions = computed(() => [
-  { label: t('batches.pending'), value: 'PENDING' },
   { label: t('batches.paid'), value: 'PAID' },
   { label: t('batches.admin_issued'), value: 'FREE' }
 ])
@@ -660,6 +685,7 @@ const printSearchQuery = ref('')
 const printStatusFilter = ref(null)
 const showPrintDetailsDialog = ref(false)
 const selectedPrintRequest = ref(null)
+const selectedPrintRequestFeedbacks = ref([])
 
 const printStatusOptions = computed(() => [
   { label: t('admin.all_statuses'), value: null },
@@ -777,9 +803,18 @@ const clearPrintFilters = async () => {
   await applyPrintFilters()
 }
 
-const viewPrintDetails = (request) => {
+const viewPrintDetails = async (request) => {
   selectedPrintRequest.value = request
+  selectedPrintRequestFeedbacks.value = []
   showPrintDetailsDialog.value = true
+  
+  // Fetch feedbacks for this print request
+  try {
+    const feedbacks = await printRequestsStore.fetchPrintRequestFeedbacks(request.id)
+    selectedPrintRequestFeedbacks.value = feedbacks
+  } catch (error) {
+    console.warn('Could not load feedbacks:', error)
+  }
 }
 
 const updatePrintStatus = async (requestId, newStatus) => {
@@ -851,7 +886,6 @@ const formatDate = (dateString) => {
 
 const getPaymentStatusSeverity = (status) => {
   switch (status) {
-    case 'PENDING': return 'warning'
     case 'PAID': return 'success'
     case 'FREE': return 'info'
     default: return 'secondary'
@@ -860,6 +894,7 @@ const getPaymentStatusSeverity = (status) => {
 
 const getPaymentStatusLabel = (status) => {
   switch (status) {
+    case 'PAID': return t('batches.paid')
     case 'FREE': return t('batches.admin_issued')
     default: return status
   }
@@ -1055,9 +1090,9 @@ const formatTimeAgo = (date) => {
   const diffMins = Math.floor(diffMs / (60 * 1000))
   const diffHours = Math.floor(diffMs / (60 * 60 * 1000))
 
-  if (diffMins < 1) return t('common.just_now') || 'Just now'
-  if (diffMins < 60) return `${diffMins}m ago`
-  if (diffHours < 24) return `${diffHours}h ago`
+  if (diffMins < 1) return t('common.just_now')
+  if (diffMins < 60) return t('common.minutes_ago', { count: diffMins })
+  if (diffHours < 24) return t('common.hours_ago', { count: diffHours })
   return past.toLocaleDateString()
 }
 

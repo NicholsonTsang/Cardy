@@ -14,6 +14,26 @@ import {
 } from './excelConstants';
 
 /**
+ * Sanitize string to remove invalid XML characters
+ * @param {string} str - Input string
+ * @returns {string} Sanitized string
+ */
+function sanitizeString(str) {
+  if (typeof str !== 'string') return str;
+  // Remove control characters (ASCII 0-31) except newline (10), carriage return (13), and tab (9)
+  // Also remove delete (127)
+  let clean = str.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '');
+  
+  // Truncate to safe Excel limit (32767 chars)
+  // We use 32000 to be safe
+  if (clean.length > 32000) {
+    clean = clean.substring(0, 32000);
+  }
+  
+  return clean;
+}
+
+/**
  * Export card data to Excel with embedded images
  * @param {Object} cardData - Card information
  * @param {Array} contentItems - Content items array
@@ -388,18 +408,18 @@ async function createCardSheet(workbook, cardData, options = {}) {
   const sheetName = options.sheetName || EXCEL_CONFIG.CARD_SHEET.NAME;
   const worksheet = workbook.addWorksheet(sheetName);
   
-  // Row 1: Branded title with icons
+  // Row 1: Branded title with icons (span to column S = 19 columns)
   const titleCell = worksheet.getCell('A1');
   titleCell.value = `${EXCEL_CONFIG.ICONS.CARD} CardStudio - Card Export Data`;
   styleTitle(titleCell);
-  worksheet.mergeCells('A1:F1');
+  worksheet.mergeCells('A1:S1');
   worksheet.getRow(1).height = 30;
   
-  // Row 2: Clear user instructions
+  // Row 2: Clear user instructions (span to column S = 19 columns)
   const instructionCell = worksheet.getCell('A2');
   instructionCell.value = `${EXCEL_CONFIG.ICONS.INSTRUCTIONS} Fill in your experience details below. Required fields marked with *. Use dropdowns for validation.`;
   styleInstructions(instructionCell);
-  worksheet.mergeCells('A2:F2');
+  worksheet.mergeCells('A2:S2');
   worksheet.getRow(2).height = 25;
   
   // Row 3: Headers with icons (same as template)
@@ -416,15 +436,20 @@ async function createCardSheet(workbook, cardData, options = {}) {
   headerRow.height = 25;
   
   // Row 4: Enhanced descriptions with examples (same as template)
+  // IMPORTANT: Keep in sync with EXCEL_CONFIG.COLUMNS.CARD (19 columns)
   const descriptions = [
     'Enter card title (e.g., "Museum Experience")',
     'Brief description of card purpose',
     'AI instructions (e.g., "You are a helpful guide...")',
     'Background knowledge for AI conversations',
+    'Welcome message for general assistant',
+    'Welcome message for item assistant ({name} placeholder)',
     'Original content language (en, zh-Hant, etc.)',
     'Select true/false from dropdown',
     'Select QR position: TL/TR/BL/BR',
-    'Content mode: single/grouped/list/grid/inline',
+    'Content mode: single/list/grid/cards',
+    'Group content into categories (true/false)',
+    'Group display: expanded/collapsed',
     'Access mode: physical/digital',
     'Total scan limit (null = unlimited)',
     'Daily scan limit (null = unlimited)',
@@ -439,23 +464,28 @@ async function createCardSheet(workbook, cardData, options = {}) {
   descriptionRow.height = 25;
   
   // Row 5+: Actual data with validation
+  // IMPORTANT: Keep in sync with EXCEL_CONFIG.COLUMNS.CARD (19 columns)
   const dataRow = worksheet.getRow(EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW);
   dataRow.values = [
-    cardData.name || '',
-    cardData.description || '',
-    cardData.ai_instruction || '',
-    cardData.ai_knowledge_base || '',
-    cardData.original_language || 'en',
+    sanitizeString(cardData.name || ''),
+    sanitizeString(cardData.description || ''),
+    sanitizeString(cardData.ai_instruction || ''),
+    sanitizeString(cardData.ai_knowledge_base || ''),
+    sanitizeString(cardData.ai_welcome_general || ''), // AI Welcome (General)
+    sanitizeString(cardData.ai_welcome_item || ''), // AI Welcome (Item)
+    sanitizeString(cardData.original_language || 'en'),
     cardData.conversation_ai_enabled,
-    cardData.qr_code_position || 'BR',
-    cardData.content_mode || 'list', // Content rendering mode
-    cardData.billing_type || 'physical', // Access mode
+    sanitizeString(cardData.qr_code_position || 'BR'),
+    sanitizeString(cardData.content_mode || 'list'), // Content rendering mode
+    cardData.is_grouped ? true : false, // Is Grouped
+    sanitizeString(cardData.group_display || 'expanded'), // Group Display
+    sanitizeString(cardData.billing_type || 'physical'), // Access mode
     cardData.max_scans !== null && cardData.max_scans !== undefined ? cardData.max_scans : '', // Total scan limit
     cardData.daily_scan_limit !== null && cardData.daily_scan_limit !== undefined ? cardData.daily_scan_limit : '', // Daily scan limit
     '', // Placeholder for image
-    cardData.crop_parameters ? JSON.stringify(cardData.crop_parameters) : '', // Hidden crop parameters
-    cardData.translations ? JSON.stringify(cardData.translations) : '{}', // Hidden translations data
-    cardData.content_hash || '' // Hidden content hash for import preservation
+    sanitizeString(cardData.crop_parameters ? JSON.stringify(cardData.crop_parameters) : ''), // Hidden crop parameters
+    sanitizeString(cardData.translations ? JSON.stringify(cardData.translations) : '{}'), // Hidden translations data
+    sanitizeString(cardData.content_hash || '') // Hidden content hash for import preservation
   ];
   
   // Apply text wrapping for all cells
@@ -479,20 +509,24 @@ async function createCardSheet(workbook, cardData, options = {}) {
   // Embed card image with proper sizing (use original image if available, otherwise use cropped)
   const imageToEmbed = cardData.original_image_url || cardData.image_url;
   if (imageToEmbed) {
-    await embedImages(workbook, worksheet, [imageToEmbed], EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW, 12); // Column L (Card Image)
+    await embedImages(workbook, worksheet, [imageToEmbed], EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW, 16); // Column P (Card Image) - adjusted for new columns
   }
   
-  // Professional column widths (same as template)
+  // Professional column widths (19 columns matching EXCEL_CONFIG.COLUMNS.CARD)
   worksheet.columns = [
     { width: 25 }, // Name
     { width: 40 }, // Description
     { width: 30 }, // AI Instruction
     { width: 45 }, // AI Knowledge Base
+    { width: 35 }, // AI Welcome (General)
+    { width: 35 }, // AI Welcome (Item)
     { width: 15 }, // Original Language
-    { width: 15 }, // AI Enabled
-    { width: 15 }, // QR Position
+    { width: 12 }, // AI Enabled
+    { width: 12 }, // QR Position
     { width: 15 }, // Content Mode
-    { width: 15 }, // Access Mode
+    { width: 12 }, // Is Grouped
+    { width: 15 }, // Group Display
+    { width: 12 }, // Access Mode
     { width: 12 }, // Max Scans
     { width: 15 }, // Daily Scan Limit
     { width: 25 }, // Card Image
@@ -501,18 +535,22 @@ async function createCardSheet(workbook, cardData, options = {}) {
     { width: 0 }   // Content Hash (hidden)
   ];
   
-  // Add helpful cell comments (same as template)
+  // Add helpful cell comments (adjusted for new column positions)
   dataRow.getCell(1).note = 'This will be the main title displayed on your experience';
   dataRow.getCell(3).note = 'Define the AI\'s role, personality, and restrictions (max 100 words)';
   dataRow.getCell(4).note = 'Provide detailed background knowledge for the AI (max 2000 words)';
-  dataRow.getCell(5).note = 'ISO 639-1 language code (en, zh-Hant, zh-Hans, ja, ko, etc.)';
-  dataRow.getCell(6).note = 'Enable voice conversations with visitors';
-  dataRow.getCell(7).note = 'Where QR code appears on physical card';
-  dataRow.getCell(8).note = 'Content mode: single, grouped, list, grid, or inline';
-  dataRow.getCell(9).note = 'Access mode: physical (printed card) or digital (QR only)';
-  dataRow.getCell(10).note = 'Total scan limit for digital access (leave empty for unlimited)';
-  dataRow.getCell(11).note = 'Daily scan limit for digital access (leave empty for unlimited)';
-  dataRow.getCell(12).note = 'Right-click and paste image, or drag and drop';
+  dataRow.getCell(5).note = 'Custom welcome message for the general AI assistant';
+  dataRow.getCell(6).note = 'Custom welcome message for item assistant. Use {name} for item name';
+  dataRow.getCell(7).note = 'ISO 639-1 language code (en, zh-Hant, zh-Hans, ja, ko, etc.)';
+  dataRow.getCell(8).note = 'Enable voice conversations with visitors';
+  dataRow.getCell(9).note = 'Where QR code appears on physical card';
+  dataRow.getCell(10).note = 'Content mode: single, list, grid, or cards';
+  dataRow.getCell(11).note = 'Group content into categories (true/false)';
+  dataRow.getCell(12).note = 'How grouped items display: expanded or collapsed';
+  dataRow.getCell(13).note = 'Access mode: physical (printed card) or digital (QR only)';
+  dataRow.getCell(14).note = 'Total scan limit for digital access (leave empty for unlimited)';
+  dataRow.getCell(15).note = 'Daily scan limit for digital access (leave empty for unlimited)';
+  dataRow.getCell(16).note = 'Right-click and paste image, or drag and drop';
   
   // Freeze headers
   worksheet.views = [{ state: 'frozen', ySplit: EXCEL_CONFIG.CARD_SHEET.DESCRIPTIONS_ROW }];
@@ -593,16 +631,16 @@ async function createContentSheet(workbook, contentItems, options = {}) {
     }
     
     row.values = [
-      item.name || '',
-      item.content || '',
-      item.ai_knowledge_base || '',
+      sanitizeString(item.name || ''),
+      sanitizeString(item.content || ''),
+      sanitizeString(item.ai_knowledge_base || ''),
       item.sort_order || i + 1,
       layer,
       parentReference,
       '', // Placeholder for image
-      item.crop_parameters ? JSON.stringify(item.crop_parameters) : '', // Hidden crop parameters
-      item.translations ? JSON.stringify(item.translations) : '{}', // Hidden translations data
-      item.content_hash || '' // Hidden content hash for import preservation
+      sanitizeString(item.crop_parameters ? JSON.stringify(item.crop_parameters) : ''), // Hidden crop parameters
+      sanitizeString(item.translations ? JSON.stringify(item.translations) : '{}'), // Hidden translations data
+      sanitizeString(item.content_hash || '') // Hidden content hash for import preservation
     ];
     
     // Apply text wrapping for all cells
@@ -669,18 +707,18 @@ async function createContentSheet(workbook, contentItems, options = {}) {
 async function createTemplateCardSheet(workbook) {
   const worksheet = workbook.addWorksheet(EXCEL_CONFIG.CARD_SHEET.NAME);
   
-  // Row 1: Branded title with icons
+  // Row 1: Branded title with icons (span to column S = 19 columns)
   const titleCell = worksheet.getCell('A1');
   titleCell.value = `${EXCEL_CONFIG.ICONS.CARD} CardStudio - Card Import Template`;
   styleTitle(titleCell);
-  worksheet.mergeCells('A1:F1');
+  worksheet.mergeCells('A1:S1');
   worksheet.getRow(1).height = 30;
   
-  // Row 2: Clear user instructions
+  // Row 2: Clear user instructions (span to column S = 19 columns)
   const instructionCell = worksheet.getCell('A2');
   instructionCell.value = `${EXCEL_CONFIG.ICONS.INSTRUCTIONS} Fill in your experience details below. Required fields marked with *. Use dropdowns for validation.`;
   styleInstructions(instructionCell);
-  worksheet.mergeCells('A2:F2');
+  worksheet.mergeCells('A2:S2');
   worksheet.getRow(2).height = 25;
   
   // Row 3: Headers with icons
@@ -696,16 +734,20 @@ async function createTemplateCardSheet(workbook) {
   headerRow.eachCell(cell => styleHeader(cell));
   headerRow.height = 25;
   
-  // Row 4: Enhanced descriptions with examples
+  // Row 4: Enhanced descriptions with examples (19 columns)
   const descriptions = [
     'Enter card title (e.g., "Museum Experience")',
     'Brief description of card purpose',
     'AI instructions (e.g., "You are a helpful guide...")',
     'Background knowledge for AI conversations',
+    'Welcome message for general assistant',
+    'Welcome message for item assistant ({name} placeholder)',
     'Original content language (en, zh-Hant, etc.)',
     'Select true/false from dropdown',
     'Select QR position: TL/TR/BL/BR',
-    'Content mode: single/grouped/list/grid/inline',
+    'Content mode: single/list/grid/cards',
+    'Group content into categories (true/false)',
+    'Group display: expanded/collapsed',
     'Access mode: physical/digital',
     'Total scan limit (null = unlimited)',
     'Daily scan limit (null = unlimited)',
@@ -719,16 +761,20 @@ async function createTemplateCardSheet(workbook) {
   descriptionRow.eachCell(cell => styleInstruction(cell));
   descriptionRow.height = 25;
   
-  // Row 5: Empty data row for import
+  // Row 5: Empty data row for import (19 columns)
   const emptyData = [
     '', // Name
     '', // Description
     '', // AI Instruction
     '', // AI Knowledge Base
+    '', // AI Welcome (General)
+    '', // AI Welcome (Item)
     '', // Original Language
     '', // AI Enabled
     '', // QR Position
     '', // Content Mode
+    '', // Is Grouped
+    '', // Group Display
     '', // Access Mode
     '', // Max Scans
     '', // Daily Scan Limit
@@ -754,32 +800,40 @@ async function createTemplateCardSheet(workbook) {
   
   // No data validation for simplicity
   
-  // Add helpful cell comments
+  // Add helpful cell comments (adjusted for 19-column layout)
   dataRow.getCell(1).note = 'This will be the main title displayed on your experience';
   dataRow.getCell(3).note = 'Define the AI\'s role, personality, and restrictions (max 100 words)';
   dataRow.getCell(4).note = 'Provide detailed background knowledge for the AI (max 2000 words)';
-  dataRow.getCell(5).note = 'ISO 639-1 language code (en, zh-Hant, zh-Hans, ja, ko, etc.)';
-  dataRow.getCell(6).note = 'Enable voice conversations with visitors';
-  dataRow.getCell(7).note = 'Where QR code appears on physical card';
-  dataRow.getCell(8).note = 'Content mode: single, grouped, list, grid, or inline';
-  dataRow.getCell(9).note = 'Access mode: physical (printed card) or digital (QR only)';
-  dataRow.getCell(10).note = 'Total scan limit for digital access (leave empty for unlimited)';
-  dataRow.getCell(11).note = 'Daily scan limit for digital access (leave empty for unlimited)';
-  dataRow.getCell(12).note = 'Right-click and paste image, or drag and drop';
+  dataRow.getCell(5).note = 'Custom welcome message for the general AI assistant';
+  dataRow.getCell(6).note = 'Custom welcome message for item assistant. Use {name} for item name';
+  dataRow.getCell(7).note = 'ISO 639-1 language code (en, zh-Hant, zh-Hans, ja, ko, etc.)';
+  dataRow.getCell(8).note = 'Enable voice conversations with visitors';
+  dataRow.getCell(9).note = 'Where QR code appears on physical card';
+  dataRow.getCell(10).note = 'Content mode: single, list, grid, or cards';
+  dataRow.getCell(11).note = 'Group content into categories (true/false)';
+  dataRow.getCell(12).note = 'How grouped items display: expanded or collapsed';
+  dataRow.getCell(13).note = 'Access mode: physical (printed card) or digital (QR only)';
+  dataRow.getCell(14).note = 'Total scan limit for digital access (leave empty for unlimited)';
+  dataRow.getCell(15).note = 'Daily scan limit for digital access (leave empty for unlimited)';
+  dataRow.getCell(16).note = 'Right-click and paste image, or drag and drop';
   
   dataRow.height = 35; // Larger row for better readability
   
-  // Professional column sizing
+  // Professional column sizing (19 columns)
   worksheet.columns = [
     { width: 25 }, // Name
     { width: 40 }, // Description
     { width: 30 }, // AI Instruction
     { width: 45 }, // AI Knowledge Base
+    { width: 35 }, // AI Welcome (General)
+    { width: 35 }, // AI Welcome (Item)
     { width: 15 }, // Original Language
-    { width: 15 }, // AI Enabled
-    { width: 15 }, // QR Position
+    { width: 12 }, // AI Enabled
+    { width: 12 }, // QR Position
     { width: 15 }, // Content Mode
-    { width: 15 }, // Access Mode
+    { width: 12 }, // Is Grouped
+    { width: 15 }, // Group Display
+    { width: 12 }, // Access Mode
     { width: 12 }, // Max Scans
     { width: 15 }, // Daily Scan Limit
     { width: 25 }, // Card Image
@@ -923,15 +977,20 @@ async function parseCardSheet(worksheet, result) {
       // Clean header for mapping (remove icons and asterisks)
       const cleanHeader = header.replace(/[\u{1F000}-\u{1F9FF}]/gu, '').replace(/[*]/g, '').trim();
       
+      // IMPORTANT: Keep in sync with EXCEL_CONFIG.COLUMNS.CARD (19 columns)
       const fieldMapping = {
         'Name': 'name',
         'Description': 'description',
         'AI Instruction': 'ai_instruction',
         'AI Knowledge Base': 'ai_knowledge_base',
+        'AI Welcome (General)': 'ai_welcome_general',
+        'AI Welcome (Item)': 'ai_welcome_item',
         'Original Language': 'original_language',
         'AI Enabled': 'conversation_ai_enabled',
         'QR Position': 'qr_code_position',
         'Content Mode': 'content_mode',
+        'Is Grouped': 'is_grouped',
+        'Group Display': 'group_display',
         'Access Mode': 'billing_type',
         'Max Scans': 'max_scans',
         'Daily Scan Limit': 'daily_scan_limit',
@@ -967,14 +1026,16 @@ async function parseCardSheet(worksheet, result) {
           }
         } else if (dbField === 'content_mode') {
           // Validate content mode
-          const validModes = ['single', 'grouped', 'list', 'grid', 'inline'];
+          // 'cards' is legacy DB value, 'inline' is the modern UI term (maps to 'cards' in DB)
+          const validModes = ['single', 'grouped', 'list', 'grid', 'inline', 'cards'];
           const lowerValue = processedValue.toString().toLowerCase();
           if (validModes.includes(lowerValue)) {
-            cardData[dbField] = lowerValue;
+            // Map 'inline' to 'cards' for DB storage (schema constraint)
+            cardData[dbField] = lowerValue === 'inline' ? 'cards' : lowerValue;
           } else {
             console.warn(`Invalid content mode '${processedValue}', defaulting to 'list'`);
             cardData[dbField] = 'list';
-            result.warnings.push(`Invalid Content Mode '${processedValue}' - using default 'list'. Valid options: single, grouped, list, grid, inline`);
+            result.warnings.push(`Invalid Content Mode '${processedValue}' - using default 'list'. Valid options: single, grouped, list, grid, cards (inline)`);
           }
         } else if (dbField === 'billing_type') {
           // Validate access mode (billing_type)
@@ -1001,6 +1062,20 @@ async function parseCardSheet(worksheet, result) {
               result.warnings.push(`Invalid ${dbField} '${processedValue}' - setting to null (unlimited). Expected a positive number.`);
             }
           }
+        } else if (dbField === 'is_grouped') {
+          // Handle is_grouped boolean
+          cardData[dbField] = ['true', 'yes', '1', true].includes(processedValue.toString().toLowerCase());
+        } else if (dbField === 'group_display') {
+          // Validate group display
+          const validDisplays = ['expanded', 'collapsed'];
+          const lowerValue = processedValue.toString().toLowerCase();
+          if (validDisplays.includes(lowerValue)) {
+            cardData[dbField] = lowerValue;
+          } else {
+            console.warn(`Invalid group display '${processedValue}', defaulting to 'expanded'`);
+            cardData[dbField] = 'expanded';
+            result.warnings.push(`Invalid Group Display '${processedValue}' - using default 'expanded'. Valid options: expanded, collapsed`);
+          }
         } else {
           cardData[dbField] = processedValue;
         }
@@ -1009,7 +1084,7 @@ async function parseCardSheet(worksheet, result) {
     
     // Extract card image if embedded
     const cardImageRow = EXCEL_CONFIG.CARD_SHEET.DATA_START_ROW;
-    const cardImageCol = 12; // Column L (Card Image) - updated after adding Content Mode, Access Mode, Max Scans, Daily Scan Limit
+    const cardImageCol = 16; // Column P (Card Image) - updated for 19-column layout
     const extractedImages = await extractImagesFromRow(worksheet, cardImageRow, cardImageCol);
     if (extractedImages.length > 0) {
       result.images = result.images || new Map();
@@ -1169,7 +1244,10 @@ async function embedImages(workbook, worksheet, imageUrls, rowNum, colNum) {
       console.log(`Image added to workbook with ID: ${imageId}`);
       
       // Calculate position with offset for multiple images
-      const colOffset = i * 1.2; // Horizontal offset for multiple images
+      // Use integer column and offset (avoid floats in 'col')
+      // For multiple images, we place them in subsequent columns if available, or just stack them slightly offset
+      // Since we have hidden columns after image column, we can use them safely
+      const colOffset = Math.floor(i * 1.2); 
       
       // Add image to worksheet with standardized size
       worksheet.addImage(imageId, {

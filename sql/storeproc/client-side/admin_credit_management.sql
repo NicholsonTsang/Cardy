@@ -426,3 +426,16 @@ BEGIN
     RETURN v_stats;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =====================================================================
+-- GRANT PERMISSIONS - Admin functions require authenticated role
+-- =====================================================================
+-- Note: Admin check is done inside each function via raw_user_meta_data->>'role'
+-- This ensures only users with 'admin' role can access the data even with GRANT
+
+GRANT EXECUTE ON FUNCTION admin_get_credit_purchases(INTEGER, INTEGER, UUID, VARCHAR) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_credit_consumptions(INTEGER, INTEGER, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_credit_transactions(INTEGER, INTEGER, UUID, VARCHAR) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_user_credits(INTEGER, INTEGER, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_adjust_user_credits(UUID, DECIMAL, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_credit_statistics() TO authenticated;

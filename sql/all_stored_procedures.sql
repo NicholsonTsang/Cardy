@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Sat Dec 20 19:58:58 CST 2025
+-- Generated: Sun Dec 21 16:09:30 HKT 2025
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -470,6 +470,7 @@ BEGIN
     -- No need to check user_id = auth.uid() as RLS policy will handle this
 END;
 $$;
+GRANT EXECUTE ON FUNCTION get_card_by_id(UUID) TO authenticated;
 
 -- Update an existing card (more secure)
 CREATE OR REPLACE FUNCTION update_card(
@@ -688,6 +689,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
+GRANT EXECUTE ON FUNCTION delete_card(UUID) TO authenticated;
 
 -- Toggle access enabled/disabled for a digital card
 CREATE OR REPLACE FUNCTION toggle_card_access(
@@ -1374,7 +1376,6 @@ GRANT EXECUTE ON FUNCTION move_content_item_to_parent(UUID, UUID, INTEGER) TO au
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS get_card_content_items_paginated CASCADE;
 DROP FUNCTION IF EXISTS get_content_item_full CASCADE;
-DROP FUNCTION IF EXISTS get_public_card_info CASCADE;
 DROP FUNCTION IF EXISTS get_public_content_items_paginated CASCADE;
 DROP FUNCTION IF EXISTS get_public_content_item_full CASCADE;
 DROP FUNCTION IF EXISTS get_content_items_count CASCADE;
@@ -1382,6 +1383,13 @@ DROP FUNCTION IF EXISTS get_content_items_count CASCADE;
 -- =================================================================
 -- CONTENT ITEM PAGINATION & LAZY LOADING
 -- Optimizes performance for cards with many/large content items
+-- =================================================================
+-- NOTE (Dec 2025): Legacy credit-based access functions have been removed.
+-- Mobile client now uses Express backend (mobile.routes.ts) with Redis-first
+-- usage tracking (usage-tracker.ts) for both monthly and daily limits.
+-- 
+-- Removed functions:
+-- - get_public_card_info (legacy credit model, replaced by mobile API)
 -- =================================================================
 
 -- -----------------------------------------------------------------
@@ -1494,157 +1502,9 @@ $$;
 GRANT EXECUTE ON FUNCTION get_content_item_full(UUID) TO authenticated;
 
 -- -----------------------------------------------------------------
--- PUBLIC: Get card info only (no content items)
--- First call for mobile client - minimal payload (~5KB)
--- SECURITY: Credit rate is hardcoded to prevent bypass attacks
--- -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION get_public_card_info(
-    p_issue_card_id UUID,
-    p_language VARCHAR(10) DEFAULT 'en'
-)
-RETURNS TABLE (
-    card_name TEXT,
-    card_description TEXT,
-    card_image_url TEXT,
-    card_crop_parameters JSONB,
-    card_conversation_ai_enabled BOOLEAN,
-    card_ai_instruction TEXT,
-    card_ai_knowledge_base TEXT,
-    card_ai_welcome_general TEXT,
-    card_ai_welcome_item TEXT,
-    card_original_language VARCHAR(10),
-    card_has_translation BOOLEAN,
-    card_available_languages TEXT[],
-    card_content_mode TEXT,
-    card_is_grouped BOOLEAN,
-    card_group_display TEXT,
-    card_billing_type TEXT,
-    card_max_scans INTEGER,
-    card_current_scans INTEGER,
-    card_daily_scan_limit INTEGER,
-    card_daily_scans INTEGER,
-    card_scan_limit_reached BOOLEAN,
-    card_daily_limit_exceeded BOOLEAN,
-    card_credits_insufficient BOOLEAN,
-    card_id UUID,
-    content_item_count BIGINT,
-    is_activated BOOLEAN
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    -- SECURITY: Hardcoded credit rate to prevent bypass attacks
-    CREDIT_RATE CONSTANT DECIMAL := 0.03;
-    
-    v_card_design_id UUID;
-    v_is_card_active BOOLEAN;
-    v_card_owner_id UUID;
-    v_caller_id UUID;
-    v_is_owner_access BOOLEAN := FALSE;
-    v_billing_type TEXT;
-    v_max_scans INTEGER;
-    v_current_scans INTEGER;
-    v_daily_scan_limit INTEGER;
-    v_daily_scans INTEGER;
-    v_last_scan_date DATE;
-    v_scan_limit_reached BOOLEAN := FALSE;
-    v_daily_limit_exceeded BOOLEAN := FALSE;
-    v_credits_insufficient BOOLEAN := FALSE;
-    v_credit_result JSONB;
-    v_content_count BIGINT;
-BEGIN
-    v_caller_id := auth.uid();
-    
-    -- Get card information
-    SELECT ic.card_id, ic.active, c.user_id, c.billing_type, c.max_scans, c.current_scans,
-           c.daily_scan_limit, c.daily_scans, c.last_scan_date
-    INTO v_card_design_id, v_is_card_active, v_card_owner_id, v_billing_type, v_max_scans, v_current_scans,
-         v_daily_scan_limit, v_daily_scans, v_last_scan_date
-    FROM issue_cards ic
-    JOIN cards c ON ic.card_id = c.id
-    WHERE ic.id = p_issue_card_id;
-
-    IF NOT FOUND THEN
-        RETURN;
-    END IF;
-
-    -- Check owner access
-    IF v_caller_id IS NOT NULL AND v_caller_id = v_card_owner_id THEN
-        v_is_owner_access := TRUE;
-        v_is_card_active := TRUE;
-    END IF;
-
-    -- Handle digital card billing (same logic as get_public_card_content)
-    IF v_billing_type = 'digital' AND NOT v_is_owner_access THEN
-        IF v_last_scan_date IS NULL OR v_last_scan_date < CURRENT_DATE THEN
-            UPDATE cards SET daily_scans = 0, last_scan_date = CURRENT_DATE WHERE id = v_card_design_id;
-            v_daily_scans := 0;
-        END IF;
-        
-        IF v_max_scans IS NOT NULL AND v_current_scans >= v_max_scans THEN
-            v_scan_limit_reached := TRUE;
-        ELSIF v_daily_scan_limit IS NOT NULL AND v_daily_scans >= v_daily_scan_limit THEN
-            v_daily_limit_exceeded := TRUE;
-        ELSE
-            -- Using hardcoded credit rate for security
-            SELECT consume_credit_for_digital_scan(v_card_design_id, v_card_owner_id, CREDIT_RATE)
-            INTO v_credit_result;
-            
-            IF (v_credit_result->>'success')::BOOLEAN = FALSE THEN
-                v_credits_insufficient := TRUE;
-            ELSE
-                UPDATE cards SET current_scans = current_scans + 1, daily_scans = daily_scans + 1, last_scan_date = CURRENT_DATE
-                WHERE id = v_card_design_id;
-                v_current_scans := v_current_scans + 1;
-                v_daily_scans := v_daily_scans + 1;
-            END IF;
-        END IF;
-    END IF;
-
-    -- Auto-activate if needed
-    IF NOT v_is_card_active THEN
-        UPDATE issue_cards SET active = true, activated_at = NOW() WHERE id = p_issue_card_id;
-        v_is_card_active := TRUE;
-    END IF;
-    
-    -- Get content item count
-    SELECT COUNT(*) INTO v_content_count FROM content_items WHERE card_id = v_card_design_id;
-
-    RETURN QUERY
-    SELECT 
-        COALESCE(c.translations->p_language->>'name', c.name)::TEXT,
-        COALESCE(c.translations->p_language->>'description', c.description)::TEXT,
-        c.image_url,
-        c.crop_parameters,
-        c.conversation_ai_enabled,
-        c.ai_instruction,
-        c.ai_knowledge_base,
-        c.ai_welcome_general,
-        c.ai_welcome_item,
-        c.original_language::VARCHAR(10),
-        (c.translations ? p_language)::BOOLEAN,
-        (ARRAY[c.original_language] || ARRAY(SELECT jsonb_object_keys(c.translations)))::TEXT[],
-        COALESCE(c.content_mode, 'list')::TEXT,
-        COALESCE(c.is_grouped, FALSE)::BOOLEAN,
-        COALESCE(c.group_display, 'expanded')::TEXT,
-        COALESCE(c.billing_type, 'physical')::TEXT,
-        c.max_scans,
-        v_current_scans,
-        c.daily_scan_limit,
-        v_daily_scans,
-        v_scan_limit_reached,
-        v_daily_limit_exceeded,
-        v_credits_insufficient,
-        v_card_design_id,
-        v_content_count,
-        v_is_card_active
-    FROM cards c
-    WHERE c.id = v_card_design_id;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION get_public_card_info(UUID, VARCHAR) TO anon, authenticated;
-
--- -----------------------------------------------------------------
 -- PUBLIC: Get paginated content items with PREVIEW
 -- For mobile list views - reduces initial payload significantly
+-- NOTE: Access control is handled by Express backend (usage-tracker.ts)
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION get_public_content_items_paginated(
     p_card_id UUID,
@@ -1701,6 +1561,7 @@ GRANT EXECUTE ON FUNCTION get_public_content_items_paginated(UUID, VARCHAR, INTE
 -- -----------------------------------------------------------------
 -- PUBLIC: Get FULL content item details (for detail view)
 -- Called when user taps on an item
+-- NOTE: Access control is handled by Express backend (usage-tracker.ts)
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION get_public_content_item_full(
     p_content_item_id UUID,
@@ -1787,7 +1648,6 @@ BEGIN
 END;
 $$;
 GRANT EXECUTE ON FUNCTION get_content_items_count(UUID) TO anon, authenticated;
-
 
 
 -- File: 04_batch_management.sql
@@ -2274,6 +2134,7 @@ $$;
 DROP FUNCTION IF EXISTS request_card_printing CASCADE;
 DROP FUNCTION IF EXISTS get_print_requests_for_batch CASCADE;
 DROP FUNCTION IF EXISTS withdraw_print_request CASCADE;
+DROP FUNCTION IF EXISTS get_print_request_feedbacks CASCADE;
 
 -- =================================================================
 -- PRINT REQUEST FUNCTIONS
@@ -2464,12 +2325,74 @@ BEGIN
     
     RETURN TRUE;
 END;
-$$; 
+$$;
+
+
+-- Get feedbacks for a print request (card issuer and admin)
+-- Returns only non-internal feedbacks for card issuers
+CREATE OR REPLACE FUNCTION get_print_request_feedbacks(p_request_id UUID)
+RETURNS TABLE (
+    id UUID,
+    admin_email VARCHAR(255),
+    message TEXT,
+    is_internal BOOLEAN,
+    created_at TIMESTAMPTZ
+) LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE
+    v_user_id UUID;
+    v_caller_role TEXT;
+    v_is_admin BOOLEAN;
+BEGIN
+    -- Get caller role
+    SELECT raw_user_meta_data->>'role' INTO v_caller_role
+    FROM auth.users
+    WHERE auth.users.id = auth.uid();
+    
+    v_is_admin := v_caller_role = 'admin';
+
+    -- Check if the user owns the print request or is admin
+    SELECT pr.user_id INTO v_user_id
+    FROM print_requests pr
+    JOIN card_batches cb ON pr.batch_id = cb.id
+    JOIN cards c ON cb.card_id = c.id
+    WHERE pr.id = p_request_id;
+
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Print request not found.';
+    END IF;
+
+    IF v_user_id != auth.uid() AND NOT v_is_admin THEN
+        RAISE EXCEPTION 'Not authorized to view feedbacks for this print request.';
+    END IF;
+
+    -- Return feedbacks (admins see all, users see only non-internal)
+    RETURN QUERY
+    SELECT 
+        prf.id,
+        prf.admin_email,
+        prf.message,
+        prf.is_internal,
+        prf.created_at
+    FROM print_request_feedbacks prf
+    WHERE prf.print_request_id = p_request_id
+      AND (v_is_admin OR prf.is_internal = false)
+    ORDER BY prf.created_at DESC;
+END;
+$$;
+
+-- =================================================================
+-- GRANT STATEMENTS
+-- =================================================================
+-- Print request functions use SECURITY DEFINER for access control
+-- Grant execute to authenticated users - authorization checked inside functions
+
+GRANT EXECUTE ON FUNCTION request_card_printing(UUID, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_print_requests_for_batch(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION withdraw_print_request(UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_print_request_feedbacks(UUID) TO authenticated; 
 
 -- File: 07_public_access.sql
 -- -----------------------------------------------------------------
-DROP FUNCTION IF EXISTS get_public_card_content CASCADE;
-DROP FUNCTION IF EXISTS get_digital_card_content CASCADE;
 DROP FUNCTION IF EXISTS get_card_preview_access CASCADE;
 DROP FUNCTION IF EXISTS get_card_preview_content CASCADE;
 
@@ -2477,420 +2400,14 @@ DROP FUNCTION IF EXISTS get_card_preview_content CASCADE;
 -- PUBLIC CARD ACCESS FUNCTIONS
 -- Functions for public card access and mobile preview
 -- =================================================================
-
--- Get public card content by issue card ID
--- Updated to support translations via p_language parameter
--- Updated to include billing_type for routing and scan tracking
--- Updated to include daily limit checking and real-time credit consumption for digital access
--- SECURITY: Credit rate is hardcoded to prevent bypass attacks
-CREATE OR REPLACE FUNCTION get_public_card_content(
-    p_issue_card_id UUID,
-    p_language VARCHAR(10) DEFAULT 'en'
-)
-RETURNS TABLE (
-    card_name TEXT,
-    card_description TEXT,
-    card_image_url TEXT,
-    card_crop_parameters JSONB,
-    card_conversation_ai_enabled BOOLEAN,
-    card_ai_instruction TEXT,
-    card_ai_knowledge_base TEXT,
-    card_ai_welcome_general TEXT,
-    card_ai_welcome_item TEXT,
-    card_original_language VARCHAR(10),
-    card_has_translation BOOLEAN,
-    card_available_languages TEXT[], -- Array of available language codes
-    card_content_mode TEXT, -- Content rendering mode (single, grid, list, cards)
-    card_is_grouped BOOLEAN, -- Whether content is organized into categories
-    card_group_display TEXT, -- How grouped items display: expanded or collapsed
-    card_billing_type TEXT, -- Billing model: physical or digital
-    card_max_scans INTEGER, -- NULL for physical (unlimited), Integer for digital (total limit)
-    card_current_scans INTEGER, -- Current total scan count
-    card_daily_scan_limit INTEGER, -- Daily scan limit (NULL = unlimited)
-    card_daily_scans INTEGER, -- Today's scan count
-    card_scan_limit_reached BOOLEAN, -- TRUE if digital card has reached total scan limit
-    card_daily_limit_exceeded BOOLEAN, -- TRUE if digital card has reached daily limit
-    card_credits_insufficient BOOLEAN, -- TRUE if card owner has insufficient credits
-    content_item_id UUID,
-    content_item_parent_id UUID,
-    content_item_name TEXT,
-    content_item_content TEXT,
-    content_item_image_url TEXT,
-    content_item_ai_knowledge_base TEXT,
-    content_item_sort_order INTEGER,
-    crop_parameters JSONB,
-    is_activated BOOLEAN
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    -- SECURITY: Hardcoded credit rate to prevent bypass attacks
-    CREDIT_RATE CONSTANT DECIMAL := 0.03;
-    
-    v_card_design_id UUID;
-    v_is_card_active BOOLEAN;
-    v_card_owner_id UUID;
-    v_caller_id UUID;
-    v_is_owner_access BOOLEAN := FALSE;
-    v_billing_type TEXT;
-    v_max_scans INTEGER;
-    v_current_scans INTEGER;
-    v_daily_scan_limit INTEGER;
-    v_daily_scans INTEGER;
-    v_last_scan_date DATE;
-    v_scan_limit_reached BOOLEAN := FALSE;
-    v_daily_limit_exceeded BOOLEAN := FALSE;
-    v_credits_insufficient BOOLEAN := FALSE;
-    v_credit_result JSONB;
-BEGIN
-    -- Get the caller's user ID
-    v_caller_id := auth.uid();
-    
-    -- Get card information by issue card ID
-    SELECT ic.card_id, ic.active, c.user_id, c.billing_type, c.max_scans, c.current_scans,
-           c.daily_scan_limit, c.daily_scans, c.last_scan_date
-    INTO v_card_design_id, v_is_card_active, v_card_owner_id, v_billing_type, v_max_scans, v_current_scans,
-         v_daily_scan_limit, v_daily_scans, v_last_scan_date
-    FROM issue_cards ic
-    JOIN cards c ON ic.card_id = c.id
-    WHERE ic.id = p_issue_card_id;
-
-    IF NOT FOUND THEN
-        -- If no card matches, return empty
-        RETURN;
-    END IF;
-
-    -- Check if the caller is the card owner
-    IF v_caller_id IS NOT NULL AND v_caller_id = v_card_owner_id THEN
-        v_is_owner_access := TRUE;
-        -- For owner access, we consider the card as "activated" for preview purposes
-        v_is_card_active := TRUE;
-    END IF;
-
-    -- For digital cards, handle daily reset, limits, and credit consumption (only for non-owner access)
-    IF v_billing_type = 'digital' AND NOT v_is_owner_access THEN
-        -- Reset daily counter if it's a new day
-        IF v_last_scan_date IS NULL OR v_last_scan_date < CURRENT_DATE THEN
-            UPDATE cards 
-            SET daily_scans = 0, last_scan_date = CURRENT_DATE 
-            WHERE id = v_card_design_id;
-            v_daily_scans := 0;
-        END IF;
-        
-        -- Check total scan limit
-        IF v_max_scans IS NOT NULL AND v_current_scans >= v_max_scans THEN
-            v_scan_limit_reached := TRUE;
-        -- Check daily scan limit
-        ELSIF v_daily_scan_limit IS NOT NULL AND v_daily_scans >= v_daily_scan_limit THEN
-            v_daily_limit_exceeded := TRUE;
-        ELSE
-            -- Try to consume credit from card owner (using hardcoded rate)
-            SELECT consume_credit_for_digital_scan(v_card_design_id, v_card_owner_id, CREDIT_RATE)
-            INTO v_credit_result;
-            
-            IF (v_credit_result->>'success')::BOOLEAN = FALSE THEN
-                -- Credit consumption failed
-                v_credits_insufficient := TRUE;
-            ELSE
-                -- Credit consumed successfully, increment counters
-                BEGIN
-                    UPDATE cards 
-                    SET current_scans = current_scans + 1,
-                        daily_scans = daily_scans + 1,
-                        last_scan_date = CURRENT_DATE
-                    WHERE id = v_card_design_id;
-                    v_current_scans := v_current_scans + 1;
-                    v_daily_scans := v_daily_scans + 1;
-                EXCEPTION
-                    WHEN others THEN NULL;
-                END;
-            END IF;
-        END IF;
-    END IF;
-
-    -- If the card is not active, activate it automatically (regardless of owner status)
-    -- This ensures all first-time accesses are tracked, including owner previews
-    IF NOT v_is_card_active THEN
-        BEGIN
-            UPDATE issue_cards SET active = true, activated_at = NOW() WHERE id = p_issue_card_id;
-            -- Log the auto-activation
-            PERFORM log_operation('Card auto-activated on first access');
-        EXCEPTION
-            WHEN others THEN
-                -- Log any error during activation but don't fail the main query
-        END;
-        
-        v_is_card_active := TRUE; -- Mark as active for current request
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        -- Use translation if available, fallback to original
-        COALESCE(c.translations->p_language->>'name', c.name)::TEXT AS card_name,
-        COALESCE(c.translations->p_language->>'description', c.description)::TEXT AS card_description,
-        c.image_url AS card_image_url,
-        c.crop_parameters AS card_crop_parameters,
-        c.conversation_ai_enabled AS card_conversation_ai_enabled,
-        c.ai_instruction AS card_ai_instruction,
-        c.ai_knowledge_base AS card_ai_knowledge_base,
-        c.ai_welcome_general AS card_ai_welcome_general,
-        c.ai_welcome_item AS card_ai_welcome_item,
-        c.original_language::VARCHAR(10) AS card_original_language,
-        (c.translations ? p_language)::BOOLEAN AS card_has_translation,
-        -- Get array of available translation languages (original + translated languages)
-        (
-            ARRAY[c.original_language] || 
-            ARRAY(SELECT jsonb_object_keys(c.translations))
-        )::TEXT[] AS card_available_languages,
-        COALESCE(c.content_mode, 'list')::TEXT AS card_content_mode, -- Content rendering mode
-        COALESCE(c.is_grouped, FALSE)::BOOLEAN AS card_is_grouped, -- Grouping mode
-        COALESCE(c.group_display, 'expanded')::TEXT AS card_group_display, -- Group display
-        COALESCE(c.billing_type, 'physical')::TEXT AS card_billing_type, -- Billing model
-        c.max_scans AS card_max_scans,
-        v_current_scans AS card_current_scans,
-        c.daily_scan_limit AS card_daily_scan_limit,
-        v_daily_scans AS card_daily_scans,
-        v_scan_limit_reached AS card_scan_limit_reached,
-        v_daily_limit_exceeded AS card_daily_limit_exceeded,
-        v_credits_insufficient AS card_credits_insufficient,
-        ci.id AS content_item_id,
-        ci.parent_id AS content_item_parent_id,
-        COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
-        COALESCE(ci.translations->p_language->>'content', ci.content)::TEXT AS content_item_content,
-        ci.image_url AS content_item_image_url,
-        -- Note: ai_knowledge_base is translated but not exposed to mobile client
-        COALESCE(ci.translations->p_language->>'ai_knowledge_base', ci.ai_knowledge_base)::TEXT AS content_item_ai_knowledge_base,
-        ci.sort_order AS content_item_sort_order,
-        ci.crop_parameters,
-        v_is_card_active AS is_activated -- Return the current/newly activated status
-    FROM cards c
-    LEFT JOIN content_items ci ON c.id = ci.card_id
-    WHERE c.id = v_card_design_id 
-    ORDER BY 
-        CASE WHEN ci.parent_id IS NULL THEN ci.sort_order ELSE 999999 END,
-        ci.parent_id NULLS FIRST,
-        ci.sort_order ASC,
-        ci.created_at ASC;
-END;
-$$;
-
-
--- Get digital card content by access token (for digital cards with refreshable URLs)
--- This function validates access_token and is_access_enabled
--- SECURITY: Credit rate is hardcoded to prevent bypass attacks
--- DEDUPLICATION: p_visitor_hash prevents multiple charges for same visitor within 5 min
-CREATE OR REPLACE FUNCTION get_digital_card_content(
-    p_access_token TEXT,
-    p_language VARCHAR(10) DEFAULT 'en',
-    p_visitor_hash TEXT DEFAULT NULL  -- Optional: visitor identifier for deduplication
-)
-RETURNS TABLE (
-    card_name TEXT,
-    card_description TEXT,
-    card_image_url TEXT,
-    card_crop_parameters JSONB,
-    card_conversation_ai_enabled BOOLEAN,
-    card_ai_instruction TEXT,
-    card_ai_knowledge_base TEXT,
-    card_ai_welcome_general TEXT,
-    card_ai_welcome_item TEXT,
-    card_original_language VARCHAR(10),
-    card_has_translation BOOLEAN,
-    card_available_languages TEXT[],
-    card_content_mode TEXT,
-    card_is_grouped BOOLEAN,
-    card_group_display TEXT,
-    card_billing_type TEXT,
-    card_max_scans INTEGER,
-    card_current_scans INTEGER,
-    card_daily_scan_limit INTEGER,
-    card_daily_scans INTEGER,
-    card_scan_limit_reached BOOLEAN,
-    card_daily_limit_exceeded BOOLEAN,
-    card_credits_insufficient BOOLEAN,
-    card_access_disabled BOOLEAN,
-    content_item_id UUID,
-    content_item_parent_id UUID,
-    content_item_name TEXT,
-    content_item_content TEXT,
-    content_item_image_url TEXT,
-    content_item_ai_knowledge_base TEXT,
-    content_item_sort_order INTEGER,
-    crop_parameters JSONB
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    -- SECURITY: Hardcoded credit rate to prevent bypass attacks
-    CREDIT_RATE CONSTANT DECIMAL := 0.03;
-    -- DEDUPLICATION: Same visitor within 5 minutes = 1 scan
-    DEDUP_WINDOW CONSTANT INTERVAL := INTERVAL '5 minutes';
-    
-    v_card_id UUID;
-    v_card_owner_id UUID;
-    v_caller_id UUID;
-    v_is_owner_access BOOLEAN := FALSE;
-    v_is_access_enabled BOOLEAN;
-    v_max_scans INTEGER;
-    v_current_scans INTEGER;
-    v_daily_scan_limit INTEGER;
-    v_daily_scans INTEGER;
-    v_last_scan_date DATE;
-    v_scan_limit_reached BOOLEAN := FALSE;
-    v_daily_limit_exceeded BOOLEAN := FALSE;
-    v_credits_insufficient BOOLEAN := FALSE;
-    v_access_disabled BOOLEAN := FALSE;
-    v_credit_result JSONB;
-    v_recent_access_exists BOOLEAN := FALSE;
-    v_effective_visitor_hash TEXT;
-BEGIN
-    -- Get caller's user ID
-    v_caller_id := auth.uid();
-    
-    -- Find card by access token (must be a digital card)
-    SELECT id, user_id, is_access_enabled, max_scans, current_scans,
-           daily_scan_limit, daily_scans, last_scan_date
-    INTO v_card_id, v_card_owner_id, v_is_access_enabled, v_max_scans, v_current_scans,
-         v_daily_scan_limit, v_daily_scans, v_last_scan_date
-    FROM cards
-    WHERE access_token = p_access_token AND billing_type = 'digital';
-    
-    IF NOT FOUND THEN
-        -- Invalid or expired token
-        RETURN;
-    END IF;
-    
-    -- Check if caller is the card owner
-    IF v_caller_id IS NOT NULL AND v_caller_id = v_card_owner_id THEN
-        v_is_owner_access := TRUE;
-    END IF;
-    
-    -- Check if access is enabled (owners can always access)
-    IF NOT v_is_access_enabled AND NOT v_is_owner_access THEN
-        v_access_disabled := TRUE;
-        -- Return with access_disabled flag but no content
-        RETURN QUERY
-        SELECT 
-            NULL::TEXT, NULL::TEXT, NULL::TEXT, NULL::JSONB, NULL::BOOLEAN, 
-            NULL::TEXT, NULL::TEXT, NULL::TEXT, NULL::TEXT, NULL::VARCHAR(10), 
-            NULL::BOOLEAN, NULL::TEXT[], NULL::TEXT, NULL::BOOLEAN, NULL::TEXT,
-            NULL::TEXT, NULL::INTEGER, NULL::INTEGER, NULL::INTEGER, NULL::INTEGER,
-            FALSE, FALSE, FALSE, TRUE,
-            NULL::UUID, NULL::UUID, NULL::TEXT, NULL::TEXT, NULL::TEXT, NULL::TEXT,
-            NULL::INTEGER, NULL::JSONB;
-        RETURN;
-    END IF;
-    
-    -- For non-owner access, handle scan counting and credit consumption
-    IF NOT v_is_owner_access THEN
-        -- Generate effective visitor hash for deduplication
-        v_effective_visitor_hash := COALESCE(
-            p_visitor_hash, 
-            COALESCE(v_caller_id::TEXT, 'anon-' || md5(random()::TEXT))
-        );
-        
-        -- Check for recent access from same visitor (deduplication)
-        SELECT EXISTS(
-            SELECT 1 FROM card_access_log
-            WHERE card_id = v_card_id
-              AND visitor_hash = v_effective_visitor_hash
-              AND accessed_at > NOW() - DEDUP_WINDOW
-        ) INTO v_recent_access_exists;
-        
-        -- Log this access (if table exists)
-        BEGIN
-            INSERT INTO card_access_log (card_id, visitor_hash, credit_charged, is_owner_access)
-            VALUES (v_card_id, v_effective_visitor_hash, NOT v_recent_access_exists, FALSE);
-        EXCEPTION
-            WHEN undefined_table THEN 
-                -- Table doesn't exist yet, skip logging
-                NULL;
-        END;
-        
-        -- If recent access exists, skip credit consumption (deduplication)
-        IF NOT v_recent_access_exists THEN
-            -- Reset daily counter if it's a new day
-            IF v_last_scan_date IS NULL OR v_last_scan_date < CURRENT_DATE THEN
-                UPDATE cards 
-                SET daily_scans = 0, last_scan_date = CURRENT_DATE 
-                WHERE id = v_card_id;
-                v_daily_scans := 0;
-            END IF;
-            
-            -- Check total scan limit
-            IF v_max_scans IS NOT NULL AND v_current_scans >= v_max_scans THEN
-                v_scan_limit_reached := TRUE;
-            -- Check daily scan limit
-            ELSIF v_daily_scan_limit IS NOT NULL AND v_daily_scans >= v_daily_scan_limit THEN
-                v_daily_limit_exceeded := TRUE;
-            ELSE
-                -- Try to consume credit from card owner (using hardcoded rate)
-                SELECT consume_credit_for_digital_scan(v_card_id, v_card_owner_id, CREDIT_RATE)
-                INTO v_credit_result;
-                
-                IF (v_credit_result->>'success')::BOOLEAN = FALSE THEN
-                    v_credits_insufficient := TRUE;
-                ELSE
-                    -- Credit consumed successfully, increment counters
-                    BEGIN
-                        UPDATE cards 
-                        SET current_scans = current_scans + 1,
-                            daily_scans = daily_scans + 1,
-                            last_scan_date = CURRENT_DATE
-                        WHERE id = v_card_id;
-                        v_current_scans := v_current_scans + 1;
-                        v_daily_scans := v_daily_scans + 1;
-                    EXCEPTION
-                        WHEN others THEN NULL;
-                    END;
-                END IF;
-            END IF;
-        END IF;
-        -- If recent access exists (v_recent_access_exists = TRUE), just return content without charging
-    END IF;
-    
-    -- Return card content
-    RETURN QUERY
-    SELECT 
-        COALESCE(c.translations->p_language->>'name', c.name)::TEXT AS card_name,
-        COALESCE(c.translations->p_language->>'description', c.description)::TEXT AS card_description,
-        c.image_url AS card_image_url,
-        c.crop_parameters AS card_crop_parameters,
-        c.conversation_ai_enabled AS card_conversation_ai_enabled,
-        c.ai_instruction AS card_ai_instruction,
-        c.ai_knowledge_base AS card_ai_knowledge_base,
-        c.ai_welcome_general AS card_ai_welcome_general,
-        c.ai_welcome_item AS card_ai_welcome_item,
-        c.original_language::VARCHAR(10) AS card_original_language,
-        (c.translations ? p_language)::BOOLEAN AS card_has_translation,
-        (ARRAY[c.original_language] || ARRAY(SELECT jsonb_object_keys(c.translations)))::TEXT[] AS card_available_languages,
-        COALESCE(c.content_mode, 'list')::TEXT AS card_content_mode,
-        COALESCE(c.is_grouped, FALSE)::BOOLEAN AS card_is_grouped,
-        COALESCE(c.group_display, 'expanded')::TEXT AS card_group_display,
-        'digital'::TEXT AS card_billing_type,
-        c.max_scans AS card_max_scans,
-        v_current_scans AS card_current_scans,
-        c.daily_scan_limit AS card_daily_scan_limit,
-        v_daily_scans AS card_daily_scans,
-        v_scan_limit_reached AS card_scan_limit_reached,
-        v_daily_limit_exceeded AS card_daily_limit_exceeded,
-        v_credits_insufficient AS card_credits_insufficient,
-        v_access_disabled AS card_access_disabled,
-        ci.id AS content_item_id,
-        ci.parent_id AS content_item_parent_id,
-        COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
-        COALESCE(ci.translations->p_language->>'content', ci.content)::TEXT AS content_item_content,
-        ci.image_url AS content_item_image_url,
-        COALESCE(ci.translations->p_language->>'ai_knowledge_base', ci.ai_knowledge_base)::TEXT AS content_item_ai_knowledge_base,
-        ci.sort_order AS content_item_sort_order,
-        ci.crop_parameters
-    FROM cards c
-    LEFT JOIN content_items ci ON c.id = ci.card_id
-    WHERE c.id = v_card_id 
-    ORDER BY 
-        CASE WHEN ci.parent_id IS NULL THEN ci.sort_order ELSE 999999 END,
-        ci.parent_id NULLS FIRST,
-        ci.sort_order ASC,
-        ci.created_at ASC;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION get_digital_card_content(TEXT, VARCHAR, TEXT) TO anon, authenticated;
+-- NOTE (Dec 2025): Legacy credit-based access functions have been removed.
+-- Mobile client now uses Express backend (mobile.routes.ts) with Redis-first
+-- usage tracking (usage-tracker.ts) for both monthly and daily limits.
+-- 
+-- Removed functions:
+-- - get_public_card_content (legacy credit model, replaced by mobile API)
+-- - get_digital_card_content (legacy credit model, replaced by mobile API)
+-- =================================================================
 
 -- Get card preview URL without requiring issued cards (for card owners)
 CREATE OR REPLACE FUNCTION get_card_preview_access(p_card_id UUID)
@@ -3004,10 +2521,11 @@ BEGIN
         c.image_url AS card_image_url,
         c.crop_parameters AS card_crop_parameters,
         c.conversation_ai_enabled AS card_conversation_ai_enabled,
-        c.ai_instruction AS card_ai_instruction,
-        c.ai_knowledge_base AS card_ai_knowledge_base,
-        c.ai_welcome_general AS card_ai_welcome_general,
-        c.ai_welcome_item AS card_ai_welcome_item,
+        -- Card AI fields with translation support
+        COALESCE(c.translations->p_language->>'ai_instruction', c.ai_instruction)::TEXT AS card_ai_instruction,
+        COALESCE(c.translations->p_language->>'ai_knowledge_base', c.ai_knowledge_base)::TEXT AS card_ai_knowledge_base,
+        COALESCE(c.translations->p_language->>'ai_welcome_general', c.ai_welcome_general)::TEXT AS card_ai_welcome_general,
+        COALESCE(c.translations->p_language->>'ai_welcome_item', c.ai_welcome_item)::TEXT AS card_ai_welcome_item,
         c.original_language::VARCHAR(10) AS card_original_language,
         (c.translations ? p_language)::BOOLEAN AS card_has_translation,
         -- Get array of available translation languages (original + translated languages)
@@ -3028,6 +2546,7 @@ BEGIN
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
         COALESCE(ci.translations->p_language->>'content', ci.content)::TEXT AS content_item_content,
         ci.image_url AS content_item_image_url,
+        -- Content item AI knowledge base with translation support
         COALESCE(ci.translations->p_language->>'ai_knowledge_base', ci.ai_knowledge_base)::TEXT AS content_item_ai_knowledge_base,
         ci.sort_order AS content_item_sort_order,
         ci.crop_parameters,
@@ -3041,7 +2560,12 @@ BEGIN
         ci.sort_order ASC,
         ci.created_at ASC;
 END;
-$$; 
+$$;
+
+-- Grant execute permissions
+GRANT EXECUTE ON FUNCTION get_card_preview_access(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_card_preview_content(UUID, VARCHAR) TO authenticated;
+
 
 -- File: 10_template_library.sql
 -- -----------------------------------------------------------------
@@ -3068,12 +2592,14 @@ DROP FUNCTION IF EXISTS get_demo_templates CASCADE;
 -- -----------------------------------------------------------------
 -- List all available templates with filtering
 -- Joins with cards table to get card data
+-- All fields included for consistency with Excel export/import
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.list_content_templates(
     p_venue_type TEXT DEFAULT NULL,
     p_content_mode TEXT DEFAULT NULL,
     p_search TEXT DEFAULT NULL,
-    p_featured_only BOOLEAN DEFAULT FALSE
+    p_featured_only BOOLEAN DEFAULT FALSE,
+    p_language TEXT DEFAULT NULL  -- Display templates in this language if translation available
 )
 RETURNS TABLE (
     id UUID,
@@ -3087,9 +2613,14 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
+    max_scans INTEGER,
+    daily_scan_limit INTEGER,
+    original_language TEXT,
+    qr_code_position TEXT,
     item_count BIGINT,
     is_featured BOOLEAN,
-    created_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ,
+    translation_languages TEXT[]
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -3101,17 +2632,33 @@ BEGIN
         ct.id,
         ct.slug,
         ct.card_id,
-        c.name,
-        COALESCE(c.description, '')::TEXT,
+        -- Use translated name if language specified and translation exists, else original
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'name', c.name)
+            ELSE c.name
+        END AS name,
+        -- Use translated description if language specified and translation exists, else original
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'description', c.description, '')
+            ELSE COALESCE(c.description, '')
+        END::TEXT AS description,
         ct.venue_type,
         COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
         COALESCE(c.content_mode, 'list')::TEXT,
         COALESCE(c.is_grouped, false),
         COALESCE(c.group_display, 'expanded')::TEXT,
         COALESCE(c.billing_type, 'digital')::TEXT,
+        c.max_scans,
+        c.daily_scan_limit,
+        COALESCE(c.original_language, 'en')::TEXT,
+        COALESCE(c.qr_code_position::TEXT, 'BR'),
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
         ct.is_featured,
-        ct.created_at
+        ct.created_at,
+        -- Extract translation language keys from JSONB
+        COALESCE(ARRAY(SELECT jsonb_object_keys(c.translations)), ARRAY[]::TEXT[]) AS translation_languages
     FROM content_templates ct
     JOIN cards c ON ct.card_id = c.id
     WHERE ct.is_active = true
@@ -3122,6 +2669,11 @@ BEGIN
             p_search IS NULL 
             OR c.name ILIKE '%' || p_search || '%'
             OR c.description ILIKE '%' || p_search || '%'
+            -- Also search in translated fields if language specified
+            OR (p_language IS NOT NULL AND c.translations ? p_language AND (
+                c.translations->p_language->>'name' ILIKE '%' || p_search || '%'
+                OR c.translations->p_language->>'description' ILIKE '%' || p_search || '%'
+            ))
         )
     ORDER BY 
         ct.is_featured DESC,
@@ -3155,6 +2707,13 @@ RETURNS TABLE (
     ai_knowledge_base TEXT,
     ai_welcome_general TEXT,
     ai_welcome_item TEXT,
+    original_language TEXT,
+    qr_code_position TEXT,
+    max_scans INTEGER,
+    daily_scan_limit INTEGER,
+    crop_parameters JSONB,
+    translations JSONB,
+    content_hash TEXT,
     item_count BIGINT,
     is_featured BOOLEAN,
     created_at TIMESTAMPTZ,
@@ -3183,10 +2742,17 @@ BEGIN
         COALESCE(c.ai_knowledge_base, '')::TEXT,
         COALESCE(c.ai_welcome_general, '')::TEXT,
         COALESCE(c.ai_welcome_item, '')::TEXT,
+        COALESCE(c.original_language, 'en')::TEXT,
+        COALESCE(c.qr_code_position::TEXT, 'BR'),
+        c.max_scans,
+        c.daily_scan_limit,
+        c.crop_parameters,
+        COALESCE(c.translations, '{}'::JSONB),
+        c.content_hash,
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
         ct.is_featured,
         ct.created_at,
-        -- Get content items as JSON array
+        -- Get content items as JSON array (includes all fields for export)
         COALESCE(
             (SELECT jsonb_agg(
                 jsonb_build_object(
@@ -3197,7 +2763,10 @@ BEGIN
                     'image_url', ci.image_url,
                     'original_image_url', ci.original_image_url,
                     'ai_knowledge_base', ci.ai_knowledge_base,
-                    'sort_order', ci.sort_order
+                    'sort_order', ci.sort_order,
+                    'crop_parameters', ci.crop_parameters,
+                    'translations', COALESCE(ci.translations, '{}'::JSONB),
+                    'content_hash', ci.content_hash
                 ) ORDER BY ci.sort_order
             )
             FROM content_items ci 
@@ -3247,7 +2816,8 @@ CREATE OR REPLACE FUNCTION public.import_content_template(
     p_user_id UUID,
     p_template_id UUID,
     p_card_name TEXT DEFAULT NULL,
-    p_billing_type TEXT DEFAULT NULL
+    p_billing_type TEXT DEFAULT NULL,
+    p_import_language TEXT DEFAULT NULL  -- Language to import content in (uses translated version if available)
 )
 RETURNS TABLE (
     success BOOLEAN,
@@ -3263,7 +2833,10 @@ DECLARE
     v_new_card_id UUID;
     v_final_name TEXT;
     v_final_billing TEXT;
+    v_final_language TEXT;
     v_check JSONB;
+    v_use_translation BOOLEAN;
+    v_lang_data JSONB;
 BEGIN
     -- Check subscription limit
     v_check := can_create_experience(p_user_id);
@@ -3284,13 +2857,29 @@ BEGIN
         RETURN;
     END IF;
     
-    -- Use custom name or template card's name
-    v_final_name := COALESCE(NULLIF(p_card_name, ''), v_template.name);
+    -- Determine if we should use translated content
+    -- Use translation if: import_language is specified AND differs from original AND translation exists
+    v_final_language := COALESCE(NULLIF(p_import_language, ''), v_template.original_language);
+    v_use_translation := (v_final_language IS DISTINCT FROM v_template.original_language) 
+                         AND (v_template.translations ? v_final_language);
+    
+    IF v_use_translation THEN
+        v_lang_data := v_template.translations->v_final_language;
+    END IF;
+    
+    -- Use custom name, or translated name, or original name
+    v_final_name := COALESCE(
+        NULLIF(p_card_name, ''),
+        CASE WHEN v_use_translation THEN v_lang_data->>'name' ELSE NULL END,
+        v_template.name
+    );
     
     -- Use provided billing type or template card's billing type
     v_final_billing := COALESCE(NULLIF(p_billing_type, ''), v_template.billing_type, 'digital');
     
     -- Create the new card by copying the template's card
+    -- If importing in a different language, use translated content and set original_language to that language
+    -- DO NOT copy translations - user starts fresh without any translations
     INSERT INTO cards (
         user_id,
         name,
@@ -3299,48 +2888,73 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
+        max_scans,
+        daily_scan_limit,
         conversation_ai_enabled,
         ai_instruction,
         ai_knowledge_base,
         ai_welcome_general,
         ai_welcome_item,
+        original_language,
+        qr_code_position,
         image_url,
         original_image_url,
-        crop_parameters
+        crop_parameters,
+        translations,  -- Always NULL - no translations copied
+        content_hash   -- NULL since content is new
     ) VALUES (
         p_user_id,
         v_final_name,
-        v_template.description,
+        CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'description', v_template.description) ELSE v_template.description END,
         v_template.content_mode,
         v_template.is_grouped,
         v_template.group_display,
         v_final_billing,
+        v_template.max_scans,
+        v_template.daily_scan_limit,
         v_template.conversation_ai_enabled,
-        v_template.ai_instruction,
-        v_template.ai_knowledge_base,
-        v_template.ai_welcome_general,
-        v_template.ai_welcome_item,
+        CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_instruction', v_template.ai_instruction) ELSE v_template.ai_instruction END,
+        CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_knowledge_base', v_template.ai_knowledge_base) ELSE v_template.ai_knowledge_base END,
+        CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_welcome_general', v_template.ai_welcome_general) ELSE v_template.ai_welcome_general END,
+        CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_welcome_item', v_template.ai_welcome_item) ELSE v_template.ai_welcome_item END,
+        v_final_language,  -- Set to selected language
+        v_template.qr_code_position,
         v_template.image_url,
         v_template.original_image_url,
-        v_template.crop_parameters
+        v_template.crop_parameters,
+        NULL,  -- No translations - start fresh
+        NULL   -- No content_hash - will be calculated on first edit
     ) RETURNING id INTO v_new_card_id;
     
     -- PERFORMANCE: Bulk copy content items using CTE with ID mapping
     -- This avoids N+1 individual INSERT statements
+    -- If importing in different language, use translated content for name/content/ai_knowledge_base
+    -- DO NOT copy translations - user starts fresh
     WITH 
     -- Step 1: Insert parent items (no parent_id) with bulk insert
     parent_items AS (
-        INSERT INTO content_items (card_id, parent_id, name, content, image_url, original_image_url, crop_parameters, ai_knowledge_base, sort_order)
+        INSERT INTO content_items (card_id, parent_id, name, content, image_url, original_image_url, crop_parameters, ai_knowledge_base, sort_order, translations, content_hash)
         SELECT 
             v_new_card_id,
             NULL,
-            ci.name,
-            ci.content,
+            CASE WHEN v_use_translation AND ci.translations ? v_final_language 
+                THEN COALESCE(ci.translations->v_final_language->>'name', ci.name) 
+                ELSE ci.name 
+            END,
+            CASE WHEN v_use_translation AND ci.translations ? v_final_language 
+                THEN COALESCE(ci.translations->v_final_language->>'content', ci.content) 
+                ELSE ci.content 
+            END,
             ci.image_url,
             ci.original_image_url,
             ci.crop_parameters,
-            ci.ai_knowledge_base,
-            ci.sort_order
+            CASE WHEN v_use_translation AND ci.translations ? v_final_language 
+                THEN COALESCE(ci.translations->v_final_language->>'ai_knowledge_base', ci.ai_knowledge_base) 
+                ELSE ci.ai_knowledge_base 
+            END,
+            ci.sort_order,
+            NULL,  -- No translations - start fresh
+            NULL   -- No content_hash
         FROM content_items ci
         WHERE ci.card_id = v_template.card_id AND ci.parent_id IS NULL
         ORDER BY ci.sort_order
@@ -3356,17 +2970,28 @@ BEGIN
         WHERE orig.card_id = v_template.card_id AND orig.parent_id IS NULL
     )
     -- Step 3: Insert child items with mapped parent_ids
-    INSERT INTO content_items (card_id, parent_id, name, content, image_url, original_image_url, crop_parameters, ai_knowledge_base, sort_order)
+    INSERT INTO content_items (card_id, parent_id, name, content, image_url, original_image_url, crop_parameters, ai_knowledge_base, sort_order, translations, content_hash)
     SELECT 
         v_new_card_id,
         pm.new_id,
-        ci.name,
-        ci.content,
+        CASE WHEN v_use_translation AND ci.translations ? v_final_language 
+            THEN COALESCE(ci.translations->v_final_language->>'name', ci.name) 
+            ELSE ci.name 
+        END,
+        CASE WHEN v_use_translation AND ci.translations ? v_final_language 
+            THEN COALESCE(ci.translations->v_final_language->>'content', ci.content) 
+            ELSE ci.content 
+        END,
         ci.image_url,
         ci.original_image_url,
         ci.crop_parameters,
-        ci.ai_knowledge_base,
-        ci.sort_order
+        CASE WHEN v_use_translation AND ci.translations ? v_final_language 
+            THEN COALESCE(ci.translations->v_final_language->>'ai_knowledge_base', ci.ai_knowledge_base) 
+            ELSE ci.ai_knowledge_base 
+        END,
+        ci.sort_order,
+        NULL,  -- No translations - start fresh
+        NULL   -- No content_hash
     FROM content_items ci
     JOIN parent_mapping pm ON ci.parent_id = pm.old_id
     WHERE ci.card_id = v_template.card_id AND ci.parent_id IS NOT NULL
@@ -3857,11 +3482,11 @@ END;
 $$;
 
 -- Grant execute permissions
-GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN) TO authenticated;
-GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN) TO anon;
+GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN, TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_template_venue_types() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.import_content_template(UUID, UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.import_content_template(UUID, UUID, TEXT, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_template_from_card(UUID, UUID, TEXT, TEXT, BOOLEAN, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_template_settings(UUID, UUID, TEXT, TEXT, BOOLEAN, BOOLEAN, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_content_template(UUID, UUID, BOOLEAN) TO authenticated;
@@ -4354,16 +3979,17 @@ BEGIN
         RAISE EXCEPTION 'Only admins can view all batches.';
     END IF;
 
+    -- Simplified payment status for credit-based system:
+    -- PAID = user paid with credits (payment_completed = true)
+    -- FREE = admin-issued (payment_waived) or no payment required
     RETURN QUERY
     SELECT 
         cb.id,
         cb.batch_number,
         au.email AS user_email,
         CASE 
-            WHEN cb.payment_waived = true THEN 'WAIVED'
             WHEN cb.payment_completed = true THEN 'PAID'
-            WHEN cb.payment_required = true THEN 'PENDING'
-            ELSE 'FREE'
+            ELSE 'FREE'  -- Admin-issued (waived) or no payment required
         END AS payment_status,
         cb.cards_count,
         cb.created_at
@@ -4373,10 +3999,8 @@ BEGIN
         (p_email_search IS NULL OR au.email ILIKE '%' || p_email_search || '%')
         AND
         (p_payment_status IS NULL OR 
-         (p_payment_status = 'WAIVED' AND cb.payment_waived = true) OR
-         (p_payment_status = 'PAID' AND cb.payment_completed = true AND cb.payment_waived = false) OR
-         (p_payment_status = 'PENDING' AND cb.payment_required = true AND cb.payment_completed = false AND cb.payment_waived = false) OR
-         (p_payment_status = 'FREE' AND cb.payment_required = false))
+         (p_payment_status = 'PAID' AND cb.payment_completed = true) OR
+         (p_payment_status = 'FREE' AND cb.payment_completed = false))
     ORDER BY cb.created_at DESC
     LIMIT p_limit OFFSET p_offset;
 END;
@@ -4744,6 +4368,7 @@ END;
 $$;
 
 -- Get all cards for a specific user (admin view)
+-- Updated to include all card fields for complete admin visibility
 CREATE OR REPLACE FUNCTION admin_get_user_cards(p_user_id UUID)
 RETURNS TABLE (
     id UUID,
@@ -4756,13 +4381,21 @@ RETURNS TABLE (
     conversation_ai_enabled BOOLEAN,
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
+    ai_welcome_general TEXT,
+    ai_welcome_item TEXT,
     qr_code_position TEXT,
     content_mode TEXT,
+    is_grouped BOOLEAN,
+    group_display TEXT,
     billing_type TEXT,
     max_scans INT,
     current_scans INT,
     daily_scan_limit INT,
     daily_scans INT,
+    is_access_enabled BOOLEAN,
+    access_token TEXT,
+    translations JSONB,
+    original_language VARCHAR(10),
     batches_count BIGINT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
@@ -4792,13 +4425,21 @@ BEGIN
         c.conversation_ai_enabled,
         c.ai_instruction,
         c.ai_knowledge_base,
+        c.ai_welcome_general,
+        c.ai_welcome_item,
         c.qr_code_position::TEXT,
         c.content_mode::TEXT,
+        c.is_grouped,
+        c.group_display::TEXT,
         c.billing_type::TEXT,
         c.max_scans,
         c.current_scans,
         c.daily_scan_limit,
         c.daily_scans,
+        c.is_access_enabled,
+        c.access_token,
+        c.translations,
+        c.original_language,
         COUNT(cb.id)::BIGINT AS batches_count,
         c.created_at,
         c.updated_at,
@@ -4809,8 +4450,10 @@ BEGIN
     WHERE c.user_id = p_user_id
     GROUP BY c.id, c.name, c.description, c.image_url, c.original_image_url,
              c.crop_parameters, c.conversation_ai_enabled, c.ai_instruction, c.ai_knowledge_base,
-             c.qr_code_position, c.content_mode, c.billing_type, c.max_scans, c.current_scans,
-             c.daily_scan_limit, c.daily_scans, c.created_at, c.updated_at, au.email
+             c.ai_welcome_general, c.ai_welcome_item, c.qr_code_position, c.content_mode, 
+             c.is_grouped, c.group_display, c.billing_type, c.max_scans, c.current_scans,
+             c.daily_scan_limit, c.daily_scans, c.is_access_enabled, c.access_token,
+             c.translations, c.original_language, c.created_at, c.updated_at, au.email
     ORDER BY c.created_at DESC;
 END;
 $$;
@@ -4892,6 +4535,7 @@ BEGIN
         RAISE EXCEPTION 'Admin access required';
     END IF;
 
+    -- Simplified payment status for credit-based system
     RETURN QUERY
     SELECT 
         cb.id,
@@ -4899,10 +4543,8 @@ BEGIN
         cb.batch_name,
         cb.batch_number,
         CASE
-            WHEN cb.payment_waived THEN 'WAIVED'
             WHEN cb.payment_completed THEN 'PAID'
-            WHEN cb.payment_required THEN 'PENDING'
-            ELSE 'PENDING'
+            ELSE 'FREE'  -- Admin-issued (waived) or no payment required
         END AS payment_status,
         cb.is_disabled,
         COUNT(ic.id) AS cards_count,
@@ -5005,9 +4647,29 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-GRANT EXECUTE ON FUNCTION get_admin_audit_logs(TEXT, UUID, INTEGER, INTEGER) TO authenticated;
+-- =================================================================
+-- GRANT STATEMENTS FOR ADMIN FUNCTIONS
+-- =================================================================
+-- All admin functions use SECURITY DEFINER and check role internally
+-- They must be callable by authenticated users, but actual admin check
+-- happens inside each function via auth.uid() role lookup
+
+GRANT EXECUTE ON FUNCTION admin_issue_free_batch(TEXT, UUID, INTEGER, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_system_stats_enhanced() TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_update_print_request_status(UUID, "PrintRequestStatus", TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_admin_batches_requiring_attention() TO authenticated;
+GRANT EXECUTE ON FUNCTION get_admin_all_batches(TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_all_print_requests("PrintRequestStatus", TEXT, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_all_users() TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_update_user_subscription(UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_subscription_stats() TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_update_user_role(UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_user_by_email(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_user_cards(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_card_content(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_card_batches(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_batch_issued_cards(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_admin_audit_logs(TEXT, UUID, INTEGER, INTEGER) TO authenticated;
 
 -- File: 12_subscription.sql
 -- -----------------------------------------------------------------
@@ -6388,6 +6050,19 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- =====================================================================
+-- GRANT PERMISSIONS - Admin functions require authenticated role
+-- =====================================================================
+-- Note: Admin check is done inside each function via raw_user_meta_data->>'role'
+-- This ensures only users with 'admin' role can access the data even with GRANT
+
+GRANT EXECUTE ON FUNCTION admin_get_credit_purchases(INTEGER, INTEGER, UUID, VARCHAR) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_credit_consumptions(INTEGER, INTEGER, UUID, TIMESTAMPTZ, TIMESTAMPTZ) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_credit_transactions(INTEGER, INTEGER, UUID, VARCHAR) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_user_credits(INTEGER, INTEGER, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_adjust_user_credits(UUID, DECIMAL, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_get_credit_statistics() TO authenticated;
+
 
 -- File: credit_management.sql
 -- -----------------------------------------------------------------
@@ -7084,8 +6759,8 @@ COMMENT ON FUNCTION consume_credit_for_digital_scan(UUID, UUID, DECIMAL) IS
 
 -- Dual-use functions (called from frontend AND Edge Functions with SERVICE_ROLE_KEY)
 GRANT EXECUTE ON FUNCTION check_credit_balance(DECIMAL, UUID) TO authenticated, service_role;
-GRANT EXECUTE ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) TO authenticated, service_role;
 GRANT EXECUTE ON FUNCTION consume_credits(DECIMAL, UUID, VARCHAR, JSONB) TO authenticated, service_role;
+-- Note: create_credit_purchase_record is server-side only (see server-side/credit_purchase_completion.sql)
 
 -- Client-only functions
 GRANT EXECUTE ON FUNCTION initialize_user_credits() TO authenticated;
@@ -7095,9 +6770,9 @@ GRANT EXECUTE ON FUNCTION get_user_credits() TO authenticated;
 -- Add documentation comments
 COMMENT ON FUNCTION check_credit_balance(DECIMAL, UUID) IS 
   'DUAL-USE PATTERN: Accepts optional p_user_id (for Edge Functions with SERVICE_ROLE_KEY) or falls back to auth.uid() (for frontend with user JWT). Granted to both authenticated and service_role roles.';
-  
-COMMENT ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) IS 
-  'DUAL-USE PATTERN: Accepts optional p_user_id (for Edge Functions with SERVICE_ROLE_KEY) or falls back to auth.uid() (for frontend with user JWT). Granted to both authenticated and service_role roles. Called by create-credit-checkout-session Edge Function.';
+
+-- Note: create_credit_purchase_record is server-side only (see server-side/credit_purchase_completion.sql)
+-- It requires explicit p_user_id and is only accessible via service_role (backend)
   
 COMMENT ON FUNCTION consume_credits(DECIMAL, UUID, VARCHAR, JSONB) IS 
   'DUAL-USE PATTERN: Accepts optional p_user_id (for server-side stored procedures) or falls back to auth.uid() (for direct frontend calls). Granted to both authenticated and service_role roles.';
@@ -7609,6 +7284,7 @@ GRANT EXECUTE ON FUNCTION get_credit_purchase_by_intent_server TO service_role;
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS complete_credit_purchase CASCADE;
 DROP FUNCTION IF EXISTS refund_credit_purchase CASCADE;
+DROP FUNCTION IF EXISTS create_credit_purchase_record CASCADE;
 
 -- Server-side Credit Purchase Completion
 -- Called by Edge Function after successful Stripe payment
@@ -7826,9 +7502,40 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Grant execution permissions to service_role only (called by webhooks)
+-- Create credit purchase record (server-side version with explicit user_id)
+-- Called by backend Express server when creating Stripe checkout session
+CREATE OR REPLACE FUNCTION create_credit_purchase_record(
+    p_stripe_session_id VARCHAR,
+    p_amount_usd DECIMAL,
+    p_credits_amount DECIMAL,
+    p_metadata JSONB DEFAULT NULL,
+    p_user_id UUID DEFAULT NULL
+)
+RETURNS UUID AS $$
+DECLARE
+    v_purchase_id UUID;
+BEGIN
+    -- Validate user_id is provided (required for server-side calls)
+    IF p_user_id IS NULL THEN
+        RAISE EXCEPTION 'User ID is required for server-side credit purchase creation';
+    END IF;
+
+    INSERT INTO credit_purchases (
+        user_id, stripe_session_id, amount_usd, credits_amount, 
+        status, metadata
+    ) VALUES (
+        p_user_id, p_stripe_session_id, p_amount_usd, p_credits_amount,
+        'pending', p_metadata
+    ) RETURNING id INTO v_purchase_id;
+
+    RETURN v_purchase_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Grant execution permissions to service_role only (called by webhooks/backend)
 GRANT EXECUTE ON FUNCTION complete_credit_purchase(UUID, VARCHAR, VARCHAR, INTEGER, TEXT, JSONB) TO service_role;
 GRANT EXECUTE ON FUNCTION refund_credit_purchase(UUID, UUID, DECIMAL, TEXT) TO service_role;
+GRANT EXECUTE ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) TO service_role;
 
 
 -- File: mobile_access.sql
@@ -7871,6 +7578,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 REVOKE ALL ON FUNCTION update_card_scan_counters_server(UUID, BOOLEAN) FROM PUBLIC;
 REVOKE ALL ON FUNCTION update_card_scan_counters_server(UUID, BOOLEAN) FROM authenticated;
 REVOKE ALL ON FUNCTION update_card_scan_counters_server(UUID, BOOLEAN) FROM anon;
+GRANT EXECUTE ON FUNCTION update_card_scan_counters_server(UUID, BOOLEAN) TO service_role;
 
 
 -- =================================================================
@@ -7917,6 +7625,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 REVOKE ALL ON FUNCTION reset_subscription_usage_server(TEXT, TIMESTAMPTZ, TIMESTAMPTZ) FROM PUBLIC;
 REVOKE ALL ON FUNCTION reset_subscription_usage_server(TEXT, TIMESTAMPTZ, TIMESTAMPTZ) FROM authenticated;
 REVOKE ALL ON FUNCTION reset_subscription_usage_server(TEXT, TIMESTAMPTZ, TIMESTAMPTZ) FROM anon;
+GRANT EXECUTE ON FUNCTION reset_subscription_usage_server(TEXT, TIMESTAMPTZ, TIMESTAMPTZ) TO service_role;
 
 
 -- Activate premium subscription (called by Stripe webhook)
@@ -8158,7 +7867,8 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Check if user has premium subscription
+-- Check if user has premium subscription OR is admin
+-- Admins have full translation access without premium subscription
 DROP FUNCTION IF EXISTS check_premium_subscription_server CASCADE;
 CREATE OR REPLACE FUNCTION check_premium_subscription_server(
     p_user_id UUID
@@ -8166,7 +7876,18 @@ CREATE OR REPLACE FUNCTION check_premium_subscription_server(
 RETURNS BOOLEAN AS $$
 DECLARE
     v_tier TEXT;
+    v_role TEXT;
 BEGIN
+    -- First check if user is admin (admins always have translation access)
+    SELECT raw_user_meta_data->>'role' INTO v_role
+    FROM auth.users
+    WHERE id = p_user_id;
+    
+    IF v_role = 'admin' THEN
+        RETURN TRUE;
+    END IF;
+    
+    -- Check if user has premium subscription
     SELECT tier::TEXT INTO v_tier
     FROM subscriptions
     WHERE user_id = p_user_id;
@@ -8388,7 +8109,7 @@ DROP FUNCTION IF EXISTS insert_translation_history_server CASCADE;
 -- Used for fetching content for translation and saving results.
 -- =================================================================
 
--- Get card for translation
+-- Get card for translation (includes ALL translatable text fields)
 DROP FUNCTION IF EXISTS get_card_for_translation_server CASCADE;
 CREATE OR REPLACE FUNCTION get_card_for_translation_server(
     p_card_id UUID
@@ -8397,6 +8118,10 @@ RETURNS TABLE (
     id UUID,
     name TEXT,
     description TEXT,
+    ai_instruction TEXT,
+    ai_knowledge_base TEXT,
+    ai_welcome_general TEXT,
+    ai_welcome_item TEXT,
     content_hash TEXT,
     translations JSONB,
     user_id UUID,
@@ -8405,14 +8130,15 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     SELECT 
-        c.id, c.name, c.description, c.content_hash,
-        c.translations, c.user_id, c.original_language
+        c.id, c.name, c.description,
+        c.ai_instruction, c.ai_knowledge_base, c.ai_welcome_general, c.ai_welcome_item,
+        c.content_hash, c.translations, c.user_id, c.original_language::TEXT
     FROM cards c
     WHERE c.id = p_card_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Get content items for translation
+-- Get content items for translation (includes ALL translatable text fields)
 DROP FUNCTION IF EXISTS get_content_items_for_translation_server CASCADE;
 CREATE OR REPLACE FUNCTION get_content_items_for_translation_server(
     p_card_id UUID
@@ -8421,12 +8147,13 @@ RETURNS TABLE (
     id UUID,
     name TEXT,
     content TEXT,
+    ai_knowledge_base TEXT,
     content_hash TEXT,
     translations JSONB
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT ci.id, ci.name, ci.content, ci.content_hash, ci.translations
+    SELECT ci.id, ci.name, ci.content, ci.ai_knowledge_base, ci.content_hash, ci.translations
     FROM content_items ci
     WHERE ci.card_id = p_card_id
     ORDER BY ci.sort_order;

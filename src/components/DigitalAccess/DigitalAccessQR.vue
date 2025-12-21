@@ -30,6 +30,7 @@
               {{ isAccessEnabled ? $t('digital_access.access_enabled') : $t('digital_access.access_disabled') }}
             </span>
             <ToggleSwitch 
+              v-if="!readOnly"
               :modelValue="isAccessEnabled" 
               @update:modelValue="handleToggleAccess"
               :disabled="isTogglingAccess"
@@ -66,8 +67,9 @@
               <p class="text-xs text-slate-500">{{ $t('digital_access.content_name') }}</p>
             </div>
           </div>
-          <!-- Refresh QR Button -->
+          <!-- Refresh QR Button (hidden in read-only mode) -->
           <Button 
+            v-if="!readOnly"
             :label="$t('digital_access.refresh_qr')"
             icon="pi pi-refresh"
             severity="warning"
@@ -204,8 +206,8 @@
       </div>
     </div>
 
-    <!-- Tips Card -->
-    <div class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 p-5">
+    <!-- Tips Card (hidden in read-only mode) -->
+    <div v-if="!readOnly" class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 p-5">
       <div class="flex items-start gap-4">
         <div class="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex-shrink-0">
           <i class="pi pi-lightbulb text-white"></i>
@@ -288,10 +290,13 @@ const { t } = useI18n()
 const toast = useToast()
 const cardStore = useCardStore()
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   card: Card
   cardName: string
-}>()
+  readOnly?: boolean
+}>(), {
+  readOnly: false
+})
 
 const emit = defineEmits<{
   (e: 'updated', card: Card): void

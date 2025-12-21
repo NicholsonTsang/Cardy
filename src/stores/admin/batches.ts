@@ -6,7 +6,7 @@ export interface AdminBatch {
   id: string;
   batch_number: number;
   user_email: string;
-  payment_status: 'PENDING' | 'PAID' | 'FREE';
+  payment_status: 'PAID' | 'FREE';  // PAID = credits, FREE = admin-issued
   cards_count: number;
   created_at: string;
 }
@@ -48,7 +48,7 @@ export const useAdminBatchesStore = defineStore('adminBatches', () => {
   // Actions
   const fetchAllBatches = async (
     emailSearch?: string, 
-    paymentStatus?: 'PENDING' | 'PAID' | 'FREE',
+    paymentStatus?: 'PAID' | 'FREE',
     limit = 100,
     offset = 0
   ): Promise<AdminBatch[]> => {

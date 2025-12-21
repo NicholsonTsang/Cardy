@@ -208,7 +208,7 @@
                       rounded
                       size="small"
                       @click="openReceipt(data.receipt_url)"
-                      v-tooltip.top="'View Receipt'"
+                      v-tooltip.top="$t('credits.viewReceipt')"
                     />
                   </template>
                 </Column>
@@ -313,7 +313,7 @@
             :class="selectedAmount === amount ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'"
           >
             <span class="text-2xl font-bold" :class="selectedAmount === amount ? 'text-blue-700' : 'text-slate-700'">{{ amount }}</span>
-            <span class="text-xs" :class="selectedAmount === amount ? 'text-blue-500' : 'text-slate-500'">credits</span>
+            <span class="text-xs" :class="selectedAmount === amount ? 'text-blue-500' : 'text-slate-500'">{{ $t('common.credits') }}</span>
             <span class="text-xs font-semibold mt-1" :class="selectedAmount === amount ? 'text-blue-600' : 'text-emerald-600'">${{ amount }}</span>
             
             <div v-if="selectedAmount === amount" class="absolute top-2 right-2">
@@ -336,7 +336,7 @@
             mode="currency" 
             currency="USD" 
             locale="en-US"
-            placeholder="Enter amount" 
+            :placeholder="$t('common.enter_amount')" 
             class="flex-1"
             :min="10"
             :max="10000"
@@ -450,36 +450,48 @@ function getConsumptionTypeLabel(type: string) {
 
 function getConsumptionTypeIcon(type: string) {
   switch(type) {
+    case 'batch_issuance': return 'pi-box'
     case 'subscription_overage_batch': return 'pi-users'
     case 'physical_card_order': return 'pi-id-card'
     case 'translation': return 'pi-language'
+    case 'digital_scan': return 'pi-qrcode'
+    case 'single_card': return 'pi-credit-card'
     default: return 'pi-circle'
   }
 }
 
 function getConsumptionTypeBg(type: string) {
   switch(type) {
+    case 'batch_issuance': return 'bg-emerald-100'
     case 'subscription_overage_batch': return 'bg-amber-100'
     case 'physical_card_order': return 'bg-purple-100'
     case 'translation': return 'bg-blue-100'
+    case 'digital_scan': return 'bg-cyan-100'
+    case 'single_card': return 'bg-indigo-100'
     default: return 'bg-slate-100'
   }
 }
 
 function getConsumptionTypeText(type: string) {
   switch(type) {
+    case 'batch_issuance': return 'text-emerald-600'
     case 'subscription_overage_batch': return 'text-amber-600'
     case 'physical_card_order': return 'text-purple-600'
     case 'translation': return 'text-blue-600'
+    case 'digital_scan': return 'text-cyan-600'
+    case 'single_card': return 'text-indigo-600'
     default: return 'text-slate-600'
   }
 }
 
 function getQuantityUnit(type: string) {
   switch(type) {
+    case 'batch_issuance': return t('credits.unit.cards')
     case 'subscription_overage_batch': return t('credits.unit.access')
     case 'physical_card_order': return t('credits.unit.cards')
     case 'translation': return t('credits.unit.languages')
+    case 'digital_scan': return t('credits.unit.scans')
+    case 'single_card': return t('credits.unit.cards')
     default: return t('credits.unit.units')
   }
 }

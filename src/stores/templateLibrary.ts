@@ -20,9 +20,16 @@ export interface ContentTemplate {
     is_grouped: boolean;
     group_display: 'expanded' | 'collapsed';
     billing_type: 'physical' | 'digital';
+    // Access limits - added for consistency with Excel export/import
+    max_scans: number | null;
+    daily_scan_limit: number | null;
+    original_language: string;
+    qr_code_position: string;
     item_count: number;
     is_featured: boolean;
     created_at: string;
+    // Translation info
+    translation_languages: string[];
 }
 
 export interface ContentTemplateDetails extends ContentTemplate {
@@ -88,6 +95,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
     const filterContentMode = ref<string | null>(null);
     const searchQuery = ref<string>('');
     const featuredOnly = ref(false);
+    const previewLanguage = ref<string | null>(null);  // Language to display templates in
 
     // Computed filtered templates
     const filteredTemplates = computed(() => {
@@ -95,17 +103,35 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
     });
 
     // Fetch templates with optional filters
-    const fetchTemplates = async () => {
+    const fetchTemplates = async (language?: string) => {
         isLoading.value = true;
         error.value = null;
 
         try {
-            const { data, error: err } = await supabase.rpc('list_content_templates', {
+            // Use provided language, or previewLanguage from store, or null for original
+            const displayLanguage = language ?? previewLanguage.value;
+            
+            // Try with language parameter first (new stored procedure)
+            let { data, error: err } = await supabase.rpc('list_content_templates', {
                 p_venue_type: filterVenueType.value,
                 p_content_mode: filterContentMode.value,
                 p_search: searchQuery.value || null,
-                p_featured_only: featuredOnly.value
+                p_featured_only: featuredOnly.value,
+                p_language: displayLanguage || null
             });
+            
+            // If new signature fails (function not found with 5 params), fall back to old signature
+            if (err && err.message?.includes('function')) {
+                console.warn('New list_content_templates signature not available, using old signature');
+                const fallbackResult = await supabase.rpc('list_content_templates', {
+                    p_venue_type: filterVenueType.value,
+                    p_content_mode: filterContentMode.value,
+                    p_search: searchQuery.value || null,
+                    p_featured_only: featuredOnly.value
+                });
+                data = fallbackResult.data;
+                err = fallbackResult.error;
+            }
 
             if (err) throw err;
             templates.value = data || [];
@@ -156,10 +182,12 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
     };
 
     // Import template to create a new card (copies the linked card and content items)
+    // importLanguage: If specified, imports content in that language (using translations if available)
     const importTemplate = async (
         templateId: string, 
         customName?: string,
-        billingType?: 'physical' | 'digital'
+        billingType?: 'physical' | 'digital',
+        importLanguage?: string  // Language code to import content in
     ): Promise<TemplateImportResult> => {
         isLoading.value = true;
         error.value = null;
@@ -176,7 +204,8 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
                 p_user_id: userId,
                 p_template_id: templateId,
                 p_card_name: customName || null,
-                p_billing_type: billingType || null
+                p_billing_type: billingType || null,
+                p_import_language: importLanguage || null
             });
 
             if (err) throw err;
@@ -448,6 +477,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
         filterContentMode.value = null;
         searchQuery.value = '';
         featuredOnly.value = false;
+        previewLanguage.value = null;
     };
 
     // Admin: Bulk import template from Excel card data
@@ -463,6 +493,18 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
 
             if (!userId) {
                 throw new Error('User not authenticated');
+            }
+
+            // Parse translations from JSON string if present
+            let cardTranslations = null;
+            if (cardData.translations_json) {
+                try {
+                    cardTranslations = typeof cardData.translations_json === 'string'
+                        ? JSON.parse(cardData.translations_json)
+                        : cardData.translations_json;
+                } catch (e) {
+                    console.warn('Failed to parse card translations_json:', e);
+                }
             }
 
             // Step 1: Create the card using existing stored procedure
@@ -484,7 +526,9 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
                 p_billing_type: cardData.billing_type || 'digital',
                 p_max_scans: cardData.max_scans || null,
                 p_daily_scan_limit: cardData.daily_scan_limit || 500,
-                p_original_language: cardData.original_language || 'en'
+                p_original_language: cardData.original_language || 'en',
+                p_translations: cardTranslations,
+                p_content_hash: cardData.content_hash || null
             });
 
             if (cardError) {
@@ -564,6 +608,18 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
                     const cropParams = item.crop_parameters_json || item.crop_parameters;
                     const imageUrl = item.image_url || null;
                     
+                    // Parse item translations from JSON string if present
+                    let itemTranslations = null;
+                    if (item.translations_json) {
+                        try {
+                            itemTranslations = typeof item.translations_json === 'string'
+                                ? JSON.parse(item.translations_json)
+                                : item.translations_json;
+                        } catch (e) {
+                            console.warn(`Failed to parse translations for item ${item.name}:`, e);
+                        }
+                    }
+                    
                     const { data: itemResult, error: itemError } = await supabase.rpc('create_content_item', {
                         p_card_id: newCardId,
                         p_parent_id: null,
@@ -572,7 +628,9 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
                         p_image_url: imageUrl,
                         p_original_image_url: item.original_image_url || null,
                         p_crop_parameters: cropParams && cropParams !== '' ? (typeof cropParams === 'string' ? JSON.parse(cropParams) : cropParams) : null,
-                        p_ai_knowledge_base: item.ai_knowledge_base || ''
+                        p_ai_knowledge_base: item.ai_knowledge_base || '',
+                        p_translations: itemTranslations,
+                        p_content_hash: item.content_hash || null
                     });
 
                     if (!itemError && itemResult) {
@@ -601,6 +659,18 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
                     const cropParams = item.crop_parameters_json || item.crop_parameters;
                     const imageUrl = item.image_url || null;
                     
+                    // Parse item translations from JSON string if present
+                    let itemTranslations = null;
+                    if (item.translations_json) {
+                        try {
+                            itemTranslations = typeof item.translations_json === 'string'
+                                ? JSON.parse(item.translations_json)
+                                : item.translations_json;
+                        } catch (e) {
+                            console.warn(`Failed to parse translations for item ${item.name}:`, e);
+                        }
+                    }
+                    
                     const { data: itemResult, error: itemError } = await supabase.rpc('create_content_item', {
                         p_card_id: newCardId,
                         p_parent_id: parentId,
@@ -609,7 +679,9 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
                         p_image_url: imageUrl,
                         p_original_image_url: item.original_image_url || null,
                         p_crop_parameters: cropParams && cropParams !== '' ? (typeof cropParams === 'string' ? JSON.parse(cropParams) : cropParams) : null,
-                        p_ai_knowledge_base: item.ai_knowledge_base || ''
+                        p_ai_knowledge_base: item.ai_knowledge_base || '',
+                        p_translations: itemTranslations,
+                        p_content_hash: item.content_hash || null
                     });
 
                     if (itemResult) {
@@ -666,6 +738,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
         filterContentMode,
         searchQuery,
         featuredOnly,
+        previewLanguage,
         
         // Computed
         filteredTemplates,
