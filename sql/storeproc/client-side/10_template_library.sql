@@ -101,10 +101,12 @@ $$;
 -- -----------------------------------------------------------------
 -- Get single template by ID or slug with full details
 -- Returns card data and content items
+-- Supports multilingual preview via p_language parameter
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_content_template(
     p_template_id UUID DEFAULT NULL,
-    p_slug TEXT DEFAULT NULL
+    p_slug TEXT DEFAULT NULL,
+    p_language TEXT DEFAULT NULL  -- Display template in this language if translation available
 )
 RETURNS TABLE (
     id UUID,
@@ -133,7 +135,8 @@ RETURNS TABLE (
     item_count BIGINT,
     is_featured BOOLEAN,
     created_at TIMESTAMPTZ,
-    content_items JSONB
+    content_items JSONB,
+    translation_languages TEXT[]
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -145,8 +148,18 @@ BEGIN
         ct.id,
         ct.slug,
         ct.card_id,
-        c.name,
-        COALESCE(c.description, '')::TEXT,
+        -- Use translated name if language specified and translation exists, else original
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'name', c.name)
+            ELSE c.name
+        END AS name,
+        -- Use translated description if language specified and translation exists, else original
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'description', c.description, '')
+            ELSE COALESCE(c.description, '')
+        END::TEXT AS description,
         ct.venue_type,
         COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
         COALESCE(c.content_mode, 'list')::TEXT,
@@ -154,10 +167,27 @@ BEGIN
         COALESCE(c.group_display, 'expanded')::TEXT,
         COALESCE(c.billing_type, 'digital')::TEXT,
         COALESCE(c.conversation_ai_enabled, true),
-        COALESCE(c.ai_instruction, '')::TEXT,
-        COALESCE(c.ai_knowledge_base, '')::TEXT,
-        COALESCE(c.ai_welcome_general, '')::TEXT,
-        COALESCE(c.ai_welcome_item, '')::TEXT,
+        -- Use translated AI fields if language specified and translation exists
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'ai_instruction', c.ai_instruction, '')
+            ELSE COALESCE(c.ai_instruction, '')
+        END::TEXT AS ai_instruction,
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'ai_knowledge_base', c.ai_knowledge_base, '')
+            ELSE COALESCE(c.ai_knowledge_base, '')
+        END::TEXT AS ai_knowledge_base,
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'ai_welcome_general', c.ai_welcome_general, '')
+            ELSE COALESCE(c.ai_welcome_general, '')
+        END::TEXT AS ai_welcome_general,
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'ai_welcome_item', c.ai_welcome_item, '')
+            ELSE COALESCE(c.ai_welcome_item, '')
+        END::TEXT AS ai_welcome_item,
         COALESCE(c.original_language, 'en')::TEXT,
         COALESCE(c.qr_code_position::TEXT, 'BR'),
         c.max_scans,
@@ -168,17 +198,29 @@ BEGIN
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
         ct.is_featured,
         ct.created_at,
-        -- Get content items as JSON array (includes all fields for export)
+        -- Get content items as JSON array with translated content if language specified
         COALESCE(
             (SELECT jsonb_agg(
                 jsonb_build_object(
                     'id', ci.id,
                     'parent_id', ci.parent_id,
-                    'name', ci.name,
-                    'content', ci.content,
+                    'name', CASE 
+                        WHEN p_language IS NOT NULL AND ci.translations ? p_language 
+                        THEN COALESCE(ci.translations->p_language->>'name', ci.name)
+                        ELSE ci.name
+                    END,
+                    'content', CASE 
+                        WHEN p_language IS NOT NULL AND ci.translations ? p_language 
+                        THEN COALESCE(ci.translations->p_language->>'content', ci.content)
+                        ELSE ci.content
+                    END,
                     'image_url', ci.image_url,
                     'original_image_url', ci.original_image_url,
-                    'ai_knowledge_base', ci.ai_knowledge_base,
+                    'ai_knowledge_base', CASE 
+                        WHEN p_language IS NOT NULL AND ci.translations ? p_language 
+                        THEN COALESCE(ci.translations->p_language->>'ai_knowledge_base', ci.ai_knowledge_base)
+                        ELSE ci.ai_knowledge_base
+                    END,
                     'sort_order', ci.sort_order,
                     'crop_parameters', ci.crop_parameters,
                     'translations', COALESCE(ci.translations, '{}'::JSONB),
@@ -188,7 +230,9 @@ BEGIN
             FROM content_items ci 
             WHERE ci.card_id = c.id),
             '[]'::JSONB
-        ) AS content_items
+        ) AS content_items,
+        -- Extract translation language keys from JSONB
+        COALESCE(ARRAY(SELECT jsonb_object_keys(c.translations)), ARRAY[]::TEXT[]) AS translation_languages
     FROM content_templates ct
     JOIN cards c ON ct.card_id = c.id
     WHERE ct.is_active = true
@@ -900,7 +944,8 @@ $$;
 -- Grant execute permissions
 GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN, TEXT) TO anon;
-GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT, TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.get_template_venue_types() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.import_content_template(UUID, UUID, TEXT, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_template_from_card(UUID, UUID, TEXT, TEXT, BOOLEAN, INTEGER) TO authenticated;

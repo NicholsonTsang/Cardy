@@ -3,9 +3,13 @@
 -- =================================================================
 -- All subscription-related database operations from Express backend.
 -- Called by backend Express server with service_role permissions.
+--
+-- NOTE: Session-based billing (budget tracking, session costs) is handled
+-- entirely in Redis. These stored procedures only manage subscription metadata.
+-- All pricing values come from environment variables.
 -- =================================================================
 
--- Get subscription by user ID
+-- Get subscription by user ID (basic info only)
 DROP FUNCTION IF EXISTS get_subscription_by_user_server CASCADE;
 CREATE OR REPLACE FUNCTION get_subscription_by_user_server(
     p_user_id UUID
@@ -89,6 +93,24 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Update subscription period dates (called on period renewal)
+DROP FUNCTION IF EXISTS update_subscription_period_server CASCADE;
+CREATE OR REPLACE FUNCTION update_subscription_period_server(
+    p_user_id UUID,
+    p_period_start TIMESTAMPTZ,
+    p_period_end TIMESTAMPTZ
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE subscriptions
+    SET 
+        current_period_start = p_period_start,
+        current_period_end = p_period_end,
+        updated_at = NOW()
+    WHERE user_id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Count user experiences
 DROP FUNCTION IF EXISTS count_user_experiences_server CASCADE;
 CREATE OR REPLACE FUNCTION count_user_experiences_server(
@@ -150,9 +172,11 @@ GRANT EXECUTE ON FUNCTION update_subscription_cancel_status_server TO service_ro
 REVOKE ALL ON FUNCTION update_subscription_status_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION update_subscription_status_server TO service_role;
 
+REVOKE ALL ON FUNCTION update_subscription_period_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION update_subscription_period_server TO service_role;
+
 REVOKE ALL ON FUNCTION count_user_experiences_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION count_user_experiences_server TO service_role;
 
 REVOKE ALL ON FUNCTION check_premium_subscription_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION check_premium_subscription_server TO service_role;
-

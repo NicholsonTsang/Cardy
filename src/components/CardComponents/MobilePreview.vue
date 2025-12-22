@@ -92,9 +92,21 @@ const iframeLoading = ref(true);
 const error = ref(null);
 const phoneWidth = ref(280); // Default phone width
 
-// Calculate iframe scale based on phone width (fills screen, slight horizontal overflow clipped)
+// Calculate phone screen dimensions (accounting for device border)
+const phoneBorder = computed(() => phoneWidth.value * 0.025);
+const screenWidth = computed(() => phoneWidth.value - (phoneBorder.value * 2));
+const screenHeight = computed(() => {
+    // Phone aspect ratio is 9/19.5, so height = width * 19.5/9
+    const phoneHeight = phoneWidth.value * (19.5 / 9);
+    return phoneHeight - (phoneBorder.value * 2);
+});
+
+// Calculate iframe scale to fill screen (cover mode - fills both dimensions)
 const iframeScale = computed(() => {
-    return phoneWidth.value / 375;
+    const scaleX = screenWidth.value / 375;
+    const scaleY = screenHeight.value / 812;
+    // Use the larger scale to ensure full coverage (like object-fit: cover)
+    return Math.max(scaleX, scaleY);
 });
 
 const iframeStyle = computed(() => ({
@@ -200,7 +212,7 @@ onMounted(() => {
     width: 375px;
     height: 812px;
     border: none;
-    background: white;
+    background: #0f172a; /* Match device background to prevent white flash */
     transform-origin: center center;
 }
 

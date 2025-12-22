@@ -1,6 +1,24 @@
 {
+  "seo": {
+    "title": "FunTell - AI 驱动数字体验平台 | 将任何场所转化为互动导览",
+    "description": "结合实体纪念卡与 AI 语音导览的互动体验。扫描 QR 码即刻启用多语言导览，适用于博物馆、展览及观光景点。免下载 App，即扫即用。",
+    "keywords": "AI 纪念卡, 互动博物馆导览, 数字展览卡, QR 码导览, 多语言 AI 助理, 博物馆科技, 访客互动, 收藏卡片, 语音导览系统, 博物馆纪念品, 展览科技, 旅游景点卡片, 展会卡片, 会议资料, 酒店 AI 礼宾, 免下载体验",
+    "language": "简体中文",
+    "structured_description": "AI 驱动的互动纪念卡，适用于全球博物馆、展览、旅游景点、展会、会议和活动",
+    "features": [
+      "AI 语音对话",
+      "支持 10 种以上语言",
+      "扫码即时访问",
+      "免下载 App",
+      "实时数据分析",
+      "内容管理后台",
+      "云端托管",
+      "24/7 技术支持"
+    ],
+    "audience": "博物馆、展览、旅游景点、展会、会议、酒店、餐厅、活动"
+  },
   "common": {
-    "app_name": "ExperienceQR",
+    "app_name": "FunTell",
     "loading": "加载中...",
     "save": "保存",
     "cancel": "取消",
@@ -94,8 +112,8 @@
     "sign_in_with_google": "使用 Google 登录",
     "sign_up_with_google": "使用 Google 注册",
     "or": "或",
-    "cms_account_subtitle": "登录您的 ExperienceQR CMS 账户",
-    "join_cardstudio": "加入 ExperienceQR CMS 开始创作数字化体验",
+    "cms_account_subtitle": "登录您的 FunTell CMS 账户",
+    "join_funtell": "加入 FunTell CMS 开始创作数字化体验",
     "by_signing_in_agree": "登录即表示您同意我们的",
     "terms_of_service": "服务条款",
     "privacy_policy": "隐私政策",
@@ -864,7 +882,11 @@
       "total": "总计",
       "peak": "高峰",
       "overage": "超额",
-      "no_data": "此期间无访问数据记录"
+      "no_data": "此期间无访问数据记录",
+      "ai_sessions": "AI 会话",
+      "non_ai_sessions": "非 AI 会话",
+      "ai_short": "AI",
+      "non_ai_short": "非 AI"
     },
     "chart": {
       "daily_access": "每日访问",
@@ -887,7 +909,7 @@
     },
     "upgrade_cta": {
       "title": "解锁专业版功能",
-      "description": "每月仅需 $50，即可获得最多 15 个项目、多语言翻译和每月 3,000 次访问。"
+      "description": "每月仅需 ${monthlyFee}，即可获得最多 {experienceLimit} 个项目、多语言翻译和 ${monthlyBudget} 会话预算。"
     },
     "overage_cta": {
       "need_more": "需要更多容量？",

@@ -8,12 +8,10 @@
       <div class="flex justify-between items-center h-14 sm:h-16">
         <!-- Logo -->
         <div class="flex items-center">
-          <router-link to="/" class="flex items-center gap-1.5 sm:gap-2 hover:opacity-90 transition-opacity group">
-            <div class="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-              <i class="pi pi-qrcode text-white text-base sm:text-lg"></i>
-            </div>
+          <router-link to="/" class="flex items-center gap-2 sm:gap-2.5 hover:opacity-90 transition-opacity group">
+            <LogoAnimation size="md" />
             <span class="hidden sm:inline text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              ExperienceQR
+              FunTell
             </span>
           </router-link>
         </div>
@@ -79,12 +77,10 @@
       <div class="flex items-center h-14 sm:h-16">
         <!-- Logo (Left) -->
         <div class="flex items-center">
-          <router-link to="/" class="flex items-center gap-1.5 sm:gap-2 hover:opacity-90 transition-opacity group">
-            <div class="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg sm:rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-              <i class="pi pi-qrcode text-white text-base sm:text-lg"></i>
-            </div>
+          <router-link to="/" class="flex items-center gap-2 sm:gap-2.5 hover:opacity-90 transition-opacity group">
+            <LogoAnimation size="md" />
             <span class="hidden sm:inline text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              ExperienceQR
+              FunTell
             </span>
           </router-link>
         </div>
@@ -184,6 +180,7 @@ import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import { useToast } from 'primevue/usetoast'
 import DashboardLanguageSelector from '@/components/DashboardLanguageSelector.vue'
+import LogoAnimation from '@/components/Landing/LogoAnimation.vue'
 
 const props = defineProps({
   mode: {

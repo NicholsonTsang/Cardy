@@ -671,7 +671,7 @@ async function downloadTemplate() {
   try {
     const buffer = await generateImportTemplate()
     
-    const filename = `CardStudio_Import_Template_${new Date().toISOString().split('T')[0]}.xlsx`
+    const filename = `FunTell_Import_Template_${new Date().toISOString().split('T')[0]}.xlsx`
     const blob = new Blob([buffer], { 
       type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
     })

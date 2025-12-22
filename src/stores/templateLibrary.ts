@@ -144,7 +144,8 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
     };
 
     // Fetch single template details (includes content items)
-    const fetchTemplateDetails = async (templateIdOrSlug: string) => {
+    // language: If specified, returns content in that language (using translations if available)
+    const fetchTemplateDetails = async (templateIdOrSlug: string, language?: string) => {
         isLoading.value = true;
         error.value = null;
         selectedTemplate.value = null;
@@ -153,9 +154,13 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
             // Determine if it's a UUID or slug
             const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(templateIdOrSlug);
             
+            // Use provided language, or previewLanguage from store, or null for original
+            const displayLanguage = language ?? previewLanguage.value;
+            
             const { data, error: err } = await supabase.rpc('get_content_template', {
                 p_template_id: isUuid ? templateIdOrSlug : null,
-                p_slug: isUuid ? null : templateIdOrSlug
+                p_slug: isUuid ? null : templateIdOrSlug,
+                p_language: displayLanguage || null
             });
 
             if (err) throw err;

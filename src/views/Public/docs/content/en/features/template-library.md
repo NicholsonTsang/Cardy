@@ -4,37 +4,39 @@ Get started quickly with pre-built templates designed for various venue types.
 
 ## Available Templates
 
-Our template library includes ready-to-use templates for:
+Our template library includes 20+ ready-to-use templates organized into categories:
 
 ### Cultural & Arts
-- Museum gallery
-- Art exhibition
-- Cultural heritage site
+- History museum with grouped galleries
+- Art gallery with grid layout
+- Auction house catalog
+- Illustrator portfolio
 
 ### Food & Beverage
-- Restaurant menu
-- Café catalog
-- Winery tour
+- Fine dining menu
+- Cocktail bar menu
+- Winery tour guide
 
 ### Events & Entertainment
 - Conference guide
-- Festival program
-- Theatre/venue info
+- Fashion show program
+- Football match info
+- Theatre/venue guide
 
 ### Hospitality & Wellness
-- Hotel amenities
-- Spa services
-- Resort activities
+- Hotel services directory
+- Spa & wellness menu
+- Fitness studio guide
 
 ### Shopping & Showrooms
-- Product catalog
+- Shopping mall directory
 - Real estate showroom
-- Car dealership
+- Car dealership showcase
 
 ### Tours & Education
-- Campus tour
-- Historical walking tour
-- Educational program
+- Tourist landmark tour
+- University campus guide
+- Zoo visitor guide
 
 ![Template Library](/Image/docs/template-library.png "Template Library")
 
@@ -45,16 +47,16 @@ Our template library includes ready-to-use templates for:
 1. Navigate to My Projects
 2. Click "New Project"
 3. Select "Start from Template"
-4. Browse by category
+4. Browse by category or search
 
 ### Step 2: Preview Template
 
 Click any template to preview:
 
-- Content structure
-- Sample content items
-- AI configuration
-- Display mode
+- Content structure and sample items
+- Content mode and layout
+- AI configuration and welcome messages
+- Original language and available translations
 
 ### Step 3: Import Template
 
@@ -69,18 +71,39 @@ Importing a template creates a new project. Your subscription limits apply - Fre
 After import, customize the template:
 
 - Replace sample content with your own
-- Update images
-- Modify AI instructions
-- Adjust settings as needed
+- Update images and descriptions
+- Modify AI instructions and knowledge base
+- Add or remove content items
+- Configure access limits
 
 ## Template Features
 
 Each template includes:
 
 - **Optimized Content Mode** - Best layout for the venue type
-- **Sample Content Structure** - Suggested organization
-- **AI Configuration** - Tailored AI instructions
-- **Welcome Messages** - Customizable greetings
+- **Sample Content Structure** - Suggested organization with parent/child items
+- **AI Configuration** - Tailored AI instructions and knowledge base
+- **Proactive Welcome Messages** - Context-aware greetings that guide visitors
+- **Access Settings** - Suggested daily/scan limits
+
+## Template Translations
+
+Some templates include pre-made translations:
+
+- **Original Language** - The source content language
+- **Available Translations** - Languages already translated
+- Import includes all translation data
+
+You can add additional translations after import (Premium required).
+
+## Demo Templates
+
+Featured templates are available as live demos on our landing page:
+
+- Try before you import
+- See how content displays on mobile
+- Test the AI assistant interaction
+- Experience different content modes
 
 ## Creating from Scratch vs Templates
 
@@ -90,10 +113,9 @@ Each template includes:
 | **From Scratch** | Unique requirements, custom layouts, experienced users |
 
 :::tip Mix and Match
-You can start with a template and then add, remove, or reorganize content to fit your exact needs.
+You can start with a template and then completely customize it - add, remove, or reorganize content to fit your exact needs.
 :::
 
 ## Requesting New Templates
 
-Don't see a template for your venue type? Contact us at inquiry@cardstudio.org with your suggestion. We regularly add new templates based on user feedback.
-
+Don't see a template for your venue type? We regularly add new templates based on user feedback. Contact us through the support form in your dashboard.

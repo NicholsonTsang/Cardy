@@ -1,6 +1,24 @@
 {
+  "seo": {
+    "title": "FunTell - AIパワード デジタル体験プラットフォーム | あらゆる施設をインタラクティブガイドに",
+    "description": "AIパワードのスーベニアカードで来場者体験を変革。多言語音声ガイドとQRコレクティブルを博物館、アトラクション、イベントに。アプリ不要。",
+    "keywords": "AIスーベニアカード, インタラクティブ博物館ガイド, デジタル展示カード, QRコードツアーガイド, 多言語AIアシスタント, 博物館テクノロジー, 来場者エンゲージメント, コレクティブルカード, オーディオガイド代替, 博物館お土産, 展示テクノロジー, 観光カード, 展示会カード, カンファレンス資料, ホテルAIコンシェルジュ, アプリ不要体験",
+    "language": "日本語",
+    "structured_description": "世界中の博物館、展覧会、観光地、展示会、カンファレンス、イベント向けAIパワードインタラクティブスーベニアカード",
+    "features": [
+      "AI音声会話",
+      "10言語以上対応",
+      "QRコードで即時アクセス",
+      "アプリダウンロード不要",
+      "リアルタイム分析",
+      "コンテンツ管理ダッシュボード",
+      "クラウドホスティング",
+      "24時間365日サポート"
+    ],
+    "audience": "博物館、展覧会、観光地、展示会、カンファレンス、ホテル、レストラン、イベント"
+  },
   "common": {
-    "app_name": "CardStudio",
+    "app_name": "FunTell",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -77,8 +95,8 @@
     "password_required": "Password is required",
     "sign_in_error": "Failed to sign in. Please check your credentials.",
     "sign_up_error": "Failed to create account. Please try again.",
-    "cms_account_subtitle": "Sign in to your CardStudio CMS account",
-    "join_cardstudio": "Join CardStudio CMS to start creating digital cards"
+    "cms_account_subtitle": "Sign in to your FunTell CMS account",
+    "join_funtell": "Join FunTell CMS to start creating digital cards"
   },
 
   "dashboard": {

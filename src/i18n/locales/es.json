@@ -1,6 +1,24 @@
 {
+  "seo": {
+    "title": "FunTell - Plataforma de Experiencia Digital con IA | Transforma cualquier lugar en guía interactiva",
+    "description": "Transforma las experiencias de visitantes con tarjetas souvenir con IA. Guías de voz multilingües y coleccionables QR para museos, atracciones y eventos. Sin necesidad de app.",
+    "keywords": "tarjetas souvenir IA, guía interactiva de museo, tarjetas de exhibición digital, guía turístico QR, asistente IA multilingüe, tecnología de museo, compromiso de visitantes, tarjetas coleccionables, alternativa audioguía, souvenir de museo, tecnología de exhibición, tarjetas de atracciones turísticas, tarjetas de ferias, materiales de conferencia, conserje IA de hotel, experiencia sin app",
+    "language": "Español",
+    "structured_description": "Tarjetas Souvenir Interactivas con IA para Museos, Exhibiciones, Atracciones Turísticas, Ferias, Conferencias y Eventos en todo el mundo",
+    "features": [
+      "Conversaciones de voz con IA",
+      "Soporte en más de 10 idiomas",
+      "Acceso instantáneo por QR",
+      "Sin necesidad de descargar app",
+      "Análisis en tiempo real",
+      "Panel de gestión de contenido",
+      "Alojamiento en la nube",
+      "Soporte 24/7"
+    ],
+    "audience": "Museos, Exhibiciones, Atracciones Turísticas, Ferias, Conferencias, Hoteles, Restaurantes, Eventos"
+  },
   "common": {
-    "app_name": "CardStudio",
+    "app_name": "FunTell",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -77,8 +95,8 @@
     "password_required": "Password is required",
     "sign_in_error": "Failed to sign in. Please check your credentials.",
     "sign_up_error": "Failed to create account. Please try again.",
-    "cms_account_subtitle": "Sign in to your CardStudio CMS account",
-    "join_cardstudio": "Join CardStudio CMS to start creating digital cards"
+    "cms_account_subtitle": "Sign in to your FunTell CMS account",
+    "join_funtell": "Join FunTell CMS to start creating digital cards"
   },
 
   "dashboard": {

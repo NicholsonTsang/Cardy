@@ -65,7 +65,7 @@ router.post('/create-credit-checkout', authenticateUser, async (req: Request, re
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'CardStudio Credits',
+              name: 'FunTell Credits',
               description: `Purchase ${creditAmount} credits for card issuance`,
               metadata: {
                 type: 'credit_purchase'

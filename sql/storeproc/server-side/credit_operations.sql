@@ -4,6 +4,10 @@
 -- All credit-related database operations from Express backend.
 -- Called by backend Express server with service_role permissions.
 -- These are atomic operations for credit balance management.
+--
+-- NOTE: Session budget tracking is handled in Redis.
+-- When credits are deducted for overage, the backend adds 
+-- the amount to the Redis budget counter.
 -- =================================================================
 
 -- Get user credit balance
@@ -23,20 +27,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Deduct credits for overage (atomic operation)
+-- Deduct credits for session budget top-up (atomic operation)
+-- After this succeeds, the backend adds the amount to Redis budget
 DROP FUNCTION IF EXISTS deduct_overage_credits_server CASCADE;
 CREATE OR REPLACE FUNCTION deduct_overage_credits_server(
     p_user_id UUID,
-    p_card_id UUID,
+    p_card_id UUID, -- Can be NULL for budget-based overage
     p_credits_amount DECIMAL,
-    p_access_granted INTEGER
+    p_access_granted INTEGER DEFAULT 0 -- Legacy parameter, kept for backward compatibility
 )
 RETURNS JSONB AS $$
 DECLARE
     v_current_balance DECIMAL;
     v_new_balance DECIMAL;
 BEGIN
-    -- Get current balance with lock
+    -- Get current credit balance with lock
     SELECT balance INTO v_current_balance
     FROM user_credits
     WHERE user_id = p_user_id
@@ -59,20 +64,20 @@ BEGIN
     -- Calculate new balance
     v_new_balance := v_current_balance - p_credits_amount;
     
-    -- Update balance
+    -- Update credit balance
     UPDATE user_credits
     SET balance = v_new_balance, updated_at = NOW()
     WHERE user_id = p_user_id;
     
-    -- Record consumption
+    -- Record consumption (simple record, no complex session tracking)
     INSERT INTO credit_consumptions (
         user_id, card_id, quantity, credits_per_unit, total_credits,
         consumption_type, description
     ) VALUES (
-        p_user_id, p_card_id, p_access_granted, 
-        p_credits_amount / p_access_granted, p_credits_amount,
-        'subscription_overage_batch',
-        format('Purchased %s overage access for %s credits', p_access_granted, p_credits_amount)
+        p_user_id, p_card_id, 1, 
+        p_credits_amount, p_credits_amount,
+        'session_budget_topup',
+        format('Session budget top-up: $%s (added to Redis budget)', p_credits_amount)
     );
     
     -- Record transaction
@@ -81,16 +86,16 @@ BEGIN
         reference_type, description
     ) VALUES (
         p_user_id, -p_credits_amount, v_current_balance, v_new_balance,
-        'consumption', 'subscription_overage_batch',
-        format('Overage batch: %s access for %s credits', p_access_granted, p_credits_amount)
+        'consumption', 'session_budget_topup',
+        format('Session budget top-up: $%s (credit balance: $%s -> $%s)', p_credits_amount, v_current_balance, v_new_balance)
     );
     
+    -- Return success - backend will add to Redis budget
     RETURN jsonb_build_object(
         'success', TRUE,
         'balance_before', v_current_balance,
         'balance_after', v_new_balance,
-        'credits_deducted', p_credits_amount,
-        'access_granted', p_access_granted
+        'credits_deducted', p_credits_amount
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -124,4 +129,3 @@ GRANT EXECUTE ON FUNCTION deduct_overage_credits_server TO service_role;
 
 REVOKE ALL ON FUNCTION get_credit_purchase_by_intent_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION get_credit_purchase_by_intent_server TO service_role;
-

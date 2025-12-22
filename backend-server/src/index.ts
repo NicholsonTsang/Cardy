@@ -227,7 +227,7 @@ app.use((req: Request, res: Response) => {
 // Start server
 const server = app.listen(PORT, async () => {
   console.log('');
-  console.log('🚀 CardStudio Backend Server');
+  console.log('🚀 FunTell Backend Server');
   console.log('=====================================');
   console.log(`📡 Server listening on port ${PORT}`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);

@@ -7,11 +7,11 @@
                 <div class="px-8 pt-8 pb-6 text-center">
                     <!-- Logo -->
                     <div class="flex flex-col items-center mb-6">
-                        <div class="w-14 h-14 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-lg mb-3">
-                            <i class="pi pi-qrcode text-white text-2xl"></i>
+                        <div class="mb-2">
+                            <LogoAnimation size="lg" />
                         </div>
                         <span class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                            ExperienceQR
+                            FunTell
                         </span>
                     </div>
                     <h1 id="signin-title" class="text-2xl font-bold text-slate-900 mb-2">{{ $t('auth.welcome_back') }}</h1>
@@ -205,6 +205,7 @@ import { ref, computed } from 'vue';
 import { useAuthStore } from '@/stores/auth.js';
 import { useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
+import LogoAnimation from '@/components/Landing/LogoAnimation.vue';
 
 const { t } = useI18n();
 

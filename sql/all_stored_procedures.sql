@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Sun Dec 21 17:36:31 HKT 2025
+-- Generated: Mon Dec 22 20:09:21 HKT 2025
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -2685,10 +2685,12 @@ $$;
 -- -----------------------------------------------------------------
 -- Get single template by ID or slug with full details
 -- Returns card data and content items
+-- Supports multilingual preview via p_language parameter
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_content_template(
     p_template_id UUID DEFAULT NULL,
-    p_slug TEXT DEFAULT NULL
+    p_slug TEXT DEFAULT NULL,
+    p_language TEXT DEFAULT NULL  -- Display template in this language if translation available
 )
 RETURNS TABLE (
     id UUID,
@@ -2717,7 +2719,8 @@ RETURNS TABLE (
     item_count BIGINT,
     is_featured BOOLEAN,
     created_at TIMESTAMPTZ,
-    content_items JSONB
+    content_items JSONB,
+    translation_languages TEXT[]
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -2729,8 +2732,18 @@ BEGIN
         ct.id,
         ct.slug,
         ct.card_id,
-        c.name,
-        COALESCE(c.description, '')::TEXT,
+        -- Use translated name if language specified and translation exists, else original
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'name', c.name)
+            ELSE c.name
+        END AS name,
+        -- Use translated description if language specified and translation exists, else original
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'description', c.description, '')
+            ELSE COALESCE(c.description, '')
+        END::TEXT AS description,
         ct.venue_type,
         COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
         COALESCE(c.content_mode, 'list')::TEXT,
@@ -2738,10 +2751,27 @@ BEGIN
         COALESCE(c.group_display, 'expanded')::TEXT,
         COALESCE(c.billing_type, 'digital')::TEXT,
         COALESCE(c.conversation_ai_enabled, true),
-        COALESCE(c.ai_instruction, '')::TEXT,
-        COALESCE(c.ai_knowledge_base, '')::TEXT,
-        COALESCE(c.ai_welcome_general, '')::TEXT,
-        COALESCE(c.ai_welcome_item, '')::TEXT,
+        -- Use translated AI fields if language specified and translation exists
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'ai_instruction', c.ai_instruction, '')
+            ELSE COALESCE(c.ai_instruction, '')
+        END::TEXT AS ai_instruction,
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'ai_knowledge_base', c.ai_knowledge_base, '')
+            ELSE COALESCE(c.ai_knowledge_base, '')
+        END::TEXT AS ai_knowledge_base,
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'ai_welcome_general', c.ai_welcome_general, '')
+            ELSE COALESCE(c.ai_welcome_general, '')
+        END::TEXT AS ai_welcome_general,
+        CASE 
+            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+            THEN COALESCE(c.translations->p_language->>'ai_welcome_item', c.ai_welcome_item, '')
+            ELSE COALESCE(c.ai_welcome_item, '')
+        END::TEXT AS ai_welcome_item,
         COALESCE(c.original_language, 'en')::TEXT,
         COALESCE(c.qr_code_position::TEXT, 'BR'),
         c.max_scans,
@@ -2752,17 +2782,29 @@ BEGIN
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
         ct.is_featured,
         ct.created_at,
-        -- Get content items as JSON array (includes all fields for export)
+        -- Get content items as JSON array with translated content if language specified
         COALESCE(
             (SELECT jsonb_agg(
                 jsonb_build_object(
                     'id', ci.id,
                     'parent_id', ci.parent_id,
-                    'name', ci.name,
-                    'content', ci.content,
+                    'name', CASE 
+                        WHEN p_language IS NOT NULL AND ci.translations ? p_language 
+                        THEN COALESCE(ci.translations->p_language->>'name', ci.name)
+                        ELSE ci.name
+                    END,
+                    'content', CASE 
+                        WHEN p_language IS NOT NULL AND ci.translations ? p_language 
+                        THEN COALESCE(ci.translations->p_language->>'content', ci.content)
+                        ELSE ci.content
+                    END,
                     'image_url', ci.image_url,
                     'original_image_url', ci.original_image_url,
-                    'ai_knowledge_base', ci.ai_knowledge_base,
+                    'ai_knowledge_base', CASE 
+                        WHEN p_language IS NOT NULL AND ci.translations ? p_language 
+                        THEN COALESCE(ci.translations->p_language->>'ai_knowledge_base', ci.ai_knowledge_base)
+                        ELSE ci.ai_knowledge_base
+                    END,
                     'sort_order', ci.sort_order,
                     'crop_parameters', ci.crop_parameters,
                     'translations', COALESCE(ci.translations, '{}'::JSONB),
@@ -2772,7 +2814,9 @@ BEGIN
             FROM content_items ci 
             WHERE ci.card_id = c.id),
             '[]'::JSONB
-        ) AS content_items
+        ) AS content_items,
+        -- Extract translation language keys from JSONB
+        COALESCE(ARRAY(SELECT jsonb_object_keys(c.translations)), ARRAY[]::TEXT[]) AS translation_languages
     FROM content_templates ct
     JOIN cards c ON ct.card_id = c.id
     WHERE ct.is_active = true
@@ -3484,7 +3528,8 @@ $$;
 -- Grant execute permissions
 GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN, TEXT) TO anon;
-GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT, TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.get_template_venue_types() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.import_content_template(UUID, UUID, TEXT, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_template_from_card(UUID, UUID, TEXT, TEXT, BOOLEAN, INTEGER) TO authenticated;
@@ -3499,9 +3544,6 @@ GRANT EXECUTE ON FUNCTION public.get_admin_template_cards(UUID) TO authenticated
 -- Get featured demo templates for landing page (public access)
 -- Returns templates with their public access URLs
 -- Supports multilingual display via p_language parameter
--- Only returns templates available in the requested language:
---   - original_language matches p_language, OR
---   - translation exists for p_language
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_demo_templates(
     p_limit INTEGER DEFAULT 100,
@@ -3545,11 +3587,6 @@ BEGIN
       AND ct.is_featured = true
       AND c.is_access_enabled = true
       AND c.access_token IS NOT NULL
-      -- Only show templates available in the requested language
-      AND (
-          c.original_language = p_language
-          OR c.translations ? p_language
-      )
     ORDER BY ct.sort_order ASC, c.name ASC
     LIMIT p_limit;
 END;
@@ -4691,6 +4728,10 @@ DROP FUNCTION IF EXISTS get_subscription_details CASCADE;
 -- =================================================================
 -- These functions are accessible by authenticated users
 -- Usage tracking is handled by Redis (source of truth)
+--
+-- NOTE: All pricing/budget values come from environment variables
+-- passed as parameters. The database only stores tier/status.
+-- Redis tracks actual budget usage.
 -- =================================================================
 
 -- =================================================================
@@ -4817,26 +4858,24 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =================================================================
 -- FUNCTION: Get subscription details
--- All business parameters passed from calling application
--- NOTE: Usage stats (monthly_access_used) returned as 0 here
---       Backend fills in actual values from Redis (source of truth)
+-- All pricing/budget values come from parameters (environment variables)
+-- NOTE: Usage stats come from Redis (source of truth), not from DB
 -- =================================================================
 CREATE OR REPLACE FUNCTION get_subscription_details(
     p_user_id UUID DEFAULT NULL,
     p_free_experience_limit INTEGER DEFAULT 3,
     p_premium_experience_limit INTEGER DEFAULT 15,
-    p_free_monthly_access INTEGER DEFAULT 50,
-    p_premium_monthly_access INTEGER DEFAULT 3000,
-    p_premium_monthly_fee DECIMAL DEFAULT 50,
-    p_overage_credits_per_batch INTEGER DEFAULT 5,
-    p_overage_access_per_batch INTEGER DEFAULT 100
+    p_free_monthly_sessions INTEGER DEFAULT 50,  -- Free tier session limit
+    p_premium_monthly_budget DECIMAL DEFAULT 30.00,  -- Premium monthly budget USD
+    p_ai_session_cost DECIMAL DEFAULT 0.05,  -- Cost per AI-enabled session
+    p_non_ai_session_cost DECIMAL DEFAULT 0.025,  -- Cost per non-AI session
+    p_overage_credits_per_batch INTEGER DEFAULT 5  -- Credits per auto top-up
 )
 RETURNS JSONB AS $$
 DECLARE
     v_user_id UUID := COALESCE(p_user_id, auth.uid());
     v_subscription subscriptions%ROWTYPE;
     v_experience_count INTEGER;
-    v_monthly_limit INTEGER;
 BEGIN
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
@@ -4847,13 +4886,6 @@ BEGIN
     
     -- Count experiences
     SELECT COUNT(*) INTO v_experience_count FROM cards WHERE user_id = v_user_id;
-    
-    -- Determine monthly limit based on tier
-    IF v_subscription.tier = 'premium' THEN
-        v_monthly_limit := p_premium_monthly_access;
-    ELSE
-        v_monthly_limit := p_free_monthly_access;
-    END IF;
     
     RETURN jsonb_build_object(
         'tier', v_subscription.tier::TEXT,
@@ -4866,12 +4898,24 @@ BEGIN
         'current_period_end', v_subscription.current_period_end,
         'cancel_at_period_end', v_subscription.cancel_at_period_end,
         
-        -- Usage (returned as 0 - backend fills from Redis)
-        'monthly_access_limit', v_monthly_limit,
-        'monthly_access_used', 0,  -- Redis is source of truth
-        'monthly_access_remaining', v_monthly_limit,  -- Backend recalculates from Redis
+        -- Session-based billing (from parameters/env vars)
+        -- NOTE: Actual budget tracking is in Redis, these are just for display
+        'monthly_budget_usd', CASE WHEN v_subscription.tier = 'premium' THEN p_premium_monthly_budget ELSE 0 END,
+        'budget_consumed_usd', 0,  -- Redis is source of truth, backend fills this
+        'budget_remaining_usd', CASE WHEN v_subscription.tier = 'premium' THEN p_premium_monthly_budget ELSE 0 END,
         
-        -- Experience limits (using parameters)
+        -- Session costs (from parameters/env vars)
+        'ai_session_cost_usd', p_ai_session_cost,
+        'non_ai_session_cost_usd', p_non_ai_session_cost,
+        
+        -- Calculated session limits
+        'ai_sessions_included', CASE WHEN v_subscription.tier = 'premium' THEN FLOOR(p_premium_monthly_budget / p_ai_session_cost) ELSE 0 END,
+        'non_ai_sessions_included', CASE WHEN v_subscription.tier = 'premium' THEN FLOOR(p_premium_monthly_budget / p_non_ai_session_cost) ELSE 0 END,
+        
+        -- Free tier (session count based)
+        'monthly_session_limit', CASE WHEN v_subscription.tier = 'free' THEN p_free_monthly_sessions ELSE NULL END,
+        
+        -- Experience limits
         'experience_count', v_experience_count,
         'experience_limit', CASE 
             WHEN v_subscription.tier = 'premium' THEN p_premium_experience_limit 
@@ -4884,15 +4928,16 @@ BEGIN
             'can_buy_overage', v_subscription.tier = 'premium'
         ),
         
-        -- Pricing info (using parameters)
+        -- Pricing info (all from parameters/env vars)
         'pricing', jsonb_build_object(
-            'monthly_fee_usd', CASE WHEN v_subscription.tier = 'premium' THEN p_premium_monthly_fee ELSE 0 END,
-            'monthly_access_limit', v_monthly_limit,
-            'overage_credits_per_batch', CASE WHEN v_subscription.tier = 'premium' THEN p_overage_credits_per_batch ELSE NULL END,
-            'overage_access_per_batch', CASE WHEN v_subscription.tier = 'premium' THEN p_overage_access_per_batch ELSE NULL END,
-            'overage_cost_per_access', CASE WHEN v_subscription.tier = 'premium' 
-                THEN ROUND(p_overage_credits_per_batch::DECIMAL / p_overage_access_per_batch, 4) 
-                ELSE NULL END
+            'monthly_fee_usd', p_premium_monthly_budget,
+            'ai_session_cost_usd', p_ai_session_cost,
+            'non_ai_session_cost_usd', p_non_ai_session_cost,
+            'ai_sessions_included', FLOOR(p_premium_monthly_budget / p_ai_session_cost),
+            'non_ai_sessions_included', FLOOR(p_premium_monthly_budget / p_non_ai_session_cost),
+            'overage_credits_per_batch', p_overage_credits_per_batch,
+            'overage_ai_sessions_per_batch', FLOOR(p_overage_credits_per_batch / p_ai_session_cost),
+            'overage_non_ai_sessions_per_batch', FLOOR(p_overage_credits_per_batch / p_non_ai_session_cost)
         )
     );
 END;
@@ -4904,8 +4949,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION get_or_create_subscription(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION can_create_experience(UUID, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION can_use_translations(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION get_subscription_details(UUID, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, INTEGER, INTEGER) TO authenticated;
-
+GRANT EXECUTE ON FUNCTION get_subscription_details(UUID, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, INTEGER) TO authenticated;
 
 
 -- File: 12_translation_management.sql
@@ -6905,11 +6949,17 @@ CREATE OR REPLACE FUNCTION get_daily_access_stats_server(
 )
 RETURNS TABLE (
     accessed_at TIMESTAMPTZ,
-    was_overage BOOLEAN
+    was_overage BOOLEAN,
+    is_ai_enabled BOOLEAN,
+    session_cost_usd DECIMAL(10, 4)
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT cal.accessed_at, cal.was_overage
+    SELECT 
+        cal.accessed_at, 
+        cal.was_overage,
+        COALESCE(cal.is_ai_enabled, FALSE) AS is_ai_enabled,
+        COALESCE(cal.session_cost_usd, 0) AS session_cost_usd
     FROM card_access_log cal
     WHERE cal.card_owner_id = p_user_id
       AND cal.is_owner_access = FALSE
@@ -6919,7 +6969,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Insert access log
+-- Insert access log (with session-based billing fields)
 DROP FUNCTION IF EXISTS insert_access_log_server CASCADE;
 CREATE OR REPLACE FUNCTION insert_access_log_server(
     p_card_id UUID,
@@ -6928,7 +6978,11 @@ CREATE OR REPLACE FUNCTION insert_access_log_server(
     p_subscription_tier TEXT,
     p_is_owner_access BOOLEAN,
     p_was_overage BOOLEAN,
-    p_credit_charged BOOLEAN
+    p_credit_charged BOOLEAN,
+    -- Optional session-based billing fields (default to legacy values if not provided)
+    p_session_id TEXT DEFAULT NULL,
+    p_session_cost_usd DECIMAL DEFAULT 0,
+    p_is_ai_enabled BOOLEAN DEFAULT FALSE
 )
 RETURNS UUID AS $$
 DECLARE
@@ -6936,10 +6990,14 @@ DECLARE
 BEGIN
     INSERT INTO card_access_log (
         card_id, visitor_hash, card_owner_id,
-        subscription_tier, is_owner_access, was_overage, credit_charged
+        subscription_tier, is_owner_access, was_overage, credit_charged,
+        session_id, session_cost_usd, is_ai_enabled
     ) VALUES (
         p_card_id, p_visitor_hash, p_card_owner_id,
-        p_subscription_tier, p_is_owner_access, p_was_overage, p_credit_charged
+        p_subscription_tier, p_is_owner_access, p_was_overage, p_credit_charged,
+        COALESCE(p_session_id, p_visitor_hash), -- Use visitor_hash as session_id if not provided
+        p_session_cost_usd,
+        p_is_ai_enabled
     )
     RETURNING id INTO v_id;
     
@@ -7153,6 +7211,97 @@ GRANT EXECUTE ON FUNCTION activate_issue_card_server TO service_role;
 
 
 
+-- File: card_session.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_card_billing_info_server CASCADE;
+DROP FUNCTION IF EXISTS get_card_ai_status_server CASCADE;
+DROP FUNCTION IF EXISTS get_card_daily_limit_server CASCADE;
+
+-- =================================================================
+-- CARD SESSION OPERATIONS - SERVER-SIDE STORED PROCEDURES
+-- =================================================================
+-- Lightweight card queries for session-based billing.
+-- Called by backend Express server with service_role permissions.
+-- 
+-- NOTE: All pricing (session costs, budgets, limits) comes from environment variables.
+-- Redis is the source of truth for budget tracking.
+-- These stored procedures only query card metadata.
+-- =================================================================
+
+-- Get card AI-enabled status and billing info
+DROP FUNCTION IF EXISTS get_card_billing_info_server CASCADE;
+CREATE OR REPLACE FUNCTION get_card_billing_info_server(
+    p_card_id UUID
+)
+RETURNS TABLE (
+    card_id UUID,
+    user_id UUID,
+    ai_enabled BOOLEAN,
+    daily_scan_limit INTEGER,
+    billing_type TEXT
+) AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.id AS card_id,
+        c.user_id,
+        COALESCE(c.conversation_ai_enabled, FALSE) AS ai_enabled,
+        c.daily_scan_limit,
+        c.billing_type
+    FROM cards c
+    WHERE c.id = p_card_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get card AI-enabled status only (lightweight query)
+-- Returns TRUE if conversation_ai_enabled is true
+DROP FUNCTION IF EXISTS get_card_ai_status_server CASCADE;
+CREATE OR REPLACE FUNCTION get_card_ai_status_server(
+    p_card_id UUID
+)
+RETURNS BOOLEAN AS $$
+DECLARE
+    v_ai_enabled BOOLEAN;
+BEGIN
+    SELECT COALESCE(c.conversation_ai_enabled, FALSE)
+    INTO v_ai_enabled
+    FROM cards c
+    WHERE c.id = p_card_id;
+    
+    RETURN COALESCE(v_ai_enabled, FALSE);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get card daily scan limit only (lightweight query)
+DROP FUNCTION IF EXISTS get_card_daily_limit_server CASCADE;
+CREATE OR REPLACE FUNCTION get_card_daily_limit_server(
+    p_card_id UUID
+)
+RETURNS INTEGER AS $$
+DECLARE
+    v_daily_limit INTEGER;
+BEGIN
+    SELECT daily_scan_limit INTO v_daily_limit
+    FROM cards
+    WHERE id = p_card_id;
+    
+    RETURN v_daily_limit; -- NULL means unlimited
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =================================================================
+-- GRANTS - Only service_role can execute these
+-- =================================================================
+REVOKE ALL ON FUNCTION get_card_billing_info_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_card_billing_info_server TO service_role;
+
+REVOKE ALL ON FUNCTION get_card_ai_status_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_card_ai_status_server TO service_role;
+
+REVOKE ALL ON FUNCTION get_card_daily_limit_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_card_daily_limit_server TO service_role;
+
+
 -- File: credit_operations.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS get_user_credit_balance_server CASCADE;
@@ -7165,6 +7314,10 @@ DROP FUNCTION IF EXISTS get_credit_purchase_by_intent_server CASCADE;
 -- All credit-related database operations from Express backend.
 -- Called by backend Express server with service_role permissions.
 -- These are atomic operations for credit balance management.
+--
+-- NOTE: Session budget tracking is handled in Redis.
+-- When credits are deducted for overage, the backend adds 
+-- the amount to the Redis budget counter.
 -- =================================================================
 
 -- Get user credit balance
@@ -7184,20 +7337,21 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Deduct credits for overage (atomic operation)
+-- Deduct credits for session budget top-up (atomic operation)
+-- After this succeeds, the backend adds the amount to Redis budget
 DROP FUNCTION IF EXISTS deduct_overage_credits_server CASCADE;
 CREATE OR REPLACE FUNCTION deduct_overage_credits_server(
     p_user_id UUID,
-    p_card_id UUID,
+    p_card_id UUID, -- Can be NULL for budget-based overage
     p_credits_amount DECIMAL,
-    p_access_granted INTEGER
+    p_access_granted INTEGER DEFAULT 0 -- Legacy parameter, kept for backward compatibility
 )
 RETURNS JSONB AS $$
 DECLARE
     v_current_balance DECIMAL;
     v_new_balance DECIMAL;
 BEGIN
-    -- Get current balance with lock
+    -- Get current credit balance with lock
     SELECT balance INTO v_current_balance
     FROM user_credits
     WHERE user_id = p_user_id
@@ -7220,20 +7374,20 @@ BEGIN
     -- Calculate new balance
     v_new_balance := v_current_balance - p_credits_amount;
     
-    -- Update balance
+    -- Update credit balance
     UPDATE user_credits
     SET balance = v_new_balance, updated_at = NOW()
     WHERE user_id = p_user_id;
     
-    -- Record consumption
+    -- Record consumption (simple record, no complex session tracking)
     INSERT INTO credit_consumptions (
         user_id, card_id, quantity, credits_per_unit, total_credits,
         consumption_type, description
     ) VALUES (
-        p_user_id, p_card_id, p_access_granted, 
-        p_credits_amount / p_access_granted, p_credits_amount,
-        'subscription_overage_batch',
-        format('Purchased %s overage access for %s credits', p_access_granted, p_credits_amount)
+        p_user_id, p_card_id, 1, 
+        p_credits_amount, p_credits_amount,
+        'session_budget_topup',
+        format('Session budget top-up: $%s (added to Redis budget)', p_credits_amount)
     );
     
     -- Record transaction
@@ -7242,16 +7396,16 @@ BEGIN
         reference_type, description
     ) VALUES (
         p_user_id, -p_credits_amount, v_current_balance, v_new_balance,
-        'consumption', 'subscription_overage_batch',
-        format('Overage batch: %s access for %s credits', p_access_granted, p_credits_amount)
+        'consumption', 'session_budget_topup',
+        format('Session budget top-up: $%s (credit balance: $%s -> $%s)', p_credits_amount, v_current_balance, v_new_balance)
     );
     
+    -- Return success - backend will add to Redis budget
     RETURN jsonb_build_object(
         'success', TRUE,
         'balance_before', v_current_balance,
         'balance_after', v_new_balance,
-        'credits_deducted', p_credits_amount,
-        'access_granted', p_access_granted
+        'credits_deducted', p_credits_amount
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -7285,7 +7439,6 @@ GRANT EXECUTE ON FUNCTION deduct_overage_credits_server TO service_role;
 
 REVOKE ALL ON FUNCTION get_credit_purchase_by_intent_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION get_credit_purchase_by_intent_server TO service_role;
-
 
 
 -- File: credit_purchase_completion.sql
@@ -7764,6 +7917,7 @@ DROP FUNCTION IF EXISTS get_subscription_by_user_server CASCADE;
 DROP FUNCTION IF EXISTS get_subscription_stripe_customer_server CASCADE;
 DROP FUNCTION IF EXISTS update_subscription_cancel_status_server CASCADE;
 DROP FUNCTION IF EXISTS update_subscription_status_server CASCADE;
+DROP FUNCTION IF EXISTS update_subscription_period_server CASCADE;
 DROP FUNCTION IF EXISTS count_user_experiences_server CASCADE;
 DROP FUNCTION IF EXISTS check_premium_subscription_server CASCADE;
 
@@ -7772,9 +7926,13 @@ DROP FUNCTION IF EXISTS check_premium_subscription_server CASCADE;
 -- =================================================================
 -- All subscription-related database operations from Express backend.
 -- Called by backend Express server with service_role permissions.
+--
+-- NOTE: Session-based billing (budget tracking, session costs) is handled
+-- entirely in Redis. These stored procedures only manage subscription metadata.
+-- All pricing values come from environment variables.
 -- =================================================================
 
--- Get subscription by user ID
+-- Get subscription by user ID (basic info only)
 DROP FUNCTION IF EXISTS get_subscription_by_user_server CASCADE;
 CREATE OR REPLACE FUNCTION get_subscription_by_user_server(
     p_user_id UUID
@@ -7858,6 +8016,24 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Update subscription period dates (called on period renewal)
+DROP FUNCTION IF EXISTS update_subscription_period_server CASCADE;
+CREATE OR REPLACE FUNCTION update_subscription_period_server(
+    p_user_id UUID,
+    p_period_start TIMESTAMPTZ,
+    p_period_end TIMESTAMPTZ
+)
+RETURNS VOID AS $$
+BEGIN
+    UPDATE subscriptions
+    SET 
+        current_period_start = p_period_start,
+        current_period_end = p_period_end,
+        updated_at = NOW()
+    WHERE user_id = p_user_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- Count user experiences
 DROP FUNCTION IF EXISTS count_user_experiences_server CASCADE;
 CREATE OR REPLACE FUNCTION count_user_experiences_server(
@@ -7919,12 +8095,14 @@ GRANT EXECUTE ON FUNCTION update_subscription_cancel_status_server TO service_ro
 REVOKE ALL ON FUNCTION update_subscription_status_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION update_subscription_status_server TO service_role;
 
+REVOKE ALL ON FUNCTION update_subscription_period_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION update_subscription_period_server TO service_role;
+
 REVOKE ALL ON FUNCTION count_user_experiences_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION count_user_experiences_server TO service_role;
 
 REVOKE ALL ON FUNCTION check_premium_subscription_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION check_premium_subscription_server TO service_role;
-
 
 
 -- File: translation_credit_consumption.sql

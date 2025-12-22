@@ -58,6 +58,18 @@
           <i class="pi pi-infinity text-xs"></i>
           {{ $t('digital_access.no_limit_set') }}
         </p>
+        
+        <!-- AI Status Indicator -->
+        <div class="mt-3 pt-3 border-t border-slate-100">
+          <div v-if="card.conversation_ai_enabled" class="flex items-center gap-2 text-xs text-blue-600">
+            <i class="pi pi-microphone"></i>
+            <span>{{ $t('digital_access.ai_enabled_status') }}</span>
+          </div>
+          <div v-else class="flex items-center gap-2 text-xs text-slate-500">
+            <i class="pi pi-file"></i>
+            <span>{{ $t('digital_access.ai_disabled_status') }}</span>
+          </div>
+        </div>
       </div>
 
       <!-- Credit Balance Card -->

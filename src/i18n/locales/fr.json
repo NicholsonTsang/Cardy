@@ -1,6 +1,24 @@
 {
+  "seo": {
+    "title": "FunTell - Plateforme d'Expérience Digitale alimentée par l'IA | Transformez tout lieu en guide interactif",
+    "description": "Transformez l'expérience des visiteurs avec des cartes souvenir alimentées par l'IA. Guides vocaux multilingues et collectibles QR pour musées, attractions et événements. Aucune app requise.",
+    "keywords": "cartes souvenir IA, guide interactif de musée, cartes d'exposition digitales, guide touristique QR, assistant IA multilingue, technologie muséale, engagement des visiteurs, cartes de collection, alternative audioguide, souvenir de musée, technologie d'exposition, cartes d'attractions touristiques, cartes de salon, matériaux de conférence, concierge IA d'hôtel, expérience sans app",
+    "language": "Français",
+    "structured_description": "Cartes Souvenir Interactives alimentées par l'IA pour Musées, Expositions, Attractions Touristiques, Salons, Conférences et Événements dans le monde entier",
+    "features": [
+      "Conversations vocales IA",
+      "Support de plus de 10 langues",
+      "Accès instantané par QR",
+      "Aucun téléchargement d'app requis",
+      "Analyses en temps réel",
+      "Tableau de bord de gestion de contenu",
+      "Hébergement cloud",
+      "Support 24/7"
+    ],
+    "audience": "Musées, Expositions, Attractions Touristiques, Salons, Conférences, Hôtels, Restaurants, Événements"
+  },
   "common": {
-    "app_name": "CardStudio",
+    "app_name": "FunTell",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -77,8 +95,8 @@
     "password_required": "Password is required",
     "sign_in_error": "Failed to sign in. Please check your credentials.",
     "sign_up_error": "Failed to create account. Please try again.",
-    "cms_account_subtitle": "Sign in to your CardStudio CMS account",
-    "join_cardstudio": "Join CardStudio CMS to start creating digital cards"
+    "cms_account_subtitle": "Sign in to your FunTell CMS account",
+    "join_funtell": "Join FunTell CMS to start creating digital cards"
   },
 
   "dashboard": {

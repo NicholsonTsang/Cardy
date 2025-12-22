@@ -69,6 +69,11 @@ export interface DailyAccessData {
   total: number;
   overage: number;
   included: number;
+  // AI session breakdown (same card can have AI enabled/disabled at different times)
+  ai_sessions: number;
+  non_ai_sessions: number;
+  ai_cost_usd: number;
+  non_ai_cost_usd: number;
 }
 
 export interface DailyStats {
@@ -85,6 +90,12 @@ export interface DailyStats {
     average_daily: number;
     peak_day: string | null;
     peak_count: number;
+    // AI session breakdown
+    ai_sessions: number;
+    non_ai_sessions: number;
+    ai_cost_usd: number;
+    non_ai_cost_usd: number;
+    total_cost_usd: number;
   };
 }
 
@@ -118,16 +129,22 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     if (subscription.value?.monthly_access_limit) {
       return subscription.value.monthly_access_limit;
     }
-    // Default based on tier
+    // Default based on tier - Premium uses budget-based (show AI-enabled session count as reference)
     return isPremium.value 
-      ? SubscriptionConfig.premium.monthlyAccessLimit 
-      : SubscriptionConfig.free.monthlyAccessLimit;
+      ? SubscriptionConfig.calculated.defaultAiEnabledSessions 
+      : SubscriptionConfig.free.monthlySessionLimit;
   });
   const monthlyAccessRemaining = computed(() => subscription.value?.monthly_access_remaining ?? 0);
   const canBuyOverage = computed(() => isPremium.value); // Only premium can buy overage credits
   const overageCreditsPerBatch = computed(() => SubscriptionConfig.overage.creditsPerBatch);
-  const overageAccessPerBatch = computed(() => SubscriptionConfig.overage.accessPerBatch);
+  // Sessions per overage batch (using AI-enabled cost as reference)
+  const overageAccessPerBatch = computed(() => SubscriptionConfig.calculated.aiEnabledSessionsPerBatch);
   const monthlyFee = computed(() => SubscriptionConfig.premium.monthlyFeeUsd);
+  
+  // New budget-based computed values
+  const monthlyBudgetUsd = computed(() => SubscriptionConfig.premium.monthlyBudgetUsd);
+  const aiEnabledSessionCost = computed(() => SubscriptionConfig.premium.aiEnabledSessionCostUsd);
+  const aiDisabledSessionCost = computed(() => SubscriptionConfig.premium.aiDisabledSessionCostUsd);
   
   const isScheduledForCancellation = computed(() => subscription.value?.cancel_at_period_end ?? false);
   const periodEndDate = computed(() => {

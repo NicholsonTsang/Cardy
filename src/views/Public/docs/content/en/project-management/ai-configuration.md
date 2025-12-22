@@ -1,25 +1,69 @@
 ## AI Assistant Configuration
 
-The AI assistant is a powerful feature that allows visitors to have natural conversations about your content. Configure it properly to provide the best experience.
+ExperienceQR features a powerful dual AI assistant system that allows visitors to have natural conversations at both the project level and individual content item level.
+
+## Dual AI Assistant System
+
+### Project-Level Assistant (General)
+
+The project-level assistant answers general questions about your entire venue or experience.
+
+**Appears on:**
+- Card Overview page
+- Content list/grid navigation pages
+- Floating button throughout the mobile experience
+
+**Best for questions like:**
+- "What should I see first?"
+- "Where is the most popular item?"
+- "What are your opening hours?"
+- "Can you recommend something for kids?"
+
+### Content Item Assistant (Specific)
+
+Each content item can have its own AI assistant for detailed, item-specific information.
+
+**Appears on:**
+- Content Detail page
+- As an inline button within the item view
+
+**Best for questions like:**
+- "Tell me more about this artwork"
+- "What techniques were used here?"
+- "Who created this piece?"
+- "What's the history behind this item?"
 
 ## AI Settings Overview
 
-### Project-Level AI
+### Project-Level Configuration
 
 Configure the general AI assistant that answers questions about your entire project:
 
 - **AI Instructions** - Guide how the AI responds (tone, focus areas, restrictions)
 - **Knowledge Base** - General information about your venue/project
-- **Welcome Message** - Custom greeting when visitors start a conversation
+- **General Welcome Message** - Custom greeting when visitors start a conversation
 
 ![AI Configuration](/Image/docs/ai-configuration.png "AI Configuration Panel")
 
-### Content-Level AI
+### Content-Level Configuration
 
 Each content item can have its own AI configuration:
 
 - **Item Knowledge Base** - Specific details about this item
-- **Item Welcome Message** - Custom greeting for item-specific conversations
+- **Item Welcome Message** - Custom greeting for item-specific conversations (supports `{name}` placeholder)
+
+## Proactive AI Guidance
+
+Our AI assistants are designed to be **proactive**, not passive. Instead of generic "How can I help?" greetings, they:
+
+1. **Suggest specific topics** based on the knowledge base
+2. **Offer 2-3 example questions** visitors might ask
+3. **Share unprompted insights** that enhance the experience
+4. **Guide users** with phrases like "I can also tell you about..." or "Many visitors ask about..."
+
+### Example Proactive Greeting
+
+> "Hi! I'm your guide for the Renaissance Gallery. I can share stories about these masterpieces, explain the artists' techniques, or recommend what to see next. What interests you most?"
 
 ## Writing Effective AI Instructions
 
@@ -46,12 +90,14 @@ The knowledge base provides context for AI responses. Include:
 - Operating hours and location details
 - General policies and guidelines
 - Frequently asked questions
+- Staff recommendations
 
 ### For Content Items
 - Detailed descriptions and history
 - Creator/artist information
 - Interesting facts and stories
 - Related items or recommendations
+- Technical details (materials, dimensions, dates)
 
 :::info Knowledge Quality = AI Quality
 The more detailed and accurate your knowledge base, the better the AI assistant will perform. Update it based on common visitor questions.
@@ -59,22 +105,52 @@ The more detailed and accurate your knowledge base, the better the AI assistant 
 
 ## Custom Welcome Messages
 
-Welcome messages set the tone for visitor interactions:
+Welcome messages set the tone for visitor interactions and guide them on what to ask.
 
-**Project Welcome Example:**
-> "Welcome to the Museum of Modern Art! I'm your AI guide. I can tell you about any artwork here, share artist stories, or recommend what to see based on your interests. What would you like to explore?"
+### General Welcome (Project-Level)
 
-**Item Welcome Example:**
-> "You're looking at Vincent van Gogh's 'Starry Night'. I can share its history, Van Gogh's techniques, or how it influenced modern art. What interests you most?"
+Used when visitors access the main AI assistant:
+
+**Example:**
+> "Welcome to the Museum of Modern Art! I can explain any artwork here, share artist stories, suggest personalized tours, or answer questions about our facilities. What would you like to explore?"
+
+### Item Welcome (Content-Item Level)
+
+Used when visitors tap the AI button on a specific item. Use `{name}` as a placeholder for the item name:
+
+**Example:**
+> "You're looking at {name}. I can share its history, explain the techniques used, discuss the artist's inspiration, or connect it to other works in our collection. What interests you most?"
+
+## Voice and Text Modes
+
+Both AI assistants support:
+
+- **Text Chat** - Type questions and receive written responses
+- **Voice Recording** - Speak your question, receive text response
+- **Real-time Voice** - Have a natural back-and-forth conversation
+
+The AI automatically responds in the visitor's selected language using translated knowledge bases.
 
 ## Testing Your AI
 
 Before publishing, test your AI configuration:
 
-1. Use the Preview mode
+1. Use the Preview mode in your dashboard
 2. Ask various questions a visitor might ask
-3. Verify responses are accurate and helpful
-4. Adjust instructions or knowledge base as needed
+3. Test both general questions and item-specific ones
+4. Verify responses are accurate, helpful, and proactive
+5. Adjust instructions or knowledge base as needed
 
 ![AI Testing](/Image/docs/ai-testing.png "Testing AI Responses")
 
+## Content Mode Context
+
+The AI adapts its behavior based on the current content mode:
+
+| Mode | AI Behavior |
+|------|-------------|
+| Single | Deep-dive on the featured item |
+| List | Help browse and filter options |
+| Grid | Explore the gallery, suggest items |
+| Grouped | Navigate categories, compare items |
+| Inline | Guide through the continuous experience |

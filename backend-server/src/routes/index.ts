@@ -19,7 +19,7 @@ router.use('/subscriptions', subscriptionRoutes);
 // API info endpoint
 router.get('/', (_req, res) => {
   res.json({
-    service: 'CardStudio Backend API',
+    service: 'FunTell Backend API',
     version: '2.0.0',
     endpoints: {
       relay: {

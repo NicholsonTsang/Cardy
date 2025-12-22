@@ -227,7 +227,8 @@ watch(selectedLanguage, () => {
 })
 
 async function openPreview(template: ContentTemplate) {
-  await templateStore.fetchTemplateDetails(template.id)
+  // Pass selected language to fetch translated content for preview
+  await templateStore.fetchTemplateDetails(template.id, selectedLanguage.value || undefined)
   selectedTemplate.value = templateStore.selectedTemplate
   showPreviewDialog.value = true
 }

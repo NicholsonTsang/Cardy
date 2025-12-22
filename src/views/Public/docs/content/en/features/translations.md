@@ -1,25 +1,44 @@
 ## Multi-Language Translations
 
-ExperienceQR supports automatic translation to reach global audiences. Translate your content to multiple languages with one click.
+ExperienceQR supports automatic translation to reach global audiences. Translate your entire project—including AI welcome messages—to multiple languages with one click.
 
 :::info Premium Feature
-Multi-language translations require a Premium subscription. Free tier users can create content in one language only.
+Multi-language translations are **free and unlimited** for Premium subscribers. Free tier users can create content in one language only.
 :::
 
 ## Supported Languages
 
-Currently supported languages for translation:
+Currently supported 10 languages for translation:
 
-- English
-- Traditional Chinese (繁體中文)
-- Simplified Chinese (简体中文)
-- Japanese (日本語)
-- Korean (한국어)
-- Spanish (Español)
-- French (Français)
-- German (Deutsch)
-- Italian (Italiano)
-- Portuguese (Português)
+| Language | Code |
+|----------|------|
+| English | en |
+| Traditional Chinese (繁體中文) | zh-Hant |
+| Simplified Chinese (简体中文) | zh-Hans |
+| Japanese (日本語) | ja |
+| Korean (한국어) | ko |
+| Spanish (Español) | es |
+| French (Français) | fr |
+| Russian (Русский) | ru |
+| Arabic (العربية) | ar |
+| Thai (ไทย) | th |
+
+## What Gets Translated
+
+The translation system covers **all text fields** in your project:
+
+### Project-Level Content
+- Project name and description
+- AI instructions and knowledge base
+- Custom welcome messages (general & item-level)
+
+### Content Items
+- Item names and descriptions
+- AI knowledge base for each item
+
+:::tip AI in Any Language
+Your AI assistants will respond in the visitor's selected language, using the translated knowledge base and welcome messages.
+:::
 
 ## How to Translate Your Project
 
@@ -35,7 +54,7 @@ Choose which languages you want to translate your content into. You can select m
 
 ### Step 3: Start Translation
 
-Click "Translate" to begin the automatic translation process. Translation time depends on the amount of content.
+Click "Translate" to begin the automatic translation process. Translation uses Google Gemini for high-quality, context-aware results.
 
 ![Translation Progress](/Image/docs/translation-progress.png "Translation in Progress")
 
@@ -74,12 +93,9 @@ When you update source content:
 To remove a language:
 
 1. Open the Translation panel
-2. Click the delete icon next to the language
-3. Confirm deletion
-
-:::warning Credit Usage
-Each translation uses credits based on content length. Check your credit balance before bulk translations.
-:::
+2. Select languages to delete
+3. Click delete (supports bulk deletion)
+4. Confirm deletion
 
 ## Translation Best Practices
 
@@ -96,6 +112,6 @@ Visitors can change language on the mobile client:
 - Language selector appears in the header
 - AI assistant responds in the selected language
 - All content displays in the chosen language
+- Voice assistant uses appropriate speech synthesis
 
 ![Language Selection](/Image/docs/language-selection.png "Visitor Language Selection")
-

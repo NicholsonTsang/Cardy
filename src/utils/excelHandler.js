@@ -1,5 +1,5 @@
 /**
- * Unified Excel Handler for CardStudio
+ * Unified Excel Handler for FunTell
  * Handles both import and export with embedded images using ExcelJS
  */
 
@@ -42,7 +42,7 @@ function sanitizeString(str) {
  */
 export async function exportCardToExcel(cardData, contentItems = [], options = {}) {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'CardStudio';
+  workbook.creator = 'FunTell';
   workbook.created = new Date();
   
   // Create Card Information sheet
@@ -81,7 +81,7 @@ export async function exportCardsToExcel(cardsData, options = {}) {
  */
 async function exportMultipleCardsToSingleFile(cardsData, filename) {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'CardStudio';
+  workbook.creator = 'FunTell';
   workbook.created = new Date();
   
   // Create index/summary sheet
@@ -385,7 +385,7 @@ async function parseMultiCardWorkbook(workbook) {
  */
 export async function generateImportTemplate() {
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'CardStudio';
+  workbook.creator = 'FunTell';
   workbook.created = new Date();
   
   // Create template card sheet
@@ -410,7 +410,7 @@ async function createCardSheet(workbook, cardData, options = {}) {
   
   // Row 1: Branded title with icons (span to column S = 19 columns)
   const titleCell = worksheet.getCell('A1');
-  titleCell.value = `${EXCEL_CONFIG.ICONS.CARD} CardStudio - Card Export Data`;
+  titleCell.value = `${EXCEL_CONFIG.ICONS.CARD} FunTell - Card Export Data`;
   styleTitle(titleCell);
   worksheet.mergeCells('A1:S1');
   worksheet.getRow(1).height = 30;
@@ -709,7 +709,7 @@ async function createTemplateCardSheet(workbook) {
   
   // Row 1: Branded title with icons (span to column S = 19 columns)
   const titleCell = worksheet.getCell('A1');
-  titleCell.value = `${EXCEL_CONFIG.ICONS.CARD} CardStudio - Card Import Template`;
+  titleCell.value = `${EXCEL_CONFIG.ICONS.CARD} FunTell - Card Import Template`;
   styleTitle(titleCell);
   worksheet.mergeCells('A1:S1');
   worksheet.getRow(1).height = 30;

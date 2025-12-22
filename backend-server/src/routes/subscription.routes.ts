@@ -22,16 +22,16 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
   try {
     const userId = req.user!.id;
 
-    // Pass business parameters from config to stored procedure
+    // Pass business parameters from config to stored procedure (session-based model)
     const { data, error } = await supabaseAdmin.rpc('get_subscription_details', {
       p_user_id: userId,
       p_free_experience_limit: SubscriptionConfig.free.experienceLimit,
       p_premium_experience_limit: SubscriptionConfig.premium.experienceLimit,
-      p_free_monthly_access: SubscriptionConfig.free.monthlyAccessLimit,
-      p_premium_monthly_access: SubscriptionConfig.premium.monthlyAccessLimit,
-      p_premium_monthly_fee: SubscriptionConfig.premium.monthlyFeeUsd,
-      p_overage_credits_per_batch: SubscriptionConfig.overage.creditsPerBatch,
-      p_overage_access_per_batch: SubscriptionConfig.overage.accessPerBatch
+      p_free_monthly_sessions: SubscriptionConfig.free.monthlySessionLimit,
+      p_premium_monthly_budget: SubscriptionConfig.premium.monthlyBudgetUsd,
+      p_ai_session_cost: SubscriptionConfig.premium.aiEnabledSessionCostUsd,
+      p_non_ai_session_cost: SubscriptionConfig.premium.aiDisabledSessionCostUsd,
+      p_overage_credits_per_batch: SubscriptionConfig.overage.creditsPerBatch
     });
 
     if (error) {
@@ -510,6 +510,7 @@ router.get('/usage', authenticateUser, async (req: Request, res: Response) => {
 /**
  * GET /api/subscriptions/daily-stats
  * Get daily access statistics for the chart
+ * Now includes AI-enabled vs non-AI session breakdown
  */
 router.get('/daily-stats', authenticateUser, async (req: Request, res: Response) => {
   try {
@@ -526,7 +527,7 @@ router.get('/daily-stats', authenticateUser, async (req: Request, res: Response)
     startDate.setDate(startDate.getDate() - days + 1);
     startDate.setHours(0, 0, 0, 0);
 
-    // Get daily access counts from card_access_log
+    // Get daily access counts from card_access_log (now includes is_ai_enabled and session_cost_usd)
     const { data: accessLogs, error } = await supabaseAdmin.rpc(
       'get_daily_access_stats_server',
       {
@@ -541,22 +542,44 @@ router.get('/daily-stats', authenticateUser, async (req: Request, res: Response)
       return res.status(500).json({ error: 'Database error', message: error.message });
     }
 
-    // Group by day
-    const dailyStats: Record<string, { total: number; overage: number }> = {};
+    // Group by day with AI breakdown
+    const dailyStats: Record<string, { 
+      total: number; 
+      overage: number;
+      ai_sessions: number;
+      non_ai_sessions: number;
+      ai_cost_usd: number;
+      non_ai_cost_usd: number;
+    }> = {};
     
     // Initialize all days with 0
     for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
       const dateKey = d.toISOString().split('T')[0];
-      dailyStats[dateKey] = { total: 0, overage: 0 };
+      dailyStats[dateKey] = { 
+        total: 0, 
+        overage: 0, 
+        ai_sessions: 0, 
+        non_ai_sessions: 0,
+        ai_cost_usd: 0,
+        non_ai_cost_usd: 0
+      };
     }
 
-    // Count access per day
+    // Count access per day with AI breakdown
     for (const log of accessLogs || []) {
       const dateKey = new Date(log.accessed_at).toISOString().split('T')[0];
       if (dailyStats[dateKey]) {
         dailyStats[dateKey].total++;
         if (log.was_overage) {
           dailyStats[dateKey].overage++;
+        }
+        // Track AI vs non-AI sessions
+        if (log.is_ai_enabled) {
+          dailyStats[dateKey].ai_sessions++;
+          dailyStats[dateKey].ai_cost_usd += parseFloat(log.session_cost_usd) || 0;
+        } else {
+          dailyStats[dateKey].non_ai_sessions++;
+          dailyStats[dateKey].non_ai_cost_usd += parseFloat(log.session_cost_usd) || 0;
         }
       }
     }
@@ -568,12 +591,20 @@ router.get('/daily-stats', authenticateUser, async (req: Request, res: Response)
         date,
         total: stats.total,
         overage: stats.overage,
-        included: stats.total - stats.overage
+        included: stats.total - stats.overage,
+        ai_sessions: stats.ai_sessions,
+        non_ai_sessions: stats.non_ai_sessions,
+        ai_cost_usd: Math.round(stats.ai_cost_usd * 100) / 100,
+        non_ai_cost_usd: Math.round(stats.non_ai_cost_usd * 100) / 100
       }));
 
-    // Calculate summary
+    // Calculate summary with AI breakdown
     const totalAccess = chartData.reduce((sum, d) => sum + d.total, 0);
     const totalOverage = chartData.reduce((sum, d) => sum + d.overage, 0);
+    const totalAiSessions = chartData.reduce((sum, d) => sum + d.ai_sessions, 0);
+    const totalNonAiSessions = chartData.reduce((sum, d) => sum + d.non_ai_sessions, 0);
+    const totalAiCostUsd = chartData.reduce((sum, d) => sum + d.ai_cost_usd, 0);
+    const totalNonAiCostUsd = chartData.reduce((sum, d) => sum + d.non_ai_cost_usd, 0);
     const avgDaily = Math.round(totalAccess / days);
     const peakDay = chartData.reduce((max, d) => d.total > max.total ? d : max, chartData[0]);
 
@@ -590,7 +621,13 @@ router.get('/daily-stats', authenticateUser, async (req: Request, res: Response)
         total_included: totalAccess - totalOverage,
         average_daily: avgDaily,
         peak_day: peakDay?.date || null,
-        peak_count: peakDay?.total || 0
+        peak_count: peakDay?.total || 0,
+        // AI breakdown
+        ai_sessions: totalAiSessions,
+        non_ai_sessions: totalNonAiSessions,
+        ai_cost_usd: Math.round(totalAiCostUsd * 100) / 100,
+        non_ai_cost_usd: Math.round(totalNonAiCostUsd * 100) / 100,
+        total_cost_usd: Math.round((totalAiCostUsd + totalNonAiCostUsd) * 100) / 100
       }
     });
 
@@ -651,7 +688,7 @@ router.post('/buy-credits', authenticateUser, async (req: Request, res: Response
           price_data: {
             currency: 'usd',
             product_data: {
-              name: 'ExperienceQR Credits',
+              name: 'FunTell Credits',
               description: `${amount} credits for overage access`
             },
             unit_amount: amountCents

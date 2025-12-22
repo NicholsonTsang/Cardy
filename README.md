@@ -26,46 +26,76 @@ ExperienceQR is a comprehensive **AI-powered digital experience platform** that 
 
 ### Subscription & Pricing
 
-ExperienceQR uses a **subscription-based pricing model**:
+ExperienceQR uses a **session-based pricing model** with Cloudflare user session tracking:
 
-| Tier | Price | Projects | Access Limit | Translations |
-|------|-------|-------------|--------------|--------------|
-| **Free** | $0 | Up to 3 | 50/month pooled | ❌ Not available |
-| **Premium** | $50/month | Up to 15 | 3,000/month pooled | ✅ Full support |
+| Tier | Price | Projects | Session Budget | Translations |
+|------|-------|----------|----------------|--------------|
+| **Free** | $0 | Up to 3 | 50 sessions/month | ❌ Not available |
+| **Premium** | $30/month | Up to 15 | $30 budget/month | ✅ Full support |
+
+#### Session-Based Billing (Premium)
+
+| Project Type | Cost per Session | Included (with $30 budget) |
+|--------------|------------------|----------------------------|
+| **AI-Enabled** | $0.05/session | 600 sessions |
+| **Non-AI** | $0.025/session | 1,200 sessions |
+
+**How it works:**
+- Each unique visitor session is tracked via Cloudflare
+- Sessions expire after 30 minutes of inactivity
+- AI-enabled projects (with voice conversations) cost $0.05 per session
+- Non-AI projects cost $0.025 per session
+- Mixed usage is supported (budget is consumed based on project type)
+
+**Example:** A user with both AI and non-AI projects:
+- 300 AI sessions × $0.05 = $15
+- 600 non-AI sessions × $0.025 = $15
+- Total: $30 (budget fully consumed)
+
+#### Auto Top-Up (Premium)
+When budget is exhausted, automatic top-up kicks in:
+- **$5 credit** is automatically charged
+- Grants **100 AI sessions** or **200 non-AI sessions**
+- Requires credit balance in user wallet
+- No service interruption
 
 #### Free Tier
 - Create up to **3 projects**
-- **50 monthly access pool** (shared across all projects)
+- **50 monthly sessions** (shared across all projects)
 - **No multi-language translations**
 - Perfect for personal use or trying the platform
 
-#### Premium Tier
-- Up to **15 projects**
-- **3,000 monthly access pool** (shared across all projects)
-- **Batch overage**: 5 credits = 100 extra access (when limit reached)
-- **Full translation support** to 10+ languages
-- Stripe-managed billing with customer portal
+> **Note**: Session tracking uses Redis (source of truth) with Cloudflare session identification. Database stores subscription metadata and billing records.
 
-> **Note**: Usage is tracked in Redis (source of truth) for performance. Database stores subscription metadata only.
+#### Quick Reference Card
+
+| Metric | Value | Configurable Via |
+|--------|-------|------------------|
+| AI Session Cost | $0.05 | `AI_ENABLED_SESSION_COST_USD` |
+| Non-AI Session Cost | $0.025 | `AI_DISABLED_SESSION_COST_USD` |
+| Premium Monthly Budget | $30 | `PREMIUM_MONTHLY_BUDGET_USD` |
+| Free Tier Sessions | 50/month | `FREE_TIER_MONTHLY_SESSION_LIMIT` |
+| Session Dedup Window | 5 minutes | `SESSION_DEDUP_WINDOW_SECONDS` |
+| Auto Top-Up Amount | $5 | `OVERAGE_CREDITS_PER_BATCH` |
 
 #### Daily Access Limit (Creator Protection)
 
-In addition to monthly subscription limits, each project can have an optional **daily access limit** to protect creators from unexpected traffic spikes:
+In addition to session-based billing, each project can have an optional **daily access limit** to protect creators from unexpected traffic spikes:
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `daily_scan_limit` | Maximum accesses per day per project | 500 (NULL = unlimited) |
+| `daily_scan_limit` | Maximum sessions per day per project | 500 (NULL = unlimited) |
 
 **How it works:**
 - Configurable per project in project settings
 - Tracked in Redis (`access:card:{cardId}:date:{YYYY-MM-DD}:scans`)
 - Resets automatically at midnight (via TTL-based key expiration)
 - When exceeded, visitors see "Daily Limit Reached - Try again tomorrow"
-- Does NOT count against monthly subscription limit when blocked
+- Does NOT consume session budget when blocked
 
 **Use cases:**
-- Protect against sudden viral traffic consuming monthly quota
-- Rate-limit high-traffic projects without upgrading subscription
+- Protect against sudden viral traffic consuming monthly budget
+- Rate-limit high-traffic projects
 - Prevent DDoS-style access patterns
 
 **Implementation:**
@@ -79,7 +109,146 @@ When a creator changes the `daily_scan_limit` in project settings:
 1. Frontend updates PostgreSQL via `update_card` stored procedure
 2. Frontend calls backend `/api/mobile/card/:cardId/invalidate-cache`
 3. Backend invalidates Redis cache via `invalidateCardDailyLimit(cardId)`
-4. New limit takes effect immediately for subsequent accesses
+4. New limit takes effect immediately for subsequent sessions
+
+#### Usage Statistics with AI Breakdown
+
+The Subscription Management page displays detailed session statistics with AI vs non-AI breakdown:
+
+| Statistic | Description |
+|-----------|-------------|
+| **Total Sessions** | Total sessions in the selected period |
+| **AI Sessions** | Sessions where AI was enabled at time of access |
+| **Non-AI Sessions** | Sessions where AI was disabled at time of access |
+| **AI Cost** | Total cost from AI sessions ($0.05/session) |
+| **Non-AI Cost** | Total cost from non-AI sessions ($0.025/session) |
+| **Overage** | Sessions that exceeded monthly budget |
+
+**Key Points:**
+- A single project can have both AI and non-AI sessions if the creator toggles AI settings over time
+- Statistics are aggregated per day with breakdowns shown in chart tooltips
+- The `card_access_log` table stores `is_ai_enabled` and `session_cost_usd` per session
+- Daily charts show hoverable bars with AI/non-AI breakdown
+
+**Implementation:**
+- Stored Procedure: `get_daily_access_stats_server` returns `is_ai_enabled` and `session_cost_usd` per session
+- Backend Route: `/api/subscriptions/daily-stats` aggregates per day with breakdown
+- Frontend Store: `src/stores/subscription.ts` → `DailyAccessData` interface
+- Frontend Page: `src/views/Dashboard/CardIssuer/SubscriptionManagement.vue`
+
+#### Cloudflare Session Tracking
+
+User sessions are identified for accurate billing. **Cloudflare is recommended** for production deployments.
+
+##### Session ID Priority
+
+| Priority | Source | Header/Method | Notes |
+|----------|--------|---------------|-------|
+| 1️⃣ | **Cloudflare IP** | `cf-connecting-ip` | Most reliable (requires Cloudflare proxy) |
+| 2️⃣ | **Proxy IP** | `x-forwarded-for` | Behind other load balancers |
+| 3️⃣ | **Custom Header** | `x-session-id` | Client-provided session ID |
+| 4️⃣ | **Fallback Hash** | IP + User-Agent | Generated fingerprint |
+
+##### Cloudflare Setup (Recommended)
+
+1. **Add your domain to Cloudflare** (free tier works)
+2. **Enable Proxy** (orange cloud icon) for your API subdomain
+3. **Cloudflare automatically adds headers:**
+   - `cf-connecting-ip` - Real client IP
+   - `cf-ray` - Unique request ID
+   - `cf-ipcountry` - Country code
+
+```bash
+# Example headers when behind Cloudflare:
+cf-connecting-ip: 203.0.113.45
+cf-ray: 7f8d9e0a1b2c3d4e-HKG
+cf-ipcountry: HK
+```
+
+##### Session Lifecycle
+
+```
+User scans QR → Cloudflare Proxy → Backend extracts CF-Connecting-IP + User-Agent
+                                          ↓
+                              MD5 hash → Session ID (e.g., cf-a1b2c3d4e5f6g7h8)
+                                          ↓
+                              Redis: Check deduplication (5 min window)
+                                          ↓
+                              New session? → Deduct budget → Log access
+                              Same session? → Return content (no charge)
+```
+
+##### Session Deduplication
+
+- **Window:** 5 minutes (configurable via `SESSION_DEDUP_WINDOW_SECONDS`)
+- **Key format:** `session:{userId}:{month}:{sessionId}:{cardId}`
+- **Same visitor + same card within window = no additional charge**
+
+##### Without Cloudflare: Supabase Anonymous Auth (Recommended Alternative)
+
+If not using Cloudflare, **Supabase Anonymous Auth** provides reliable session tracking:
+
+```
+User scans QR → signInAnonymously() → Gets unique user ID → Used for session billing
+```
+
+**Setup:**
+1. Enable in Supabase Dashboard: **Authentication → Providers → Anonymous Sign-In**
+2. The frontend automatically calls `signInAnonymously()` when accessing public content
+3. User gets a stable session ID that persists in the browser (no login required)
+
+**Benefits:**
+- ✅ No email/password required
+- ✅ Stable session ID across page refreshes
+- ✅ Can be upgraded to full account later
+- ✅ Works without Cloudflare
+- ✅ Built into Supabase (free)
+
+**Session ID Format:** `anon-{first 16 chars of Supabase user UUID}`
+
+##### Fallback: IP Fingerprinting
+
+If neither Cloudflare nor anonymous auth is available:
+1. `X-Forwarded-For` header (if behind any proxy)
+2. Direct IP + User-Agent hash (last resort)
+
+> ⚠️ **Note:** IP fingerprinting groups users behind NAT/shared IPs. Use Cloudflare or Anonymous Auth for production.
+
+**Redis Keys for Sessions:**
+- `session:dedup:${sessionId}:${cardId}` - Deduplication window (5 min TTL)
+- `budget:user:${userId}:month:${month}` - Monthly budget
+- `budget:consumed:${userId}:month:${month}` - Budget consumed
+- `sessions:ai:${userId}:month:${month}` - AI session count
+- `sessions:nonai:${userId}:month:${month}` - Non-AI session count
+
+#### Configurable Pricing Parameters
+
+All pricing values are configurable via environment variables. **No pricing is stored in the database** - all values come from `.env`:
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| **Free Tier** | | |
+| `FREE_TIER_EXPERIENCE_LIMIT` | 3 | Maximum projects for free users |
+| `FREE_TIER_MONTHLY_SESSION_LIMIT` | 50 | Monthly session limit for free tier |
+| **Premium Tier** | | |
+| `PREMIUM_MONTHLY_FEE_USD` | 30.00 | Monthly subscription fee |
+| `PREMIUM_EXPERIENCE_LIMIT` | 15 | Maximum projects for premium users |
+| `PREMIUM_MONTHLY_BUDGET_USD` | 30.00 | Monthly budget for sessions |
+| `AI_ENABLED_SESSION_COST_USD` | 0.05 | Cost per AI-enabled session |
+| `AI_DISABLED_SESSION_COST_USD` | 0.025 | Cost per non-AI session |
+| **Overage** | | |
+| `OVERAGE_CREDITS_PER_BATCH` | 5 | Credits per auto top-up batch ($5) |
+| **Session Tracking** | | |
+| `SESSION_EXPIRATION_SECONDS` | 1800 | Session expiry (30 min default) |
+| `SESSION_DEDUP_WINDOW_SECONDS` | 300 | Deduplication window (5 min) |
+
+**Frontend variables** use `VITE_` prefix (e.g., `VITE_PREMIUM_MONTHLY_FEE_USD`).
+
+**Architecture:**
+- Redis stores **available budget** (decrements on each access)
+- Credit top-up adds to Redis available budget
+- Database only stores subscription tier/status (no budget tracking)
+- AI status determined by existing `conversation_ai_enabled` field on cards
 
 ### Access Modes
 
@@ -185,7 +354,7 @@ When deploying to production, you **must** configure the redirect URLs in Supaba
 
 **Common Issue:** After OAuth login, user is redirected to `localhost` instead of production domain.
 - **Cause:** Site URL in Supabase is still set to `localhost`
-- **Fix:** Update Site URL to your production domain (e.g., `https://cardstudio.org`)
+- **Fix:** Update Site URL to your production domain (e.g., `https://funtell.ai`)
 
 **Google Cloud Console Configuration:**
 - **Authorized redirect URIs** must include: `https://[YOUR_SUPABASE_PROJECT].supabase.co/auth/v1/callback`
@@ -292,10 +461,24 @@ Templates are linked to actual `cards` records in the database. This allows full
   - **Tours & Education** - Walking tours, campus tours, guided tours
   - **General** - Any other venue type
 - Filter by content mode (single, grouped, list, grid, inline)
-- Preview template content structure before importing
+- **Multilingual Browse**: Select language to display templates in their translated version
+- **Multilingual Preview**: Template preview shows content in the selected language (name, description, AI fields, content items)
 - Import templates with custom name and billing type selection
 - **Multilingual Import**: Select which language to import content in
 - Creates a complete project with all content items and AI configuration
+
+**Multilingual Browse & Preview Feature:**
+The Template Library supports full multilingual browsing and previewing:
+
+| Component | Language Selection Effect |
+|-----------|--------------------------|
+| Template List | Shows translated name and description for each template |
+| Template Preview Dialog | Shows all translated content: name, description, AI fields, content items |
+| Import Form | Pre-selects the browsed language for import |
+
+**Stored Procedures:**
+- `list_content_templates(p_language)` - Returns templates with translated name/description
+- `get_content_template(p_language)` - Returns full template details with all translated fields
 
 **Multilingual Import Feature:**
 When importing a template that has translations available, users can choose which language to import the content in:
@@ -446,7 +629,8 @@ When clicking the subscription management button, admins can:
 
 The user will immediately have access to Premium features:
 - Up to 15 projects (instead of 3)
-- 3,000 monthly access pool (instead of 50)
+- $30 monthly session budget (600 AI sessions or 1,200 non-AI sessions)
+- Auto top-up capability ($5 = 100-200 extra sessions)
 - Full translation support
 - Admin-managed subscriptions are auto-set to 1-year period
 
@@ -799,8 +983,6 @@ You will need to configure `.env` files for both the frontend and backend.
 cp .env.example .env
 ```
 
-Edit the `.env` file and set your Supabase and Stripe public keys.
-
 **Backend (`backend-server/.env`):**
 
 ```bash
@@ -809,24 +991,85 @@ cd backend-server
 cp .env.example .env
 ```
 
-Edit the `.env` file and set all required API keys and secrets:
--   `OPENAI_API_KEY` - Your OpenAI API key for AI chat and voice features
--   `SUPABASE_URL` - Your Supabase project URL
--   `SUPABASE_SERVICE_ROLE_KEY` (⚠️ **CRITICAL: Keep this secret!**)
--   `STRIPE_SECRET_KEY` - Your Stripe secret key for payment processing
--   `STRIPE_WEBHOOK_SECRET` - Your Stripe webhook secret for webhook validation
+See [Environment Variables Reference](#environment-variables-reference) below for all configuration options.
 
-**Redis Configuration** (for mobile client caching):
--   `UPSTASH_REDIS_REST_URL` - Your Upstash Redis REST URL
--   `UPSTASH_REDIS_REST_TOKEN` - Your Upstash Redis token
--   `CACHE_CARD_CONTENT_TTL=300` - Card content cache duration in seconds (default: 5 minutes)
--   `SCAN_DEDUP_WINDOW_SECONDS=300` - Scan deduplication window (default: 5 minutes)
+### Step 2a: Required Third-Party Services Setup
 
-See `backend-server/ENVIRONMENT_VARIABLES.md` for complete documentation of all configuration options.
+#### 1. Supabase Setup
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. Get your credentials from **Settings → API**:
+   - `SUPABASE_URL` / `VITE_SUPABASE_URL`
+   - `SUPABASE_SERVICE_ROLE_KEY` (⚠️ **Keep secret!**)
+   - `VITE_SUPABASE_ANON_KEY`
+3. Apply database schema:
+   ```bash
+   # Run in Supabase SQL Editor
+   sql/schema.sql
+   sql/all_stored_procedures.sql
+   ```
+
+#### 2. Supabase Anonymous Auth Setup (Recommended for Session Tracking)
+
+Enable anonymous authentication for public content session tracking:
+
+1. Go to **Supabase Dashboard → Authentication → Providers**
+2. Find **Anonymous Sign-In** and enable it
+3. This allows visitors to get stable session IDs without login
+
+```
+Benefits:
+✅ No email/password required for visitors
+✅ Stable session ID across page refreshes
+✅ Can be upgraded to full account later
+✅ Works without Cloudflare
+✅ Built into Supabase (free)
+```
+
+#### 3. Upstash Redis Setup (Required)
+
+Redis is essential for session tracking, caching, and rate limiting:
+
+1. Create a database at [console.upstash.com](https://console.upstash.com)
+2. Get your REST API credentials:
+   - `UPSTASH_REDIS_REST_URL`
+   - `UPSTASH_REDIS_REST_TOKEN`
+3. The free tier is sufficient for development
+
+#### 4. Stripe Setup
+
+1. Create account at [stripe.com](https://stripe.com)
+2. Get API keys from **Developers → API keys**:
+   - `STRIPE_SECRET_KEY` (backend)
+   - `VITE_STRIPE_PUBLISHABLE_KEY` (frontend)
+3. Create a $30/month recurring price in **Products → Add Product**:
+   - Copy the price ID to `STRIPE_PREMIUM_PRICE_ID`
+4. Set up webhooks in **Developers → Webhooks**:
+   - Endpoint: `https://your-backend.com/api/webhooks/stripe`
+   - Events: `customer.subscription.*`, `invoice.*`, `checkout.session.completed`
+   - Copy webhook secret to `STRIPE_WEBHOOK_SECRET`
+
+#### 5. OpenAI Setup (for AI Voice Features)
+
+1. Get API key from [platform.openai.com](https://platform.openai.com)
+2. Set `OPENAI_API_KEY` in backend `.env`
+3. Realtime voice requires access to `gpt-realtime-mini` model
+
+#### 6. Cloudflare Setup (Optional but Recommended for Production)
+
+For accurate session tracking in production:
+
+1. Add your domain to Cloudflare (free tier works)
+2. Enable proxy (orange cloud) for your API subdomain
+3. Cloudflare automatically adds headers:
+   - `cf-connecting-ip` - Real client IP
+   - `cf-ray` - Unique request ID
+
+Without Cloudflare, the system falls back to Supabase Anonymous Auth or IP fingerprinting.
 
 ### Step 3: Start Local Services
 
-1.  **Start Local Supabase**:
+1.  **Start Local Supabase** (optional - can use cloud Supabase):
     ```bash
     supabase start
     # Note the local URL and keys, update frontend .env if needed
@@ -834,8 +1077,9 @@ See `backend-server/ENVIRONMENT_VARIABLES.md` for complete documentation of all 
 
 2.  **Apply Database Schema**:
     ```bash
-    # Run schema.sql in Supabase SQL Editor
-    # This creates all tables, indexes, and RLS policies
+    # Run in Supabase SQL Editor (in order):
+    sql/schema.sql              # Creates all tables
+    sql/all_stored_procedures.sql   # Creates all stored procedures
     ```
 
 3.  **Start Backend Server**:
@@ -853,6 +1097,177 @@ See `backend-server/ENVIRONMENT_VARIABLES.md` for complete documentation of all 
     npm run dev
     # Frontend will be available at http://localhost:5173
     ```
+
+---
+
+## Environment Variables Reference
+
+### Backend (`backend-server/.env`)
+
+#### Required Services
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `SUPABASE_URL` | Supabase project URL | `https://xxx.supabase.co` |
+| `SUPABASE_SERVICE_ROLE_KEY` | ⚠️ Service role key (keep secret!) | `eyJhbG...` |
+| `OPENAI_API_KEY` | OpenAI API key for AI features | `sk-proj-...` |
+| `STRIPE_SECRET_KEY` | Stripe secret key | `sk_test_...` |
+| `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret | `whsec_...` |
+| `STRIPE_PREMIUM_PRICE_ID` | Stripe price ID for $30/month plan | `price_...` |
+| `UPSTASH_REDIS_REST_URL` | Upstash Redis URL | `https://xxx.upstash.io` |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token | `AT73...` |
+
+#### Session-Based Pricing Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `FREE_TIER_EXPERIENCE_LIMIT` | `3` | Max projects for free users |
+| `FREE_TIER_MONTHLY_SESSION_LIMIT` | `50` | Monthly session limit (free tier) |
+| `PREMIUM_EXPERIENCE_LIMIT` | `15` | Max projects for premium users |
+| `PREMIUM_MONTHLY_FEE_USD` | `30` | Monthly subscription fee |
+| `PREMIUM_MONTHLY_BUDGET_USD` | `30` | Monthly session budget |
+| `AI_ENABLED_SESSION_COST_USD` | `0.05` | Cost per AI-enabled session |
+| `AI_DISABLED_SESSION_COST_USD` | `0.025` | Cost per non-AI session |
+| `OVERAGE_CREDITS_PER_BATCH` | `5` | Credits per auto top-up ($5) |
+
+#### Session Tracking Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `SESSION_EXPIRATION_SECONDS` | `1800` | Session expiry (30 min) |
+| `SESSION_REDIS_TTL_SECONDS` | `3024000` | Redis key TTL (35 days) |
+| `SESSION_DEDUP_WINDOW_SECONDS` | `300` | Deduplication window (5 min) |
+
+#### Server Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `PORT` | `8080` | Server port |
+| `NODE_ENV` | `development` | Environment (`development`/`production`) |
+| `ALLOWED_ORIGINS` | `*` | CORS allowed origins |
+
+#### Debug Options
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `DEBUG_REQUESTS` | `false` | Log all HTTP requests |
+| `DEBUG_AUTH` | `false` | Log authentication details |
+| `DEBUG_USAGE` | `false` | Log session/usage tracking |
+
+### Frontend (`.env`)
+
+| Variable | Description |
+|----------|-------------|
+| `VITE_BACKEND_URL` | Backend API URL (e.g., `http://localhost:8080`) |
+| `VITE_SUPABASE_URL` | Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon key (safe to expose) |
+| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
+| `VITE_FREE_TIER_EXPERIENCE_LIMIT` | Should match backend |
+| `VITE_FREE_TIER_MONTHLY_SESSION_LIMIT` | Should match backend |
+| `VITE_PREMIUM_MONTHLY_FEE_USD` | Should match backend |
+| `VITE_PREMIUM_MONTHLY_BUDGET_USD` | Should match backend |
+| `VITE_AI_ENABLED_SESSION_COST_USD` | Should match backend |
+| `VITE_AI_DISABLED_SESSION_COST_USD` | Should match backend |
+| `VITE_OVERAGE_CREDITS_PER_BATCH` | Should match backend |
+
+> **Note:** Frontend pricing variables are used for UI display. Backend values are the source of truth for billing.
+
+---
+
+## Session-Based Billing Architecture
+
+### Overview
+
+ExperienceQR uses a **Redis-first architecture** for session tracking and budget management:
+
+```
+┌─────────────────┐     ┌──────────────┐     ┌──────────────┐
+│  Mobile Client  │────▶│   Backend    │────▶│    Redis     │
+│  (Vue.js PWA)   │     │  (Express)   │     │  (Upstash)   │
+└─────────────────┘     └──────────────┘     └──────────────┘
+                               │                    │
+                               │              Source of truth
+                               ▼                    │
+                        ┌──────────────┐           │
+                        │  PostgreSQL  │◀──────────┘
+                        │  (Supabase)  │     (buffered logs)
+                        └──────────────┘
+```
+
+### Session Flow
+
+```
+1. Visitor scans QR code
+        ↓
+2. Frontend gets session ID (Cloudflare IP / Anonymous Auth / Hash)
+        ↓
+3. Backend checks session deduplication in Redis
+        ↓
+4. If new session: Check daily limit → Deduct budget → Log access
+        ↓
+5. If existing session (within 5 min): Return content (no charge)
+```
+
+### Budget Management
+
+| Component | Responsibility |
+|-----------|---------------|
+| **Redis** | Live budget tracking (`budget:user:...`) |
+| **PostgreSQL** | Subscription tier, credit balance, buffered access logs |
+| **Environment** | Pricing configuration (costs, limits) |
+
+**Key Design Decisions:**
+- ✅ Budget stored in Redis as single "available" amount (not separate budget/consumed)
+- ✅ Atomic operations (`INCRBYFLOAT`) prevent race conditions
+- ✅ Access logs buffered in Redis, flushed to DB periodically
+- ✅ Credit top-up directly increments Redis budget (no DB budget tracking)
+- ✅ All pricing values from environment variables (not stored in DB)
+
+### Redis Key Structure
+
+| Key Pattern | Purpose | TTL |
+|-------------|---------|-----|
+| `budget:user:{userId}:month:{YYYY-MM}` | Available budget (USD) | 35 days |
+| `session:dedup:{sessionId}:{cardId}` | Deduplication check | 5 min |
+| `tier:user:{userId}:month:{YYYY-MM}` | User subscription tier | 35 days |
+| `sessions:ai:{userId}:month:{YYYY-MM}` | AI session count | 35 days |
+| `sessions:nonai:{userId}:month:{YYYY-MM}` | Non-AI session count | 35 days |
+| `access:card:{cardId}:date:{YYYY-MM-DD}:scans` | Daily scan count | 2 days |
+| `access:card:{cardId}:daily_limit` | Cached daily limit | 2 days |
+| `card:ai:{cardId}` | Card AI-enabled status cache | 1 hour |
+| `access:log:buffer` | Buffered access logs | Persistent |
+
+### AI-Enabled vs Non-AI Sessions
+
+Projects can have **AI Voice Conversations** enabled (`conversation_ai_enabled` field):
+
+| Field | Database Column | Usage |
+|-------|----------------|-------|
+| `conversation_ai_enabled` | `cards.conversation_ai_enabled` | Determines session cost |
+
+**Cost Calculation:**
+```
+Session Cost = conversation_ai_enabled ? $0.05 : $0.025
+```
+
+### Overage Handling
+
+When budget reaches $0:
+1. System checks user credit balance
+2. If credits ≥ $5: Auto top-up triggered
+3. `deduct_overage_credits_server` RPC deducts from DB
+4. Redis budget incremented by $5 (atomic)
+5. Access continues without interruption
+
+### Access Log Batching
+
+To minimize database hits, access logs use Redis buffering:
+
+```
+1. Each access → Push to Redis list (access:log:buffer)
+2. Buffer threshold reached → Flush to PostgreSQL
+3. card_access_log table stores permanent records
+```
 
 ---
 
@@ -1075,13 +1490,132 @@ After deployment, update your frontend's `.env` file with the new production `VI
     -   `VITE_SUPABASE_ANON_KEY`
     -   `VITE_BACKEND_URL` (from the backend deployment step)
     -   `VITE_STRIPE_PUBLISHABLE_KEY`
-    -   `VITE_APP_URL` (Optional: Set to your custom domain like `https://cardstudio.org` for SEO)
+    -   `VITE_APP_URL` (Optional: Set to your custom domain like `https://funtell.ai` for SEO)
 
 ### SEO Configuration
 
-The frontend includes a comprehensive SEO optimization system that generates dynamic meta tags, Open Graph tags, and structured data.
+The frontend includes a comprehensive multilingual SEO optimization system that generates dynamic meta tags, Open Graph tags, hreflang tags, and structured data for all 10 supported languages.
 
-1.  **Automatic sitemap**: `public/sitemap.xml` is generated and should be submitted to Google Search Console.
-2.  **Robots.txt**: `public/robots.txt` guides search engine crawlers.
-3.  **Domain Configuration**: Update `VITE_APP_URL` in your production `.env` to your custom domain (e.g., `https://cardstudio.org`) to ensure Canonical URLs are correct.
-4.  **Hosting Configuration**: The `firebase.json` is pre-configured with optimal caching headers for static assets (`max-age=31536000`).
+#### Supported Languages for SEO
+
+| Language | Code | OpenGraph Locale | hreflang |
+|----------|------|------------------|----------|
+| English | `en` | `en_US` | `en` |
+| Traditional Chinese | `zh-Hant` | `zh_TW` | `zh-Hant` |
+| Simplified Chinese | `zh-Hans` | `zh_CN` | `zh-Hans` |
+| Japanese | `ja` | `ja_JP` | `ja` |
+| Korean | `ko` | `ko_KR` | `ko` |
+| Spanish | `es` | `es_ES` | `es` |
+| French | `fr` | `fr_FR` | `fr` |
+| Russian | `ru` | `ru_RU` | `ru` |
+| Arabic | `ar` | `ar_SA` | `ar` |
+| Thai | `th` | `th_TH` | `th` |
+
+#### SEO Features
+
+1. **Dynamic Meta Tags**: Title, description, and keywords automatically update based on selected language using i18n.
+2. **hreflang Tags**: All pages include hreflang tags for all 10 languages + x-default for international targeting.
+3. **OpenGraph Locales**: og:locale and og:locale:alternate tags for social media optimization.
+4. **Structured Data (JSON-LD)**: Organization, SoftwareApplication, WebSite, and BreadcrumbList schemas with multilingual support.
+5. **RTL Support**: Arabic automatically sets `dir="rtl"` on the HTML element.
+
+#### SEO Files
+
+- **`public/sitemap.xml`**: Multilingual sitemap with hreflang for all pages. Submit to Google Search Console.
+- **`public/robots.txt`**: Crawler directives with specific rules for major search engines.
+- **`src/composables/useSEO.ts`**: Dynamic SEO composable that updates meta tags on locale/route change.
+- **`src/i18n/locales/*.json`**: Each language file contains a `seo` section with localized content.
+
+#### Configuration
+
+1. **Domain Configuration**: Update `VITE_APP_URL` in your production `.env` to your custom domain (e.g., `https://funtell.ai`).
+2. **Hosting Configuration**: The `firebase.json` is pre-configured with optimal caching headers for static assets.
+3. **Language-specific SEO**: Each locale file (`en.json`, `zh-Hant.json`, etc.) contains:
+   ```json
+   {
+     "seo": {
+       "title": "Localized page title",
+       "description": "Localized meta description",
+       "keywords": "localized, keywords, here",
+       "language": "Language name",
+       "structured_description": "For JSON-LD schema",
+       "features": ["Feature 1", "Feature 2"],
+       "audience": "Target audience"
+     }
+   }
+   ```
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+#### Session Tracking Not Working
+
+**Symptoms:** All visitors counted as same session, or sessions not being tracked.
+
+**Solutions:**
+1. **Check Cloudflare proxy status** - Orange cloud icon must be enabled
+2. **Verify Supabase Anonymous Auth** - Must be enabled in Dashboard → Authentication → Providers
+3. **Check Redis connection** - Look for `[Redis] Connected` in backend logs
+4. **Debug session ID** - Enable `DEBUG_USAGE=true` in backend `.env`
+
+#### Budget Not Deducting
+
+**Symptoms:** Sessions counted but budget stays the same.
+
+**Solutions:**
+1. **Check Redis key** - `redis-cli GET budget:user:{userId}:month:{YYYY-MM}`
+2. **Verify pricing config** - Ensure `AI_ENABLED_SESSION_COST_USD` is set
+3. **Check tier detection** - Free tier uses session count, Premium uses budget
+
+#### Credit Top-Up Not Working
+
+**Symptoms:** Budget exhausted but top-up doesn't trigger.
+
+**Solutions:**
+1. **Check credit balance** - User needs ≥$5 in `user_credits` table
+2. **Check stored procedure** - `deduct_overage_credits_server` must exist
+3. **Review error logs** - Look for `processSessionOverage` errors
+
+#### Daily Limit Not Resetting
+
+**Symptoms:** Users blocked even after midnight.
+
+**Solutions:**
+1. **Check timezone** - Daily limits reset at UTC midnight
+2. **Verify Redis TTL** - Keys should have ~2 day TTL
+3. **Force reset** - Delete key `access:card:{cardId}:date:{YYYY-MM-DD}:scans`
+
+### Debug Commands
+
+```bash
+# Check Redis keys for a user
+curl -X POST https://your-upstash-url/pipeline \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -d '[["KEYS", "budget:user:*"]]'
+
+# Check backend health
+curl https://your-backend.com/health
+
+# View backend logs (Cloud Run)
+gcloud run logs read --service=cardy-backend --limit=100
+```
+
+### Monitoring Checklist
+
+| What to Monitor | How | Alert Threshold |
+|-----------------|-----|-----------------|
+| Redis connection | Backend startup logs | Any connection failure |
+| Budget operations | `DEBUG_USAGE=true` logs | Negative budget values |
+| Session dedup rate | Access log analysis | >90% dedup rate |
+| Overage triggers | `credit_consumptions` table | Unexpected spikes |
+| Daily limits | Redis key count | Cards hitting limit |
+
+### Support
+
+For issues not covered here:
+1. Check `docs_archive/` for implementation details
+2. Review backend `ENVIRONMENT_VARIABLES.md`
+3. Enable debug flags and analyze logs

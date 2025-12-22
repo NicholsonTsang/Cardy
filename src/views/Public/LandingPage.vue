@@ -7,66 +7,63 @@
     />
     
     <!-- Hero Section -->
-    <section class="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950 pt-20">
-      <!-- Animated gradient mesh background -->
-      <div class="absolute inset-0">
-        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(120,180,255,0.15),transparent_50%)]"></div>
-        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(180,120,255,0.15),transparent_50%)]"></div>
-        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(255,120,180,0.1),transparent_50%)]"></div>
+    <section class="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-b from-slate-950 via-indigo-950 to-slate-900 pt-14 sm:pt-16">
+      <!-- Subtle gradient overlays -->
+      <div class="absolute inset-0 pointer-events-none">
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(120,119,198,0.3),transparent)]"></div>
+        <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(79,70,229,0.15),transparent_60%)]"></div>
       </div>
 
-      <!-- Floating orbs with animation -->
-      <div class="absolute inset-0 overflow-hidden">
-        <div class="floating-orb absolute top-20 left-10 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl"></div>
-        <div class="floating-orb-delayed absolute bottom-20 right-10 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl"></div>
-        <div class="floating-orb-slow absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] bg-cyan-500/10 rounded-full blur-3xl"></div>
+      <!-- Floating orbs - more subtle -->
+      <div class="absolute inset-0 overflow-hidden pointer-events-none">
+        <div class="floating-orb absolute top-1/4 -left-20 w-80 h-80 bg-indigo-500/15 rounded-full blur-3xl"></div>
+        <div class="floating-orb-delayed absolute -bottom-20 -right-20 w-96 h-96 bg-violet-500/15 rounded-full blur-3xl"></div>
       </div>
       
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 relative z-10">
-        <div class="text-center">
-          <!-- Brand Badge -->
-          <div class="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 mb-6 animate-fade-in-up">
-            <div class="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-              <i class="pi pi-qrcode text-white text-xs"></i>
+      <div class="w-full max-w-7xl mx-auto px-5 sm:px-6 lg:px-8 py-8 sm:py-16 lg:py-20 relative z-10">
+        <div class="flex flex-col lg:grid lg:grid-cols-2 gap-4 lg:gap-16 items-center">
+          <!-- Left Column: Text Content -->
+          <div class="text-center lg:text-left flex flex-col items-center lg:items-start order-1">
+            <!-- Brand Badge -->
+            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-white/[0.08] backdrop-blur-md rounded-full border border-white/10 mb-5 sm:mb-6 animate-fade-in-up">
+              <LogoAnimation size="sm" variant="light" />
+              <span class="text-white/90 font-medium text-sm tracking-wide">FunTell</span>
             </div>
-            <span class="text-white font-semibold text-sm">ExperienceQR</span>
+            
+            <h1 class="text-[1.75rem] sm:text-4xl md:text-5xl lg:text-[3.25rem] xl:text-6xl font-extrabold mb-4 sm:mb-5 leading-[1.15] tracking-tight text-white animate-fade-in-up">
+              {{ $t('landing.hero.title_line1') }}
+              <span class="bg-gradient-to-r from-amber-400 via-orange-400 to-rose-400 bg-clip-text text-transparent"> {{ $t('landing.hero.title_line2') }}</span>
+              {{ $t('landing.hero.title_line3') }}
+            </h1>
+            
+            <p class="text-[0.95rem] sm:text-lg md:text-xl text-slate-300 max-w-lg lg:max-w-xl mb-6 sm:mb-8 leading-relaxed animate-fade-in-up animation-delay-200">
+              {{ $t('landing.hero.subtitle_part1') }}
+              <span class="font-medium text-white">{{ $t('landing.hero.subtitle_highlight') }}</span>{{ $t('landing.hero.subtitle_part2') }}
+            </p>
+            
+            <div class="flex flex-row gap-3 sm:gap-4 w-full sm:w-auto animate-fade-in-up animation-delay-400">
+              <button 
+                @click="scrollToSection('demo-templates')"
+                class="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-white hover:bg-slate-50 px-5 sm:px-7 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-slate-900 shadow-lg shadow-white/10 hover:shadow-xl hover:shadow-white/20 transition-all duration-200 rounded-xl cursor-pointer"
+              >
+                <span>{{ $t('landing.hero.cta_demo') }}</span>
+                <i class="pi pi-play-circle text-sm sm:text-base opacity-70"></i>
+              </button>
+              <button 
+                @click="handleGetStarted"
+                class="flex-1 sm:flex-none flex items-center justify-center gap-2 border border-white/25 bg-white/[0.06] hover:bg-white/[0.12] backdrop-blur-sm px-5 sm:px-7 py-3 sm:py-3.5 text-sm sm:text-base font-semibold text-white hover:border-white/40 transition-all duration-200 rounded-xl cursor-pointer"
+              >
+                <span>{{ $t('landing.hero.cta_start') }}</span>
+                <i class="pi pi-arrow-right text-sm sm:text-base opacity-70"></i>
+              </button>
+            </div>
           </div>
           
-          <h1 class="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black mb-6 sm:mb-8 leading-tight text-white animate-fade-in-up">
-            {{ $t('landing.hero.title_line1') }} <br class="hidden sm:block" />
-            <span class="bg-gradient-to-r from-yellow-400 via-orange-500 to-pink-500 bg-clip-text text-transparent">
-              {{ $t('landing.hero.title_line2') }}
-            </span> <br class="hidden sm:block" />
-            {{ $t('landing.hero.title_line3') }}
-          </h1>
-          
-          <p class="text-lg sm:text-xl md:text-2xl text-blue-100/90 max-w-4xl mx-auto mb-10 sm:mb-12 leading-relaxed font-light animate-fade-in-up animation-delay-200 px-2">
-            {{ $t('landing.hero.subtitle_part1') }}
-            <span class="font-semibold text-white">{{ $t('landing.hero.subtitle_highlight') }}</span> {{ $t('landing.hero.subtitle_part2') }}
-          </p>
-          
-          <div class="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-16 animate-fade-in-up animation-delay-400 px-4 sm:px-0">
-            <button 
-              @click="scrollToSection('demo-templates')"
-              class="flex items-center justify-center gap-3 bg-white hover:bg-blue-50 border-0 px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold text-slate-900 shadow-2xl hover:shadow-white/50 transition-all duration-300 transform hover:scale-105 rounded-xl cursor-pointer w-full sm:w-auto"
-            >
-              <span>{{ $t('landing.hero.cta_demo') }}</span>
-              <i class="pi pi-play-circle text-xl"></i>
-            </button>
-            <button 
-              @click="handleGetStarted"
-              class="flex items-center justify-center gap-3 border-2 border-white/40 bg-white/10 hover:bg-white/20 backdrop-blur-sm px-8 sm:px-10 py-4 sm:py-5 text-base sm:text-lg font-bold text-white hover:border-white/60 shadow-lg hover:shadow-white/25 transition-all duration-300 transform hover:scale-105 rounded-xl cursor-pointer w-full sm:w-auto"
-            >
-              <span>{{ $t('landing.hero.cta_start') }}</span>
-              <i class="pi pi-arrow-right text-xl"></i>
-            </button>
-          </div>
-        </div>
-
-        <!-- Scroll indicator -->
-        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
-          <div class="w-6 h-10 border-2 border-white/30 rounded-full flex justify-center">
-            <div class="w-1 h-3 bg-white/60 rounded-full mt-2 animate-scroll"></div>
+          <!-- Right Column: 3D Animation -->
+          <div class="flex justify-center lg:justify-end animate-fade-in-up animation-delay-200 order-2 w-full">
+            <div class="w-full max-w-[240px] sm:max-w-[340px] lg:max-w-[420px] xl:max-w-[480px] aspect-square">
+              <HeroAnimation />
+            </div>
           </div>
         </div>
       </div>
@@ -98,7 +95,7 @@
       </div>
     </section>
 
-    <!-- How ExperienceQR Works -->
+    <!-- How FunTell Works -->
     <section id="how-it-works" class="py-20 sm:py-32 bg-gradient-to-b from-white to-slate-50 relative overflow-hidden">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="text-center mb-12 sm:mb-20">
@@ -218,49 +215,16 @@
                     <p class="text-sm opacity-90 whitespace-pre-line">{{ demoCardSubtitle }}</p>
                   </div>
                   
-                  <!-- QR Code -->
+                  <!-- Functional QR Code -->
                   <div class="absolute top-4 right-4">
                     <div class="relative group/qr">
                       <div class="absolute inset-0 bg-white/60 rounded-lg blur-md"></div>
-                      <div 
-                        class="relative bg-white/95 backdrop-blur-sm rounded-lg p-2 shadow-lg ring-1 ring-white/20 transition-all duration-300 group-hover/qr:scale-105 group-hover/qr:shadow-xl"
-                        :class="{ 'cursor-pointer': demoCardUrl }"
-                        @click="openDemoUrl(demoCardUrl)"
-                        :title="demoCardUrl ? $t('landing.demo_templates.scan_or_click') : ''"
-                      >
-                        <QrCode v-if="demoCardUrl" :value="demoCardUrl" :size="56" />
-                        <!-- Fallback decorative pattern if no URL configured -->
-                        <div v-else class="w-14 h-14 grid grid-cols-5 gap-0.5">
-                          <div class="col-span-2 row-span-2 bg-slate-800 rounded-sm relative">
-                            <div class="absolute inset-1 bg-white rounded-sm">
-                              <div class="absolute inset-1 bg-slate-800 rounded-sm"></div>
-                            </div>
-                          </div>
-                          <div class="bg-slate-800 rounded-sm"></div>
-                          <div class="col-span-2 row-span-2 bg-slate-800 rounded-sm relative">
-                            <div class="absolute inset-1 bg-white rounded-sm">
-                              <div class="absolute inset-1 bg-slate-800 rounded-sm"></div>
-                            </div>
-                          </div>
-                          <div class="bg-white"></div>
-                          <div class="bg-slate-800 rounded-sm"></div>
-                          <div class="bg-slate-800 rounded-sm"></div>
-                          <div class="bg-white"></div>
-                          <div class="bg-slate-800 rounded-sm"></div>
-                          <div class="bg-white"></div>
-                          <div class="bg-slate-800 rounded-sm"></div>
-                          <div class="col-span-2 row-span-2 bg-slate-800 rounded-sm relative">
-                            <div class="absolute inset-1 bg-white rounded-sm">
-                              <div class="absolute inset-1 bg-slate-800 rounded-sm"></div>
-                            </div>
-                          </div>
-                          <div class="bg-white"></div>
-                          <div class="bg-slate-800 rounded-sm"></div>
-                          <div class="bg-white"></div>
-                          <div class="bg-slate-800 rounded-sm"></div>
-                          <div class="bg-white"></div>
-                          <div class="bg-slate-800 rounded-sm"></div>
-                        </div>
+                      <div class="relative bg-white rounded-lg p-1.5 shadow-lg ring-1 ring-white/20 transition-all duration-300 group-hover/qr:scale-105 group-hover/qr:shadow-xl">
+                        <QrCode 
+                          :value="sampleQrUrl" 
+                          :size="56"
+                          level="M"
+                        />
                       </div>
                     </div>
                   </div>
@@ -281,54 +245,16 @@
                     <p class="text-emerald-200/80 text-sm">{{ digitalAccessDemoSubtitle }}</p>
                   </div>
                   
-                  <!-- QR Code -->
+                  <!-- Functional QR Code -->
                   <div class="flex justify-center mb-6">
                     <div class="relative group/qr">
                       <div class="absolute inset-0 bg-emerald-400/30 rounded-2xl blur-xl"></div>
-                      <div 
-                        class="relative bg-white rounded-2xl p-5 shadow-xl transition-all duration-300 group-hover/qr:scale-105"
-                        :class="{ 'cursor-pointer': digitalAccessDemoUrl }"
-                        @click="openDemoUrl(digitalAccessDemoUrl)"
-                        :title="digitalAccessDemoUrl ? $t('landing.demo_templates.scan_or_click') : ''"
-                      >
-                        <QrCode v-if="digitalAccessDemoUrl" :value="digitalAccessDemoUrl" :size="140" />
-                        <!-- Fallback decorative pattern if no URL configured -->
-                        <div v-else class="w-32 h-32 grid grid-cols-7 gap-1">
-                          <div class="col-span-3 row-span-3 bg-emerald-700 rounded relative">
-                            <div class="absolute inset-1.5 bg-white rounded">
-                              <div class="absolute inset-1.5 bg-emerald-700 rounded"></div>
-                            </div>
-                          </div>
-                          <div class="bg-white"></div>
-                          <div class="col-span-3 row-span-3 bg-emerald-700 rounded relative">
-                            <div class="absolute inset-1.5 bg-white rounded">
-                              <div class="absolute inset-1.5 bg-emerald-700 rounded"></div>
-                            </div>
-                          </div>
-                          <div class="bg-emerald-700 rounded"></div>
-                          <div class="bg-white"></div>
-                          <div class="bg-emerald-700 rounded"></div>
-                          <div class="bg-white"></div>
-                          <div class="bg-emerald-700 rounded"></div>
-                          <div class="bg-white"></div>
-                          <div class="bg-emerald-700 rounded"></div>
-                          <div class="bg-white"></div>
-                          <div class="bg-emerald-700 rounded"></div>
-                          <div class="bg-white"></div>
-                          <div class="bg-emerald-700 rounded"></div>
-                          <div class="bg-white"></div>
-                          <div class="bg-emerald-700 rounded"></div>
-                          <div class="bg-white"></div>
-                          <div class="col-span-3 row-span-3 bg-emerald-700 rounded relative">
-                            <div class="absolute inset-1.5 bg-white rounded">
-                              <div class="absolute inset-1.5 bg-emerald-700 rounded"></div>
-                            </div>
-                          </div>
-                          <div class="bg-emerald-700 rounded"></div>
-                          <div class="bg-white"></div>
-                          <div class="bg-emerald-700 rounded"></div>
-                          <div class="bg-white"></div>
-                        </div>
+                      <div class="relative bg-white rounded-2xl p-4 shadow-xl transition-all duration-300 group-hover/qr:scale-105">
+                        <QrCode 
+                          :value="sampleQrUrl" 
+                          :size="128"
+                          level="M"
+                        />
                       </div>
                     </div>
                   </div>
@@ -434,7 +360,7 @@
                       <iframe 
                         :src="getTemplateUrl(selectedTemplate)"
                         class="simulator-iframe"
-                        :style="{ transform: `translate(-50%, -50%) scale(${phoneSimulatorWidth / 375})` }"
+                        :style="{ transform: `translate(-50%, -50%) scale(${simulatorScale})` }"
                         :title="selectedTemplate.name"
                         loading="lazy"
                         @load="handleIframeLoad"
@@ -1060,6 +986,7 @@
           <p class="text-lg sm:text-xl text-blue-100/80 max-w-3xl mx-auto px-2">
             {{ $t('landing.pricing.subtitle') }}
           </p>
+          <p class="text-sm text-blue-200/60 mt-2">{{ $t('landing.pricing.currency_note') }}</p>
         </div>
 
         <!-- Subscription Tiers -->
@@ -1231,10 +1158,8 @@
           <!-- Brand -->
           <div>
             <div class="flex items-center gap-3 mb-4">
-              <div class="w-10 h-10 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center">
-                <i class="pi pi-qrcode text-white text-xl"></i>
-              </div>
-              <span class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">ExperienceQR</span>
+              <LogoAnimation size="lg" variant="light" />
+              <span class="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">FunTell</span>
             </div>
             <p class="text-slate-400">
               {{ $t('landing.footer.description') }}
@@ -1306,12 +1231,15 @@ import { useI18n } from 'vue-i18n'
 import { useAuthStore } from '@/stores/auth'
 import { useSEO } from '@/composables/useSEO'
 import { supabase } from '@/lib/supabase'
+import { SubscriptionConfig } from '@/config/subscription'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 import QrCode from 'qrcode.vue'
 import { getCardAspectRatio } from '@/utils/cardConfig'
 import UnifiedHeader from '@/components/Layout/UnifiedHeader.vue'
 import PhoneSimulator from '@/components/common/PhoneSimulator.vue'
+import HeroAnimation from '@/components/Landing/HeroAnimation.vue'
+import LogoAnimation from '@/components/Landing/LogoAnimation.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -1337,6 +1265,19 @@ const phoneSimulatorWidth = computed(() => {
   if (windowWidth.value < 480) return 260
   if (windowWidth.value < 640) return 280
   return 320
+})
+
+// Calculate simulator scale to fill the phone screen (cover mode)
+const simulatorScale = computed(() => {
+  const phoneBorder = phoneSimulatorWidth.value * 0.025
+  const screenWidth = phoneSimulatorWidth.value - (phoneBorder * 2)
+  const phoneHeight = phoneSimulatorWidth.value * (19.5 / 9)
+  const screenHeight = phoneHeight - (phoneBorder * 2)
+  
+  const scaleX = screenWidth / 375
+  const scaleY = screenHeight / 812
+  // Use larger scale to ensure full coverage (object-fit: cover)
+  return Math.max(scaleX, scaleY)
 })
 
 // Update window width on resize
@@ -1427,27 +1368,19 @@ const retryIframeLoad = () => {
 // Demo mode toggle (physical card vs digital access) - defaults to digital
 const demoMode = ref('digital')
 
-// Physical Card Demo configuration
+// Physical Card Demo configuration (illustrative only)
 const demoCardTitle = import.meta.env.VITE_DEMO_CARD_TITLE || 'Museum'
 const demoCardSubtitle = import.meta.env.VITE_DEMO_CARD_SUBTITLE || 'Scan to explore the exhibits\nActivate your interactive AI guide\nAvailable in multiple languages'
 const demoCardImageUrl = import.meta.env.VITE_DEFAULT_CARD_IMAGE_URL || '/Image/DemoCard.jpg'
-const demoCardUrl = import.meta.env.VITE_SAMPLE_QR_URL || ''
 const cardAspectRatio = computed(() => getCardAspectRatio())
 
-// Digital Access Demo configuration
+// Digital Access Demo configuration (illustrative only)
 const digitalAccessDemoTitle = import.meta.env.VITE_DIGITAL_ACCESS_DEMO_TITLE || 'Digital Menu'
 const digitalAccessDemoSubtitle = import.meta.env.VITE_DIGITAL_ACCESS_DEMO_SUBTITLE || 'Scan for instant access'
-const digitalAccessDemoUrl = import.meta.env.VITE_DIGITAL_ACCESS_DEMO_URL || ''
-
-// Open demo URLs
-const openDemoUrl = (url) => {
-  if (url) {
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }
-}
+const sampleQrUrl = import.meta.env.VITE_SAMPLE_QR_URL || 'https://funtell.ai'
 
 // Contact configuration
-const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || 'inquiry@cardstudio.org'
+const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || 'inquiry@funtell.ai'
 const contactWhatsApp = import.meta.env.VITE_CONTACT_WHATSAPP_URL || 'https://wa.me/85255992159'
 const contactWhatsAppDisplay = import.meta.env.VITE_CONTACT_PHONE || '+852 5599 2159'
 const minBatchQuantity = import.meta.env.VITE_BATCH_MIN_QUANTITY || 100
@@ -1773,19 +1706,47 @@ const pricingFeatures = computed(() => [
   t('landing.pricing.features.support')
 ])
 
+// Pricing variables for interpolation (from environment config)
+const pricingVars = computed(() => ({
+  monthlyBudget: SubscriptionConfig.premium.monthlyBudgetUsd,
+  aiCost: SubscriptionConfig.premium.aiEnabledSessionCostUsd,
+  nonAiCost: SubscriptionConfig.premium.aiDisabledSessionCostUsd,
+  aiSessions: SubscriptionConfig.calculated.defaultAiEnabledSessions,
+  nonAiSessions: SubscriptionConfig.calculated.defaultAiDisabledSessions,
+  topupCost: SubscriptionConfig.overage.creditsPerBatch,
+  aiTopupSessions: SubscriptionConfig.calculated.aiEnabledSessionsPerBatch,
+  nonAiTopupSessions: SubscriptionConfig.calculated.aiDisabledSessionsPerBatch,
+  freeSessions: SubscriptionConfig.free.monthlySessionLimit,
+}))
+
+// Helper function to interpolate pricing variables in feature strings
+const interpolateFeature = (feature) => {
+  const vars = pricingVars.value
+  return feature
+    .replace(/\${monthlyBudget}/g, String(vars.monthlyBudget))
+    .replace(/\${aiCost}/g, String(vars.aiCost))
+    .replace(/\${nonAiCost}/g, String(vars.nonAiCost))
+    .replace(/\${topupCost}/g, String(vars.topupCost))
+    .replace(/\{aiSessions\}/g, String(vars.aiSessions))
+    .replace(/\{nonAiSessions\}/g, String(vars.nonAiSessions))
+    .replace(/\{aiTopupSessions\}/g, String(vars.aiTopupSessions))
+    .replace(/\{nonAiTopupSessions\}/g, String(vars.nonAiTopupSessions))
+    .replace(/\{freeSessions\}/g, String(vars.freeSessions))
+}
+
 const freeTierFeatures = computed(() => {
   const features = tm('landing.pricing.free_tier.features')
-  return Array.isArray(features) ? features : []
+  return Array.isArray(features) ? features.map(interpolateFeature) : []
 })
 
 const premiumTierFeatures = computed(() => {
   const features = tm('landing.pricing.premium_tier.features')
-  return Array.isArray(features) ? features : []
+  return Array.isArray(features) ? features.map(interpolateFeature) : []
 })
 
 const physicalCardFeatures = computed(() => {
   const features = tm('landing.pricing.physical_cards.features')
-  return Array.isArray(features) ? features : []
+  return Array.isArray(features) ? features.map(interpolateFeature) : []
 })
 
 const faqs = computed(() => [
@@ -1807,7 +1768,14 @@ const faqs = computed(() => [
   },
   {
     question: t('landing.faq.q5'),
-    answer: t('landing.faq.a5')
+    answer: t('landing.faq.a5', {
+      freeExperiences: SubscriptionConfig.free.experienceLimit,
+      freeSessions: SubscriptionConfig.free.monthlySessionLimit,
+      monthlyBudget: SubscriptionConfig.premium.monthlyBudgetUsd,
+      aiSessions: SubscriptionConfig.calculated.defaultAiEnabledSessions,
+      nonAiSessions: SubscriptionConfig.calculated.defaultAiDisabledSessions,
+      topupCost: SubscriptionConfig.overage.creditsPerBatch,
+    })
   },
   {
     question: t('landing.faq.q6'),
@@ -1823,7 +1791,18 @@ const faqs = computed(() => [
   },
   {
     question: t('landing.faq.q9'),
-    answer: t('landing.faq.a9', { min: minBatchQuantity })
+    answer: t('landing.faq.a9', { 
+      min: minBatchQuantity,
+      freeSessions: SubscriptionConfig.free.monthlySessionLimit,
+      monthlyBudget: SubscriptionConfig.premium.monthlyBudgetUsd,
+      aiCost: SubscriptionConfig.premium.aiEnabledSessionCostUsd,
+      nonAiCost: SubscriptionConfig.premium.aiDisabledSessionCostUsd,
+      aiSessions: SubscriptionConfig.calculated.defaultAiEnabledSessions,
+      nonAiSessions: SubscriptionConfig.calculated.defaultAiDisabledSessions,
+      topupCost: SubscriptionConfig.overage.creditsPerBatch,
+      aiTopupSessions: SubscriptionConfig.calculated.aiEnabledSessionsPerBatch,
+      nonAiTopupSessions: SubscriptionConfig.calculated.aiDisabledSessionsPerBatch,
+    })
   }
 ])
 
@@ -1856,7 +1835,7 @@ const faqs = computed(() => [
 @keyframes fade-in-up {
   from { 
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(16px);
   }
   to { 
     opacity: 1;
@@ -1890,7 +1869,7 @@ const faqs = computed(() => [
 }
 
 .animate-fade-in-up {
-  animation: fade-in-up 0.8s ease-out forwards;
+  animation: fade-in-up 0.6s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .animate-float {
@@ -2053,7 +2032,7 @@ html {
   position: relative;
   width: 100%;
   height: 100%;
-  background: white;
+  background: #0f172a; /* Match mobile client dark background */
   overflow: hidden;
   border-radius: inherit;
 }
@@ -2072,7 +2051,7 @@ html {
   width: 375px;
   height: 812px;
   border: none;
-  background: white;
+  background: #0f172a; /* Match mobile client dark background */
   transform-origin: center center;
 }
 

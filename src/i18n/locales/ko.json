@@ -1,6 +1,24 @@
 {
+  "seo": {
+    "title": "FunTell - AI 기반 디지털 체험 플랫폼 | 모든 공간을 인터랙티브 가이드로",
+    "description": "AI 기반 기념 카드로 방문자 경험을 혁신하세요. 박물관, 명소, 이벤트를 위한 다국어 음성 가이드와 QR 컬렉터블. 앱 다운로드 불필요.",
+    "keywords": "AI 기념 카드, 인터랙티브 박물관 가이드, 디지털 전시 카드, QR 코드 투어 가이드, 다국어 AI 어시스턴트, 박물관 기술, 방문자 참여, 수집형 카드, 오디오 가이드 대안, 박물관 기념품, 전시 기술, 관광 명소 카드, 무역 박람회 카드, 컨퍼런스 자료, 호텔 AI 컨시어지, 앱 불필요 경험",
+    "language": "한국어",
+    "structured_description": "전 세계 박물관, 전시회, 관광 명소, 무역 박람회, 컨퍼런스 및 이벤트를 위한 AI 기반 인터랙티브 기념 카드",
+    "features": [
+      "AI 음성 대화",
+      "10개 이상 언어 지원",
+      "QR 코드 즉시 접근",
+      "앱 다운로드 불필요",
+      "실시간 분석",
+      "콘텐츠 관리 대시보드",
+      "클라우드 호스팅",
+      "24/7 지원"
+    ],
+    "audience": "박물관, 전시회, 관광 명소, 무역 박람회, 컨퍼런스, 호텔, 레스토랑, 이벤트"
+  },
   "common": {
-    "app_name": "CardStudio",
+    "app_name": "FunTell",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -77,8 +95,8 @@
     "password_required": "Password is required",
     "sign_in_error": "Failed to sign in. Please check your credentials.",
     "sign_up_error": "Failed to create account. Please try again.",
-    "cms_account_subtitle": "Sign in to your CardStudio CMS account",
-    "join_cardstudio": "Join CardStudio CMS to start creating digital cards"
+    "cms_account_subtitle": "Sign in to your FunTell CMS account",
+    "join_funtell": "Join FunTell CMS to start creating digital cards"
   },
 
   "dashboard": {

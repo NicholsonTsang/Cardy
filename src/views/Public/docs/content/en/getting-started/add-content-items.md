@@ -32,6 +32,7 @@ For each content item, you can add:
 - **Description** - Detailed information visitors will see
 - **Image** - Visual representation of the item
 - **AI Knowledge Base** - Additional context for the AI assistant
+- **Item Welcome Message** - Custom greeting when visitors ask the AI about this item
 
 ![Content Form](/Image/docs/content-form.png "Content Details Form")
 
@@ -50,6 +51,7 @@ Save your content item and use the Preview function to see how it appears to vis
 - Write clear, concise descriptions
 - Add detailed AI knowledge for frequently asked questions
 - Organize items logically for easy navigation
+- Keep terminology consistent across items
 :::
 
 ## Adding Sub-Items
@@ -63,3 +65,25 @@ For grouped content modes, you can add sub-items under parent categories:
 
 ![Sub-items](/Image/docs/sub-items.png "Adding Sub-items")
 
+## Content Organization
+
+### Flat vs Grouped
+
+- **Flat layouts** (List, Grid, Inline): Items appear at the same level
+- **Grouped layout**: Items can have parent-child relationships
+
+:::warning Flat Layout with Hierarchy
+If you have parent-child content but choose a flat layout (List/Grid), only the leaf items (children) will display. Parent items act as organizational containers.
+:::
+
+## Translating Content
+
+After adding content, you can translate it to other languages (Premium feature):
+
+1. Complete all content in your source language
+2. Open the Translation panel
+3. Select target languages
+4. Run automatic translation
+5. Review and edit as needed
+
+All content fields are translated, including AI knowledge bases.

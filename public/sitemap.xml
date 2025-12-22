@@ -1,22 +1,67 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" 
+        xmlns:xhtml="http://www.w3.org/1999/xhtml"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  
+  <!-- Landing Page with all language variations -->
   <url>
-    <loc>https://cardstudio.org/</loc>
+    <loc>https://funtell.ai/</loc>
+    <lastmod>2025-12-22</lastmod>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="en" href="https://cardstudio.org/?lang=en"/>
-    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://cardstudio.org/?lang=zh-Hant"/>
-    <xhtml:link rel="alternate" hreflang="x-default" href="https://cardstudio.org/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://funtell.ai/?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://funtell.ai/?lang=zh-Hant"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://funtell.ai/?lang=zh-Hans"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://funtell.ai/?lang=ja"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://funtell.ai/?lang=ko"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://funtell.ai/?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://funtell.ai/?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://funtell.ai/?lang=ru"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://funtell.ai/?lang=ar"/>
+    <xhtml:link rel="alternate" hreflang="th" href="https://funtell.ai/?lang=th"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://funtell.ai/"/>
+    <image:image>
+      <image:loc>https://funtell.ai/logo.png</image:loc>
+      <image:title>FunTell Logo</image:title>
+    </image:image>
   </url>
+  
+  <!-- Login Page -->
   <url>
-    <loc>https://cardstudio.org/login</loc>
+    <loc>https://funtell.ai/login</loc>
+    <lastmod>2025-12-22</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://funtell.ai/login?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://funtell.ai/login?lang=zh-Hant"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://funtell.ai/login?lang=zh-Hans"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://funtell.ai/login?lang=ja"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://funtell.ai/login?lang=ko"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://funtell.ai/login?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://funtell.ai/login?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://funtell.ai/login?lang=ru"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://funtell.ai/login?lang=ar"/>
+    <xhtml:link rel="alternate" hreflang="th" href="https://funtell.ai/login?lang=th"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://funtell.ai/login"/>
   </url>
+  
+  <!-- Signup Page -->
   <url>
-    <loc>https://cardstudio.org/signup</loc>
+    <loc>https://funtell.ai/signup</loc>
+    <lastmod>2025-12-22</lastmod>
     <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
+    <priority>0.6</priority>
+    <xhtml:link rel="alternate" hreflang="en" href="https://funtell.ai/signup?lang=en"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hant" href="https://funtell.ai/signup?lang=zh-Hant"/>
+    <xhtml:link rel="alternate" hreflang="zh-Hans" href="https://funtell.ai/signup?lang=zh-Hans"/>
+    <xhtml:link rel="alternate" hreflang="ja" href="https://funtell.ai/signup?lang=ja"/>
+    <xhtml:link rel="alternate" hreflang="ko" href="https://funtell.ai/signup?lang=ko"/>
+    <xhtml:link rel="alternate" hreflang="es" href="https://funtell.ai/signup?lang=es"/>
+    <xhtml:link rel="alternate" hreflang="fr" href="https://funtell.ai/signup?lang=fr"/>
+    <xhtml:link rel="alternate" hreflang="ru" href="https://funtell.ai/signup?lang=ru"/>
+    <xhtml:link rel="alternate" hreflang="ar" href="https://funtell.ai/signup?lang=ar"/>
+    <xhtml:link rel="alternate" hreflang="th" href="https://funtell.ai/signup?lang=th"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://funtell.ai/signup"/>
   </url>
-</urlset>
 
+</urlset>

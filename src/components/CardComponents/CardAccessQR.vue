@@ -481,7 +481,7 @@ How to Use:
 3. Active cards are immediately accessible
 4. Inactive cards can be activated via admin panel
 
-For support, contact your ExperienceQR administrator.
+For support, contact your FunTell administrator.
 `
 }
 

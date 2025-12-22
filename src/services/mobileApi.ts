@@ -20,6 +20,7 @@ export interface MobileCardResponse {
       imageUrl: string | null;
       cropParameters: any;
       conversationAiEnabled: boolean;
+      aiEnabled?: boolean; // For billing purposes (same as conversationAiEnabled)
       aiInstruction: string | null;
       aiKnowledgeBase: string | null;
       aiWelcomeGeneral: string | null;
@@ -36,7 +37,8 @@ export interface MobileCardResponse {
       dailyScanLimit: number | null;
       dailyScans: number;
       scanLimitReached: boolean;
-      monthlyLimitExceeded: boolean;
+      budgetExhausted: boolean; // True when monthly session budget is exhausted
+      monthlyLimitExceeded?: boolean; // Deprecated: alias for budgetExhausted
       dailyLimitExceeded: boolean;
       creditsInsufficient: boolean;
       accessDisabled?: boolean;
@@ -62,9 +64,70 @@ export interface MobileCardResponse {
 }
 
 /**
- * Get or create a visitor hash for scan deduplication
+ * Get or create a session ID for scan deduplication and billing
+ * 
+ * Priority:
+ * 1. Supabase Anonymous Auth user ID (most reliable - survives page refresh)
+ * 2. Cached anonymous user ID from localStorage
+ * 3. Generated visitor hash (fallback)
+ * 
+ * Note: Anonymous auth creates a temporary Supabase user without requiring
+ * email/password. The session persists in the browser and can be upgraded
+ * to a full account later if the user wants to sign up.
  */
-export function getVisitorHash(): string {
+export async function getSessionId(): Promise<string> {
+  const storageKey = 'anon_session_id';
+  
+  // Try to get cached session ID first (fast path)
+  const cachedId = localStorage.getItem(storageKey);
+  if (cachedId) {
+    return cachedId;
+  }
+  
+  // Try to use Supabase Anonymous Auth (recommended)
+  // Note: Requires "Anonymous Sign-In" enabled in Supabase Dashboard
+  try {
+    // Import the existing supabase client from the app to avoid creating new instances
+    const { supabase } = await import('@/lib/supabase');
+    
+    if (supabase) {
+      // Check if already signed in (anonymous or regular)
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session?.user?.id) {
+        const sessionId = `anon-${session.user.id.substring(0, 16)}`;
+        localStorage.setItem(storageKey, sessionId);
+        return sessionId;
+      }
+      
+      // Sign in anonymously (creates temporary user - no email required)
+      const { data, error } = await supabase.auth.signInAnonymously();
+      
+      if (!error && data?.user?.id) {
+        const sessionId = `anon-${data.user.id.substring(0, 16)}`;
+        localStorage.setItem(storageKey, sessionId);
+        console.log('[MobileAPI] Created anonymous session:', sessionId);
+        return sessionId;
+      }
+      
+      if (error) {
+        // Anonymous sign-in might not be enabled - fall back silently
+        console.debug('[MobileAPI] Anonymous auth not available:', error.message);
+      }
+    }
+  } catch (e) {
+    // Supabase client not available (e.g., during SSR) - use fallback
+    console.debug('[MobileAPI] Using visitor hash fallback');
+  }
+  
+  // Fallback: Generate random visitor hash
+  return getVisitorHashSync();
+}
+
+/**
+ * Synchronous visitor hash (fallback when Supabase not available)
+ */
+export function getVisitorHashSync(): string {
   const storageKey = 'visitor_hash';
   let hash = localStorage.getItem(storageKey);
   
@@ -79,6 +142,19 @@ export function getVisitorHash(): string {
 }
 
 /**
+ * Legacy sync function for backward compatibility
+ * @deprecated Use getSessionId() instead for better session tracking
+ */
+export function getVisitorHash(): string {
+  // Check for cached anonymous session first
+  const cachedId = localStorage.getItem('anon_session_id');
+  if (cachedId) return cachedId;
+  
+  // Fallback to visitor hash
+  return getVisitorHashSync();
+}
+
+/**
  * Fetch digital card content by access token
  * Uses Express backend with Redis caching
  */
@@ -87,8 +163,9 @@ export async function fetchDigitalCardContent(
   language: string = 'en'
 ): Promise<MobileCardResponse> {
   try {
-    const visitorHash = getVisitorHash();
-    const url = `${BACKEND_URL}/api/mobile/card/digital/${encodeURIComponent(accessToken)}?language=${encodeURIComponent(language)}&visitorHash=${encodeURIComponent(visitorHash)}`;
+    // Get session ID (uses Supabase anonymous auth if available)
+    const sessionId = await getSessionId();
+    const url = `${BACKEND_URL}/api/mobile/card/digital/${encodeURIComponent(accessToken)}?language=${encodeURIComponent(language)}&visitorHash=${encodeURIComponent(sessionId)}`;
     
     const response = await fetch(url, {
       method: 'GET',
@@ -264,7 +341,7 @@ export function transformCardResponse(response: MobileCardResponse): any {
       card_daily_scan_limit: card.dailyScanLimit,
       card_daily_scans: card.dailyScans,
       card_scan_limit_reached: card.scanLimitReached,
-      monthly_limit_exceeded: card.monthlyLimitExceeded,
+      monthly_limit_exceeded: card.budgetExhausted || card.monthlyLimitExceeded || false,
       daily_limit_exceeded: card.dailyLimitExceeded,
       card_credits_insufficient: card.creditsInsufficient,
       card_access_disabled: card.accessDisabled || false,

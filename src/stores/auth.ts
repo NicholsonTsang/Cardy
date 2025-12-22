@@ -33,7 +33,17 @@ export const useAuthStore = defineStore('auth', () => {
     console.log('Auth state change:', event, newSession?.user)
 
     if (event === 'SIGNED_OUT') {
-      router.push('/login')
+      // Only redirect to login if the user is on a protected route (CMS pages)
+      // Don't redirect if on public routes like landing page, public card views, etc.
+      const currentPath = router.currentRoute.value.path
+      const isProtectedRoute = currentPath.startsWith('/cms') || currentPath.startsWith('/preview')
+      
+      if (isProtectedRoute) {
+        console.log('Signed out from protected route, redirecting to login')
+        router.push('/login')
+      } else {
+        console.log('Signed out on public route, staying on current page:', currentPath)
+      }
     }
     
     // Handle password recovery - redirect to reset password page only if not already there

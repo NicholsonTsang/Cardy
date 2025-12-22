@@ -1,6 +1,6 @@
 {
   "seo": {
-    "title": "ExperienceQR - AI-Powered Digital Experience Platform for Any Venue",
+    "title": "FunTell - AI-Powered Digital Experience Platform for Any Venue",
     "description": "Transform visitor experiences with AI-powered souvenir cards. Multilingual voice guides & QR collectibles for museums, attractions & events. No app needed.",
     "keywords": "AI souvenir cards, interactive museum guide, digital exhibition cards, QR code tour guide, multilingual AI assistant, museum technology, visitor engagement, collectible cards, audio guide alternative, museum souvenir, exhibition technology, tourist attraction cards, trade show cards, conference materials, hotel concierge AI, no-app experience",
     "language": "English",
@@ -18,7 +18,7 @@
     "audience": "Museums, Exhibitions, Tourist Attractions, Trade Shows, Conferences, Hotels, Restaurants, Events"
   },
   "common": {
-    "app_name": "ExperienceQR",
+    "app_name": "FunTell",
     "tagline": "Digital Souvenir Platform",
     "admin": "Admin",
     "card_issuer": "Creator",
@@ -196,8 +196,8 @@
     "sign_in_with_google": "Sign in with Google",
     "sign_up_with_google": "Sign up with Google",
     "or": "OR",
-    "cms_account_subtitle": "Sign in to your ExperienceQR CMS account",
-    "join_cardstudio": "Join ExperienceQR CMS to start creating digital experiences",
+    "cms_account_subtitle": "Sign in to your FunTell CMS account",
+    "join_funtell": "Join FunTell CMS to start creating digital experiences",
     "enter_new_password": "Enter your new password below",
     "signed_out_successfully": "Successfully signed out",
     "sign_out_failed": "Sign Out Failed",
@@ -457,9 +457,18 @@
     "card_name_required": "Project name is required",
     "markdown_supported": "Markdown supported",
     "ai_assistant_configuration": "AI Assistant Configuration",
-    "enable_ai_assistant": "Enable AI Assistant",
-    "allow_visitors_ask": "Allow visitors to ask questions about your content",
-    "ai_assistant_tooltip": "AI assistant helps visitors interact with your content",
+    "enable_ai_assistant": "Enable AI Voice Assistant",
+    "allow_visitors_ask": "Allow visitors to have voice conversations about your content",
+    "ai_assistant_tooltip": "AI assistant helps visitors interact with your content through natural voice conversations",
+    "ai_cost_notice_title": "Higher Session Cost",
+    "ai_cost_notice_message": "AI-enabled projects cost ${aiCost} per visitor session (vs ${nonAiCost} for non-AI). This enables voice conversations and provides a richer visitor experience.",
+    "ai_cost_notice_short": "AI voice conversations have higher usage cost",
+    "ai_cost_tooltip": "AI-enabled: ${aiCost}/session vs ${nonAiCost}/session for non-AI",
+    "ai_data_preserved_title": "AI Configuration Saved",
+    "ai_data_preserved_message": "Your AI settings are preserved. Re-enable AI anytime to restore your configuration instantly.",
+    "ai_data_preserved_view_message": "AI is disabled but your configuration is saved. Edit to re-enable.",
+    "ai_assistant": "AI Assistant",
+    "per_session": "per session",
     "template_indicator": "Template: {slug}",
     "linked_to_template": "Linked to Template",
     "ai_instruction_role_guidelines": "AI Instruction (Role & Guidelines)",
@@ -781,7 +790,7 @@
     "important_notice": "Important Notice",
     "important_notice_text": "This will submit a print request to our production team. Processing typically takes 3–5 business days, plus shipping time. You'll receive tracking information once your order ships.",
     "submit_print_request": "Submit Print Request",
-    "updates_from_cardstudio": "Updates from ExperienceQR",
+    "updates_from_cardstudio": "Updates from FunTell",
     "paid_at": "Paid At",
     "issued_by": "Issued By",
     "sub_item": "Sub-item",
@@ -1608,7 +1617,7 @@
     "demo_templates": {
       "badge": "Live Demos",
       "title": "Try Our Demo Projects",
-      "subtitle": "Scan any QR code below to experience ExperienceQR in action. See how AI-powered interactive guides work in real-world scenarios.",
+      "subtitle": "Scan any QR code below to experience FunTell in action. See how AI-powered interactive guides work in real-world scenarios.",
       "all_types": "All",
       "items": "items",
       "no_description": "Experience this demo to see our platform in action.",
@@ -1702,7 +1711,7 @@
     },
     "features": {
       "title": "Why",
-      "title_highlight": "ExperienceQR",
+      "title_highlight": "FunTell",
       "features": {
         "collectible_title": "QR-Powered Access",
         "collectible_desc": "Instant access via QR code. Optional physical cards for souvenir value.",
@@ -1722,8 +1731,9 @@
     },
     "pricing": {
       "title": "Simple,",
-      "title_highlight": "Transparent Pricing",
-      "subtitle": "Start free, upgrade when you're ready. No hidden costs.",
+      "title_highlight": "Session-Based Pricing",
+      "subtitle": "Pay only for what you use. Start free, scale with your business.",
+      "currency_note": "All prices are in USD",
       "free_tier": {
         "title": "Free",
         "price": "$0",
@@ -1731,7 +1741,7 @@
         "desc": "Perfect for trying out the platform",
         "features": [
           "Up to 3 projects",
-          "50 monthly access pool",
+          "50 monthly visitor sessions",
           "AI voice conversations",
           "Content management dashboard",
           "QR code generation",
@@ -1741,19 +1751,31 @@
       },
       "premium_tier": {
         "title": "Premium",
-        "price": "$50",
+        "price": "$30",
         "per": "per month",
-        "desc": "For growing venues and businesses",
+        "desc": "Session-based billing for growing businesses",
         "popular": "Most Popular",
         "features": [
           "Up to 15 projects",
-          "3,000 monthly access included",
-          "Multi-language translations",
-          "Priority support",
-          "Overage: 5 credits = 100 extra access",
-          "All Free tier features"
+          "${monthlyBudget} monthly session budget included",
+          "AI projects: ${aiCost}/session ({aiSessions} included)",
+          "Non-AI projects: ${nonAiCost}/session ({nonAiSessions} included)",
+          "Auto top-up: ${topupCost} = {aiTopupSessions}-{nonAiTopupSessions} extra sessions",
+          "Multi-language translations"
         ],
         "cta": "Upgrade to Premium"
+      },
+      "session_info": {
+        "title": "How Session Billing Works",
+        "ai_enabled": "AI-Enabled Projects",
+        "ai_enabled_desc": "${aiCost} per visitor session",
+        "ai_enabled_sessions": "{aiSessions} sessions included",
+        "ai_disabled": "Non-AI Projects",
+        "ai_disabled_desc": "${nonAiCost} per visitor session",
+        "ai_disabled_sessions": "{nonAiSessions} sessions included",
+        "cloudflare_note": "Sessions tracked via Cloudflare for accurate billing",
+        "auto_topup_title": "Auto Top-Up",
+        "auto_topup_desc": "When budget runs out, ${topupCost} is automatically charged for extra sessions"
       },
       "physical_cards": {
         "title": "Physical Cards",
@@ -1781,21 +1803,21 @@
         "support": "Email support"
       },
       "cta": "Get Started Free",
-      "footer_text": "Start free • Upgrade anytime • Cancel anytime"
+      "footer_text": "Start free • Pay per session • Cancel anytime"
     },
     "faq": {
       "title": "Frequently Asked",
       "title_highlight": "Questions",
-      "q1": "What is ExperienceQR?",
-      "a1": "ExperienceQR is an AI-powered digital experience platform that transforms any venue into an interactive guide. Visitors scan a QR code to access multilingual content and conversational AI assistants—no app required. Physical cards available as optional collectible souvenirs.",
+      "q1": "What is FunTell?",
+      "a1": "FunTell is an AI-powered digital experience platform that transforms any venue into an interactive guide. Visitors scan a QR code to access multilingual content and conversational AI assistants—no app required. Physical cards available as optional collectible souvenirs.",
       "q2": "How does it work?",
       "a2": "1) Place QR codes at your venue (or use physical cards)\n2) Visitors scan with their smartphone\n3) Access AI assistant and digital content instantly\n4) Optional: Cards become collectible souvenirs",
       "q3": "Do visitors need to download an app?",
-      "a3": "No. ExperienceQR works through any smartphone browser. Simply scan the QR code—nothing to download or install.",
+      "a3": "No. FunTell works through any smartphone browser. Simply scan the QR code—nothing to download or install.",
       "q4": "What languages are supported?",
       "a4": "Content and AI conversations are available in 10+ languages: English, Mandarin, Cantonese, Japanese, Korean, Thai, Arabic, Spanish, French, Russian, and more.",
       "q5": "What's included in the price?",
-      "a5": "Start free with 3 projects and 50 monthly access. Premium ($50/month) includes 15 projects, 3,000 monthly access, translations, and priority support. All plans include AI voice, content dashboard, QR codes, analytics, and hosting.",
+      "a5": "Start free with {freeExperiences} projects and {freeSessions} monthly sessions. Premium (${monthlyBudget}/month) includes ${monthlyBudget} session budget: {aiSessions} AI sessions or {nonAiSessions} non-AI sessions. When budget runs out, auto top-up adds ${topupCost} for extra sessions. All plans include AI voice, content dashboard, QR codes, analytics, and hosting.",
       "q6": "How quickly can we get started?",
       "a6": "Digital QR projects can launch within minutes. Sign up, create your project, and share your QR code instantly. Physical cards take 2-3 weeks for printing and shipping.",
       "q7": "Can we customize the content and AI?",
@@ -1803,11 +1825,11 @@
       "q8": "What is the card production timeline?",
       "a8": "Physical cards print within 4 business days. Shipping takes 5-10 days depending on your location. Digital QR experiences are instant.",
       "q9": "Are there any usage limits?",
-      "a9": "Free tier: 50 monthly access across all projects. Premium: 3,000 monthly access included, with overage available (5 credits = 100 extra access). Physical cards have unlimited scans once issued.",
+      "a9": "Free tier: {freeSessions} monthly sessions across all projects. Premium: Session-based billing with ${monthlyBudget} monthly budget. AI-enabled projects cost ${aiCost}/session ({aiSessions} included), non-AI projects cost ${nonAiCost}/session ({nonAiSessions} included). Auto top-up (${topupCost} = {aiTopupSessions}-{nonAiTopupSessions} sessions) kicks in when budget runs out. Physical cards have unlimited scans once issued.",
       "still_have_questions": "Still have questions? Reach out via our Contact form."
     },
     "footer": {
-      "brand": "ExperienceQR",
+      "brand": "FunTell",
       "description": "AI-powered digital experience platform. Turn any venue into an interactive guide.",
       "quick_links": "Quick Links",
       "features": "Features",
@@ -1817,7 +1839,7 @@
       "contact_title": "Contact",
       "phone": "Phone",
       "whatsapp_chat": "WhatsApp Chat",
-      "copyright": "© 2025 ExperienceQR. All rights reserved.",
+      "copyright": "© 2025 FunTell. All rights reserved.",
       "privacy": "Privacy Policy",
       "terms": "Terms of Service",
       "contact_link": "Contact"
@@ -1973,21 +1995,28 @@
     "buy_credits": "Buy Credits",
     "credits": "credits",
     "features": {
-      "unlimited_experiences": "Up to 15 projects",
+      "unlimited_experiences": "Up to {limit} projects",
       "translations": "Multi-language translations",
-      "monthly_access": "3,000 monthly access included",
-      "overage": "5 credits = 100 extra access",
-      "experience_limit": "Up to 3 projects",
-      "monthly_pool": "50 monthly access pool",
-      "no_translations": "No translations"
+      "monthly_access": "${monthlyBudget} monthly session budget",
+      "overage": "${topupCost} auto top-up for extra sessions",
+      "experience_limit": "Up to {limit} projects",
+      "monthly_pool": "50 monthly sessions",
+      "no_translations": "No translations",
+      "no_overage": "No auto top-up"
     },
     "usage": {
       "title": "Current Usage",
       "monthly_access": "Monthly Access",
+      "monthly_budget": "monthly budget",
+      "monthly_budget_title": "Monthly Session Budget",
+      "sessions_used": "sessions used",
+      "non_ai_sessions": "non-AI sessions",
+      "ai_session_cost": "AI: ${cost}/session",
+      "non_ai_session_cost": "Non-AI: ${cost}/session",
       "experiences": "Projects",
-      "exceeded_limit": "You've exceeded your monthly limit. Purchase extra access with credits (5 credits = 100 access).",
+      "exceeded_limit": "You've exceeded your monthly budget. Purchase extra credits for more sessions.",
       "reached_free_limit": "You've reached the free tier limit. Upgrade to Premium for more projects.",
-      "monthly_pool_info": "Access is pooled across all your projects.",
+      "monthly_pool_info": "Budget is shared across all your projects.",
       "running_low": "Running low? Purchase extra credits to keep going."
     },
     "billing": {
@@ -2014,7 +2043,11 @@
       "total": "Total",
       "peak": "Peak",
       "overage": "Overage",
-      "no_data": "No access data recorded for this period"
+      "no_data": "No access data recorded for this period",
+      "ai_sessions": "AI Sessions",
+      "non_ai_sessions": "Non-AI Sessions",
+      "ai_short": "AI",
+      "non_ai_short": "Non-AI"
     },
     "chart": {
       "daily_access": "Daily Access",
@@ -2037,7 +2070,7 @@
     },
     "upgrade_cta": {
       "title": "Unlock Premium Features",
-      "description": "Get up to 15 projects, multi-language translations, and 3,000 monthly access for just $50/month."
+      "description": "Get up to {experienceLimit} projects, multi-language translations, and ${monthlyBudget} session budget for just ${monthlyFee}/month."
     },
     "overage_cta": {
       "need_more": "Need more capacity?",
@@ -2338,7 +2371,9 @@
     "refresh_qr_warning_2": "You'll need to re-share the new link with your audience",
     "refresh_qr_confirm": "Refresh",
     "token_refreshed": "QR code refreshed - new access link generated",
-    "refresh_failed": "Failed to refresh QR code"
+    "refresh_failed": "Failed to refresh QR code",
+    "ai_enabled_status": "AI Assistant enabled - sessions billed at AI rate",
+    "ai_disabled_status": "AI Assistant disabled - sessions billed at standard rate"
   },
   "templates": {
     "library_title": "Template Library",
@@ -2547,11 +2582,11 @@
         "articles": {
           "overview": {
             "title": "Platform Overview",
-            "description": "Learn what ExperienceQR is and how it can transform your venue into an interactive AI-powered experience."
+            "description": "Learn what FunTell is and how it can transform your venue into an interactive AI-powered experience."
           },
           "create_project": {
             "title": "Create Your First Project",
-            "description": "Step-by-step guide to creating your first project on ExperienceQR."
+            "description": "Step-by-step guide to creating your first project on FunTell."
           },
           "add_content": {
             "title": "Adding Content Items",

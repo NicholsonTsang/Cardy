@@ -3,10 +3,16 @@
  * 
  * Handles public card access for mobile clients with:
  * - Redis caching for card content
- * - Redis-first usage tracking (minimal DB hits)
+ * - Session-based billing (Cloudflare session tracking)
  * - Upstash rate limiting
- * - Scan deduplication
+ * - Session deduplication
  * - Credit consumption for overage
+ * 
+ * NEW SESSION-BASED BILLING:
+ * - AI-enabled projects: $0.05 per user session
+ * - AI-disabled projects: $0.025 per user session
+ * - Premium monthly budget: $30 (= 600 AI sessions OR 1200 non-AI sessions)
+ * - Auto top-up: $5 = 100 AI sessions OR 200 non-AI sessions
  */
 
 import { Router, Request, Response } from 'express';
@@ -20,12 +26,13 @@ import {
 } from '../config/redis';
 import { combinedRateLimit } from '../middleware/rateLimit';
 import {
-  checkAndIncrementUsage,
-  processOverage,
+  checkSessionAllowed,
+  recordSession,
   logAccess,
   checkDailyLimit,
   recordDailyAccess,
   invalidateCardDailyLimit,
+  invalidateCardAiEnabled,
 } from '../services/usage-tracker';
 
 const router = Router();
@@ -42,7 +49,8 @@ interface CardContentResponse {
     description: string;
     imageUrl: string | null;
     cropParameters: any;
-    conversationAiEnabled: boolean;
+    conversationAiEnabled: boolean; // Primary field: enables AI voice assistant in frontend
+    aiEnabled: boolean; // Alias for billing (same value as conversationAiEnabled, kept for backward compatibility)
     aiInstruction: string | null;
     aiKnowledgeBase: string | null;
     aiWelcomeGeneral: string | null;
@@ -58,11 +66,15 @@ interface CardContentResponse {
     currentScans: number;
     dailyScanLimit: number | null;
     dailyScans: number;
+    // Access status flags
     scanLimitReached: boolean;
-    monthlyLimitExceeded: boolean;
+    budgetExhausted: boolean;
     dailyLimitExceeded: boolean;
     creditsInsufficient: boolean;
     accessDisabled?: boolean;
+    // Session billing info
+    sessionCost: number;
+    isNewSession: boolean;
   };
   contentItems: Array<{
     id: string;
@@ -79,16 +91,92 @@ interface CardContentResponse {
 }
 
 /**
+ * Extract session ID from request
+ * 
+ * Priority for session identification:
+ * 1. CF-Connecting-IP + User-Agent hash (device fingerprint via Cloudflare)
+ * 2. X-Session-Id header (if client provides)
+ * 3. Client visitorHash query param (localStorage-based)
+ * 4. Generated from request fingerprint (fallback)
+ * 
+ * Cloudflare Setup Requirements:
+ * - Route traffic through Cloudflare (DNS proxy enabled)
+ * - Cloudflare automatically adds CF-Connecting-IP header
+ * - For enhanced session tracking, enable "Bot Fight Mode" in Dashboard
+ * 
+ * Session Expiration:
+ * - Sessions are deduplicated within SESSION_DEDUP_WINDOW_SECONDS (default: 5 min)
+ * - Same visitor accessing same card within window = same session (no charge)
+ * 
+ * @see https://developers.cloudflare.com/fundamentals/reference/http-request-headers/
+ */
+function getSessionId(req: Request): string {
+  const crypto = require('crypto');
+  
+  // 1. Cloudflare connecting IP + User-Agent (most reliable when behind Cloudflare)
+  const cfConnectingIp = req.headers['cf-connecting-ip'] as string;
+  if (cfConnectingIp) {
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const fingerprint = `${cfConnectingIp}:${userAgent}`.substring(0, 100);
+    const hash = crypto.createHash('md5').update(fingerprint).digest('hex').substring(0, 16);
+    return `cf-${hash}`;
+  }
+  
+  // 2. Supabase Anonymous Auth session ID (from query param or header)
+  // Format: anon-{first 16 chars of user UUID}
+  const visitorHash = req.query.visitorHash as string;
+  if (visitorHash?.startsWith('anon-')) {
+    return visitorHash; // Already a valid Supabase anonymous session ID
+  }
+  
+  // 3. X-Forwarded-For (if behind other proxies/load balancers)
+  const xForwardedFor = req.headers['x-forwarded-for'] as string;
+  if (xForwardedFor) {
+    const clientIp = xForwardedFor.split(',')[0].trim();
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const fingerprint = `${clientIp}:${userAgent}`.substring(0, 100);
+    const hash = crypto.createHash('md5').update(fingerprint).digest('hex').substring(0, 16);
+    return `xff-${hash}`;
+  }
+  
+  // Custom session header from client
+  const customSessionId = req.headers['x-session-id'] as string;
+  if (customSessionId) return customSessionId;
+  
+  // Generate from visitor fingerprint
+  return generateVisitorHash(req);
+}
+
+/**
+ * Generate a visitor hash from request headers
+ * Used for session deduplication when no session ID is provided
+ */
+function generateVisitorHash(req: Request): string {
+  const ip = req.ip || req.socket.remoteAddress || '';
+  const userAgent = req.headers['user-agent'] || '';
+  const acceptLanguage = req.headers['accept-language'] || '';
+  
+  const combined = `${ip}:${userAgent}:${acceptLanguage}`;
+  let hash = 0;
+  for (let i = 0; i < combined.length; i++) {
+    const char = combined.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return `visitor-${Math.abs(hash).toString(36)}`;
+}
+
+/**
  * GET /api/mobile/card/digital/:accessToken
  * 
  * Get digital card content by access token.
- * Uses Redis caching with scan deduplication.
+ * Uses Redis caching with session-based billing.
  */
 router.get('/card/digital/:accessToken', async (req: Request, res: Response) => {
   try {
     const { accessToken } = req.params;
     const language = (req.query.language as string) || 'en';
-    const visitorHash = req.query.visitorHash as string || generateVisitorHash(req);
+    const sessionId = getSessionId(req);
     
     if (!accessToken) {
       return res.status(400).json({ error: 'Access token is required' });
@@ -100,16 +188,22 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
     const cacheKey = CacheKeys.cardContent(accessToken, language);
     let cachedContent = await cacheGet<CardContentResponse>(cacheKey);
     
-    // Step 2: Check deduplication - is this a repeat visit?
-    const dedupKey = CacheKeys.scanDedup(accessToken, visitorHash);
-    const isRepeatVisit = !(await cacheSetNX(dedupKey, '1', CacheTTL.scanDedup));
+    // Step 2: Check deduplication - is this the same session?
+    const dedupKey = CacheKeys.scanDedup(accessToken, sessionId);
+    const isExistingSession = !(await cacheSetNX(dedupKey, '1', CacheTTL.scanDedup));
     
-    // Step 3: If cache hit AND repeat visit, return cached content immediately
-    if (cachedContent && isRepeatVisit) {
-      console.log(`[Mobile] Cache HIT + repeat visit for ${accessToken}`);
+    // Step 3: If cache hit AND existing session, return cached content immediately
+    if (cachedContent && isExistingSession) {
+      console.log(`[Mobile] Cache HIT + existing session for ${accessToken}`);
       return res.json({
         success: true,
-        data: cachedContent,
+        data: {
+          ...cachedContent,
+          card: {
+            ...cachedContent.card,
+            isNewSession: false,
+          }
+        },
         cached: true,
         deduplicated: true,
       });
@@ -126,7 +220,6 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
     const cardInfo = cardRows?.[0];
     
     if (cardError || !cardInfo) {
-      // Log the actual error for debugging
       console.error(`[Mobile] Card lookup failed for ${accessToken} (${queryTime}ms):`, {
         error: cardError,
         hasData: !!cardRows,
@@ -141,7 +234,6 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
     
     console.log(`[Mobile] Card found for ${accessToken}: ${cardInfo.id} (${queryTime}ms, template: ${cardInfo.is_template})`);
 
-    
     // Step 5: Check if access is enabled
     if (!cardInfo.is_access_enabled) {
       return res.status(403).json({
@@ -151,114 +243,94 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       });
     }
     
-    // Step 6: Handle access using Redis-first usage tracking
-    let accessResult = { 
-      success: true, 
-      access_allowed: true, 
+    // Step 6: Handle session-based access tracking
+    let sessionResult = { 
+      allowed: true, 
+      isNewSession: !isExistingSession,
+      sessionCost: 0,
+      tier: 'free' as 'free' | 'premium',
+      isAiEnabled: false,
+      budgetRemaining: 0,
+      needsOverage: false,
       reason: null as string | null,
-      subscription_tier: 'free' as string,
-      is_overage: false,
-      usage_info: null as any,
-      daily_info: null as any
     };
-    let scanLimitReached = false;
-    let monthlyLimitExceeded = false;
+    let budgetExhausted = false;
     let dailyLimitExceeded = false;
     let creditsInsufficient = false;
     
-    // Skip usage tracking for template demo cards - they should always be accessible
+    // Skip usage tracking for template demo cards
     const isTemplateCard = cardInfo.is_template === true;
     
     if (isTemplateCard) {
       console.log(`[Mobile] Template demo access for ${accessToken} - skipping usage tracking`);
-      accessResult.reason = 'Template demo access (no usage tracking)';
+      sessionResult.reason = 'Template demo access (no billing)';
     }
     
-    if (!isRepeatVisit && !isTemplateCard) {
+    if (!isExistingSession && !isTemplateCard) {
       // Step 6a: Check DAILY limit first (per-card creator protection)
-      // This is a fast Redis-only check that protects creators from traffic spikes
       const dailyCheck = await checkDailyLimit(cardInfo.id);
       
-      accessResult.daily_info = {
-        daily_scans: dailyCheck.currentScans,
-        daily_limit: dailyCheck.dailyLimit
-      };
-      
       if (!dailyCheck.allowed) {
-        // Daily limit exceeded - deny access immediately (don't count against monthly)
-        accessResult.access_allowed = false;
-        accessResult.reason = dailyCheck.reason;
         dailyLimitExceeded = true;
+        sessionResult.allowed = false;
+        sessionResult.reason = dailyCheck.reason;
         console.log(`[Mobile] Access denied (daily limit) for ${accessToken}: ${dailyCheck.currentScans}/${dailyCheck.dailyLimit}`);
       } else {
-        // Step 6b: Daily limit OK - now check MONTHLY limit (subscription billing)
-        const usageCheck = await checkAndIncrementUsage(
+        // Step 6b: Check session allowance and handle billing
+        const sessionCheck = await checkSessionAllowed(
           cardInfo.user_id,
           cardInfo.id,
-          visitorHash,
+          sessionId,
           false // not owner access
         );
         
-        accessResult.subscription_tier = usageCheck.tier;
-        accessResult.usage_info = {
-          monthly_used: usageCheck.currentUsage,
-          monthly_limit: usageCheck.limit,
-          is_overage: usageCheck.isOverage
+        sessionResult = {
+          ...sessionCheck,
+          reason: sessionCheck.reason
         };
         
-        if (usageCheck.allowed) {
-          // Access allowed (within limit)
-          accessResult.access_allowed = true;
-          accessResult.reason = usageCheck.reason;
-          
-          // Record daily access after successful monthly check
-          const newDailyCount = await recordDailyAccess(cardInfo.id);
-          accessResult.daily_info.daily_scans = newDailyCount;
-          
-          console.log(`[Mobile] Access allowed for ${accessToken}: ${usageCheck.reason}`);
-        } else if (usageCheck.isOverage && usageCheck.tier === 'premium') {
-          // Premium user over limit - purchase overage batch (5 credits = 100 extra access)
-          const overageResult = await processOverage(
+        if (sessionCheck.allowed) {
+          // Record the session (handles billing)
+          const recordResult = await recordSession(
             cardInfo.user_id,
             cardInfo.id,
-            visitorHash,
-            0 // Rate is handled internally by batch config
+            sessionId,
+            sessionCheck
           );
           
-          if (overageResult.allowed) {
-            accessResult.access_allowed = true;
-            accessResult.is_overage = true;
-            accessResult.reason = 'Overage credit charged';
-            
-            // Record daily access after successful overage
-            const newDailyCount = await recordDailyAccess(cardInfo.id);
-            accessResult.daily_info.daily_scans = newDailyCount;
-            
-            console.log(`[Mobile] Overage access for ${accessToken}, new balance: ${overageResult.newBalance}`);
+          if (recordResult.allowed) {
+            // Record daily access after successful session
+            await recordDailyAccess(cardInfo.id);
+            console.log(`[Mobile] Session recorded for ${accessToken}: ${sessionCheck.reason}`);
           } else {
-            accessResult.access_allowed = false;
-            accessResult.reason = overageResult.reason;
+            sessionResult.allowed = false;
+            sessionResult.reason = recordResult.reason;
             creditsInsufficient = true;
-            console.log(`[Mobile] Access denied (no credits) for ${accessToken}`);
+            console.log(`[Mobile] Session recording failed for ${accessToken}: ${recordResult.reason}`);
           }
+        } else if (sessionCheck.needsOverage) {
+          // Budget exhausted and no credits
+          budgetExhausted = true;
+          creditsInsufficient = true;
+          console.log(`[Mobile] Access denied (budget/credits) for ${accessToken}: ${sessionCheck.reason}`);
         } else {
-          // Free user over limit
-          accessResult.access_allowed = false;
-          accessResult.reason = usageCheck.reason;
-          monthlyLimitExceeded = true;
-          console.log(`[Mobile] Access denied (limit reached) for ${accessToken}`);
+          // Other denial reason (e.g., free tier limit)
+          budgetExhausted = true;
+          console.log(`[Mobile] Access denied (limit) for ${accessToken}: ${sessionCheck.reason}`);
         }
         
-        // Log access to Redis buffer (instant, no DB hit)
-        // Buffer is flushed to DB when daily-stats is requested
+        // Log access (async, non-blocking) with session-based billing info
         logAccess(
           cardInfo.id,
-          visitorHash,
+          sessionId,
           cardInfo.user_id,
-          usageCheck.tier,
+          sessionCheck.tier,
           false, // not owner access
-          accessResult.is_overage,
-          accessResult.is_overage && accessResult.access_allowed
+          sessionCheck.needsOverage && sessionResult.allowed,
+          sessionResult.allowed && sessionCheck.needsOverage,
+          sessionId, // session ID
+          sessionCheck.sessionCost, // session cost
+          sessionCheck.isAiEnabled // AI enabled status
         ).catch(err => console.error('[Mobile] Failed to log access:', err));
       }
     }
@@ -269,16 +341,13 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
     if (cachedContent) {
       content = cachedContent;
       // Update status fields
-      content.card.scanLimitReached = scanLimitReached;
-      content.card.monthlyLimitExceeded = monthlyLimitExceeded;
+      content.card.budgetExhausted = budgetExhausted;
       content.card.dailyLimitExceeded = dailyLimitExceeded;
       content.card.creditsInsufficient = creditsInsufficient;
-      content.card.currentScans = cardInfo.current_scans + (isRepeatVisit ? 0 : (accessResult.access_allowed ? 1 : 0));
-      // Update daily scans from Redis (more accurate than DB)
-      if (accessResult.daily_info) {
-        content.card.dailyScans = accessResult.daily_info.daily_scans;
-        content.card.dailyScanLimit = accessResult.daily_info.daily_limit;
-      }
+      content.card.currentScans = cardInfo.current_scans;
+      content.card.sessionCost = sessionResult.sessionCost;
+      content.card.isNewSession = sessionResult.isNewSession;
+      content.card.aiEnabled = sessionResult.isAiEnabled;
     } else {
       // Fetch from database via stored procedures
       const { data: cardDataRows, error: fetchError } = await supabase.rpc(
@@ -304,7 +373,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       
       // Build response with translations
       const translations = cardData.translations || {};
-      const hasTranslation = Object.keys(translations).length > 0; // TRUE if any translations exist
+      const hasTranslation = Object.keys(translations).length > 0;
       const langData = translations[language] || {};
       
       const availableLanguages = [
@@ -319,7 +388,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           imageUrl: cardData.image_url,
           cropParameters: cardData.crop_parameters,
           conversationAiEnabled: cardData.conversation_ai_enabled,
-          // Apply translations to ALL AI fields
+          aiEnabled: cardData.conversation_ai_enabled ?? false,
           aiInstruction: langData.ai_instruction || cardData.ai_instruction,
           aiKnowledgeBase: langData.ai_knowledge_base || cardData.ai_knowledge_base,
           aiWelcomeGeneral: langData.ai_welcome_general || cardData.ai_welcome_general,
@@ -333,13 +402,14 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           billingType: cardData.billing_type || 'digital',
           maxScans: cardData.max_scans,
           currentScans: cardData.current_scans || 0,
-          // Use Redis values for daily scans (more accurate, real-time)
-          dailyScanLimit: accessResult.daily_info?.daily_limit ?? cardData.daily_scan_limit,
-          dailyScans: accessResult.daily_info?.daily_scans ?? cardData.daily_scans ?? 0,
-          scanLimitReached,
-          monthlyLimitExceeded,
+          dailyScanLimit: cardData.daily_scan_limit,
+          dailyScans: cardData.daily_scans ?? 0,
+          scanLimitReached: false,
+          budgetExhausted,
           dailyLimitExceeded,
           creditsInsufficient,
+          sessionCost: sessionResult.sessionCost,
+          isNewSession: sessionResult.isNewSession,
         },
         contentItems: (contentItems || []).map((item: any) => {
           const itemTranslations = item.translations || {};
@@ -364,9 +434,11 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
         card: {
           ...content.card,
           scanLimitReached: false,
-          monthlyLimitExceeded: false,
+          budgetExhausted: false,
           dailyLimitExceeded: false,
           creditsInsufficient: false,
+          sessionCost: 0,
+          isNewSession: false,
         },
       };
       await cacheSet(cacheKey, contentToCache, CacheTTL.cardContent);
@@ -376,7 +448,13 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       success: true,
       data: content,
       cached: !!cachedContent,
-      deduplicated: isRepeatVisit,
+      deduplicated: isExistingSession,
+      session: {
+        isNew: sessionResult.isNewSession,
+        cost: sessionResult.sessionCost,
+        tier: sessionResult.tier,
+        isAiEnabled: sessionResult.isAiEnabled,
+      }
     });
     
   } catch (error) {
@@ -392,7 +470,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
  * GET /api/mobile/card/physical/:issueCardId
  * 
  * Get physical card content by issue card ID.
- * Uses Redis caching.
+ * Physical cards have unlimited access (no session billing).
  */
 router.get('/card/physical/:issueCardId', async (req: Request, res: Response) => {
   try {
@@ -464,7 +542,7 @@ router.get('/card/physical/:issueCardId', async (req: Request, res: Response) =>
     
     // Build response
     const translations = cardData.translations || {};
-    const hasTranslation = Object.keys(translations).length > 0; // TRUE if any translations exist
+    const hasTranslation = Object.keys(translations).length > 0;
     const langData = translations[language] || {};
     
     const content: CardContentResponse = {
@@ -473,8 +551,8 @@ router.get('/card/physical/:issueCardId', async (req: Request, res: Response) =>
         description: langData.description || cardData.description,
         imageUrl: cardData.image_url,
         cropParameters: cardData.crop_parameters,
-        conversationAiEnabled: cardData.conversation_ai_enabled,
-        // Apply translations to ALL AI fields
+        conversationAiEnabled: cardData.conversation_ai_enabled ?? false,
+        aiEnabled: cardData.conversation_ai_enabled ?? false,
         aiInstruction: langData.ai_instruction || cardData.ai_instruction,
         aiKnowledgeBase: langData.ai_knowledge_base || cardData.ai_knowledge_base,
         aiWelcomeGeneral: langData.ai_welcome_general || cardData.ai_welcome_general,
@@ -491,9 +569,11 @@ router.get('/card/physical/:issueCardId', async (req: Request, res: Response) =>
         dailyScanLimit: null,
         dailyScans: 0,
         scanLimitReached: false,
-        monthlyLimitExceeded: false,
+        budgetExhausted: false,
         dailyLimitExceeded: false,
         creditsInsufficient: false,
+        sessionCost: 0, // Physical cards are free
+        isNewSession: false,
       },
       contentItems: (contentItems || []).map((item: any) => {
         const itemTranslations = item.translations || {};
@@ -534,36 +614,32 @@ router.get('/card/physical/:issueCardId', async (req: Request, res: Response) =>
 /**
  * POST /api/mobile/card/:cardId/invalidate-cache
  * 
- * Invalidate card content cache AND daily limit cache (called when card is updated).
- * This is critical when daily_scan_limit is changed - otherwise the old limit
- * remains cached in Redis for up to 2 days.
+ * Invalidate card content cache, daily limit cache, and AI-enabled cache.
  */
 router.post('/card/:cardId/invalidate-cache', async (req: Request, res: Response) => {
   try {
     const { cardId } = req.params;
     const { accessToken } = req.body;
     
-    // Import cache delete function
     const { cacheDeletePattern } = await import('../config/redis');
     
-    // Delete all cached content for this card
     let deletedCount = 0;
     
     if (accessToken) {
-      // Delete digital card cache (content cache)
       deletedCount += await cacheDeletePattern(`card:content:${accessToken}:*`);
     }
     
-    // CRITICAL: Invalidate daily limit cache for this card
-    // This ensures daily_scan_limit changes take effect immediately
     if (cardId) {
+      // Invalidate daily limit cache
       await invalidateCardDailyLimit(cardId);
-      console.log(`[Mobile] Invalidated daily limit cache for card ${cardId.slice(0, 8)}...`);
+      // Invalidate AI-enabled cache (for billing rate changes)
+      await invalidateCardAiEnabled(cardId);
+      console.log(`[Mobile] Invalidated caches for card ${cardId.slice(0, 8)}...`);
     }
     
     return res.json({
       success: true,
-      message: `Invalidated ${deletedCount} content cache entries and daily limit cache`,
+      message: `Invalidated ${deletedCount} content cache entries and card settings cache`,
     });
     
   } catch (error) {
@@ -572,25 +648,4 @@ router.post('/card/:cardId/invalidate-cache', async (req: Request, res: Response
   }
 });
 
-/**
- * Generate a visitor hash from request headers
- * Used for scan deduplication when no visitor hash is provided
- */
-function generateVisitorHash(req: Request): string {
-  const ip = req.ip || req.socket.remoteAddress || '';
-  const userAgent = req.headers['user-agent'] || '';
-  const acceptLanguage = req.headers['accept-language'] || '';
-  
-  // Create a simple hash from these values
-  const combined = `${ip}:${userAgent}:${acceptLanguage}`;
-  let hash = 0;
-  for (let i = 0; i < combined.length; i++) {
-    const char = combined.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return `server-${Math.abs(hash).toString(36)}`;
-}
-
 export default router;
-

@@ -103,6 +103,18 @@ const loading = computed(() => subscriptionStore.loading || creditStore.loading)
 const config = computed(() => subscriptionStore.config);
 const creditBalance = computed(() => creditStore.balance); // Added credit balance
 
+// Pricing variables for translations
+const pricingVars = computed(() => ({
+  monthlyBudget: config.value.premium.monthlyBudgetUsd,
+  topupCost: config.value.overage.creditsPerBatch,
+  aiCost: config.value.premium.aiEnabledSessionCostUsd,
+  nonAiCost: config.value.premium.aiDisabledSessionCostUsd,
+  aiSessions: config.value.calculated.defaultAiEnabledSessions,
+  nonAiSessions: config.value.calculated.defaultAiDisabledSessions,
+  experienceLimit: config.value.premium.experienceLimit,
+  monthlyFee: config.value.premium.monthlyFeeUsd,
+}));
+
 const usagePercent = computed(() => {
   const used = subscriptionStore.monthlyAccessUsed;
   const limit = subscriptionStore.monthlyAccessLimit;
@@ -298,7 +310,7 @@ async function openPortal() {
               </li>
               <li class="flex items-center gap-3">
                 <i class="pi pi-check text-slate-600"></i>
-                <span class="text-slate-700"><strong>{{ config.free.monthlyAccessLimit }}</strong> {{ $t('subscription.usage.monthly_access') }}</span>
+                <span class="text-slate-700"><strong>{{ config.free.monthlySessionLimit }}</strong> {{ $t('subscription.usage.monthly_access') }}</span>
               </li>
               <li class="flex items-center gap-3 opacity-50">
                 <i class="pi pi-times text-slate-400"></i>
@@ -330,7 +342,7 @@ async function openPortal() {
               </li>
               <li class="flex items-center gap-3">
                 <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
-                <span class="text-slate-100"><strong>{{ config.premium.monthlyAccessLimit.toLocaleString() }}</strong> {{ $t('subscription.usage.monthly_access') }} ({{ $t('subscription.usage.monthly_pool_info') }})</span>
+                <span class="text-slate-100"><strong>${{ config.premium.monthlyBudgetUsd }}</strong> {{ $t('subscription.usage.monthly_budget') }} ({{ config.calculated.defaultAiEnabledSessions }} AI / {{ config.calculated.defaultAiDisabledSessions }} {{ $t('subscription.usage.non_ai_sessions') }})</span>
               </li>
               <li class="flex items-center gap-3">
                 <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
@@ -338,7 +350,7 @@ async function openPortal() {
               </li>
               <li class="flex items-center gap-3">
                 <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
-                <span class="text-slate-100">{{ $t('subscription.features.overage') }}</span>
+                <span class="text-slate-100">{{ $t('subscription.features.overage', pricingVars) }}</span>
               </li>
             </ul>
             <Button 
@@ -417,6 +429,8 @@ async function openPortal() {
                     <div class="bg-slate-900 text-white text-xs rounded-lg py-2 px-3 shadow-xl whitespace-nowrap text-center">
                       <div class="font-bold border-b border-slate-700 pb-1 mb-1">{{ formatChartDate(day.date) }}</div>
                       <div class="flex justify-between gap-3"><span class="text-slate-300">{{ $t('subscription.traffic.total') }}:</span> <span>{{ day.total }}</span></div>
+                      <div v-if="day.ai_sessions > 0" class="flex justify-between gap-3 text-blue-400"><span>{{ $t('subscription.traffic.ai_short') }}:</span> <span>{{ day.ai_sessions }}</span></div>
+                      <div v-if="day.non_ai_sessions > 0" class="flex justify-between gap-3 text-slate-400"><span>{{ $t('subscription.traffic.non_ai_short') }}:</span> <span>{{ day.non_ai_sessions }}</span></div>
                       <div v-if="day.overage > 0" class="flex justify-between gap-3 text-amber-400"><span>{{ $t('subscription.traffic.overage') }}:</span> <span>{{ day.overage }}</span></div>
                     </div>
                     <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-900 mx-auto"></div>
@@ -505,12 +519,12 @@ async function openPortal() {
               </h3>
               
               <div class="space-y-6">
-                <!-- Monthly Access -->
+                <!-- Monthly Budget (Premium users) -->
                 <div>
                   <div class="flex justify-between items-end mb-2">
                     <div>
-                      <div class="text-sm font-medium text-slate-600">{{ $t('subscription.usage.monthly_access') }}</div>
-                      <div class="text-2xl font-bold text-slate-800">{{ subscriptionStore.monthlyAccessUsed.toLocaleString() }} <span class="text-sm font-normal text-slate-400">/ {{ subscriptionStore.monthlyAccessLimit.toLocaleString() }}</span></div>
+                      <div class="text-sm font-medium text-slate-600">{{ $t('subscription.usage.monthly_budget_title') }}</div>
+                      <div class="text-2xl font-bold text-slate-800">{{ subscriptionStore.monthlyAccessUsed.toLocaleString() }} <span class="text-sm font-normal text-slate-400">{{ $t('subscription.usage.sessions_used') }}</span></div>
                     </div>
                     <div class="text-right">
                       <div class="text-sm font-bold" :class="usagePercent > 90 ? 'text-amber-600' : 'text-blue-600'">{{ usagePercent }}%</div>
@@ -518,7 +532,19 @@ async function openPortal() {
                   </div>
                   <ProgressBar :value="usagePercent" :showValue="false" class="h-3 rounded-full bg-slate-100" :class="usagePercent > 90 ? 'progress-warning' : ''" />
                   
-                  <div v-if="subscriptionStore.monthlyAccessRemaining !== null && subscriptionStore.monthlyAccessRemaining < 500" class="mt-3 bg-amber-50 text-amber-800 text-sm p-3 rounded-lg flex items-center gap-2">
+                  <!-- Session cost info -->
+                  <div class="mt-3 flex gap-4 text-xs text-slate-500">
+                    <span class="flex items-center gap-1">
+                      <i class="pi pi-microphone text-blue-500"></i>
+                      {{ $t('subscription.usage.ai_session_cost', { cost: config.premium.aiEnabledSessionCostUsd }) }}
+                    </span>
+                    <span class="flex items-center gap-1">
+                      <i class="pi pi-file text-slate-400"></i>
+                      {{ $t('subscription.usage.non_ai_session_cost', { cost: config.premium.aiDisabledSessionCostUsd }) }}
+                    </span>
+                  </div>
+                  
+                  <div v-if="subscriptionStore.monthlyAccessRemaining !== null && subscriptionStore.monthlyAccessRemaining < 100" class="mt-3 bg-amber-50 text-amber-800 text-sm p-3 rounded-lg flex items-center gap-2">
                     <i class="pi pi-exclamation-triangle"></i>
                     <span>{{ $t('subscription.usage.running_low') }}</span>
                   </div>
@@ -547,7 +573,7 @@ async function openPortal() {
                     <div class="text-sm text-slate-500">
                       {{ $t('subscription.overage_cta.balance') }} <span class="font-bold text-amber-600">{{ creditBalance }} {{ $t('subscription.credits') }}</span>
                       <span class="mx-2 text-slate-300">|</span>
-                      {{ $t('subscription.overage_cta.buy_visits', { count: config.overage.accessPerBatch, credits: config.overage.creditsPerBatch }) }}
+                      {{ $t('subscription.overage_cta.buy_visits', { count: config.calculated.aiEnabledSessionsPerBatch, credits: config.overage.creditsPerBatch }) }}
                     </div>
                   </div>
                   <Button 
@@ -574,7 +600,7 @@ async function openPortal() {
             </div>
             
                 <!-- Summary Stats Grid -->
-                <div v-if="chartSummary" class="grid grid-cols-3 gap-4 mb-8">
+                <div v-if="chartSummary" class="grid grid-cols-3 gap-4 mb-4">
                   <div class="bg-slate-50 rounded-xl p-4 text-center">
                     <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{{ $t('subscription.traffic.total') }}</div>
                     <div class="text-xl font-bold text-slate-800">{{ chartSummary.total_access.toLocaleString() }}</div>
@@ -586,6 +612,26 @@ async function openPortal() {
                   <div class="bg-slate-50 rounded-xl p-4 text-center">
                     <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{{ $t('subscription.traffic.overage') }}</div>
                     <div class="text-xl font-bold text-amber-600">{{ chartSummary.total_overage.toLocaleString() }}</div>
+                  </div>
+                </div>
+                
+                <!-- AI vs Non-AI Session Breakdown -->
+                <div v-if="chartSummary && (chartSummary.ai_sessions > 0 || chartSummary.non_ai_sessions > 0)" class="grid grid-cols-2 gap-4 mb-8">
+                  <div class="bg-blue-50 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                      <i class="pi pi-microphone text-blue-600"></i>
+                      <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">{{ $t('subscription.traffic.ai_sessions') }}</span>
+                    </div>
+                    <div class="text-xl font-bold text-blue-700">{{ chartSummary.ai_sessions.toLocaleString() }}</div>
+                    <div class="text-sm text-blue-600">${{ chartSummary.ai_cost_usd?.toFixed(2) || '0.00' }}</div>
+                  </div>
+                  <div class="bg-slate-100 rounded-xl p-4">
+                    <div class="flex items-center gap-2 mb-2">
+                      <i class="pi pi-file text-slate-500"></i>
+                      <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">{{ $t('subscription.traffic.non_ai_sessions') }}</span>
+                    </div>
+                    <div class="text-xl font-bold text-slate-700">{{ chartSummary.non_ai_sessions.toLocaleString() }}</div>
+                    <div class="text-sm text-slate-500">${{ chartSummary.non_ai_cost_usd?.toFixed(2) || '0.00' }}</div>
                   </div>
                 </div>
                 
@@ -624,6 +670,8 @@ async function openPortal() {
                             <div class="bg-slate-800 text-white text-xs rounded-lg py-2 px-3 shadow-xl whitespace-nowrap">
                               <div class="font-bold border-b border-slate-600 pb-1 mb-1">{{ formatChartDate(day.date) }}</div>
                               <div class="flex justify-between gap-4"><span>{{ $t('subscription.traffic.total') }}:</span> <strong>{{ day.total }}</strong></div>
+                              <div v-if="day.ai_sessions > 0" class="flex justify-between gap-4 text-blue-300"><span>{{ $t('subscription.traffic.ai_short') }}:</span> <strong>{{ day.ai_sessions }}</strong></div>
+                              <div v-if="day.non_ai_sessions > 0" class="flex justify-between gap-4 text-slate-300"><span>{{ $t('subscription.traffic.non_ai_short') }}:</span> <strong>{{ day.non_ai_sessions }}</strong></div>
                               <div v-if="day.overage > 0" class="flex justify-between gap-4 text-amber-300"><span>{{ $t('subscription.traffic.overage') }}:</span> <strong>{{ day.overage }}</strong></div>
                             </div>
                             <div class="w-2 h-2 bg-slate-800 rotate-45 mx-auto -mt-1"></div>

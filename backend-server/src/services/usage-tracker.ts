@@ -1,61 +1,85 @@
 /**
- * Redis-First Usage Tracking Service
+ * Redis-First Session Tracking Service
  * 
- * Redis (Upstash) is the SINGLE SOURCE OF TRUTH for usage tracking.
- * No background sync to PostgreSQL - Redis has persistence (AOF, multi-replica).
+ * NEW SESSION-BASED BILLING MODEL:
+ * - AI-enabled projects: $0.05 per user session
+ * - AI-disabled projects: $0.025 per user session
+ * - Premium monthly budget: $30 (= 600 AI sessions OR 1200 non-AI sessions)
+ * - Auto top-up: $5 = 100 AI sessions OR 200 non-AI sessions
+ * 
+ * Redis (Upstash) is the SINGLE SOURCE OF TRUTH for session tracking.
+ * Sessions are identified via Cloudflare session ID or visitor fingerprint.
  * 
  * PostgreSQL is only hit when:
- * - First access of the month (to get tier info, then cached in Redis)
- * - Overage purchase (1 DB call per 100 extra access)
- * - Access logging (async, non-blocking)
+ * - First session of the month (to get tier info, then cached in Redis)
+ * - Overage purchase (1 DB call per $5 top-up)
+ * - Session logging (async, non-blocking)
  */
 
 import { redis, isRedisConfigured } from '../config/redis';
 import { supabaseAdmin } from '../config/supabase';
-import { SubscriptionConfig } from '../config/subscription';
+import { SubscriptionConfig, getSessionCost, calculateSessionsFromBudget } from '../config/subscription';
 
-// Redis key patterns - Monthly (subscription billing)
-const USAGE_KEY = (userId: string, month: string) => `access:user:${userId}:month:${month}`;
-const TIER_KEY = (userId: string) => `access:user:${userId}:tier`;
-const LIMIT_KEY = (userId: string) => `access:user:${userId}:limit`;
+// ============================================================================
+// REDIS KEY PATTERNS
+// ============================================================================
 
-// Redis key patterns - Daily (per-card creator protection)
+// Session tracking keys
+const SESSION_DEDUP_KEY = (sessionId: string, cardId: string) => `session:dedup:${sessionId}:${cardId}`;
+
+// User budget tracking keys (monthly)
+// BUDGET_KEY stores AVAILABLE budget (source of truth), decrements on each access
+const BUDGET_KEY = (userId: string, month: string) => `budget:user:${userId}:month:${month}`;
+const AI_SESSIONS_KEY = (userId: string, month: string) => `sessions:ai:${userId}:month:${month}`;
+const NON_AI_SESSIONS_KEY = (userId: string, month: string) => `sessions:nonai:${userId}:month:${month}`;
+
+// User info cache keys
+const TIER_KEY = (userId: string) => `user:tier:${userId}`;
+const CARD_AI_ENABLED_KEY = (cardId: string) => `card:ai_enabled:${cardId}`;
+
+// Daily limit keys (per-card creator protection)
 const DAILY_SCANS_KEY = (cardId: string, date: string) => `access:card:${cardId}:date:${date}:scans`;
 const DAILY_LIMIT_KEY = (cardId: string) => `access:card:${cardId}:daily_limit`;
 
-// Cache TTL (35 days to cover month + buffer)
-const CACHE_TTL = 35 * 24 * 60 * 60;
+// Cache TTLs
+const CACHE_TTL = 35 * 24 * 60 * 60; // 35 days (covers month + buffer)
+const DEDUP_TTL = SubscriptionConfig.session.dedupWindowSeconds; // 5 minutes default
+const DAILY_CACHE_TTL = 2 * 24 * 60 * 60; // 2 days
 
-// Daily limit cache TTL (2 days - covers today + buffer for timezone edge cases)
-const DAILY_CACHE_TTL = 2 * 24 * 60 * 60;
+// ============================================================================
+// TYPES
+// ============================================================================
 
-// Threshold for checking PostgreSQL (90% of limit)
-const LIMIT_CHECK_THRESHOLD = 0.9;
-
-// Overage batch configuration (from SubscriptionConfig)
-// Using getter functions to ensure we get current config values
-const getOverageCreditsPerBatch = () => SubscriptionConfig.overage.creditsPerBatch;
-const getOverageAccessPerBatch = () => SubscriptionConfig.overage.accessPerBatch;
-
-interface UsageCheckResult {
+interface SessionCheckResult {
   allowed: boolean;
-  currentUsage: number;
-  limit: number;
+  isNewSession: boolean;
+  sessionCost: number;
   tier: 'free' | 'premium';
-  isOverage: boolean;
-  needsDbCheck: boolean;
+  isAiEnabled: boolean;
+  budgetRemaining: number;
+  needsOverage: boolean;
   reason: string;
 }
 
-interface OverageResult {
+interface SessionRecordResult {
   allowed: boolean;
+  sessionId: string | null;
   creditDeducted: boolean;
   creditsCharged?: number;
-  accessGranted?: number;
-  newBalance?: number;
-  newLimit?: number;
+  newBudget?: number;
   reason: string;
 }
+
+interface DailyLimitCheckResult {
+  allowed: boolean;
+  currentScans: number;
+  dailyLimit: number | null;
+  reason: string;
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
 
 /**
  * Get current month key (YYYY-MM)
@@ -73,269 +97,89 @@ function getCurrentDate(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 }
 
-// ============================================================================
-// DAILY ACCESS LIMIT (Per-Card Creator Protection)
-// ============================================================================
-// Purpose: Protect creators from unexpected traffic spikes
-// - Tracked per card, per day in Redis
-// - Configurable limit per card (daily_scan_limit in cards table)
-// - Resets automatically each day (new Redis key per date)
-// - NULL limit = unlimited (no daily restriction)
-// ============================================================================
-
-interface DailyLimitCheckResult {
-  allowed: boolean;
-  currentScans: number;
-  dailyLimit: number | null; // NULL = unlimited
-  reason: string;
-}
-
 /**
- * Get card's daily scan limit from Redis cache or DB
- * Returns NULL if no daily limit is set (unlimited)
+ * Get card's AI-enabled status (cached)
  */
-async function getCardDailyLimit(cardId: string): Promise<number | null> {
+async function getCardAiEnabled(cardId: string): Promise<boolean> {
   if (!isRedisConfigured()) {
-    // Fallback: get from database
-    return getDailyLimitFromDb(cardId);
+    return getCardAiEnabledFromDb(cardId);
   }
 
-  const cachedLimit = await redis.get(DAILY_LIMIT_KEY(cardId));
-  
-  if (cachedLimit !== null) {
-    // "null" string means unlimited (we cached that there's no limit)
-    if (cachedLimit === 'null') return null;
-    return parseInt(cachedLimit as string, 10);
+  const cached = await redis.get(CARD_AI_ENABLED_KEY(cardId));
+  if (cached !== null) {
+    return cached === 'true';
   }
 
-  // Not in cache - fetch from database and cache
-  const dbLimit = await getDailyLimitFromDb(cardId);
-  
-  // Cache the limit (store "null" string for unlimited)
-  await redis.set(
-    DAILY_LIMIT_KEY(cardId), 
-    dbLimit === null ? 'null' : dbLimit.toString(), 
-    { ex: DAILY_CACHE_TTL }
-  );
-
-  return dbLimit;
+  const isAiEnabled = await getCardAiEnabledFromDb(cardId);
+  await redis.set(CARD_AI_ENABLED_KEY(cardId), isAiEnabled.toString(), { ex: CACHE_TTL });
+  return isAiEnabled;
 }
 
 /**
- * Get daily limit from database
+ * Get card's AI-enabled status from database via stored procedure
  */
-async function getDailyLimitFromDb(cardId: string): Promise<number | null> {
-  const { data, error } = await supabaseAdmin
-    .from('cards')
-    .select('daily_scan_limit')
-    .eq('id', cardId)
-    .single();
+async function getCardAiEnabledFromDb(cardId: string): Promise<boolean> {
+  const { data, error } = await supabaseAdmin.rpc('get_card_ai_status_server', {
+    p_card_id: cardId
+  });
 
-  if (error || !data) {
-    console.warn(`[UsageTracker] Failed to get daily limit for card ${cardId}:`, error);
-    return null; // Default to unlimited on error
+  if (error) {
+    console.warn(`[SessionTracker] Failed to get ai_enabled for card ${cardId}:`, error);
+    return false;
   }
 
-  return data.daily_scan_limit;
-}
-
-/**
- * Get current daily scan count from Redis
- */
-async function getCurrentDailyScans(cardId: string): Promise<number> {
-  if (!isRedisConfigured()) return 0;
-
-  const date = getCurrentDate();
-  const countResult = await redis.get(DAILY_SCANS_KEY(cardId, date));
-  const count = countResult as string | null;
-  return count ? parseInt(count, 10) : 0;
-}
-
-/**
- * Increment daily scan counter in Redis
- * Returns the new count after increment
- */
-async function incrementDailyScans(cardId: string): Promise<number> {
-  if (!isRedisConfigured()) return 0;
-
-  const date = getCurrentDate();
-  const key = DAILY_SCANS_KEY(cardId, date);
-
-  // Atomic increment
-  const newCount = await redis.incr(key);
-  
-  // Set TTL on first access of the day
-  if (newCount === 1) {
-    await redis.expire(key, DAILY_CACHE_TTL);
-  }
-
-  return newCount;
-}
-
-/**
- * Decrement daily scan counter (used when access is denied after increment)
- */
-async function decrementDailyScans(cardId: string): Promise<void> {
-  if (!isRedisConfigured()) return;
-
-  const date = getCurrentDate();
-  await redis.decr(DAILY_SCANS_KEY(cardId, date));
-}
-
-/**
- * Check if card has reached daily scan limit (Redis-first)
- * 
- * This is a PRE-CHECK that should be called BEFORE monthly usage check.
- * Returns immediately if daily limit exceeded - no need to count against monthly.
- * 
- * @param cardId - The card being accessed
- * @returns DailyLimitCheckResult with allowed status and current counts
- */
-export async function checkDailyLimit(cardId: string): Promise<DailyLimitCheckResult> {
-  const isDebug = process.env.DEBUG_USAGE === 'true';
-
-  // If Redis not configured, allow access (can't enforce limits)
-  if (!isRedisConfigured()) {
-    return {
-      allowed: true,
-      currentScans: 0,
-      dailyLimit: null,
-      reason: 'Redis not configured - daily limit not enforced'
-    };
-  }
-
-  try {
-    // Get card's daily limit (from cache or DB)
-    const dailyLimit = await getCardDailyLimit(cardId);
-
-    // No daily limit configured = unlimited
-    if (dailyLimit === null) {
-      if (isDebug) console.log(`[UsageTracker] Card ${cardId.slice(0, 8)}... has no daily limit`);
-      return {
-        allowed: true,
-        currentScans: 0,
-        dailyLimit: null,
-        reason: 'No daily limit configured'
-      };
-    }
-
-    // Get current daily scan count
-    const currentScans = await getCurrentDailyScans(cardId);
-    
-    if (isDebug) console.log(`[UsageTracker] Card ${cardId.slice(0, 8)}... daily scans: ${currentScans}/${dailyLimit}`);
-
-    // Check if within limit
-    if (currentScans < dailyLimit) {
-      return {
-        allowed: true,
-        currentScans,
-        dailyLimit,
-        reason: 'Within daily limit'
-      };
-    }
-
-    // Daily limit reached
-    console.log(`[UsageTracker] ❌ Daily limit reached for card ${cardId.slice(0, 8)}...: ${currentScans}/${dailyLimit}`);
-    return {
-      allowed: false,
-      currentScans,
-      dailyLimit,
-      reason: `Daily access limit reached (${dailyLimit}/day). Please try again tomorrow.`
-    };
-  } catch (error) {
-    console.error('[UsageTracker] Daily limit check error:', error);
-    // Allow access on error (fail open for better UX)
-    return {
-      allowed: true,
-      currentScans: 0,
-      dailyLimit: null,
-      reason: 'Error checking daily limit - allowing access'
-    };
-  }
-}
-
-/**
- * Increment daily scan counter after successful access
- * Should be called AFTER access is confirmed allowed
- */
-export async function recordDailyAccess(cardId: string): Promise<number> {
-  return incrementDailyScans(cardId);
-}
-
-/**
- * Rollback daily scan counter if access ultimately denied
- * Call this if monthly limit check fails after daily check passed
- */
-export async function rollbackDailyAccess(cardId: string): Promise<void> {
-  await decrementDailyScans(cardId);
-}
-
-/**
- * Invalidate card's cached daily limit (call when card settings change)
- */
-export async function invalidateCardDailyLimit(cardId: string): Promise<void> {
-  if (!isRedisConfigured()) return;
-  await redis.del(DAILY_LIMIT_KEY(cardId));
-}
-
-/**
- * Get daily access stats for a card (for display purposes)
- */
-export async function getDailyAccessStats(cardId: string): Promise<{
-  dailyLimit: number | null;
-  currentScans: number;
-  remaining: number | null; // NULL if unlimited
-}> {
-  const dailyLimit = await getCardDailyLimit(cardId);
-  const currentScans = await getCurrentDailyScans(cardId);
-
-  return {
-    dailyLimit,
-    currentScans,
-    remaining: dailyLimit === null ? null : Math.max(0, dailyLimit - currentScans)
-  };
+  return data ?? false;
 }
 
 /**
  * Get or initialize user's subscription info in Redis
+ * Redis tracks AVAILABLE budget (remaining), not consumed
  */
-async function getOrInitUserInfo(userId: string): Promise<{ tier: 'free' | 'premium'; limit: number }> {
+async function getOrInitUserInfo(userId: string): Promise<{ 
+  tier: 'free' | 'premium'; 
+  budgetAvailable: number;  // Available budget (source of truth in Redis)
+}> {
+  const month = getCurrentMonth();
+  
   if (!isRedisConfigured()) {
-    // Fallback: get from database
     return getSubscriptionFromDb(userId);
   }
 
-  const [tierResult, limitResult] = await Promise.all([
+  const [tierResult, budgetResult] = await Promise.all([
     redis.get(TIER_KEY(userId)),
-    redis.get(LIMIT_KEY(userId))
+    redis.get(BUDGET_KEY(userId, month))  // Available budget
   ]);
 
   const tierStr = tierResult as string | null;
-  const limitStr = limitResult as string | null;
+  const budgetStr = budgetResult as string | null;
 
-  if (tierStr && limitStr) {
+  if (tierStr && budgetStr !== null) {
     return {
       tier: tierStr as 'free' | 'premium',
-      limit: parseInt(limitStr, 10)
+      budgetAvailable: parseFloat(budgetStr || '0')
     };
   }
 
-  // Not in cache - fetch from database and cache
+  // Not in cache - fetch tier from database, initialize budget from config
   const dbInfo = await getSubscriptionFromDb(userId);
   
   // Cache the info
   await Promise.all([
     redis.set(TIER_KEY(userId), dbInfo.tier, { ex: CACHE_TTL }),
-    redis.set(LIMIT_KEY(userId), dbInfo.limit.toString(), { ex: CACHE_TTL })
+    redis.set(BUDGET_KEY(userId, month), dbInfo.budgetAvailable.toString(), { ex: CACHE_TTL })
   ]);
 
   return dbInfo;
 }
 
 /**
- * Get subscription info from PostgreSQL via stored procedure
+ * Get subscription tier from PostgreSQL, initialize budget from config
+ * All pricing values come from environment variables
  */
-async function getSubscriptionFromDb(userId: string): Promise<{ tier: 'free' | 'premium'; limit: number }> {
+async function getSubscriptionFromDb(userId: string): Promise<{
+  tier: 'free' | 'premium';
+  budgetAvailable: number;
+}> {
   const { data: rows, error } = await supabaseAdmin.rpc(
     'get_subscription_by_user_server',
     { p_user_id: userId }
@@ -347,291 +191,552 @@ async function getSubscriptionFromDb(userId: string): Promise<{ tier: 'free' | '
     // No subscription - return free tier defaults
     return {
       tier: 'free',
-      limit: SubscriptionConfig.free.monthlyAccessLimit
+      budgetAvailable: 0
     };
   }
 
   const tier = data.tier as 'free' | 'premium';
-  const limit = tier === 'premium' 
-    ? SubscriptionConfig.premium.monthlyAccessLimit 
-    : SubscriptionConfig.free.monthlyAccessLimit;
+  // Initialize available budget from config (all pricing from env vars)
+  const budgetAvailable = tier === 'premium' 
+    ? SubscriptionConfig.premium.monthlyBudgetUsd
+    : 0;
 
-  return { tier, limit };
+  return { 
+    tier, 
+    budgetAvailable
+  };
+}
+
+// ============================================================================
+// DAILY ACCESS LIMIT (Per-Card Creator Protection)
+// ============================================================================
+
+/**
+ * Get card's daily scan limit from Redis cache or DB
+ */
+async function getCardDailyLimit(cardId: string): Promise<number | null> {
+  if (!isRedisConfigured()) {
+    return getDailyLimitFromDb(cardId);
+  }
+
+  const cachedLimit = await redis.get(DAILY_LIMIT_KEY(cardId));
+  
+  if (cachedLimit !== null) {
+    if (cachedLimit === 'null') return null;
+    return parseInt(cachedLimit as string, 10);
+  }
+
+  const dbLimit = await getDailyLimitFromDb(cardId);
+  await redis.set(
+    DAILY_LIMIT_KEY(cardId), 
+    dbLimit === null ? 'null' : dbLimit.toString(), 
+    { ex: DAILY_CACHE_TTL }
+  );
+
+  return dbLimit;
 }
 
 /**
- * Increment usage counter in Redis
- * Returns the new count after increment
+ * Get daily limit from database via stored procedure
  */
-async function incrementUsage(userId: string): Promise<number> {
-  const month = getCurrentMonth();
-  const key = USAGE_KEY(userId, month);
+async function getDailyLimitFromDb(cardId: string): Promise<number | null> {
+  const { data, error } = await supabaseAdmin.rpc('get_card_daily_limit_server', {
+    p_card_id: cardId
+  });
 
-  if (!isRedisConfigured()) {
-    // Fallback: return -1 to trigger DB check
-    return -1;
+  if (error) {
+    console.warn(`[SessionTracker] Failed to get daily limit for card ${cardId}:`, error);
+    return null;
   }
 
-  // Atomic increment
+  return data; // NULL means unlimited
+}
+
+/**
+ * Get current daily scan count from Redis
+ */
+async function getCurrentDailyScans(cardId: string): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+  const date = getCurrentDate();
+  const count = await redis.get(DAILY_SCANS_KEY(cardId, date));
+  return count ? parseInt(count as string, 10) : 0;
+}
+
+/**
+ * Check if card has reached daily scan limit
+ */
+export async function checkDailyLimit(cardId: string): Promise<DailyLimitCheckResult> {
+  const isDebug = process.env.DEBUG_USAGE === 'true';
+
+  if (!isRedisConfigured()) {
+    return { allowed: true, currentScans: 0, dailyLimit: null, reason: 'Redis not configured' };
+  }
+
+  try {
+    const dailyLimit = await getCardDailyLimit(cardId);
+    if (dailyLimit === null) {
+      return { allowed: true, currentScans: 0, dailyLimit: null, reason: 'No daily limit configured' };
+    }
+
+    const currentScans = await getCurrentDailyScans(cardId);
+    
+    if (isDebug) console.log(`[SessionTracker] Card ${cardId.slice(0, 8)}... daily: ${currentScans}/${dailyLimit}`);
+
+    if (currentScans < dailyLimit) {
+      return { allowed: true, currentScans, dailyLimit, reason: 'Within daily limit' };
+    }
+
+    console.log(`[SessionTracker] ❌ Daily limit reached for card ${cardId.slice(0, 8)}...: ${currentScans}/${dailyLimit}`);
+    return {
+      allowed: false,
+      currentScans,
+      dailyLimit,
+      reason: `Daily access limit reached (${dailyLimit}/day). Please try again tomorrow.`
+    };
+  } catch (error) {
+    console.error('[SessionTracker] Daily limit check error:', error);
+    return { allowed: true, currentScans: 0, dailyLimit: null, reason: 'Error checking - allowing access' };
+  }
+}
+
+/**
+ * Record daily access
+ */
+export async function recordDailyAccess(cardId: string): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+
+  const date = getCurrentDate();
+  const key = DAILY_SCANS_KEY(cardId, date);
   const newCount = await redis.incr(key);
   
-  // Set TTL on first access
   if (newCount === 1) {
-    await redis.expire(key, CACHE_TTL);
+    await redis.expire(key, DAILY_CACHE_TTL);
   }
 
   return newCount;
 }
 
 /**
- * Get current usage count from Redis
+ * Rollback daily access if session ultimately denied
  */
-async function getCurrentUsage(userId: string): Promise<number> {
-  if (!isRedisConfigured()) {
-    return -1;
-  }
-
-  const month = getCurrentMonth();
-  const countResult = await redis.get(USAGE_KEY(userId, month));
-  const count = countResult as string | null;
-  return count ? parseInt(count, 10) : 0;
+export async function rollbackDailyAccess(cardId: string): Promise<void> {
+  if (!isRedisConfigured()) return;
+  const date = getCurrentDate();
+  await redis.decr(DAILY_SCANS_KEY(cardId, date));
 }
 
 /**
- * Check if user can access (Redis-first)
- * Only hits PostgreSQL when necessary
+ * Invalidate card's cached daily limit
  */
-export async function checkAndIncrementUsage(
+export async function invalidateCardDailyLimit(cardId: string): Promise<void> {
+  if (!isRedisConfigured()) return;
+  await redis.del(DAILY_LIMIT_KEY(cardId));
+}
+
+/**
+ * Invalidate card's cached AI-enabled status
+ */
+export async function invalidateCardAiEnabled(cardId: string): Promise<void> {
+  if (!isRedisConfigured()) return;
+  await redis.del(CARD_AI_ENABLED_KEY(cardId));
+}
+
+// ============================================================================
+// SESSION-BASED BILLING (Main Functions)
+// ============================================================================
+
+/**
+ * Check if a new session is allowed and get billing info
+ * This is a fast Redis-first check
+ */
+export async function checkSessionAllowed(
   userId: string,
-  _cardId: string,
-  _visitorHash: string,
+  cardId: string,
+  sessionId: string,
   isOwnerAccess: boolean = false
-): Promise<UsageCheckResult> {
+): Promise<SessionCheckResult> {
   const isDebug = process.env.DEBUG_USAGE === 'true';
   
   // Owner access is always free
   if (isOwnerAccess) {
-    if (isDebug) console.log(`[UsageTracker] Owner access for user ${userId.slice(0, 8)}... - FREE`);
+    if (isDebug) console.log(`[SessionTracker] Owner access for ${cardId.slice(0, 8)}... - FREE`);
     return {
       allowed: true,
-      currentUsage: 0,
-      limit: 0,
+      isNewSession: false,
+      sessionCost: 0,
       tier: 'free',
-      isOverage: false,
-      needsDbCheck: false,
+      isAiEnabled: false,
+      budgetRemaining: 0,
+      needsOverage: false,
       reason: 'Owner access (free)'
     };
   }
 
-  // If Redis not configured, fall back to DB
   if (!isRedisConfigured()) {
-    console.warn('[UsageTracker] Redis not configured - falling back to DB');
+    console.warn('[SessionTracker] Redis not configured - falling back to DB');
     return {
-      allowed: true, // Will be checked by DB
-      currentUsage: 0,
-      limit: 0,
+      allowed: true,
+      isNewSession: true,
+      sessionCost: 0,
       tier: 'free',
-      isOverage: false,
-      needsDbCheck: true,
+      isAiEnabled: false,
+      budgetRemaining: 0,
+      needsOverage: false,
       reason: 'Redis not configured - using DB'
     };
   }
 
   try {
-    // Get user's tier and limit from Redis (or DB if not cached)
-    const { tier, limit } = await getOrInitUserInfo(userId);
-    if (isDebug) console.log(`[UsageTracker] User ${userId.slice(0, 8)}... tier=${tier} limit=${limit}`);
-
-    // Increment usage counter
-    const currentUsage = await incrementUsage(userId);
-    if (isDebug) console.log(`[UsageTracker] User ${userId.slice(0, 8)}... usage: ${currentUsage}/${limit}`);
-
-    // Check if within limit
-    if (currentUsage <= limit) {
-      // Check if approaching limit (need to verify with DB)
-      const needsDbCheck = currentUsage >= Math.floor(limit * LIMIT_CHECK_THRESHOLD);
-      
-      if (isDebug) console.log(`[UsageTracker] ✅ Access allowed: ${currentUsage}/${limit} (${Math.round(currentUsage/limit*100)}%)`);
+    // Check if this is a duplicate session (within dedup window)
+    const dedupKey = SESSION_DEDUP_KEY(sessionId, cardId);
+    const isExistingSession = await redis.get(dedupKey);
+    
+    if (isExistingSession) {
+      if (isDebug) console.log(`[SessionTracker] Existing session for ${cardId.slice(0, 8)}...`);
       return {
         allowed: true,
-        currentUsage,
-        limit,
-        tier,
-        isOverage: false,
-        needsDbCheck,
-        reason: needsDbCheck ? 'Approaching limit - verify with DB' : 'Within limit'
+        isNewSession: false,
+        sessionCost: 0,
+        tier: 'free',
+        isAiEnabled: false,
+        budgetRemaining: 0,
+        needsOverage: false,
+        reason: 'Existing session (no charge)'
       };
     }
 
-    // Over limit
-    if (tier === 'premium') {
-      // Premium can use overage credits - need DB check
-      if (isDebug) console.log(`[UsageTracker] ⚠️  Premium over limit: ${currentUsage}/${limit} - checking overage`);
-      return {
-        allowed: false, // Will be determined by overage check
-        currentUsage,
-        limit,
-        tier,
-        isOverage: true,
-        needsDbCheck: true,
-        reason: 'Over limit - checking overage credits'
-      };
-    } else {
-      // Free tier - deny access
-      // Decrement the counter since access is denied
-      await redis.decr(USAGE_KEY(userId, getCurrentMonth()));
+    // Get card's AI-enabled status and calculate session cost (from env vars)
+    const isAiEnabled = await getCardAiEnabled(cardId);
+    const sessionCost = getSessionCost(isAiEnabled);
+    
+    // Get user's tier and available budget (Redis is source of truth)
+    const { tier, budgetAvailable } = await getOrInitUserInfo(userId);
+    const budgetRemaining = budgetAvailable;
+    
+    if (isDebug) {
+      console.log(`[SessionTracker] User ${userId.slice(0, 8)}... tier=${tier} budgetAvailable=$${budgetAvailable}`);
+      console.log(`[SessionTracker] Card ${cardId.slice(0, 8)}... aiEnabled=${isAiEnabled} cost=$${sessionCost}`);
+    }
+
+    // Free tier check
+    if (tier === 'free') {
+      const month = getCurrentMonth();
+      const aiSessions = parseInt(await redis.get(AI_SESSIONS_KEY(userId, month)) as string || '0', 10);
+      const nonAiSessions = parseInt(await redis.get(NON_AI_SESSIONS_KEY(userId, month)) as string || '0', 10);
+      const totalSessions = aiSessions + nonAiSessions;
       
-      console.log(`[UsageTracker] ❌ Free tier limit reached for user ${userId.slice(0, 8)}...: ${currentUsage-1}/${limit}`);
+      if (totalSessions >= SubscriptionConfig.free.monthlySessionLimit) {
+        console.log(`[SessionTracker] ❌ Free tier limit reached for ${userId.slice(0, 8)}...: ${totalSessions}/50`);
+        return {
+          allowed: false,
+          isNewSession: true,
+          sessionCost,
+          tier,
+          isAiEnabled,
+          budgetRemaining: 0,
+          needsOverage: false,
+          reason: 'Free tier monthly session limit reached. Upgrade to Premium for more sessions.'
+        };
+      }
+      
       return {
-        allowed: false,
-        currentUsage: currentUsage - 1,
-        limit,
+        allowed: true,
+        isNewSession: true,
+        sessionCost,
         tier,
-        isOverage: false,
-        needsDbCheck: false,
-        reason: `Monthly limit reached (${limit}/month for free tier). Upgrade to Premium for more access.`
+        isAiEnabled,
+        budgetRemaining: 0,
+        needsOverage: false,
+        reason: 'Free tier - session allowed'
       };
     }
+
+    // Premium tier check
+    if (budgetRemaining >= sessionCost) {
+      if (isDebug) console.log(`[SessionTracker] ✅ Budget available: $${budgetRemaining.toFixed(2)} >= $${sessionCost}`);
+      return {
+        allowed: true,
+        isNewSession: true,
+        sessionCost,
+        tier,
+        isAiEnabled,
+        budgetRemaining,
+        needsOverage: false,
+        reason: 'Within budget'
+      };
+    }
+
+    // Budget exhausted - check for overage capability
+    if (isDebug) console.log(`[SessionTracker] ⚠️ Budget exhausted: $${budgetRemaining.toFixed(2)} < $${sessionCost} - checking overage`);
+    
+    return {
+      allowed: true, // Will be confirmed in processSessionOverage
+      isNewSession: true,
+      sessionCost,
+      tier,
+      isAiEnabled,
+      budgetRemaining,
+      needsOverage: true,
+      reason: 'Budget exhausted - overage required'
+    };
   } catch (error) {
-    console.error('[UsageTracker] Redis error:', error);
-    // Fallback to DB on error
+    console.error('[SessionTracker] Session check error:', error);
     return {
       allowed: true,
-      currentUsage: 0,
-      limit: 0,
+      isNewSession: true,
+      sessionCost: 0,
       tier: 'free',
-      isOverage: false,
-      needsDbCheck: true,
-      reason: 'Redis error - falling back to DB'
+      isAiEnabled: false,
+      budgetRemaining: 0,
+      needsOverage: false,
+      reason: 'Error - allowing access'
     };
   }
 }
 
 /**
- * Process overage for premium users using BATCH approach
- * 
- * When user exceeds limit:
- * 1. Check if they have >= OVERAGE_CREDITS_PER_BATCH (5) credits
- * 2. If yes, deduct credits and extend limit by OVERAGE_ACCESS_PER_BATCH (100)
- * 3. Next 100 accesses are Redis-only (no DB hit!)
- * 
- * Benefits:
- * - 1 DB hit per 100 overage accesses (instead of 100 DB hits)
- * - Simpler billing model
- * - Better performance during traffic spikes
- * 
- * Note: The DB writes (user_credits, credit_consumptions, credit_transactions)
- * are NOT in a single transaction. This is acceptable because:
- * - This only runs ~1 per 100 overage accesses (rare)
- * - If partially fails, the worst case is incomplete logging
- * - For full ACID guarantees, consider migrating to a stored procedure
+ * Record a new session and handle billing
+ * Call this after checkSessionAllowed confirms the session is new and allowed
+ */
+export async function recordSession(
+  userId: string,
+  cardId: string,
+  sessionId: string,
+  sessionCheck: SessionCheckResult
+): Promise<SessionRecordResult> {
+  const isDebug = process.env.DEBUG_USAGE === 'true';
+  const month = getCurrentMonth();
+
+  if (!sessionCheck.isNewSession) {
+    return { allowed: true, sessionId: null, creditDeducted: false, reason: 'Existing session' };
+  }
+
+  if (!isRedisConfigured()) {
+    // Fallback to database
+    const { data, error } = await supabaseAdmin.rpc('record_user_session_server', {
+      p_session_id: sessionId,
+      p_card_id: cardId
+    });
+    
+    if (error || !data?.success) {
+      return { allowed: false, sessionId: null, creditDeducted: false, reason: data?.reason || 'DB error' };
+    }
+    
+    return { 
+      allowed: true, 
+      sessionId: data.session_id, 
+      creditDeducted: data.was_overage,
+      reason: data.reason 
+    };
+  }
+
+  try {
+    // Handle overage if needed
+    if (sessionCheck.needsOverage && sessionCheck.tier === 'premium') {
+      const overageResult = await processSessionOverage(userId, sessionCheck.sessionCost);
+      
+      if (!overageResult.allowed) {
+        return {
+          allowed: false,
+          sessionId: null,
+          creditDeducted: false,
+          reason: overageResult.reason
+        };
+      }
+    }
+
+    // Record the session in Redis (dedup key)
+    const dedupKey = SESSION_DEDUP_KEY(sessionId, cardId);
+    await redis.set(dedupKey, '1', { ex: DEDUP_TTL });
+
+    // Atomically decrement available budget using INCRBYFLOAT
+    const budgetKey = BUDGET_KEY(userId, month);
+    const newBudget = await redis.incrbyfloat(budgetKey, -sessionCheck.sessionCost);
+    
+    // Ensure budget doesn't go below 0 (race condition protection)
+    if (newBudget !== null && newBudget < 0) {
+      // Correct the overshoot
+      await redis.incrbyfloat(budgetKey, -newBudget); // Add back the negative to make it 0
+    }
+    
+    // Increment session counters
+    if (sessionCheck.isAiEnabled) {
+      await redis.incr(AI_SESSIONS_KEY(userId, month));
+    } else {
+      await redis.incr(NON_AI_SESSIONS_KEY(userId, month));
+    }
+
+    if (isDebug) {
+      console.log(`[SessionTracker] ✅ Session recorded: card=${cardId.slice(0, 8)}... cost=$${sessionCheck.sessionCost}`);
+    }
+
+    return {
+      allowed: true,
+      sessionId,
+      creditDeducted: sessionCheck.needsOverage,
+      creditsCharged: sessionCheck.needsOverage ? SubscriptionConfig.overage.creditsPerBatch : 0,
+      reason: sessionCheck.needsOverage ? 'Session recorded with overage' : 'Session recorded'
+    };
+  } catch (error) {
+    console.error('[SessionTracker] Record session error:', error);
+    return {
+      allowed: false,
+      sessionId: null,
+      creditDeducted: false,
+      reason: 'Error recording session'
+    };
+  }
+}
+
+/**
+ * Process overage for premium users
+ * Deducts credits from user wallet and adds to Redis available budget
+ */
+async function processSessionOverage(
+  userId: string,
+  _sessionCost: number // Reserved for future per-session calculations
+): Promise<{ allowed: boolean; newBudget?: number; reason: string }> {
+  const month = getCurrentMonth();
+  const creditsNeeded = SubscriptionConfig.overage.creditsPerBatch; // From env (default $5)
+
+  try {
+    // Call stored procedure for atomic credit deduction (only deducts, doesn't touch DB budget)
+    const { data, error } = await supabaseAdmin.rpc('deduct_overage_credits_server', {
+      p_user_id: userId,
+      p_card_id: null, // Not card-specific for session overage
+      p_credits_amount: creditsNeeded,
+      p_access_granted: 0 // Legacy parameter
+    });
+
+    if (error) {
+      console.error('[SessionTracker] Overage deduction failed:', error);
+      return { allowed: false, reason: 'Failed to process overage credits' };
+    }
+
+    if (!data?.success) {
+      return {
+        allowed: false,
+        reason: `Insufficient credits for top-up. Need $${creditsNeeded}, have $${data?.current_balance?.toFixed(2) || '0'}`
+      };
+    }
+
+    // Atomically add credits to available budget in Redis (source of truth)
+    const budgetKey = BUDGET_KEY(userId, month);
+    const newBudget = await redis.incrbyfloat(budgetKey, creditsNeeded);
+    
+    // Ensure TTL is set (in case key was new)
+    await redis.expire(budgetKey, CACHE_TTL);
+
+    console.log(`[SessionTracker] ✅ Overage processed: $${creditsNeeded} added to available budget for ${userId.slice(0, 8)}...`);
+
+    return {
+      allowed: true,
+      newBudget: newBudget ?? undefined,
+      reason: `Auto top-up: $${creditsNeeded} added to budget`
+    };
+  } catch (error) {
+    console.error('[SessionTracker] Overage processing error:', error);
+    return { allowed: false, reason: 'Error processing overage' };
+  }
+}
+
+// ============================================================================
+// LEGACY COMPATIBILITY FUNCTIONS
+// ============================================================================
+// These maintain backward compatibility with existing code
+
+/**
+ * @deprecated Use checkSessionAllowed and recordSession instead
+ */
+export async function checkAndIncrementUsage(
+  userId: string,
+  cardId: string,
+  visitorHash: string,
+  isOwnerAccess: boolean = false
+): Promise<{
+  allowed: boolean;
+  currentUsage: number;
+  limit: number;
+  tier: 'free' | 'premium';
+  isOverage: boolean;
+  needsDbCheck: boolean;
+  reason: string;
+}> {
+  const sessionCheck = await checkSessionAllowed(userId, cardId, visitorHash, isOwnerAccess);
+  
+  // Convert to legacy format using available budget
+  const month = getCurrentMonth();
+  const budgetKey = BUDGET_KEY(userId, month);
+  const budgetAvailable = isRedisConfigured() 
+    ? parseFloat(await redis.get(budgetKey) as string || '0') 
+    : 0;
+  
+  const totalBudget = sessionCheck.tier === 'premium' 
+    ? SubscriptionConfig.premium.monthlyBudgetUsd 
+    : 0;
+  const budgetUsed = totalBudget - budgetAvailable;
+  
+  return {
+    allowed: sessionCheck.allowed,
+    currentUsage: Math.floor(budgetUsed / sessionCheck.sessionCost), // Convert budget to session count
+    limit: calculateSessionsFromBudget(
+      sessionCheck.tier === 'premium' ? SubscriptionConfig.premium.monthlyBudgetUsd : 50,
+      sessionCheck.isAiEnabled
+    ),
+    tier: sessionCheck.tier,
+    isOverage: sessionCheck.needsOverage,
+    needsDbCheck: false,
+    reason: sessionCheck.reason
+  };
+}
+
+/**
+ * @deprecated Use recordSession instead
  */
 export async function processOverage(
   userId: string,
   cardId: string,
   _visitorHash: string,
-  _overageRate: number // Kept for API compatibility, but not used in batch model
-): Promise<OverageResult> {
-  try {
-    // Check credit balance
-    const creditsRequired = getOverageCreditsPerBatch();
-    const accessToGrant = getOverageAccessPerBatch();
-
-    // Use atomic stored procedure for credit deduction
-    // This handles: balance check, deduction, consumption log, transaction log
-    const { data: result, error } = await supabaseAdmin.rpc(
-      'deduct_overage_credits_server',
-      {
-        p_user_id: userId,
-        p_card_id: cardId,
-        p_credits_amount: creditsRequired,
-        p_access_granted: accessToGrant
-      }
-    );
-
-    if (error) {
-      console.error('[UsageTracker] Overage credit deduction failed:', error);
-      // Decrement Redis counter since access denied
-      if (isRedisConfigured()) {
-        await redis.decr(USAGE_KEY(userId, getCurrentMonth()));
-      }
-      return {
-        allowed: false,
-        creditDeducted: false,
-        reason: 'Failed to process overage credits'
-      };
-    }
-
-    // Check if stored procedure returned failure (insufficient credits)
-    if (!result?.success) {
-      // Decrement Redis counter since access denied
-      if (isRedisConfigured()) {
-        await redis.decr(USAGE_KEY(userId, getCurrentMonth()));
-      }
-      
-      return {
-        allowed: false,
-        creditDeducted: false,
-        reason: `Monthly limit exceeded. Need ${creditsRequired} credits to unlock ${accessToGrant} more accesses. Current balance: ${result?.current_balance?.toFixed(2) || '0.00'}`
-      };
-    }
-
-    const newBalance = result.balance_after;
-
-    // Extend the limit in Redis by the batch amount
-    // This means next 100 accesses won't hit the database!
-    if (isRedisConfigured()) {
-      const currentLimit = await redis.get(LIMIT_KEY(userId));
-      const limitNum = currentLimit ? parseInt(currentLimit as string, 10) : SubscriptionConfig.premium.monthlyAccessLimit;
-      const newLimit = limitNum + accessToGrant;
-      
-      await redis.set(LIMIT_KEY(userId), newLimit.toString(), { ex: CACHE_TTL });
-      
-      console.log(`[UsageTracker] Extended limit for user ${userId}: ${limitNum} → ${newLimit} (+${accessToGrant})`);
-      
-      return {
-        allowed: true,
-        creditDeducted: true,
-        creditsCharged: creditsRequired,
-        accessGranted: accessToGrant,
-        newBalance,
-        newLimit,
-        reason: `Purchased ${accessToGrant} additional access for ${creditsRequired} credits`
-      };
-    }
-
-    return {
-      allowed: true,
-      creditDeducted: true,
-      creditsCharged: creditsRequired,
-      accessGranted: accessToGrant,
-      newBalance,
-      reason: `Purchased ${accessToGrant} additional access for ${creditsRequired} credits`
-    };
-  } catch (error: any) {
-    console.error('[UsageTracker] Overage processing error:', error);
-    
-    // Decrement Redis counter on error
-    if (isRedisConfigured()) {
-      await redis.decr(USAGE_KEY(userId, getCurrentMonth()));
-    }
-    
-    return {
-      allowed: false,
-      creditDeducted: false,
-      reason: 'Error processing overage'
-    };
-  }
+  _overageRate: number
+): Promise<{
+  allowed: boolean;
+  creditDeducted: boolean;
+  creditsCharged?: number;
+  accessGranted?: number;
+  newBalance?: number;
+  newLimit?: number;
+  reason: string;
+}> {
+  const isAiEnabled = await getCardAiEnabled(cardId);
+  const sessionCost = getSessionCost(isAiEnabled);
+  const result = await processSessionOverage(userId, sessionCost);
+  
+  return {
+    allowed: result.allowed,
+    creditDeducted: result.allowed,
+    creditsCharged: result.allowed ? SubscriptionConfig.overage.creditsPerBatch : 0,
+    accessGranted: result.allowed 
+      ? (isAiEnabled 
+          ? SubscriptionConfig.overage.aiEnabledSessionsPerBatch 
+          : SubscriptionConfig.overage.aiDisabledSessionsPerBatch)
+      : 0,
+    newBalance: undefined, // Not tracked in new model
+    newLimit: result.newBudget ? calculateSessionsFromBudget(result.newBudget, isAiEnabled) : undefined,
+    reason: result.reason
+  };
 }
 
-// Redis key for access log buffer
+// ============================================================================
+// ACCESS LOGGING
+// ============================================================================
+
 const ACCESS_LOG_BUFFER = 'access_log_buffer';
 const ACCESS_LOG_COUNTER = 'access_log_counter';
-const FLUSH_THRESHOLD = 100; // Auto-flush after 100 entries
+const FLUSH_THRESHOLD = 100;
 
 /**
  * Log access to Redis buffer (instant, no DB hit)
- * Auto-flushes to DB when buffer reaches FLUSH_THRESHOLD entries
+ * Session-based billing fields are automatically populated
  */
 export async function logAccess(
   cardId: string,
@@ -640,16 +745,25 @@ export async function logAccess(
   tier: string,
   isOwnerAccess: boolean,
   wasOverage: boolean,
-  creditCharged: boolean
+  creditCharged: boolean,
+  sessionId?: string,
+  sessionCostUsd?: number,
+  isAiEnabled?: boolean
 ): Promise<void> {
+  // Determine AI-enabled and cost if not provided
+  const effectiveIsAiEnabled = isAiEnabled ?? await getCardAiEnabled(cardId);
+  const effectiveCost = sessionCostUsd ?? (isOwnerAccess ? 0 : getSessionCost(effectiveIsAiEnabled));
+  const effectiveSessionId = sessionId || visitorHash;
+
   if (!isRedisConfigured()) {
-    // Fallback to direct DB if Redis not available
-    await logAccessToDb(cardId, visitorHash, ownerId, tier, isOwnerAccess, wasOverage, creditCharged);
+    await logAccessToDb(
+      cardId, visitorHash, ownerId, tier, isOwnerAccess, wasOverage, creditCharged,
+      effectiveSessionId, effectiveCost, effectiveIsAiEnabled
+    );
     return;
   }
 
   try {
-    // Buffer log entry in Redis (instant)
     const logEntry = JSON.stringify({
       card_id: cardId,
       visitor_hash: visitorHash,
@@ -658,28 +772,29 @@ export async function logAccess(
       is_owner_access: isOwnerAccess,
       was_overage: wasOverage,
       credit_charged: creditCharged,
+      session_id: effectiveSessionId,
+      session_cost_usd: effectiveCost,
+      is_ai_enabled: effectiveIsAiEnabled,
       accessed_at: new Date().toISOString()
     });
     
     await redis.lpush(ACCESS_LOG_BUFFER, logEntry);
     
-    // Increment counter and check if we should auto-flush
     const count = await redis.incr(ACCESS_LOG_COUNTER);
     
     if (count >= FLUSH_THRESHOLD) {
-      // Reset counter and flush in background (don't block response)
       await redis.set(ACCESS_LOG_COUNTER, '0');
       flushAccessLogBuffer().catch(err => 
-        console.error('[UsageTracker] Background flush failed:', err)
+        console.error('[SessionTracker] Background flush failed:', err)
       );
     }
   } catch (error) {
-    console.error('[UsageTracker] Failed to buffer access log:', error);
+    console.error('[SessionTracker] Failed to buffer access log:', error);
   }
 }
 
 /**
- * Direct DB logging (used as fallback or for immediate logging needs)
+ * Direct DB logging via stored procedure (with session-based billing fields)
  */
 async function logAccessToDb(
   cardId: string,
@@ -688,7 +803,10 @@ async function logAccessToDb(
   tier: string,
   isOwnerAccess: boolean,
   wasOverage: boolean,
-  creditCharged: boolean
+  creditCharged: boolean,
+  sessionId?: string,
+  sessionCostUsd?: number,
+  isAiEnabled?: boolean
 ): Promise<void> {
   try {
     await supabaseAdmin.rpc('insert_access_log_server', {
@@ -698,44 +816,40 @@ async function logAccessToDb(
       p_subscription_tier: tier,
       p_is_owner_access: isOwnerAccess,
       p_was_overage: wasOverage,
-      p_credit_charged: creditCharged
+      p_credit_charged: creditCharged,
+      p_session_id: sessionId || visitorHash,
+      p_session_cost_usd: sessionCostUsd || 0,
+      p_is_ai_enabled: isAiEnabled || false
     });
   } catch (error) {
-    console.error('[UsageTracker] Failed to log access to DB:', error);
+    console.error('[SessionTracker] Failed to log access to DB:', error);
   }
 }
 
 /**
  * Flush buffered access logs to database
- * Call this before fetching daily stats, or periodically via cron
  */
 export async function flushAccessLogBuffer(): Promise<number> {
   if (!isRedisConfigured()) return 0;
 
   try {
-    // Rename key to handle concurrency safely (prevent data loss if new logs come in during flush)
-    // If new logs arrive during processing, they will start a new list at the original key
     const processingKey = `${ACCESS_LOG_BUFFER}:processing:${Date.now()}`;
     
     try {
       await redis.rename(ACCESS_LOG_BUFFER, processingKey);
     } catch (e) {
-      // Key likely doesn't exist (empty buffer), just return
       return 0;
     }
 
-    // Get all buffered entries from the renamed key
     const entries = await redis.lrange(processingKey, 0, -1);
     
     if (!entries || entries.length === 0) {
-      // Should not happen after successful rename, but good safety
       await redis.del(processingKey);
       return 0;
     }
 
-    console.log(`[UsageTracker] Flushing ${entries.length} access log entries to DB...`);
+    console.log(`[SessionTracker] Flushing ${entries.length} access log entries to DB...`);
 
-    // Insert in batches
     let flushed = 0;
     for (const entry of entries) {
       try {
@@ -747,85 +861,106 @@ export async function flushAccessLogBuffer(): Promise<number> {
           p_subscription_tier: log.subscription_tier,
           p_is_owner_access: log.is_owner_access,
           p_was_overage: log.was_overage,
-          p_credit_charged: log.credit_charged
+          p_credit_charged: log.credit_charged,
+          // Session-based billing fields
+          p_session_id: log.session_id || log.visitor_hash,
+          p_session_cost_usd: log.session_cost_usd || 0,
+          p_is_ai_enabled: log.is_ai_enabled || false
         });
         flushed++;
       } catch (err) {
-        console.error('[UsageTracker] Failed to flush log entry:', err);
+        console.error('[SessionTracker] Failed to flush log entry:', err);
       }
     }
 
-    // Clear the temporary processing key
     await redis.del(processingKey);
-    
-    // Reset the counter (approximate is fine)
     await redis.set(ACCESS_LOG_COUNTER, '0');
     
-    console.log(`[UsageTracker] Flushed ${flushed}/${entries.length} access log entries`);
+    console.log(`[SessionTracker] Flushed ${flushed}/${entries.length} access log entries`);
     return flushed;
   } catch (error) {
-    console.error('[UsageTracker] Failed to flush access log buffer:', error);
+    console.error('[SessionTracker] Failed to flush access log buffer:', error);
     return 0;
   }
 }
 
+// ============================================================================
+// USER CACHE MANAGEMENT
+// ============================================================================
+
 /**
- * Invalidate user's cached tier/limit (call when subscription changes)
+ * Invalidate user's cached tier/budget (call when subscription changes)
  */
 export async function invalidateUserCache(userId: string): Promise<void> {
   if (!isRedisConfigured()) return;
 
+  const month = getCurrentMonth();
   await Promise.all([
     redis.del(TIER_KEY(userId)),
-    redis.del(LIMIT_KEY(userId))
+    redis.del(BUDGET_KEY(userId, month))
   ]);
 }
 
 /**
- * Get usage stats for a user (Redis-first)
+ * Get usage stats for a user (for display)
  */
 export async function getUsageStats(userId: string): Promise<{
   tier: string;
-  limit: number;
-  used: number;
-  remaining: number;
+  monthlyBudget: number;
+  budgetConsumed: number;
+  budgetRemaining: number;
+  aiSessionsUsed: number;
+  nonAiSessionsUsed: number;
 }> {
-  const { tier, limit } = await getOrInitUserInfo(userId);
-  const used = await getCurrentUsage(userId);
+  const { tier, budgetAvailable } = await getOrInitUserInfo(userId);
+  const month = getCurrentMonth();
   
-  // If Redis not available, fallback to 0 (assume fresh start)
-  if (used === -1) {
-    return {
-      tier,
-      limit,
-      used: 0,
-      remaining: limit
-    };
+  // Total budget from config
+  const monthlyBudget = tier === 'premium' 
+    ? SubscriptionConfig.premium.monthlyBudgetUsd 
+    : 0;
+  const budgetConsumed = Math.max(0, monthlyBudget - budgetAvailable);
+  
+  let aiSessions = 0;
+  let nonAiSessions = 0;
+  
+  if (isRedisConfigured()) {
+    aiSessions = parseInt(await redis.get(AI_SESSIONS_KEY(userId, month)) as string || '0', 10);
+    nonAiSessions = parseInt(await redis.get(NON_AI_SESSIONS_KEY(userId, month)) as string || '0', 10);
   }
 
   return {
     tier,
-    limit,
-    used,
-    remaining: Math.max(0, limit - used)
+    monthlyBudget,
+    budgetConsumed,
+    budgetRemaining: budgetAvailable,
+    aiSessionsUsed: aiSessions,
+    nonAiSessionsUsed: nonAiSessions
   };
 }
 
 /**
  * Reset user's monthly usage (called when subscription period starts)
+ * Sets available budget to full monthly budget from config
  */
 export async function resetUsage(userId: string): Promise<void> {
   if (!isRedisConfigured()) return;
 
   const month = getCurrentMonth();
+  const { tier } = await getSubscriptionFromDb(userId);
   
-  // Reset usage counter to 0
-  await redis.set(USAGE_KEY(userId, month), '0', { ex: CACHE_TTL });
+  // Set available budget to full monthly budget (from config)
+  const fullBudget = tier === 'premium' 
+    ? SubscriptionConfig.premium.monthlyBudgetUsd 
+    : 0;
   
-  // Reset limit back to base (remove any overage extensions)
-  await redis.del(LIMIT_KEY(userId));
+  await Promise.all([
+    redis.set(BUDGET_KEY(userId, month), fullBudget.toString(), { ex: CACHE_TTL }),
+    redis.set(AI_SESSIONS_KEY(userId, month), '0', { ex: CACHE_TTL }),
+    redis.set(NON_AI_SESSIONS_KEY(userId, month), '0', { ex: CACHE_TTL })
+  ]);
   
-  console.log(`[UsageTracker] Reset usage for user ${userId} for month ${month}`);
+  console.log(`[SessionTracker] Reset usage for user ${userId} for month ${month}, budget set to $${fullBudget}`);
 }
 
 /**
@@ -834,15 +969,33 @@ export async function resetUsage(userId: string): Promise<void> {
 export async function updateUserTier(userId: string, newTier: 'free' | 'premium'): Promise<void> {
   if (!isRedisConfigured()) return;
 
-  const newLimit = newTier === 'premium' 
-    ? SubscriptionConfig.premium.monthlyAccessLimit 
-    : SubscriptionConfig.free.monthlyAccessLimit;
+  const month = getCurrentMonth();
+  const newBudget = newTier === 'premium' 
+    ? SubscriptionConfig.premium.monthlyBudgetUsd 
+    : 0;
 
   await Promise.all([
     redis.set(TIER_KEY(userId), newTier, { ex: CACHE_TTL }),
-    redis.set(LIMIT_KEY(userId), newLimit.toString(), { ex: CACHE_TTL })
+    redis.set(BUDGET_KEY(userId, month), newBudget.toString(), { ex: CACHE_TTL })
   ]);
 
-  console.log(`[UsageTracker] Updated tier for user ${userId}: ${newTier} (limit: ${newLimit})`);
+  console.log(`[SessionTracker] Updated tier for user ${userId}: ${newTier} (budget: $${newBudget})`);
 }
 
+/**
+ * Get daily access stats for a card (for display purposes)
+ */
+export async function getDailyAccessStats(cardId: string): Promise<{
+  dailyLimit: number | null;
+  currentScans: number;
+  remaining: number | null;
+}> {
+  const dailyLimit = await getCardDailyLimit(cardId);
+  const currentScans = await getCurrentDailyScans(cardId);
+
+  return {
+    dailyLimit,
+    currentScans,
+    remaining: dailyLimit === null ? null : Math.max(0, dailyLimit - currentScans)
+  };
+}

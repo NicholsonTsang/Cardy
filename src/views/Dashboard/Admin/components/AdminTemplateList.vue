@@ -972,7 +972,7 @@ async function exportTemplate(template: AdminContentTemplate) {
     
     // Create Excel workbook
     const workbook = new ExcelJS.Workbook()
-    workbook.creator = 'ExperienceQR'
+    workbook.creator = 'FunTell'
     workbook.created = new Date()
     
     // Create Template Settings sheet (custom sheet for template metadata)
@@ -1021,7 +1021,7 @@ async function exportAllTemplates() {
   isExporting.value = true
   try {
     const workbook = new ExcelJS.Workbook()
-    workbook.creator = 'ExperienceQR'
+    workbook.creator = 'FunTell'
     workbook.created = new Date()
     
     // Create Index sheet
@@ -1122,7 +1122,7 @@ async function exportSelectedTemplates() {
   isExporting.value = true
   try {
     const workbook = new ExcelJS.Workbook()
-    workbook.creator = 'ExperienceQR'
+    workbook.creator = 'FunTell'
     workbook.created = new Date()
     
     // Create Index sheet
@@ -1422,7 +1422,7 @@ async function createCardSheetStandard(workbook: ExcelJS.Workbook, cardData: any
   // Row 1: Title (A through S = 19 columns)
   sheet.mergeCells('A1:S1')
   const titleCell = sheet.getCell('A1')
-  titleCell.value = '🎴 CardStudio - Card Export Data'
+  titleCell.value = '🎴 FunTell - Card Export Data'
   titleCell.font = { bold: true, size: 18, color: { argb: 'FF1E40AF' } }
   titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' }

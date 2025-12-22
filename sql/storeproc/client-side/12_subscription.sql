@@ -3,6 +3,10 @@
 -- =================================================================
 -- These functions are accessible by authenticated users
 -- Usage tracking is handled by Redis (source of truth)
+--
+-- NOTE: All pricing/budget values come from environment variables
+-- passed as parameters. The database only stores tier/status.
+-- Redis tracks actual budget usage.
 -- =================================================================
 
 -- =================================================================
@@ -129,26 +133,24 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =================================================================
 -- FUNCTION: Get subscription details
--- All business parameters passed from calling application
--- NOTE: Usage stats (monthly_access_used) returned as 0 here
---       Backend fills in actual values from Redis (source of truth)
+-- All pricing/budget values come from parameters (environment variables)
+-- NOTE: Usage stats come from Redis (source of truth), not from DB
 -- =================================================================
 CREATE OR REPLACE FUNCTION get_subscription_details(
     p_user_id UUID DEFAULT NULL,
     p_free_experience_limit INTEGER DEFAULT 3,
     p_premium_experience_limit INTEGER DEFAULT 15,
-    p_free_monthly_access INTEGER DEFAULT 50,
-    p_premium_monthly_access INTEGER DEFAULT 3000,
-    p_premium_monthly_fee DECIMAL DEFAULT 50,
-    p_overage_credits_per_batch INTEGER DEFAULT 5,
-    p_overage_access_per_batch INTEGER DEFAULT 100
+    p_free_monthly_sessions INTEGER DEFAULT 50,  -- Free tier session limit
+    p_premium_monthly_budget DECIMAL DEFAULT 30.00,  -- Premium monthly budget USD
+    p_ai_session_cost DECIMAL DEFAULT 0.05,  -- Cost per AI-enabled session
+    p_non_ai_session_cost DECIMAL DEFAULT 0.025,  -- Cost per non-AI session
+    p_overage_credits_per_batch INTEGER DEFAULT 5  -- Credits per auto top-up
 )
 RETURNS JSONB AS $$
 DECLARE
     v_user_id UUID := COALESCE(p_user_id, auth.uid());
     v_subscription subscriptions%ROWTYPE;
     v_experience_count INTEGER;
-    v_monthly_limit INTEGER;
 BEGIN
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
@@ -159,13 +161,6 @@ BEGIN
     
     -- Count experiences
     SELECT COUNT(*) INTO v_experience_count FROM cards WHERE user_id = v_user_id;
-    
-    -- Determine monthly limit based on tier
-    IF v_subscription.tier = 'premium' THEN
-        v_monthly_limit := p_premium_monthly_access;
-    ELSE
-        v_monthly_limit := p_free_monthly_access;
-    END IF;
     
     RETURN jsonb_build_object(
         'tier', v_subscription.tier::TEXT,
@@ -178,12 +173,24 @@ BEGIN
         'current_period_end', v_subscription.current_period_end,
         'cancel_at_period_end', v_subscription.cancel_at_period_end,
         
-        -- Usage (returned as 0 - backend fills from Redis)
-        'monthly_access_limit', v_monthly_limit,
-        'monthly_access_used', 0,  -- Redis is source of truth
-        'monthly_access_remaining', v_monthly_limit,  -- Backend recalculates from Redis
+        -- Session-based billing (from parameters/env vars)
+        -- NOTE: Actual budget tracking is in Redis, these are just for display
+        'monthly_budget_usd', CASE WHEN v_subscription.tier = 'premium' THEN p_premium_monthly_budget ELSE 0 END,
+        'budget_consumed_usd', 0,  -- Redis is source of truth, backend fills this
+        'budget_remaining_usd', CASE WHEN v_subscription.tier = 'premium' THEN p_premium_monthly_budget ELSE 0 END,
         
-        -- Experience limits (using parameters)
+        -- Session costs (from parameters/env vars)
+        'ai_session_cost_usd', p_ai_session_cost,
+        'non_ai_session_cost_usd', p_non_ai_session_cost,
+        
+        -- Calculated session limits
+        'ai_sessions_included', CASE WHEN v_subscription.tier = 'premium' THEN FLOOR(p_premium_monthly_budget / p_ai_session_cost) ELSE 0 END,
+        'non_ai_sessions_included', CASE WHEN v_subscription.tier = 'premium' THEN FLOOR(p_premium_monthly_budget / p_non_ai_session_cost) ELSE 0 END,
+        
+        -- Free tier (session count based)
+        'monthly_session_limit', CASE WHEN v_subscription.tier = 'free' THEN p_free_monthly_sessions ELSE NULL END,
+        
+        -- Experience limits
         'experience_count', v_experience_count,
         'experience_limit', CASE 
             WHEN v_subscription.tier = 'premium' THEN p_premium_experience_limit 
@@ -196,15 +203,16 @@ BEGIN
             'can_buy_overage', v_subscription.tier = 'premium'
         ),
         
-        -- Pricing info (using parameters)
+        -- Pricing info (all from parameters/env vars)
         'pricing', jsonb_build_object(
-            'monthly_fee_usd', CASE WHEN v_subscription.tier = 'premium' THEN p_premium_monthly_fee ELSE 0 END,
-            'monthly_access_limit', v_monthly_limit,
-            'overage_credits_per_batch', CASE WHEN v_subscription.tier = 'premium' THEN p_overage_credits_per_batch ELSE NULL END,
-            'overage_access_per_batch', CASE WHEN v_subscription.tier = 'premium' THEN p_overage_access_per_batch ELSE NULL END,
-            'overage_cost_per_access', CASE WHEN v_subscription.tier = 'premium' 
-                THEN ROUND(p_overage_credits_per_batch::DECIMAL / p_overage_access_per_batch, 4) 
-                ELSE NULL END
+            'monthly_fee_usd', p_premium_monthly_budget,
+            'ai_session_cost_usd', p_ai_session_cost,
+            'non_ai_session_cost_usd', p_non_ai_session_cost,
+            'ai_sessions_included', FLOOR(p_premium_monthly_budget / p_ai_session_cost),
+            'non_ai_sessions_included', FLOOR(p_premium_monthly_budget / p_non_ai_session_cost),
+            'overage_credits_per_batch', p_overage_credits_per_batch,
+            'overage_ai_sessions_per_batch', FLOOR(p_overage_credits_per_batch / p_ai_session_cost),
+            'overage_non_ai_sessions_per_batch', FLOOR(p_overage_credits_per_batch / p_non_ai_session_cost)
         )
     );
 END;
@@ -216,5 +224,4 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 GRANT EXECUTE ON FUNCTION get_or_create_subscription(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION can_create_experience(UUID, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION can_use_translations(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION get_subscription_details(UUID, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, INTEGER, INTEGER) TO authenticated;
-
+GRANT EXECUTE ON FUNCTION get_subscription_details(UUID, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, INTEGER) TO authenticated;

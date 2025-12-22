@@ -75,6 +75,11 @@ export const redis = {
     if (!client) return -1;
     return client.decr(key);
   },
+  incrbyfloat: async (key: string, increment: number) => {
+    const client = getRedisClient();
+    if (!client) return null;
+    return client.incrbyfloat(key, increment);
+  },
   expire: async (key: string, seconds: number) => {
     const client = getRedisClient();
     if (!client) return false;

@@ -352,7 +352,8 @@ async function fetchCardData() {
       daily_scan_limit: firstRow.card_daily_scan_limit,
       daily_scans: firstRow.card_daily_scans,
       scan_limit_reached: firstRow.card_scan_limit_reached || false,
-      monthly_limit_exceeded: firstRow.card_monthly_limit_exceeded || false,
+      monthly_limit_exceeded: firstRow.monthly_limit_exceeded || false,
+      daily_limit_exceeded: firstRow.daily_limit_exceeded || false,
       credits_insufficient: firstRow.card_credits_insufficient || false,
       has_translation: firstRow.card_has_translation || false
     }

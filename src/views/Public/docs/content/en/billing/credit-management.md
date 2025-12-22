@@ -1,40 +1,33 @@
 ## Credit Management
 
-Credits are used for premium features like translations and overage access. Manage your credit balance from the Plan & Usage page.
+Credits are used for overage access when you exceed your monthly limit. Manage your credit balance from the Plan & Usage page.
 
 ## Understanding Credits
 
-Credits are a flexible currency for:
+Credits provide flexible access beyond your monthly allocation:
 
-- **Translations** - Multi-language content translation
 - **Overage Access** - Additional visitor access beyond monthly limit (Premium only)
+- **Batch Purchasing** - Buy access in convenient batches
+
+:::info Translations Are Free
+Unlike other platforms, translations are **completely free** for Premium subscribers. No credits required for translations!
+:::
 
 ## Credit Usage
-
-### Translation Credits
-
-Translation costs depend on content length:
-
-| Content Length | Credits |
-|---------------|---------|
-| Short item (< 100 words) | 1 credit |
-| Medium item (100-500 words) | 2 credits |
-| Long item (> 500 words) | 3 credits |
-
-Each language translation is charged separately.
-
-:::info Example
-Translating 10 content items (average length) to 3 languages:
-10 items × 2 credits × 3 languages = 60 credits
-:::
 
 ### Overage Credits (Premium Only)
 
 When your monthly access pool is exhausted:
 
-- **5 credits = 100 additional access**
-- Purchased access never expires
-- Automatically consumed after monthly pool
+| Credits | Access Granted |
+|---------|----------------|
+| 5 credits | 100 additional access |
+
+**How it works:**
+1. Your 3,000 monthly access is consumed
+2. System automatically uses credits for additional access
+3. Each 5 credits grants 100 more visitor scans
+4. Access continues seamlessly for your visitors
 
 ## Purchasing Credits
 
@@ -57,14 +50,14 @@ Your current credit balance is displayed at the top of the page.
 
 ## Credit Packages
 
-| Package | Credits | Price | Savings |
-|---------|---------|-------|---------|
-| Starter | 50 | $10 | - |
-| Standard | 200 | $35 | 12% |
-| Professional | 500 | $75 | 25% |
+| Package | Credits | Price | Best For |
+|---------|---------|-------|----------|
+| Starter | 50 | $10 | Light overage needs |
+| Standard | 200 | $35 | Regular extra access |
+| Professional | 500 | $75 | High-traffic venues |
 
-:::tip Best Value
-The Professional package offers the best value per credit. Recommended for heavy translation users.
+:::tip When to Buy Credits
+Purchase credits if you anticipate exceeding your monthly limit, such as during special events, holidays, or promotional periods.
 :::
 
 ## Credit History
@@ -77,24 +70,34 @@ View your credit transactions:
 
 Transaction types:
 - **Purchase** - Credit package bought
-- **Translation** - Credits used for translations
-- **Overage** - Credits used for extra access
+- **Overage** - Credits used for extra access beyond monthly limit
 
 ## Credit Expiration
 
 - **Purchased credits never expire**
 - Use at your own pace
 - Credits transfer across billing cycles
-
-## Refund Policy
-
-Credit purchases are non-refundable. However:
-
-- Contact support for exceptional circumstances
-- Unused credits remain available indefinitely
 - Subscription cancellation doesn't affect credit balance
 
-:::warning Failed Translations
-If a translation fails, credits are automatically refunded to your balance. Check your credit history for refund records.
-:::
+## Planning Your Access
 
+### Monthly Estimation
+
+To estimate if you'll need credits:
+
+1. Check your current monthly access usage
+2. Look at trends from previous months
+3. Consider upcoming events or promotions
+4. Purchase credits proactively if needed
+
+### Usage Monitoring
+
+Monitor your access usage in the Plan & Usage dashboard:
+- Current month consumption
+- Days remaining in cycle
+- Historical trends
+- Real-time usage graph
+
+:::tip Stay Ahead
+Set up usage alerts (coming soon) to get notified when approaching your monthly limit.
+:::

@@ -1,7 +1,7 @@
 import { useToast } from 'primevue/usetoast';
 
 /**
- * Standardized error handling utility for the CardStudio application
+ * Standardized error handling utility for the FunTell application
  * Provides consistent error logging, user notifications, and error processing
  */
 

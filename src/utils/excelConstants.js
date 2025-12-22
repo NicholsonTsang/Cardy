@@ -26,7 +26,7 @@ export const EXCEL_CONFIG = {
     CONTENT: ['Name', 'Content', 'AI Knowledge Base', 'Sort Order', 'Layer', 'Parent Reference', 'Image', 'Crop Data', 'Translations', 'Content Hash']
   },
   COLORS: {
-    // CardStudio blue theme
+    // FunTell blue theme
     PRIMARY: 'FF3B82F6',
     TITLE: 'FF1E40AF',
     TITLE_BG: 'FFDBEAFE',

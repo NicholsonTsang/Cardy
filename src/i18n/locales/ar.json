@@ -1,6 +1,24 @@
 {
+  "seo": {
+    "title": "FunTell - منصة التجربة الرقمية المدعومة بالذكاء الاصطناعي | حوّل أي مكان إلى دليل تفاعلي",
+    "description": "حوّل تجارب الزوار مع بطاقات تذكارية مدعومة بالذكاء الاصطناعي. أدلة صوتية متعددة اللغات ومقتنيات QR للمتاحف والمعالم والفعاليات. لا حاجة لتطبيق.",
+    "keywords": "بطاقات تذكارية ذكاء اصطناعي, دليل متحف تفاعلي, بطاقات معرض رقمية, دليل سياحي QR, مساعد ذكاء اصطناعي متعدد اللغات, تقنية المتاحف, تفاعل الزوار, بطاقات قابلة للتجميع, بديل الدليل الصوتي, تذكار متحف, تقنية المعارض, بطاقات المعالم السياحية, بطاقات المعارض التجارية, مواد المؤتمرات, كونسيرج فندق ذكاء اصطناعي, تجربة بدون تطبيق",
+    "language": "العربية",
+    "structured_description": "بطاقات تذكارية تفاعلية مدعومة بالذكاء الاصطناعي للمتاحف والمعارض والمعالم السياحية والمعارض التجارية والمؤتمرات والفعاليات حول العالم",
+    "features": [
+      "محادثات صوتية بالذكاء الاصطناعي",
+      "دعم أكثر من 10 لغات",
+      "وصول فوري عبر QR",
+      "لا حاجة لتحميل تطبيق",
+      "تحليلات في الوقت الفعلي",
+      "لوحة إدارة المحتوى",
+      "استضافة سحابية",
+      "دعم على مدار الساعة"
+    ],
+    "audience": "المتاحف, المعارض, المعالم السياحية, المعارض التجارية, المؤتمرات, الفنادق, المطاعم, الفعاليات"
+  },
   "common": {
-    "app_name": "CardStudio",
+    "app_name": "FunTell",
     "loading": "Loading...",
     "save": "Save",
     "cancel": "Cancel",
@@ -77,8 +95,8 @@
     "password_required": "Password is required",
     "sign_in_error": "Failed to sign in. Please check your credentials.",
     "sign_up_error": "Failed to create account. Please try again.",
-    "cms_account_subtitle": "Sign in to your CardStudio CMS account",
-    "join_cardstudio": "Join CardStudio CMS to start creating digital cards"
+    "cms_account_subtitle": "Sign in to your FunTell CMS account",
+    "join_funtell": "Join FunTell CMS to start creating digital cards"
   },
 
   "dashboard": {

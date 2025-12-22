@@ -1,6 +1,6 @@
 {
   "seo": {
-    "title": "ExperienceQR - AI 驅動數位體驗平台 | 將任何場合轉化為互動導覽",
+    "title": "FunTell - AI 驅動數位體驗平台 | 將任何場合轉化為互動導覽",
     "description": "結合實體紀念卡與 AI 語音導覽的互動體驗。掃描 QR 碼即刻啟用多語言導覽，適用於博物館、展覽及觀光景點。免下載 App，即掃即用。",
     "keywords": "AI 紀念卡, 互動博物館導覽, 數位展覽卡, QR 碼導覽, 多語言 AI 助理, 博物館科技, 訪客互動, 收藏卡片, 語音導覽系統, 博物館紀念品, 展覽科技, 旅遊景點卡片, 展會卡片, 會議資料, 酒店 AI 禮賓, 免下載體驗",
     "language": "繁體中文",
@@ -18,7 +18,7 @@
     "audience": "博物館、展覽、旅遊景點、展會、會議、酒店、餐廳、活動"
   },
   "common": {
-    "app_name": "ExperienceQR",
+    "app_name": "FunTell",
     "tagline": "數碼紀念品平台",
     "admin": "管理員",
     "card_issuer": "創作者",
@@ -186,8 +186,8 @@
     "sign_in_with_google": "使用 Google 登入",
     "sign_up_with_google": "使用 Google 註冊",
     "or": "或",
-    "cms_account_subtitle": "登入您的 ExperienceQR CMS 帳戶",
-    "join_cardstudio": "加入 ExperienceQR CMS 開始創作數位體驗",
+    "cms_account_subtitle": "登入您的 FunTell CMS 帳戶",
+    "join_funtell": "加入 FunTell CMS 開始創作數位體驗",
     "enter_new_password": "在下方輸入您的新密碼",
     "signed_out_successfully": "成功登出",
     "sign_out_failed": "登出失敗",
@@ -438,9 +438,18 @@
     "card_name_required": "卡片名稱為必填",
     "markdown_supported": "支援 Markdown",
     "ai_assistant_configuration": "AI 助理設定",
-    "enable_ai_assistant": "啟用 AI 助理",
-    "allow_visitors_ask": "允許訪客詢問有關您內容的問題",
-    "ai_assistant_tooltip": "AI 助理幫助訪客與您的內容互動",
+    "enable_ai_assistant": "啟用 AI 語音助理",
+    "allow_visitors_ask": "允許訪客透過語音對話了解您的內容",
+    "ai_assistant_tooltip": "AI 助理幫助訪客透過自然語音對話與您的內容互動",
+    "ai_cost_notice_title": "較高的會話成本",
+    "ai_cost_notice_message": "啟用 AI 的項目每次訪客會話收費 ${aiCost}（非 AI 項目為 ${nonAiCost}）。這可啟用語音對話並提供更豐富的訪客體驗。",
+    "ai_cost_notice_short": "AI 語音對話使用成本較高",
+    "ai_cost_tooltip": "啟用 AI：${aiCost}/會話 vs 非 AI：${nonAiCost}/會話",
+    "ai_data_preserved_title": "AI 設定已保存",
+    "ai_data_preserved_message": "您的 AI 設定已保留。隨時重新啟用 AI 即可立即恢復您的設定。",
+    "ai_data_preserved_view_message": "AI 已停用但您的設定已保存。編輯以重新啟用。",
+    "ai_assistant": "AI 助手",
+    "per_session": "每會話",
     "template_indicator": "範本：{slug}",
     "linked_to_template": "已連結至範本",
     "ai_instruction_role_guidelines": "AI 指示 (角色與指南)",
@@ -748,7 +757,7 @@
     "important_notice": "重要通知",
     "important_notice_text": "這將向我們的生產團隊提交一份印刷申請。處理通常需要 3-5 個工作天，外加運送時間。您的訂單出貨後，您將收到追蹤資訊。",
     "submit_print_request": "提交印刷申請",
-    "updates_from_cardstudio": "來自 ExperienceQR 的更新",
+    "updates_from_cardstudio": "來自 FunTell 的更新",
     "paid_at": "付款於",
     "issued_by": "發行者",
     "sub_item": "子項目",
@@ -1562,7 +1571,7 @@
     "demo_templates": {
       "badge": "即時項目",
       "title": "試用我們的示範項目",
-      "subtitle": "掃描下方任何 QR 碼即可親身體驗 ExperienceQR。了解 AI 互動導覽在實際場景中的運作方式。",
+      "subtitle": "掃描下方任何 QR 碼即可親身體驗 FunTell。了解 AI 互動導覽在實際場景中的運作方式。",
       "all_types": "全部",
       "items": "項目",
       "no_description": "試用此示範以了解我們的平台功能。",
@@ -1656,7 +1665,7 @@
     },
     "features": {
       "title": "為什麼選擇",
-      "title_highlight": "ExperienceQR",
+      "title_highlight": "FunTell",
       "features": {
         "collectible_title": "QR 碼即時存取",
         "collectible_desc": "掃碼即用。可選配實體卡片增添紀念價值。",
@@ -1678,6 +1687,7 @@
       "title": "定價",
       "title_highlight": "超清楚",
       "subtitle": "免費開始，準備好再升級。無隱藏費用。",
+      "currency_note": "所有價格均以美元計價",
       "free_tier": {
         "title": "免費方案",
         "price": "$0",
@@ -1695,17 +1705,17 @@
       },
       "premium_tier": {
         "title": "專業版",
-        "price": "$50",
+        "price": "$30",
         "per": "每月",
-        "desc": "適合成長中的場館和企業",
+        "desc": "按會話計費，適合成長中的企業",
         "popular": "最受歡迎",
         "features": [
           "最多 15 個項目",
-          "每月 3,000 次存取額度",
-          "多語言翻譯",
-          "優先支援",
-          "超額：5 積分 = 100 次額外存取",
-          "包含所有免費方案功能"
+          "每月 ${monthlyBudget} 會話預算",
+          "AI 項目：${aiCost}/會話（含 {aiSessions} 次）",
+          "非 AI 項目：${nonAiCost}/會話（含 {nonAiSessions} 次）",
+          "自動加值：${topupCost} = {aiTopupSessions}-{nonAiTopupSessions} 次額外會話",
+          "多語言翻譯"
         ],
         "cta": "升級至專業版"
       },
@@ -1740,16 +1750,16 @@
     "faq": {
       "title": "常見",
       "title_highlight": "問題",
-      "q1": "ExperienceQR 是什麼？",
+      "q1": "FunTell 是什麼？",
       "a1": "AI 驅動的數位體驗平台，將任何場合轉化為互動導覽。訪客掃 QR 碼就能用手機看多語言內容、跟 AI 語音助理聊天——不用下載 App。可選配精美實體卡片作為收藏紀念品。",
       "q2": "怎麼使用？",
       "a2": "1) 在場館放置 QR 碼（或使用實體卡片）\n2) 訪客用手機掃描\n3) 馬上使用 AI 助理和數位內容\n4) 可選：卡片留著收藏",
       "q3": "需要下載 App 嗎？",
-      "a3": "不用。ExperienceQR 支援任何手機瀏覽器，掃碼就能用。",
+      "a3": "不用。FunTell 支援任何手機瀏覽器，掃碼就能用。",
       "q4": "有哪些語言？",
       "a4": "內容和 AI 對話支援 10+ 種語言：英文、國語、粵語、日文、韓文、泰文、阿拉伯文、西班牙文、法文、俄文等。",
       "q5": "費用包含什麼？",
-      "a5": "免費版可建立 3 個項目、每月 50 次存取。專業版（$50/月）包含 15 個項目、3,000 月存取額度、多語言翻譯和優先支援。所有方案皆含 AI 語音、內容管理、QR 碼、數據分析和雲端託管。",
+      "a5": "免費版可建立 {freeExperiences} 個項目、每月 {freeSessions} 次會話。專業版（${monthlyBudget}/月）包含 ${monthlyBudget} 會話預算：{aiSessions} 次 AI 會話或 {nonAiSessions} 次非 AI 會話。預算用盡時，自動加值 ${topupCost} 獲得額外會話。所有方案皆含 AI 語音、內容管理、QR 碼、數據分析和雲端託管。",
       "q6": "多久能開始用？",
       "a6": "數位 QR 項目幾分鐘內即可上線。註冊、建立項目、分享 QR 碼立即開始。實體卡片印刷和寄送約需 2-3 週。",
       "q7": "能客製化嗎？",
@@ -1757,11 +1767,11 @@
       "q8": "卡片多久做好？",
       "a8": "實體卡片印刷約 4 個工作天，寄送看地點約 5-10 天。數位 QR 項目即時可用。",
       "q9": "有使用限制嗎？",
-      "a9": "免費版：所有項目共用每月 50 次存取額度。專業版：每月 3,000 次存取額度，可購買超額額度（5 積分 = 100 次額外存取）。實體卡片發行後掃碼無限次。",
+      "a9": "免費版：所有項目共用每月 {freeSessions} 次會話額度。專業版：以 ${monthlyBudget} 會話預算計費，AI 項目 ${aiCost}/會話（含 {aiSessions} 次），非 AI 項目 ${nonAiCost}/會話（含 {nonAiSessions} 次）。預算用盡時自動加值（${topupCost} = {aiTopupSessions}-{nonAiTopupSessions} 會話）。實體卡片發行後掃碼無限次。",
       "still_have_questions": "還有問題？填寫聯絡表單跟我們聊聊。"
     },
     "footer": {
-      "brand": "ExperienceQR",
+      "brand": "FunTell",
       "description": "AI 驅動的數位體驗平台。將任何場合轉化為互動導覽。",
       "quick_links": "快速連結",
       "features": "功能特色",
@@ -1771,7 +1781,7 @@
       "contact_title": "聯絡",
       "phone": "電話",
       "whatsapp_chat": "WhatsApp 聊天",
-      "copyright": "© 2025 ExperienceQR. 版權所有。",
+      "copyright": "© 2025 FunTell. 版權所有。",
       "privacy": "隱私政策",
       "terms": "服務條款",
       "contact_link": "聯絡"
@@ -1924,21 +1934,29 @@
     "buy_credits": "購買點數",
     "credits": "點數",
     "features": {
-      "unlimited_experiences": "最多 15 個項目",
+      "unlimited_experiences": "最多 {limit} 個項目",
       "translations": "多語言翻譯",
-      "monthly_access": "每月 3,000 次存取",
-      "overage": "5 積分 = 100 次額外存取",
-      "experience_limit": "最多 3 個項目",
+      "monthly_access": "每月 ${monthlyBudget} 會話預算",
+      "overage": "${topupCost} 自動加值以獲得更多會話",
+      "experience_limit": "最多 {limit} 個項目",
+      "no_overage": "無自動加值",
       "monthly_pool": "每月 50 次存取配額",
       "no_translations": "無翻譯功能"
     },
     "usage": {
       "title": "使用量",
       "monthly_access": "每月存取",
+      "monthly_budget": "每月預算",
+      "monthly_budget_title": "每月會話預算",
+      "sessions_used": "已使用會話",
+      "non_ai_sessions": "非 AI 會話",
+      "ai_session_cost": "AI：${cost}/會話",
+      "non_ai_session_cost": "非 AI：${cost}/會話",
       "experiences": "項目數量",
-      "exceeded_limit": "您已超過每月限制。可使用積分購買額外存取（5 積分 = 100 次）。",
+      "exceeded_limit": "您已超過每月預算。購買額外積分以獲得更多會話。",
       "reached_free_limit": "您已達到免費版限制。升級至專業版以獲得更多項目。",
-      "monthly_pool_info": "存取配額在所有項目之間共享。"
+      "monthly_pool_info": "預算在所有項目之間共享。",
+      "running_low": "快用完了？購買額外積分以繼續。"
     },
     "billing": {
       "next_billing": "下次帳單日期",
@@ -1964,7 +1982,11 @@
       "total": "總計",
       "peak": "高峰",
       "overage": "超額",
-      "no_data": "此期間無存取數據記錄"
+      "no_data": "此期間無存取數據記錄",
+      "ai_sessions": "AI 工作階段",
+      "non_ai_sessions": "非 AI 工作階段",
+      "ai_short": "AI",
+      "non_ai_short": "非 AI"
     },
     "chart": {
       "daily_access": "每日存取",
@@ -1982,7 +2004,7 @@
     },
     "upgrade_cta": {
       "title": "解鎖專業版功能",
-      "description": "每月僅需 $50，即可獲得最多 15 個項目、多語言翻譯和每月 3,000 次存取。"
+      "description": "每月僅需 ${monthlyFee}，即可獲得最多 {experienceLimit} 個項目、多語言翻譯和 ${monthlyBudget} 會話預算。"
     },
     "overage_cta": {
       "need_more": "需要更多容量？",
@@ -2223,7 +2245,9 @@
     "refresh_qr_warning_2": "您需要重新分享新連結給您的受眾",
     "refresh_qr_confirm": "重新整理",
     "token_refreshed": "QR 碼已重新整理 - 已產生新的存取連結",
-    "refresh_failed": "重新整理 QR 碼失敗"
+    "refresh_failed": "重新整理 QR 碼失敗",
+    "ai_enabled_status": "AI 助理已啟用 - 按 AI 費率計費",
+    "ai_disabled_status": "AI 助理已停用 - 按標準費率計費"
   },
   "docs": {
     "title": "使用指南",
@@ -2244,11 +2268,11 @@
         "articles": {
           "overview": {
             "title": "平台概覽",
-            "description": "了解 ExperienceQR 是什麼，以及如何將您的場館轉變為 AI 驅動的互動體驗。"
+            "description": "了解 FunTell 是什麼，以及如何將您的場館轉變為 AI 驅動的互動體驗。"
           },
           "create_project": {
             "title": "建立您的第一個專案",
-            "description": "逐步指南教您如何在 ExperienceQR 上建立第一個專案。"
+            "description": "逐步指南教您如何在 FunTell 上建立第一個專案。"
           },
           "add_content": {
             "title": "新增內容項目",

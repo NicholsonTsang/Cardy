@@ -106,11 +106,14 @@
                         <!-- AI Status -->
                         <div class="stat-card" :class="cardProp.conversation_ai_enabled ? 'stat-ai-on' : 'stat-ai-off'">
                             <div class="stat-icon">
-                                <i class="pi pi-comments"></i>
+                                <i :class="cardProp.conversation_ai_enabled ? 'pi pi-microphone' : 'pi pi-microphone-slash'"></i>
                             </div>
                             <div class="stat-info">
                                 <span class="stat-value">{{ cardProp.conversation_ai_enabled ? $t('common.enabled') : $t('common.disabled') }}</span>
                                 <span class="stat-label">{{ $t('dashboard.ai_assistant') }}</span>
+                            </div>
+                            <div v-if="cardProp.conversation_ai_enabled" class="stat-cost-hint" v-tooltip.top="$t('dashboard.ai_cost_tooltip', pricingVars)">
+                                <i class="pi pi-bolt"></i>
                             </div>
                         </div>
 
@@ -253,13 +256,29 @@
                     </div>
                 </div>
 
-                <!-- AI Configuration -->
+                <!-- AI Configuration (Enabled) -->
                 <div v-if="cardProp.conversation_ai_enabled" class="ai-section">
                     <div class="section-header">
                         <i class="pi pi-sparkles"></i>
                         <span>{{ $t('dashboard.ai_assistance_configuration') }}</span>
                         <span class="ai-badge">{{ $t('common.enabled') }}</span>
                     </div>
+                    
+                    <!-- AI Cost Notice Banner -->
+                    <div class="ai-cost-banner">
+                        <div class="ai-cost-icon">
+                            <i class="pi pi-bolt"></i>
+                        </div>
+                        <div class="ai-cost-content">
+                            <span class="ai-cost-title">{{ $t('dashboard.ai_cost_notice_title') }}</span>
+                            <span class="ai-cost-desc">{{ $t('dashboard.ai_cost_notice_short') }}</span>
+                        </div>
+                        <div class="ai-cost-rate">
+                            <span class="ai-cost-amount">${{ aiSessionCost }}</span>
+                            <span class="ai-cost-per">{{ $t('dashboard.per_session') }}</span>
+                        </div>
+                    </div>
+                    
                     <div class="ai-content">
                         <div v-if="displayedAiInstruction" class="ai-item">
                             <label>
@@ -288,6 +307,40 @@
                                 {{ $t('dashboard.ai_welcome_item') }}
                             </label>
                             <p>{{ displayedAiWelcomeItem }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- AI Configuration (Disabled but has data) -->
+                <div v-else-if="hasAiData" class="ai-section ai-section-disabled">
+                    <div class="section-header">
+                        <i class="pi pi-sparkles"></i>
+                        <span>{{ $t('dashboard.ai_assistance_configuration') }}</span>
+                        <span class="ai-badge-disabled">{{ $t('common.disabled') }}</span>
+                    </div>
+                    
+                    <!-- AI Data Preserved Notice -->
+                    <div class="ai-preserved-banner">
+                        <div class="ai-preserved-icon">
+                            <i class="pi pi-save"></i>
+                        </div>
+                        <div class="ai-preserved-content">
+                            <span class="ai-preserved-title">{{ $t('dashboard.ai_data_preserved_title') }}</span>
+                            <span class="ai-preserved-desc">{{ $t('dashboard.ai_data_preserved_view_message') }}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Collapsed AI Data Preview -->
+                    <div class="ai-data-preview">
+                        <div v-if="cardProp.ai_instruction" class="ai-preview-item">
+                            <i class="pi pi-user"></i>
+                            <span class="ai-preview-label">{{ $t('dashboard.ai_instruction_role') }}</span>
+                            <span class="ai-preview-value">{{ truncateText(cardProp.ai_instruction, 50) }}</span>
+                        </div>
+                        <div v-if="cardProp.ai_knowledge_base" class="ai-preview-item">
+                            <i class="pi pi-book"></i>
+                            <span class="ai-preview-label">{{ $t('dashboard.ai_knowledge_base') }}</span>
+                            <span class="ai-preview-value">{{ truncateText(cardProp.ai_knowledge_base, 50) }}</span>
                         </div>
                     </div>
                 </div>
@@ -335,8 +388,17 @@ import cardPlaceholder from '@/assets/images/card-placeholder.svg';
 import { getCardAspectRatio } from '@/utils/cardConfig';
 import { renderMarkdown } from '@/utils/markdownRenderer';
 import { SUPPORTED_LANGUAGES, useTranslationStore } from '@/stores/translation';
+import { SubscriptionConfig } from '@/config/subscription';
 
 const { t } = useI18n();
+
+// Session costs from config (environment variables)
+const aiSessionCost = SubscriptionConfig.premium.aiEnabledSessionCostUsd;
+const nonAiSessionCost = SubscriptionConfig.premium.aiDisabledSessionCostUsd;
+const pricingVars = {
+    aiCost: aiSessionCost,
+    nonAiCost: nonAiSessionCost
+};
 const translationStore = useTranslationStore();
 
 const props = defineProps({
@@ -432,6 +494,14 @@ const displayedAiWelcomeItem = computed(() => {
         return props.cardProp?.ai_welcome_item || '';
     }
     return props.cardProp.translations[selectedPreviewLanguage.value]?.ai_welcome_item || props.cardProp?.ai_welcome_item || '';
+});
+
+// Check if there's existing AI data (for showing preserved data when disabled)
+const hasAiData = computed(() => {
+    return !!(props.cardProp?.ai_instruction?.trim() || 
+              props.cardProp?.ai_knowledge_base?.trim() || 
+              props.cardProp?.ai_welcome_general?.trim() || 
+              props.cardProp?.ai_welcome_item?.trim());
 });
 
 // Helper functions for language display
@@ -884,12 +954,25 @@ onMounted(() => {
 }
 
 .stat-card.stat-ai-on {
-    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-    border-color: #bbf7d0;
+    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
+    border-color: #93c5fd;
 }
 
 .stat-card.stat-ai-off {
     background: #f8fafc;
+}
+
+.stat-cost-hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    font-size: 0.75rem;
+    cursor: help;
 }
 
 .stat-card.stat-translations {
@@ -1194,11 +1277,180 @@ onMounted(() => {
     margin-left: auto;
     padding: 0.25rem 0.5rem;
     border-radius: 9999px;
-    background: #22c55e;
+    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
     color: white;
     font-size: 0.6875rem;
     font-weight: 600;
     text-transform: uppercase;
+}
+
+.ai-badge-disabled {
+    margin-left: auto;
+    padding: 0.25rem 0.5rem;
+    border-radius: 9999px;
+    background: #94a3b8;
+    color: white;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+/* AI Cost Banner */
+.ai-cost-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.875rem 1rem;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 1px solid #fbbf24;
+    border-radius: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.ai-cost-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 0.5rem;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+
+.ai-cost-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.ai-cost-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #92400e;
+}
+
+.ai-cost-desc {
+    font-size: 0.75rem;
+    color: #a16207;
+}
+
+.ai-cost-rate {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.125rem;
+    flex-shrink: 0;
+}
+
+.ai-cost-amount {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #92400e;
+}
+
+.ai-cost-per {
+    font-size: 0.6875rem;
+    color: #a16207;
+    text-transform: uppercase;
+}
+
+/* AI Section Disabled State */
+.ai-section-disabled {
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-color: #cbd5e1;
+}
+
+.ai-section-disabled .section-header {
+    border-bottom-color: #cbd5e1;
+}
+
+.ai-section-disabled .section-header i {
+    color: #64748b;
+}
+
+/* AI Preserved Data Banner */
+.ai-preserved-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.ai-preserved-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 0.5rem;
+    background: #f1f5f9;
+    color: #64748b;
+    font-size: 0.875rem;
+    flex-shrink: 0;
+}
+
+.ai-preserved-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+}
+
+.ai-preserved-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.ai-preserved-desc {
+    font-size: 0.75rem;
+    color: #64748b;
+}
+
+/* AI Data Preview (collapsed view when disabled) */
+.ai-data-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.ai-preview-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+}
+
+.ai-preview-item i {
+    color: #94a3b8;
+    font-size: 0.875rem;
+    width: 1rem;
+}
+
+.ai-preview-label {
+    color: #64748b;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.ai-preview-value {
+    color: #94a3b8;
+    font-style: italic;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .ai-content {

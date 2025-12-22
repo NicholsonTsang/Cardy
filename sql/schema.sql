@@ -75,8 +75,9 @@ CREATE TABLE cards (
     content_mode TEXT DEFAULT 'list' CHECK (content_mode IN ('single', 'grid', 'list', 'cards')), -- single = one page, grid = 2-col gallery, list = vertical rows, cards = full-width cards
     is_grouped BOOLEAN DEFAULT false, -- Whether content is organized into categories
     group_display TEXT DEFAULT 'expanded' CHECK (group_display IN ('expanded', 'collapsed')), -- expanded = items shown inline, collapsed = navigate to see items
-    -- Billing model columns (for future Digital/Traffic-based billing)
-    billing_type TEXT DEFAULT 'physical' CHECK (billing_type IN ('physical', 'digital')), -- physical = per-card, digital = per-access
+    -- Billing model columns
+    -- Note: conversation_ai_enabled (above) is used for session billing rate determination
+    billing_type TEXT DEFAULT 'physical' CHECK (billing_type IN ('physical', 'digital')), -- physical = per-card, digital = per-session
     max_scans INTEGER DEFAULT NULL, -- NULL = Unlimited (Physical default), Integer = Traffic limit (Digital)
     current_scans INTEGER DEFAULT 0, -- Counter for Digital billing (total scans)
     daily_scan_limit INTEGER DEFAULT 500, -- Max scans per day for digital access (NULL = unlimited)
@@ -339,12 +340,14 @@ CREATE TABLE IF NOT EXISTS credit_purchases (
 );
 
 -- Credit Consumption Table (Track what credits were used for)
+-- Note: Session budget top-ups are tracked simply as 'session_budget_topup' type
+-- Redis is source of truth for actual budget tracking; this is just for audit/history
 CREATE TABLE IF NOT EXISTS credit_consumptions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     batch_id UUID REFERENCES card_batches(id) ON DELETE SET NULL,
     card_id UUID REFERENCES cards(id) ON DELETE SET NULL,
-    consumption_type VARCHAR(50) NOT NULL DEFAULT 'batch_issuance', -- 'batch_issuance', 'single_card', 'translation', etc.
+    consumption_type VARCHAR(50) NOT NULL DEFAULT 'batch_issuance', -- 'batch_issuance', 'single_card', 'translation', 'session_budget_topup'
     quantity INTEGER NOT NULL DEFAULT 1, -- Number of cards or languages
     credits_per_unit DECIMAL(10, 2) NOT NULL DEFAULT 2.00, -- Credits per card (2.00) or per language (1.00)
     total_credits DECIMAL(10, 2) NOT NULL,
@@ -474,6 +477,10 @@ CREATE TABLE subscriptions (
     stripe_subscription_id TEXT UNIQUE,
     stripe_price_id TEXT,
     
+    -- Note: Session-based billing pricing is configured via environment variables
+    -- Redis is the source of truth for budget tracking (key: budget:user:${userId}:month:${month})
+    -- All numerical values (monthly budget, session costs, limits) come from backend .env
+    
     -- Billing cycle
     current_period_start TIMESTAMPTZ,
     current_period_end TIMESTAMPTZ,
@@ -502,13 +509,18 @@ DROP TABLE IF EXISTS card_access_log CASCADE;
 CREATE TABLE card_access_log (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
-    visitor_hash TEXT NOT NULL,  -- Hash of IP + User-Agent for deduplication
+    visitor_hash TEXT NOT NULL,  -- Hash of IP + User-Agent / session ID for deduplication
     accessed_at TIMESTAMPTZ DEFAULT NOW(),
     
     -- Billing info
     credit_charged BOOLEAN DEFAULT FALSE,
     card_owner_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     subscription_tier TEXT, -- 'free' or 'premium' at time of access
+    
+    -- Session-based billing info
+    session_id TEXT, -- Cloudflare session ID or visitor fingerprint
+    session_cost_usd DECIMAL(10, 4) DEFAULT 0, -- Actual cost charged for this session
+    is_ai_enabled BOOLEAN DEFAULT FALSE, -- Whether the card had AI enabled at access time
     
     -- Access tracking
     is_owner_access BOOLEAN DEFAULT FALSE, -- True if card owner accessed their own card
@@ -520,7 +532,10 @@ CREATE INDEX IF NOT EXISTS idx_access_log_accessed_at ON card_access_log(accesse
 CREATE INDEX IF NOT EXISTS idx_access_log_visitor ON card_access_log(card_id, visitor_hash);
 CREATE INDEX IF NOT EXISTS idx_access_log_owner ON card_access_log(card_owner_id);
 CREATE INDEX IF NOT EXISTS idx_access_log_dedup ON card_access_log(card_id, visitor_hash, accessed_at);
+CREATE INDEX IF NOT EXISTS idx_access_log_session ON card_access_log(session_id);
 
 COMMENT ON TABLE card_access_log IS 'Detailed log of all card accesses for analytics and billing';
 COMMENT ON COLUMN card_access_log.visitor_hash IS 'Hash of visitor fingerprint for deduplication';
+COMMENT ON COLUMN card_access_log.session_id IS 'Cloudflare session ID or derived visitor fingerprint';
+COMMENT ON COLUMN card_access_log.session_cost_usd IS 'Actual USD cost charged for this session';
 COMMENT ON COLUMN card_access_log.was_overage IS 'True if access exceeded monthly limit and used credits';

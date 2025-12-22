@@ -564,14 +564,45 @@
                         </h4>
                         
                         <!-- AI Toggle -->
-                        <div class="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border border-slate-200 mb-4">
-                            <ToggleSwitch v-model="formData.conversation_ai_enabled" inputId="ai_enabled" />
-                            <div class="flex-1">
-                                <label for="ai_enabled" class="block text-sm font-medium text-slate-700">{{ $t('dashboard.enable_ai_assistant') }}</label>
-                                <p class="text-xs text-slate-500">{{ $t('dashboard.allow_visitors_ask') }}</p>
+                        <div class="p-4 rounded-lg border mb-4 transition-all duration-300"
+                             :class="formData.conversation_ai_enabled 
+                               ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-300' 
+                               : 'bg-slate-50 border-slate-200'">
+                            <div class="flex items-center gap-3">
+                                <ToggleSwitch v-model="formData.conversation_ai_enabled" inputId="ai_enabled" />
+                                <div class="flex-1">
+                                    <label for="ai_enabled" class="block text-sm font-medium" 
+                                           :class="formData.conversation_ai_enabled ? 'text-blue-900' : 'text-slate-700'">
+                                        {{ $t('dashboard.enable_ai_assistant') }}
+                                    </label>
+                                    <p class="text-xs" :class="formData.conversation_ai_enabled ? 'text-blue-600' : 'text-slate-500'">
+                                        {{ $t('dashboard.allow_visitors_ask') }}
+                                    </p>
+                                </div>
+                                <i class="pi pi-info-circle cursor-help" 
+                                   :class="formData.conversation_ai_enabled ? 'text-blue-400' : 'text-slate-400'"
+                                   v-tooltip="$t('dashboard.ai_assistant_tooltip')"></i>
                             </div>
-                            <i class="pi pi-info-circle text-slate-400 cursor-help" 
-                               v-tooltip="$t('dashboard.ai_assistant_tooltip')"></i>
+                            
+                            <!-- AI Enabled Cost Notice -->
+                            <div v-if="formData.conversation_ai_enabled" 
+                                 class="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
+                                <i class="pi pi-bolt text-amber-500 mt-0.5 flex-shrink-0"></i>
+                                <div class="text-xs text-amber-800">
+                                    <strong>{{ $t('dashboard.ai_cost_notice_title') }}</strong>
+                                    <p class="mt-1">{{ $t('dashboard.ai_cost_notice_message', pricingVars) }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- AI Disabled Notice (shows saved data info) -->
+                        <div v-if="!formData.conversation_ai_enabled && hasAiData" 
+                             class="mb-4 p-3 bg-slate-100 border border-slate-200 rounded-lg flex items-start gap-2">
+                            <i class="pi pi-info-circle text-slate-500 mt-0.5 flex-shrink-0"></i>
+                            <div class="text-xs text-slate-600">
+                                <strong>{{ $t('dashboard.ai_data_preserved_title') }}</strong>
+                                <p class="mt-1">{{ $t('dashboard.ai_data_preserved_message') }}</p>
+                            </div>
                         </div>
 
                         <!-- AI Instruction Field (shown when AI is enabled) -->
@@ -704,6 +735,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch, computed, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { SubscriptionConfig } from '@/config/subscription';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
@@ -748,6 +780,12 @@ const emit = defineEmits(['save', 'cancel']);
 
 // i18n
 const { t } = useI18n();
+
+// Session costs from config (environment variables)
+const pricingVars = {
+    aiCost: SubscriptionConfig.premium.aiEnabledSessionCostUsd,
+    nonAiCost: SubscriptionConfig.premium.aiDisabledSessionCostUsd
+};
 
 // Get default AI instruction from environment
 const DEFAULT_AI_INSTRUCTION = import.meta.env.VITE_DEFAULT_AI_INSTRUCTION || "You are a knowledgeable and friendly AI assistant for museum and exhibition visitors. Provide accurate, engaging, and educational explanations about exhibits and artifacts. Keep responses conversational and easy to understand. If you don't know something, politely say so rather than making up information.";
@@ -1039,13 +1077,16 @@ watch(() => props.cardProp, (newVal) => {
     }
 }, { deep: true });
 
-// Watch for AI being disabled - clear instruction and knowledge base
-watch(() => formData.conversation_ai_enabled, (newValue) => {
-    if (newValue === false) {
-        formData.ai_instruction = '';
-        formData.ai_knowledge_base = '';
-    }
+// Check if there's existing AI data (for showing preserved data notice)
+const hasAiData = computed(() => {
+    return !!(formData.ai_instruction?.trim() || 
+              formData.ai_knowledge_base?.trim() || 
+              formData.ai_welcome_general?.trim() || 
+              formData.ai_welcome_item?.trim());
 });
+
+// Note: AI data is intentionally preserved when AI is disabled
+// This allows users to re-enable AI and have their data restored immediately
 
 const initializeForm = () => {
     if (props.cardProp) {

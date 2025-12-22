@@ -46,11 +46,17 @@ CREATE OR REPLACE FUNCTION get_daily_access_stats_server(
 )
 RETURNS TABLE (
     accessed_at TIMESTAMPTZ,
-    was_overage BOOLEAN
+    was_overage BOOLEAN,
+    is_ai_enabled BOOLEAN,
+    session_cost_usd DECIMAL(10, 4)
 ) AS $$
 BEGIN
     RETURN QUERY
-    SELECT cal.accessed_at, cal.was_overage
+    SELECT 
+        cal.accessed_at, 
+        cal.was_overage,
+        COALESCE(cal.is_ai_enabled, FALSE) AS is_ai_enabled,
+        COALESCE(cal.session_cost_usd, 0) AS session_cost_usd
     FROM card_access_log cal
     WHERE cal.card_owner_id = p_user_id
       AND cal.is_owner_access = FALSE
@@ -60,7 +66,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Insert access log
+-- Insert access log (with session-based billing fields)
 DROP FUNCTION IF EXISTS insert_access_log_server CASCADE;
 CREATE OR REPLACE FUNCTION insert_access_log_server(
     p_card_id UUID,
@@ -69,7 +75,11 @@ CREATE OR REPLACE FUNCTION insert_access_log_server(
     p_subscription_tier TEXT,
     p_is_owner_access BOOLEAN,
     p_was_overage BOOLEAN,
-    p_credit_charged BOOLEAN
+    p_credit_charged BOOLEAN,
+    -- Optional session-based billing fields (default to legacy values if not provided)
+    p_session_id TEXT DEFAULT NULL,
+    p_session_cost_usd DECIMAL DEFAULT 0,
+    p_is_ai_enabled BOOLEAN DEFAULT FALSE
 )
 RETURNS UUID AS $$
 DECLARE
@@ -77,10 +87,14 @@ DECLARE
 BEGIN
     INSERT INTO card_access_log (
         card_id, visitor_hash, card_owner_id,
-        subscription_tier, is_owner_access, was_overage, credit_charged
+        subscription_tier, is_owner_access, was_overage, credit_charged,
+        session_id, session_cost_usd, is_ai_enabled
     ) VALUES (
         p_card_id, p_visitor_hash, p_card_owner_id,
-        p_subscription_tier, p_is_owner_access, p_was_overage, p_credit_charged
+        p_subscription_tier, p_is_owner_access, p_was_overage, p_credit_charged,
+        COALESCE(p_session_id, p_visitor_hash), -- Use visitor_hash as session_id if not provided
+        p_session_cost_usd,
+        p_is_ai_enabled
     )
     RETURNING id INTO v_id;
     

@@ -1,71 +1,136 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
   <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/png" href="/logo.png">
-    <link rel="apple-touch-icon" href="/logo.png">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo.png">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     
     <!-- Primary Meta Tags -->
-    <title>ExperienceQR - AI-Powered Interactive Souvenir Cards for Attractions</title>
-    <meta name="title" content="ExperienceQR - AI-Powered Interactive Souvenir Cards for Attractions">
+    <title>FunTell - AI-Powered Digital Experience Platform for Any Venue</title>
+    <meta name="title" content="FunTell - AI-Powered Digital Experience Platform for Any Venue">
     <meta name="description" content="Transform visitor experiences with AI-powered souvenir cards. Multilingual voice guides & QR collectibles for museums, attractions & events. No app needed.">
     <meta name="keywords" content="AI souvenir cards, interactive museum guide, digital exhibition cards, QR code tour guide, multilingual AI assistant, museum technology, visitor engagement, collectible cards, audio guide alternative, museum souvenir, exhibition technology, tourist attraction cards, trade show cards, conference materials, hotel concierge AI, no-app experience">
-    <meta name="author" content="ExperienceQR">
-    <meta name="robots" content="index, follow">
+    <meta name="author" content="FunTell">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
     <meta name="language" content="English">
+    <meta name="revisit-after" content="7 days">
+    <meta name="distribution" content="global">
+    <meta name="rating" content="general">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
-    <meta property="og:url" content="https://cardstudio.org/">
-    <meta property="og:title" content="ExperienceQR - AI-Powered Interactive Souvenir Cards">
-    <meta property="og:description" content="Premium AI-powered collectible cards that transform static content into living stories. Perfect for museums, exhibitions, tourist attractions, trade shows, conferences, and events worldwide.">
-    <meta property="og:image" content="https://cardstudio.org/logo.png">
-    <meta property="og:site_name" content="ExperienceQR">
+    <meta property="og:url" content="https://funtell.ai/">
+    <meta property="og:title" content="FunTell - AI-Powered Digital Experience Platform">
+    <meta property="og:description" content="Transform visitor experiences with AI-powered souvenir cards featuring multilingual voice guides. No app required. Perfect for museums, attractions, and events.">
+    <meta property="og:image" content="https://funtell.ai/logo.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="FunTell">
     <meta property="og:locale" content="en_US">
+    <meta property="og:locale:alternate" content="zh_TW">
+    <meta property="og:locale:alternate" content="zh_CN">
+    <meta property="og:locale:alternate" content="ja_JP">
+    <meta property="og:locale:alternate" content="ko_KR">
+    <meta property="og:locale:alternate" content="es_ES">
+    <meta property="og:locale:alternate" content="fr_FR">
+    <meta property="og:locale:alternate" content="ru_RU">
+    <meta property="og:locale:alternate" content="ar_SA">
+    <meta property="og:locale:alternate" content="th_TH">
     
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:url" content="https://cardstudio.org/">
-    <meta name="twitter:title" content="ExperienceQR - AI-Powered Interactive Souvenir Cards">
+    <meta name="twitter:url" content="https://funtell.ai/">
+    <meta name="twitter:title" content="FunTell - AI-Powered Digital Experience Platform">
     <meta name="twitter:description" content="Transform visitor experiences with AI-powered souvenir cards featuring multilingual voice guides. No app required. Perfect for museums, attractions, and events.">
-    <meta name="twitter:image" content="https://cardstudio.org/logo.png">
+    <meta name="twitter:image" content="https://funtell.ai/logo.png">
+    <meta name="twitter:site" content="@funtell_ai">
+    
+    <!-- Canonical and hreflang for international SEO -->
+    <link rel="canonical" href="https://funtell.ai/">
+    <link rel="alternate" hreflang="en" href="https://funtell.ai/?lang=en">
+    <link rel="alternate" hreflang="zh-Hant" href="https://funtell.ai/?lang=zh-Hant">
+    <link rel="alternate" hreflang="zh-Hans" href="https://funtell.ai/?lang=zh-Hans">
+    <link rel="alternate" hreflang="ja" href="https://funtell.ai/?lang=ja">
+    <link rel="alternate" hreflang="ko" href="https://funtell.ai/?lang=ko">
+    <link rel="alternate" hreflang="es" href="https://funtell.ai/?lang=es">
+    <link rel="alternate" hreflang="fr" href="https://funtell.ai/?lang=fr">
+    <link rel="alternate" hreflang="ru" href="https://funtell.ai/?lang=ru">
+    <link rel="alternate" hreflang="ar" href="https://funtell.ai/?lang=ar">
+    <link rel="alternate" hreflang="th" href="https://funtell.ai/?lang=th">
+    <link rel="alternate" hreflang="x-default" href="https://funtell.ai/">
     
     <!-- Additional SEO Tags -->
-    <link rel="canonical" href="https://cardstudio.org/">
     <meta name="theme-color" content="#0f172a">
     <meta name="format-detection" content="telephone=no">
+    <meta name="msapplication-TileColor" content="#0f172a">
+    <meta name="msapplication-config" content="/browserconfig.xml">
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="dns-prefetch" href="https://api.openai.com">
     
     <!-- Structured Data / Schema.org -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "FunTell",
+      "url": "https://funtell.ai",
+      "logo": "https://funtell.ai/logo.png",
+      "sameAs": [],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer service",
+        "availableLanguage": ["English", "繁體中文", "简体中文", "日本語", "한국어", "Español", "Français", "Русский", "العربية", "ภาษาไทย"]
+      }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
       "@type": "SoftwareApplication",
-      "name": "ExperienceQR",
+      "name": "FunTell",
       "applicationCategory": "BusinessApplication",
-      "description": "AI-Powered Interactive Souvenir Cards for Museums, Exhibitions, Tourist Attractions, Trade Shows, Conferences, and Events Worldwide",
+      "description": "AI-Powered Interactive Digital Experience Platform for Museums, Exhibitions, Tourist Attractions, Trade Shows, Conferences, and Events Worldwide",
       "operatingSystem": "Web",
       "offers": {
-        "@type": "Offer",
-        "price": "2.00",
+        "@type": "AggregateOffer",
+        "lowPrice": "0",
+        "highPrice": "50",
         "priceCurrency": "USD",
-        "priceSpecification": {
-          "@type": "UnitPriceSpecification",
-          "price": "2.00",
-          "priceCurrency": "USD",
-          "referenceQuantity": {
-            "@type": "QuantitativeValue",
-            "value": "1",
-            "unitText": "card"
+        "offerCount": "2",
+        "offers": [
+          {
+            "@type": "Offer",
+            "name": "Free Tier",
+            "price": "0",
+            "priceCurrency": "USD",
+            "description": "Up to 3 projects, 50 monthly access"
+          },
+          {
+            "@type": "Offer",
+            "name": "Premium",
+            "price": "50",
+            "priceCurrency": "USD",
+            "priceSpecification": {
+              "@type": "UnitPriceSpecification",
+              "price": "50",
+              "priceCurrency": "USD",
+              "billingDuration": "P1M"
+            },
+            "description": "Up to 15 projects, 3000 monthly access, full translation support"
           }
-        }
+        ]
       },
       "featureList": [
-        "AI voice conversations",
-        "Multi-language support in 10+ languages",
+        "AI voice conversations in 10+ languages",
+        "Multi-language support",
         "QR code instant access",
         "No app download required",
         "Real-time analytics",
@@ -76,6 +141,35 @@
       "audience": {
         "@type": "Audience",
         "audienceType": "Museums, Exhibitions, Tourist Attractions, Trade Shows, Conferences, Hotels, Restaurants, Events"
+      },
+      "availableLanguage": [
+        {"@type": "Language", "name": "English", "alternateName": "en"},
+        {"@type": "Language", "name": "繁體中文", "alternateName": "zh-Hant"},
+        {"@type": "Language", "name": "简体中文", "alternateName": "zh-Hans"},
+        {"@type": "Language", "name": "日本語", "alternateName": "ja"},
+        {"@type": "Language", "name": "한국어", "alternateName": "ko"},
+        {"@type": "Language", "name": "Español", "alternateName": "es"},
+        {"@type": "Language", "name": "Français", "alternateName": "fr"},
+        {"@type": "Language", "name": "Русский", "alternateName": "ru"},
+        {"@type": "Language", "name": "العربية", "alternateName": "ar"},
+        {"@type": "Language", "name": "ภาษาไทย", "alternateName": "th"}
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "FunTell",
+      "url": "https://funtell.ai",
+      "inLanguage": ["en", "zh-Hant", "zh-Hans", "ja", "ko", "es", "fr", "ru", "ar", "th"],
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": {
+          "@type": "EntryPoint",
+          "urlTemplate": "https://funtell.ai/search?q={search_term_string}"
+        },
+        "query-input": "required name=search_term_string"
       }
     }
     </script>
