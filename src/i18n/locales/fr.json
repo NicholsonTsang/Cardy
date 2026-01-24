@@ -237,6 +237,326 @@
     "no_data_available": "No data available",
     "loading_data": "Loading data...",
     "network_error": "Network error. Please try again."
+  },
+
+  "landing": {
+    "nav": {
+      "about": "À Propos",
+      "demo": "Démo",
+      "features": "Fonctionnalités",
+      "how_it_works": "Comment Ça Marche",
+      "pricing": "Tarifs",
+      "contact": "Contact",
+      "docs": "Documentation",
+      "sign_in": "Connexion",
+      "start_free_trial": "Essai Gratuit",
+      "start_free": "Commencer Gratuitement",
+      "create_account": "Créer un Compte",
+      "get_started": "Commencer"
+    },
+    "hero": {
+      "title_line1": "Transformez N'importe Quel Lieu en",
+      "title_line2": "Guide",
+      "title_line3": "Interactif Alimenté par l'IA",
+      "subtitle_part1": "Plateforme d'expérience digitale alimentée par l'IA avec",
+      "subtitle_highlight": "conversations vocales",
+      "subtitle_part2": "— instantanément. Aucune app requise. Parfait pour musées, restaurants, centres commerciaux et tout lieu.",
+      "cta_pilot": "Contactez-nous pour un Pilote",
+      "cta_learn": "Voir la Démo",
+      "cta_demo": "Voir la Démo",
+      "cta_start": "Commencer"
+    },
+    "demo": {
+      "title": "Voir",
+      "title_highlight": "Comment Ça Marche",
+      "subtitle": "Essayez les deux modes d'accès ci-dessous pour découvrir la différence.",
+      "video_coming_soon": "Vidéo Démo Bientôt Disponible",
+      "video_description": "Regardez une démonstration de 1-2 minutes",
+      "card_title": "Démo d'Expérience Interactive",
+      "try_live_demo": "Essayer la Démo en Direct",
+      "scan_to_try": "Scanner pour Essayer",
+      "scan_with_phone": "Scanner avec Votre Téléphone",
+      "instant_demo": "Essayez-le instantanément !",
+      "scan_qr_code": "Scannez le code QR",
+      "project_features": "Fonctionnalités Clés",
+      "experience_features": "Fonctionnalités Clés",
+      "mode_toggle": {
+        "physical_card": "Carte Physique",
+        "digital_access": "Accès Digital"
+      },
+      "physical_card": {
+        "title": "Carte Physique",
+        "desc": "Souvenir collectable imprimé avec code QR",
+        "hint": "Les visiteurs voient d'abord l'image de la carte, puis explorent le contenu",
+        "caption": "Exemple de carte physique imprimée avec code QR",
+        "full_desc": "Les cartes physiques sont des souvenirs collectables avec un code QR intégré. Les visiteurs scannent pour voir d'abord la page de présentation de la carte (affichant l'image et la description), puis explorent le contenu interactif. Parfait pour musées, événements et lieux souhaitant offrir des souvenirs premium."
+      },
+      "digital_access": {
+        "title": "Accès Digital",
+        "desc": "Code QR reliant directement au contenu",
+        "hint": "Les visiteurs accèdent directement à la page d'accueil et au contenu",
+        "caption": "Le code QR offre un accès digital instantané au contenu",
+        "full_desc": "L'accès digital utilise un code QR qui relie directement à votre contenu—aucune carte physique nécessaire. Idéal pour menus digitaux, link-in-bio, programmes d'événements, ou tout scénario où un accès rapide sans app est essentiel. Les visiteurs scannent et explorent votre expérience IA instantanément."
+      },
+      "features": {
+        "qr_access_title": "Accès QR Instantané",
+        "qr_access_desc": "Fonctionne avec n'importe quelle caméra de smartphone. Aucune app requise.",
+        "ai_voice_title": "Guide Vocal IA",
+        "ai_voice_desc": "Ayez de vraies conversations sur ce que vous voyez.",
+        "multilingual_title": "10+ Langues",
+        "multilingual_desc": "Contenu et conversations dans votre langue.",
+        "keepsakes_title": "Souvenirs Collectables",
+        "keepsakes_desc": "Cartes imprimées optionnelles comme souvenirs premium."
+      }
+    },
+    "demo_templates": {
+      "badge": "Démos en Direct",
+      "title": "Essayez Nos Projets Démo",
+      "subtitle": "Scannez n'importe quel code QR ci-dessous pour expérimenter FunTell en action. Voyez comment les guides interactifs IA fonctionnent dans des scénarios réels.",
+      "all_types": "Tous",
+      "items": "éléments",
+      "no_description": "Expérimentez cette démo pour voir notre plateforme en action.",
+      "try_demo": "Essayer la Démo",
+      "scan_or_click": "Scannez le code QR ou cliquez pour ouvrir",
+      "view_all": "Explorer Plus de Modèles",
+      "showing": "Affichage",
+      "of": "sur",
+      "venue_types": {
+        "cultural": "Culture & Arts",
+        "food": "Gastronomie & Boissons",
+        "events": "Événements & Divertissement",
+        "hospitality": "Hôtellerie & Bien-être",
+        "retail": "Shopping & Showrooms",
+        "tours": "Tours & Éducation",
+        "general": "Général"
+      },
+      "select_template": "Sélectionnez un modèle à prévisualiser",
+      "open_full": "Ouvrir l'Expérience Complète",
+      "scan_qr_hint": "Ou scannez le code QR avec votre téléphone",
+      "scan_to_view": "Scannez pour voir sur votre téléphone",
+      "scan_hint": "Utilisez la caméra de votre mobile pour scanner et expérimenter cette démo",
+      "templates_available": "modèles",
+      "scroll_to_explore": "Faites défiler pour explorer",
+      "no_templates": "Aucun modèle trouvé",
+      "live_badge": "En Direct",
+      "open_button": "Ouvrir"
+    },
+    "content_modes": {
+      "title": "Mises en Page",
+      "title_highlight": "d'Affichage Flexibles",
+      "subtitle": "Choisissez la mise en page parfaite pour votre contenu. Chaque mise en page est optimisée pour différents cas d'utilisation avec regroupement optionnel et assistants IA qui s'adaptent à votre structure.",
+      "ai_context_label": "Contexte de l'Assistant IA",
+      "ai_assistant": "Assistant IA",
+      "ai_general_label": "Assistant Général",
+      "ai_item_label": "Assistant d'Élément",
+      "single": {
+        "name": "Page Unique",
+        "desc": "Article ou annonce en pleine page",
+        "use_case": "Détails produit, info événement, annonces, articles",
+        "ai_single": "Assistant IA personnel avec base de connaissances complète - répond à toute question sur le contenu",
+        "ai_note": "Le mode unique utilise un assistant IA unifié puisqu'il n'y a qu'un seul élément de contenu"
+      },
+      "grid": {
+        "name": "Galerie Grille",
+        "desc": "Mise en page grille visuelle à 2 colonnes",
+        "use_case": "Galeries photo, portfolios, catalogues produits, expositions",
+        "ai_general": "Guide personnel avec connaissance complète de la galerie - répond à toute question",
+        "ai_item": "Expert sur l'élément spécifique avec contexte détaillé"
+      },
+      "list": {
+        "name": "Liste",
+        "desc": "Liste verticale épurée d'éléments",
+        "use_case": "Menus, listes de ressources, répertoires, contacts",
+        "ai_general": "Assistant personnel avec connaissance au niveau de l'expérience - répond à toute question",
+        "ai_item": "Guide dédié pour l'élément spécifique avec expertise ciblée"
+      },
+      "cards": {
+        "name": "Cartes",
+        "desc": "Cartes pleine largeur, une par ligne",
+        "use_case": "Éléments vedettes, articles, actualités, annonces",
+        "ai_general": "Assistant personnel avec connaissance complète de l'expérience - répond à toute question",
+        "ai_item": "Guide spécialisé pour l'élément vedette spécifique"
+      },
+      "best_for": "Idéal Pour",
+      "easy_setup": "Configuration Facile",
+      "setup_desc": "Configurez en secondes depuis le tableau de bord CMS. Aucun code requis.",
+      "mobile_optimized": "Optimisé Mobile",
+      "mobile_desc": "Design réactif parfait sur tout appareil.",
+      "grouping_option": "Regroupement Optionnel",
+      "grouping_desc": "Organisez les éléments en catégories. Choisissez d'afficher les éléments en ligne ou après avoir cliqué sur la catégorie.",
+      "grouping_flat": "Plat",
+      "grouping_expanded": "Groupé (En ligne)",
+      "grouping_collapsed": "Groupé (Navigation)",
+      "grouping_flat_desc": "Mise en page simple sans catégories - tous les éléments affichés directement",
+      "grouping_expanded_desc": "Éléments organisés sous les en-têtes de catégorie, tous visibles sur une page",
+      "grouping_collapsed_desc": "Catégories affichées d'abord, touchez pour naviguer et voir les éléments à l'intérieur"
+    },
+    "how_it_works": {
+      "title": "Processus Simple en",
+      "title_highlight": "Trois Étapes",
+      "subtitle": "Lancez votre expérience digitale alimentée par l'IA en quelques minutes—aucune compétence technique requise.",
+      "steps": {
+        "create_title": "Créer",
+        "create_desc": "Construisez votre projet et ajoutez du contenu via notre tableau de bord intuitif.",
+        "share_title": "Partager",
+        "share_desc": "Affichez le code QR sur la signalétique, les menus ou les supports marketing.",
+        "engage_title": "Engager",
+        "engage_desc": "Les visiteurs scannent et interagissent instantanément avec votre guide IA."
+      }
+    },
+    "features": {
+      "title": "Pourquoi",
+      "title_highlight": "FunTell",
+      "features": {
+        "collectible_title": "Accès QR",
+        "collectible_desc": "Accès instantané via code QR. Cartes physiques optionnelles comme souvenir.",
+        "ai_guide_title": "Assistant Vocal IA",
+        "ai_guide_desc": "Conversations en temps réel avec conscience contextuelle et questions de suivi.",
+        "no_app_title": "Aucune App Requise",
+        "no_app_desc": "Accès instantané via n'importe quelle caméra de smartphone. Aucun téléchargement, aucune friction.",
+        "portal_config_title": "Gestion de Contenu Facile",
+        "portal_config_desc": "Configurez et mettez à jour le contenu via le portail web intuitif à tout moment.",
+        "multilingual_title": "Support Multilingue",
+        "multilingual_desc": "Contenu et conversations en 10+ langues depuis un seul upload.",
+        "no_hardware_title": "Aucun Matériel Requis",
+        "no_hardware_desc": "Utilise les téléphones des visiteurs. Aucun équipement coûteux à acheter ou entretenir.",
+        "dashboard_title": "Tableau de Bord Admin",
+        "dashboard_desc": "Plateforme en libre-service pour gestion de contenu, analytics et émission de QR."
+      }
+    },
+    "pricing": {
+      "title": "Tarification Simple",
+      "title_highlight": "Basée sur les Sessions",
+      "subtitle": "Payez uniquement ce que vous utilisez. Commencez gratuitement, évoluez avec votre activité.",
+      "currency_note": "Tous les prix sont en USD",
+      "free_tier": {
+        "title": "Gratuit",
+        "price": "$0",
+        "per": "pour toujours",
+        "desc": "Parfait pour essayer la plateforme",
+        "features": [
+          "Jusqu'à 3 projets",
+          "50 sessions visiteurs mensuelles",
+          "Conversations vocales IA",
+          "Tableau de bord gestion de contenu",
+          "Génération de codes QR",
+          "Hébergement cloud inclus"
+        ],
+        "cta": "Commencer Gratuitement"
+      },
+      "starter_tier": {
+        "title": "Starter",
+        "price": "{starterFee}",
+        "per": "par mois",
+        "desc": "Pour les lieux et entreprises en croissance",
+        "features": [
+          "Jusqu'à 5 projets",
+          "US${starterBudget} crédit mensuel inclus",
+          "Sessions IA: US${starterAiCost}/session",
+          "Sessions standard: US${starterNonAiCost}/session",
+          "Recharge auto: US${topupCost} ajoute {starterAiTopupSessions} IA ou {starterNonAiTopupSessions} sessions standard",
+          "Max {starterMaxLanguages} langues de traduction",
+          "Branding Powered by FunTell"
+        ],
+        "cta": "Commencer avec Starter"
+      },
+      "premium_tier": {
+        "title": "Premium",
+        "price": "{premiumFee}",
+        "per": "par mois",
+        "desc": "Pour les lieux à fort volume avec marque blanche",
+        "popular": "Meilleure Valeur",
+        "features": [
+          "Jusqu'à 35 projets",
+          "US${monthlyBudget} crédit mensuel inclus",
+          "Sessions IA: US${aiCost}/session",
+          "Sessions standard: US${nonAiCost}/session",
+          "Recharge auto: US${topupCost} ajoute {aiTopupSessions} IA ou {nonAiTopupSessions} sessions standard",
+          "Langues de traduction illimitées",
+          "Marque blanche (Sans branding)"
+        ],
+        "cta": "Passer à Premium"
+      },
+      "session_info": {
+        "title": "Comment Fonctionne la Facturation par Session",
+        "ai_enabled": "Projets avec IA",
+        "ai_enabled_desc": "US$${aiCost} par session visiteur",
+        "ai_enabled_sessions": "{aiSessions} sessions incluses",
+        "ai_disabled": "Projets sans IA",
+        "ai_disabled_desc": "US$${nonAiCost} par session visiteur",
+        "ai_disabled_sessions": "{nonAiSessions} sessions incluses",
+        "tracking_note": "Chaque scan de visiteur unique compte comme une session",
+        "auto_topup_title": "Recharge Automatique",
+        "auto_topup_desc": "Quand le budget est épuisé, US$${topupCost} est automatiquement facturé pour des sessions supplémentaires"
+      },
+      "physical_cards": {
+        "title": "Cartes Physiques",
+        "subtitle": "Option Additionnelle",
+        "price": "US$ 2",
+        "per": "par carte",
+        "desc": "Cartes souvenir collectables pour vos visiteurs",
+        "features": [
+          "Cartes imprimées premium",
+          "Scans illimités par carte",
+          "Commande par lot (min 100)",
+          "Parfait pour musées & événements"
+        ],
+        "cta": "En Savoir Plus"
+      },
+      "included_title": "Inclus Dans Tous les Plans",
+      "features": {
+        "ai_voice": "Conversations vocales IA",
+        "qr_access": "Accès QR instantané",
+        "design_dashboard": "Tableau de bord design",
+        "content_management": "Gestion de contenu",
+        "analytics": "Analytics d'utilisation",
+        "qr_generation": "Génération de codes QR",
+        "cloud_hosting": "Hébergement cloud",
+        "support": "Support par email"
+      },
+      "cta": "Commencer Gratuitement",
+      "footer_text": "Commencez gratuitement • Payez par session • Annulez quand vous voulez"
+    },
+    "faq": {
+      "title": "Questions",
+      "title_highlight": "Fréquentes",
+      "q1": "Qu'est-ce que FunTell ?",
+      "a1": "FunTell est une plateforme d'expérience digitale alimentée par l'IA qui transforme n'importe quel lieu en guide interactif. Les visiteurs scannent un code QR pour accéder à du contenu multilingue et des assistants IA conversationnels—aucune app requise. Cartes physiques disponibles comme souvenirs collectables optionnels.",
+      "q2": "Comment ça marche ?",
+      "a2": "1) Placez des codes QR dans votre lieu (ou utilisez des cartes physiques)\n2) Les visiteurs scannent avec leur smartphone\n3) Accès instantané à l'assistant IA et au contenu digital\n4) Optionnel: Les cartes deviennent des souvenirs collectables",
+      "q3": "Les visiteurs doivent-ils télécharger une app ?",
+      "a3": "Non. FunTell fonctionne via n'importe quel navigateur de smartphone. Scannez simplement le code QR—rien à télécharger ou installer.",
+      "q4": "Quelles langues sont supportées ?",
+      "a4": "Le contenu et les conversations IA sont disponibles en 10+ langues: Anglais, Mandarin, Cantonais, Japonais, Coréen, Thaï, Arabe, Espagnol, Français, Russe, et plus.",
+      "q5": "Qu'est-ce qui est inclus dans le prix ?",
+      "a5": "Trois niveaux: Gratuit ({freeExperiences} projets, {freeSessions} sessions), Starter ({starterBudget}/mois, {starterAiSessions} sessions IA, max 2 langues), Premium ({monthlyBudget}/mois, {aiSessions} sessions IA, langues illimitées, marque blanche). Les plans payants incluent la recharge auto quand le budget est épuisé. Tous les plans incluent voix IA, tableau de bord, codes QR et hébergement.",
+      "q6": "Combien de temps pour démarrer ?",
+      "a6": "Les projets QR digitaux peuvent être lancés en quelques minutes. Inscrivez-vous, créez votre projet et partagez votre code QR instantanément. Les cartes physiques prennent 2-3 semaines pour l'impression et l'expédition.",
+      "q7": "Peut-on personnaliser le contenu et l'IA ?",
+      "a7": "Oui. Personnalisation complète via notre tableau de bord en libre-service. Gérez le contenu, configurez le comportement de l'assistant IA, définissez les messages d'accueil, et mettez à jour à tout moment.",
+      "q8": "Quel est le délai de production des cartes ?",
+      "a8": "Les cartes physiques sont imprimées sous 4 jours ouvrés. L'expédition prend 5-10 jours selon votre localisation. Les expériences QR digitales sont instantanées.",
+      "q9": "Y a-t-il des limites d'utilisation ?",
+      "a9": "Gratuit: {freeSessions} sessions/mois, pas de traductions. Starter: {starterBudget} budget, IA {starterAiCost}/session ({starterAiSessions} incluses), max 2 langues. Premium: {monthlyBudget} budget, IA {aiCost}/session ({aiSessions} incluses), langues illimitées. Recharge auto disponible pour les plans payants. Les cartes physiques ont des scans illimités.",
+      "still_have_questions": "Vous avez encore des questions ? Contactez-nous via notre formulaire."
+    },
+    "footer": {
+      "brand": "FunTell",
+      "description": "Plateforme d'expérience digitale alimentée par l'IA. Transformez n'importe quel lieu en guide interactif.",
+      "quick_links": "Liens Rapides",
+      "features": "Fonctionnalités",
+      "demo": "Démo",
+      "pricing": "Tarifs",
+      "contact": "Contact",
+      "contact_title": "Contact",
+      "phone": "Téléphone",
+      "whatsapp_chat": "Chat WhatsApp",
+      "copyright": "© 2025 FunTell. Tous droits réservés.",
+      "privacy": "Politique de Confidentialité",
+      "terms": "Conditions d'Utilisation",
+      "contact_link": "Contact"
+    },
+    "floating_cta": "Commencer"
   }
 }
 

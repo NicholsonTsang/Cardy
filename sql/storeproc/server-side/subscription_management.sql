@@ -128,8 +128,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Check if user has premium subscription OR is admin
--- Admins have full translation access without premium subscription
+-- Check if user has paid subscription (Starter or Premium) OR is admin
+-- Admins have full translation access without subscription
+-- Starter tier: limited to max 2 languages
+-- Premium tier: unlimited languages
 DROP FUNCTION IF EXISTS check_premium_subscription_server CASCADE;
 CREATE OR REPLACE FUNCTION check_premium_subscription_server(
     p_user_id UUID
@@ -148,12 +150,13 @@ BEGIN
         RETURN TRUE;
     END IF;
     
-    -- Check if user has premium subscription
+    -- Check if user has paid subscription (Starter or Premium)
     SELECT tier::TEXT INTO v_tier
     FROM subscriptions
     WHERE user_id = p_user_id;
     
-    RETURN v_tier = 'premium';
+    -- Both Starter and Premium can access translations
+    RETURN v_tier IN ('starter', 'premium');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

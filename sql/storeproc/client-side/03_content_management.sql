@@ -124,7 +124,7 @@ BEGIN
         RAISE EXCEPTION 'Not authorized to add content to this card';
     END IF;
     
-    -- If parent_id is provided, check if it exists and belongs to the same card
+    -- If parent_id is provided, check if it exists and belongs to the same project
     IF p_parent_id IS NOT NULL THEN
         IF NOT EXISTS (
             SELECT 1 FROM content_items 
@@ -310,4 +310,4 @@ BEGIN
 
     RETURN TRUE;
 END;
-$$; 
+$$;

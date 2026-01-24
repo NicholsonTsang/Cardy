@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { authenticateUser } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
 import { SubscriptionConfig, getPricingInfo, getTierDetails } from '../config/subscription';
-import { getUsageStats, flushAccessLogBuffer, invalidateUserCache } from '../services/usage-tracker';
+import { getUsageStats, flushAccessLogBuffer, invalidateUserCache, updateUserTier } from '../services/usage-tracker';
 
 const router = Router();
 
@@ -26,11 +26,15 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
     const { data, error } = await supabaseAdmin.rpc('get_subscription_details', {
       p_user_id: userId,
       p_free_experience_limit: SubscriptionConfig.free.experienceLimit,
+      p_starter_experience_limit: SubscriptionConfig.starter.experienceLimit,
       p_premium_experience_limit: SubscriptionConfig.premium.experienceLimit,
       p_free_monthly_sessions: SubscriptionConfig.free.monthlySessionLimit,
+      p_starter_monthly_budget: SubscriptionConfig.starter.monthlyBudgetUsd,
       p_premium_monthly_budget: SubscriptionConfig.premium.monthlyBudgetUsd,
-      p_ai_session_cost: SubscriptionConfig.premium.aiEnabledSessionCostUsd,
-      p_non_ai_session_cost: SubscriptionConfig.premium.aiDisabledSessionCostUsd,
+      p_starter_ai_session_cost: SubscriptionConfig.starter.aiEnabledSessionCostUsd,
+      p_starter_non_ai_session_cost: SubscriptionConfig.starter.aiDisabledSessionCostUsd,
+      p_premium_ai_session_cost: SubscriptionConfig.premium.aiEnabledSessionCostUsd,
+      p_premium_non_ai_session_cost: SubscriptionConfig.premium.aiDisabledSessionCostUsd,
       p_overage_credits_per_batch: SubscriptionConfig.overage.creditsPerBatch
     });
 
@@ -54,13 +58,14 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
 
 /**
  * POST /api/subscriptions/create-checkout
- * Create Stripe checkout session for Premium subscription
+ * Create Stripe checkout session for subscription (Starter or Premium)
+ * If user has an existing DIFFERENT tier subscription, it will be canceled automatically
  */
 router.post('/create-checkout', authenticateUser, async (req: Request, res: Response) => {
   try {
     const userId = req.user!.id;
     const userEmail = req.user!.email;
-    const { baseUrl } = req.body;
+    const { baseUrl, tier = 'premium' } = req.body;
 
     if (!baseUrl) {
       return res.status(400).json({
@@ -69,9 +74,18 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
       });
     }
 
+    if (!['starter', 'premium'].includes(tier)) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Invalid tier selected'
+      });
+    }
+
     // Get Stripe configuration
     const stripeKey = process.env.STRIPE_SECRET_KEY;
-    const stripePriceId = process.env.STRIPE_PREMIUM_PRICE_ID;
+    const stripePriceId = tier === 'starter' 
+      ? process.env.STRIPE_STARTER_PRICE_ID 
+      : process.env.STRIPE_PREMIUM_PRICE_ID;
 
     if (!stripeKey) {
       return res.status(500).json({
@@ -83,19 +97,7 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
     if (!stripePriceId) {
       return res.status(500).json({
         error: 'Configuration error',
-        message: 'Premium subscription price ID not configured. Set STRIPE_PREMIUM_PRICE_ID in .env'
-      });
-    }
-
-    // Check if user already has premium
-    const { data: currentSub } = await supabaseAdmin.rpc('get_subscription_details', {
-      p_user_id: userId
-    });
-
-    if (currentSub?.is_premium && currentSub?.status === 'active') {
-      return res.status(400).json({
-        error: 'Already subscribed',
-        message: 'You already have an active Premium subscription'
+        message: `${tier === 'starter' ? 'Starter' : 'Premium'} subscription price ID not configured`
       });
     }
 
@@ -106,11 +108,95 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
       apiVersion: stripeApiVersion as any,
     });
 
+    // Check if user has existing subscription
+    const { data: currentSubRows } = await supabaseAdmin.rpc('get_subscription_by_user_server', {
+      p_user_id: userId
+    });
+    const currentSub = currentSubRows?.[0];
+
+    // Check if user already has this SAME tier subscription active
+    if (currentSub?.tier === tier && currentSub?.status === 'active' && !currentSub?.cancel_at_period_end) {
+      return res.status(400).json({
+        error: 'Already subscribed',
+        message: `You already have an active ${tier === 'starter' ? 'Starter' : 'Premium'} subscription`
+      });
+    }
+
+    // Determine if this is an upgrade or downgrade
+    const tierOrder = { free: 0, starter: 1, premium: 2 };
+    const currentTierLevel = tierOrder[currentSub?.tier as keyof typeof tierOrder] || 0;
+    const newTierLevel = tierOrder[tier as keyof typeof tierOrder];
+    const isUpgrade = newTierLevel > currentTierLevel;
+    const isDowngrade = newTierLevel < currentTierLevel;
+    
+    // Variables for checkout session
+    let canceledPreviousTier: string | null = null;
+    let trialEndTimestamp: number | undefined = undefined;
+    
+    // If user has a DIFFERENT tier subscription, handle it based on upgrade/downgrade
+    if (currentSub?.stripe_subscription_id && 
+        currentSub?.tier !== 'free' && 
+        currentSub?.tier !== tier &&
+        currentSub?.status === 'active') {
+      try {
+        if (isUpgrade) {
+          // UPGRADE: Cancel old subscription immediately, new one starts immediately
+          await stripe.subscriptions.cancel(currentSub.stripe_subscription_id);
+          canceledPreviousTier = currentSub.tier;
+          console.log(`⬆️ UPGRADE: Canceled ${currentSub.tier} subscription immediately for user ${userId} to switch to ${tier}`);
+          
+          // Update local database record
+          await supabaseAdmin.rpc('cancel_subscription_server', {
+            p_stripe_subscription_id: currentSub.stripe_subscription_id,
+            p_cancel_at_period_end: false,
+            p_immediate: true,
+            p_user_id: userId,
+            p_scheduled_tier: null
+          });
+          
+          // Update Redis cache
+          await updateUserTier(userId, 'free');
+        } else if (isDowngrade) {
+          // DOWNGRADE: Cancel at period end, keep current privileges until then
+          // New subscription starts with trial until current period ends
+          await stripe.subscriptions.update(currentSub.stripe_subscription_id, {
+            cancel_at_period_end: true
+          });
+          canceledPreviousTier = currentSub.tier;
+          
+          // Calculate trial end (when current subscription period ends)
+          if (currentSub.current_period_end) {
+            trialEndTimestamp = Math.floor(new Date(currentSub.current_period_end).getTime() / 1000);
+          }
+          
+          console.log(`⬇️ DOWNGRADE: Set ${currentSub.tier} to cancel at period end for user ${userId}, new ${tier} will start billing after ${currentSub.current_period_end}`);
+          
+          // Update local database to record the scheduled tier change
+          await supabaseAdmin.rpc('cancel_subscription_server', {
+            p_stripe_subscription_id: currentSub.stripe_subscription_id,
+            p_cancel_at_period_end: true,
+            p_immediate: false,
+            p_user_id: userId,
+            p_scheduled_tier: tier  // Record that user is switching to this tier
+          });
+          
+          // Keep current tier in Redis (user keeps privileges until period end)
+          // No need to update Redis - they keep Premium privileges
+        }
+      } catch (cancelError: any) {
+        console.error('❌ Error handling existing subscription:', cancelError);
+        return res.status(500).json({
+          error: 'Subscription switch error',
+          message: 'Failed to process existing subscription for tier switch'
+        });
+      }
+    }
+
     // Check if user has existing Stripe customer ID
-    let customerId = await supabaseAdmin.rpc(
+    let customerId: string | null = await supabaseAdmin.rpc(
       'get_subscription_stripe_customer_server',
       { p_user_id: userId }
-    ).then(res => res.data);
+    ).then(res => res.data ?? null);
 
     // Create customer if doesn't exist
     if (!customerId) {
@@ -123,9 +209,22 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
       customerId = customer.id;
     }
 
+    // Build subscription_data with optional trial for downgrades
+    const subscriptionData: any = {
+      metadata: {
+        user_id: userId
+      }
+    };
+    
+    // For downgrades, set trial_end so new subscription billing starts after current period ends
+    if (isDowngrade && trialEndTimestamp) {
+      subscriptionData.trial_end = trialEndTimestamp;
+      console.log(`📅 Setting trial_end for downgrade: ${new Date(trialEndTimestamp * 1000).toISOString()}`);
+    }
+
     // Create Stripe Checkout session for subscription
     const session = await stripe.checkout.sessions.create({
-      customer: customerId,
+      customer: customerId as string,
       payment_method_types: ['card'],
       line_items: [
         {
@@ -134,24 +233,23 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
         }
       ],
       mode: 'subscription',
-      success_url: `${baseUrl}?success=true&session_id={CHECKOUT_SESSION_ID}&type=subscription`,
+      success_url: `${baseUrl}?success=true&session_id={CHECKOUT_SESSION_ID}&type=subscription${canceledPreviousTier ? `&switched_from=${canceledPreviousTier}` : ''}${isDowngrade ? '&downgrade=true' : ''}`,
       cancel_url: `${baseUrl}?canceled=true&type=subscription`,
       metadata: {
         user_id: userId,
-        type: 'premium_subscription'
+        type: `${tier}_subscription`,
+        ...(canceledPreviousTier ? { switched_from: canceledPreviousTier } : {}),
+        ...(isDowngrade ? { is_downgrade: 'true' } : {})
       },
-      subscription_data: {
-        metadata: {
-          user_id: userId
-        }
-      }
+      subscription_data: subscriptionData
     });
 
-    console.log(`📦 Created subscription checkout for user ${userId}, session ${session.id}`);
+    console.log(`📦 Created subscription checkout for user ${userId}, session ${session.id}${canceledPreviousTier ? ` (switched from ${canceledPreviousTier})` : ''}${isDowngrade ? ' (DOWNGRADE with trial)' : ''}`);
 
     return res.json({
       sessionId: session.id,
-      url: session.url
+      url: session.url,
+      switchedFrom: canceledPreviousTier
     });
 
   } catch (error: any) {
@@ -187,10 +285,10 @@ router.post('/cancel', authenticateUser, async (req: Request, res: Response) => 
       });
     }
 
-    if (subscription.tier !== 'premium') {
+    if (!['starter', 'premium'].includes(subscription.tier)) {
       return res.status(400).json({
         error: 'Invalid request',
-        message: 'Only premium subscriptions can be canceled'
+        message: 'Only paid subscriptions (Starter or Premium) can be canceled'
       });
     }
 
@@ -229,11 +327,13 @@ router.post('/cancel', authenticateUser, async (req: Request, res: Response) => 
 
     // Update local record (webhook will also update, but do it here for immediate feedback)
     // Try RPC first, fallback to direct update if RPC fails
+    // scheduled_tier defaults to 'free' when canceling to free plan
     const { data: rpcResult, error: updateError } = await supabaseAdmin.rpc('cancel_subscription_server', {
       p_stripe_subscription_id: subscription.stripe_subscription_id,
       p_cancel_at_period_end: !immediate,
       p_immediate: immediate,
-      p_user_id: userId
+      p_user_id: userId,
+      p_scheduled_tier: 'free'  // Canceling goes to free tier
     });
 
     if (updateError) {
@@ -457,7 +557,8 @@ router.get('/usage', authenticateUser, async (req: Request, res: Response) => {
       { p_user_id: userId, p_limit: 10 }
     );
 
-    const tier = usageStats.tier as 'free' | 'premium';
+    const tier = usageStats.tier as 'free' | 'starter' | 'premium';
+    const isPaid = tier === 'starter' || tier === 'premium';
     const isPremium = tier === 'premium';
     const tierDetails = getTierDetails(tier);
 
@@ -471,16 +572,16 @@ router.get('/usage', authenticateUser, async (req: Request, res: Response) => {
       can_create_experience: isPremium || (experienceCount || 0) < (tierDetails.experienceLimit || Infinity),
       
       // Access usage from Redis (source of truth)
-      monthly_access_used: usageStats.used,
-      monthly_access_limit: usageStats.limit,
-      monthly_access_remaining: usageStats.remaining,
-      can_buy_overage: isPremium,
+      monthly_access_used: usageStats.budgetConsumed,
+      monthly_access_limit: usageStats.monthlyBudget,
+      monthly_access_remaining: usageStats.budgetRemaining,
+      can_buy_overage: isPaid,
       
       // Pricing info
       overage: tierDetails.overage ? {
         credits_per_batch: tierDetails.overage.creditsPerBatch,
-        access_per_batch: tierDetails.overage.accessPerBatch,
-        cost_per_access: tierDetails.overage.creditsPerBatch / tierDetails.overage.accessPerBatch,
+        access_per_batch: tierDetails.overage.aiEnabledSessionsPerBatch,
+        cost_per_access: tierDetails.overage.creditsPerBatch / tierDetails.overage.aiEnabledSessionsPerBatch,
       } : null,
       monthly_fee: tierDetails.monthlyFeeUsd,
       
@@ -491,7 +592,7 @@ router.get('/usage', authenticateUser, async (req: Request, res: Response) => {
       // Features
       features: {
         translations_enabled: tierDetails.translationsEnabled,
-        can_buy_overage: isPremium
+        can_buy_overage: isPaid
       },
       
       // Recent activity

@@ -28,36 +28,73 @@ ExperienceQR is a comprehensive **AI-powered digital experience platform** that 
 
 ExperienceQR uses a **session-based pricing model** with Cloudflare user session tracking:
 
-| Tier | Price | Projects | Session Budget | Translations |
-|------|-------|----------|----------------|--------------|
-| **Free** | $0 | Up to 3 | 50 sessions/month | ❌ Not available |
-| **Premium** | $30/month | Up to 15 | $30 budget/month | ✅ Full support |
+| Tier | Price | Projects | Session Budget | Translations | Branding |
+|------|-------|----------|----------------|--------------|----------|
+| **Free** | $0 | Up to 3 | 50 sessions/month | ❌ Not available | Powered by FunTell |
+| **Starter** | $40/month | Up to 5 | $40 budget/month | ✅ Max 2 languages | Powered by FunTell |
+| **Premium** | $280/month | Up to 35 | $280 budget/month | ✅ Unlimited | White-label (No branding) |
 
-#### Session-Based Billing (Premium)
+#### Session-Based Billing (Starter & Premium)
 
-| Project Type | Cost per Session | Included (with $30 budget) |
-|--------------|------------------|----------------------------|
-| **AI-Enabled** | $0.05/session | 600 sessions |
-| **Non-AI** | $0.025/session | 1,200 sessions |
+| Project Type | Starter Cost | Premium Cost |
+|--------------|--------------|--------------|
+| **AI-Enabled** | $0.05/session | $0.04/session |
+| **Non-AI** | $0.025/session | $0.02/session |
+
+**Included Sessions (Approximate):**
+
+| Tier | Monthly Budget | AI Sessions Included | OR | Non-AI Sessions Included |
+|------|----------------|----------------------|----|--------------------------|
+| **Starter** | $40 | ~666 | | ~1,333 |
+| **Premium** | $280 | ~7,000 | | ~14,000 |
 
 **How it works:**
 - Each unique visitor session is tracked via Cloudflare
 - Sessions expire after 30 minutes of inactivity
-- AI-enabled projects (with voice conversations) cost $0.05 per session
-- Non-AI projects cost $0.025 per session
+- AI-enabled projects (with voice conversations) cost more due to AI processing
 - Mixed usage is supported (budget is consumed based on project type)
 
-**Example:** A user with both AI and non-AI projects:
+**Example (Starter):** A user with $40 budget:
 - 300 AI sessions × $0.05 = $15
-- 600 non-AI sessions × $0.025 = $15
-- Total: $30 (budget fully consumed)
+- 700 non-AI sessions × $0.025 = $17.50
+- Total: $39 ($1 remaining)
 
-#### Auto Top-Up (Premium)
+#### Auto Top-Up
 When budget is exhausted, automatic top-up kicks in:
 - **$5 credit** is automatically charged
-- Grants **100 AI sessions** or **200 non-AI sessions**
+- Grants additional session budget based on tier rates
 - Requires credit balance in user wallet
 - No service interruption
+
+#### Subscription Tier Switching
+
+Users can switch between subscription tiers at any time:
+
+| From | To | Behavior |
+|------|----|----------|
+| **Free** | Starter/Premium | Creates new subscription via Stripe Checkout |
+| **Starter** | Premium | **Immediately cancels** Starter, redirects to Premium checkout |
+| **Premium** | Starter | **Immediately cancels** Premium, redirects to Starter checkout |
+
+**How it works:**
+1. User clicks "Upgrade" or selects a different tier
+2. If user has an active subscription to a **different** tier:
+   - The existing Stripe subscription is **immediately canceled** (not at period end)
+   - Local database is updated to free tier temporarily
+   - Redis cache is updated to free tier
+3. User is redirected to Stripe Checkout for the new subscription
+4. On successful payment, new subscription is activated
+5. Success URL includes `switched_from` parameter for appropriate toast message
+
+**Important Notes:**
+- Switching tiers does NOT provide prorated refunds (Stripe default behavior)
+- If user abandons checkout after cancellation, they will be on free tier until they complete a new subscription
+- The previous subscription's billing cycle ends immediately; new cycle starts fresh
+
+**Implementation Files:**
+- `backend-server/src/routes/subscription.routes.ts` - `/create-checkout` endpoint handles tier switching
+- `src/views/Dashboard/CardIssuer/SubscriptionManagement.vue` - Frontend success message handling
+- `sql/storeproc/server-side/mobile_access.sql` - `cancel_subscription_server` stored procedure
 
 #### Free Tier
 - Create up to **3 projects**
@@ -71,9 +108,14 @@ When budget is exhausted, automatic top-up kicks in:
 
 | Metric | Value | Configurable Via |
 |--------|-------|------------------|
-| AI Session Cost | $0.05 | `AI_ENABLED_SESSION_COST_USD` |
-| Non-AI Session Cost | $0.025 | `AI_DISABLED_SESSION_COST_USD` |
-| Premium Monthly Budget | $30 | `PREMIUM_MONTHLY_BUDGET_USD` |
+| Starter AI Cost | $0.05 | `STARTER_AI_ENABLED_SESSION_COST_USD` |
+| Starter Non-AI Cost | $0.025 | `STARTER_AI_DISABLED_SESSION_COST_USD` |
+| Premium AI Cost | $0.04 | `PREMIUM_AI_ENABLED_SESSION_COST_USD` |
+| Premium Non-AI Cost | $0.02 | `PREMIUM_AI_DISABLED_SESSION_COST_USD` |
+| Starter Monthly Budget | $40 | `STARTER_MONTHLY_BUDGET_USD` |
+| Premium Monthly Budget | $280 | `PREMIUM_MONTHLY_BUDGET_USD` |
+| Starter Max Languages | 2 | `SubscriptionConfig.starter.maxLanguages` |
+| Premium Max Languages | Unlimited | `SubscriptionConfig.premium.maxLanguages` |
 | Free Tier Sessions | 50/month | `FREE_TIER_MONTHLY_SESSION_LIMIT` |
 | Session Dedup Window | 5 minutes | `SESSION_DEDUP_WINDOW_SECONDS` |
 | Auto Top-Up Amount | $5 | `OVERAGE_CREDITS_PER_BATCH` |
@@ -84,7 +126,7 @@ In addition to session-based billing, each project can have an optional **daily 
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| `daily_scan_limit` | Maximum sessions per day per project | 500 (NULL = unlimited) |
+| `daily_session_limit` | Maximum sessions per day per project (protection) | 500 (NULL = unlimited) |
 
 **How it works:**
 - Configurable per project in project settings
@@ -105,7 +147,7 @@ In addition to session-based billing, each project can have an optional **daily 
 - Logic: `usage-tracker.ts` → `checkDailyLimit()`, `recordDailyAccess()`
 
 **Cache Invalidation:**
-When a creator changes the `daily_scan_limit` in project settings:
+When a creator changes the `daily_session_limit` in project settings:
 1. Frontend updates PostgreSQL via `update_card` stored procedure
 2. Frontend calls backend `/api/mobile/card/:cardId/invalidate-cache`
 3. Backend invalidates Redis cache via `invalidateCardDailyLimit(cardId)`
@@ -120,8 +162,8 @@ The Subscription Management page displays detailed session statistics with AI vs
 | **Total Sessions** | Total sessions in the selected period |
 | **AI Sessions** | Sessions where AI was enabled at time of access |
 | **Non-AI Sessions** | Sessions where AI was disabled at time of access |
-| **AI Cost** | Total cost from AI sessions ($0.05/session) |
-| **Non-AI Cost** | Total cost from non-AI sessions ($0.025/session) |
+| **AI Cost** | Total cost from AI sessions (varies by tier: Starter $0.05, Premium $0.04) |
+| **Non-AI Cost** | Total cost from non-AI sessions (varies by tier: Starter $0.025, Premium $0.02) |
 | **Overage** | Sessions that exceeded monthly budget |
 
 **Key Points:**
@@ -230,12 +272,18 @@ All pricing values are configurable via environment variables. **No pricing is s
 | **Free Tier** | | |
 | `FREE_TIER_EXPERIENCE_LIMIT` | 3 | Maximum projects for free users |
 | `FREE_TIER_MONTHLY_SESSION_LIMIT` | 50 | Monthly session limit for free tier |
+| **Starter Tier** | | |
+| `STARTER_MONTHLY_FEE_USD` | 40.00 | Monthly subscription fee |
+| `STARTER_EXPERIENCE_LIMIT` | 5 | Maximum projects for starter users |
+| `STARTER_MONTHLY_BUDGET_USD` | 40.00 | Monthly budget for sessions |
+| `STARTER_AI_ENABLED_SESSION_COST_USD` | 0.05 | Cost per AI-enabled session |
+| `STARTER_AI_DISABLED_SESSION_COST_USD` | 0.025 | Cost per non-AI session |
 | **Premium Tier** | | |
-| `PREMIUM_MONTHLY_FEE_USD` | 30.00 | Monthly subscription fee |
-| `PREMIUM_EXPERIENCE_LIMIT` | 15 | Maximum projects for premium users |
-| `PREMIUM_MONTHLY_BUDGET_USD` | 30.00 | Monthly budget for sessions |
-| `AI_ENABLED_SESSION_COST_USD` | 0.05 | Cost per AI-enabled session |
-| `AI_DISABLED_SESSION_COST_USD` | 0.025 | Cost per non-AI session |
+| `PREMIUM_MONTHLY_FEE_USD` | 280.00 | Monthly subscription fee |
+| `PREMIUM_EXPERIENCE_LIMIT` | 35 | Maximum projects for premium users |
+| `PREMIUM_MONTHLY_BUDGET_USD` | 280.00 | Monthly budget for sessions |
+| `PREMIUM_AI_ENABLED_SESSION_COST_USD` | 0.04 | Cost per AI-enabled session |
+| `PREMIUM_AI_DISABLED_SESSION_COST_USD` | 0.02 | Cost per non-AI session |
 | **Overage** | | |
 | `OVERAGE_CREDITS_PER_BATCH` | 5 | Credits per auto top-up batch ($5) |
 | **Session Tracking** | | |
@@ -258,6 +306,41 @@ ExperienceQR supports two access modes (selected first when creating, **cannot b
 |------|-------------|-----------|----------|
 | **Physical Card** | Printed souvenir cards | Card Overview → Content | Museums, exhibitions, events |
 | **Digital Access** | QR-code only (no physical card) | Welcome Page → Content | Link-in-bio, menus, campaigns |
+
+### Multi-QR Code Management (Digital Access)
+
+Projects using Digital Access mode support **multiple QR codes** with independent settings:
+
+**Features:**
+- Each project can have multiple QR codes (access tokens)
+- Each QR code has its own:
+  - Display name (e.g., "Front Entrance", "Table 5", "Menu")
+  - Enable/disable toggle
+  - Daily session limit (for rate limiting)
+  - Session counters (daily, monthly, all-time)
+
+**Use Cases:**
+- **Restaurants**: Different QR codes for each table or menu section
+- **Museums**: Separate QR codes for different entrances or exhibits
+- **Events**: Track which QR code locations get the most scans
+
+**Database Schema:**
+- `card_access_tokens` table stores individual QR codes per project
+- Each token has: `id`, `card_id`, `name`, `access_token`, `is_enabled`, `daily_session_limit`, session counters
+- Monthly sessions reset on the 1st of each month
+
+**Key Stored Procedures:**
+- `create_access_token(card_id, name, daily_session_limit)` - Create new QR code
+- `get_card_access_tokens(card_id)` - List all QR codes for a project
+- `update_access_token(token_id, name, is_enabled, daily_session_limit)` - Update settings
+- `delete_access_token(token_id)` - Remove QR code (cannot delete last one)
+- `refresh_access_token(token_id)` - Regenerate access URL (old links stop working)
+- `get_card_monthly_stats(card_id)` - Get aggregated monthly statistics
+
+**Backend Integration:**
+- Mobile routes use `get_card_by_access_token_server` to look up card by token
+- Daily limit checked per-token before subscription billing
+- Session counters tracked in Redis for performance, synced to DB
 
 ### Creator Documentation
 
@@ -579,8 +662,8 @@ The Admin Portal includes comprehensive **User Subscription Management** capabil
 | Feature | Description |
 |---------|-------------|
 | **Subscription Overview** | View all users with subscription tier, status, and Stripe info |
-| **Filter by Tier** | Filter users by Free or Premium subscription tier |
-| **Manual Tier Assignment** | Manually set a user's subscription tier (Free or Premium) |
+| **Filter by Tier** | Filter users by Free, Starter, or Premium subscription tier |
+| **Manual Tier Assignment** | Manually set a user's subscription tier (Free, Starter, or Premium) |
 | **Stripe Integration Visibility** | See which subscriptions are Stripe-managed vs admin-managed |
 | **Subscription Status** | View status (Active, Canceling, Past Due, Trialing, Canceled) |
 | **CSV Export** | Export user data including subscription details |
@@ -588,25 +671,32 @@ The Admin Portal includes comprehensive **User Subscription Management** capabil
 **User Management Page (Admin > User Management):**
 
 The enhanced User Management page displays:
-- **Statistics Cards**: Total Users, Experience Creators, Admins, Premium Users, Free Users
-- **Subscription Columns**: Tier (Free/Premium), Subscription Status
+- **Statistics Cards**: Total Users, Experience Creators, Admins, Premium Users, Starter Users, Free Users
+- **Subscription Columns**: Tier (Free/Starter/Premium), Subscription Status
 - **Actions**: Manage Role button + Manage Subscription button
 
 **Subscription Management Dialog:**
 
 When clicking the subscription management button, admins can:
 1. View current subscription info (Stripe ID, period end, cancellation status)
-2. Select new tier (Free or Premium) with feature comparison
-3. Provide a reason for the change (required, logged for audit)
-4. See warnings when modifying Stripe-managed subscriptions
+2. Select new tier (Free, Starter, or Premium) with feature comparison
+3. **Set subscription duration**: Permanent (no expiration) or specific number of months (1-120)
+4. Provide a reason for the change (required, logged for audit)
+5. See warnings when modifying Stripe-managed subscriptions
 
-**Admin-Managed vs Stripe-Managed:**
-- **Stripe-managed**: User subscribed via Stripe checkout. Admin can view but should use Stripe Dashboard for billing changes.
-- **Admin-managed**: Admin manually set the tier. No Stripe billing involved. Period automatically set to 1 year for Premium.
+**Duration Options:**
+- **Permanent**: No expiration date - subscription lasts indefinitely until manually changed
+- **Specific Duration**: Set 1-120 months - subscription expires on the calculated date (shown in dialog)
+
+**Admin-Managed vs Stripe-Managed (Mutually Exclusive):**
+- **Stripe-managed**: User subscribed via Stripe checkout. Admin CANNOT grant privileges while Stripe subscription is active.
+- **Admin-managed**: Admin manually set the tier. No Stripe billing involved. Duration is configurable (permanent or specific months).
+
+**Important**: Admin grants and Stripe subscriptions are mutually exclusive. If a user has an active Stripe subscription, the admin must cancel it in Stripe Dashboard first before granting admin privileges. This prevents conflicts and ensures clean subscription management.
 
 **Stored Procedures:**
 - `admin_get_all_users()` - Returns users with subscription data (tier, status, Stripe info)
-- `admin_update_user_subscription(user_id, new_tier, reason)` - Manually update subscription tier
+- `admin_update_user_subscription(user_id, new_tier, reason, duration_months)` - Manually update subscription tier with optional duration (NULL = permanent)
 - `admin_get_subscription_stats()` - Aggregate subscription statistics for dashboard
 
 **Use Cases:**
@@ -624,15 +714,16 @@ When clicking the subscription management button, admins can:
 3. Click the **subscription icon button** (💳) in the Actions column
 4. In the dialog, select **Premium** tier
 5. Review the tier comparison showing features unlocked
-6. Enter a **reason** for the upgrade (required for audit trail)
-7. Click **Update Subscription**
+6. **Choose subscription duration**: Permanent (no expiration) or specific number of months
+7. Enter a **reason** for the upgrade (required for audit trail)
+8. Click **Update Subscription**
 
 The user will immediately have access to Premium features:
-- Up to 15 projects (instead of 3)
-- $30 monthly session budget (600 AI sessions or 1,200 non-AI sessions)
-- Auto top-up capability ($5 = 100-200 extra sessions)
+- Up to 35 projects (instead of 3)
+- $280 monthly session budget
+- Auto top-up capability (5 credits = 100 extra sessions)
 - Full translation support
-- Admin-managed subscriptions are auto-set to 1-year period
+- Duration determined by admin selection (permanent or specific months)
 
 ### History Logs (Operations Log)
 
@@ -875,21 +966,25 @@ This ensures the greeting sounds natural for voice while reflecting the creator'
 - Experience-Level: Uses experience's `ai_instruction` as role definition, `ai_knowledge_base` for background knowledge, encourages general exploration
 - Content Item: Focuses on the specific item, includes parent context for sub-items, mode-specific context guidance
 
-**Proactive AI Guidance:**
+**Natural Conversation Flow:**
 
-The AI assistants are designed to be **proactive guides**, not passive responders. This addresses the common issue where users don't know what they can ask or what information is available.
+The AI assistants are designed to have **natural conversations** like a knowledgeable friend, not to constantly prompt users with suggestions. Topic guidance is provided only in the initial greeting.
 
-| Behavior | Description |
-|----------|-------------|
-| **Initial Greeting** | When starting a realtime voice conversation, the AI proactively suggests 2-3 specific things users can ask about based on its knowledge base |
-| **Contextual Suggestions** | AI offers concrete examples like "I can tell you about the artist's techniques, the inspiration behind this work, or interesting stories from its history" |
-| **Anticipatory Guidance** | When users seem unsure, AI says things like "Many visitors also ask about..." or "I can also tell you about..." |
-| **Unprompted Insights** | AI shares interesting facts, recommendations, or tips when relevant without waiting for specific questions |
+| Phase | Behavior |
+|-------|----------|
+| **Initial Greeting** | When starting a conversation, the AI warmly welcomes users and mentions 2-3 specific topics they can ask about. This is the ONLY time suggestions are offered. |
+| **During Conversation** | AI answers questions directly and naturally. NO constant suggestions like "Would you also like to know about..." |
+| **When Asked** | If user explicitly asks "what else can I ask?" or seems genuinely stuck, AI can offer additional topics |
+| **Natural Engagement** | AI shares interesting facts and stories when directly relevant to what's being discussed, not as unprompted suggestions |
 
-Example proactive greeting for a museum exhibit:
-> "Hi! I'm your personal guide for the Renaissance Gallery. I can share stories about these masterpieces, explain the artists' techniques, or recommend what to see next. What interests you most?"
+Example greeting for a museum exhibit:
+> "Hi! I'm your guide for the Renaissance Gallery. I can share stories about these masterpieces, the artists' techniques, or recommend highlights. What would you like to know?"
 
-This ensures users immediately understand the AI's capabilities and feel confident asking questions.
+Example follow-up conversation (natural, no suggestions):
+> User: "Tell me about this painting"
+> AI: "This is 'The Birth of Venus' by Botticelli, painted around 1485. It depicts the goddess Venus emerging from the sea as a fully grown woman. The flowing hair and delicate poses were revolutionary for the time, breaking from the more rigid medieval style."
+
+This approach ensures users get clear direction at the start, then have engaging natural conversations without feeling constantly prompted.
 
 **Assistant Trigger UI:**
 
@@ -923,8 +1018,54 @@ The project follows a modern web architecture with a decoupled frontend, backend
 -   **Framework**: Vue 3 with Composition API and TypeScript
 -   **UI**: PrimeVue 4 and Tailwind CSS
 -   **State Management**: Pinia
--   **Routing**: Vue Router
+-   **Routing**: Vue Router with URL-based language routing
 -   **Build Tool**: Vite
+
+#### URL-Based Language Routing
+
+All routes include a language prefix for SEO and shareable links. The URL structure ensures visitors see content in their expected language.
+
+**Route Structure:**
+| Route Pattern | Example | Description |
+|---------------|---------|-------------|
+| `/:lang` | `/en`, `/zh-Hant` | Landing page with language |
+| `/:lang/cms/*` | `/en/cms/projects` | Dashboard routes |
+| `/:lang/c/:token` | `/ja/c/abc123` | Mobile client card view |
+| `/:lang/login` | `/zh-Hant/login` | Authentication pages |
+| `/:lang/docs` | `/fr/docs` | Documentation |
+
+**Supported Languages:**
+- **Landing Page & Mobile Client (10 languages)**: en, zh-Hant, zh-Hans, ja, ko, es, fr, ru, ar, th
+- **Dashboard (2 languages)**: en, zh-Hant (creator/admin interface)
+
+**Language Selectors:**
+- **Landing Page**: Uses `LandingLanguageSelector` component with all 10 languages in a modal grid
+- **Dashboard**: Uses `DashboardLanguageSelector` component with 2 languages (English, Traditional Chinese)
+
+**Default Language Behavior:**
+1. User visits root URL (`/`) → Redirects to English (`/en`) by default
+2. If user has previously selected a different language (saved in localStorage), that preference is respected
+3. Landing page defaults to English for consistent first-time visitor experience
+4. Users can change language via the language selector in the navigation bar
+
+**Language Change Behavior:**
+- When user changes language via selector, URL updates to reflect the new language
+- Navigation anchor links update URL hash (e.g., `/en#features`, `/en#pricing`)
+- Uses `router.replace()` for URL updates (no new history entry)
+- Language preference saved to localStorage for future visits
+- Language is synced between URL, i18n, and language store
+
+**Template Demo URLs:**
+- Landing page template demos include language in URL
+- QR codes generated from landing page include current language
+- Ensures visitors scanning QR codes see content in the expected language
+
+**Implementation Files:**
+- `src/router/languageRouting.ts` - Language utilities and validation
+- `src/router/index.ts` - Route definitions with language parameter
+- `src/stores/language.ts` - Language stores with URL sync
+- `src/components/LandingLanguageSelector.vue` - Landing page language selector (10 languages)
+- `src/components/DashboardLanguageSelector.vue` - Dashboard language selector (2 languages)
 
 ### 2. Backend (Express.js)
 
@@ -1042,8 +1183,9 @@ Redis is essential for session tracking, caching, and rate limiting:
 2. Get API keys from **Developers → API keys**:
    - `STRIPE_SECRET_KEY` (backend)
    - `VITE_STRIPE_PUBLISHABLE_KEY` (frontend)
-3. Create a $30/month recurring price in **Products → Add Product**:
-   - Copy the price ID to `STRIPE_PREMIUM_PRICE_ID`
+3. Create recurring prices in **Products → Add Product**:
+   - Starter tier ($40/month) → Copy price ID to `STRIPE_STARTER_PRICE_ID`
+   - Premium tier ($280/month) → Copy price ID to `STRIPE_PREMIUM_PRICE_ID`
 4. Set up webhooks in **Developers → Webhooks**:
    - Endpoint: `https://your-backend.com/api/webhooks/stripe`
    - Events: `customer.subscription.*`, `invoice.*`, `checkout.session.completed`
@@ -1113,7 +1255,8 @@ Without Cloudflare, the system falls back to Supabase Anonymous Auth or IP finge
 | `OPENAI_API_KEY` | OpenAI API key for AI features | `sk-proj-...` |
 | `STRIPE_SECRET_KEY` | Stripe secret key | `sk_test_...` |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook secret | `whsec_...` |
-| `STRIPE_PREMIUM_PRICE_ID` | Stripe price ID for $30/month plan | `price_...` |
+| `STRIPE_STARTER_PRICE_ID` | Stripe price ID for Starter tier ($40/month) | `price_...` |
+| `STRIPE_PREMIUM_PRICE_ID` | Stripe price ID for Premium tier ($280/month) | `price_...` |
 | `UPSTASH_REDIS_REST_URL` | Upstash Redis URL | `https://xxx.upstash.io` |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash Redis token | `AT73...` |
 
@@ -1123,11 +1266,17 @@ Without Cloudflare, the system falls back to Supabase Anonymous Auth or IP finge
 |----------|---------|-------------|
 | `FREE_TIER_EXPERIENCE_LIMIT` | `3` | Max projects for free users |
 | `FREE_TIER_MONTHLY_SESSION_LIMIT` | `50` | Monthly session limit (free tier) |
-| `PREMIUM_EXPERIENCE_LIMIT` | `15` | Max projects for premium users |
-| `PREMIUM_MONTHLY_FEE_USD` | `30` | Monthly subscription fee |
-| `PREMIUM_MONTHLY_BUDGET_USD` | `30` | Monthly session budget |
-| `AI_ENABLED_SESSION_COST_USD` | `0.05` | Cost per AI-enabled session |
-| `AI_DISABLED_SESSION_COST_USD` | `0.025` | Cost per non-AI session |
+| `STARTER_EXPERIENCE_LIMIT` | `5` | Max projects for starter users |
+| `STARTER_MONTHLY_FEE_USD` | `40` | Starter monthly subscription fee |
+| `STARTER_MONTHLY_BUDGET_USD` | `40` | Starter monthly session budget |
+| `STARTER_AI_ENABLED_SESSION_COST_USD` | `0.05` | Starter cost per AI session |
+| `STARTER_AI_DISABLED_SESSION_COST_USD` | `0.025` | Starter cost per non-AI session |
+| `STARTER_MAX_LANGUAGES` | `2` | Max translation languages for starter |
+| `PREMIUM_EXPERIENCE_LIMIT` | `35` | Max projects for premium users |
+| `PREMIUM_MONTHLY_FEE_USD` | `280` | Premium monthly subscription fee |
+| `PREMIUM_MONTHLY_BUDGET_USD` | `280` | Premium monthly session budget |
+| `PREMIUM_AI_ENABLED_SESSION_COST_USD` | `0.04` | Premium cost per AI session |
+| `PREMIUM_AI_DISABLED_SESSION_COST_USD` | `0.02` | Premium cost per non-AI session |
 | `OVERAGE_CREDITS_PER_BATCH` | `5` | Credits per auto top-up ($5) |
 
 #### Session Tracking Configuration

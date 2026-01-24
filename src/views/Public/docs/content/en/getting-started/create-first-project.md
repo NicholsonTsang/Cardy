@@ -3,7 +3,7 @@
 A project is the foundation of your digital experience. It represents your venue, event, or collection of content that visitors will explore.
 
 :::info Free Tier Limit
-Free tier users can create up to 3 projects. Upgrade to Premium for up to 15 projects.
+Free tier users can create up to 3 projects. Upgrade to Premium for up to 35 projects.
 :::
 
 ## Step-by-Step Guide

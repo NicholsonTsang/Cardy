@@ -22,22 +22,43 @@ Project settings allow you to customize how your digital experience looks and be
 Changing content mode may affect how your existing content is organized. Preview changes before saving.
 :::
 
-## Access Control Settings
+## Digital Access Settings
 
-### QR Code Configuration
+### Multi-QR Code Management
 
-- **Access Token** - Unique identifier for your project's QR code
-- **Regenerate Token** - Create a new access token (invalidates old QR codes)
-- **Enable/Disable Access** - Control whether your project is publicly accessible
+Each project can have **multiple QR codes** with independent settings. This allows you to:
+- Track different locations or entry points
+- Set different daily limits per QR code
+- Enable/disable individual codes without affecting others
 
-![QR Settings](/Image/docs/project-settings-qr.png "QR Code Settings")
+![QR Management](/Image/docs/qr-management.png "QR Code Management")
+
+### Creating QR Codes
+
+1. Go to the **Digital Access** tab
+2. Click **Add QR Code**
+3. Enter a descriptive name (e.g., "Main Entrance", "Table 5")
+4. Configure daily limit if needed
+5. Save
+
+### Per-QR Code Settings
+
+Each QR code has its own:
+
+| Setting | Description |
+|---------|-------------|
+| **Name** | Descriptive label for identification |
+| **Enable/Disable** | Control public access for this specific QR |
+| **Daily Limit** | Maximum scans per day (optional) |
+| **Access Token** | Unique URL identifier |
 
 ### Daily Access Limits
 
-Protect your project from unexpected usage spikes by setting daily limits:
+Protect your project from unexpected usage spikes by setting daily limits per QR code:
 
-- **Daily Scan Limit** - Maximum scans allowed per day for this project
-- Leave empty for unlimited daily access (still subject to monthly pool)
+- **Daily Scan Limit** - Maximum scans allowed per day for each QR code
+- Leave empty for unlimited daily access (still subject to monthly budget)
+- Resets at midnight
 
 :::tip When to Use Daily Limits
 Daily limits are useful for:
@@ -47,40 +68,73 @@ Daily limits are useful for:
 - Testing before full launch
 :::
 
-### Monthly Access Pool
+### Refreshing QR Code Tokens
 
-Your monthly access is shared across all projects at the subscription level:
-- **Free Tier**: 50 monthly access total
-- **Premium Tier**: 3,000 monthly access total
+If you need to invalidate an existing QR code:
 
-Daily limits per project help you manage how this pool is consumed.
+1. Open the QR code settings
+2. Click the refresh icon
+3. Confirm the action
+4. Download and redistribute the new QR code
+
+:::warning Token Refresh Impact
+When you refresh a token, all existing copies of that QR code will stop working. Other QR codes for the same project are not affected.
+:::
+
+### Monthly Session Budget
+
+Your monthly budget is managed at the account level:
+
+| Plan | Monthly Budget |
+|------|---------------|
+| Free | 50 sessions |
+| Starter | $40 (~800-1,600 sessions) |
+| Premium | $280 (~6,200-14,000 sessions) |
+
+All QR code scans across all projects count toward your monthly budget.
 
 ## AI Configuration
 
 Configure the AI assistant for your project:
 
+- **Enable AI Assistant** - Toggle voice/text AI conversations
 - **AI Instructions** - Define behavior, tone, and focus areas
 - **Knowledge Base** - Background information for the AI
 - **General Welcome Message** - Greeting for the project-level assistant
 - **Item Welcome Message** - Template for content-item assistants
 
+:::info Session Costs
+Projects with AI enabled are charged at the AI session rate. Disable AI to use the lower non-AI session rate.
+:::
+
 See the [AI Configuration](/docs?category=project_management&article=ai_config) guide for detailed setup.
 
 ## Translation Settings
 
-For Premium subscribers:
+For paid subscribers (Starter and Premium):
 
 - **Source Language** - The original language of your content
 - **Translated Languages** - View and manage translations
 - **Translation Status** - Check if translations are up-to-date
 
-## Analytics Settings
+| Plan | Translation Languages |
+|------|----------------------|
+| Free | None |
+| Starter | Up to 2 languages |
+| Premium | Unlimited (all 10 languages) |
+
+## Analytics & Statistics
 
 Track engagement with your project:
 
-- **Total Scans** - Overall QR code usage
-- **Unique Visitors** - Individual users who accessed
-- **Daily/Monthly Trends** - Usage patterns over time
+### Per-QR Code Stats
+- **Today's Sessions** - Scans today
+- **Monthly Sessions** - Scans this billing period
+- **Total Sessions** - All-time scan count
+
+### Project-Level Stats
+- **Total Scans** - Combined across all QR codes
+- **Monthly Trends** - Usage patterns over time
 
 ## Danger Zone
 
@@ -94,9 +148,9 @@ Critical actions that affect your project:
 ### Delete Project
 - **Permanently removes** project and all content
 - Removes all translations
-- Deletes all analytics data
+- Deletes all QR codes and analytics data
 - **Cannot be undone**
 
 :::important Deletion Warning
-Deleting a project cannot be undone. All content, translations, and analytics data will be permanently lost. If your project is linked to a template, the template will also be deleted.
+Deleting a project cannot be undone. All content, translations, QR codes, and analytics data will be permanently lost. If your project is linked to a template, the template will also be deleted.
 :::

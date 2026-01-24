@@ -754,14 +754,18 @@ const stats = computed(() => dashboardStore.dashboardStats || {
   content_mode_grid: 0,
   content_mode_cards: 0,
   is_grouped_count: 0,
-  // Subscription metrics
+  // Subscription metrics (3 tiers: free, starter, premium)
   total_free_users: 0,
+  total_starter_users: 0,
   total_premium_users: 0,
   active_subscriptions: 0,
   estimated_mrr_cents: 0,
   // Access Log metrics
   monthly_total_accesses: 0,
-  monthly_overage_accesses: 0
+  monthly_overage_accesses: 0,
+  // QR Code metrics (Multi-QR system)
+  total_qr_codes: 0,
+  active_qr_codes: 0
 })
 
 // Computed helpers for display

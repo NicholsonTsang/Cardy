@@ -20,9 +20,10 @@ import Toast from 'primevue/toast';
 }
 
 /* Smooth transitions for better UX */
-* {
+/* NOTE: Avoid applying transitions to * as it causes significant performance issues */
+/* * {
   transition: all 0.2s ease-in-out;
-}
+} */
 
 
 </style>

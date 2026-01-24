@@ -1,34 +1,79 @@
 ## QR Code Sharing
 
-QR codes are the primary way visitors access your digital experience. Generate, customize, and share QR codes for maximum engagement.
+QR codes are the primary way visitors access your digital experience. Create multiple QR codes per project, each with independent settings and tracking.
 
-## Generating QR Codes
+## Multi-QR Code System
 
-### Project QR Code
+Each project can have **multiple QR codes**, allowing you to:
+- Track different locations separately (e.g., "Front Entrance", "Table 5", "Exhibition Hall A")
+- Set different daily limits per QR code
+- Enable/disable individual QR codes without affecting others
+- Monitor usage statistics per QR code
 
-Every project automatically gets a unique QR code linked to its access token.
+:::tip Use Case Examples
+- **Restaurant**: Create separate QR codes for each table
+- **Museum**: Different codes for each exhibit area
+- **Event**: Unique codes for different entry points
+:::
+
+## Creating QR Codes
+
+### Your First QR Code
+
+Every project automatically gets one QR code when created. To add more:
 
 1. Open your project
-2. Click the "QR Code" button
-3. Download or share the generated code
+2. Go to **Digital Access** settings
+3. Click **Add QR Code**
+4. Enter a descriptive name (e.g., "Main Entrance", "Table 12")
+5. Configure settings and save
 
-![QR Code Generation](/Image/docs/qr-generation.png "Generate QR Code")
+![Add QR Code](/Image/docs/add-qr-code.png "Add New QR Code")
 
-### QR Code Options
+### QR Code Settings
 
-Customize your QR code appearance:
+Each QR code has independent settings:
 
-- **Size** - Choose resolution for different use cases
-- **Format** - PNG for digital, SVG for print
-- **Position** - Choose where the QR code appears on printed materials
+| Setting | Description |
+|---------|-------------|
+| **Name** | Descriptive label for identification |
+| **Enable/Disable** | Control public access for this specific QR |
+| **Daily Limit** | Maximum scans per day for this QR code |
+| **Access Token** | Unique identifier (can be refreshed individually) |
 
-## Sharing Methods
+## Managing Multiple QR Codes
+
+### Viewing All QR Codes
+
+The Digital Access panel shows all QR codes for your project with:
+- Current status (enabled/disabled)
+- Daily usage statistics
+- Monthly session count
+- Quick actions (edit, download, refresh, delete)
+
+### Per-QR Statistics
+
+Each QR code tracks its own:
+- **Today's Sessions**: Scans today
+- **Monthly Sessions**: Scans this billing period
+- **Total Sessions**: All-time scan count
+
+:::info Billing Note
+All QR code sessions for a project count toward your monthly session budget. The per-QR tracking helps you understand which locations drive the most traffic.
+:::
+
+## Downloading & Sharing QR Codes
+
+### Download Options
+
+For each QR code:
+- **PNG Format**: Best for digital use (screens, emails, websites)
+- **Direct Link**: Copy URL for web sharing
 
 ### Digital Sharing
 
-Share your QR code digitally:
-
-- **Direct Link** - Copy the URL for web sharing
+Share your QR codes digitally:
+- **Direct Link** - Copy the unique URL for web sharing
 - **Email** - Send QR code image via email
 - **Social Media** - Share on platforms like Instagram, Facebook
 - **Website Embed** - Add to your existing website
@@ -36,7 +81,6 @@ Share your QR code digitally:
 ### Physical Placement
 
 Print QR codes for physical locations:
-
 - **Table Cards** - For restaurants and cafes
 - **Wall Plaques** - Next to exhibits or products
 - **Brochures** - In printed materials
@@ -44,10 +88,19 @@ Print QR codes for physical locations:
 - **Product Labels** - On merchandise or packaging
 
 :::tip Print Quality
-For print materials, always download the SVG format and use at least 300 DPI for clear scanning.
+For print materials, use high resolution and ensure adequate size for reliable scanning.
 :::
 
 ## Best Practices
+
+### Naming Convention
+
+Use clear, descriptive names for easy identification:
+- ✅ "Main Entrance - Building A"
+- ✅ "Table 15 - Patio Section"
+- ✅ "Mona Lisa - Gallery 3"
+- ❌ "QR Code 1"
+- ❌ "New Code"
 
 ### Placement Tips
 
@@ -75,34 +128,51 @@ Always test your QR codes before deployment:
 4. Verify the correct content loads
 5. Test the AI assistant interaction
 
-:::warning Regenerating Tokens
-If you regenerate your project's access token, all existing QR codes will stop working. Only regenerate if there's a security concern.
+## Refreshing Access Tokens
+
+Each QR code has its own access token. You can refresh individual tokens if:
+- You suspect unauthorized sharing
+- You want to invalidate old printed materials
+- Security concerns arise
+
+:::warning Token Refresh
+When you refresh a QR code's token, all existing copies of that specific QR code will stop working. Other QR codes for the same project are not affected.
 :::
+
+To refresh a token:
+1. Open the QR code settings
+2. Click the refresh icon
+3. Confirm the action
+4. Download and redistribute the new QR code
 
 ## Access Limits
 
-Control how your QR code is used:
+Control how each QR code is used:
 
-### Daily Limits
-- Set per-project daily scan limits
-- Prevents unexpected usage spikes
-- Protects against abuse
+### Daily Limits (Per QR Code)
 
-### Monthly Pool
-- Free: 50 total monthly access
-- Premium: 3,000 total monthly access
-- Shared across all your projects
+- Set individual daily scan limits
+- Prevents unexpected usage spikes on specific codes
+- Protects against abuse at specific locations
+- Resets at midnight
 
-## Tracking QR Scans
+### Monthly Budget (Account Level)
 
-Monitor your QR code performance:
+Your monthly session budget is shared across all projects and QR codes:
+- **Free**: 50 sessions/month
+- **Starter**: $40 budget (~800-1,600 sessions)
+- **Premium**: $280 budget (~6,200-14,000 sessions)
 
-- **Total Scans** - Overall scan count
-- **Daily Usage** - Scans per day
-- **Monthly Trends** - Usage patterns over time
-- **Access Status** - Real-time limit monitoring
+## Deleting QR Codes
 
-![Scan Analytics](/Image/docs/qr-analytics.png "QR Scan Analytics")
+To remove a QR code:
+1. Open the QR code settings
+2. Click the delete button
+3. Confirm deletion
+
+:::important Minimum Requirement
+Each project must have at least one QR code. You cannot delete the last remaining QR code.
+:::
 
 ## Mobile Experience
 
@@ -110,6 +180,6 @@ When visitors scan your QR code:
 
 1. Content loads instantly in their browser
 2. No app download required
-3. Language selector available
+3. Language selector available (10 languages)
 4. AI assistant ready to help
 5. Works on any smartphone

@@ -59,15 +59,34 @@ onMounted(async () => {
   const success = route.query.success;
   const canceled = route.query.canceled;
   const type = route.query.type;
+  const switchedFrom = route.query.switched_from as string | undefined;
   
   if (success === 'true') {
     if (type === 'subscription') {
-      toast.add({
-        severity: 'success',
-        summary: t('subscription.messages.welcome_premium'),
-        detail: t('subscription.messages.subscription_active'),
-        life: 5000
-      });
+      // Check if this was a tier switch
+      if (switchedFrom) {
+        // Determine the new tier based on what we switched FROM
+        const newTier = switchedFrom === 'starter' ? 'premium' : 'starter';
+        const isUpgrade = switchedFrom === 'starter';
+        
+        toast.add({
+          severity: 'success',
+          summary: t('subscription.messages.subscription_switched'),
+          detail: isUpgrade 
+            ? t('subscription.messages.subscription_switched_to_premium')
+            : t('subscription.messages.subscription_switched_to_starter'),
+          life: 5000
+        });
+      } else {
+        // Regular new subscription
+        // We'll determine premium vs starter after fetching subscription data
+        toast.add({
+          severity: 'success',
+          summary: t('subscription.messages.welcome_premium'),
+          detail: t('subscription.messages.subscription_active'),
+          life: 5000
+        });
+      }
     }
     // Clean URL
     window.history.replaceState({}, '', route.path);
@@ -97,6 +116,8 @@ async function reloadChart() {
 }
 
 // Computed
+const isPaid = computed(() => subscriptionStore.isPaid);
+const isStarter = computed(() => subscriptionStore.isStarter);
 const isPremium = computed(() => subscriptionStore.isPremium);
 const subscription = computed(() => subscriptionStore.subscription);
 const loading = computed(() => subscriptionStore.loading || creditStore.loading);
@@ -114,6 +135,41 @@ const pricingVars = computed(() => ({
   experienceLimit: config.value.premium.experienceLimit,
   monthlyFee: config.value.premium.monthlyFeeUsd,
 }));
+
+const starterPricingVars = computed(() => ({
+  monthlyBudget: config.value.starter.monthlyBudgetUsd,
+  topupCost: config.value.overage.creditsPerBatch,
+  aiCost: config.value.starter.aiEnabledSessionCostUsd,
+  nonAiCost: config.value.starter.aiDisabledSessionCostUsd,
+  aiSessions: config.value.calculated.starterDefaultAiEnabledSessions,
+  nonAiSessions: config.value.calculated.starterDefaultAiDisabledSessions,
+  experienceLimit: config.value.starter.experienceLimit,
+  monthlyFee: config.value.starter.monthlyFeeUsd,
+}));
+
+// Calculate session rate savings (Premium vs Starter)
+const sessionRateSavings = computed(() => {
+  const starterAiCost = config.value.starter.aiEnabledSessionCostUsd;
+  const premiumAiCost = config.value.premium.aiEnabledSessionCostUsd;
+  if (starterAiCost === 0) return 0;
+  return Math.round(((starterAiCost - premiumAiCost) / starterAiCost) * 100);
+});
+
+// Budget spend tracking for paid users
+const currentBudget = computed(() => {
+  if (isStarter.value) return config.value.starter.monthlyBudgetUsd;
+  if (isPremium.value) return config.value.premium.monthlyBudgetUsd;
+  return 0;
+});
+
+const currentSpend = computed(() => {
+  return chartSummary.value?.total_cost_usd || 0;
+});
+
+const budgetPercent = computed(() => {
+  if (!currentBudget.value) return 0;
+  return Math.min(100, Math.round((currentSpend.value / currentBudget.value) * 100));
+});
 
 const usagePercent = computed(() => {
   const used = subscriptionStore.monthlyAccessUsed;
@@ -166,8 +222,11 @@ function formatChartDay(dateStr: string) {
 }
 
 // Actions
-async function upgradeToPremium() {
-  const result = await subscriptionStore.createCheckout();
+async function upgradeToPremium(tier: 'starter' | 'premium' = 'premium') {
+  // If called without arguments from template (event object), default to premium
+  if (typeof tier !== 'string') tier = 'premium';
+  
+  const result = await subscriptionStore.createCheckout(tier);
   if (result?.url) {
     window.location.href = result.url;
   } else {
@@ -252,9 +311,10 @@ async function openPortal() {
         <h1 class="text-2xl sm:text-3xl font-bold text-slate-800 tracking-tight">{{ $t('plan.title') }}</h1>
         <p class="text-slate-500 mt-1">{{ $t('plan.description') }}</p>
       </div>
-      <div v-if="isPremium" class="flex gap-2">
-        <Tag v-if="subscriptionStore.isScheduledForCancellation" severity="warning" :value="$t('subscription.status.cancellation_scheduled')" icon="pi pi-exclamation-circle" rounded />
-        <Tag v-else severity="success" :value="$t('subscription.status.premium_active')" icon="pi pi-check-circle" rounded />
+      <div v-if="isPaid" class="flex gap-2 flex-wrap">
+        <Tag v-if="subscriptionStore.isDowngrading" severity="info" :value="$t('subscription.status.downgrading', { tier: subscriptionStore.scheduledTier })" icon="pi pi-arrow-down" rounded />
+        <Tag v-else-if="subscriptionStore.isCancelingToFree" severity="warning" :value="$t('subscription.status.cancellation_scheduled')" icon="pi pi-exclamation-circle" rounded />
+        <Tag v-else severity="success" :value="isStarter ? $t('subscription.status.starter_active') : $t('subscription.status.premium_active')" icon="pi pi-check-circle" rounded />
       </div>
     </div>
     
@@ -268,7 +328,7 @@ async function openPortal() {
     <div v-else class="space-y-8">
       
       <!-- ============ FREE USER VIEW ============ -->
-      <div v-if="!isPremium" class="space-y-8">
+      <div v-if="!isPaid" class="space-y-8">
         
         <!-- Usage Stats (Compact) -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -289,10 +349,10 @@ async function openPortal() {
         </div>
 
         <!-- Plan Comparison -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           
           <!-- Current Free Plan -->
-          <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden">
+          <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden h-full flex flex-col">
             <div class="absolute top-0 right-0 p-4">
               <Tag :value="$t('subscription.current_plan')" severity="secondary" rounded />
             </div>
@@ -303,14 +363,18 @@ async function openPortal() {
               <h2 class="text-2xl font-bold text-slate-800">{{ $t('subscription.free_plan') }}</h2>
               <div class="text-3xl font-extrabold text-slate-900 mt-2">$0 <span class="text-base font-normal text-slate-500">/mo</span></div>
             </div>
-            <ul class="space-y-4 text-sm">
+            <ul class="space-y-4 text-sm flex-1">
               <li class="flex items-center gap-3">
                 <i class="pi pi-check text-slate-600"></i>
                 <span class="text-slate-700">{{ $t('subscription.features.experience_limit', { limit: config.free.experienceLimit }) }}</span>
               </li>
               <li class="flex items-center gap-3">
                 <i class="pi pi-check text-slate-600"></i>
-                <span class="text-slate-700"><strong>{{ config.free.monthlySessionLimit }}</strong> {{ $t('subscription.usage.monthly_access') }}</span>
+                <span class="text-slate-700">{{ $t('subscription.features.monthly_pool', { count: config.free.monthlySessionLimit }) }}</span>
+              </li>
+              <li class="flex items-center gap-3">
+                <i class="pi pi-check text-slate-600"></i>
+                <span class="text-slate-700">{{ $t('subscription.features.ai_assistant_included') }}</span>
               </li>
               <li class="flex items-center gap-3 opacity-50">
                 <i class="pi pi-times text-slate-400"></i>
@@ -320,13 +384,67 @@ async function openPortal() {
                 <i class="pi pi-times text-slate-400"></i>
                 <span class="text-slate-500">{{ $t('subscription.features.no_overage') }}</span>
               </li>
+              <li class="flex items-center gap-3">
+                <i class="pi pi-check text-slate-600"></i>
+                <span class="text-slate-700">{{ $t('subscription.features.branding_included') }}</span>
+              </li>
             </ul>
           </div>
+
+          <!-- Starter Plan (Upgrade Option) -->
+          <div class="bg-white rounded-2xl p-6 border border-emerald-200 shadow-sm relative overflow-hidden h-full flex flex-col hover:border-emerald-400 hover:shadow-md transition-all duration-300">
+            <div class="mb-6">
+              <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
+                <i class="pi pi-bolt text-xl text-emerald-500"></i>
+              </div>
+              <h2 class="text-2xl font-bold text-slate-800">{{ $t('subscription.starter_plan') }}</h2>
+              <div class="text-3xl font-extrabold text-slate-900 mt-2">${{ config.starter.monthlyFeeUsd }} <span class="text-base font-normal text-slate-500">/mo</span></div>
+            </div>
+            <ul class="space-y-3 text-sm mb-8 flex-1">
+              <li class="flex items-center gap-3">
+                <div class="bg-emerald-100 p-1 rounded-full"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
+                <span class="text-slate-700">{{ $t('subscription.features.starter_experiences', { limit: config.starter.experienceLimit }) }}</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <div class="bg-emerald-100 p-1 rounded-full mt-0.5"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
+                <div>
+                  <div class="text-slate-700 font-medium"><strong>${{ config.starter.monthlyBudgetUsd }}</strong> {{ $t('subscription.usage.monthly_budget') }}</div>
+                  <div class="text-xs text-slate-500 mt-1">{{ $t('subscription.features.estimated_sessions', { ai: starterPricingVars.aiSessions, nonAi: starterPricingVars.nonAiSessions }) }}</div>
+                  <div class="text-xs text-slate-400 mt-0.5">{{ $t('subscription.features.session_cost_breakdown', { aiCost: config.starter.aiEnabledSessionCostUsd, nonAiCost: config.starter.aiDisabledSessionCostUsd }) }}</div>
+                </div>
+              </li>
+              <li class="flex items-center gap-3">
+                <div class="bg-emerald-100 p-1 rounded-full"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
+                <span class="text-slate-700">{{ $t('subscription.features.ai_assistant_included') }}</span>
+              </li>
+              <li class="flex items-center gap-3">
+                <div class="bg-emerald-100 p-1 rounded-full"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
+                <span class="text-slate-700">{{ $t('subscription.features.starter_translations', { count: config.starter.maxLanguages }) }}</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <div class="bg-emerald-100 p-1 rounded-full mt-0.5"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
+                <div>
+                  <div class="text-slate-700">{{ $t('subscription.features.overage_available') }}</div>
+                  <div class="text-xs text-slate-400 mt-0.5">{{ $t('subscription.features.overage', { cost: config.overage.creditsPerBatch, sessions: config.calculated.starterAiDisabledSessionsPerBatch }) }}</div>
+                </div>
+              </li>
+              <li class="flex items-center gap-3">
+                <div class="bg-emerald-100 p-1 rounded-full"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
+                <span class="text-slate-700">{{ $t('subscription.features.branding_included') }}</span>
+              </li>
+            </ul>
+            <Button 
+              :label="$t('subscription.upgrade')" 
+              class="w-full bg-emerald-500 text-white border-0 hover:bg-emerald-600 font-bold"
+              @click="upgradeToPremium('starter')" 
+              :loading="loading"
+            />
+          </div>
           
-          <!-- Premium Plan -->
-          <div class="bg-gradient-to-b from-slate-900 to-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden text-white transform hover:scale-[1.02] transition-transform duration-300">
+          <!-- Premium Plan (Upgrade Option) -->
+          <div class="bg-gradient-to-b from-slate-900 to-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden text-white transform hover:scale-[1.02] transition-transform duration-300 h-full flex flex-col">
             <div class="absolute top-0 right-0 p-0">
-              <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl shadow-lg uppercase">{{ $t('subscription.recommended') }}</div>
+              <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl shadow-lg uppercase">{{ $t('subscription.best_value') }}</div>
             </div>
             <div class="mb-6">
               <div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4 backdrop-blur-sm">
@@ -335,28 +453,47 @@ async function openPortal() {
               <h2 class="text-2xl font-bold text-white">{{ $t('subscription.premium_plan') }}</h2>
               <div class="text-3xl font-extrabold text-white mt-2">${{ config.premium.monthlyFeeUsd }} <span class="text-base font-normal text-slate-400">/mo</span></div>
             </div>
-            <ul class="space-y-4 text-sm mb-8">
+            <ul class="space-y-3 text-sm mb-8 flex-1">
               <li class="flex items-center gap-3">
                 <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
                 <span class="text-slate-100">{{ $t('subscription.features.unlimited_experiences', { limit: config.premium.experienceLimit }) }}</span>
               </li>
+              <li class="flex items-start gap-3">
+                <div class="bg-emerald-500/20 p-1 rounded-full mt-0.5"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
+                <div>
+                  <div class="text-slate-100 font-medium"><strong>${{ config.premium.monthlyBudgetUsd }}</strong> {{ $t('subscription.usage.monthly_budget') }}</div>
+                  <div class="text-xs text-slate-400 mt-1">{{ $t('subscription.features.estimated_sessions', { ai: pricingVars.aiSessions, nonAi: pricingVars.nonAiSessions }) }}</div>
+                  <div class="text-xs text-slate-500 mt-0.5">{{ $t('subscription.features.session_cost_breakdown', { aiCost: config.premium.aiEnabledSessionCostUsd, nonAiCost: config.premium.aiDisabledSessionCostUsd }) }}</div>
+                </div>
+              </li>
               <li class="flex items-center gap-3">
-                <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
-                <span class="text-slate-100"><strong>${{ config.premium.monthlyBudgetUsd }}</strong> {{ $t('subscription.usage.monthly_budget') }} ({{ config.calculated.defaultAiEnabledSessions }} AI / {{ config.calculated.defaultAiDisabledSessions }} {{ $t('subscription.usage.non_ai_sessions') }})</span>
+                <div class="bg-amber-500/20 p-1 rounded-full"><i class="pi pi-bolt text-amber-400 text-xs"></i></div>
+                <span class="text-amber-300">{{ $t('subscription.features.session_rate_savings', { percent: sessionRateSavings }) }}</span>
               </li>
               <li class="flex items-center gap-3">
                 <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
-                <span class="text-slate-100">{{ $t('subscription.features.translations') }}</span>
+                <span class="text-slate-100">{{ $t('subscription.features.ai_assistant_included') }}</span>
               </li>
               <li class="flex items-center gap-3">
                 <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
-                <span class="text-slate-100">{{ $t('subscription.features.overage', pricingVars) }}</span>
+                <span class="text-slate-100">{{ $t('subscription.features.unlimited_translations') }}</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <div class="bg-emerald-500/20 p-1 rounded-full mt-0.5"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
+                <div>
+                  <div class="text-slate-100">{{ $t('subscription.features.overage_available') }}</div>
+                  <div class="text-xs text-slate-500 mt-0.5">{{ $t('subscription.features.overage', { cost: config.overage.creditsPerBatch, sessions: config.calculated.aiDisabledSessionsPerBatch }) }}</div>
+                </div>
+              </li>
+              <li class="flex items-center gap-3">
+                <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
+                <span class="text-slate-100">{{ $t('subscription.features.white_label') }}</span>
               </li>
             </ul>
             <Button 
-              :label="$t('subscription.upgrade')" 
-              class="w-full bg-white text-slate-900 border-0 hover:bg-slate-100 font-bold"
-              @click="upgradeToPremium"
+              :label="$t('subscription.upgrade_to_premium')" 
+              class="w-full bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 border-0 hover:from-amber-500 hover:to-orange-600 font-bold"
+              @click="() => upgradeToPremium('premium')"
               :loading="loading"
             />
           </div>
@@ -453,21 +590,24 @@ async function openPortal() {
         </Card>
       </div>
       
-      <!-- ============ PREMIUM USER VIEW ============ -->
+      <!-- ============ PAID USER VIEW (Starter & Premium) ============ -->
       <div v-else class="space-y-8">
         
         <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
           <!-- Left Col: Plan & Usage -->
           <div class="space-y-8">
-            <!-- Premium Plan Status -->
+            <!-- Paid Plan Status -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div class="flex justify-between items-start mb-6">
                 <div class="flex items-center gap-4">
-                  <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center shadow-md">
-                    <i class="pi pi-star-fill text-2xl text-white"></i>
+                  <div 
+                    class="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md"
+                    :class="isStarter ? 'bg-gradient-to-br from-emerald-400 to-cyan-600' : 'bg-gradient-to-br from-amber-400 to-amber-600'"
+                  >
+                    <i class="pi text-2xl text-white" :class="isStarter ? 'pi-sparkles' : 'pi-star-fill'"></i>
                   </div>
                   <div>
-                    <h2 class="text-xl font-bold text-slate-800">{{ $t('subscription.premium_plan') }}</h2>
+                    <h2 class="text-xl font-bold text-slate-800">{{ isStarter ? $t('subscription.starter_plan') : $t('subscription.premium_plan') }}</h2>
                     <div class="text-sm text-slate-500 mt-1" v-if="periodEndFormatted">
                       <span v-if="subscriptionStore.isScheduledForCancellation" class="text-amber-600 font-medium">{{ $t('subscription.billing.access_until') }} {{ periodEndFormatted }}</span>
                       <span v-else>{{ $t('subscription.billing.next_billing') }} {{ periodEndFormatted }}</span>
@@ -475,7 +615,7 @@ async function openPortal() {
                   </div>
                 </div>
                 <div class="text-right">
-                  <div class="text-2xl font-bold text-slate-800">${{ config.premium.monthlyFeeUsd }}</div>
+                  <div class="text-2xl font-bold text-slate-800">${{ subscriptionStore.monthlyFee }}</div>
                   <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">{{ $t('common.per_month') }}</div>
                 </div>
               </div>
@@ -500,6 +640,14 @@ async function openPortal() {
                     @click="openPortal" 
                     class="flex-1 sm:flex-none"
                   />
+                  <!-- Upgrade Button for Starter -->
+                  <Button 
+                    v-if="isStarter"
+                    :label="$t('subscription.upgrade_to_premium')" 
+                    icon="pi pi-arrow-up" 
+                    class="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-orange-500 border-0 hover:from-amber-600 hover:to-orange-600"
+                    @click="() => upgradeToPremium('premium')" 
+                  />
                   <Button 
                     :label="$t('common.cancel')" 
                     icon="pi pi-times" 
@@ -510,6 +658,44 @@ async function openPortal() {
                   />
                 </template>
               </div>
+
+              <!-- Plan Features Recap -->
+              <div class="mt-6 pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                <div class="flex items-start gap-3">
+                  <div class="bg-blue-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-wallet text-blue-500 text-xs"></i></div>
+                  <div>
+                    <div class="text-slate-700 font-medium">{{ $t('subscription.usage.monthly_budget_title') }}</div>
+                    <div class="text-slate-500 text-xs mt-0.5">${{ isStarter ? config.starter.monthlyBudgetUsd : config.premium.monthlyBudgetUsd }} / {{ $t('common.month') }}</div>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="bg-purple-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-tags text-purple-500 text-xs"></i></div>
+                  <div>
+                    <div class="text-slate-700 font-medium">{{ $t('subscription.features.session_cost_breakdown', { 
+                      aiCost: isStarter ? config.starter.aiEnabledSessionCostUsd : config.premium.aiEnabledSessionCostUsd, 
+                      nonAiCost: isStarter ? config.starter.aiDisabledSessionCostUsd : config.premium.aiDisabledSessionCostUsd 
+                    }) }}</div>
+                    <div class="text-slate-500 text-xs mt-0.5">{{ $t('subscription.features.estimated_sessions', { 
+                      ai: isStarter ? starterPricingVars.aiSessions : pricingVars.aiSessions, 
+                      nonAi: isStarter ? starterPricingVars.nonAiSessions : pricingVars.nonAiSessions 
+                    }) }}</div>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="bg-emerald-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-globe text-emerald-500 text-xs"></i></div>
+                  <div>
+                    <div class="text-slate-700 font-medium">{{ $t('subscription.features.translations') }}</div>
+                    <div class="text-slate-500 text-xs mt-0.5">{{ isStarter ? $t('subscription.features.starter_translations', { count: config.starter.maxLanguages }) : $t('subscription.features.translations') }}</div>
+                  </div>
+                </div>
+                <div class="flex items-start gap-3">
+                  <div class="bg-amber-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-star text-amber-500 text-xs"></i></div>
+                  <div>
+                    <div class="text-slate-700 font-medium">{{ isStarter ? $t('subscription.features.branding_included') : $t('subscription.features.white_label') }}</div>
+                    <div class="text-slate-500 text-xs mt-0.5">{{ isStarter ? 'FunTell' : 'ExperienceQR' }}</div>
+                  </div>
+                </div>
+              </div>
             </div>
             
             <!-- Usage Cards -->
@@ -519,36 +705,49 @@ async function openPortal() {
               </h3>
               
               <div class="space-y-6">
-                <!-- Monthly Budget (Premium users) -->
+                <!-- Monthly Budget (Paid users) -->
                 <div>
                   <div class="flex justify-between items-end mb-2">
                     <div>
                       <div class="text-sm font-medium text-slate-600">{{ $t('subscription.usage.monthly_budget_title') }}</div>
-                      <div class="text-2xl font-bold text-slate-800">{{ subscriptionStore.monthlyAccessUsed.toLocaleString() }} <span class="text-sm font-normal text-slate-400">{{ $t('subscription.usage.sessions_used') }}</span></div>
+                      <div class="text-2xl font-bold text-slate-800">
+                        ${{ currentSpend.toFixed(2) }} 
+                        <span class="text-sm font-normal text-slate-400">/ ${{ currentBudget }}</span>
+                      </div>
                     </div>
                     <div class="text-right">
-                      <div class="text-sm font-bold" :class="usagePercent > 90 ? 'text-amber-600' : 'text-blue-600'">{{ usagePercent }}%</div>
+                      <div class="text-sm font-bold" :class="budgetPercent > 90 ? 'text-amber-600' : 'text-blue-600'">{{ budgetPercent }}%</div>
                     </div>
                   </div>
-                  <ProgressBar :value="usagePercent" :showValue="false" class="h-3 rounded-full bg-slate-100" :class="usagePercent > 90 ? 'progress-warning' : ''" />
+                  <ProgressBar :value="budgetPercent" :showValue="false" class="h-3 rounded-full bg-slate-100" :class="budgetPercent > 90 ? 'progress-warning' : ''" />
                   
-                  <!-- Session cost info -->
-                  <div class="mt-3 flex gap-4 text-xs text-slate-500">
-                    <span class="flex items-center gap-1">
-                      <i class="pi pi-microphone text-blue-500"></i>
-                      {{ $t('subscription.usage.ai_session_cost', { cost: config.premium.aiEnabledSessionCostUsd }) }}
-                    </span>
-                    <span class="flex items-center gap-1">
-                      <i class="pi pi-file text-slate-400"></i>
-                      {{ $t('subscription.usage.non_ai_session_cost', { cost: config.premium.aiDisabledSessionCostUsd }) }}
-                    </span>
+                  <!-- Session breakdown -->
+                  <div class="mt-4 grid grid-cols-2 gap-3">
+                    <div class="bg-blue-50 rounded-lg p-3">
+                      <div class="flex items-center gap-2 mb-1">
+                        <i class="pi pi-microphone text-blue-500 text-sm"></i>
+                        <span class="text-xs font-medium text-blue-700">{{ $t('subscription.usage.ai_spend') }}</span>
+                      </div>
+                      <div class="text-lg font-bold text-blue-800">${{ (chartSummary?.ai_cost_usd || 0).toFixed(2) }}</div>
+                      <div class="text-xs text-blue-600">{{ chartSummary?.ai_sessions || 0 }} sessions @ ${{ subscriptionStore.aiEnabledSessionCost }}</div>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-3">
+                      <div class="flex items-center gap-2 mb-1">
+                        <i class="pi pi-file text-slate-500 text-sm"></i>
+                        <span class="text-xs font-medium text-slate-700">{{ $t('subscription.usage.non_ai_spend') }}</span>
+                      </div>
+                      <div class="text-lg font-bold text-slate-800">${{ (chartSummary?.non_ai_cost_usd || 0).toFixed(2) }}</div>
+                      <div class="text-xs text-slate-600">{{ chartSummary?.non_ai_sessions || 0 }} sessions @ ${{ subscriptionStore.aiDisabledSessionCost }}</div>
+                    </div>
                   </div>
                   
-                  <div v-if="subscriptionStore.monthlyAccessRemaining !== null && subscriptionStore.monthlyAccessRemaining < 100" class="mt-3 bg-amber-50 text-amber-800 text-sm p-3 rounded-lg flex items-center gap-2">
+                  <div v-if="budgetPercent > 80" class="mt-4 bg-amber-50 text-amber-800 text-sm p-3 rounded-lg flex items-center gap-2">
                     <i class="pi pi-exclamation-triangle"></i>
                     <span>{{ $t('subscription.usage.running_low') }}</span>
                   </div>
                 </div>
+                
+                <Divider />
                 
                 <!-- Experiences -->
                 <div>
@@ -573,7 +772,7 @@ async function openPortal() {
                     <div class="text-sm text-slate-500">
                       {{ $t('subscription.overage_cta.balance') }} <span class="font-bold text-amber-600">{{ creditBalance }} {{ $t('subscription.credits') }}</span>
                       <span class="mx-2 text-slate-300">|</span>
-                      {{ $t('subscription.overage_cta.buy_visits', { count: config.calculated.aiEnabledSessionsPerBatch, credits: config.overage.creditsPerBatch }) }}
+                      {{ $t('subscription.overage_cta.buy_visits', { count: subscriptionStore.overageAccessPerBatch, credits: subscriptionStore.overageCreditsPerBatch }) }}
                     </div>
                   </div>
                   <Button 

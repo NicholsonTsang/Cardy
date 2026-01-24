@@ -7,44 +7,65 @@
 -- =================================================================
 
 -- Get card by access token (for digital access)
+-- Uses card_access_tokens table for multi-QR support
 DROP FUNCTION IF EXISTS get_card_by_access_token_server CASCADE;
 CREATE OR REPLACE FUNCTION get_card_by_access_token_server(
     p_access_token TEXT
 )
 RETURNS TABLE (
+    -- Card info
     id UUID,
     user_id UUID,
-    is_access_enabled BOOLEAN,
     billing_type TEXT,
-    max_scans INTEGER,
-    current_scans INTEGER,
-    daily_scan_limit INTEGER,
-    daily_scans INTEGER,
-    last_scan_date DATE,
+    -- Token-specific fields
+    token_id UUID,
+    token_name TEXT,
+    token_is_enabled BOOLEAN,
+    token_daily_session_limit INTEGER,
+    token_daily_sessions INTEGER,
+    token_monthly_sessions INTEGER,
+    token_total_sessions INTEGER,
+    -- Template check
     is_template BOOLEAN
 ) AS $$
+DECLARE
+    v_current_month_start DATE;
 BEGIN
+    v_current_month_start := date_trunc('month', CURRENT_DATE)::DATE;
+    
     RETURN QUERY
     SELECT 
         c.id,
         c.user_id,
-        c.is_access_enabled,
         c.billing_type::TEXT,
-        c.max_scans,
-        c.current_scans,
-        c.daily_scan_limit,
-        c.daily_scans,
-        c.last_scan_date,
+        -- Token fields
+        t.id AS token_id,
+        t.name AS token_name,
+        t.is_enabled AS token_is_enabled,
+        t.daily_session_limit AS token_daily_session_limit,
+        -- Reset daily counter if date changed
+        CASE 
+            WHEN t.last_session_date = CURRENT_DATE THEN t.daily_sessions
+            ELSE 0
+        END AS token_daily_sessions,
+        -- Reset monthly counter if month changed
+        CASE 
+            WHEN t.current_month = v_current_month_start THEN t.monthly_sessions
+            ELSE 0
+        END AS token_monthly_sessions,
+        t.total_sessions AS token_total_sessions,
+        -- Template check
         (ct.id IS NOT NULL) AS is_template
-    FROM cards c
+    FROM card_access_tokens t
+    JOIN cards c ON c.id = t.card_id
     LEFT JOIN content_templates ct ON ct.card_id = c.id
-    WHERE c.access_token = p_access_token;
-    -- Note: Removed billing_type = 'digital' filter to allow
-    -- any card with an access_token to be accessed via QR code
+    WHERE t.access_token = p_access_token;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Get full card content
+-- Returns subscription_tier for white-labeling (show branding for Free/Starter, hide for Premium)
+-- Note: Session counters are now per-token in card_access_tokens table
 DROP FUNCTION IF EXISTS get_card_content_server CASCADE;
 CREATE OR REPLACE FUNCTION get_card_content_server(
     p_card_id UUID
@@ -65,10 +86,7 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    max_scans INTEGER,
-    current_scans INTEGER,
-    daily_scan_limit INTEGER,
-    daily_scans INTEGER
+    subscription_tier TEXT
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -88,11 +106,9 @@ BEGIN
         c.is_grouped,
         c.group_display::TEXT,
         c.billing_type::TEXT,
-        c.max_scans,
-        c.current_scans,
-        c.daily_scan_limit,
-        c.daily_scans
+        COALESCE(s.tier::TEXT, 'free') as subscription_tier
     FROM cards c
+    LEFT JOIN subscriptions s ON s.user_id = c.user_id
     WHERE c.id = p_card_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

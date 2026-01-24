@@ -48,14 +48,18 @@ export interface AdminDashboardStats {
   content_mode_grid: number;
   content_mode_cards: number;
   is_grouped_count: number;
-  // Subscription metrics
+  // Subscription metrics (3 tiers: free, starter, premium)
   total_free_users: number;
+  total_starter_users: number;
   total_premium_users: number;
   active_subscriptions: number;
   estimated_mrr_cents: number;
   // Access Log metrics
   monthly_total_accesses: number;
   monthly_overage_accesses: number;
+  // QR Code metrics (Multi-QR system)
+  total_qr_codes: number;
+  active_qr_codes: number;
 }
 
 export interface AdminActivity {
@@ -145,12 +149,16 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
         is_grouped_count: dbStats.is_grouped_count || 0,
         // Subscription metrics
         total_free_users: dbStats.total_free_users || 0,
+        total_starter_users: dbStats.total_starter_users || 0,
         total_premium_users: dbStats.total_premium_users || 0,
         active_subscriptions: dbStats.active_subscriptions || 0,
         estimated_mrr_cents: dbStats.estimated_mrr_cents || 0,
         // Access Log metrics
         monthly_total_accesses: dbStats.monthly_total_accesses || 0,
-        monthly_overage_accesses: dbStats.monthly_overage_accesses || 0
+        monthly_overage_accesses: dbStats.monthly_overage_accesses || 0,
+        // QR Code metrics
+        total_qr_codes: dbStats.total_qr_codes || 0,
+        active_qr_codes: dbStats.active_qr_codes || 0
       }
       
       dashboardStats.value = stats

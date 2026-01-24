@@ -5,6 +5,7 @@
 
 -- Get all cards for the current user (more secure)
 -- Includes is_template flag to indicate if card is linked to a template
+-- Session stats are computed from card_access_tokens table
 CREATE OR REPLACE FUNCTION get_user_cards()
 RETURNS TABLE (
     id UUID,
@@ -27,12 +28,13 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    max_scans INTEGER,
-    current_scans INTEGER,
-    daily_scan_limit INTEGER,
-    daily_scans INTEGER,
-    is_access_enabled BOOLEAN,
-    access_token TEXT,
+    default_daily_session_limit INTEGER,
+    -- Computed from access tokens
+    total_sessions BIGINT,
+    monthly_sessions BIGINT,
+    daily_sessions BIGINT,
+    active_qr_codes BIGINT,
+    total_qr_codes BIGINT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
     is_template BOOLEAN,
@@ -61,19 +63,22 @@ BEGIN
         c.is_grouped,
         c.group_display,
         c.billing_type,
-        c.max_scans,
-        c.current_scans,
-        c.daily_scan_limit,
-        c.daily_scans,
-        c.is_access_enabled,
-        c.access_token,
+        c.default_daily_session_limit,
+        -- Aggregate stats from access tokens
+        COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
+        COALESCE(SUM(t.monthly_sessions), 0)::BIGINT AS monthly_sessions,
+        COALESCE(SUM(t.daily_sessions), 0)::BIGINT AS daily_sessions,
+        COALESCE(COUNT(t.id) FILTER (WHERE t.is_enabled), 0)::BIGINT AS active_qr_codes,
+        COALESCE(COUNT(t.id), 0)::BIGINT AS total_qr_codes,
         c.created_at,
         c.updated_at,
         (ct.id IS NOT NULL) AS is_template,
         ct.slug AS template_slug
     FROM cards c
+    LEFT JOIN card_access_tokens t ON t.card_id = c.id
     LEFT JOIN content_templates ct ON ct.card_id = c.id
     WHERE c.user_id = auth.uid()
+    GROUP BY c.id, ct.id, ct.slug
     ORDER BY c.created_at DESC;
 END;
 $$;
@@ -100,8 +105,7 @@ CREATE OR REPLACE FUNCTION create_card(
     p_is_grouped BOOLEAN DEFAULT FALSE,  -- Whether content is organized into categories
     p_group_display TEXT DEFAULT 'expanded',  -- How grouped items display: expanded or collapsed
     p_billing_type TEXT DEFAULT 'physical',  -- Billing model: physical or digital
-    p_max_scans INTEGER DEFAULT NULL,  -- NULL = unlimited (physical), Integer = limit (digital)
-    p_daily_scan_limit INTEGER DEFAULT 500  -- Daily scan limit for digital access (default: 500)
+    p_default_daily_session_limit INTEGER DEFAULT 500  -- Default daily session limit for new QR codes (default: 500)
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -133,13 +137,7 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        max_scans,
-        current_scans,
-        daily_scan_limit,
-        daily_scans,
-        last_scan_date,
-        is_access_enabled,
-        access_token
+        default_daily_session_limit
     ) VALUES (
         auth.uid(),
         p_name,
@@ -160,15 +158,25 @@ BEGIN
         COALESCE(p_is_grouped, FALSE),
         COALESCE(p_group_display, 'expanded'),
         COALESCE(p_billing_type, 'physical'),
-        p_max_scans,  -- NULL for physical (unlimited), set for digital
-        0,  -- Start with 0 total scans
-        CASE WHEN p_billing_type = 'digital' THEN COALESCE(p_daily_scan_limit, 500) ELSE NULL END,  -- Daily limit for digital
-        0,  -- Start with 0 daily scans
-        CURRENT_DATE,  -- Today
-        TRUE,  -- is_access_enabled defaults to true
-        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')  -- Generate access_token
+        CASE WHEN p_billing_type = 'digital' THEN COALESCE(p_default_daily_session_limit, 500) ELSE NULL END
     )
     RETURNING id INTO v_card_id;
+    
+    -- Automatically create a default enabled access token (QR code) for all projects
+    -- Every project must have at least one QR code
+    INSERT INTO card_access_tokens (
+        card_id,
+        name,
+        access_token,
+        is_enabled,
+        daily_session_limit
+    ) VALUES (
+        v_card_id,
+        'Default',
+        substring(replace(gen_random_uuid()::text, '-', ''), 1, 12),
+        true,  -- Enabled by default
+        COALESCE(p_default_daily_session_limit, 500)
+    );
     
     -- Log operation
     IF p_translations IS NOT NULL AND p_translations != '{}'::JSONB THEN
@@ -180,9 +188,11 @@ BEGIN
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER) TO authenticated;
+-- Note: Last INTEGER parameter is p_default_daily_session_limit (was p_daily_session_limit)
 
 -- Get a card by ID (more secure, relies on RLS policy)
+-- Session stats are computed from card_access_tokens table
 CREATE OR REPLACE FUNCTION get_card_by_id(p_card_id UUID)
 RETURNS TABLE (
     id UUID,
@@ -206,12 +216,13 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    max_scans INTEGER,
-    current_scans INTEGER,
-    daily_scan_limit INTEGER,
-    daily_scans INTEGER,
-    is_access_enabled BOOLEAN,
-    access_token TEXT,
+    default_daily_session_limit INTEGER,
+    -- Computed from access tokens
+    total_sessions BIGINT,
+    monthly_sessions BIGINT,
+    daily_sessions BIGINT,
+    active_qr_codes BIGINT,
+    total_qr_codes BIGINT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -239,16 +250,19 @@ BEGIN
         c.is_grouped,
         c.group_display,
         c.billing_type,
-        c.max_scans,
-        c.current_scans,
-        c.daily_scan_limit,
-        c.daily_scans,
-        c.is_access_enabled,
-        c.access_token,
+        c.default_daily_session_limit,
+        -- Aggregate stats from access tokens
+        COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
+        COALESCE(SUM(t.monthly_sessions), 0)::BIGINT AS monthly_sessions,
+        COALESCE(SUM(t.daily_sessions), 0)::BIGINT AS daily_sessions,
+        COALESCE(COUNT(t.id) FILTER (WHERE t.is_enabled), 0)::BIGINT AS active_qr_codes,
+        COALESCE(COUNT(t.id), 0)::BIGINT AS total_qr_codes,
         c.created_at, 
         c.updated_at
     FROM cards c
-    WHERE c.id = p_card_id;
+    LEFT JOIN card_access_tokens t ON t.card_id = c.id
+    WHERE c.id = p_card_id
+    GROUP BY c.id;
     -- No need to check user_id = auth.uid() as RLS policy will handle this
 END;
 $$;
@@ -273,8 +287,7 @@ CREATE OR REPLACE FUNCTION update_card(
     p_is_grouped BOOLEAN DEFAULT NULL,
     p_group_display TEXT DEFAULT NULL,
     p_billing_type TEXT DEFAULT NULL,
-    p_max_scans INTEGER DEFAULT NULL,
-    p_daily_scan_limit INTEGER DEFAULT NULL
+    p_default_daily_session_limit INTEGER DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_old_record RECORD;
@@ -300,8 +313,7 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        max_scans,
-        daily_scan_limit,
+        default_daily_session_limit,
         user_id,
         updated_at
     INTO v_old_record
@@ -391,9 +403,9 @@ BEGIN
     -- NOTE: billing_type cannot be changed after card creation
     -- Silently ignore any attempt to change billing_type
     
-    -- Track daily_scan_limit changes (only for digital cards)
-    IF p_daily_scan_limit IS NOT NULL AND (v_old_record.daily_scan_limit IS NULL OR p_daily_scan_limit != v_old_record.daily_scan_limit) THEN
-        v_changes_made := v_changes_made || jsonb_build_object('daily_scan_limit', jsonb_build_object('from', v_old_record.daily_scan_limit, 'to', p_daily_scan_limit));
+    -- Track default_daily_session_limit changes (only for digital cards)
+    IF p_default_daily_session_limit IS NOT NULL AND (v_old_record.default_daily_session_limit IS NULL OR p_default_daily_session_limit != v_old_record.default_daily_session_limit) THEN
+        v_changes_made := v_changes_made || jsonb_build_object('default_daily_session_limit', jsonb_build_object('from', v_old_record.default_daily_session_limit, 'to', p_default_daily_session_limit));
         has_changes := TRUE;
     END IF;
     
@@ -422,8 +434,7 @@ BEGIN
         is_grouped = COALESCE(p_is_grouped, is_grouped),
         group_display = COALESCE(p_group_display, group_display),
         -- billing_type is immutable - not updated here
-        max_scans = CASE WHEN billing_type = 'digital' THEN COALESCE(p_max_scans, max_scans) ELSE NULL END,
-        daily_scan_limit = CASE WHEN billing_type = 'digital' THEN COALESCE(p_daily_scan_limit, daily_scan_limit) ELSE NULL END,
+        default_daily_session_limit = CASE WHEN billing_type = 'digital' THEN COALESCE(p_default_daily_session_limit, default_daily_session_limit) ELSE NULL END,
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
     
@@ -433,7 +444,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
@@ -473,80 +484,6 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION delete_card(UUID) TO authenticated;
 
--- Toggle access enabled/disabled for a digital card
-CREATE OR REPLACE FUNCTION toggle_card_access(
-    p_card_id UUID,
-    p_is_enabled BOOLEAN
-) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_card_record RECORD;
-BEGIN
-    -- Get card information
-    SELECT id, name, billing_type, is_access_enabled
-    INTO v_card_record
-    FROM cards
-    WHERE id = p_card_id AND user_id = auth.uid();
-    
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Card not found or not authorized.';
-    END IF;
-    
-    -- Only digital cards can toggle access
-    IF v_card_record.billing_type != 'digital' THEN
-        RAISE EXCEPTION 'Access toggle is only available for digital cards.';
-    END IF;
-    
-    -- Update the access status
-    UPDATE cards
-    SET is_access_enabled = p_is_enabled,
-        updated_at = now()
-    WHERE id = p_card_id AND user_id = auth.uid();
-    
-    -- Log operation
-    PERFORM log_operation(format('Toggled access for card %s: %s', v_card_record.name, 
-        CASE WHEN p_is_enabled THEN 'enabled' ELSE 'disabled' END));
-    
-    RETURN TRUE;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION toggle_card_access(UUID, BOOLEAN) TO authenticated;
-
--- Regenerate access token for a digital card (invalidates old QR codes)
-CREATE OR REPLACE FUNCTION regenerate_access_token(
-    p_card_id UUID
-) RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_card_record RECORD;
-    v_new_token TEXT;
-BEGIN
-    -- Get card information
-    SELECT id, name, billing_type, access_token
-    INTO v_card_record
-    FROM cards
-    WHERE id = p_card_id AND user_id = auth.uid();
-    
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Card not found or not authorized.';
-    END IF;
-    
-    -- Only digital cards can regenerate tokens
-    IF v_card_record.billing_type != 'digital' THEN
-        RAISE EXCEPTION 'Token regeneration is only available for digital cards.';
-    END IF;
-    
-    -- Generate new short 12-char URL-safe token (base64url encoding)
-    v_new_token := replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_');
-    
-    -- Update the access token
-    UPDATE cards
-    SET access_token = v_new_token,
-        updated_at = now()
-    WHERE id = p_card_id AND user_id = auth.uid();
-    
-    -- Log operation
-    PERFORM log_operation(format('Regenerated access token for card: %s', v_card_record.name));
-    
-    RETURN v_new_token;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION regenerate_access_token(UUID) TO authenticated;
+-- NOTE: toggle_card_access and regenerate_access_token functions have been moved to 
+-- 13_access_tokens.sql as toggle_access_token and refresh_access_token since
+-- access control is now per-QR-code (access token) rather than per-card.

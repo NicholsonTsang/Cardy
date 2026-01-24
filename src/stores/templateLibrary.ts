@@ -20,9 +20,8 @@ export interface ContentTemplate {
     is_grouped: boolean;
     group_display: 'expanded' | 'collapsed';
     billing_type: 'physical' | 'digital';
-    // Access limits - added for consistency with Excel export/import
-    max_scans: number | null;
-    daily_scan_limit: number | null;
+    // Default daily session limit for new QR codes
+    default_daily_session_limit: number | null;
     original_language: string;
     qr_code_position: string;
     item_count: number;
@@ -529,8 +528,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
                 p_is_grouped: cardData.is_grouped || false,
                 p_group_display: cardData.group_display || 'expanded',
                 p_billing_type: cardData.billing_type || 'digital',
-                p_max_scans: cardData.max_scans || null,
-                p_daily_scan_limit: cardData.daily_scan_limit || 500,
+                p_default_daily_session_limit: cardData.default_daily_session_limit || 500,
                 p_original_language: cardData.original_language || 'en',
                 p_translations: cardTranslations,
                 p_content_hash: cardData.content_hash || null

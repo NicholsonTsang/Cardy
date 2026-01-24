@@ -1488,8 +1488,8 @@ async function createCardSheetStandard(workbook: ExcelJS.Workbook, cardData: any
     cardData.is_grouped ? true : false,
     cardData.group_display || 'expanded',
     cardData.billing_type || 'digital',
-    cardData.max_scans ?? '',
-    cardData.daily_scan_limit ?? '',
+    cardData.max_sessions ?? '',
+    cardData.default_daily_session_limit ?? '',
     '', // Card image placeholder
     cardData.crop_parameters ? JSON.stringify(cardData.crop_parameters) : '',
     cardData.translations ? JSON.stringify(cardData.translations) : '{}',

@@ -111,7 +111,7 @@
                     </div>
                   </template>
 
-                  <Column field="batch_number" :header="$t('card.batch_number')" sortable style="min-width: 140px">
+                  <Column field="batch_number" :header="$t('batches.batch_number')" sortable style="min-width: 140px">
                     <template #body="{ data }">
                       <span class="font-mono text-sm font-medium text-slate-900">
                         #{{ data.batch_number.toString().padStart(6, '0') }}

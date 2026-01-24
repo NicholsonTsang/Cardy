@@ -1,29 +1,7 @@
 <template>
-  <div class="card-overview" :class="{ 'digital-mode': isDigitalAccess }">
-    <!-- Hero Section with Card (Physical cards only) -->
-    <div v-if="!isDigitalAccess" class="hero-section">
-      <!-- Card Spotlight -->
-      <div class="card-spotlight">
-        <div class="spotlight-glow"></div>
-        <div class="card-wrapper">
-          <div class="card-frame">
-            <img
-              v-if="card.card_image_url"
-              :src="card.card_image_url"
-              :alt="card.card_name"
-              class="card-image"
-              crossorigin="anonymous"
-            />
-            <div v-else class="card-placeholder">
-              <i class="pi pi-image" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Welcome Section (Digital access - Visual effects only) -->
-    <div v-else class="welcome-section">
+  <div class="card-overview">
+    <!-- Welcome Section (Unified Layout - Visual effects only) -->
+    <div class="welcome-section">
       <!-- Immersive Background -->
       <div class="immersive-bg">
         <!-- Animated gradient layers -->
@@ -63,7 +41,7 @@
     </div>
     
     <!-- Info Panel -->
-    <div class="info-panel" :class="{ 'digital-panel': isDigitalAccess }">
+    <div class="info-panel">
       <div class="panel-inner">
         <!-- Language Selection Row - Shows scope of language selection -->
         <div class="language-row">
@@ -109,6 +87,12 @@
           </div>
           <i class="pi pi-chevron-right ai-indicator-arrow" />
         </button>
+
+        <!-- Branding Footer -->
+        <div v-if="showBranding" class="branding-footer">
+          <span class="powered-by">{{ t('common.powered_by') || 'Powered by' }}</span>
+          <span class="brand-name">FunTell</span>
+        </div>
       </div>
     </div>
     
@@ -131,10 +115,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { renderMarkdown } from '@/utils/markdownRenderer'
-import { getCardAspectRatio } from '@/utils/cardConfig'
 import { useMobileLanguageStore } from '@/stores/language'
 import UnifiedLanguageModal from './UnifiedLanguageModal.vue'
 import { CardLevelAssistant } from './AIAssistant'
@@ -158,17 +141,21 @@ interface Props {
     is_activated: boolean
     billing_type?: 'physical' | 'digital'
     has_translation?: boolean // TRUE if card has translations available
+    subscription_tier?: string
   }
   availableLanguages?: string[] // Languages available for this card
 }
 
 const props = defineProps<Props>()
 
-// Check if this is digital access mode
-const isDigitalAccess = computed(() => props.card.billing_type === 'digital')
 const emit = defineEmits<{
   explore: []
 }>()
+
+// Branding visibility (Show for Free and Starter, hide for Premium)
+const showBranding = computed(() => {
+  return props.card.subscription_tier !== 'premium'
+})
 
 // Card data formatted for AI assistant
 const cardDataForAssistant = computed(() => ({
@@ -201,12 +188,6 @@ function handleLanguageSelect() {
 function openAIAssistant() {
   cardLevelAssistantRef.value?.openModal()
 }
-
-// Set up CSS custom property for card aspect ratio
-onMounted(() => {
-  const aspectRatio = getCardAspectRatio()
-  document.documentElement.style.setProperty('--card-aspect-ratio', aspectRatio)
-})
 </script>
 
 <style scoped>
@@ -217,8 +198,8 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   min-height: 0; /* Allow flex shrinking */
-  /* Dark background to prevent flash during view transitions */
-  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
+  /* Dark gradient background */
+  background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -226,25 +207,11 @@ onMounted(() => {
   touch-action: manipulation; /* Disable double-tap zoom */
 }
 
-/* Digital mode - no special handling needed, parent container handles sizing */
-.card-overview.digital-mode {
-  /* Same as base, parent container handles fixed height */
-}
 
-/* Hero Section (Physical cards) */
-.hero-section {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 2rem 1.25rem 1.5rem;
-  padding-top: calc(2rem + env(safe-area-inset-top));
-  position: relative;
-  min-height: 0;
-}
+/* Hero Section styles removed */
 
 /* ============================================== */
-/* Welcome Section (Digital - Dynamic Hero) */
+/* Welcome Section (Unified - Dynamic Hero) */
 /* ============================================== */
 
 .welcome-section {
@@ -477,19 +444,6 @@ onMounted(() => {
   }
 }
 
-/* Digital mode panel adjustments */
-.digital-panel {
-  border-top-left-radius: 1.5rem;
-  border-top-right-radius: 1.5rem;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
-  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
-}
-
-/* Digital mode specific overrides */
-.digital-mode {
-  background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
-}
-
 /* Responsive adjustments */
 @media (min-width: 640px) {
   .icon-platform {
@@ -566,120 +520,12 @@ onMounted(() => {
   }
 }
 
-/* Card Spotlight */
-.card-spotlight {
-  position: relative;
-  width: 100%;
-  max-width: 380px;
-  animation: fadeIn 0.6s ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.spotlight-glow {
-  position: absolute;
-  inset: -40%;
-  background: radial-gradient(
-    circle at center,
-    rgba(59, 130, 246, 0.15) 0%,
-    rgba(139, 92, 246, 0.1) 30%,
-    transparent 70%
-  );
-  filter: blur(40px);
-  animation: pulse 4s ease-in-out infinite;
-  z-index: 0;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 0.5;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.8;
-    transform: scale(1.05);
-  }
-}
-
-.card-wrapper {
-  position: relative;
-  z-index: 1;
-}
-
-/* Card Frame */
-.card-frame {
-  aspect-ratio: var(--card-aspect-ratio, 2/3);
-  width: 100%;
-  border-radius: 1.5rem;
-  overflow: hidden;
-  background: white;
-  box-shadow: 
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    0 30px 60px -15px rgba(0, 0, 0, 0.5),
-    0 20px 40px -10px rgba(59, 130, 246, 0.2);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative;
-  z-index: 1;
-}
-
-.card-frame::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(255, 255, 255, 0.1) 0%,
-    transparent 50%,
-    rgba(255, 255, 255, 0.05) 100%
-  );
-  pointer-events: none;
-  z-index: 2;
-}
-
-.card-frame:active {
-  transform: scale(0.98);
-  box-shadow: 
-    0 0 0 1px rgba(255, 255, 255, 0.1),
-    0 20px 40px -10px rgba(0, 0, 0, 0.4),
-    0 10px 20px -5px rgba(59, 130, 246, 0.2);
-}
-
-.card-image {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  display: block;
-  background: white;
-  position: relative;
-  z-index: 1;
-}
-
-.card-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #e0e7ff, #ddd6fe);
-  color: rgba(99, 102, 241, 0.3);
-  font-size: 4rem;
-}
-
 /* Info Panel - Takes only needed space, hero fills the rest */
 .info-panel {
   flex: 0 0 auto; /* Don't grow - take only needed space */
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 58, 138, 0.95) 100%);
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   padding: 1.25rem 1.125rem 1.25rem;
   padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.625rem)); /* Account for home indicator */
@@ -687,11 +533,7 @@ onMounted(() => {
   z-index: 2;
   border-top-left-radius: 1.5rem;
   border-top-right-radius: 1.5rem;
-}
-
-/* Digital mode - no special handling needed */
-.digital-mode .info-panel {
-  /* Info panel takes only needed space, hero section fills the rest */
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.3);
 }
 
 @keyframes slideUp {
@@ -1042,6 +884,28 @@ onMounted(() => {
 
 .ai-indicator-button:hover .ai-indicator-arrow {
   transform: translateX(2px);
+}
+
+/* Branding Footer */
+.branding-footer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  margin-top: 1rem;
+  opacity: 0.6;
+}
+
+.powered-by {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.brand-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: white;
+  letter-spacing: 0.02em;
 }
 
 /* Responsive */

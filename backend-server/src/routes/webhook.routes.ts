@@ -85,27 +85,42 @@ router.post('/stripe', async (req: Request, res: Response) => {
         console.log(`📅 Subscription period: ${periodStart} to ${periodEnd}`);
 
         if (status === 'active' || status === 'trialing') {
-          // Activate/update premium subscription
+          // Activate/update subscription (Starter or Premium)
           // Respect cancel_at_period_end from Stripe object
           const cancelAtPeriodEnd = subscription.cancel_at_period_end || false;
+          const priceId = subscription.items?.data?.[0]?.price?.id || null;
+          
+          // Determine tier based on price ID
+          const starterPriceId = process.env.STRIPE_STARTER_PRICE_ID;
+          const premiumPriceId = process.env.STRIPE_PREMIUM_PRICE_ID;
+          let tier: 'starter' | 'premium' = 'premium'; // Default to premium
+          
+          if (priceId === starterPriceId) {
+            tier = 'starter';
+          } else if (priceId === premiumPriceId) {
+            tier = 'premium';
+          } else {
+            console.warn(`⚠️ Unknown price ID: ${priceId}. Defaulting to premium tier.`);
+          }
           
           const { error } = await supabaseAdmin.rpc('activate_premium_subscription_server', {
             p_user_id: userId,
             p_stripe_customer_id: subscription.customer,
             p_stripe_subscription_id: subscription.id,
-            p_stripe_price_id: subscription.items?.data?.[0]?.price?.id || null,
+            p_stripe_price_id: priceId,
             p_period_start: periodStart,
             p_period_end: periodEnd,
-            p_cancel_at_period_end: cancelAtPeriodEnd
+            p_cancel_at_period_end: cancelAtPeriodEnd,
+            p_tier: tier
           });
 
           if (error) {
             console.error('❌ Error activating subscription:', error);
           } else {
-            console.log(`✅ Premium subscription updated for user ${userId} (cancel_at_period_end: ${cancelAtPeriodEnd})`);
+            console.log(`✅ ${tier.charAt(0).toUpperCase() + tier.slice(1)} subscription updated for user ${userId} (cancel_at_period_end: ${cancelAtPeriodEnd})`);
             
-            // Update Redis cache with premium tier
-            await updateUserTier(userId, 'premium');
+            // Update Redis cache with the correct tier
+            await updateUserTier(userId, tier);
           }
         } else if (subscription.cancel_at_period_end) {
           // Fallback if status is NOT active but scheduled for cancellation (rare)
@@ -122,27 +137,49 @@ router.post('/stripe', async (req: Request, res: Response) => {
 
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as any;
+        const userId = subscription.metadata?.user_id;
         
-        // Downgrade to free tier
-        const { data: cancelResult, error } = await supabaseAdmin.rpc('cancel_subscription_server', {
+        // First, check if there's a scheduled tier change (for downgrades)
+        // If scheduled_tier is set (e.g., 'starter'), the user has already subscribed to a new lower tier
+        // that will take over. Otherwise, they're canceling to free tier.
+        const { data: applyResult } = await supabaseAdmin.rpc('apply_scheduled_tier_change_server', {
           p_stripe_subscription_id: subscription.id,
-          p_cancel_at_period_end: false,
-          p_immediate: true
+          p_user_id: userId
         });
-
-        if (error) {
-          console.error('❌ Error canceling subscription:', error);
-        } else {
-          console.log(`🚫 Subscription ${subscription.id} canceled and downgraded to free`);
+        
+        if (applyResult?.success) {
+          // Scheduled tier change was applied (downgrade scenario)
+          const newTier = applyResult.new_tier || 'free';
+          console.log(`🔄 Applied scheduled tier change: ${applyResult.previous_tier} → ${newTier} for user ${applyResult.user_id}`);
           
-          // Update Redis cache to free tier
-          // Use user_id from stored procedure result (more reliable than metadata)
-          const userId = cancelResult?.user_id || subscription.metadata?.user_id;
-          if (userId) {
-            await updateUserTier(userId, 'free');
-            console.log(`🔄 Redis tier updated to free for user ${userId}`);
+          // Update Redis cache with new tier
+          if (applyResult.user_id) {
+            await updateUserTier(applyResult.user_id, newTier);
+            console.log(`🔄 Redis tier updated to ${newTier} for user ${applyResult.user_id}`);
+          }
+        } else {
+          // No scheduled tier - cancel to free tier
+          const { data: cancelResult, error: cancelError } = await supabaseAdmin.rpc('cancel_subscription_server', {
+            p_stripe_subscription_id: subscription.id,
+            p_cancel_at_period_end: false,
+            p_immediate: true,
+            p_user_id: userId,
+            p_scheduled_tier: 'free'
+          });
+
+          if (cancelError) {
+            console.error('❌ Error canceling subscription:', cancelError);
           } else {
-            console.warn('⚠️ Could not determine user_id for Redis tier update');
+            console.log(`🚫 Subscription ${subscription.id} canceled and downgraded to free`);
+            
+            // Update Redis cache to free tier
+            const effectiveUserId = cancelResult?.user_id || userId;
+            if (effectiveUserId) {
+              await updateUserTier(effectiveUserId, 'free');
+              console.log(`🔄 Redis tier updated to free for user ${effectiveUserId}`);
+            } else {
+              console.warn('⚠️ Could not determine user_id for Redis tier update');
+            }
           }
         }
         break;

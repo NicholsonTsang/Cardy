@@ -31,8 +31,9 @@ Getting started with ExperienceQR is simple. Follow these three steps to create 
 - Both support voice conversations and text chat
 
 ### Subscription Model
-- **Free Tier**: 3 projects, 50 monthly access
-- **Premium Tier**: 15 projects, 3,000 monthly access, translations, overage purchasing
+- **Free Tier**: 3 projects, 50 monthly sessions, no translations
+- **Starter Tier** ($40/mo): 5 projects, $40 session budget, up to 2 translation languages
+- **Premium Tier** ($280/mo): 35 projects, $280 session budget, unlimited translations, white-label
 
 ### Content Modes
 Choose from 5 display modes to best showcase your content:

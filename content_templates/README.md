@@ -2,6 +2,8 @@
 
 This folder contains sample content templates for different venue types and content modes. Use these templates as a starting point when creating your digital experiences.
 
+> **⚠️ Schema Update Required (Dec 2025):** The SQL templates in `sql/` folder use the old schema (`is_access_enabled`, `access_token` on cards table). The new multi-QR code architecture stores access tokens in `card_access_tokens` table. When using these templates, remove the `is_access_enabled` and `access_token` columns from the INSERT and add a separate INSERT into `card_access_tokens` after the card is created. See `auction_house_grouped.sql` for an updated example.
+
 ## Template Structure
 
 Each template file follows the naming convention: `{venue_type}_{content_mode}.md`

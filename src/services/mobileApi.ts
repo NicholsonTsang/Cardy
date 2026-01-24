@@ -32,11 +32,9 @@ export interface MobileCardResponse {
       isGrouped: boolean;
       groupDisplay: string;
       billingType: string;
-      maxScans: number | null;
-      currentScans: number;
-      dailyScanLimit: number | null;
-      dailyScans: number;
-      scanLimitReached: boolean;
+      totalSessions: number;
+      dailySessionLimit: number | null;
+      dailySessions: number;
       budgetExhausted: boolean; // True when monthly session budget is exhausted
       monthlyLimitExceeded?: boolean; // Deprecated: alias for budgetExhausted
       dailyLimitExceeded: boolean;
@@ -336,11 +334,9 @@ export function transformCardResponse(response: MobileCardResponse): any {
       card_is_grouped: card.isGrouped,
       card_group_display: card.groupDisplay,
       card_billing_type: card.billingType,
-      card_max_scans: card.maxScans,
-      card_current_scans: card.currentScans,
-      card_daily_scan_limit: card.dailyScanLimit,
-      card_daily_scans: card.dailyScans,
-      card_scan_limit_reached: card.scanLimitReached,
+      card_total_sessions: card.totalSessions,
+      card_daily_session_limit: card.dailySessionLimit,
+      card_daily_sessions: card.dailySessions,
       monthly_limit_exceeded: card.budgetExhausted || card.monthlyLimitExceeded || false,
       daily_limit_exceeded: card.dailyLimitExceeded,
       card_credits_insufficient: card.creditsInsufficient,

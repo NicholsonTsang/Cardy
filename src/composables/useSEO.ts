@@ -299,7 +299,7 @@ export function useSEO() {
               "priceCurrency": "USD",
               "billingDuration": "P1M"
             },
-            "description": "Up to 15 projects, 3000 monthly access, full translation support"
+            "description": "Up to 35 projects, session-based budget, unlimited translations"
           }
         ]
       },

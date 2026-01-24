@@ -4,11 +4,10 @@
  * Values are loaded from environment variables with defaults
  * 
  * NEW PRICING MODEL (Session-Based):
- * - Premium subscription: $30/month
- * - AI-enabled project access: $0.05 per user session
- * - AI-disabled project access: $0.025 per user session
- * - Default monthly allowance: 600 AI-enabled OR 1200 AI-disabled sessions (= $30 value)
- * - Auto top-up: $5 credit = 100 AI-enabled OR 200 AI-disabled sessions
+ * - Premium subscription: $280/month
+ * - Starter subscription: $40/month
+ * - Session costs vary by tier
+ * - Auto top-up: $5 credit
  * 
  * User sessions are tracked via Cloudflare with expiration limits.
  * Redis is used for real-time session counting to reduce database load.
@@ -22,19 +21,35 @@ export const SubscriptionConfig = {
     translationsEnabled: false,
   },
   
+  // Starter tier limits and pricing
+  starter: {
+    monthlyFeeUsd: parseFloat(import.meta.env.VITE_STARTER_MONTHLY_FEE_USD || '40'),
+    experienceLimit: parseInt(import.meta.env.VITE_STARTER_EXPERIENCE_LIMIT || '5'),
+    translationsEnabled: true,
+    maxLanguages: 2,
+    
+    // Session-based pricing (per user session)
+    aiEnabledSessionCostUsd: parseFloat(import.meta.env.VITE_STARTER_AI_ENABLED_SESSION_COST_USD || '0.05'),
+    aiDisabledSessionCostUsd: parseFloat(import.meta.env.VITE_STARTER_AI_DISABLED_SESSION_COST_USD || '0.025'),
+    
+    // Monthly budget included with subscription
+    monthlyBudgetUsd: parseFloat(import.meta.env.VITE_STARTER_MONTHLY_BUDGET_USD || '40'),
+  },
+
   // Premium tier limits and pricing
   premium: {
     // Monthly subscription fee
-    monthlyFeeUsd: parseFloat(import.meta.env.VITE_PREMIUM_MONTHLY_FEE_USD || '30'),
-    experienceLimit: parseInt(import.meta.env.VITE_PREMIUM_EXPERIENCE_LIMIT || '15'),
+    monthlyFeeUsd: parseFloat(import.meta.env.VITE_PREMIUM_MONTHLY_FEE_USD || '280'),
+    experienceLimit: parseInt(import.meta.env.VITE_PREMIUM_EXPERIENCE_LIMIT || '35'),
     translationsEnabled: true,
+    maxLanguages: -1, // Unlimited
     
     // Session-based pricing (per user session)
-    aiEnabledSessionCostUsd: parseFloat(import.meta.env.VITE_AI_ENABLED_SESSION_COST_USD || '0.05'),
-    aiDisabledSessionCostUsd: parseFloat(import.meta.env.VITE_AI_DISABLED_SESSION_COST_USD || '0.025'),
+    aiEnabledSessionCostUsd: parseFloat(import.meta.env.VITE_PREMIUM_AI_ENABLED_SESSION_COST_USD || '0.04'),
+    aiDisabledSessionCostUsd: parseFloat(import.meta.env.VITE_PREMIUM_AI_DISABLED_SESSION_COST_USD || '0.02'),
     
     // Monthly budget included with subscription
-    monthlyBudgetUsd: parseFloat(import.meta.env.VITE_PREMIUM_MONTHLY_BUDGET_USD || '30'),
+    monthlyBudgetUsd: parseFloat(import.meta.env.VITE_PREMIUM_MONTHLY_BUDGET_USD || '280'),
   },
   
   // Overage/Top-up configuration
@@ -46,13 +61,23 @@ export const SubscriptionConfig = {
   get calculated() {
     const aiEnabledSessions = Math.floor(this.premium.monthlyBudgetUsd / this.premium.aiEnabledSessionCostUsd);
     const aiDisabledSessions = Math.floor(this.premium.monthlyBudgetUsd / this.premium.aiDisabledSessionCostUsd);
+    
+    const starterAiEnabledSessions = Math.floor(this.starter.monthlyBudgetUsd / this.starter.aiEnabledSessionCostUsd);
+    const starterAiDisabledSessions = Math.floor(this.starter.monthlyBudgetUsd / this.starter.aiDisabledSessionCostUsd);
+
     return {
       // Default sessions included with premium subscription
-      defaultAiEnabledSessions: aiEnabledSessions, // 600 @ $30/$0.05
-      defaultAiDisabledSessions: aiDisabledSessions, // 1200 @ $30/$0.025
-      // Sessions per overage batch
-      aiEnabledSessionsPerBatch: Math.floor(this.overage.creditsPerBatch / this.premium.aiEnabledSessionCostUsd), // 100
-      aiDisabledSessionsPerBatch: Math.floor(this.overage.creditsPerBatch / this.premium.aiDisabledSessionCostUsd), // 200
+      defaultAiEnabledSessions: aiEnabledSessions,
+      defaultAiDisabledSessions: aiDisabledSessions,
+      // Sessions per overage batch (Premium)
+      aiEnabledSessionsPerBatch: Math.floor(this.overage.creditsPerBatch / this.premium.aiEnabledSessionCostUsd),
+      aiDisabledSessionsPerBatch: Math.floor(this.overage.creditsPerBatch / this.premium.aiDisabledSessionCostUsd),
+      
+      // Starter values
+      starterDefaultAiEnabledSessions: starterAiEnabledSessions,
+      starterDefaultAiDisabledSessions: starterAiDisabledSessions,
+      starterAiEnabledSessionsPerBatch: Math.floor(this.overage.creditsPerBatch / this.starter.aiEnabledSessionCostUsd),
+      starterAiDisabledSessionsPerBatch: Math.floor(this.overage.creditsPerBatch / this.starter.aiDisabledSessionCostUsd),
     };
   },
 };
@@ -61,9 +86,14 @@ export const SubscriptionConfig = {
 export type SessionType = 'ai_enabled' | 'ai_disabled';
 
 /**
- * Get session cost based on AI enabled status
+ * Get session cost based on AI enabled status and tier
  */
-export function getSessionCost(isAiEnabled: boolean): number {
+export function getSessionCost(isAiEnabled: boolean, tier: 'free' | 'starter' | 'premium' = 'premium'): number {
+  if (tier === 'starter') {
+    return isAiEnabled 
+      ? SubscriptionConfig.starter.aiEnabledSessionCostUsd 
+      : SubscriptionConfig.starter.aiDisabledSessionCostUsd;
+  }
   return isAiEnabled 
     ? SubscriptionConfig.premium.aiEnabledSessionCostUsd 
     : SubscriptionConfig.premium.aiDisabledSessionCostUsd;
@@ -72,16 +102,16 @@ export function getSessionCost(isAiEnabled: boolean): number {
 /**
  * Calculate sessions from budget
  */
-export function calculateSessionsFromBudget(budgetUsd: number, isAiEnabled: boolean): number {
-  const costPerSession = getSessionCost(isAiEnabled);
+export function calculateSessionsFromBudget(budgetUsd: number, isAiEnabled: boolean, tier: 'free' | 'starter' | 'premium' = 'premium'): number {
+  const costPerSession = getSessionCost(isAiEnabled, tier);
   return Math.floor(budgetUsd / costPerSession);
 }
 
 /**
  * Calculate budget consumed from sessions
  */
-export function calculateBudgetFromSessions(sessions: number, isAiEnabled: boolean): number {
-  const costPerSession = getSessionCost(isAiEnabled);
+export function calculateBudgetFromSessions(sessions: number, isAiEnabled: boolean, tier: 'free' | 'starter' | 'premium' = 'premium'): number {
+  const costPerSession = getSessionCost(isAiEnabled, tier);
   return sessions * costPerSession;
 }
 
@@ -89,20 +119,27 @@ export function calculateBudgetFromSessions(sessions: number, isAiEnabled: boole
  * Get calculated values for display
  */
 function getCalculatedValues() {
-  const { premium, overage } = SubscriptionConfig;
+  const { starter, premium, overage } = SubscriptionConfig;
   
   return {
-    defaultAiEnabledSessions: Math.floor(premium.monthlyBudgetUsd / premium.aiEnabledSessionCostUsd), // 600
-    defaultAiDisabledSessions: Math.floor(premium.monthlyBudgetUsd / premium.aiDisabledSessionCostUsd), // 1200
-    aiEnabledSessionsPerBatch: Math.floor(overage.creditsPerBatch / premium.aiEnabledSessionCostUsd), // 100
-    aiDisabledSessionsPerBatch: Math.floor(overage.creditsPerBatch / premium.aiDisabledSessionCostUsd), // 200
+    // Premium
+    premiumAiEnabledSessions: Math.floor(premium.monthlyBudgetUsd / premium.aiEnabledSessionCostUsd),
+    premiumAiDisabledSessions: Math.floor(premium.monthlyBudgetUsd / premium.aiDisabledSessionCostUsd),
+    premiumAiEnabledSessionsPerBatch: Math.floor(overage.creditsPerBatch / premium.aiEnabledSessionCostUsd),
+    premiumAiDisabledSessionsPerBatch: Math.floor(overage.creditsPerBatch / premium.aiDisabledSessionCostUsd),
+    
+    // Starter
+    starterAiEnabledSessions: Math.floor(starter.monthlyBudgetUsd / starter.aiEnabledSessionCostUsd),
+    starterAiDisabledSessions: Math.floor(starter.monthlyBudgetUsd / starter.aiDisabledSessionCostUsd),
+    starterAiEnabledSessionsPerBatch: Math.floor(overage.creditsPerBatch / starter.aiEnabledSessionCostUsd),
+    starterAiDisabledSessionsPerBatch: Math.floor(overage.creditsPerBatch / starter.aiDisabledSessionCostUsd),
   };
 }
 
 /**
  * Get subscription tier details
  */
-export function getTierDetails(tier: 'free' | 'premium') {
+export function getTierDetails(tier: 'free' | 'starter' | 'premium') {
   const calc = getCalculatedValues();
   
   if (tier === 'premium') {
@@ -112,14 +149,35 @@ export function getTierDetails(tier: 'free' | 'premium') {
       monthlyBudgetUsd: SubscriptionConfig.premium.monthlyBudgetUsd,
       aiEnabledSessionCost: SubscriptionConfig.premium.aiEnabledSessionCostUsd,
       aiDisabledSessionCost: SubscriptionConfig.premium.aiDisabledSessionCostUsd,
-      defaultAiEnabledSessions: calc.defaultAiEnabledSessions,
-      defaultAiDisabledSessions: calc.defaultAiDisabledSessions,
+      defaultAiEnabledSessions: calc.premiumAiEnabledSessions,
+      defaultAiDisabledSessions: calc.premiumAiDisabledSessions,
       translationsEnabled: SubscriptionConfig.premium.translationsEnabled,
+      maxLanguages: SubscriptionConfig.premium.maxLanguages,
       monthlyFeeUsd: SubscriptionConfig.premium.monthlyFeeUsd,
       overage: {
         creditsPerBatch: SubscriptionConfig.overage.creditsPerBatch,
-        aiEnabledSessionsPerBatch: calc.aiEnabledSessionsPerBatch,
-        aiDisabledSessionsPerBatch: calc.aiDisabledSessionsPerBatch,
+        aiEnabledSessionsPerBatch: calc.premiumAiEnabledSessionsPerBatch,
+        aiDisabledSessionsPerBatch: calc.premiumAiDisabledSessionsPerBatch,
+      },
+    };
+  }
+
+  if (tier === 'starter') {
+    return {
+      tier: 'starter',
+      experienceLimit: SubscriptionConfig.starter.experienceLimit,
+      monthlyBudgetUsd: SubscriptionConfig.starter.monthlyBudgetUsd,
+      aiEnabledSessionCost: SubscriptionConfig.starter.aiEnabledSessionCostUsd,
+      aiDisabledSessionCost: SubscriptionConfig.starter.aiDisabledSessionCostUsd,
+      defaultAiEnabledSessions: calc.starterAiEnabledSessions,
+      defaultAiDisabledSessions: calc.starterAiDisabledSessions,
+      translationsEnabled: SubscriptionConfig.starter.translationsEnabled,
+      maxLanguages: SubscriptionConfig.starter.maxLanguages,
+      monthlyFeeUsd: SubscriptionConfig.starter.monthlyFeeUsd,
+      overage: {
+        creditsPerBatch: SubscriptionConfig.overage.creditsPerBatch,
+        aiEnabledSessionsPerBatch: calc.starterAiEnabledSessionsPerBatch,
+        aiDisabledSessionsPerBatch: calc.starterAiDisabledSessionsPerBatch,
       },
     };
   }
@@ -129,6 +187,7 @@ export function getTierDetails(tier: 'free' | 'premium') {
     experienceLimit: SubscriptionConfig.free.experienceLimit,
     monthlySessionLimit: SubscriptionConfig.free.monthlySessionLimit,
     translationsEnabled: SubscriptionConfig.free.translationsEnabled,
+    maxLanguages: 0,
     monthlyFeeUsd: 0,
     overage: null,
   };
@@ -139,7 +198,7 @@ export function getTierDetails(tier: 'free' | 'premium') {
  */
 export function getPricingDisplay() {
   const calc = getCalculatedValues();
-  const { free, premium, overage } = SubscriptionConfig;
+  const { free, starter, premium, overage } = SubscriptionConfig;
   
   return {
     free: {
@@ -158,6 +217,34 @@ export function getPricingDisplay() {
         'No translations'
       ]
     },
+    starter: {
+      name: 'Starter',
+      price: `$${starter.monthlyFeeUsd}`,
+      priceSubtext: '/month',
+      features: [
+        `Up to ${starter.experienceLimit} projects`,
+        `$${starter.monthlyBudgetUsd} monthly session budget`,
+        `AI projects: ${calc.starterAiEnabledSessions} sessions included`,
+        `Non-AI projects: ${calc.starterAiDisabledSessions} sessions included`,
+        `Max ${starter.maxLanguages} languages`,
+        'Powered by FunTell branding'
+      ],
+      highlights: [
+        'Great for getting started',
+        'Pay-per-session model',
+        'Automatic top-up when needed',
+        'Translation support'
+      ],
+      sessionCosts: {
+        aiEnabled: starter.aiEnabledSessionCostUsd,
+        aiDisabled: starter.aiDisabledSessionCostUsd,
+      },
+      overage: {
+        creditsPerBatch: overage.creditsPerBatch,
+        aiEnabledSessionsPerBatch: calc.starterAiEnabledSessionsPerBatch,
+        aiDisabledSessionsPerBatch: calc.starterAiDisabledSessionsPerBatch,
+      }
+    },
     premium: {
       name: 'Premium',
       price: `$${premium.monthlyFeeUsd}`,
@@ -165,16 +252,16 @@ export function getPricingDisplay() {
       features: [
         `Up to ${premium.experienceLimit} projects`,
         `$${premium.monthlyBudgetUsd} monthly session budget`,
-        `AI projects: ${calc.defaultAiEnabledSessions} sessions included`,
-        `Non-AI projects: ${calc.defaultAiDisabledSessions} sessions included`,
-        `Auto top-up: $${overage.creditsPerBatch} for extra sessions`,
-        'Multi-language translations'
+        `AI projects: ${calc.premiumAiEnabledSessions} sessions included`,
+        `Non-AI projects: ${calc.premiumAiDisabledSessions} sessions included`,
+        `Unlimited languages`,
+        'White label (No branding)'
       ],
       highlights: [
         'Best for growing businesses',
-        'Pay-per-session model',
+        'Cheaper session rates',
         'Automatic top-up when needed',
-        'Full translation support'
+        'Full white label'
       ],
       sessionCosts: {
         aiEnabled: premium.aiEnabledSessionCostUsd,
@@ -182,8 +269,8 @@ export function getPricingDisplay() {
       },
       overage: {
         creditsPerBatch: overage.creditsPerBatch,
-        aiEnabledSessionsPerBatch: calc.aiEnabledSessionsPerBatch,
-        aiDisabledSessionsPerBatch: calc.aiDisabledSessionsPerBatch,
+        aiEnabledSessionsPerBatch: calc.premiumAiEnabledSessionsPerBatch,
+        aiDisabledSessionsPerBatch: calc.premiumAiDisabledSessionsPerBatch,
       }
     }
   };

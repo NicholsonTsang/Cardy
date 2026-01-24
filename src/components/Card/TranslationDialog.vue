@@ -41,6 +41,24 @@
 
       <!-- Translate Mode -->
       <div v-show="viewMode === 'translate'" class="space-y-6">
+        <!-- Limit Warning Banner for Starter tier -->
+        <div v-if="maxLanguages !== -1" class="bg-indigo-50 border border-indigo-200 rounded-lg p-3 flex items-start gap-3">
+          <i class="pi pi-info-circle text-indigo-600 mt-0.5"></i>
+          <div class="flex-1 text-sm text-indigo-900">
+            <span class="font-semibold">{{ $t('translation.dialog.planLimit', { plan: subscriptionStore.tier === 'starter' ? $t('subscription.starter_plan') : $t('subscription.free_plan') }) }}</span>
+            <span class="mx-1">•</span>
+            <span>{{ $t('translation.dialog.languagesCount', { current: existingTranslations.length, max: maxLanguages }) }}</span>
+            <div v-if="isLimitReached" class="mt-1 text-amber-700 font-medium">
+              <i class="pi pi-lock mr-1"></i>
+              {{ $t('translation.dialog.limitReached') }}
+            </div>
+            <div v-else class="mt-1 text-indigo-700">
+              {{ $t('translation.dialog.remainingSlots', { count: remainingSlots }) }}
+            </div>
+          </div>
+          <Tag :value="subscriptionStore.tier === 'starter' ? $t('subscription.starter_plan') : $t('subscription.free_plan')" severity="info" class="text-xs" />
+        </div>
+
         <!-- Quick Selection Buttons -->
         <div class="flex gap-2 flex-wrap">
           <Button
@@ -49,6 +67,7 @@
             size="small"
             outlined
             @click="selectAll"
+            :disabled="isLimitReached"
           />
           <Button
             :label="$t('translation.dialog.clearAll')"
@@ -65,6 +84,7 @@
             size="small"
             outlined
             @click="selectPopular"
+            :disabled="isLimitReached"
           />
           <Button
             v-if="outdatedLanguages.length > 0"
@@ -89,29 +109,29 @@
               
               // Unselected states
               'border-amber-300 bg-amber-50/30 hover:bg-amber-50 cursor-pointer': lang.status === 'outdated' && !selectedLanguages.includes(lang.language as LanguageCode),
-              'border-slate-200 bg-white hover:bg-slate-50 cursor-pointer': lang.status === 'not_translated' && !selectedLanguages.includes(lang.language as LanguageCode),
-              'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed': lang.status === 'up_to_date' && !selectedLanguages.includes(lang.language as LanguageCode),
+              'border-slate-200 bg-white hover:bg-slate-50 cursor-pointer': lang.status === 'not_translated' && !selectedLanguages.includes(lang.language as LanguageCode) && !isLimitReached,
+              'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed': (lang.status === 'up_to_date' || (lang.status === 'not_translated' && isLimitReached)) && !selectedLanguages.includes(lang.language as LanguageCode),
             }"
-            @click="lang.status !== 'up_to_date' && toggleLanguage(lang.language)"
+            @click="(lang.status !== 'up_to_date' && (!isLimitReached || lang.status === 'outdated')) && toggleLanguage(lang.language)"
           >
             <Checkbox
               v-model="selectedLanguages"
               :input-id="`lang-${lang.language}`"
               :value="lang.language"
-              :disabled="lang.status === 'up_to_date'"
+              :disabled="lang.status === 'up_to_date' || (lang.status === 'not_translated' && isLimitReached && !selectedLanguages.includes(lang.language as LanguageCode))"
               class="mr-3"
               @click.stop
             />
             <label 
               :for="`lang-${lang.language}`" 
               class="flex-1 flex items-center justify-between"
-              :class="lang.status === 'up_to_date' ? 'cursor-not-allowed' : 'cursor-pointer'"
+              :class="(lang.status === 'up_to_date' || (lang.status === 'not_translated' && isLimitReached)) ? 'cursor-not-allowed' : 'cursor-pointer'"
             >
               <div class="flex items-center gap-2">
                 <span class="text-lg">{{ getLanguageFlag(lang.language) }}</span>
                 <span 
                   class="text-sm font-medium"
-                  :class="lang.status === 'up_to_date' ? 'text-gray-400' : 'text-gray-900'"
+                  :class="(lang.status === 'up_to_date' || (lang.status === 'not_translated' && isLimitReached)) ? 'text-gray-400' : 'text-gray-900'"
                 >
                   {{ lang.language_name }}
                 </span>
@@ -473,6 +493,8 @@ import ProgressBar from 'primevue/progressbar';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from 'primevue/useconfirm';
 import { useTranslationStore, SUPPORTED_LANGUAGES, type LanguageCode, type TranslationStatus } from '@/stores/translation';
+import { useSubscriptionStore } from '@/stores/subscription';
+import { SubscriptionConfig } from '@/config/subscription';
 
 // Props & Emits
 const props = defineProps<{
@@ -491,6 +513,7 @@ const { t } = useI18n();
 const toast = useToast();
 const confirm = useConfirm();
 const translationStore = useTranslationStore();
+const subscriptionStore = useSubscriptionStore();
 
 // State
 const viewMode = ref<'translate' | 'manage'>('translate');
@@ -509,6 +532,23 @@ const deleteProgress = ref({
 });
 
 // Computed
+const maxLanguages = computed(() => {
+  // Use config directly for consistency
+  if (subscriptionStore.tier === 'premium') return -1; // Unlimited
+  if (subscriptionStore.tier === 'starter') return SubscriptionConfig.starter.maxLanguages;
+  return 0; // Free tier (shouldn't be here normally)
+});
+
+const remainingSlots = computed(() => {
+  if (maxLanguages.value === -1) return 999;
+  return Math.max(0, maxLanguages.value - existingTranslations.value.length);
+});
+
+const isLimitReached = computed(() => {
+  if (maxLanguages.value === -1) return false;
+  return existingTranslations.value.length >= maxLanguages.value;
+});
+
 const dialogVisible = computed({
   get: () => props.visible,
   set: (value) => emit('update:visible', value),
@@ -568,15 +608,71 @@ const toggleLanguage = (lang: string) => {
   if (index > -1) {
     selectedLanguages.value.splice(index, 1);
   } else {
+    // Check limit
+    if (maxLanguages.value !== -1) {
+      // Allow re-translating outdated ones (they are already counted in existingTranslations)
+      // But adding new ones should be limited
+      // existingTranslations includes outdated ones.
+      
+      // If the language is already in existingTranslations (outdated), we can select it (re-translate).
+      // If it's new (not_translated), we check remaining slots.
+      // But wait, existingTranslations includes EVERYTHING except original and not_translated.
+      
+      const isExisting = existingTranslations.value.some(t => t.language === lang);
+      if (!isExisting) {
+        // It's a new language
+        // Count how many NEW languages are already selected
+        const selectedNewCount = selectedLanguages.value.filter(l => !existingTranslations.value.some(t => t.language === l)).length;
+        
+        if (remainingSlots.value - selectedNewCount <= 0) {
+          toast.add({
+            severity: 'warn',
+            summary: t('translation.dialog.limitReached'),
+            detail: t('translation.dialog.limitReachedDetail', { max: maxLanguages.value }),
+            life: 3000
+          });
+          return;
+        }
+      }
+    }
+    
     selectedLanguages.value.push(lang as LanguageCode);
   }
 };
 
 const selectAll = () => {
-  // Only select languages that are not already up-to-date
-  selectedLanguages.value = selectableLanguages.value
-    .filter(lang => lang.status !== 'up_to_date')
-    .map(lang => lang.language as LanguageCode);
+  if (maxLanguages.value === -1) {
+    // Only select languages that are not already up-to-date
+    selectedLanguages.value = selectableLanguages.value
+      .filter(lang => lang.status !== 'up_to_date')
+      .map(lang => lang.language as LanguageCode);
+  } else {
+    // Limited selection logic
+    // 1. Select all outdated (re-translate)
+    const outdated = selectableLanguages.value
+      .filter(lang => lang.status === 'outdated')
+      .map(lang => lang.language as LanguageCode);
+      
+    // 2. Fill remaining slots with not_translated
+    let currentCount = existingTranslations.value.length;
+    const available = selectableLanguages.value
+      .filter(lang => lang.status === 'not_translated')
+      .map(lang => lang.language as LanguageCode);
+      
+    const canAdd = Math.max(0, maxLanguages.value - currentCount);
+    const toAdd = available.slice(0, canAdd);
+    
+    selectedLanguages.value = [...outdated, ...toAdd];
+    
+    if (available.length > canAdd) {
+       toast.add({
+        severity: 'info',
+        summary: t('translation.dialog.partialSelection'),
+        detail: t('translation.dialog.limitReachedDetail', { max: maxLanguages.value }),
+        life: 3000
+      });
+    }
+  }
 };
 
 const clearAll = () => {
@@ -586,9 +682,37 @@ const clearAll = () => {
 const selectPopular = () => {
   // Popular languages: Chinese (both), Japanese, Korean
   const popular = ['zh-Hant', 'zh-Hans', 'ja', 'ko'] as LanguageCode[];
-  selectedLanguages.value = popular.filter(lang =>
-    selectableLanguages.value.some(l => l.language === lang)
-  );
+  
+  if (maxLanguages.value === -1) {
+    selectedLanguages.value = popular.filter(lang =>
+      selectableLanguages.value.some(l => l.language === lang)
+    );
+  } else {
+    // Logic for limited plan
+    const availablePopular = popular.filter(lang =>
+      selectableLanguages.value.some(l => l.language === lang)
+    );
+    
+    // We can select outdated ones freely
+    const outdatedPopular = availablePopular.filter(lang => 
+      existingTranslations.value.some(t => t.language === lang)
+    );
+    
+    // We can select new ones up to limit
+    const newPopular = availablePopular.filter(lang => 
+      !existingTranslations.value.some(t => t.language === lang)
+    );
+    
+    // Count already selected NEW languages (if we want to preserve user selection... actually selectPopular usually resets/overrides or adds?)
+    // Standard behavior: replace selection? Or add to selection?
+    // Let's assume replace for simplicity or just add.
+    // The current impl sets value directly: selectedLanguages.value = ...
+    
+    const canAdd = Math.max(0, maxLanguages.value - existingTranslations.value.length);
+    const toAdd = newPopular.slice(0, canAdd);
+    
+    selectedLanguages.value = [...outdatedPopular, ...toAdd];
+  }
 };
 
 const selectOutdated = () => {

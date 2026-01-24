@@ -29,10 +29,12 @@ import {
   checkSessionAllowed,
   recordSession,
   logAccess,
-  checkDailyLimit,
-  recordDailyAccess,
-  invalidateCardDailyLimit,
+  checkTokenDailyLimit,
+  recordTokenDailyAccess,
+  recordTokenMonthlyAccess,
+  invalidateTokenDailyLimit,
   invalidateCardAiEnabled,
+  updateTokenSessionCounters,
 } from '../services/usage-tracker';
 
 const router = Router();
@@ -62,12 +64,14 @@ interface CardContentResponse {
     isGrouped: boolean;
     groupDisplay: string;
     billingType: string;
-    maxScans: number | null;
-    currentScans: number;
-    dailyScanLimit: number | null;
-    dailyScans: number;
-    // Access status flags
-    scanLimitReached: boolean;
+    // Token-specific session data
+    tokenId: string;
+    tokenName: string;
+    totalSessions: number;
+    dailySessionLimit: number | null;
+    dailySessions: number;
+    monthlySessions: number;
+    // Access status flags (billing is per-user subscription, not per-project)
     budgetExhausted: boolean;
     dailyLimitExceeded: boolean;
     creditsInsufficient: boolean;
@@ -75,6 +79,7 @@ interface CardContentResponse {
     // Session billing info
     sessionCost: number;
     isNewSession: boolean;
+    subscriptionTier?: string;
   };
   contentItems: Array<{
     id: string;
@@ -232,13 +237,13 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       });
     }
     
-    console.log(`[Mobile] Card found for ${accessToken}: ${cardInfo.id} (${queryTime}ms, template: ${cardInfo.is_template})`);
+    console.log(`[Mobile] Card found for ${accessToken}: ${cardInfo.id}, token: ${cardInfo.token_id} (${queryTime}ms, template: ${cardInfo.is_template})`);
 
-    // Step 5: Check if access is enabled
-    if (!cardInfo.is_access_enabled) {
+    // Step 5: Check if this specific QR code (token) is enabled
+    if (!cardInfo.token_is_enabled) {
       return res.status(403).json({
         error: 'Access disabled',
-        message: 'This card is currently unavailable',
+        message: 'This QR code is currently disabled',
         accessDisabled: true,
       });
     }
@@ -248,7 +253,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       allowed: true, 
       isNewSession: !isExistingSession,
       sessionCost: 0,
-      tier: 'free' as 'free' | 'premium',
+      tier: 'free' as 'free' | 'starter' | 'premium',
       isAiEnabled: false,
       budgetRemaining: 0,
       needsOverage: false,
@@ -267,14 +272,17 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
     }
     
     if (!isExistingSession && !isTemplateCard) {
-      // Step 6a: Check DAILY limit first (per-card creator protection)
-      const dailyCheck = await checkDailyLimit(cardInfo.id);
+      // Step 6a: Check DAILY limit first (per-token protection)
+      const dailyCheck = await checkTokenDailyLimit(
+        cardInfo.token_id,
+        cardInfo.token_daily_session_limit
+      );
       
       if (!dailyCheck.allowed) {
         dailyLimitExceeded = true;
         sessionResult.allowed = false;
         sessionResult.reason = dailyCheck.reason;
-        console.log(`[Mobile] Access denied (daily limit) for ${accessToken}: ${dailyCheck.currentScans}/${dailyCheck.dailyLimit}`);
+        console.log(`[Mobile] Access denied (daily limit) for token ${cardInfo.token_id}: ${dailyCheck.currentSessions}/${dailyCheck.dailyLimit}`);
       } else {
         // Step 6b: Check session allowance and handle billing
         const sessionCheck = await checkSessionAllowed(
@@ -299,9 +307,15 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           );
           
           if (recordResult.allowed) {
-            // Record daily access after successful session
-            await recordDailyAccess(cardInfo.id);
-            console.log(`[Mobile] Session recorded for ${accessToken}: ${sessionCheck.reason}`);
+            // Record token-level daily and monthly access after successful session
+            await recordTokenDailyAccess(cardInfo.token_id);
+            await recordTokenMonthlyAccess(cardInfo.token_id);
+            
+            // Update DB counters for display (async, non-blocking)
+            updateTokenSessionCounters(cardInfo.token_id)
+              .catch(err => console.error('[Mobile] Failed to update token counters:', err));
+            
+            console.log(`[Mobile] Session recorded for token ${cardInfo.token_id}: ${sessionCheck.reason}`);
           } else {
             sessionResult.allowed = false;
             sessionResult.reason = recordResult.reason;
@@ -340,11 +354,16 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
     
     if (cachedContent) {
       content = cachedContent;
-      // Update status fields
+      // Update status fields with token-specific data
       content.card.budgetExhausted = budgetExhausted;
       content.card.dailyLimitExceeded = dailyLimitExceeded;
       content.card.creditsInsufficient = creditsInsufficient;
-      content.card.currentScans = cardInfo.current_scans;
+      content.card.tokenId = cardInfo.token_id;
+      content.card.tokenName = cardInfo.token_name;
+      content.card.totalSessions = cardInfo.token_total_sessions;
+      content.card.dailySessions = cardInfo.token_daily_sessions;
+      content.card.monthlySessions = cardInfo.token_monthly_sessions;
+      content.card.dailySessionLimit = cardInfo.token_daily_session_limit;
       content.card.sessionCost = sessionResult.sessionCost;
       content.card.isNewSession = sessionResult.isNewSession;
       content.card.aiEnabled = sessionResult.isAiEnabled;
@@ -400,16 +419,19 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           isGrouped: cardData.is_grouped || false,
           groupDisplay: cardData.group_display || 'expanded',
           billingType: cardData.billing_type || 'digital',
-          maxScans: cardData.max_scans,
-          currentScans: cardData.current_scans || 0,
-          dailyScanLimit: cardData.daily_scan_limit,
-          dailyScans: cardData.daily_scans ?? 0,
-          scanLimitReached: false,
+          // Token-specific session data
+          tokenId: cardInfo.token_id,
+          tokenName: cardInfo.token_name,
+          totalSessions: cardInfo.token_total_sessions || 0,
+          dailySessionLimit: cardInfo.token_daily_session_limit,
+          dailySessions: cardInfo.token_daily_sessions ?? 0,
+          monthlySessions: cardInfo.token_monthly_sessions ?? 0,
           budgetExhausted,
           dailyLimitExceeded,
           creditsInsufficient,
           sessionCost: sessionResult.sessionCost,
           isNewSession: sessionResult.isNewSession,
+          subscriptionTier: cardData.subscription_tier,
         },
         contentItems: (contentItems || []).map((item: any) => {
           const itemTranslations = item.translations || {};
@@ -433,12 +455,15 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
         ...content,
         card: {
           ...content.card,
-          scanLimitReached: false,
           budgetExhausted: false,
           dailyLimitExceeded: false,
           creditsInsufficient: false,
           sessionCost: 0,
           isNewSession: false,
+          // Token stats will be updated from cardInfo on each request
+          totalSessions: 0,
+          dailySessions: 0,
+          monthlySessions: 0,
         },
       };
       await cacheSet(cacheKey, contentToCache, CacheTTL.cardContent);
@@ -564,11 +589,13 @@ router.get('/card/physical/:issueCardId', async (req: Request, res: Response) =>
         isGrouped: cardData.is_grouped || false,
         groupDisplay: cardData.group_display || 'expanded',
         billingType: cardData.billing_type || 'physical',
-        maxScans: null,
-        currentScans: 0,
-        dailyScanLimit: null,
-        dailyScans: 0,
-        scanLimitReached: false,
+        // Physical cards don't use token-based tracking
+        tokenId: '',
+        tokenName: '',
+        totalSessions: 0,
+        dailySessionLimit: null,
+        dailySessions: 0,
+        monthlySessions: 0,
         budgetExhausted: false,
         dailyLimitExceeded: false,
         creditsInsufficient: false,
@@ -619,7 +646,7 @@ router.get('/card/physical/:issueCardId', async (req: Request, res: Response) =>
 router.post('/card/:cardId/invalidate-cache', async (req: Request, res: Response) => {
   try {
     const { cardId } = req.params;
-    const { accessToken } = req.body;
+    const { accessToken, tokenId } = req.body;
     
     const { cacheDeletePattern } = await import('../config/redis');
     
@@ -629,17 +656,21 @@ router.post('/card/:cardId/invalidate-cache', async (req: Request, res: Response
       deletedCount += await cacheDeletePattern(`card:content:${accessToken}:*`);
     }
     
+    if (tokenId) {
+      // Invalidate token-specific daily limit cache
+      await invalidateTokenDailyLimit(tokenId);
+      console.log(`[Mobile] Invalidated caches for token ${tokenId.slice(0, 8)}...`);
+    }
+    
     if (cardId) {
-      // Invalidate daily limit cache
-      await invalidateCardDailyLimit(cardId);
       // Invalidate AI-enabled cache (for billing rate changes)
       await invalidateCardAiEnabled(cardId);
-      console.log(`[Mobile] Invalidated caches for card ${cardId.slice(0, 8)}...`);
+      console.log(`[Mobile] Invalidated AI cache for card ${cardId.slice(0, 8)}...`);
     }
     
     return res.json({
       success: true,
-      message: `Invalidated ${deletedCount} content cache entries and card settings cache`,
+      message: `Invalidated ${deletedCount} content cache entries and settings caches`,
     });
     
   } catch (error) {

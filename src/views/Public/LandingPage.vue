@@ -27,7 +27,7 @@
             <!-- Brand Badge -->
             <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-white/[0.08] backdrop-blur-md rounded-full border border-white/10 mb-5 sm:mb-6 animate-fade-in-up">
               <LogoAnimation size="sm" variant="light" />
-              <span class="text-white/90 font-medium text-sm tracking-wide">FunTell</span>
+              <span class="text-white/90 font-medium text-sm tracking-wide">{{ $t('common.app_name') }}</span>
             </div>
             
             <h1 class="text-[1.75rem] sm:text-4xl md:text-5xl lg:text-[3.25rem] xl:text-6xl font-extrabold mb-4 sm:mb-5 leading-[1.15] tracking-tight text-white animate-fade-in-up">
@@ -344,51 +344,21 @@
               <!-- Decorative gradient blob - hidden on mobile to prevent overflow -->
               <div class="hidden sm:block absolute -inset-4 bg-gradient-to-tr from-blue-100 via-purple-50 to-pink-100 rounded-[2.5rem] blur-xl opacity-70"></div>
               
-              <div class="relative">
-                <PhoneSimulator :width="phoneSimulatorWidth" class="shadow-2xl">
-                  <div class="simulator-content">
-                    <!-- Placeholder State (no template selected) -->
-                    <div v-if="!selectedTemplate" class="simulator-placeholder light">
-                      <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-slate-100 flex items-center justify-center mb-3 sm:mb-4">
-                        <i class="pi pi-mobile text-xl sm:text-2xl text-slate-400"></i>
-                      </div>
-                      <p class="text-slate-500 font-medium text-sm sm:text-base text-center px-4">{{ $t('landing.demo_templates.select_template') }}</p>
-                    </div>
-                    
-                    <!-- Live Preview iframe (renders behind loading if loading) -->
-                    <div v-if="selectedTemplate?.access_url" class="simulator-iframe-wrapper">
-                      <iframe 
-                        :src="getTemplateUrl(selectedTemplate)"
-                        class="simulator-iframe"
-                        :style="{ transform: `translate(-50%, -50%) scale(${simulatorScale})` }"
-                        :title="selectedTemplate.name"
-                        loading="lazy"
-                        @load="handleIframeLoad"
-                        @error="handleIframeError"
-                      ></iframe>
-                    </div>
-                    
-                    <!-- Loading Spinner (overlays iframe while loading) -->
-                    <div v-if="selectedTemplate && iframeLoading && !iframeError" class="simulator-loading light">
-                      <ProgressSpinner strokeWidth="3" animationDuration=".8s" class="w-8 h-8 sm:w-10 sm:h-10"/>
-                      <p class="text-slate-500 mt-2 sm:mt-3 text-sm sm:text-base">{{ $t('common.loading') }}</p>
-                    </div>
-                    
-                    <!-- Error State -->
-                    <div v-if="selectedTemplate && iframeError" class="simulator-placeholder light">
-                      <div class="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-red-50 flex items-center justify-center mb-3 sm:mb-4">
-                        <i class="pi pi-exclamation-triangle text-xl sm:text-2xl text-red-400"></i>
-                      </div>
-                      <p class="text-slate-500 font-medium text-sm sm:text-base text-center px-4 mb-3">{{ $t('common.load_error') }}</p>
-                      <button 
-                        @click="retryIframeLoad"
-                        class="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors"
-                      >
-                        {{ $t('common.retry') }}
-                      </button>
-                    </div>
-                  </div>
-                </PhoneSimulator>
+              <div class="relative shadow-2xl rounded-[calc(320px*0.06)]">
+                <PhoneIframePreview
+                  ref="phonePreviewRef"
+                  :src="selectedTemplate ? getTemplateUrl(selectedTemplate) : null"
+                  :iframeKey="`${selectedTemplate?.id}-${locale}`"
+                  :title="selectedTemplate?.name || 'Demo Preview'"
+                  :showPlaceholder="!selectedTemplate"
+                  :placeholderText="$t('landing.demo_templates.select_template')"
+                  :loadingText="$t('common.loading')"
+                  :errorText="$t('common.load_error')"
+                  :retryText="$t('common.retry')"
+                  @load="handleIframeLoad"
+                  @error="handleIframeError"
+                  @retry="retryIframeLoad"
+                />
               </div>
             </div>
           </div>
@@ -990,7 +960,7 @@
         </div>
 
         <!-- Subscription Tiers -->
-        <div class="grid lg:grid-cols-2 gap-6 lg:gap-8 mb-12 max-w-4xl mx-auto">
+        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-12 max-w-6xl mx-auto">
           <!-- Free Tier -->
           <div class="bg-gradient-to-br from-slate-500/10 to-slate-600/10 backdrop-blur-xl rounded-3xl border border-slate-400/30 overflow-hidden hover:border-slate-400/50 transition-all duration-300">
             <div class="bg-gradient-to-r from-slate-600/20 to-slate-700/20 p-6 border-b border-white/10">
@@ -1024,6 +994,40 @@
             </div>
           </div>
 
+          <!-- Starter Tier -->
+          <div class="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 backdrop-blur-xl rounded-3xl border border-indigo-400/30 overflow-hidden hover:border-indigo-400/50 transition-all duration-300">
+            <div class="bg-gradient-to-r from-indigo-600/20 to-blue-600/20 p-6 border-b border-white/10">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl flex items-center justify-center">
+                  <i class="pi pi-bolt text-white text-lg"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.starter_tier.title') }}</h3>
+              </div>
+              <div class="flex items-baseline gap-1">
+                <span class="text-2xl font-bold text-white/90">US$</span>
+                <span class="text-5xl font-black text-white whitespace-nowrap">{{ $t('landing.pricing.starter_tier.price', pricingVars) }}</span>
+                <span class="text-xl text-indigo-200 whitespace-nowrap ml-1">{{ $t('landing.pricing.starter_tier.per') }}</span>
+              </div>
+              <p class="text-indigo-200 mt-2 text-sm">{{ $t('landing.pricing.starter_tier.desc') }}</p>
+            </div>
+            <div class="p-6">
+              <ul class="space-y-3 mb-6">
+                <li v-for="(feature, idx) in starterTierFeatures" :key="idx" class="flex items-center gap-3 text-indigo-100">
+                  <div class="w-5 h-5 bg-indigo-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="pi pi-check text-indigo-400 text-xs"></i>
+                  </div>
+                  <span class="text-sm">{{ feature }}</span>
+                </li>
+              </ul>
+              <button
+                @click="handleGetStarted"
+                class="w-full py-3 px-6 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                {{ $t('landing.pricing.starter_tier.cta') }}
+              </button>
+            </div>
+          </div>
+
           <!-- Premium Tier -->
           <div class="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-xl rounded-3xl border-2 border-blue-400/50 overflow-hidden hover:border-blue-400/70 transition-all duration-300 relative">
             <!-- Popular Badge -->
@@ -1037,9 +1041,10 @@
                 </div>
                 <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.premium_tier.title') }}</h3>
               </div>
-              <div class="flex items-baseline gap-2">
-                <span class="text-5xl font-black text-white">{{ $t('landing.pricing.premium_tier.price') }}</span>
-                <span class="text-xl text-blue-200">{{ $t('landing.pricing.premium_tier.per') }}</span>
+              <div class="flex items-baseline gap-1">
+                <span class="text-2xl font-bold text-white/90">US$</span>
+                <span class="text-5xl font-black text-white whitespace-nowrap">{{ $t('landing.pricing.premium_tier.price', pricingVars) }}</span>
+                <span class="text-xl text-blue-200 whitespace-nowrap ml-1">{{ $t('landing.pricing.premium_tier.per') }}</span>
               </div>
               <p class="text-blue-200 mt-2 text-sm">{{ $t('landing.pricing.premium_tier.desc') }}</p>
             </div>
@@ -1233,11 +1238,10 @@ import { useSEO } from '@/composables/useSEO'
 import { supabase } from '@/lib/supabase'
 import { SubscriptionConfig } from '@/config/subscription'
 import Button from 'primevue/button'
-import ProgressSpinner from 'primevue/progressspinner'
 import QrCode from 'qrcode.vue'
 import { getCardAspectRatio } from '@/utils/cardConfig'
 import UnifiedHeader from '@/components/Layout/UnifiedHeader.vue'
-import PhoneSimulator from '@/components/common/PhoneSimulator.vue'
+import PhoneIframePreview from '@/components/common/PhoneIframePreview.vue'
 import HeroAnimation from '@/components/Landing/HeroAnimation.vue'
 import LogoAnimation from '@/components/Landing/LogoAnimation.vue'
 
@@ -1254,36 +1258,7 @@ const demoTemplates = ref([])
 const isLoadingTemplates = ref(false)
 const selectedVenueType = ref(null)
 const selectedTemplate = ref(null) // Template shown in phone preview
-const iframeLoading = ref(false) // Loading state for phone preview iframe
-const iframeError = ref(false) // Error state for phone preview iframe
-const iframeLoadTimeout = ref(null) // Timeout ref for loading
-
-// Responsive phone simulator width
-const windowWidth = ref(typeof window !== 'undefined' ? window.innerWidth : 1024)
-const phoneSimulatorWidth = computed(() => {
-  if (windowWidth.value < 380) return 240
-  if (windowWidth.value < 480) return 260
-  if (windowWidth.value < 640) return 280
-  return 320
-})
-
-// Calculate simulator scale to fill the phone screen (cover mode)
-const simulatorScale = computed(() => {
-  const phoneBorder = phoneSimulatorWidth.value * 0.025
-  const screenWidth = phoneSimulatorWidth.value - (phoneBorder * 2)
-  const phoneHeight = phoneSimulatorWidth.value * (19.5 / 9)
-  const screenHeight = phoneHeight - (phoneBorder * 2)
-  
-  const scaleX = screenWidth / 375
-  const scaleY = screenHeight / 812
-  // Use larger scale to ensure full coverage (object-fit: cover)
-  return Math.max(scaleX, scaleY)
-})
-
-// Update window width on resize
-const updateWindowWidth = () => {
-  windowWidth.value = window.innerWidth
-}
+const phonePreviewRef = ref(null) // Reference to phone preview component
 
 // Venue filter scroll ref
 const venueFilterScroll = ref(null)
@@ -1317,50 +1292,29 @@ const selectVenueType = (type) => {
 // Select template for phone preview
 const selectTemplateForPreview = (template) => {
   if (selectedTemplate.value?.id !== template.id) {
-    // Clear any existing timeout
-    if (iframeLoadTimeout.value) {
-      clearTimeout(iframeLoadTimeout.value)
-    }
-    iframeLoading.value = true // Show loading spinner when switching templates
-    iframeError.value = false // Reset error state
-    
-    // Set a timeout to stop loading after 15 seconds
-    iframeLoadTimeout.value = setTimeout(() => {
-      if (iframeLoading.value) {
-        iframeLoading.value = false
-        iframeError.value = true
-      }
-    }, 15000)
+    // Reset component state when switching templates
+    phonePreviewRef.value?.resetState()
   }
   selectedTemplate.value = template
 }
 
-// Iframe load handlers
+// Iframe event handlers (delegated to component, these are for optional parent handling)
 const handleIframeLoad = () => {
-  if (iframeLoadTimeout.value) {
-    clearTimeout(iframeLoadTimeout.value)
-  }
-  iframeLoading.value = false
-  iframeError.value = false
+  // Template loaded successfully
 }
 
 const handleIframeError = () => {
-  if (iframeLoadTimeout.value) {
-    clearTimeout(iframeLoadTimeout.value)
-  }
-  iframeLoading.value = false
-  iframeError.value = true
+  // Template failed to load
 }
 
 const retryIframeLoad = () => {
   if (selectedTemplate.value) {
-    iframeError.value = false
-    iframeLoading.value = true
-    // Force iframe reload by temporarily clearing and re-setting the template
+    phonePreviewRef.value?.resetState()
+    // Force re-render by toggling template
     const template = selectedTemplate.value
     selectedTemplate.value = null
     setTimeout(() => {
-      selectTemplateForPreview(template)
+      selectedTemplate.value = template
     }, 100)
   }
 }
@@ -1377,7 +1331,23 @@ const cardAspectRatio = computed(() => getCardAspectRatio())
 // Digital Access Demo configuration (illustrative only)
 const digitalAccessDemoTitle = import.meta.env.VITE_DIGITAL_ACCESS_DEMO_TITLE || 'Digital Menu'
 const digitalAccessDemoSubtitle = import.meta.env.VITE_DIGITAL_ACCESS_DEMO_SUBTITLE || 'Scan for instant access'
-const sampleQrUrl = import.meta.env.VITE_SAMPLE_QR_URL || 'https://funtell.ai'
+// Include current language in QR URL so scanned content shows in the correct language
+const sampleQrUrl = computed(() => {
+  const baseUrl = import.meta.env.VITE_SAMPLE_QR_URL || 'https://funtell.ai'
+  // If it's an external URL (not a card URL), return as-is
+  if (!baseUrl.includes('/c/')) return baseUrl
+  // For card URLs, ensure language is included
+  if (baseUrl.startsWith('http')) {
+    const url = new URL(baseUrl)
+    const pathParts = url.pathname.split('/').filter(Boolean)
+    // Check if URL already has language prefix
+    if (pathParts[0] === 'c') {
+      // Insert language before /c/
+      return `${url.origin}/${locale.value}/c/${pathParts.slice(1).join('/')}`
+    }
+  }
+  return baseUrl
+})
 
 // Contact configuration
 const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || 'inquiry@funtell.ai'
@@ -1472,15 +1442,9 @@ const handleScroll = () => {
   showFloatingCta.value = window.scrollY > 600
 }
 
-onMounted(() => {
+onMounted(async () => {
   // Initialize SEO
   updateSEO()
-  
-  // Fetch demo templates
-  fetchDemoTemplates()
-  
-  // Responsive phone width listener
-  window.addEventListener('resize', updateWindowWidth)
   
   // Scroll listener
   window.addEventListener('scroll', handleScroll)
@@ -1491,6 +1455,10 @@ onMounted(() => {
       initAnimations()
     }, 50)
   })
+
+  // Fetch demo templates and wait for them to ensure layout is stable before scrolling
+  // This prevents scroll position errors when the templates section expands
+  await fetchDemoTemplates()
 
   // Handle hash navigation (e.g., /#demo, /#features, /#pricing)
   if (route.hash) {
@@ -1506,11 +1474,15 @@ onMounted(() => {
 
 onUnmounted(() => {
   window.removeEventListener('scroll', handleScroll)
-  window.removeEventListener('resize', updateWindowWidth)
 })
 
 // Re-initialize animations and refetch templates when language changes
 watch(locale, () => {
+  // Reset phone preview state when language changes
+  if (selectedTemplate.value) {
+    phonePreviewRef.value?.resetState()
+  }
+  
   // Refetch demo templates in the new language
   fetchDemoTemplates()
   
@@ -1578,7 +1550,7 @@ const fetchDemoTemplates = async () => {
     
     console.log('[LandingPage] Demo templates fetched:', data?.length || 0, 'templates')
     if (data?.length === 0) {
-      console.warn('[LandingPage] No demo templates found. Check that templates have is_featured=true, is_active=true, and linked cards have is_access_enabled=true with access_token set.')
+      console.warn('[LandingPage] No demo templates found. Check that templates have is_featured=true, is_active=true, and linked cards have at least one enabled QR code (access token) in card_access_tokens.')
     }
     
     demoTemplates.value = data || []
@@ -1595,12 +1567,14 @@ const fetchDemoTemplates = async () => {
 
 const getTemplateUrl = (template) => {
   if (!template.access_url) return ''
-  return `${window.location.origin}/c/${template.access_url}`
+  // Include current language in URL for proper localized content display
+  return `${window.location.origin}/${locale.value}/c/${template.access_url}`
 }
 
 const openTemplate = (template) => {
   if (template.access_url) {
-    window.location.href = getTemplateUrl(template)
+    // Navigate using router to preserve language context
+    router.push(`/${locale.value}/c/${template.access_url}`)
   }
 }
 
@@ -1708,34 +1682,74 @@ const pricingFeatures = computed(() => [
 
 // Pricing variables for interpolation (from environment config)
 const pricingVars = computed(() => ({
+  // Premium
+  premiumFee: SubscriptionConfig.premium.monthlyFeeUsd,
   monthlyBudget: SubscriptionConfig.premium.monthlyBudgetUsd,
   aiCost: SubscriptionConfig.premium.aiEnabledSessionCostUsd,
   nonAiCost: SubscriptionConfig.premium.aiDisabledSessionCostUsd,
-  aiSessions: SubscriptionConfig.calculated.defaultAiEnabledSessions,
-  nonAiSessions: SubscriptionConfig.calculated.defaultAiDisabledSessions,
+  // Helper to calculate session counts for Premium
+  aiSessions: Math.floor(SubscriptionConfig.premium.monthlyBudgetUsd / SubscriptionConfig.premium.aiEnabledSessionCostUsd),
+  nonAiSessions: Math.floor(SubscriptionConfig.premium.monthlyBudgetUsd / SubscriptionConfig.premium.aiDisabledSessionCostUsd),
+  
+  // Starter
+  starterFee: SubscriptionConfig.starter.monthlyFeeUsd,
+  starterBudget: SubscriptionConfig.starter.monthlyBudgetUsd,
+  starterAiCost: SubscriptionConfig.starter.aiEnabledSessionCostUsd,
+  starterNonAiCost: SubscriptionConfig.starter.aiDisabledSessionCostUsd,
+  starterAiSessions: Math.floor(SubscriptionConfig.starter.monthlyBudgetUsd / SubscriptionConfig.starter.aiEnabledSessionCostUsd),
+  starterNonAiSessions: Math.floor(SubscriptionConfig.starter.monthlyBudgetUsd / SubscriptionConfig.starter.aiDisabledSessionCostUsd),
+  starterMaxLanguages: SubscriptionConfig.starter.maxLanguages,
+  
+  // Overage
   topupCost: SubscriptionConfig.overage.creditsPerBatch,
-  aiTopupSessions: SubscriptionConfig.calculated.aiEnabledSessionsPerBatch,
-  nonAiTopupSessions: SubscriptionConfig.calculated.aiDisabledSessionsPerBatch,
+  // Premium Overage
+  aiTopupSessions: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.premium.aiEnabledSessionCostUsd),
+  nonAiTopupSessions: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.premium.aiDisabledSessionCostUsd),
+  // Starter Overage
+  starterAiTopupSessions: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.starter.aiEnabledSessionCostUsd),
+  starterNonAiTopupSessions: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.starter.aiDisabledSessionCostUsd),
+  
   freeSessions: SubscriptionConfig.free.monthlySessionLimit,
 }))
 
 // Helper function to interpolate pricing variables in feature strings
+// Uses {variable} syntax consistently (matching Vue i18n format)
 const interpolateFeature = (feature) => {
   const vars = pricingVars.value
   return feature
-    .replace(/\${monthlyBudget}/g, String(vars.monthlyBudget))
-    .replace(/\${aiCost}/g, String(vars.aiCost))
-    .replace(/\${nonAiCost}/g, String(vars.nonAiCost))
-    .replace(/\${topupCost}/g, String(vars.topupCost))
+    // Premium
+    .replace(/\{premiumFee\}/g, String(vars.premiumFee))
+    .replace(/\{monthlyBudget\}/g, String(vars.monthlyBudget))
+    .replace(/\{aiCost\}/g, String(vars.aiCost))
+    .replace(/\{nonAiCost\}/g, String(vars.nonAiCost))
     .replace(/\{aiSessions\}/g, String(vars.aiSessions))
     .replace(/\{nonAiSessions\}/g, String(vars.nonAiSessions))
     .replace(/\{aiTopupSessions\}/g, String(vars.aiTopupSessions))
     .replace(/\{nonAiTopupSessions\}/g, String(vars.nonAiTopupSessions))
+    
+    // Starter
+    .replace(/\{starterFee\}/g, String(vars.starterFee))
+    .replace(/\{starterBudget\}/g, String(vars.starterBudget))
+    .replace(/\{starterAiCost\}/g, String(vars.starterAiCost))
+    .replace(/\{starterNonAiCost\}/g, String(vars.starterNonAiCost))
+    .replace(/\{starterAiSessions\}/g, String(vars.starterAiSessions))
+    .replace(/\{starterNonAiSessions\}/g, String(vars.starterNonAiSessions))
+    .replace(/\{starterAiTopupSessions\}/g, String(vars.starterAiTopupSessions))
+    .replace(/\{starterNonAiTopupSessions\}/g, String(vars.starterNonAiTopupSessions))
+    .replace(/\{starterMaxLanguages\}/g, String(vars.starterMaxLanguages))
+    
+    // Common
+    .replace(/\{topupCost\}/g, String(vars.topupCost))
     .replace(/\{freeSessions\}/g, String(vars.freeSessions))
 }
 
 const freeTierFeatures = computed(() => {
   const features = tm('landing.pricing.free_tier.features')
+  return Array.isArray(features) ? features.map(interpolateFeature) : []
+})
+
+const starterTierFeatures = computed(() => {
+  const features = tm('landing.pricing.starter_tier.features')
   return Array.isArray(features) ? features.map(interpolateFeature) : []
 })
 
@@ -1775,6 +1789,10 @@ const faqs = computed(() => [
       aiSessions: SubscriptionConfig.calculated.defaultAiEnabledSessions,
       nonAiSessions: SubscriptionConfig.calculated.defaultAiDisabledSessions,
       topupCost: SubscriptionConfig.overage.creditsPerBatch,
+      // Starter
+      starterBudget: SubscriptionConfig.starter.monthlyBudgetUsd,
+      starterAiSessions: SubscriptionConfig.calculated.starterDefaultAiEnabledSessions,
+      starterNonAiSessions: SubscriptionConfig.calculated.starterDefaultAiDisabledSessions,
     })
   },
   {
@@ -1802,6 +1820,14 @@ const faqs = computed(() => [
       topupCost: SubscriptionConfig.overage.creditsPerBatch,
       aiTopupSessions: SubscriptionConfig.calculated.aiEnabledSessionsPerBatch,
       nonAiTopupSessions: SubscriptionConfig.calculated.aiDisabledSessionsPerBatch,
+      // Starter
+      starterBudget: SubscriptionConfig.starter.monthlyBudgetUsd,
+      starterAiCost: SubscriptionConfig.starter.aiEnabledSessionCostUsd,
+      starterNonAiCost: SubscriptionConfig.starter.aiDisabledSessionCostUsd,
+      starterAiSessions: SubscriptionConfig.calculated.starterDefaultAiEnabledSessions,
+      starterNonAiSessions: SubscriptionConfig.calculated.starterDefaultAiDisabledSessions,
+      starterAiTopupSessions: SubscriptionConfig.calculated.starterAiEnabledSessionsPerBatch,
+      starterNonAiTopupSessions: SubscriptionConfig.calculated.starterAiDisabledSessionsPerBatch,
     })
   }
 ])
@@ -2025,65 +2051,6 @@ html {
 /* Hover scale for tabs */
 .hover\:scale-102:hover {
   transform: scale(1.02);
-}
-
-/* Phone Simulator Content Styles */
-.simulator-content {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  background: #0f172a; /* Match mobile client dark background */
-  overflow: hidden;
-  border-radius: inherit;
-}
-
-.simulator-iframe-wrapper {
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  z-index: 1;
-}
-
-.simulator-iframe {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 375px;
-  height: 812px;
-  border: none;
-  background: #0f172a; /* Match mobile client dark background */
-  transform-origin: center center;
-}
-
-.simulator-placeholder {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  text-align: center;
-  padding: 1rem;
-}
-
-.simulator-placeholder.light {
-  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-}
-
-.simulator-loading {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  z-index: 10;
-}
-
-.simulator-loading.light {
-  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
 }
 
 /* Template Browser Container */

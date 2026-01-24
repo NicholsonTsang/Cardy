@@ -6,7 +6,7 @@
 -- 
 -- NOTE: All pricing (session costs, budgets, limits) comes from environment variables.
 -- Redis is the source of truth for budget tracking.
--- These stored procedures only query card metadata.
+-- Daily session limits are per-QR-code (card_access_tokens table).
 -- =================================================================
 
 -- Get card AI-enabled status and billing info
@@ -18,7 +18,6 @@ RETURNS TABLE (
     card_id UUID,
     user_id UUID,
     ai_enabled BOOLEAN,
-    daily_scan_limit INTEGER,
     billing_type TEXT
 ) AS $$
 BEGIN
@@ -27,7 +26,6 @@ BEGIN
         c.id AS card_id,
         c.user_id,
         COALESCE(c.conversation_ai_enabled, FALSE) AS ai_enabled,
-        c.daily_scan_limit,
         c.billing_type
     FROM cards c
     WHERE c.id = p_card_id;
@@ -53,22 +51,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Get card daily scan limit only (lightweight query)
-DROP FUNCTION IF EXISTS get_card_daily_limit_server CASCADE;
-CREATE OR REPLACE FUNCTION get_card_daily_limit_server(
-    p_card_id UUID
-)
-RETURNS INTEGER AS $$
-DECLARE
-    v_daily_limit INTEGER;
-BEGIN
-    SELECT daily_scan_limit INTO v_daily_limit
-    FROM cards
-    WHERE id = p_card_id;
-    
-    RETURN v_daily_limit; -- NULL means unlimited
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- NOTE: Daily session limits are now per-QR-code in card_access_tokens table
+-- Use get_card_by_access_token_server to get token-specific daily limits
+-- The old get_card_daily_limit_server function has been removed
 
 -- =================================================================
 -- GRANTS - Only service_role can execute these
@@ -78,6 +63,3 @@ GRANT EXECUTE ON FUNCTION get_card_billing_info_server TO service_role;
 
 REVOKE ALL ON FUNCTION get_card_ai_status_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION get_card_ai_status_server TO service_role;
-
-REVOKE ALL ON FUNCTION get_card_daily_limit_server FROM PUBLIC, authenticated, anon;
-GRANT EXECUTE ON FUNCTION get_card_daily_limit_server TO service_role;

@@ -135,12 +135,12 @@ interface Card {
   is_grouped: boolean
   group_display: 'expanded' | 'collapsed'
   billing_type: 'physical' | 'digital'
-  max_scans: number | null
-  current_scans: number
-  daily_scan_limit: number | null
-  daily_scans: number
-  is_access_enabled: boolean
-  access_token: string
+  default_daily_session_limit: number | null
+  total_sessions: number
+  monthly_sessions: number
+  daily_sessions: number
+  active_qr_codes: number
+  total_qr_codes: number
   created_at: string
   updated_at: string
 }

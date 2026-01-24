@@ -41,8 +41,8 @@
             <i class="pi pi-eye text-cyan-600 text-sm"></i>
           </div>
           <div class="min-w-0">
-            <p class="text-xs text-slate-500 truncate">{{ $t('admin.total_scans') }}</p>
-            <p class="text-lg font-bold text-slate-900">{{ (card.current_scans || 0).toLocaleString() }}</p>
+            <p class="text-xs text-slate-500 truncate">{{ $t('admin.total_sessions') }}</p>
+            <p class="text-lg font-bold text-slate-900">{{ (card.total_sessions || 0).toLocaleString() }}</p>
           </div>
         </div>
       </div>
@@ -53,35 +53,35 @@
             <i class="pi pi-calendar text-blue-600 text-sm"></i>
           </div>
           <div class="min-w-0">
-            <p class="text-xs text-slate-500 truncate">{{ $t('admin.today_scans') }}</p>
-            <p class="text-lg font-bold text-slate-900">{{ (card.daily_scans || 0).toLocaleString() }}</p>
+            <p class="text-xs text-slate-500 truncate">{{ $t('admin.today_sessions') }}</p>
+            <p class="text-lg font-bold text-slate-900">{{ (card.daily_sessions || 0).toLocaleString() }}</p>
           </div>
         </div>
       </div>
-      <!-- Total Limit -->
+      <!-- Monthly Sessions -->
       <div class="bg-white rounded-lg border border-slate-200 p-3 hover:shadow-md transition-shadow">
         <div class="flex items-center gap-2">
           <div class="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-            <i class="pi pi-flag text-purple-600 text-sm"></i>
+            <i class="pi pi-calendar-plus text-purple-600 text-sm"></i>
           </div>
           <div class="min-w-0">
-            <p class="text-xs text-slate-500 truncate">{{ $t('admin.total_limit') }}</p>
+            <p class="text-xs text-slate-500 truncate">{{ $t('admin.monthly_sessions') }}</p>
             <p class="text-lg font-bold text-slate-900">
-              {{ card.max_scans ? card.max_scans.toLocaleString() : '∞' }}
+              {{ (card.monthly_sessions || 0).toLocaleString() }}
             </p>
           </div>
         </div>
       </div>
-      <!-- Daily Limit -->
+      <!-- QR Codes -->
       <div class="bg-white rounded-lg border border-slate-200 p-3 hover:shadow-md transition-shadow">
         <div class="flex items-center gap-2">
           <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-            <i class="pi pi-clock text-amber-600 text-sm"></i>
+            <i class="pi pi-qrcode text-amber-600 text-sm"></i>
           </div>
           <div class="min-w-0">
-            <p class="text-xs text-slate-500 truncate">{{ $t('admin.daily_limit') }}</p>
+            <p class="text-xs text-slate-500 truncate">{{ $t('admin.qr_codes') }}</p>
             <p class="text-lg font-bold text-slate-900">
-              {{ card.daily_scan_limit ? card.daily_scan_limit.toLocaleString() : '∞' }}
+              {{ card.active_qr_codes || 0 }} / {{ card.total_qr_codes || 0 }}
             </p>
           </div>
         </div>
@@ -254,12 +254,12 @@ interface Card {
   is_grouped: boolean
   group_display: 'expanded' | 'collapsed'
   billing_type: 'physical' | 'digital'
-  max_scans: number | null
-  current_scans: number
-  daily_scan_limit: number | null
-  daily_scans: number
-  is_access_enabled: boolean
-  access_token: string
+  default_daily_session_limit: number | null
+  total_sessions: number
+  monthly_sessions: number
+  daily_sessions: number
+  active_qr_codes: number
+  total_qr_codes: number
   translations?: Record<string, any>
   original_language?: string
   created_at: string

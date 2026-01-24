@@ -1,6 +1,14 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { setLocale } from '@/i18n'
+import { 
+  saveLanguagePreference, 
+  isValidLanguage,
+  extractLanguageFromPath,
+  DEFAULT_LANGUAGE
+} from '@/router/languageRouting'
+import type { LanguageCode } from '@/stores/translation'
 
 export interface Language {
   code: string
@@ -117,14 +125,24 @@ function normalizeBrowserLanguage(browserLang: string): string {
  * For end-users viewing cards (QR code scanners)
  * Used in: Card Overview, Content Detail, AI Assistant
  * 
- * NOTE: Unlike dashboard, mobile client defaults to card's original language
- * (set by PublicCardView), NOT browser language. This ensures visitors see
- * content in the language intended by the card creator.
+ * URL Language Routing:
+ * - Language is read from URL parameter (/:lang/c/:id)
+ * - When user changes language, URL is updated
+ * - If URL has valid language, it takes precedence
  */
 export const useMobileLanguageStore = defineStore('mobileLanguage', () => {
-  // Get initial language: saved preference > English default
-  // (Card's original language will be set by PublicCardView after loading)
+  // Get initial language from URL or fallback
   function getInitialLanguage(): Language {
+    // First, check URL for language parameter
+    const urlLang = extractLanguageFromPath(window.location.pathname)
+    if (urlLang) {
+      const langObj = AVAILABLE_LANGUAGES.find(lang => lang.code === urlLang)
+      if (langObj) {
+        console.log('📱 Mobile client loaded language from URL:', urlLang)
+        return langObj
+      }
+    }
+    
     // Check if user manually selected a language in this session
     const userSelectedLanguage = sessionStorage.getItem('userSelectedLanguage') === 'true'
     
@@ -148,15 +166,13 @@ export const useMobileLanguageStore = defineStore('mobileLanguage', () => {
   const selectedLanguage = ref<Language>(initialLanguage)
   
   // Sync i18n locale on store initialization
-  // This ensures the UI language matches the stored preference
   const initialLocale = initialLanguage.code === 'zh-Hans' ? 'zh-Hans' : 
                         initialLanguage.code === 'zh-Hant' ? 'zh-Hant' : 
                         initialLanguage.code
   setLocale(initialLocale)
   console.log('📱 Mobile client i18n synced to:', initialLocale)
   
-  // Chinese voice preference (only relevant for Chinese languages)
-  // Default to Mandarin for simplified, Cantonese for traditional
+  // Chinese voice preference
   const chineseVoice = ref<ChineseVoice>(
     initialLanguage.code === 'zh-Hant' ? 'cantonese' : 'mandarin'
   )
@@ -166,25 +182,29 @@ export const useMobileLanguageStore = defineStore('mobileLanguage', () => {
     return languageCode === 'zh-Hans' || languageCode === 'zh-Hant'
   }
 
-  // Set language and update i18n locale
-  function setLanguage(language: Language, updateI18n = true) {
+  // Set language, update i18n locale
+  // NOTE: URL updates are handled by Vue Router in PublicCardView.vue watcher
+  // to avoid conflicts between replaceState and router.replace
+  function setLanguage(language: Language, options: { updateI18n?: boolean } = {}) {
+    const { updateI18n = true } = options
+    
     selectedLanguage.value = language
     console.log('📱 Mobile Client language changed to:', language.code, language.name)
     
     // Set default voice preference based on language
     if (language.code === 'zh-Hans') {
-      chineseVoice.value = 'mandarin'  // Simplified typically uses Mandarin
+      chineseVoice.value = 'mandarin'
     } else if (language.code === 'zh-Hant') {
-      chineseVoice.value = 'cantonese' // Traditional typically uses Cantonese
+      chineseVoice.value = 'cantonese'
     }
     
-    // Update i18n locale if requested
+    // Save preference
+    saveLanguagePreference(language.code as LanguageCode)
+    
+    // Update i18n locale
     if (updateI18n) {
-      const locale = language.code === 'zh-Hans' ? 'zh-Hans' : 
-                     language.code === 'zh-Hant' ? 'zh-Hant' : 
-                     language.code
-      setLocale(locale)
-      console.log('📱 i18n locale updated to:', locale)
+      setLocale(language.code)
+      console.log('📱 i18n locale updated to:', language.code)
     }
   }
 
@@ -199,12 +219,20 @@ export const useMobileLanguageStore = defineStore('mobileLanguage', () => {
     return AVAILABLE_LANGUAGES.find(lang => lang.code === code)
   }
   
+  // Sync language from URL parameter (called by router or components)
+  function syncFromUrl(langCode: string) {
+    if (langCode !== selectedLanguage.value.code) {
+      const langObj = AVAILABLE_LANGUAGES.find(lang => lang.code === langCode)
+      if (langObj) {
+        setLanguage(langObj)
+      }
+    }
+  }
+  
   // Get voice-aware language code (for AI systems)
-  // Returns a code that represents both text and voice preference
   function getVoiceAwareLanguageCode(): string {
     const code = selectedLanguage.value.code
     if (isChinese(code)) {
-      // Return code that indicates both text script and voice dialect
       return `${code}-${chineseVoice.value}`
     }
     return code
@@ -219,7 +247,8 @@ export const useMobileLanguageStore = defineStore('mobileLanguage', () => {
     setChineseVoice,
     getLanguageByCode,
     isChinese,
-    getVoiceAwareLanguageCode
+    getVoiceAwareLanguageCode,
+    syncFromUrl
   }
 })
 
@@ -228,10 +257,26 @@ export const useMobileLanguageStore = defineStore('mobileLanguage', () => {
  * For experience creators managing their experiences in CMS
  * Used in: Dashboard, Card Management, Admin Panel
  * Supports: English and Traditional Chinese only
+ * 
+ * URL Language Routing:
+ * - Language is read from URL parameter (/:lang/cms/...)
+ * - When user changes language, URL is updated
+ * - Only dashboard-supported languages (en, zh-Hant) are allowed
  */
 export const useDashboardLanguageStore = defineStore('dashboardLanguage', () => {
-  // Get initial language: saved preference > browser detection > English fallback
+  // Get initial language from URL or fallback
   function getInitialLanguage(): Language {
+    // First, check URL for language parameter
+    const urlLang = extractLanguageFromPath(window.location.pathname)
+    if (urlLang && DASHBOARD_LANGUAGES.find(lang => lang.code === urlLang)) {
+      const langObj = DASHBOARD_LANGUAGES.find(lang => lang.code === urlLang)
+      if (langObj) {
+        console.log('🖥️ Dashboard loaded language from URL:', urlLang)
+        return langObj
+      }
+    }
+    
+    // Check saved preference
     const savedLocale = localStorage.getItem('userLocale')
     if (savedLocale) {
       const savedLang = DASHBOARD_LANGUAGES.find(lang => lang.code === savedLocale)
@@ -241,7 +286,7 @@ export const useDashboardLanguageStore = defineStore('dashboardLanguage', () => 
       }
     }
     
-    // No saved preference, detect browser language (only from dashboard languages)
+    // Detect browser language (only from dashboard languages)
     const detected = detectBrowserLanguage(DASHBOARD_LANGUAGES)
     setLocale(detected.code)
     console.log('🖥️ Dashboard initialized with browser language:', detected.code)
@@ -251,20 +296,26 @@ export const useDashboardLanguageStore = defineStore('dashboardLanguage', () => 
   const initialLanguage = getInitialLanguage()
   const selectedLanguage = ref<Language>(initialLanguage)
 
-  // Set language and update i18n locale
-  function setLanguage(language: Language, updateI18n = true) {
+  // Set language, update i18n locale
+  // NOTE: URL updates are handled by Vue Router in components
+  // to avoid conflicts between replaceState and router.replace
+  function setLanguage(language: Language, options: { updateI18n?: boolean } = {}) {
+    const { updateI18n = true } = options
+    
     selectedLanguage.value = language
     console.log('🖥️ Dashboard language changed to:', language.code, language.name)
     
-    // Update i18n locale if requested
+    // Save preference
+    saveLanguagePreference(language.code as LanguageCode)
+    
+    // Update i18n locale
     if (updateI18n) {
-      // Map our language codes to i18n locale codes
       const localeMap: Record<string, string> = {
         'en': 'en',
-        'zh-Hans': 'zh-Hans',  // Simplified Chinese
-        'zh-Hant': 'zh-Hant',  // Traditional Chinese
-        'zh-HK': 'zh-Hant',    // Legacy mapping for backward compatibility
-        'zh-CN': 'zh-Hans',    // Legacy mapping for backward compatibility
+        'zh-Hans': 'zh-Hans',
+        'zh-Hant': 'zh-Hant',
+        'zh-HK': 'zh-Hant',
+        'zh-CN': 'zh-Hans',
       }
       const locale = localeMap[language.code] || 'en'
       setLocale(locale)
@@ -276,12 +327,26 @@ export const useDashboardLanguageStore = defineStore('dashboardLanguage', () => 
   function getLanguageByCode(code: string): Language | undefined {
     return DASHBOARD_LANGUAGES.find(lang => lang.code === code)
   }
+  
+  // Sync language from URL parameter
+  function syncFromUrl(langCode: string) {
+    // Only sync if it's a valid dashboard language
+    if (DASHBOARD_LANGUAGES.find(lang => lang.code === langCode)) {
+      if (langCode !== selectedLanguage.value.code) {
+        const langObj = DASHBOARD_LANGUAGES.find(lang => lang.code === langCode)
+        if (langObj) {
+          setLanguage(langObj)
+        }
+      }
+    }
+  }
 
   return {
     languages: DASHBOARD_LANGUAGES,
     selectedLanguage,
     setLanguage,
-    getLanguageByCode
+    getLanguageByCode,
+    syncFromUrl
   }
 })
 

@@ -281,6 +281,326 @@
     "no_data_available": "No data available",
     "loading_data": "Loading data...",
     "network_error": "Network error. Please try again."
+  },
+
+  "landing": {
+    "nav": {
+      "about": "소개",
+      "demo": "데모",
+      "features": "기능",
+      "how_it_works": "사용법",
+      "pricing": "가격",
+      "contact": "문의",
+      "docs": "문서",
+      "sign_in": "로그인",
+      "start_free_trial": "무료 체험",
+      "start_free": "무료 시작",
+      "create_account": "계정 만들기",
+      "get_started": "시작하기"
+    },
+    "hero": {
+      "title_line1": "모든 공간을",
+      "title_line2": "인터랙티브",
+      "title_line3": "AI 가이드로 변환",
+      "subtitle_part1": "AI 기반 디지털 체험 플랫폼 -",
+      "subtitle_highlight": "음성 대화",
+      "subtitle_part2": "가 즉시 가능. 앱 불필요. 박물관, 레스토랑, 쇼핑몰 등에 최적.",
+      "cta_pilot": "파일럿 문의",
+      "cta_learn": "데모 보기",
+      "cta_demo": "데모 보기",
+      "cta_start": "시작하기"
+    },
+    "demo": {
+      "title": "작동 방식",
+      "title_highlight": "보기",
+      "subtitle": "아래 두 가지 접근 방식을 모두 시도하여 차이점을 경험하세요.",
+      "video_coming_soon": "데모 비디오 준비 중",
+      "video_description": "1-2분 데모 영상을 시청하세요",
+      "card_title": "인터랙티브 체험 데모",
+      "try_live_demo": "라이브 데모 체험",
+      "scan_to_try": "스캔하여 시도",
+      "scan_with_phone": "휴대폰으로 스캔",
+      "instant_demo": "지금 바로 체험하세요!",
+      "scan_qr_code": "QR 코드 스캔",
+      "project_features": "주요 기능",
+      "experience_features": "주요 기능",
+      "mode_toggle": {
+        "physical_card": "실물 카드",
+        "digital_access": "디지털 접근"
+      },
+      "physical_card": {
+        "title": "실물 카드",
+        "desc": "QR 코드가 있는 수집용 기념품",
+        "hint": "방문자는 먼저 카드 이미지를 본 후 콘텐츠 탐색",
+        "caption": "QR 코드가 있는 인쇄 카드 예시",
+        "full_desc": "실물 카드는 QR 코드가 내장된 수집용 기념품입니다. 방문자가 스캔하면 먼저 카드 개요 페이지(카드 이미지와 설명 표시)가 표시되고, 이후 인터랙티브 콘텐츠를 탐색할 수 있습니다. 프리미엄 기념품을 제공하려는 박물관, 이벤트 및 시설에 적합합니다."
+      },
+      "digital_access": {
+        "title": "디지털 접근",
+        "desc": "콘텐츠로 직접 연결되는 QR 코드",
+        "hint": "방문자는 환영 페이지와 콘텐츠에 직접 접근",
+        "caption": "QR 코드로 콘텐츠에 즉시 접근",
+        "full_desc": "디지털 접근은 실물 카드 없이 콘텐츠에 직접 연결되는 QR 코드를 사용합니다. 디지털 메뉴, 링크인바이오, 이벤트 프로그램 또는 빠른 앱 없는 접근이 필요한 모든 시나리오에 이상적입니다. 방문자는 스캔만으로 AI 기반 경험을 즉시 탐색할 수 있습니다."
+      },
+      "features": {
+        "qr_access_title": "즉시 QR 접근",
+        "qr_access_desc": "모든 스마트폰 카메라로 작동. 앱 불필요.",
+        "ai_voice_title": "AI 음성 가이드",
+        "ai_voice_desc": "보고 있는 것에 대해 실제 대화를 나눌 수 있습니다.",
+        "multilingual_title": "10개 이상 언어",
+        "multilingual_desc": "선호하는 언어로 콘텐츠와 대화.",
+        "keepsakes_title": "수집용 기념품",
+        "keepsakes_desc": "프리미엄 기념품으로 선택적 인쇄 카드."
+      }
+    },
+    "demo_templates": {
+      "badge": "라이브 데모",
+      "title": "데모 프로젝트 체험",
+      "subtitle": "아래 QR 코드를 스캔하여 FunTell을 직접 경험하세요. AI 기반 인터랙티브 가이드가 실제 시나리오에서 어떻게 작동하는지 확인하세요.",
+      "all_types": "전체",
+      "items": "항목",
+      "no_description": "이 데모를 경험하여 플랫폼의 실제 동작을 확인하세요.",
+      "try_demo": "데모 체험",
+      "scan_or_click": "QR 코드를 스캔하거나 클릭하여 열기",
+      "view_all": "더 많은 템플릿 보기",
+      "showing": "표시 중",
+      "of": "/",
+      "venue_types": {
+        "cultural": "문화 & 예술",
+        "food": "음식 & 음료",
+        "events": "이벤트 & 엔터테인먼트",
+        "hospitality": "호스피탈리티 & 웰니스",
+        "retail": "쇼핑 & 쇼룸",
+        "tours": "투어 & 교육",
+        "general": "일반"
+      },
+      "select_template": "미리 볼 템플릿 선택",
+      "open_full": "전체 체험 열기",
+      "scan_qr_hint": "또는 휴대폰으로 QR 코드 스캔",
+      "scan_to_view": "휴대폰으로 스캔하여 보기",
+      "scan_hint": "모바일 카메라로 스캔하여 이 데모를 경험하세요",
+      "templates_available": "템플릿",
+      "scroll_to_explore": "스크롤하여 탐색",
+      "no_templates": "템플릿을 찾을 수 없습니다",
+      "live_badge": "라이브",
+      "open_button": "열기"
+    },
+    "content_modes": {
+      "title": "유연한",
+      "title_highlight": "디스플레이 레이아웃",
+      "subtitle": "콘텐츠에 완벽한 레이아웃을 선택하세요. 각 레이아웃은 다양한 사용 사례에 최적화되어 있으며, 선택적 그룹화와 구조에 맞게 적응하는 AI 어시스턴트를 제공합니다.",
+      "ai_context_label": "AI 어시스턴트 컨텍스트",
+      "ai_assistant": "AI 어시스턴트",
+      "ai_general_label": "일반 어시스턴트",
+      "ai_item_label": "항목 어시스턴트",
+      "single": {
+        "name": "싱글 페이지",
+        "desc": "전체 페이지 기사 또는 공지",
+        "use_case": "제품 상세, 이벤트 정보, 공지, 기사",
+        "ai_single": "전체 지식 베이스를 갖춘 개인 AI 어시스턴트 - 콘텐츠에 관한 모든 질문에 답변",
+        "ai_note": "싱글 모드는 콘텐츠 항목이 하나뿐이므로 통합 AI 어시스턴트를 사용"
+      },
+      "grid": {
+        "name": "그리드 갤러리",
+        "desc": "비주얼 2열 그리드 레이아웃",
+        "use_case": "포토 갤러리, 포트폴리오, 제품 카탈로그, 전시",
+        "ai_general": "전체 갤러리 지식을 갖춘 개인 가이드 - 모든 질문에 답변",
+        "ai_item": "상세한 배경을 갖춘 특정 항목 전문가"
+      },
+      "list": {
+        "name": "리스트",
+        "desc": "깔끔한 세로 리스트",
+        "use_case": "메뉴, 리소스 목록, 디렉토리, 연락처",
+        "ai_general": "경험 수준 지식을 갖춘 개인 어시스턴트 - 모든 질문에 답변",
+        "ai_item": "집중된 전문성을 갖춘 특정 항목 전담 가이드"
+      },
+      "cards": {
+        "name": "카드",
+        "desc": "전체 너비 카드, 한 행에 하나씩",
+        "use_case": "추천 항목, 기사, 뉴스, 공지",
+        "ai_general": "전체 경험 지식을 갖춘 개인 어시스턴트 - 모든 질문에 답변",
+        "ai_item": "특정 추천 항목 전문 가이드"
+      },
+      "best_for": "최적의 용도",
+      "easy_setup": "쉬운 설정",
+      "setup_desc": "CMS 대시보드에서 몇 초 만에 구성. 코딩 불필요.",
+      "mobile_optimized": "모바일 최적화",
+      "mobile_desc": "모든 기기에서 완벽하게 보이는 반응형 디자인.",
+      "grouping_option": "선택적 그룹화",
+      "grouping_desc": "항목을 카테고리로 정리. 인라인 또는 카테고리 클릭 후 표시 선택.",
+      "grouping_flat": "플랫",
+      "grouping_expanded": "그룹화 (인라인)",
+      "grouping_collapsed": "그룹화 (네비게이트)",
+      "grouping_flat_desc": "카테고리 없는 심플한 레이아웃 - 모든 항목 직접 표시",
+      "grouping_expanded_desc": "카테고리 헤더 아래 항목 정리, 한 페이지에 모두 표시",
+      "grouping_collapsed_desc": "카테고리 먼저 표시, 탭하여 네비게이트하고 내부 항목 보기"
+    },
+    "how_it_works": {
+      "title": "간단한",
+      "title_highlight": "3단계 프로세스",
+      "subtitle": "기술 지식 없이 몇 분 만에 AI 기반 디지털 경험을 시작하세요.",
+      "steps": {
+        "create_title": "생성",
+        "create_desc": "직관적인 대시보드로 프로젝트를 만들고 콘텐츠를 추가.",
+        "share_title": "공유",
+        "share_desc": "간판, 메뉴 또는 마케팅 자료에 QR 코드를 표시.",
+        "engage_title": "참여",
+        "engage_desc": "방문자가 스캔하여 AI 기반 가이드와 즉시 상호작용."
+      }
+    },
+    "features": {
+      "title": "왜",
+      "title_highlight": "FunTell인가",
+      "features": {
+        "collectible_title": "QR 기반 접근",
+        "collectible_desc": "QR 코드로 즉시 접근. 기념품 가치를 위한 선택적 실물 카드.",
+        "ai_guide_title": "AI 음성 어시스턴트",
+        "ai_guide_desc": "컨텍스트 인식과 후속 질문이 있는 실시간 대화.",
+        "no_app_title": "앱 불필요",
+        "no_app_desc": "모든 스마트폰 카메라로 즉시 접근. 다운로드 없음, 마찰 없음.",
+        "portal_config_title": "쉬운 콘텐츠 관리",
+        "portal_config_desc": "직관적인 웹 포털에서 언제든지 콘텐츠 구성 및 업데이트.",
+        "multilingual_title": "다국어 지원",
+        "multilingual_desc": "한 번의 업로드로 10개 이상 언어로 콘텐츠와 대화.",
+        "no_hardware_title": "하드웨어 불필요",
+        "no_hardware_desc": "방문자의 휴대폰 사용. 고가의 장비 구매나 유지보수 불필요.",
+        "dashboard_title": "관리 대시보드",
+        "dashboard_desc": "콘텐츠 관리, 분석 및 QR 발급을 위한 셀프서비스 플랫폼."
+      }
+    },
+    "pricing": {
+      "title": "간단한",
+      "title_highlight": "세션 기반 요금",
+      "subtitle": "사용한 만큼만 지불. 무료로 시작하고 비즈니스에 맞게 확장.",
+      "currency_note": "모든 가격은 USD입니다",
+      "free_tier": {
+        "title": "무료",
+        "price": "$0",
+        "per": "영구",
+        "desc": "플랫폼을 체험하기에 완벽",
+        "features": [
+          "최대 3개 프로젝트",
+          "월간 50 방문자 세션",
+          "AI 음성 대화",
+          "콘텐츠 관리 대시보드",
+          "QR 코드 생성",
+          "클라우드 호스팅 포함"
+        ],
+        "cta": "무료 시작"
+      },
+      "starter_tier": {
+        "title": "스타터",
+        "price": "{starterFee}",
+        "per": "월",
+        "desc": "성장하는 시설과 비즈니스용",
+        "features": [
+          "최대 5개 프로젝트",
+          "월간 US${starterBudget} 크레딧 포함",
+          "AI 세션: US${starterAiCost}/세션",
+          "표준 세션: US${starterNonAiCost}/세션",
+          "자동 충전: US${topupCost}로 {starterAiTopupSessions} AI 또는 {starterNonAiTopupSessions} 표준 세션 추가",
+          "최대 {starterMaxLanguages} 번역 언어",
+          "Powered by FunTell 브랜딩"
+        ],
+        "cta": "스타터로 시작"
+      },
+      "premium_tier": {
+        "title": "프리미엄",
+        "price": "{premiumFee}",
+        "per": "월",
+        "desc": "화이트 라벨이 있는 대량 시설용",
+        "popular": "베스트 밸류",
+        "features": [
+          "최대 35개 프로젝트",
+          "월간 US${monthlyBudget} 크레딧 포함",
+          "AI 세션: US${aiCost}/세션",
+          "표준 세션: US${nonAiCost}/세션",
+          "자동 충전: US${topupCost}로 {aiTopupSessions} AI 또는 {nonAiTopupSessions} 표준 세션 추가",
+          "무제한 번역 언어",
+          "화이트 라벨 (브랜딩 없음)"
+        ],
+        "cta": "프리미엄으로 업그레이드"
+      },
+      "session_info": {
+        "title": "세션 과금 방식",
+        "ai_enabled": "AI 지원 프로젝트",
+        "ai_enabled_desc": "US$${aiCost}/방문자 세션",
+        "ai_enabled_sessions": "{aiSessions} 세션 포함",
+        "ai_disabled": "비 AI 프로젝트",
+        "ai_disabled_desc": "US$${nonAiCost}/방문자 세션",
+        "ai_disabled_sessions": "{nonAiSessions} 세션 포함",
+        "tracking_note": "각 고유 방문자 스캔은 1세션으로 계산",
+        "auto_topup_title": "자동 충전",
+        "auto_topup_desc": "예산이 소진되면 추가 세션을 위해 US$${topupCost}가 자동 청구"
+      },
+      "physical_cards": {
+        "title": "실물 카드",
+        "subtitle": "선택적 추가 기능",
+        "price": "US$ 2",
+        "per": "카드당",
+        "desc": "방문자를 위한 수집용 기념 카드",
+        "features": [
+          "프리미엄 인쇄 카드",
+          "카드당 무제한 스캔",
+          "일괄 주문 (최소 100장)",
+          "박물관과 이벤트에 완벽"
+        ],
+        "cta": "자세히 보기"
+      },
+      "included_title": "모든 플랜에 포함",
+      "features": {
+        "ai_voice": "AI 음성 대화",
+        "qr_access": "즉시 QR 접근",
+        "design_dashboard": "디자인 대시보드",
+        "content_management": "콘텐츠 관리",
+        "analytics": "사용 분석",
+        "qr_generation": "QR 코드 생성",
+        "cloud_hosting": "클라우드 호스팅",
+        "support": "이메일 지원"
+      },
+      "cta": "무료 시작",
+      "footer_text": "무료로 시작 • 세션당 지불 • 언제든지 취소 가능"
+    },
+    "faq": {
+      "title": "자주 묻는",
+      "title_highlight": "질문",
+      "q1": "FunTell이란?",
+      "a1": "FunTell은 모든 공간을 인터랙티브 가이드로 바꾸는 AI 기반 디지털 체험 플랫폼입니다. 방문자는 QR 코드를 스캔하여 다국어 콘텐츠와 대화형 AI 어시스턴트에 접근할 수 있습니다—앱 불필요. 실물 카드는 수집용 기념품으로 선택적으로 사용 가능.",
+      "q2": "어떻게 작동하나요?",
+      "a2": "1) 장소에 QR 코드 배치 (또는 실물 카드 사용)\n2) 방문자가 스마트폰으로 스캔\n3) AI 어시스턴트와 디지털 콘텐츠에 즉시 접근\n4) 선택: 카드는 수집용 기념품이 됨",
+      "q3": "방문자가 앱을 다운로드해야 하나요?",
+      "a3": "아니요. FunTell은 모든 스마트폰 브라우저에서 작동합니다. QR 코드만 스캔하면 됩니다—다운로드나 설치 불필요.",
+      "q4": "어떤 언어가 지원되나요?",
+      "a4": "콘텐츠와 AI 대화는 10개 이상의 언어로 이용 가능: 영어, 중국어(보통화, 광동어), 일본어, 한국어, 태국어, 아랍어, 스페인어, 프랑스어, 러시아어 등.",
+      "q5": "가격에 포함된 것은?",
+      "a5": "세 가지 티어: 무료({freeExperiences}개 프로젝트, {freeSessions}세션), 스타터({starterBudget}/월, {starterAiSessions} AI 세션, 최대 2개 언어), 프리미엄({monthlyBudget}/월, {aiSessions} AI 세션, 무제한 언어, 화이트 라벨). 유료 플랜은 예산 소진 시 자동 충전 포함. 모든 플랜에 AI 음성, 대시보드, QR 코드, 호스팅 포함.",
+      "q6": "얼마나 빨리 시작할 수 있나요?",
+      "a6": "디지털 QR 프로젝트는 몇 분 안에 시작 가능. 가입하고, 프로젝트를 만들고, QR 코드를 즉시 공유. 실물 카드는 인쇄와 배송에 2-3주 소요.",
+      "q7": "콘텐츠와 AI를 맞춤 설정할 수 있나요?",
+      "a7": "네. 셀프서비스 대시보드를 사용하여 완전히 맞춤 설정 가능. 콘텐츠 관리, AI 어시스턴트 동작 구성, 환영 메시지 설정, 언제든지 업데이트 가능.",
+      "q8": "카드 제작 일정은?",
+      "a8": "실물 카드는 4영업일 내 인쇄. 배송은 위치에 따라 5-10일 소요. 디지털 QR 체험은 즉시 이용 가능.",
+      "q9": "사용 제한이 있나요?",
+      "a9": "무료: {freeSessions}세션/월, 번역 없음. 스타터: {starterBudget} 예산, AI {starterAiCost}/세션({starterAiSessions} 포함), 최대 2개 언어. 프리미엄: {monthlyBudget} 예산, AI {aiCost}/세션({aiSessions} 포함), 무제한 언어. 유료 플랜은 자동 충전 가능. 실물 카드는 무제한 스캔.",
+      "still_have_questions": "아직 질문이 있으신가요? 문의 양식을 통해 연락 주세요."
+    },
+    "footer": {
+      "brand": "FunTell",
+      "description": "AI 기반 디지털 체험 플랫폼. 모든 공간을 인터랙티브 가이드로.",
+      "quick_links": "빠른 링크",
+      "features": "기능",
+      "demo": "데모",
+      "pricing": "가격",
+      "contact": "문의",
+      "contact_title": "문의",
+      "phone": "전화",
+      "whatsapp_chat": "WhatsApp 채팅",
+      "copyright": "© 2025 FunTell. All rights reserved.",
+      "privacy": "개인정보 처리방침",
+      "terms": "이용약관",
+      "contact_link": "문의"
+    },
+    "floating_cta": "시작하기"
   }
 }
 

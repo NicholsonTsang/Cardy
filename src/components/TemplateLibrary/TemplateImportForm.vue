@@ -50,13 +50,9 @@
         <span>{{ $t('templates.access_limits_info') }}</span>
       </div>
       <div class="limits-details">
-        <span v-if="template.max_scans" class="limit-item">
-          <i class="pi pi-chart-bar"></i>
-          {{ $t('templates.max_scans', { count: template.max_scans }) }}
-        </span>
-        <span v-if="template.daily_scan_limit" class="limit-item">
+        <span v-if="template.default_daily_session_limit" class="limit-item">
           <i class="pi pi-clock"></i>
-          {{ $t('templates.daily_limit', { count: template.daily_scan_limit }) }}
+          {{ $t('templates.daily_limit', { count: template.default_daily_session_limit }) }}
         </span>
       </div>
     </div>
@@ -191,7 +187,7 @@ const errorMessage = ref('')
 
 // Computed for access limits
 const hasAccessLimits = computed(() => {
-  return props.template.max_scans || (props.template.daily_scan_limit && props.template.daily_scan_limit !== 500)
+  return props.template.default_daily_session_limit && props.template.default_daily_session_limit !== 500
 })
 
 // Computed for translations

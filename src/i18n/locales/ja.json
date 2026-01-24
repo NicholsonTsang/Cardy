@@ -237,6 +237,326 @@
     "no_data_available": "No data available",
     "loading_data": "Loading data...",
     "network_error": "Network error. Please try again."
+  },
+
+  "landing": {
+    "nav": {
+      "about": "概要",
+      "demo": "デモ",
+      "features": "機能",
+      "how_it_works": "仕組み",
+      "pricing": "料金",
+      "contact": "お問い合わせ",
+      "docs": "ドキュメント",
+      "sign_in": "ログイン",
+      "start_free_trial": "無料トライアル",
+      "start_free": "無料で始める",
+      "create_account": "アカウント作成",
+      "get_started": "始める"
+    },
+    "hero": {
+      "title_line1": "あらゆる施設を",
+      "title_line2": "インタラクティブな",
+      "title_line3": "AIガイドに変換",
+      "subtitle_part1": "AIパワードのデジタル体験プラットフォーム -",
+      "subtitle_highlight": "音声会話",
+      "subtitle_part2": "が即座に。アプリ不要。博物館、レストラン、ショッピングモールなどに最適。",
+      "cta_pilot": "パイロットのお問い合わせ",
+      "cta_learn": "デモを見る",
+      "cta_demo": "デモを見る",
+      "cta_start": "始める"
+    },
+    "demo": {
+      "title": "仕組みを",
+      "title_highlight": "見る",
+      "subtitle": "以下の両方のアクセスモードを試して、違いを体験してください。",
+      "video_coming_soon": "デモビデオ近日公開",
+      "video_description": "1〜2分のデモンストレーションをご覧ください",
+      "card_title": "インタラクティブ体験デモ",
+      "try_live_demo": "ライブデモを試す",
+      "scan_to_try": "スキャンして試す",
+      "scan_with_phone": "スマホでスキャン",
+      "instant_demo": "今すぐ試せます！",
+      "scan_qr_code": "QRコードをスキャン",
+      "project_features": "主な機能",
+      "experience_features": "主な機能",
+      "mode_toggle": {
+        "physical_card": "物理カード",
+        "digital_access": "デジタルアクセス"
+      },
+      "physical_card": {
+        "title": "物理カード",
+        "desc": "QRコード付きのコレクティブルスーベニア",
+        "hint": "訪問者はまずカード画像を見て、その後コンテンツを探索",
+        "caption": "QRコード付きプリントカードの例",
+        "full_desc": "物理カードはQRコードが埋め込まれたコレクティブルスーベニアです。訪問者がスキャンすると、最初にカード概要ページ（カード画像と説明を表示）が表示され、その後インタラクティブコンテンツを探索できます。プレミアムな記念品を提供したい博物館、イベント、施設に最適です。"
+      },
+      "digital_access": {
+        "title": "デジタルアクセス",
+        "desc": "コンテンツへ直接リンクするQRコード",
+        "hint": "訪問者はウェルカムページとコンテンツに直接アクセス",
+        "caption": "QRコードでコンテンツに即時アクセス",
+        "full_desc": "デジタルアクセスは、物理カードなしでコンテンツに直接リンクするQRコードを使用します。デジタルメニュー、リンクインバイオ、イベントプログラム、または迅速でアプリ不要のアクセスが必要なあらゆるシナリオに最適です。訪問者はスキャンするだけで、即座にAIパワードの体験を探索できます。"
+      },
+      "features": {
+        "qr_access_title": "即時QRアクセス",
+        "qr_access_desc": "どのスマートフォンカメラでも動作。アプリ不要。",
+        "ai_voice_title": "AI音声ガイド",
+        "ai_voice_desc": "見ているものについてリアルな会話ができます。",
+        "multilingual_title": "10以上の言語",
+        "multilingual_desc": "お好みの言語でコンテンツと会話。",
+        "keepsakes_title": "コレクティブル記念品",
+        "keepsakes_desc": "プレミアムスーベニアとしてオプションのプリントカード。"
+      }
+    },
+    "demo_templates": {
+      "badge": "ライブデモ",
+      "title": "デモプロジェクトを試す",
+      "subtitle": "下のQRコードをスキャンして、FunTellを実際に体験してください。AIパワードのインタラクティブガイドが実際のシナリオでどのように機能するかをご覧ください。",
+      "all_types": "すべて",
+      "items": "アイテム",
+      "no_description": "このデモを体験して、当プラットフォームの動作をご確認ください。",
+      "try_demo": "デモを試す",
+      "scan_or_click": "QRコードをスキャンまたはクリックして開く",
+      "view_all": "もっとテンプレートを見る",
+      "showing": "表示中",
+      "of": "/",
+      "venue_types": {
+        "cultural": "文化・芸術",
+        "food": "飲食",
+        "events": "イベント・エンターテイメント",
+        "hospitality": "ホスピタリティ・ウェルネス",
+        "retail": "ショッピング・ショールーム",
+        "tours": "ツアー・教育",
+        "general": "一般"
+      },
+      "select_template": "プレビューするテンプレートを選択",
+      "open_full": "フル体験を開く",
+      "scan_qr_hint": "またはスマホでQRコードをスキャン",
+      "scan_to_view": "スマホでスキャンして表示",
+      "scan_hint": "モバイルカメラでスキャンしてこのデモを体験",
+      "templates_available": "テンプレート",
+      "scroll_to_explore": "スクロールして探索",
+      "no_templates": "テンプレートが見つかりません",
+      "live_badge": "ライブ",
+      "open_button": "開く"
+    },
+    "content_modes": {
+      "title": "柔軟な",
+      "title_highlight": "表示レイアウト",
+      "subtitle": "コンテンツに最適なレイアウトを選択。各レイアウトは異なる用途に最適化されており、オプションのグループ化と構造に適応するAIアシスタントを備えています。",
+      "ai_context_label": "AIアシスタントコンテキスト",
+      "ai_assistant": "AIアシスタント",
+      "ai_general_label": "一般アシスタント",
+      "ai_item_label": "アイテムアシスタント",
+      "single": {
+        "name": "シングルページ",
+        "desc": "フルページの記事またはお知らせ",
+        "use_case": "製品詳細、イベント情報、お知らせ、記事",
+        "ai_single": "完全な知識ベースを持つパーソナルAIアシスタント - コンテンツに関するあらゆる質問に回答",
+        "ai_note": "シングルモードは1つのコンテンツアイテムのみのため、統合AIアシスタントを使用"
+      },
+      "grid": {
+        "name": "グリッドギャラリー",
+        "desc": "ビジュアルな2列グリッドレイアウト",
+        "use_case": "フォトギャラリー、ポートフォリオ、製品カタログ、展示",
+        "ai_general": "ギャラリー全体の知識を持つパーソナルガイド - あらゆる質問に回答",
+        "ai_item": "詳細な背景を持つ特定アイテムの専門家"
+      },
+      "list": {
+        "name": "リスト",
+        "desc": "すっきりした縦型リスト",
+        "use_case": "メニュー、リソースリスト、ディレクトリ、連絡先",
+        "ai_general": "体験レベルの知識を持つパーソナルアシスタント - あらゆる質問に回答",
+        "ai_item": "特定アイテムに焦点を当てた専任ガイド"
+      },
+      "cards": {
+        "name": "カード",
+        "desc": "全幅カード、1行に1つ",
+        "use_case": "注目アイテム、記事、ニュース、お知らせ",
+        "ai_general": "体験全体の知識を持つパーソナルアシスタント - あらゆる質問に回答",
+        "ai_item": "特定の注目アイテムの専門ガイド"
+      },
+      "best_for": "最適な用途",
+      "easy_setup": "簡単セットアップ",
+      "setup_desc": "CMSダッシュボードから数秒で設定。コーディング不要。",
+      "mobile_optimized": "モバイル最適化",
+      "mobile_desc": "あらゆるデバイスで完璧に表示されるレスポンシブデザイン。",
+      "grouping_option": "オプションのグループ化",
+      "grouping_desc": "アイテムをカテゴリーに整理。カテゴリーをクリック後にインラインまたは別表示を選択。",
+      "grouping_flat": "フラット",
+      "grouping_expanded": "グループ化（インライン）",
+      "grouping_collapsed": "グループ化（ナビゲート）",
+      "grouping_flat_desc": "カテゴリーなしのシンプルなレイアウト - すべてのアイテムを直接表示",
+      "grouping_expanded_desc": "カテゴリーヘッダー下にアイテムを整理、1ページで全て表示",
+      "grouping_collapsed_desc": "カテゴリーを最初に表示、タップしてナビゲートし中のアイテムを表示"
+    },
+    "how_it_works": {
+      "title": "シンプルな",
+      "title_highlight": "3ステップ",
+      "subtitle": "技術スキル不要で、数分でAIパワードのデジタル体験を立ち上げましょう。",
+      "steps": {
+        "create_title": "作成",
+        "create_desc": "直感的なダッシュボードでプロジェクトを作成し、コンテンツを追加。",
+        "share_title": "共有",
+        "share_desc": "看板、メニュー、マーケティング資料にQRコードを表示。",
+        "engage_title": "エンゲージ",
+        "engage_desc": "訪問者がスキャンして、AIパワードガイドと即座に対話。"
+      }
+    },
+    "features": {
+      "title": "なぜ",
+      "title_highlight": "FunTell",
+      "features": {
+        "collectible_title": "QRパワードアクセス",
+        "collectible_desc": "QRコードで即時アクセス。オプションでスーベニア価値のある物理カード。",
+        "ai_guide_title": "AI音声アシスタント",
+        "ai_guide_desc": "コンテキスト認識とフォローアップ質問を備えたリアルタイム会話。",
+        "no_app_title": "アプリ不要",
+        "no_app_desc": "どのスマートフォンカメラでも即時アクセス。ダウンロード不要、摩擦なし。",
+        "portal_config_title": "簡単なコンテンツ管理",
+        "portal_config_desc": "直感的なウェブポータルでいつでもコンテンツを設定・更新。",
+        "multilingual_title": "多言語サポート",
+        "multilingual_desc": "1回のアップロードで10以上の言語でコンテンツと会話。",
+        "no_hardware_title": "ハードウェア不要",
+        "no_hardware_desc": "訪問者自身のスマホを使用。高価な機器の購入やメンテナンス不要。",
+        "dashboard_title": "管理ダッシュボード",
+        "dashboard_desc": "コンテンツ管理、分析、QR発行のためのセルフサービスプラットフォーム。"
+      }
+    },
+    "pricing": {
+      "title": "シンプルな",
+      "title_highlight": "セッションベース料金",
+      "subtitle": "使った分だけお支払い。無料で始めて、ビジネスに合わせてスケール。",
+      "currency_note": "すべての価格はUSDです",
+      "free_tier": {
+        "title": "無料",
+        "price": "$0",
+        "per": "永久",
+        "desc": "プラットフォームを試すのに最適",
+        "features": [
+          "最大3プロジェクト",
+          "月間50訪問者セッション",
+          "AI音声会話",
+          "コンテンツ管理ダッシュボード",
+          "QRコード生成",
+          "クラウドホスティング込み"
+        ],
+        "cta": "無料で始める"
+      },
+      "starter_tier": {
+        "title": "スターター",
+        "price": "{starterFee}",
+        "per": "月額",
+        "desc": "成長する施設やビジネス向け",
+        "features": [
+          "最大5プロジェクト",
+          "月間US${starterBudget}クレジット込み",
+          "AIセッション: US${starterAiCost}/セッション",
+          "標準セッション: US${starterNonAiCost}/セッション",
+          "自動補充: US${topupCost}で{starterAiTopupSessions}AIまたは{starterNonAiTopupSessions}標準セッション追加",
+          "最大{starterMaxLanguages}翻訳言語",
+          "Powered by FunTellブランディング"
+        ],
+        "cta": "スターターで始める"
+      },
+      "premium_tier": {
+        "title": "プレミアム",
+        "price": "{premiumFee}",
+        "per": "月額",
+        "desc": "ホワイトラベル付き大規模施設向け",
+        "popular": "ベストバリュー",
+        "features": [
+          "最大35プロジェクト",
+          "月間US${monthlyBudget}クレジット込み",
+          "AIセッション: US${aiCost}/セッション",
+          "標準セッション: US${nonAiCost}/セッション",
+          "自動補充: US${topupCost}で{aiTopupSessions}AIまたは{nonAiTopupSessions}標準セッション追加",
+          "無制限翻訳言語",
+          "ホワイトラベル（ブランディングなし）"
+        ],
+        "cta": "プレミアムにアップグレード"
+      },
+      "session_info": {
+        "title": "セッション課金の仕組み",
+        "ai_enabled": "AI対応プロジェクト",
+        "ai_enabled_desc": "US$${aiCost}/訪問者セッション",
+        "ai_enabled_sessions": "{aiSessions}セッション込み",
+        "ai_disabled": "非AIプロジェクト",
+        "ai_disabled_desc": "US$${nonAiCost}/訪問者セッション",
+        "ai_disabled_sessions": "{nonAiSessions}セッション込み",
+        "tracking_note": "各ユニーク訪問者のスキャンは1セッションとしてカウント",
+        "auto_topup_title": "自動トップアップ",
+        "auto_topup_desc": "予算がなくなると、追加セッション用にUS$${topupCost}が自動チャージ"
+      },
+      "physical_cards": {
+        "title": "物理カード",
+        "subtitle": "オプションアドオン",
+        "price": "US$ 2",
+        "per": "カード単価",
+        "desc": "訪問者向けコレクティブルスーベニアカード",
+        "features": [
+          "プレミアムプリントカード",
+          "カードあたり無制限スキャン",
+          "バッチ注文（最小100枚）",
+          "博物館やイベントに最適"
+        ],
+        "cta": "詳細を見る"
+      },
+      "included_title": "全プランに含まれる機能",
+      "features": {
+        "ai_voice": "AI音声会話",
+        "qr_access": "即時QRアクセス",
+        "design_dashboard": "デザインダッシュボード",
+        "content_management": "コンテンツ管理",
+        "analytics": "使用状況分析",
+        "qr_generation": "QRコード生成",
+        "cloud_hosting": "クラウドホスティング",
+        "support": "メールサポート"
+      },
+      "cta": "無料で始める",
+      "footer_text": "無料で開始 • セッション単位でお支払い • いつでもキャンセル可能"
+    },
+    "faq": {
+      "title": "よくある",
+      "title_highlight": "質問",
+      "q1": "FunTellとは？",
+      "a1": "FunTellは、あらゆる施設をインタラクティブガイドに変えるAIパワードのデジタル体験プラットフォームです。訪問者はQRコードをスキャンして、多言語コンテンツと会話型AIアシスタントにアクセスできます—アプリ不要。オプションでコレクティブルスーベニアとして物理カードも利用可能。",
+      "q2": "仕組みは？",
+      "a2": "1) 施設にQRコードを設置（または物理カードを使用）\n2) 訪問者がスマートフォンでスキャン\n3) AIアシスタントとデジタルコンテンツに即時アクセス\n4) オプション: カードはコレクティブルスーベニアに",
+      "q3": "訪問者はアプリをダウンロードする必要がありますか？",
+      "a3": "いいえ。FunTellはどのスマートフォンブラウザでも動作します。QRコードをスキャンするだけ—ダウンロードやインストール不要。",
+      "q4": "対応言語は？",
+      "a4": "コンテンツとAI会話は10以上の言語で利用可能: 英語、中国語（普通話・広東語）、日本語、韓国語、タイ語、アラビア語、スペイン語、フランス語、ロシア語など。",
+      "q5": "料金に含まれるものは？",
+      "a5": "3つのティア: 無料（{freeExperiences}プロジェクト、{freeSessions}セッション）、スターター（{starterBudget}/月、{starterAiSessions}AIセッション、最大2言語）、プレミアム（{monthlyBudget}/月、{aiSessions}AIセッション、無制限言語、ホワイトラベル）。有料プランは予算切れ時の自動トップアップ込み。全プランにAI音声、ダッシュボード、QRコード、ホスティングが含まれます。",
+      "q6": "どのくらい早く始められますか？",
+      "a6": "デジタルQRプロジェクトは数分で開始可能。サインアップして、プロジェクトを作成し、QRコードを即座に共有。物理カードは印刷と配送に2〜3週間かかります。",
+      "q7": "コンテンツとAIをカスタマイズできますか？",
+      "a7": "はい。セルフサービスダッシュボードを使用して完全にカスタマイズ可能。コンテンツ管理、AIアシスタントの動作設定、ウェルカムメッセージの設定、いつでも更新可能。",
+      "q8": "カード製作のタイムラインは？",
+      "a8": "物理カードは4営業日以内に印刷。配送は場所によって5〜10日。デジタルQR体験は即時利用可能。",
+      "q9": "使用制限はありますか？",
+      "a9": "無料: {freeSessions}セッション/月、翻訳なし。スターター: {starterBudget}予算、AI {starterAiCost}/セッション（{starterAiSessions}込み）、最大2言語。プレミアム: {monthlyBudget}予算、AI {aiCost}/セッション（{aiSessions}込み）、無制限言語。有料プランは自動トップアップ可能。物理カードは無制限スキャン。",
+      "still_have_questions": "まだ質問がありますか？お問い合わせフォームからご連絡ください。"
+    },
+    "footer": {
+      "brand": "FunTell",
+      "description": "AIパワードのデジタル体験プラットフォーム。あらゆる施設をインタラクティブガイドに。",
+      "quick_links": "クイックリンク",
+      "features": "機能",
+      "demo": "デモ",
+      "pricing": "料金",
+      "contact": "お問い合わせ",
+      "contact_title": "お問い合わせ",
+      "phone": "電話",
+      "whatsapp_chat": "WhatsAppチャット",
+      "copyright": "© 2025 FunTell. All rights reserved.",
+      "privacy": "プライバシーポリシー",
+      "terms": "利用規約",
+      "contact_link": "お問い合わせ"
+    },
+    "floating_cta": "始める"
   }
 }
 

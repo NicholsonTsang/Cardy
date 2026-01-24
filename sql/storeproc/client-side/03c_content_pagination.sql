@@ -205,7 +205,7 @@ DECLARE
     v_parent_id UUID;
     v_sort_order INTEGER;
 BEGIN
-    -- Get item's card_id, parent_id, and sort_order for navigation
+    -- Get item's project_id, parent_id, and sort_order for navigation
     SELECT ci.card_id, ci.parent_id, ci.sort_order 
     INTO v_card_id, v_parent_id, v_sort_order
     FROM content_items ci 
@@ -227,7 +227,7 @@ BEGIN
         ci.crop_parameters,
         -- Get parent name
         (SELECT COALESCE(p.translations->p_language->>'name', p.name)::TEXT 
-         FROM content_items p WHERE p.id = ci.parent_id) AS parent_name,
+         FROM content_items p WHERE c.id = ci.parent_id) AS parent_name,
         -- Get previous sibling
         (SELECT prev.id FROM content_items prev 
          WHERE prev.card_id = v_card_id 
@@ -247,7 +247,7 @@ $$;
 GRANT EXECUTE ON FUNCTION get_public_content_item_full(UUID, VARCHAR) TO anon, authenticated;
 
 -- -----------------------------------------------------------------
--- Get content items count by card (utility function)
+-- Get content items count by project (utility function)
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION get_content_items_count(p_card_id UUID)
 RETURNS TABLE (

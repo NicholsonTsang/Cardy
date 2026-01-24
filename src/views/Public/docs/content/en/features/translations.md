@@ -2,8 +2,12 @@
 
 ExperienceQR supports automatic translation to reach global audiences. Translate your entire project—including AI welcome messages—to multiple languages with one click.
 
-:::info Premium Feature
-Multi-language translations are **free and unlimited** for Premium subscribers. Free tier users can create content in one language only.
+:::info Paid Feature
+Multi-language translations are available on paid plans:
+- **Starter ($40/mo)**: Up to **2 languages**
+- **Premium ($280/mo)**: **Unlimited languages** (all 10 supported)
+
+Free tier users can create content in one language only.
 :::
 
 ## Supported Languages

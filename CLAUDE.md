@@ -109,14 +109,25 @@ The platform uses a **subscription-based pricing model**:
 
 ### Free Tier (Default)
 - Up to **3 projects** (configurable via `FREE_TIER_EXPERIENCE_LIMIT`)
-- **50 monthly access pool** (configurable via `FREE_TIER_MONTHLY_ACCESS_LIMIT`)
+- **50 monthly access pool** (configurable via `FREE_TIER_MONTHLY_SESSION_LIMIT`)
 - **No multi-language translations**
 
-### Premium Tier ($50/month)
-- Up to **15 projects** (configurable via `PREMIUM_EXPERIENCE_LIMIT`)
-- **3,000 monthly access pool** (configurable via `PREMIUM_MONTHLY_ACCESS_LIMIT`)
-- **Batch overage: 5 credits = 100 extra access** (configurable via `OVERAGE_CREDITS_PER_BATCH` and `OVERAGE_ACCESS_PER_BATCH`)
-- **Full translation support**
+### Starter Tier ($40/month)
+- Up to **5 projects** (configurable via `STARTER_EXPERIENCE_LIMIT`)
+- **$40 monthly session budget** (configurable via `STARTER_MONTHLY_BUDGET_USD`)
+- **AI sessions**: $0.05/session
+- **Non-AI sessions**: $0.025/session
+- **Max 2 translation languages**
+- **Powered by FunTell branding**
+
+### Premium Tier ($280/month)
+- Up to **35 projects** (configurable via `PREMIUM_EXPERIENCE_LIMIT`)
+- **$280 monthly session budget** (configurable via `PREMIUM_MONTHLY_BUDGET_USD`)
+- **AI sessions**: $0.045/session
+- **Non-AI sessions**: $0.02/session
+- **Unlimited translations**
+- **White label (No branding)**
+- **Batch overage: 5 credits = top-up based on session cost**
 
 ### Admin Privileges
 - **Full translation access** (no subscription required)
@@ -139,28 +150,46 @@ All business parameters (limits, rates, fees) are configured via environment var
 ### Environment Variables (Backend)
 ```
 FREE_TIER_EXPERIENCE_LIMIT=3
-FREE_TIER_MONTHLY_ACCESS_LIMIT=50
-PREMIUM_EXPERIENCE_LIMIT=15
-PREMIUM_MONTHLY_FEE_USD=50
-PREMIUM_MONTHLY_ACCESS_LIMIT=3000
+FREE_TIER_MONTHLY_SESSION_LIMIT=50
+STARTER_MONTHLY_FEE_USD=40
+STARTER_EXPERIENCE_LIMIT=5
+STARTER_MONTHLY_BUDGET_USD=40
+STARTER_AI_ENABLED_SESSION_COST_USD=0.05
+STARTER_AI_DISABLED_SESSION_COST_USD=0.025
+PREMIUM_EXPERIENCE_LIMIT=35
+PREMIUM_MONTHLY_FEE_USD=280
+PREMIUM_MONTHLY_BUDGET_USD=280
+PREMIUM_AI_ENABLED_SESSION_COST_USD=0.045
+PREMIUM_AI_DISABLED_SESSION_COST_USD=0.02
 OVERAGE_CREDITS_PER_BATCH=5
-OVERAGE_ACCESS_PER_BATCH=100
 STRIPE_PREMIUM_PRICE_ID=price_xxx
 ```
 
 ### Environment Variables (Frontend)
 ```
 VITE_FREE_TIER_EXPERIENCE_LIMIT=3
-VITE_FREE_TIER_MONTHLY_ACCESS_LIMIT=50
-VITE_PREMIUM_EXPERIENCE_LIMIT=15
-VITE_PREMIUM_MONTHLY_FEE_USD=50
-VITE_PREMIUM_MONTHLY_ACCESS_LIMIT=3000
+VITE_FREE_TIER_MONTHLY_SESSION_LIMIT=50
+VITE_STARTER_MONTHLY_FEE_USD=40
+VITE_STARTER_EXPERIENCE_LIMIT=5
+VITE_STARTER_MONTHLY_BUDGET_USD=40
+VITE_STARTER_AI_ENABLED_SESSION_COST_USD=0.05
+VITE_STARTER_AI_DISABLED_SESSION_COST_USD=0.025
+VITE_PREMIUM_EXPERIENCE_LIMIT=35
+VITE_PREMIUM_MONTHLY_FEE_USD=280
+VITE_PREMIUM_MONTHLY_BUDGET_USD=280
+VITE_PREMIUM_AI_ENABLED_SESSION_COST_USD=0.045
+VITE_PREMIUM_AI_DISABLED_SESSION_COST_USD=0.02
 VITE_OVERAGE_CREDITS_PER_BATCH=5
-VITE_OVERAGE_ACCESS_PER_BATCH=100
 ```
 
 ## Recent Critical Fixes
 
+-   **AI Assistant Natural Conversation Flow** (Jan 1, 2026 - UX): Fixed AI assistant constantly suggesting questions throughout conversations instead of only in the initial greeting. **Problem**: The AI system prompts had "PROACTIVE SUGGESTIONS" sections that instructed the AI to offer question suggestions in every response, plus "Proactive: Suggest what users can ask about" in behavior guidelines. This made conversations feel robotic and annoying. **Solution**: (1) Removed "PROACTIVE SUGGESTIONS" section from both `buildCardLevelPrompt` and `buildContentItemPrompt` functions, (2) Updated behavior guidelines from "Proactive: Suggest what users can ask about" to "DO NOT suggest questions or topics in every response", (3) Added clear instruction "Only offer suggestions if the user explicitly asks 'what else?' or seems stuck", (4) Enhanced greeting instructions to clarify "This is your ONLY chance to suggest topics. After this, just answer questions naturally." **Result**: Initial greeting provides clear topic guidance, then conversations flow naturally like talking with a knowledgeable friend. **Files changed**: `src/views/MobileClient/components/AIAssistant/utils/promptBuilder.ts`, `README.md`. **Prompt Engineering Principle**: Topic discovery belongs in the greeting/welcome phase; ongoing conversation should be natural Q&A without constant prompting.
+-   **Multi-QR Code System** (Dec 24, 2025 - ARCHITECTURE): Refactored digital access to support multiple QR codes per project. **Schema Changes**: (1) New `card_access_tokens` table stores individual QR codes with: `id`, `card_id`, `name`, `access_token`, `is_enabled`, `daily_session_limit`, session counters (`total_sessions`, `daily_sessions`, `monthly_sessions`). (2) Removed card-level fields: `access_token`, `is_access_enabled`, `total_sessions`, `daily_sessions`, `daily_session_limit`. (3) Added `default_daily_session_limit` to cards (template value for new QR codes). **Stored Procedures**: New `sql/storeproc/client-side/13_access_tokens.sql` with CRUD operations (`create_access_token`, `update_access_token`, `delete_access_token`, `refresh_access_token`, `get_card_access_tokens`, `get_card_monthly_stats`). Updated `create_card` and `import_content_template` to auto-create default enabled QR code. Every project must have at least one QR code. **Backend**: `mobile.routes.ts` now looks up by token, checks per-token daily limits, updates token-specific session counters. **Frontend**: `DigitalAccessSettings.vue` manages collection of `DigitalAccessQR` components. Each QR has independent enable/disable, daily limit, and session stats. **Import/Export**: Updated `excelHandler.js` to use `default_daily_session_limit` field name. **Files changed**: `sql/schema.sql`, `sql/storeproc/client-side/02_card_management.sql`, `sql/storeproc/client-side/10_template_library.sql`, `sql/storeproc/client-side/11_admin_functions.sql`, `sql/storeproc/client-side/13_access_tokens.sql` (new), `backend-server/src/services/usage-tracker.ts`, `backend-server/src/routes/mobile.routes.ts`, `src/stores/card.ts`, `src/stores/admin/userCards.ts`, `src/components/DigitalAccess/DigitalAccessSettings.vue`, `src/components/DigitalAccess/DigitalAccessQR.vue`, `src/utils/excelHandler.js`, `src/utils/excelConstants.js`. **NOTE**: Requires deploying schema changes and stored procedures to Supabase, and redeploying backend.
+-   **Subscription Tier Switching** (Dec 24, 2025 - FEATURE): Implemented automatic cancellation of existing subscription when switching between tiers. **Behavior**: When a user with an active Starter subscription clicks "Upgrade to Premium" (or vice versa), the existing subscription is immediately canceled via Stripe API before redirecting to checkout for the new tier. **Implementation**: (1) Updated `subscription.routes.ts` `/create-checkout` endpoint to detect if user has active subscription to a different tier, (2) If so, call `stripe.subscriptions.cancel()` immediately, update database to free tier, update Redis cache, (3) Pass `switched_from` parameter in success URL for frontend toast message differentiation, (4) Added i18n keys: `welcome_starter`, `subscription_active_starter`, `subscription_switched`, `subscription_switched_to_premium`, `subscription_switched_to_starter`, `confirm_cancel_starter`, error message keys. **Files changed**: `backend-server/src/routes/subscription.routes.ts`, `src/views/Dashboard/CardIssuer/SubscriptionManagement.vue`, `src/i18n/locales/en.json`, `src/i18n/locales/zh-Hant.json`, `README.md`. **Note**: Requires redeploying backend to Cloud Run.
+-   **Admin Dashboard Metrics Update** (Dec 24, 2025 - FIX): Updated `admin_get_system_stats_enhanced` stored procedure to align with Multi-QR Code System and 3-tier subscription model. **Fixes**: (1) Session counters (`total_sessions`, `daily_sessions`) now query from `card_access_tokens` table instead of `cards` (columns were moved in Multi-QR refactor), (2) Added `total_starter_users` metric for the new Starter tier, (3) Fixed MRR calculation from hardcoded $50 to actual pricing: Starter=$40 (4000¢) + Premium=$280 (28000¢), (4) Weekly/monthly digital scans now use `card_access_log` for consistency (was using deprecated `credit_consumptions`), (5) `digital_credits_consumed` now uses `session_cost_usd` from access log. **New Metrics Added**: `total_starter_users`, `total_qr_codes`, `active_qr_codes`. **Files changed**: `sql/storeproc/client-side/11_admin_functions.sql`, `sql/all_stored_procedures.sql`, `src/stores/admin/dashboard.ts`, `src/views/Dashboard/Admin/AdminDashboard.vue`, `src/i18n/locales/en.json`, `src/i18n/locales/zh-Hant.json`. **NOTE**: Requires deploying stored procedures to Supabase.
+-   **Landing Page Full Internationalization** (Jan 1, 2026 - FEATURE): Complete internationalization of the landing page for all 10 supported languages. **Changes**: (1) Created `LandingLanguageSelector.vue` component with modal grid for all 10 languages, (2) Updated `UnifiedHeader.vue` to use `LandingLanguageSelector` for landing page and `DashboardLanguageSelector` for dashboard, (3) Added complete `landing` section translations to all locale files: ja.json, ko.json, es.json, fr.json, ru.json, ar.json, th.json (zh-Hans.json already had translations), (4) Landing page now defaults to English (`/en`) instead of browser language detection for consistent first-time visitor experience, (5) Navigation anchor links now update URL hash (e.g., `/en#features`, `/en#pricing`). **Language Behavior**: Root URL (`/`) redirects to `/en` by default; if user previously selected a different language (saved in localStorage), that preference is respected. **Files changed**: `src/components/LandingLanguageSelector.vue` (new), `src/components/Layout/UnifiedHeader.vue`, `src/router/index.ts`, all `src/i18n/locales/*.json` files, `README.md`.
+-   **URL-Based Language Routing** (Dec 23, 2025 - FEATURE): Implemented URL-based language routing for SEO and shareable links. **Route Structure**: All routes now include language prefix (e.g., `/en/cms/projects`, `/ja/c/abc123`). **Default Behavior**: Root URL (`/`) defaults to English, respecting saved language preference if user previously chose a different language. **Language Stores**: Updated `useMobileLanguageStore` and `useDashboardLanguageStore` to sync with URL parameter, update URL when language changes. **Landing Page**: Template demo URLs and QR codes include current language. **Supported Languages**: Landing page & Mobile client (10): en, zh-Hant, zh-Hans, ja, ko, es, fr, ru, ar, th. Dashboard (2): en, zh-Hant. **Legacy URL Support**: Old URLs without language prefix (e.g., `/c/abc123`) automatically redirect to language-prefixed versions. **Files changed**: `src/router/index.ts`, `src/router/languageRouting.ts` (new), `src/stores/language.ts`, `src/views/MobileClient/PublicCardView.vue`, `src/views/Public/LandingPage.vue`, `src/components/DashboardLanguageSelector.vue`, `README.md`.
 -   **Multilingual SEO Optimization** (Dec 22, 2025 - SEO): Comprehensive multilingual SEO implementation supporting all 10 languages. **Added**: (1) SEO sections to all i18n locale files (zh-Hans, ja, ko, es, fr, ru, ar, th) with localized title, description, keywords, and structured data content, (2) Enhanced `useSEO.ts` composable with proper hreflang tags for all 10 languages + x-default, OpenGraph locale alternates, RTL support for Arabic, and comprehensive JSON-LD structured data (Organization, SoftwareApplication, WebSite, BreadcrumbList schemas), (3) Updated `index.html` with complete hreflang links, improved robots directives, preconnect hints, and enhanced structured data, (4) Updated `sitemap.xml` with hreflang entries for all languages on all pages, (5) Updated `robots.txt` with crawler-specific rules. **Supported Languages**: English, Traditional Chinese, Simplified Chinese, Japanese, Korean, Spanish, French, Russian, Arabic, Thai. **Files changed**: `src/composables/useSEO.ts`, `index.html`, `public/sitemap.xml`, `public/robots.txt`, all `src/i18n/locales/*.json` files.
 -   **Template Venue Type i18n Fix** (Dec 21, 2025 - I18N FIX): Fixed venue type category tabs in Template Library showing English text even when UI is in other languages. **Problem**: The `formatVenueType()` function in `TemplateLibrary.vue` was only capitalizing the venue type string instead of using i18n translations. Categories like "Cultural", "Events", "Food" showed in English regardless of selected language. **Solution**: (1) Added `templates.venue_types` section to all 3 i18n locale files (en.json, zh-Hant.json, zh-Hans.json) with translations for: cultural, food, events, hospitality, retail, tours, general. (2) Updated `formatVenueType()` to use `t('templates.venue_types.{type}')` with fallback to capitalized string. **Files changed**: `src/components/TemplateLibrary/TemplateLibrary.vue`, `src/i18n/locales/en.json`, `src/i18n/locales/zh-Hant.json`, `src/i18n/locales/zh-Hans.json`.
 -   **Template Language Lists Alignment Fix** (Dec 21, 2025 - CONSISTENCY FIX): Aligned hardcoded language lists across 4 Vue components to match `SUPPORTED_LANGUAGES` from `translation.ts`. **Problem**: Multiple components (`TemplateLibrary.vue`, `TemplateImportForm.vue`, `AdminTemplateImport.vue`, `CardBulkImport.vue`) had hardcoded language lists containing unsupported languages (de-German, it-Italian, pt-Portuguese) while missing supported languages (ru-Russian, th-Thai). **Solution**: (1) Imported `SUPPORTED_LANGUAGES` and `LanguageCode` from `@/stores/translation`, (2) Created `LANGUAGE_FLAGS` constant aligned with supported languages (10 languages: en, zh-Hant, zh-Hans, ja, ko, es, fr, ru, ar, th), (3) Updated `getLanguageFlag()` and `getLanguageName()` functions to use the shared constants. **Files changed**: `src/components/TemplateLibrary/TemplateLibrary.vue`, `src/components/TemplateLibrary/TemplateImportForm.vue`, `src/views/Dashboard/Admin/components/AdminTemplateImport.vue`, `src/components/Card/Import/CardBulkImport.vue`. **Source of Truth**: `src/stores/translation.ts` → `SUPPORTED_LANGUAGES`.

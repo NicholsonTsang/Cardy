@@ -20,7 +20,7 @@ BEGIN
         id, user_id, name, description, content_mode, is_grouped, group_display, billing_type,
         conversation_ai_enabled, ai_instruction, ai_knowledge_base,
         ai_welcome_general, ai_welcome_item, image_url,
-        is_access_enabled, access_token
+        default_daily_session_limit
     ) VALUES (
         gen_random_uuid(),
         v_user_id,
@@ -36,9 +36,12 @@ BEGIN
         'Welcome to Heritage Auctions! I can explain any lot''s provenance, discuss condition reports, clarify bidding procedures, or help you find pieces in your collecting area. What interests you?',
         'You''re viewing Lot {name}! I can share provenance details, discuss the estimate, explain condition, or compare it to recent auction results. What would you like to know?',
         NULL,
-        TRUE,
-        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')
+        500
     ) RETURNING id INTO v_card_id;
+    
+    -- Create default access token (QR code) for the card
+    INSERT INTO card_access_tokens (card_id, name, access_token, is_enabled, daily_session_limit)
+    VALUES (v_card_id, 'Default', replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_'), true, 500);
 
     -- Category 1: Impressionist & Modern Art
     INSERT INTO content_items (id, card_id, parent_id, name, content, ai_knowledge_base, sort_order)

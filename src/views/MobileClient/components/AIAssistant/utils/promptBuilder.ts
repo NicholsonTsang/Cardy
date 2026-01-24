@@ -6,7 +6,7 @@
  * - Clear role definition
  * - Explicit language requirements
  * - Structured knowledge context
- * - Actionable behavior guidelines
+ * - Natural conversation flow (suggestions only in greeting)
  */
 
 interface PromptConfig {
@@ -50,25 +50,27 @@ function buildLanguageRequirement(
 }
 
 /**
- * Build the proactive guidance behavior section
+ * Build natural conversation behavior section
+ * Key: NO constant suggestions - just answer naturally like a knowledgeable friend
  */
 function buildBehaviorGuidelines(isItemMode: boolean): string {
   const baseGuidelines = `
-BEHAVIOR GUIDELINES:
-• Concise: 2-3 sentences per response
-• Proactive: Suggest what users can ask about
-• Engaging: Share interesting facts when relevant
-• Helpful: Offer concrete examples and recommendations`
+CONVERSATION STYLE:
+• Be natural and conversational - like a knowledgeable friend
+• Answer questions directly and concisely (2-3 sentences)
+• Share interesting facts and stories when relevant
+• DO NOT suggest questions or topics in every response
+• Only offer suggestions if the user explicitly asks "what else?" or seems stuck`
 
   if (isItemMode) {
     return baseGuidelines + `
-• Focus: Deep expertise on this specific item
-• Connect: Mention related items when relevant`
+• Focus deeply on this specific item
+• Mention related items only when directly relevant to the answer`
   }
 
   return baseGuidelines + `
-• Guide: Help users discover and navigate content
-• Recommend: Suggest highlights and must-sees`
+• Help users discover what interests them
+• Provide specific recommendations when asked`
 }
 
 /**
@@ -107,13 +109,7 @@ ${config.customInstruction}
   }
 
   prompt += `
-${behavior}
-
-# PROACTIVE SUGGESTIONS
-When users seem unsure, offer 2-3 specific questions they could ask, like:
-• "Would you like to know about [specific topic from knowledge]?"
-• "I can tell you about [highlights/history/tips]"
-• "Many visitors enjoy learning about [interesting aspect]"`
+${behavior}`
 
   return prompt.trim()
 }
@@ -169,19 +165,16 @@ ${config.customInstruction}
   }
 
   prompt += `
-${behavior}
-
-# PROACTIVE SUGGESTIONS
-When users seem unsure, offer specific questions like:
-• "Would you like to know the history of ${config.contentItemName}?"
-• "I can share interesting stories about this"
-• "There are some fascinating details I can tell you about"`
+${behavior}`
 
   return prompt.trim()
 }
 
 /**
  * Build greeting instructions for realtime voice mode
+ * 
+ * This is the ONLY place where topic suggestions should appear.
+ * After the greeting, conversations should flow naturally without constant suggestions.
  */
 export function buildRealtimeGreetingInstructions(
   languageName: string,
@@ -191,25 +184,30 @@ export function buildRealtimeGreetingInstructions(
   const languageNote = `RESPOND ONLY in ${languageName}.`
   
   if (customWelcome) {
+    // Use custom welcome as inspiration, but keep it brief for voice
     return `${languageNote}
 
 GREETING GUIDANCE (from creator):
 "${customWelcome}"
 
-Generate a BRIEF spoken greeting (1-2 sentences) that:
+Generate a BRIEF spoken greeting (1-2 sentences max) that:
 1. Warmly welcomes the user
-2. Mentions 2-3 specific things they can ask about
-3. Keeps it natural and conversational for voice`
+2. Mentions what you can help with based on the guidance above
+3. Ends with an open invitation like "What would you like to know?"
+
+This is your ONLY greeting - after this, just answer questions naturally without suggesting topics.`
   }
 
   return `${languageNote}
 
-Generate a BRIEF spoken greeting (1-2 sentences) that:
+Generate a BRIEF spoken greeting (1-2 sentences max) that:
 1. Warmly welcomes the user
 2. Introduces yourself as their ${isItemMode ? 'expert guide for this item' : 'personal guide'}
-3. Suggests 2-3 SPECIFIC things they can ask about from your knowledge
-4. Example: "Hi! I'm your guide. I can tell you about the history, interesting stories, or answer any questions!"
+3. Mentions 2-3 things you know about (history, stories, tips, etc.)
+4. Ends with "What would you like to know?" or similar open question
 
-Keep it SHORT and natural for voice - under 10 seconds.`
+Example: "Hi! I'm your guide. I can share the history, interesting stories, or tips. What would you like to know?"
+
+IMPORTANT: This greeting is your ONLY chance to suggest topics. After this, just answer questions naturally like a friendly expert - no need to keep suggesting what to ask.`
 }
 

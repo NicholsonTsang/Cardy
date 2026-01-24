@@ -7,6 +7,8 @@ export interface AdminUserInfo {
   email: string
   role: string
   created_at: string
+  subscription_tier: string
+  subscription_status: string
 }
 
 export interface AdminUserCard {
@@ -28,12 +30,12 @@ export interface AdminUserCard {
   is_grouped: boolean
   group_display: 'expanded' | 'collapsed'
   billing_type: 'physical' | 'digital'
-  max_scans: number | null
-  current_scans: number
-  daily_scan_limit: number | null
-  daily_scans: number
-  is_access_enabled: boolean
-  access_token: string
+  default_daily_session_limit: number | null // Default for new QR codes
+  // Aggregated from access tokens
+  total_sessions: number
+  daily_sessions: number
+  active_qr_codes: number
+  total_qr_codes: number
   translations: Record<string, any> | null
   original_language: string | null
   batches_count: number

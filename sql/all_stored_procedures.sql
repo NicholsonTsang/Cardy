@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Mon Dec 22 20:09:21 HKT 2025
+-- Generated: Wed Dec 31 21:27:56 HKT 2025
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -213,8 +213,6 @@ DROP FUNCTION IF EXISTS create_card CASCADE;
 DROP FUNCTION IF EXISTS get_card_by_id CASCADE;
 DROP FUNCTION IF EXISTS update_card CASCADE;
 DROP FUNCTION IF EXISTS delete_card CASCADE;
-DROP FUNCTION IF EXISTS toggle_card_access CASCADE;
-DROP FUNCTION IF EXISTS regenerate_access_token CASCADE;
 
 -- =================================================================
 -- CARD MANAGEMENT FUNCTIONS
@@ -223,6 +221,7 @@ DROP FUNCTION IF EXISTS regenerate_access_token CASCADE;
 
 -- Get all cards for the current user (more secure)
 -- Includes is_template flag to indicate if card is linked to a template
+-- Session stats are computed from card_access_tokens table
 CREATE OR REPLACE FUNCTION get_user_cards()
 RETURNS TABLE (
     id UUID,
@@ -245,12 +244,13 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    max_scans INTEGER,
-    current_scans INTEGER,
-    daily_scan_limit INTEGER,
-    daily_scans INTEGER,
-    is_access_enabled BOOLEAN,
-    access_token TEXT,
+    default_daily_session_limit INTEGER,
+    -- Computed from access tokens
+    total_sessions BIGINT,
+    monthly_sessions BIGINT,
+    daily_sessions BIGINT,
+    active_qr_codes BIGINT,
+    total_qr_codes BIGINT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
     is_template BOOLEAN,
@@ -279,19 +279,22 @@ BEGIN
         c.is_grouped,
         c.group_display,
         c.billing_type,
-        c.max_scans,
-        c.current_scans,
-        c.daily_scan_limit,
-        c.daily_scans,
-        c.is_access_enabled,
-        c.access_token,
+        c.default_daily_session_limit,
+        -- Aggregate stats from access tokens
+        COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
+        COALESCE(SUM(t.monthly_sessions), 0)::BIGINT AS monthly_sessions,
+        COALESCE(SUM(t.daily_sessions), 0)::BIGINT AS daily_sessions,
+        COALESCE(COUNT(t.id) FILTER (WHERE t.is_enabled), 0)::BIGINT AS active_qr_codes,
+        COALESCE(COUNT(t.id), 0)::BIGINT AS total_qr_codes,
         c.created_at,
         c.updated_at,
         (ct.id IS NOT NULL) AS is_template,
         ct.slug AS template_slug
     FROM cards c
+    LEFT JOIN card_access_tokens t ON t.card_id = c.id
     LEFT JOIN content_templates ct ON ct.card_id = c.id
     WHERE c.user_id = auth.uid()
+    GROUP BY c.id, ct.id, ct.slug
     ORDER BY c.created_at DESC;
 END;
 $$;
@@ -318,8 +321,7 @@ CREATE OR REPLACE FUNCTION create_card(
     p_is_grouped BOOLEAN DEFAULT FALSE,  -- Whether content is organized into categories
     p_group_display TEXT DEFAULT 'expanded',  -- How grouped items display: expanded or collapsed
     p_billing_type TEXT DEFAULT 'physical',  -- Billing model: physical or digital
-    p_max_scans INTEGER DEFAULT NULL,  -- NULL = unlimited (physical), Integer = limit (digital)
-    p_daily_scan_limit INTEGER DEFAULT 500  -- Daily scan limit for digital access (default: 500)
+    p_default_daily_session_limit INTEGER DEFAULT 500  -- Default daily session limit for new QR codes (default: 500)
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -351,13 +353,7 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        max_scans,
-        current_scans,
-        daily_scan_limit,
-        daily_scans,
-        last_scan_date,
-        is_access_enabled,
-        access_token
+        default_daily_session_limit
     ) VALUES (
         auth.uid(),
         p_name,
@@ -378,15 +374,25 @@ BEGIN
         COALESCE(p_is_grouped, FALSE),
         COALESCE(p_group_display, 'expanded'),
         COALESCE(p_billing_type, 'physical'),
-        p_max_scans,  -- NULL for physical (unlimited), set for digital
-        0,  -- Start with 0 total scans
-        CASE WHEN p_billing_type = 'digital' THEN COALESCE(p_daily_scan_limit, 500) ELSE NULL END,  -- Daily limit for digital
-        0,  -- Start with 0 daily scans
-        CURRENT_DATE,  -- Today
-        TRUE,  -- is_access_enabled defaults to true
-        replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_')  -- Generate access_token
+        CASE WHEN p_billing_type = 'digital' THEN COALESCE(p_default_daily_session_limit, 500) ELSE NULL END
     )
     RETURNING id INTO v_card_id;
+    
+    -- Automatically create a default enabled access token (QR code) for all projects
+    -- Every project must have at least one QR code
+    INSERT INTO card_access_tokens (
+        card_id,
+        name,
+        access_token,
+        is_enabled,
+        daily_session_limit
+    ) VALUES (
+        v_card_id,
+        'Default',
+        substring(replace(gen_random_uuid()::text, '-', ''), 1, 12),
+        true,  -- Enabled by default
+        COALESCE(p_default_daily_session_limit, 500)
+    );
     
     -- Log operation
     IF p_translations IS NOT NULL AND p_translations != '{}'::JSONB THEN
@@ -398,9 +404,11 @@ BEGIN
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER) TO authenticated;
+-- Note: Last INTEGER parameter is p_default_daily_session_limit (was p_daily_session_limit)
 
 -- Get a card by ID (more secure, relies on RLS policy)
+-- Session stats are computed from card_access_tokens table
 CREATE OR REPLACE FUNCTION get_card_by_id(p_card_id UUID)
 RETURNS TABLE (
     id UUID,
@@ -424,12 +432,13 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    max_scans INTEGER,
-    current_scans INTEGER,
-    daily_scan_limit INTEGER,
-    daily_scans INTEGER,
-    is_access_enabled BOOLEAN,
-    access_token TEXT,
+    default_daily_session_limit INTEGER,
+    -- Computed from access tokens
+    total_sessions BIGINT,
+    monthly_sessions BIGINT,
+    daily_sessions BIGINT,
+    active_qr_codes BIGINT,
+    total_qr_codes BIGINT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -457,16 +466,19 @@ BEGIN
         c.is_grouped,
         c.group_display,
         c.billing_type,
-        c.max_scans,
-        c.current_scans,
-        c.daily_scan_limit,
-        c.daily_scans,
-        c.is_access_enabled,
-        c.access_token,
+        c.default_daily_session_limit,
+        -- Aggregate stats from access tokens
+        COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
+        COALESCE(SUM(t.monthly_sessions), 0)::BIGINT AS monthly_sessions,
+        COALESCE(SUM(t.daily_sessions), 0)::BIGINT AS daily_sessions,
+        COALESCE(COUNT(t.id) FILTER (WHERE t.is_enabled), 0)::BIGINT AS active_qr_codes,
+        COALESCE(COUNT(t.id), 0)::BIGINT AS total_qr_codes,
         c.created_at, 
         c.updated_at
     FROM cards c
-    WHERE c.id = p_card_id;
+    LEFT JOIN card_access_tokens t ON t.card_id = c.id
+    WHERE c.id = p_card_id
+    GROUP BY c.id;
     -- No need to check user_id = auth.uid() as RLS policy will handle this
 END;
 $$;
@@ -491,8 +503,7 @@ CREATE OR REPLACE FUNCTION update_card(
     p_is_grouped BOOLEAN DEFAULT NULL,
     p_group_display TEXT DEFAULT NULL,
     p_billing_type TEXT DEFAULT NULL,
-    p_max_scans INTEGER DEFAULT NULL,
-    p_daily_scan_limit INTEGER DEFAULT NULL
+    p_default_daily_session_limit INTEGER DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_old_record RECORD;
@@ -518,8 +529,7 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        max_scans,
-        daily_scan_limit,
+        default_daily_session_limit,
         user_id,
         updated_at
     INTO v_old_record
@@ -609,9 +619,9 @@ BEGIN
     -- NOTE: billing_type cannot be changed after card creation
     -- Silently ignore any attempt to change billing_type
     
-    -- Track daily_scan_limit changes (only for digital cards)
-    IF p_daily_scan_limit IS NOT NULL AND (v_old_record.daily_scan_limit IS NULL OR p_daily_scan_limit != v_old_record.daily_scan_limit) THEN
-        v_changes_made := v_changes_made || jsonb_build_object('daily_scan_limit', jsonb_build_object('from', v_old_record.daily_scan_limit, 'to', p_daily_scan_limit));
+    -- Track default_daily_session_limit changes (only for digital cards)
+    IF p_default_daily_session_limit IS NOT NULL AND (v_old_record.default_daily_session_limit IS NULL OR p_default_daily_session_limit != v_old_record.default_daily_session_limit) THEN
+        v_changes_made := v_changes_made || jsonb_build_object('default_daily_session_limit', jsonb_build_object('from', v_old_record.default_daily_session_limit, 'to', p_default_daily_session_limit));
         has_changes := TRUE;
     END IF;
     
@@ -640,8 +650,7 @@ BEGIN
         is_grouped = COALESCE(p_is_grouped, is_grouped),
         group_display = COALESCE(p_group_display, group_display),
         -- billing_type is immutable - not updated here
-        max_scans = CASE WHEN billing_type = 'digital' THEN COALESCE(p_max_scans, max_scans) ELSE NULL END,
-        daily_scan_limit = CASE WHEN billing_type = 'digital' THEN COALESCE(p_daily_scan_limit, daily_scan_limit) ELSE NULL END,
+        default_daily_session_limit = CASE WHEN billing_type = 'digital' THEN COALESCE(p_default_daily_session_limit, default_daily_session_limit) ELSE NULL END,
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
     
@@ -651,7 +660,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
@@ -691,83 +700,9 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION delete_card(UUID) TO authenticated;
 
--- Toggle access enabled/disabled for a digital card
-CREATE OR REPLACE FUNCTION toggle_card_access(
-    p_card_id UUID,
-    p_is_enabled BOOLEAN
-) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_card_record RECORD;
-BEGIN
-    -- Get card information
-    SELECT id, name, billing_type, is_access_enabled
-    INTO v_card_record
-    FROM cards
-    WHERE id = p_card_id AND user_id = auth.uid();
-    
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Card not found or not authorized.';
-    END IF;
-    
-    -- Only digital cards can toggle access
-    IF v_card_record.billing_type != 'digital' THEN
-        RAISE EXCEPTION 'Access toggle is only available for digital cards.';
-    END IF;
-    
-    -- Update the access status
-    UPDATE cards
-    SET is_access_enabled = p_is_enabled,
-        updated_at = now()
-    WHERE id = p_card_id AND user_id = auth.uid();
-    
-    -- Log operation
-    PERFORM log_operation(format('Toggled access for card %s: %s', v_card_record.name, 
-        CASE WHEN p_is_enabled THEN 'enabled' ELSE 'disabled' END));
-    
-    RETURN TRUE;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION toggle_card_access(UUID, BOOLEAN) TO authenticated;
-
--- Regenerate access token for a digital card (invalidates old QR codes)
-CREATE OR REPLACE FUNCTION regenerate_access_token(
-    p_card_id UUID
-) RETURNS TEXT LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_card_record RECORD;
-    v_new_token TEXT;
-BEGIN
-    -- Get card information
-    SELECT id, name, billing_type, access_token
-    INTO v_card_record
-    FROM cards
-    WHERE id = p_card_id AND user_id = auth.uid();
-    
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Card not found or not authorized.';
-    END IF;
-    
-    -- Only digital cards can regenerate tokens
-    IF v_card_record.billing_type != 'digital' THEN
-        RAISE EXCEPTION 'Token regeneration is only available for digital cards.';
-    END IF;
-    
-    -- Generate new short 12-char URL-safe token (base64url encoding)
-    v_new_token := replace(replace(encode(gen_random_bytes(9), 'base64'), '+', '-'), '/', '_');
-    
-    -- Update the access token
-    UPDATE cards
-    SET access_token = v_new_token,
-        updated_at = now()
-    WHERE id = p_card_id AND user_id = auth.uid();
-    
-    -- Log operation
-    PERFORM log_operation(format('Regenerated access token for card: %s', v_card_record.name));
-    
-    RETURN v_new_token;
-END;
-$$;
-GRANT EXECUTE ON FUNCTION regenerate_access_token(UUID) TO authenticated;
+-- NOTE: toggle_card_access and regenerate_access_token functions have been moved to 
+-- 13_access_tokens.sql as toggle_access_token and refresh_access_token since
+-- access control is now per-QR-code (access token) rather than per-card.
 
 -- File: 03_content_management.sql
 -- -----------------------------------------------------------------
@@ -904,7 +839,7 @@ BEGIN
         RAISE EXCEPTION 'Not authorized to add content to this card';
     END IF;
     
-    -- If parent_id is provided, check if it exists and belongs to the same card
+    -- If parent_id is provided, check if it exists and belongs to the same project
     IF p_parent_id IS NOT NULL THEN
         IF NOT EXISTS (
             SELECT 1 FROM content_items 
@@ -1090,7 +1025,8 @@ BEGIN
 
     RETURN TRUE;
 END;
-$$; 
+$$;
+
 
 -- File: 03b_content_migration.sql
 -- -----------------------------------------------------------------
@@ -1293,7 +1229,7 @@ BEGIN
         RAISE EXCEPTION 'Cannot move an item to itself';
     END IF;
     
-    -- If new parent specified, verify it exists and belongs to the same card
+    -- If new parent specified, verify it exists and belongs to the same project
     IF p_new_parent_id IS NOT NULL THEN
         IF NOT EXISTS (
             SELECT 1 FROM content_items 
@@ -1301,7 +1237,7 @@ BEGIN
             AND card_id = v_card_id
             AND parent_id IS NULL  -- Parent must be a top-level item (category)
         ) THEN
-            RAISE EXCEPTION 'New parent must be a top-level category in the same card';
+            RAISE EXCEPTION 'New parent must be a top-level category in the same project';
         END IF;
     END IF;
     
@@ -1587,7 +1523,7 @@ DECLARE
     v_parent_id UUID;
     v_sort_order INTEGER;
 BEGIN
-    -- Get item's card_id, parent_id, and sort_order for navigation
+    -- Get item's project_id, parent_id, and sort_order for navigation
     SELECT ci.card_id, ci.parent_id, ci.sort_order 
     INTO v_card_id, v_parent_id, v_sort_order
     FROM content_items ci 
@@ -1609,7 +1545,7 @@ BEGIN
         ci.crop_parameters,
         -- Get parent name
         (SELECT COALESCE(p.translations->p_language->>'name', p.name)::TEXT 
-         FROM content_items p WHERE p.id = ci.parent_id) AS parent_name,
+         FROM content_items p WHERE c.id = ci.parent_id) AS parent_name,
         -- Get previous sibling
         (SELECT prev.id FROM content_items prev 
          WHERE prev.card_id = v_card_id 
@@ -1629,7 +1565,7 @@ $$;
 GRANT EXECUTE ON FUNCTION get_public_content_item_full(UUID, VARCHAR) TO anon, authenticated;
 
 -- -----------------------------------------------------------------
--- Get content items count by card (utility function)
+-- Get content items count by project (utility function)
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION get_content_items_count(p_card_id UUID)
 RETURNS TABLE (
@@ -1663,8 +1599,8 @@ DROP FUNCTION IF EXISTS delete_issued_card CASCADE;
 DROP FUNCTION IF EXISTS generate_batch_cards CASCADE;
 
 -- =================================================================
--- CARD BATCH MANAGEMENT FUNCTIONS
--- Functions for managing card batches and issued cards
+-- PHYSICAL CARD BATCH MANAGEMENT FUNCTIONS
+-- Functions for managing physical card batches and issued cards
 -- =================================================================
 
 -- Get next batch number for a card
@@ -1700,7 +1636,7 @@ DECLARE
     v_batch_id UUID;
     v_batch_number INTEGER;
     v_batch_name TEXT;
-    v_card_owner_id UUID;
+    v_project_owner_id UUID;
     v_credits_per_card DECIMAL := 2.00;
     v_total_credits DECIMAL;
     v_current_balance DECIMAL;
@@ -1713,15 +1649,15 @@ BEGIN
     END IF;
     
     -- Check if the user owns the card
-    SELECT user_id INTO v_card_owner_id
+    SELECT user_id INTO v_project_owner_id
     FROM cards
     WHERE id = p_card_id;
     
-    IF v_card_owner_id IS NULL THEN
-        RAISE EXCEPTION 'Card not found.';
+    IF v_project_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Project not found.';
     END IF;
 
-    IF v_card_owner_id != auth.uid() THEN
+    IF v_project_owner_id != auth.uid() THEN
         RAISE EXCEPTION 'Not authorized to issue cards for this card.';
     END IF;
     
@@ -1819,7 +1755,7 @@ BEGIN
 END;
 $$;
 
--- Get card batches for a card
+-- Get physical card batches for a card
 CREATE OR REPLACE FUNCTION get_card_batches(p_card_id UUID)
 RETURNS TABLE (
     id UUID,
@@ -2029,19 +1965,19 @@ $$;
 CREATE OR REPLACE FUNCTION delete_issued_card(p_issued_card_id UUID)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
-    v_card_owner_id UUID;
+    v_project_owner_id UUID;
 BEGIN
     -- Check if the user owns the card that contains this issued card
-    SELECT c.user_id INTO v_card_owner_id
+    SELECT c.user_id INTO v_project_owner_id
     FROM issue_cards ic
     JOIN cards c ON ic.card_id = c.id
     WHERE ic.id = p_issued_card_id;
     
-    IF v_card_owner_id IS NULL THEN
+    IF v_project_owner_id IS NULL THEN
         RAISE EXCEPTION 'Issued card not found';
     END IF;
     
-    IF v_card_owner_id != auth.uid() THEN
+    IF v_project_owner_id != auth.uid() THEN
         RAISE EXCEPTION 'Not authorized to delete this issued card';
     END IF;
     
@@ -2468,10 +2404,7 @@ RETURNS TABLE (
     card_is_grouped BOOLEAN, -- Whether content is organized into categories
     card_group_display TEXT, -- How grouped items display: expanded or collapsed
     card_billing_type TEXT, -- Billing model: physical or digital
-    card_max_scans INTEGER, -- NULL for physical (unlimited), Integer for digital
-    card_current_scans INTEGER, -- Current total scan count
-    card_daily_scan_limit INTEGER, -- Daily scan limit (NULL = unlimited)
-    card_daily_scans INTEGER, -- Today's scan count
+    -- Note: Session tracking is now per-QR-code in card_access_tokens (not needed for preview)
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -2537,10 +2470,6 @@ BEGIN
         COALESCE(c.is_grouped, FALSE)::BOOLEAN AS card_is_grouped, -- Grouping mode
         COALESCE(c.group_display, 'expanded')::TEXT AS card_group_display, -- Group display
         COALESCE(c.billing_type, 'physical')::TEXT AS card_billing_type, -- Billing model
-        c.max_scans AS card_max_scans,
-        c.current_scans AS card_current_scans,
-        c.daily_scan_limit AS card_daily_scan_limit,
-        c.daily_scans AS card_daily_scans,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
@@ -2613,8 +2542,7 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    max_scans INTEGER,
-    daily_scan_limit INTEGER,
+    default_daily_session_limit INTEGER,
     original_language TEXT,
     qr_code_position TEXT,
     item_count BIGINT,
@@ -2650,8 +2578,7 @@ BEGIN
         COALESCE(c.is_grouped, false),
         COALESCE(c.group_display, 'expanded')::TEXT,
         COALESCE(c.billing_type, 'digital')::TEXT,
-        c.max_scans,
-        c.daily_scan_limit,
+        c.default_daily_session_limit,
         COALESCE(c.original_language, 'en')::TEXT,
         COALESCE(c.qr_code_position::TEXT, 'BR'),
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
@@ -2711,8 +2638,7 @@ RETURNS TABLE (
     ai_welcome_item TEXT,
     original_language TEXT,
     qr_code_position TEXT,
-    max_scans INTEGER,
-    daily_scan_limit INTEGER,
+    default_daily_session_limit INTEGER,
     crop_parameters JSONB,
     translations JSONB,
     content_hash TEXT,
@@ -2774,8 +2700,7 @@ BEGIN
         END::TEXT AS ai_welcome_item,
         COALESCE(c.original_language, 'en')::TEXT,
         COALESCE(c.qr_code_position::TEXT, 'BR'),
-        c.max_scans,
-        c.daily_scan_limit,
+        c.default_daily_session_limit,
         c.crop_parameters,
         COALESCE(c.translations, '{}'::JSONB),
         c.content_hash,
@@ -2932,8 +2857,7 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        max_scans,
-        daily_scan_limit,
+        default_daily_session_limit,
         conversation_ai_enabled,
         ai_instruction,
         ai_knowledge_base,
@@ -2954,8 +2878,7 @@ BEGIN
         v_template.is_grouped,
         v_template.group_display,
         v_final_billing,
-        v_template.max_scans,
-        v_template.daily_scan_limit,
+        v_template.default_daily_session_limit,
         v_template.conversation_ai_enabled,
         CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_instruction', v_template.ai_instruction) ELSE v_template.ai_instruction END,
         CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_knowledge_base', v_template.ai_knowledge_base) ELSE v_template.ai_knowledge_base END,
@@ -2969,6 +2892,22 @@ BEGIN
         NULL,  -- No translations - start fresh
         NULL   -- No content_hash - will be calculated on first edit
     ) RETURNING id INTO v_new_card_id;
+    
+    -- Create a default enabled access token (QR code) for the new card
+    -- Every project must have at least one QR code
+    INSERT INTO card_access_tokens (
+        card_id,
+        name,
+        access_token,
+        is_enabled,
+        daily_session_limit
+    ) VALUES (
+        v_new_card_id,
+        'Default',
+        substring(replace(gen_random_uuid()::text, '-', ''), 1, 12),
+        true,
+        v_template.default_daily_session_limit
+    );
     
     -- PERFORMANCE: Bulk copy content items using CTE with ID mapping
     -- This avoids N+1 individual INSERT statements
@@ -3544,6 +3483,7 @@ GRANT EXECUTE ON FUNCTION public.get_admin_template_cards(UUID) TO authenticated
 -- Get featured demo templates for landing page (public access)
 -- Returns templates with their public access URLs
 -- Supports multilingual display via p_language parameter
+-- Uses card_access_tokens to get the first enabled QR code
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_demo_templates(
     p_limit INTEGER DEFAULT 100,
@@ -3576,17 +3516,23 @@ BEGIN
         COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
         COALESCE(c.content_mode, 'list')::TEXT,
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
-        CASE 
-            WHEN c.is_access_enabled AND c.access_token IS NOT NULL 
-            THEN c.access_token
-            ELSE NULL
-        END AS access_url
+        -- Get first enabled access token for this card
+        (
+            SELECT t.access_token
+            FROM card_access_tokens t
+            WHERE t.card_id = c.id AND t.is_enabled = true
+            ORDER BY t.created_at ASC
+            LIMIT 1
+        )::TEXT AS access_url
     FROM content_templates ct
     JOIN cards c ON ct.card_id = c.id
     WHERE ct.is_active = true
       AND ct.is_featured = true
-      AND c.is_access_enabled = true
-      AND c.access_token IS NOT NULL
+      -- Only include templates that have at least one enabled access token
+      AND EXISTS (
+          SELECT 1 FROM card_access_tokens t 
+          WHERE t.card_id = c.id AND t.is_enabled = true
+      )
     ORDER BY ct.sort_order ASC, c.name ASC
     LIMIT p_limit;
 END;
@@ -3759,10 +3705,10 @@ RETURNS TABLE (
     critical_actions_today BIGINT,
     high_severity_actions_week BIGINT,
     unique_admin_users_month BIGINT,
-    -- ACCESS MODE METRICS (NEW)
+    -- ACCESS MODE METRICS
     physical_cards_count BIGINT,
     digital_cards_count BIGINT,
-    -- DIGITAL ACCESS METRICS (NEW)
+    -- DIGITAL ACCESS METRICS (from card_access_tokens and card_access_log)
     total_digital_scans BIGINT,
     daily_digital_scans BIGINT,
     weekly_digital_scans BIGINT,
@@ -3774,14 +3720,18 @@ RETURNS TABLE (
     content_mode_grid BIGINT,
     content_mode_cards BIGINT,
     is_grouped_count BIGINT,
-    -- SUBSCRIPTION METRICS (NEW)
+    -- SUBSCRIPTION METRICS (3 tiers: free, starter, premium)
     total_free_users BIGINT,
+    total_starter_users BIGINT,
     total_premium_users BIGINT,
     active_subscriptions BIGINT,
     estimated_mrr_cents BIGINT,
-    -- ACCESS LOG METRICS (NEW)
+    -- ACCESS LOG METRICS
     monthly_total_accesses BIGINT,
-    monthly_overage_accesses BIGINT
+    monthly_overage_accesses BIGINT,
+    -- QR CODE METRICS (Multi-QR system)
+    total_qr_codes BIGINT,
+    active_qr_codes BIGINT
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     caller_role TEXT;
@@ -3835,26 +3785,38 @@ BEGIN
         -- ACCESS MODE METRICS (Physical vs Digital cards)
         (SELECT COUNT(*) FROM cards WHERE billing_type = 'physical') as physical_cards_count,
         (SELECT COUNT(*) FROM cards WHERE billing_type = 'digital') as digital_cards_count,
-        -- DIGITAL ACCESS METRICS (Scan counts and credit consumption)
-        (SELECT COALESCE(SUM(current_scans), 0)::BIGINT FROM cards WHERE billing_type = 'digital') as total_digital_scans,
-        (SELECT COALESCE(SUM(daily_scans), 0)::BIGINT FROM cards WHERE billing_type = 'digital' AND last_scan_date = CURRENT_DATE) as daily_digital_scans,
-        (SELECT COALESCE(SUM(cc.quantity), 0)::BIGINT FROM credit_consumptions cc WHERE cc.consumption_type = 'digital_scan' AND cc.created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_digital_scans,
-        (SELECT COALESCE(SUM(cc.quantity), 0)::BIGINT FROM credit_consumptions cc WHERE cc.consumption_type = 'digital_scan' AND cc.created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_digital_scans,
-        (SELECT COALESCE(SUM(cc.total_credits), 0)::NUMERIC FROM credit_consumptions cc WHERE cc.consumption_type = 'digital_scan') as digital_credits_consumed,
+        -- DIGITAL ACCESS METRICS (from card_access_tokens and card_access_log)
+        -- Note: Session counters now live in card_access_tokens table (Multi-QR refactor Dec 2025)
+        (SELECT COALESCE(SUM(cat.total_sessions), 0)::BIGINT FROM card_access_tokens cat INNER JOIN cards c ON cat.card_id = c.id WHERE c.billing_type = 'digital') as total_digital_scans,
+        (SELECT COALESCE(SUM(cat.daily_sessions), 0)::BIGINT FROM card_access_tokens cat INNER JOIN cards c ON cat.card_id = c.id WHERE c.billing_type = 'digital' AND cat.last_session_date = CURRENT_DATE) as daily_digital_scans,
+        -- Weekly/Monthly from card_access_log for consistency (source of truth for billing)
+        (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_digital_scans,
+        (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_digital_scans,
+        -- Total session cost from access log (ai_enabled costs more)
+        (SELECT COALESCE(SUM(session_cost_usd), 0)::NUMERIC FROM card_access_log) as digital_credits_consumed,
         -- CONTENT MODE DISTRIBUTION
         (SELECT COUNT(*) FROM cards WHERE content_mode = 'single') as content_mode_single,
         (SELECT COUNT(*) FROM cards WHERE content_mode = 'list') as content_mode_list,
         (SELECT COUNT(*) FROM cards WHERE content_mode = 'grid') as content_mode_grid,
         (SELECT COUNT(*) FROM cards WHERE content_mode = 'cards') as content_mode_cards,
         (SELECT COUNT(*) FROM cards WHERE is_grouped = true) as is_grouped_count,
-        -- SUBSCRIPTION METRICS
-        (SELECT COUNT(*) FROM auth.users) - (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as total_free_users,
+        -- SUBSCRIPTION METRICS (3 tiers: free, starter, premium)
+        -- Free = users with no subscription record OR tier = 'free'
+        (SELECT COUNT(*) FROM auth.users u WHERE NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND s.tier IN ('starter', 'premium'))) as total_free_users,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'starter') as total_starter_users,
         (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as total_premium_users,
-        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium' AND status = 'active') as active_subscriptions,
-        (SELECT COUNT(*) * 5000 FROM subscriptions WHERE tier = 'premium' AND status = 'active') as estimated_mrr_cents,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier IN ('starter', 'premium') AND status = 'active') as active_subscriptions,
+        -- MRR: Starter=$40/month (4000 cents) + Premium=$280/month (28000 cents)
+        (
+            (SELECT COUNT(*) * 4000 FROM subscriptions WHERE tier = 'starter' AND status = 'active') +
+            (SELECT COUNT(*) * 28000 FROM subscriptions WHERE tier = 'premium' AND status = 'active')
+        )::BIGINT as estimated_mrr_cents,
         -- ACCESS LOG METRICS
         (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= date_trunc('month', CURRENT_DATE)) as monthly_total_accesses,
-        (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= date_trunc('month', CURRENT_DATE) AND was_overage = true) as monthly_overage_accesses;
+        (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= date_trunc('month', CURRENT_DATE) AND was_overage = true) as monthly_overage_accesses,
+        -- QR CODE METRICS (Multi-QR system)
+        (SELECT COUNT(*) FROM card_access_tokens) as total_qr_codes,
+        (SELECT COUNT(*) FROM card_access_tokens WHERE is_enabled = true) as active_qr_codes;
 END;
 $$;
 
@@ -4189,7 +4151,8 @@ $$;
 CREATE OR REPLACE FUNCTION admin_update_user_subscription(
     p_user_id UUID,
     p_new_tier TEXT,
-    p_reason TEXT
+    p_reason TEXT,
+    p_duration_months INTEGER DEFAULT NULL  -- NULL = permanent, number = specific months
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -4198,6 +4161,8 @@ DECLARE
     v_user_email VARCHAR(255);
     v_old_tier TEXT;
     v_subscription_exists BOOLEAN;
+    v_period_end TIMESTAMPTZ;
+    v_duration_text TEXT;
 BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
@@ -4209,8 +4174,13 @@ BEGIN
     END IF;
 
     -- Validate new tier
-    IF p_new_tier NOT IN ('free', 'premium') THEN
-        RAISE EXCEPTION 'Invalid tier. Must be: free or premium.';
+    IF p_new_tier NOT IN ('free', 'starter', 'premium') THEN
+        RAISE EXCEPTION 'Invalid tier. Must be: free, starter, or premium.';
+    END IF;
+
+    -- Validate duration (must be positive if provided)
+    IF p_duration_months IS NOT NULL AND p_duration_months <= 0 THEN
+        RAISE EXCEPTION 'Duration must be a positive number of months.';
     END IF;
 
     -- Get current user info
@@ -4225,6 +4195,17 @@ BEGIN
     -- Check if subscription exists
     SELECT EXISTS(SELECT 1 FROM subscriptions WHERE user_id = p_user_id) INTO v_subscription_exists;
     
+    -- Block if user has active Stripe subscription (mutually exclusive with admin grants)
+    IF v_subscription_exists THEN
+        PERFORM 1 FROM subscriptions 
+        WHERE user_id = p_user_id 
+        AND stripe_subscription_id IS NOT NULL;
+        
+        IF FOUND THEN
+            RAISE EXCEPTION 'Cannot grant privilege to user with active Stripe subscription. Please cancel their Stripe subscription first via Stripe Dashboard.';
+        END IF;
+    END IF;
+    
     -- Get old tier if exists
     IF v_subscription_exists THEN
         SELECT tier::TEXT INTO v_old_tier
@@ -4234,25 +4215,33 @@ BEGIN
         v_old_tier := 'free';
     END IF;
 
-    -- Create or update subscription
+    -- Calculate period end based on duration
+    -- For paid tiers (starter/premium): use duration or NULL for permanent
+    -- For free tier: always NULL (no period)
+    IF p_new_tier = 'free' THEN
+        v_period_end := NULL;
+    ELSIF p_duration_months IS NULL THEN
+        -- Permanent subscription (far future date)
+        v_period_end := NOW() + INTERVAL '100 years';
+    ELSE
+        -- Specific duration
+        v_period_end := NOW() + (p_duration_months || ' months')::INTERVAL;
+    END IF;
+
+    -- Create or update subscription (Stripe users already blocked above)
     IF v_subscription_exists THEN
         UPDATE subscriptions
         SET 
             tier = p_new_tier::"SubscriptionTier",
             status = 'active'::subscription_status,
-            -- Clear Stripe fields when admin manually sets tier
-            -- (this means it's not a Stripe-managed subscription anymore)
-            stripe_subscription_id = CASE 
-                WHEN p_new_tier = 'free' THEN NULL 
-                ELSE stripe_subscription_id 
-            END,
+            -- stripe_subscription_id stays NULL (admin-managed only)
             current_period_start = CASE 
-                WHEN p_new_tier = 'premium' AND stripe_subscription_id IS NULL THEN NOW()
-                ELSE current_period_start
+                WHEN p_new_tier IN ('starter', 'premium') THEN NOW()
+                ELSE NULL
             END,
             current_period_end = CASE 
-                WHEN p_new_tier = 'premium' AND stripe_subscription_id IS NULL THEN NOW() + INTERVAL '1 year'
-                ELSE current_period_end
+                WHEN p_new_tier IN ('starter', 'premium') THEN v_period_end
+                ELSE NULL
             END,
             cancel_at_period_end = false,
             updated_at = NOW()
@@ -4269,18 +4258,36 @@ BEGIN
             p_user_id,
             p_new_tier::"SubscriptionTier",
             'active'::subscription_status,
-            CASE WHEN p_new_tier = 'premium' THEN NOW() ELSE NULL END,
-            CASE WHEN p_new_tier = 'premium' THEN NOW() + INTERVAL '1 year' ELSE NULL END,
+            CASE WHEN p_new_tier IN ('starter', 'premium') THEN NOW() ELSE NULL END,
+            CASE WHEN p_new_tier IN ('starter', 'premium') THEN v_period_end ELSE NULL END,
             false
         );
     END IF;
 
+    -- Build duration text for log
+    IF p_new_tier = 'free' THEN
+        v_duration_text := '';
+    ELSIF p_duration_months IS NULL THEN
+        v_duration_text := ' (permanent)';
+    ELSE
+        v_duration_text := ' (' || p_duration_months || ' months)';
+    END IF;
+
     -- Log operation
-    PERFORM log_operation(
-        'Admin changed subscription tier from ' || COALESCE(v_old_tier, 'none') || 
-        ' to ' || p_new_tier || ' for user: ' || v_user_email || 
-        ' - Reason: ' || p_reason
-    );
+    IF v_old_tier = p_new_tier THEN
+        -- Same tier - just updating duration
+        PERFORM log_operation(
+            'Admin updated ' || p_new_tier || ' subscription duration' || v_duration_text || 
+            ' for user: ' || v_user_email || ' - Reason: ' || p_reason
+        );
+    ELSE
+        -- Tier change
+        PERFORM log_operation(
+            'Admin changed subscription tier from ' || COALESCE(v_old_tier, 'none') || 
+            ' to ' || p_new_tier || v_duration_text || ' for user: ' || v_user_email || 
+            ' - Reason: ' || p_reason
+        );
+    END IF;
 
     RETURN TRUE;
 END;
@@ -4387,7 +4394,9 @@ RETURNS TABLE (
     user_id UUID,
     email TEXT,
     role TEXT,
-    created_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ,
+    subscription_tier TEXT,
+    subscription_status TEXT
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_caller_role TEXT;
@@ -4406,14 +4415,17 @@ BEGIN
         au.id AS user_id,
         au.email::TEXT,
         COALESCE(au.raw_user_meta_data->>'role', 'user')::TEXT AS role,
-        au.created_at
+        au.created_at,
+        COALESCE(s.tier::TEXT, 'free') as subscription_tier,
+        COALESCE(s.status::TEXT, 'active') as subscription_status
     FROM auth.users au
+    LEFT JOIN subscriptions s ON s.user_id = au.id
     WHERE LOWER(au.email) = LOWER(p_email);
 END;
 $$;
 
 -- Get all cards for a specific user (admin view)
--- Updated to include all card fields for complete admin visibility
+-- Updated to aggregate session data from card_access_tokens
 CREATE OR REPLACE FUNCTION admin_get_user_cards(p_user_id UUID)
 RETURNS TABLE (
     id UUID,
@@ -4433,12 +4445,12 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    max_scans INT,
-    current_scans INT,
-    daily_scan_limit INT,
-    daily_scans INT,
-    is_access_enabled BOOLEAN,
-    access_token TEXT,
+    default_daily_session_limit INT,
+    -- Aggregated from access tokens
+    total_sessions BIGINT,
+    daily_sessions BIGINT,
+    active_qr_codes BIGINT,
+    total_qr_codes BIGINT,
     translations JSONB,
     original_language VARCHAR(10),
     batches_count BIGINT,
@@ -4477,27 +4489,26 @@ BEGIN
         c.is_grouped,
         c.group_display::TEXT,
         c.billing_type::TEXT,
-        c.max_scans,
-        c.current_scans,
-        c.daily_scan_limit,
-        c.daily_scans,
-        c.is_access_enabled,
-        c.access_token,
+        c.default_daily_session_limit,
+        -- Aggregate from access tokens
+        COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
+        COALESCE(SUM(t.daily_sessions), 0)::BIGINT AS daily_sessions,
+        COALESCE(COUNT(t.id) FILTER (WHERE t.is_enabled), 0)::BIGINT AS active_qr_codes,
+        COALESCE(COUNT(t.id), 0)::BIGINT AS total_qr_codes,
         c.translations,
         c.original_language,
-        COUNT(cb.id)::BIGINT AS batches_count,
+        (SELECT COUNT(*) FROM card_batches cb WHERE cb.card_id = c.id)::BIGINT AS batches_count,
         c.created_at,
         c.updated_at,
         au.email::TEXT AS user_email
     FROM cards c
     JOIN auth.users au ON c.user_id = au.id
-    LEFT JOIN card_batches cb ON c.id = cb.card_id
+    LEFT JOIN card_access_tokens t ON t.card_id = c.id
     WHERE c.user_id = p_user_id
     GROUP BY c.id, c.name, c.description, c.image_url, c.original_image_url,
              c.crop_parameters, c.conversation_ai_enabled, c.ai_instruction, c.ai_knowledge_base,
              c.ai_welcome_general, c.ai_welcome_item, c.qr_code_position, c.content_mode, 
-             c.is_grouped, c.group_display, c.billing_type, c.max_scans, c.current_scans,
-             c.daily_scan_limit, c.daily_scans, c.is_access_enabled, c.access_token,
+             c.is_grouped, c.group_display, c.billing_type, c.default_daily_session_limit,
              c.translations, c.original_language, c.created_at, c.updated_at, au.email
     ORDER BY c.created_at DESC;
 END;
@@ -4706,7 +4717,7 @@ GRANT EXECUTE ON FUNCTION get_admin_batches_requiring_attention() TO authenticat
 GRANT EXECUTE ON FUNCTION get_admin_all_batches(TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_all_print_requests("PrintRequestStatus", TEXT, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_all_users() TO authenticated;
-GRANT EXECUTE ON FUNCTION admin_update_user_subscription(UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_update_user_subscription(UUID, TEXT, TEXT, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_subscription_stats() TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_update_user_role(UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_user_by_email(TEXT) TO authenticated;
@@ -4769,11 +4780,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- =================================================================
 -- FUNCTION: Can create project
 -- Business parameters passed from calling application
+-- Supports Free, Starter, and Premium tiers
 -- =================================================================
 CREATE OR REPLACE FUNCTION can_create_experience(
     p_user_id UUID DEFAULT NULL,
     p_free_limit INTEGER DEFAULT 3,
-    p_premium_limit INTEGER DEFAULT 15
+    p_starter_limit INTEGER DEFAULT 5,
+    p_premium_limit INTEGER DEFAULT 35
 )
 RETURNS JSONB AS $$
 DECLARE
@@ -4805,9 +4818,11 @@ BEGIN
     -- Count existing experiences
     SELECT COUNT(*) INTO v_experience_count FROM cards WHERE user_id = v_user_id;
     
-    -- Determine limit based on tier
+    -- Determine limit based on tier (Free, Starter, Premium)
     IF v_subscription.tier = 'premium' THEN
         v_limit := p_premium_limit;
+    ELSIF v_subscription.tier = 'starter' THEN
+        v_limit := p_starter_limit;
     ELSE
         v_limit := p_free_limit;
     END IF;
@@ -4819,7 +4834,8 @@ BEGIN
         'tier', v_subscription.tier::TEXT,
         'message', CASE 
             WHEN v_experience_count < v_limit THEN 'OK'
-            WHEN v_subscription.tier = 'free' THEN 'Upgrade to Premium to create more projects'
+            WHEN v_subscription.tier = 'free' THEN 'Upgrade to Starter or Premium to create more projects'
+            WHEN v_subscription.tier = 'starter' THEN 'Upgrade to Premium to create more projects'
             ELSE 'Project limit reached'
         END
     );
@@ -4828,29 +4844,49 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =================================================================
 -- FUNCTION: Can use translations
--- Premium-only feature check
+-- Starter and Premium tiers can use translations
+-- Starter: max 2 languages, Premium: unlimited
 -- =================================================================
 CREATE OR REPLACE FUNCTION can_use_translations(
-    p_user_id UUID DEFAULT NULL
+    p_user_id UUID DEFAULT NULL,
+    p_starter_max_languages INTEGER DEFAULT 2
 )
 RETURNS JSONB AS $$
 DECLARE
     v_user_id UUID := COALESCE(p_user_id, auth.uid());
     v_subscription subscriptions%ROWTYPE;
+    v_user_role TEXT;
 BEGIN
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Check if user is admin (admins always have translation access)
+    v_user_role := get_user_role(v_user_id);
+    IF v_user_role = 'admin' THEN
+        RETURN jsonb_build_object(
+            'can_translate', TRUE,
+            'tier', 'admin',
+            'max_languages', -1,
+            'message', 'Admin bypass - unlimited translations'
+        );
     END IF;
     
     -- Get subscription
     v_subscription := get_or_create_subscription(v_user_id);
     
     RETURN jsonb_build_object(
-        'can_translate', v_subscription.tier = 'premium',
+        'can_translate', v_subscription.tier IN ('starter', 'premium'),
         'tier', v_subscription.tier::TEXT,
+        'max_languages', CASE
+            WHEN v_subscription.tier = 'premium' THEN -1
+            WHEN v_subscription.tier = 'starter' THEN p_starter_max_languages
+            ELSE 0
+        END,
         'message', CASE 
-            WHEN v_subscription.tier = 'premium' THEN 'Translations available'
-            ELSE 'Upgrade to Premium to access multi-language translations'
+            WHEN v_subscription.tier = 'premium' THEN 'Unlimited translations available'
+            WHEN v_subscription.tier = 'starter' THEN 'Max ' || p_starter_max_languages || ' language translations available'
+            ELSE 'Upgrade to Starter or Premium to access multi-language translations'
         END
     );
 END;
@@ -4860,15 +4896,20 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- FUNCTION: Get subscription details
 -- All pricing/budget values come from parameters (environment variables)
 -- NOTE: Usage stats come from Redis (source of truth), not from DB
+-- Supports Free, Starter, and Premium tiers
 -- =================================================================
 CREATE OR REPLACE FUNCTION get_subscription_details(
     p_user_id UUID DEFAULT NULL,
     p_free_experience_limit INTEGER DEFAULT 3,
-    p_premium_experience_limit INTEGER DEFAULT 15,
+    p_starter_experience_limit INTEGER DEFAULT 5,
+    p_premium_experience_limit INTEGER DEFAULT 35,
     p_free_monthly_sessions INTEGER DEFAULT 50,  -- Free tier session limit
-    p_premium_monthly_budget DECIMAL DEFAULT 30.00,  -- Premium monthly budget USD
-    p_ai_session_cost DECIMAL DEFAULT 0.05,  -- Cost per AI-enabled session
-    p_non_ai_session_cost DECIMAL DEFAULT 0.025,  -- Cost per non-AI session
+    p_starter_monthly_budget DECIMAL DEFAULT 40.00,  -- Starter monthly budget USD
+    p_premium_monthly_budget DECIMAL DEFAULT 280.00,  -- Premium monthly budget USD
+    p_starter_ai_session_cost DECIMAL DEFAULT 0.05,  -- Starter AI session cost
+    p_starter_non_ai_session_cost DECIMAL DEFAULT 0.025,  -- Starter non-AI session cost
+    p_premium_ai_session_cost DECIMAL DEFAULT 0.04,  -- Premium AI session cost
+    p_premium_non_ai_session_cost DECIMAL DEFAULT 0.02,  -- Premium non-AI session cost
     p_overage_credits_per_batch INTEGER DEFAULT 5  -- Credits per auto top-up
 )
 RETURNS JSONB AS $$
@@ -4876,6 +4917,9 @@ DECLARE
     v_user_id UUID := COALESCE(p_user_id, auth.uid());
     v_subscription subscriptions%ROWTYPE;
     v_experience_count INTEGER;
+    v_monthly_budget DECIMAL;
+    v_ai_session_cost DECIMAL;
+    v_non_ai_session_cost DECIMAL;
 BEGIN
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
@@ -4887,30 +4931,54 @@ BEGIN
     -- Count experiences
     SELECT COUNT(*) INTO v_experience_count FROM cards WHERE user_id = v_user_id;
     
+    -- Set tier-specific values
+    IF v_subscription.tier = 'premium' THEN
+        v_monthly_budget := p_premium_monthly_budget;
+        v_ai_session_cost := p_premium_ai_session_cost;
+        v_non_ai_session_cost := p_premium_non_ai_session_cost;
+    ELSIF v_subscription.tier = 'starter' THEN
+        v_monthly_budget := p_starter_monthly_budget;
+        v_ai_session_cost := p_starter_ai_session_cost;
+        v_non_ai_session_cost := p_starter_non_ai_session_cost;
+    ELSE
+        v_monthly_budget := 0;
+        v_ai_session_cost := 0;
+        v_non_ai_session_cost := 0;
+    END IF;
+    
     RETURN jsonb_build_object(
         'tier', v_subscription.tier::TEXT,
         'status', v_subscription.status,
         'is_premium', v_subscription.tier = 'premium',
+        'is_starter', v_subscription.tier = 'starter',
+        'is_paid', v_subscription.tier IN ('starter', 'premium'),
         
         -- Stripe info
         'stripe_subscription_id', v_subscription.stripe_subscription_id,
         'current_period_start', v_subscription.current_period_start,
         'current_period_end', v_subscription.current_period_end,
         'cancel_at_period_end', v_subscription.cancel_at_period_end,
+        'scheduled_tier', v_subscription.scheduled_tier::TEXT,  -- Tier to switch to after period ends
         
         -- Session-based billing (from parameters/env vars)
         -- NOTE: Actual budget tracking is in Redis, these are just for display
-        'monthly_budget_usd', CASE WHEN v_subscription.tier = 'premium' THEN p_premium_monthly_budget ELSE 0 END,
+        'monthly_budget_usd', v_monthly_budget,
         'budget_consumed_usd', 0,  -- Redis is source of truth, backend fills this
-        'budget_remaining_usd', CASE WHEN v_subscription.tier = 'premium' THEN p_premium_monthly_budget ELSE 0 END,
+        'budget_remaining_usd', v_monthly_budget,
         
-        -- Session costs (from parameters/env vars)
-        'ai_session_cost_usd', p_ai_session_cost,
-        'non_ai_session_cost_usd', p_non_ai_session_cost,
+        -- Session costs (tier-specific)
+        'ai_session_cost_usd', v_ai_session_cost,
+        'non_ai_session_cost_usd', v_non_ai_session_cost,
         
         -- Calculated session limits
-        'ai_sessions_included', CASE WHEN v_subscription.tier = 'premium' THEN FLOOR(p_premium_monthly_budget / p_ai_session_cost) ELSE 0 END,
-        'non_ai_sessions_included', CASE WHEN v_subscription.tier = 'premium' THEN FLOOR(p_premium_monthly_budget / p_non_ai_session_cost) ELSE 0 END,
+        'ai_sessions_included', CASE 
+            WHEN v_subscription.tier IN ('starter', 'premium') THEN FLOOR(v_monthly_budget / v_ai_session_cost) 
+            ELSE 0 
+        END,
+        'non_ai_sessions_included', CASE 
+            WHEN v_subscription.tier IN ('starter', 'premium') THEN FLOOR(v_monthly_budget / v_non_ai_session_cost) 
+            ELSE 0 
+        END,
         
         -- Free tier (session count based)
         'monthly_session_limit', CASE WHEN v_subscription.tier = 'free' THEN p_free_monthly_sessions ELSE NULL END,
@@ -4918,26 +4986,33 @@ BEGIN
         -- Experience limits
         'experience_count', v_experience_count,
         'experience_limit', CASE 
-            WHEN v_subscription.tier = 'premium' THEN p_premium_experience_limit 
+            WHEN v_subscription.tier = 'premium' THEN p_premium_experience_limit
+            WHEN v_subscription.tier = 'starter' THEN p_starter_experience_limit
             ELSE p_free_experience_limit 
         END,
         
         -- Features
         'features', jsonb_build_object(
-            'translations_enabled', v_subscription.tier = 'premium',
-            'can_buy_overage', v_subscription.tier = 'premium'
+            'translations_enabled', v_subscription.tier IN ('starter', 'premium'),
+            'max_languages', CASE
+                WHEN v_subscription.tier = 'premium' THEN -1
+                WHEN v_subscription.tier = 'starter' THEN 2
+                ELSE 0
+            END,
+            'can_buy_overage', v_subscription.tier IN ('starter', 'premium'),
+            'white_label', v_subscription.tier = 'premium'
         ),
         
         -- Pricing info (all from parameters/env vars)
         'pricing', jsonb_build_object(
-            'monthly_fee_usd', p_premium_monthly_budget,
-            'ai_session_cost_usd', p_ai_session_cost,
-            'non_ai_session_cost_usd', p_non_ai_session_cost,
-            'ai_sessions_included', FLOOR(p_premium_monthly_budget / p_ai_session_cost),
-            'non_ai_sessions_included', FLOOR(p_premium_monthly_budget / p_non_ai_session_cost),
+            'monthly_fee_usd', v_monthly_budget,
+            'ai_session_cost_usd', v_ai_session_cost,
+            'non_ai_session_cost_usd', v_non_ai_session_cost,
+            'ai_sessions_included', CASE WHEN v_subscription.tier IN ('starter', 'premium') THEN FLOOR(v_monthly_budget / v_ai_session_cost) ELSE 0 END,
+            'non_ai_sessions_included', CASE WHEN v_subscription.tier IN ('starter', 'premium') THEN FLOOR(v_monthly_budget / v_non_ai_session_cost) ELSE 0 END,
             'overage_credits_per_batch', p_overage_credits_per_batch,
-            'overage_ai_sessions_per_batch', FLOOR(p_overage_credits_per_batch / p_ai_session_cost),
-            'overage_non_ai_sessions_per_batch', FLOOR(p_overage_credits_per_batch / p_non_ai_session_cost)
+            'overage_ai_sessions_per_batch', CASE WHEN v_ai_session_cost > 0 THEN FLOOR(p_overage_credits_per_batch / v_ai_session_cost) ELSE 0 END,
+            'overage_non_ai_sessions_per_batch', CASE WHEN v_non_ai_session_cost > 0 THEN FLOOR(p_overage_credits_per_batch / v_non_ai_session_cost) ELSE 0 END
         )
     );
 END;
@@ -4947,9 +5022,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- GRANTS
 -- =================================================================
 GRANT EXECUTE ON FUNCTION get_or_create_subscription(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION can_create_experience(UUID, INTEGER, INTEGER) TO authenticated;
-GRANT EXECUTE ON FUNCTION can_use_translations(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION get_subscription_details(UUID, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION can_create_experience(UUID, INTEGER, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION can_use_translations(UUID, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_subscription_details(UUID, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, INTEGER) TO authenticated;
 
 
 -- File: 12_translation_management.sql
@@ -5661,6 +5736,400 @@ GRANT EXECUTE ON FUNCTION update_content_item_translations_bulk(UUID, JSONB) TO 
 GRANT EXECUTE ON FUNCTION recalculate_card_translation_hashes(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION recalculate_content_item_translation_hashes(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION recalculate_all_translation_hashes(UUID) TO authenticated;
+
+
+
+-- File: 13_access_tokens.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS generate_access_token CASCADE;
+DROP FUNCTION IF EXISTS create_access_token CASCADE;
+DROP FUNCTION IF EXISTS get_card_access_tokens CASCADE;
+DROP FUNCTION IF EXISTS update_access_token CASCADE;
+DROP FUNCTION IF EXISTS delete_access_token CASCADE;
+DROP FUNCTION IF EXISTS refresh_access_token CASCADE;
+DROP FUNCTION IF EXISTS get_card_monthly_stats CASCADE;
+
+-- =====================================================
+-- Access Token Management Stored Procedures
+-- Client-side procedures for managing QR codes per project
+-- =====================================================
+
+-- Generate a unique 12-character URL-safe access token
+CREATE OR REPLACE FUNCTION generate_access_token()
+RETURNS TEXT
+LANGUAGE plpgsql
+AS $$
+DECLARE
+    v_token TEXT;
+    v_exists BOOLEAN;
+BEGIN
+    LOOP
+        -- Generate 12 character alphanumeric token from UUID (URL-safe, no extension required)
+        v_token := substring(replace(gen_random_uuid()::text, '-', ''), 1, 12);
+        
+        -- Check if token already exists
+        SELECT EXISTS(SELECT 1 FROM card_access_tokens WHERE access_token = v_token) INTO v_exists;
+        
+        IF NOT v_exists THEN
+            RETURN v_token;
+        END IF;
+    END LOOP;
+END;
+$$;
+
+-- Create a new access token (QR code) for a card
+CREATE OR REPLACE FUNCTION create_access_token(
+    p_card_id UUID,
+    p_name TEXT DEFAULT 'Default',
+    p_daily_session_limit INTEGER DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_owner_id UUID;
+    v_new_token TEXT;
+    v_token_id UUID;
+    v_default_limit INTEGER;
+BEGIN
+    -- Get current user
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Verify card ownership and get default limit
+    SELECT user_id, default_daily_session_limit 
+    INTO v_card_owner_id, v_default_limit
+    FROM cards 
+    WHERE id = p_card_id;
+    
+    IF v_card_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Card not found';
+    END IF;
+    
+    IF v_card_owner_id != v_user_id THEN
+        RAISE EXCEPTION 'Not authorized';
+    END IF;
+    
+    -- Generate unique token
+    v_new_token := generate_access_token();
+    
+    -- Use provided limit or fall back to card default
+    IF p_daily_session_limit IS NULL THEN
+        p_daily_session_limit := v_default_limit;
+    END IF;
+    
+    -- Create the access token
+    INSERT INTO card_access_tokens (
+        card_id,
+        name,
+        access_token,
+        daily_session_limit
+    ) VALUES (
+        p_card_id,
+        COALESCE(p_name, 'Default'),
+        v_new_token,
+        p_daily_session_limit
+    )
+    RETURNING id INTO v_token_id;
+    
+    RETURN jsonb_build_object(
+        'success', true,
+        'token_id', v_token_id,
+        'access_token', v_new_token,
+        'name', COALESCE(p_name, 'Default')
+    );
+END;
+$$;
+
+-- Get all access tokens for a card
+CREATE OR REPLACE FUNCTION get_card_access_tokens(p_card_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_owner_id UUID;
+    v_tokens JSONB;
+BEGIN
+    -- Get current user
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Verify card ownership
+    SELECT user_id INTO v_card_owner_id
+    FROM cards 
+    WHERE id = p_card_id;
+    
+    IF v_card_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Card not found';
+    END IF;
+    
+    IF v_card_owner_id != v_user_id THEN
+        -- Check if user is admin
+        IF NOT EXISTS (
+            SELECT 1 FROM auth.users 
+            WHERE id = v_user_id 
+            AND (raw_app_meta_data->>'role' = 'admin' OR raw_user_meta_data->>'role' = 'admin')
+        ) THEN
+            RAISE EXCEPTION 'Not authorized';
+        END IF;
+    END IF;
+    
+    -- Get all tokens for the card
+    SELECT COALESCE(jsonb_agg(
+        jsonb_build_object(
+            'id', t.id,
+            'name', t.name,
+            'access_token', t.access_token,
+            'is_enabled', t.is_enabled,
+            'daily_session_limit', t.daily_session_limit,
+            'total_sessions', t.total_sessions,
+            'daily_sessions', t.daily_sessions,
+            'monthly_sessions', t.monthly_sessions,
+            'last_session_date', t.last_session_date,
+            'current_month', t.current_month,
+            'created_at', t.created_at,
+            'updated_at', t.updated_at
+        ) ORDER BY t.created_at ASC
+    ), '[]'::jsonb) INTO v_tokens
+    FROM card_access_tokens t
+    WHERE t.card_id = p_card_id;
+    
+    RETURN v_tokens;
+END;
+$$;
+
+-- Update an access token's settings
+CREATE OR REPLACE FUNCTION update_access_token(
+    p_token_id UUID,
+    p_name TEXT DEFAULT NULL,
+    p_is_enabled BOOLEAN DEFAULT NULL,
+    p_daily_session_limit INTEGER DEFAULT NULL
+)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_owner_id UUID;
+    v_card_id UUID;
+BEGIN
+    -- Get current user
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Get card_id and verify ownership
+    SELECT t.card_id, c.user_id 
+    INTO v_card_id, v_card_owner_id
+    FROM card_access_tokens t
+    JOIN cards c ON c.id = t.card_id
+    WHERE t.id = p_token_id;
+    
+    IF v_card_id IS NULL THEN
+        RAISE EXCEPTION 'Token not found';
+    END IF;
+    
+    IF v_card_owner_id != v_user_id THEN
+        RAISE EXCEPTION 'Not authorized';
+    END IF;
+    
+    -- Update the token
+    UPDATE card_access_tokens
+    SET
+        name = COALESCE(p_name, name),
+        is_enabled = COALESCE(p_is_enabled, is_enabled),
+        daily_session_limit = CASE 
+            WHEN p_daily_session_limit = -1 THEN NULL  -- -1 means unlimited
+            WHEN p_daily_session_limit IS NOT NULL THEN p_daily_session_limit
+            ELSE daily_session_limit
+        END,
+        updated_at = NOW()
+    WHERE id = p_token_id;
+    
+    RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+-- Delete an access token
+CREATE OR REPLACE FUNCTION delete_access_token(p_token_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_owner_id UUID;
+    v_token_count INTEGER;
+    v_card_id UUID;
+BEGIN
+    -- Get current user
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Get card_id and verify ownership
+    SELECT t.card_id, c.user_id 
+    INTO v_card_id, v_card_owner_id
+    FROM card_access_tokens t
+    JOIN cards c ON c.id = t.card_id
+    WHERE t.id = p_token_id;
+    
+    IF v_card_id IS NULL THEN
+        RAISE EXCEPTION 'Token not found';
+    END IF;
+    
+    IF v_card_owner_id != v_user_id THEN
+        RAISE EXCEPTION 'Not authorized';
+    END IF;
+    
+    -- Check if this is the last token (prevent deleting all tokens)
+    SELECT COUNT(*) INTO v_token_count
+    FROM card_access_tokens
+    WHERE card_id = v_card_id;
+    
+    IF v_token_count <= 1 THEN
+        RAISE EXCEPTION 'Cannot delete the last QR code. Each project must have at least one QR code.';
+    END IF;
+    
+    -- Delete the token
+    DELETE FROM card_access_tokens WHERE id = p_token_id;
+    
+    RETURN jsonb_build_object('success', true);
+END;
+$$;
+
+-- Refresh (regenerate) an access token
+CREATE OR REPLACE FUNCTION refresh_access_token(p_token_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_owner_id UUID;
+    v_new_token TEXT;
+BEGIN
+    -- Get current user
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Verify ownership
+    SELECT c.user_id INTO v_card_owner_id
+    FROM card_access_tokens t
+    JOIN cards c ON c.id = t.card_id
+    WHERE t.id = p_token_id;
+    
+    IF v_card_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Token not found';
+    END IF;
+    
+    IF v_card_owner_id != v_user_id THEN
+        RAISE EXCEPTION 'Not authorized';
+    END IF;
+    
+    -- Generate new token
+    v_new_token := generate_access_token();
+    
+    -- Update the token
+    UPDATE card_access_tokens
+    SET 
+        access_token = v_new_token,
+        updated_at = NOW()
+    WHERE id = p_token_id;
+    
+    RETURN jsonb_build_object(
+        'success', true,
+        'access_token', v_new_token
+    );
+END;
+$$;
+
+-- Get monthly session stats for all tokens of a card
+-- Returns data for the current billing month (1st to end of month)
+CREATE OR REPLACE FUNCTION get_card_monthly_stats(p_card_id UUID)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_user_id UUID;
+    v_card_owner_id UUID;
+    v_current_month_start DATE;
+    v_stats JSONB;
+BEGIN
+    -- Get current user
+    v_user_id := auth.uid();
+    IF v_user_id IS NULL THEN
+        RAISE EXCEPTION 'Not authenticated';
+    END IF;
+    
+    -- Verify card ownership
+    SELECT user_id INTO v_card_owner_id
+    FROM cards 
+    WHERE id = p_card_id;
+    
+    IF v_card_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Card not found';
+    END IF;
+    
+    IF v_card_owner_id != v_user_id THEN
+        RAISE EXCEPTION 'Not authorized';
+    END IF;
+    
+    -- Get current month start (1st of this month)
+    v_current_month_start := date_trunc('month', CURRENT_DATE)::DATE;
+    
+    -- Aggregate stats
+    SELECT jsonb_build_object(
+        'month_start', v_current_month_start,
+        'month_end', (v_current_month_start + INTERVAL '1 month' - INTERVAL '1 day')::DATE,
+        'total_monthly_sessions', COALESCE(SUM(
+            CASE WHEN current_month = v_current_month_start THEN monthly_sessions ELSE 0 END
+        ), 0),
+        'total_daily_sessions', COALESCE(SUM(
+            CASE WHEN last_session_date = CURRENT_DATE THEN daily_sessions ELSE 0 END
+        ), 0),
+        'total_all_time_sessions', COALESCE(SUM(total_sessions), 0),
+        'active_qr_codes', COUNT(*) FILTER (WHERE is_enabled = true),
+        'total_qr_codes', COUNT(*)
+    ) INTO v_stats
+    FROM card_access_tokens
+    WHERE card_id = p_card_id;
+    
+    RETURN v_stats;
+END;
+$$;
+
+-- Note: Access token auto-creation is handled in create_card function
+-- No trigger needed since all card creation goes through create_card
+-- The delete_access_token function prevents deleting the last QR code
+
+-- Drop legacy trigger if exists (cleanup)
+DROP TRIGGER IF EXISTS trigger_ensure_access_token ON cards;
+DROP FUNCTION IF EXISTS ensure_card_has_access_token() CASCADE;
+DROP FUNCTION IF EXISTS migrate_legacy_access_tokens() CASCADE;
+
+-- Grant permissions
+GRANT EXECUTE ON FUNCTION generate_access_token() TO authenticated;
+GRANT EXECUTE ON FUNCTION create_access_token(UUID, TEXT, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_card_access_tokens(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_access_token(UUID, TEXT, BOOLEAN, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION delete_access_token(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION refresh_access_token(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_card_monthly_stats(UUID) TO authenticated;
 
 
 
@@ -7019,6 +7488,188 @@ GRANT EXECUTE ON FUNCTION insert_access_log_server TO service_role;
 
 
 
+-- File: access_token_operations.sql
+-- -----------------------------------------------------------------
+DROP FUNCTION IF EXISTS get_card_by_access_token_server CASCADE;
+DROP FUNCTION IF EXISTS update_token_session_counters_server CASCADE;
+DROP FUNCTION IF EXISTS reset_daily_token_counters_server CASCADE;
+DROP FUNCTION IF EXISTS reset_monthly_token_counters_server CASCADE;
+DROP FUNCTION IF EXISTS get_token_daily_limit_server CASCADE;
+
+-- =====================================================
+-- Access Token Server-Side Operations
+-- Backend-only procedures for mobile client access
+-- =====================================================
+
+-- Get card data by access token (for mobile client)
+-- Returns card info and token-specific settings
+CREATE OR REPLACE FUNCTION get_card_by_access_token_server(
+    p_access_token TEXT,
+    p_language TEXT DEFAULT 'en'
+)
+RETURNS TABLE (
+    -- Card fields
+    card_id UUID,
+    card_name TEXT,
+    card_description TEXT,
+    card_image_url TEXT,
+    card_content_mode TEXT,
+    card_is_grouped BOOLEAN,
+    card_group_display TEXT,
+    card_ai_enabled BOOLEAN,
+    card_ai_instruction TEXT,
+    card_ai_knowledge_base TEXT,
+    card_ai_welcome_general TEXT,
+    card_ai_welcome_item TEXT,
+    card_owner_id UUID,
+    card_billing_type TEXT,
+    -- Token-specific fields
+    token_id UUID,
+    token_name TEXT,
+    token_is_enabled BOOLEAN,
+    token_daily_session_limit INTEGER,
+    token_daily_sessions INTEGER,
+    token_monthly_sessions INTEGER,
+    token_total_sessions INTEGER,
+    -- Template check
+    is_template BOOLEAN
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+    RETURN QUERY
+    SELECT 
+        c.id AS card_id,
+        COALESCE(c.translations->p_language->>'name', c.name)::TEXT AS card_name,
+        COALESCE(c.translations->p_language->>'description', c.description)::TEXT AS card_description,
+        c.image_url AS card_image_url,
+        c.content_mode AS card_content_mode,
+        c.is_grouped AS card_is_grouped,
+        c.group_display AS card_group_display,
+        c.conversation_ai_enabled AS card_ai_enabled,
+        COALESCE(c.translations->p_language->>'ai_instruction', c.ai_instruction)::TEXT AS card_ai_instruction,
+        COALESCE(c.translations->p_language->>'ai_knowledge_base', c.ai_knowledge_base)::TEXT AS card_ai_knowledge_base,
+        COALESCE(c.translations->p_language->>'ai_welcome_general', c.ai_welcome_general)::TEXT AS card_ai_welcome_general,
+        COALESCE(c.translations->p_language->>'ai_welcome_item', c.ai_welcome_item)::TEXT AS card_ai_welcome_item,
+        c.user_id AS card_owner_id,
+        c.billing_type AS card_billing_type,
+        -- Token fields
+        t.id AS token_id,
+        t.name AS token_name,
+        t.is_enabled AS token_is_enabled,
+        t.daily_session_limit AS token_daily_session_limit,
+        t.daily_sessions AS token_daily_sessions,
+        t.monthly_sessions AS token_monthly_sessions,
+        t.total_sessions AS token_total_sessions,
+        -- Template check
+        EXISTS(SELECT 1 FROM content_templates ct WHERE ct.card_id = c.id) AS is_template
+    FROM card_access_tokens t
+    JOIN cards c ON c.id = t.card_id
+    WHERE t.access_token = p_access_token;
+END;
+$$;
+
+-- Update token session counters (called from backend after successful access)
+CREATE OR REPLACE FUNCTION update_token_session_counters_server(
+    p_token_id UUID,
+    p_daily_sessions INTEGER,
+    p_monthly_sessions INTEGER,
+    p_total_sessions INTEGER
+)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_current_month_start DATE;
+BEGIN
+    v_current_month_start := date_trunc('month', CURRENT_DATE)::DATE;
+    
+    UPDATE card_access_tokens
+    SET 
+        daily_sessions = p_daily_sessions,
+        monthly_sessions = p_monthly_sessions,
+        total_sessions = total_sessions + 1,
+        last_session_date = CURRENT_DATE,
+        current_month = v_current_month_start,
+        updated_at = NOW()
+    WHERE id = p_token_id;
+END;
+$$;
+
+-- Reset daily counters for tokens where date has changed
+CREATE OR REPLACE FUNCTION reset_daily_token_counters_server()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_reset_count INTEGER;
+BEGIN
+    UPDATE card_access_tokens
+    SET 
+        daily_sessions = 0,
+        updated_at = NOW()
+    WHERE last_session_date IS NOT NULL 
+    AND last_session_date < CURRENT_DATE;
+    
+    GET DIAGNOSTICS v_reset_count = ROW_COUNT;
+    RETURN v_reset_count;
+END;
+$$;
+
+-- Reset monthly counters for tokens where month has changed
+CREATE OR REPLACE FUNCTION reset_monthly_token_counters_server()
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_reset_count INTEGER;
+    v_current_month_start DATE;
+BEGIN
+    v_current_month_start := date_trunc('month', CURRENT_DATE)::DATE;
+    
+    UPDATE card_access_tokens
+    SET 
+        monthly_sessions = 0,
+        current_month = v_current_month_start,
+        updated_at = NOW()
+    WHERE current_month IS NOT NULL 
+    AND current_month < v_current_month_start;
+    
+    GET DIAGNOSTICS v_reset_count = ROW_COUNT;
+    RETURN v_reset_count;
+END;
+$$;
+
+-- Get token daily limit (for Redis cache)
+CREATE OR REPLACE FUNCTION get_token_daily_limit_server(p_token_id UUID)
+RETURNS INTEGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+    v_limit INTEGER;
+BEGIN
+    SELECT daily_session_limit INTO v_limit
+    FROM card_access_tokens
+    WHERE id = p_token_id;
+    
+    RETURN v_limit;
+END;
+$$;
+
+-- Revoke public access (server-side only via service role)
+REVOKE ALL ON FUNCTION get_card_by_access_token_server(TEXT, TEXT) FROM PUBLIC, authenticated, anon;
+REVOKE ALL ON FUNCTION update_token_session_counters_server(UUID, INTEGER, INTEGER, INTEGER) FROM PUBLIC, authenticated, anon;
+REVOKE ALL ON FUNCTION reset_daily_token_counters_server() FROM PUBLIC, authenticated, anon;
+REVOKE ALL ON FUNCTION reset_monthly_token_counters_server() FROM PUBLIC, authenticated, anon;
+REVOKE ALL ON FUNCTION get_token_daily_limit_server(UUID) FROM PUBLIC, authenticated, anon;
+
+
+
 -- File: card_content.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS get_card_by_access_token_server CASCADE;
@@ -7036,44 +7687,65 @@ DROP FUNCTION IF EXISTS activate_issue_card_server CASCADE;
 -- =================================================================
 
 -- Get card by access token (for digital access)
+-- Uses card_access_tokens table for multi-QR support
 DROP FUNCTION IF EXISTS get_card_by_access_token_server CASCADE;
 CREATE OR REPLACE FUNCTION get_card_by_access_token_server(
     p_access_token TEXT
 )
 RETURNS TABLE (
+    -- Card info
     id UUID,
     user_id UUID,
-    is_access_enabled BOOLEAN,
     billing_type TEXT,
-    max_scans INTEGER,
-    current_scans INTEGER,
-    daily_scan_limit INTEGER,
-    daily_scans INTEGER,
-    last_scan_date DATE,
+    -- Token-specific fields
+    token_id UUID,
+    token_name TEXT,
+    token_is_enabled BOOLEAN,
+    token_daily_session_limit INTEGER,
+    token_daily_sessions INTEGER,
+    token_monthly_sessions INTEGER,
+    token_total_sessions INTEGER,
+    -- Template check
     is_template BOOLEAN
 ) AS $$
+DECLARE
+    v_current_month_start DATE;
 BEGIN
+    v_current_month_start := date_trunc('month', CURRENT_DATE)::DATE;
+    
     RETURN QUERY
     SELECT 
         c.id,
         c.user_id,
-        c.is_access_enabled,
         c.billing_type::TEXT,
-        c.max_scans,
-        c.current_scans,
-        c.daily_scan_limit,
-        c.daily_scans,
-        c.last_scan_date,
+        -- Token fields
+        t.id AS token_id,
+        t.name AS token_name,
+        t.is_enabled AS token_is_enabled,
+        t.daily_session_limit AS token_daily_session_limit,
+        -- Reset daily counter if date changed
+        CASE 
+            WHEN t.last_session_date = CURRENT_DATE THEN t.daily_sessions
+            ELSE 0
+        END AS token_daily_sessions,
+        -- Reset monthly counter if month changed
+        CASE 
+            WHEN t.current_month = v_current_month_start THEN t.monthly_sessions
+            ELSE 0
+        END AS token_monthly_sessions,
+        t.total_sessions AS token_total_sessions,
+        -- Template check
         (ct.id IS NOT NULL) AS is_template
-    FROM cards c
+    FROM card_access_tokens t
+    JOIN cards c ON c.id = t.card_id
     LEFT JOIN content_templates ct ON ct.card_id = c.id
-    WHERE c.access_token = p_access_token;
-    -- Note: Removed billing_type = 'digital' filter to allow
-    -- any card with an access_token to be accessed via QR code
+    WHERE t.access_token = p_access_token;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Get full card content
+-- Returns subscription_tier for white-labeling (show branding for Free/Starter, hide for Premium)
+-- Note: Session counters are now per-token in card_access_tokens table
 DROP FUNCTION IF EXISTS get_card_content_server CASCADE;
 CREATE OR REPLACE FUNCTION get_card_content_server(
     p_card_id UUID
@@ -7094,10 +7766,7 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    max_scans INTEGER,
-    current_scans INTEGER,
-    daily_scan_limit INTEGER,
-    daily_scans INTEGER
+    subscription_tier TEXT
 ) AS $$
 BEGIN
     RETURN QUERY
@@ -7117,11 +7786,9 @@ BEGIN
         c.is_grouped,
         c.group_display::TEXT,
         c.billing_type::TEXT,
-        c.max_scans,
-        c.current_scans,
-        c.daily_scan_limit,
-        c.daily_scans
+        COALESCE(s.tier::TEXT, 'free') as subscription_tier
     FROM cards c
+    LEFT JOIN subscriptions s ON s.user_id = c.user_id
     WHERE c.id = p_card_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -7215,7 +7882,6 @@ GRANT EXECUTE ON FUNCTION activate_issue_card_server TO service_role;
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS get_card_billing_info_server CASCADE;
 DROP FUNCTION IF EXISTS get_card_ai_status_server CASCADE;
-DROP FUNCTION IF EXISTS get_card_daily_limit_server CASCADE;
 
 -- =================================================================
 -- CARD SESSION OPERATIONS - SERVER-SIDE STORED PROCEDURES
@@ -7225,7 +7891,7 @@ DROP FUNCTION IF EXISTS get_card_daily_limit_server CASCADE;
 -- 
 -- NOTE: All pricing (session costs, budgets, limits) comes from environment variables.
 -- Redis is the source of truth for budget tracking.
--- These stored procedures only query card metadata.
+-- Daily session limits are per-QR-code (card_access_tokens table).
 -- =================================================================
 
 -- Get card AI-enabled status and billing info
@@ -7237,7 +7903,6 @@ RETURNS TABLE (
     card_id UUID,
     user_id UUID,
     ai_enabled BOOLEAN,
-    daily_scan_limit INTEGER,
     billing_type TEXT
 ) AS $$
 BEGIN
@@ -7246,7 +7911,6 @@ BEGIN
         c.id AS card_id,
         c.user_id,
         COALESCE(c.conversation_ai_enabled, FALSE) AS ai_enabled,
-        c.daily_scan_limit,
         c.billing_type
     FROM cards c
     WHERE c.id = p_card_id;
@@ -7272,22 +7936,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Get card daily scan limit only (lightweight query)
-DROP FUNCTION IF EXISTS get_card_daily_limit_server CASCADE;
-CREATE OR REPLACE FUNCTION get_card_daily_limit_server(
-    p_card_id UUID
-)
-RETURNS INTEGER AS $$
-DECLARE
-    v_daily_limit INTEGER;
-BEGIN
-    SELECT daily_scan_limit INTO v_daily_limit
-    FROM cards
-    WHERE id = p_card_id;
-    
-    RETURN v_daily_limit; -- NULL means unlimited
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- NOTE: Daily session limits are now per-QR-code in card_access_tokens table
+-- Use get_card_by_access_token_server to get token-specific daily limits
+-- The old get_card_daily_limit_server function has been removed
 
 -- =================================================================
 -- GRANTS - Only service_role can execute these
@@ -7297,9 +7948,6 @@ GRANT EXECUTE ON FUNCTION get_card_billing_info_server TO service_role;
 
 REVOKE ALL ON FUNCTION get_card_ai_status_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION get_card_ai_status_server TO service_role;
-
-REVOKE ALL ON FUNCTION get_card_daily_limit_server FROM PUBLIC, authenticated, anon;
-GRANT EXECUTE ON FUNCTION get_card_daily_limit_server TO service_role;
 
 
 -- File: credit_operations.sql
@@ -7705,6 +8353,7 @@ DROP FUNCTION IF EXISTS update_card_scan_counters_server CASCADE;
 DROP FUNCTION IF EXISTS reset_subscription_usage_server CASCADE;
 DROP FUNCTION IF EXISTS activate_premium_subscription_server CASCADE;
 DROP FUNCTION IF EXISTS cancel_subscription_server CASCADE;
+DROP FUNCTION IF EXISTS apply_scheduled_tier_change_server CASCADE;
 
 -- =================================================================
 -- SERVER-SIDE MOBILE ACCESS FUNCTIONS
@@ -7730,7 +8379,7 @@ RETURNS VOID AS $$
 BEGIN
     IF p_increment_total THEN
         UPDATE cards
-        SET current_scans = current_scans + 1
+        SET total_sessions = total_sessions + 1
         WHERE id = p_card_id;
     END IF;
 END;
@@ -7790,9 +8439,11 @@ GRANT EXECUTE ON FUNCTION reset_subscription_usage_server(TEXT, TIMESTAMPTZ, TIM
 
 
 -- Activate premium subscription (called by Stripe webhook)
--- Modified to support cancel_at_period_end parameter
+-- Modified to support cancel_at_period_end and tier parameter
+-- Supports both Starter and Premium subscription activation
 DROP FUNCTION IF EXISTS activate_premium_subscription_server(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ) CASCADE;
 DROP FUNCTION IF EXISTS activate_premium_subscription_server(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, BOOLEAN) CASCADE;
+DROP FUNCTION IF EXISTS activate_premium_subscription_server(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, BOOLEAN, TEXT) CASCADE;
 
 CREATE OR REPLACE FUNCTION activate_premium_subscription_server(
     p_user_id UUID,
@@ -7801,26 +8452,34 @@ CREATE OR REPLACE FUNCTION activate_premium_subscription_server(
     p_stripe_price_id TEXT,
     p_period_start TIMESTAMPTZ,
     p_period_end TIMESTAMPTZ,
-    p_cancel_at_period_end BOOLEAN DEFAULT FALSE
+    p_cancel_at_period_end BOOLEAN DEFAULT FALSE,
+    p_tier TEXT DEFAULT 'premium'  -- 'starter' or 'premium'
 )
 RETURNS JSONB AS $$
 DECLARE
     v_subscription_id UUID;
+    v_tier "SubscriptionTier";
 BEGIN
+    -- Validate and cast tier
+    IF p_tier NOT IN ('starter', 'premium') THEN
+        RAISE EXCEPTION 'Invalid tier. Must be: starter or premium.';
+    END IF;
+    v_tier := p_tier::"SubscriptionTier";
+    
     -- Upsert subscription
     INSERT INTO subscriptions (
         user_id, tier, status, stripe_customer_id, 
         stripe_subscription_id, stripe_price_id,
         current_period_start, current_period_end,
-        cancel_at_period_end
+        cancel_at_period_end, scheduled_tier
     ) VALUES (
-        p_user_id, 'premium', 'active', p_stripe_customer_id,
+        p_user_id, v_tier, 'active', p_stripe_customer_id,
         p_stripe_subscription_id, p_stripe_price_id,
         p_period_start, p_period_end,
-        p_cancel_at_period_end
+        p_cancel_at_period_end, NULL  -- Clear any scheduled tier
     )
     ON CONFLICT (user_id) DO UPDATE SET
-        tier = 'premium',
+        tier = v_tier,
         status = 'active',
         stripe_customer_id = p_stripe_customer_id,
         stripe_subscription_id = p_stripe_subscription_id,
@@ -7828,6 +8487,7 @@ BEGIN
         current_period_start = p_period_start,
         current_period_end = p_period_end,
         cancel_at_period_end = p_cancel_at_period_end,
+        scheduled_tier = NULL,  -- Clear any scheduled tier when activating new subscription
         -- Don't clear canceled_at if we're cancelling
         canceled_at = CASE WHEN p_cancel_at_period_end THEN COALESCE(subscriptions.canceled_at, NOW()) ELSE NULL END,
         updated_at = NOW()
@@ -7836,29 +8496,33 @@ BEGIN
     RETURN jsonb_build_object(
         'success', TRUE,
         'subscription_id', v_subscription_id,
-        'tier', 'premium',
+        'tier', p_tier,
         'cancel_at_period_end', p_cancel_at_period_end
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-REVOKE ALL ON FUNCTION activate_premium_subscription_server(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, BOOLEAN) FROM PUBLIC, authenticated, anon;
-GRANT EXECUTE ON FUNCTION activate_premium_subscription_server(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, BOOLEAN) TO service_role;
+REVOKE ALL ON FUNCTION activate_premium_subscription_server(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, BOOLEAN, TEXT) FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION activate_premium_subscription_server(UUID, TEXT, TEXT, TEXT, TIMESTAMPTZ, TIMESTAMPTZ, BOOLEAN, TEXT) TO service_role;
 
 
 -- Cancel/downgrade subscription (called by Stripe webhook or cancel endpoint)
 -- Supports lookup by stripe_subscription_id or user_id
+-- p_scheduled_tier: for downgrades, the tier to switch to after period ends
 DROP FUNCTION IF EXISTS cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN) CASCADE;
 DROP FUNCTION IF EXISTS cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID) CASCADE;
+DROP FUNCTION IF EXISTS cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID, TEXT) CASCADE;
 CREATE OR REPLACE FUNCTION cancel_subscription_server(
     p_stripe_subscription_id TEXT DEFAULT NULL,
     p_cancel_at_period_end BOOLEAN DEFAULT TRUE,
     p_immediate BOOLEAN DEFAULT FALSE,
-    p_user_id UUID DEFAULT NULL
+    p_user_id UUID DEFAULT NULL,
+    p_scheduled_tier TEXT DEFAULT NULL  -- 'free', 'starter', or NULL (defaults to 'free')
 )
 RETURNS JSONB AS $$
 DECLARE
     v_subscription subscriptions%ROWTYPE;
+    v_scheduled "SubscriptionTier";
 BEGIN
     -- Try to find by stripe_subscription_id first, then by user_id
     IF p_stripe_subscription_id IS NOT NULL THEN
@@ -7878,20 +8542,30 @@ BEGIN
         RETURN jsonb_build_object('success', FALSE, 'reason', 'Subscription not found');
     END IF;
     
+    -- Parse scheduled tier (default to 'free' if not specified)
+    IF p_scheduled_tier IS NOT NULL AND p_scheduled_tier IN ('free', 'starter', 'premium') THEN
+        v_scheduled := p_scheduled_tier::"SubscriptionTier";
+    ELSE
+        v_scheduled := 'free'::"SubscriptionTier";
+    END IF;
+    
     IF p_immediate THEN
-        -- Immediate cancellation - downgrade to free
+        -- Immediate cancellation - switch to scheduled tier now
         UPDATE subscriptions
-        SET tier = 'free',
-            status = 'canceled',
+        SET tier = COALESCE(v_scheduled, 'free'::"SubscriptionTier"),
+            status = CASE WHEN v_scheduled = 'free' THEN 'canceled' ELSE 'active' END,
             cancel_at_period_end = FALSE,
             canceled_at = NOW(),
+            scheduled_tier = NULL,  -- Clear scheduled tier since we're applying immediately
+            stripe_subscription_id = CASE WHEN v_scheduled = 'free' THEN NULL ELSE stripe_subscription_id END,
             updated_at = NOW()
         WHERE id = v_subscription.id;
     ELSE
-        -- Cancel at period end
+        -- Cancel at period end - keep current tier privileges until then
         UPDATE subscriptions
         SET cancel_at_period_end = TRUE,
             canceled_at = NOW(),
+            scheduled_tier = v_scheduled,  -- Set the tier to switch to at period end
             updated_at = NOW()
         WHERE id = v_subscription.id;
     END IF;
@@ -7899,16 +8573,84 @@ BEGIN
     RETURN jsonb_build_object(
         'success', TRUE,
         'user_id', v_subscription.user_id,
+        'current_tier', v_subscription.tier,
+        'scheduled_tier', v_scheduled,
         'cancel_at_period_end', p_cancel_at_period_end,
         'immediate', p_immediate
     );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
-REVOKE ALL ON FUNCTION cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID) FROM PUBLIC;
-REVOKE ALL ON FUNCTION cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID) FROM authenticated;
-REVOKE ALL ON FUNCTION cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID) FROM anon;
-GRANT EXECUTE ON FUNCTION cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID) TO service_role;
+REVOKE ALL ON FUNCTION cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID, TEXT) FROM authenticated;
+REVOKE ALL ON FUNCTION cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID, TEXT) FROM anon;
+GRANT EXECUTE ON FUNCTION cancel_subscription_server(TEXT, BOOLEAN, BOOLEAN, UUID, TEXT) TO service_role;
+
+
+-- Apply scheduled tier change (called by Stripe webhook when subscription ends)
+-- This is called when a subscription period ends and there's a scheduled_tier set
+DROP FUNCTION IF EXISTS apply_scheduled_tier_change_server(TEXT, UUID) CASCADE;
+CREATE OR REPLACE FUNCTION apply_scheduled_tier_change_server(
+    p_stripe_subscription_id TEXT DEFAULT NULL,
+    p_user_id UUID DEFAULT NULL
+)
+RETURNS JSONB AS $$
+DECLARE
+    v_subscription subscriptions%ROWTYPE;
+    v_new_tier "SubscriptionTier";
+BEGIN
+    -- Try to find by stripe_subscription_id first, then by user_id
+    IF p_stripe_subscription_id IS NOT NULL THEN
+        SELECT * INTO v_subscription 
+        FROM subscriptions 
+        WHERE stripe_subscription_id = p_stripe_subscription_id;
+    END IF;
+    
+    -- Fallback to user_id if not found by stripe_subscription_id
+    IF NOT FOUND AND p_user_id IS NOT NULL THEN
+        SELECT * INTO v_subscription 
+        FROM subscriptions 
+        WHERE user_id = p_user_id;
+    END IF;
+    
+    IF NOT FOUND THEN
+        RETURN jsonb_build_object('success', FALSE, 'reason', 'Subscription not found');
+    END IF;
+    
+    -- Check if there's a scheduled tier change
+    IF v_subscription.scheduled_tier IS NULL THEN
+        RETURN jsonb_build_object(
+            'success', FALSE, 
+            'reason', 'No scheduled tier change',
+            'current_tier', v_subscription.tier
+        );
+    END IF;
+    
+    v_new_tier := v_subscription.scheduled_tier;
+    
+    -- Apply the scheduled tier change
+    UPDATE subscriptions
+    SET tier = v_new_tier,
+        status = CASE WHEN v_new_tier = 'free' THEN 'canceled' ELSE 'active' END,
+        cancel_at_period_end = FALSE,
+        scheduled_tier = NULL,  -- Clear the scheduled tier
+        stripe_subscription_id = CASE WHEN v_new_tier = 'free' THEN NULL ELSE stripe_subscription_id END,
+        updated_at = NOW()
+    WHERE id = v_subscription.id;
+    
+    RETURN jsonb_build_object(
+        'success', TRUE,
+        'user_id', v_subscription.user_id,
+        'previous_tier', v_subscription.tier,
+        'new_tier', v_new_tier
+    );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+REVOKE ALL ON FUNCTION apply_scheduled_tier_change_server(TEXT, UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION apply_scheduled_tier_change_server(TEXT, UUID) FROM authenticated;
+REVOKE ALL ON FUNCTION apply_scheduled_tier_change_server(TEXT, UUID) FROM anon;
+GRANT EXECUTE ON FUNCTION apply_scheduled_tier_change_server(TEXT, UUID) TO service_role;
 
 
 -- File: subscription_management.sql
@@ -8051,8 +8793,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Check if user has premium subscription OR is admin
--- Admins have full translation access without premium subscription
+-- Check if user has paid subscription (Starter or Premium) OR is admin
+-- Admins have full translation access without subscription
+-- Starter tier: limited to max 2 languages
+-- Premium tier: unlimited languages
 DROP FUNCTION IF EXISTS check_premium_subscription_server CASCADE;
 CREATE OR REPLACE FUNCTION check_premium_subscription_server(
     p_user_id UUID
@@ -8071,12 +8815,13 @@ BEGIN
         RETURN TRUE;
     END IF;
     
-    -- Check if user has premium subscription
+    -- Check if user has paid subscription (Starter or Premium)
     SELECT tier::TEXT INTO v_tier
     FROM subscriptions
     WHERE user_id = p_user_id;
     
-    RETURN v_tier = 'premium';
+    -- Both Starter and Premium can access translations
+    RETURN v_tier IN ('starter', 'premium');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

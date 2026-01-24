@@ -1,190 +1,317 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory, RouterView } from 'vue-router'
 import AppLayout from '../layouts/AppLayout.vue'
 import { useAuthStore } from '@/stores/auth'
-import { useToast } from 'primevue/usetoast';
+import { useToast } from 'primevue/usetoast'
+import { setLocale } from '@/i18n'
+import { 
+  URL_SUPPORTED_LANGUAGES, 
+  DEFAULT_LANGUAGE,
+  DASHBOARD_LANGUAGES,
+  extractLanguageFromPath, 
+  isValidLanguage, 
+  getSavedLanguage,
+  saveLanguagePreference,
+  detectBrowserLanguage
+} from './languageRouting'
+import type { LanguageCode } from '@/stores/translation'
+
+// ===== LANGUAGE ROUTE PATTERN =====
+// Format: /:lang/... where lang is one of URL_SUPPORTED_LANGUAGES
+// Examples: /en/cms/projects, /zh-Hant/c/abc123, /ja/login
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
+    // ===== LANGUAGE-PREFIXED ROUTES =====
     {
-      path: '/cms',
-      component: AppLayout,
-      meta: { requiresAuth: true },
+      path: '/:lang',
+      component: RouterView, // Render children in a router-view
+      beforeEnter: (to, from, next) => {
+        // Validate language parameter
+        const lang = to.params.lang as string
+        if (!isValidLanguage(lang)) {
+          // Invalid language, redirect to detected language
+          const detectedLang = getSavedLanguage()
+          const pathWithoutLang = to.path.replace(`/${lang}`, '') || '/'
+          next(`/${detectedLang}${pathWithoutLang}`)
+        } else {
+          next()
+        }
+      },
       children: [
-        // Default redirect - dynamically routes based on user role
+        // Landing page with language
         {
           path: '',
-          name: 'cms-home',
-          redirect: () => {
-            // This will be resolved after auth is checked by the navigation guard
-            // Role-based redirect is handled here
-            const authStore = useAuthStore();
-            const user = authStore.session?.user;
-            const role = user?.app_metadata?.role || user?.user_metadata?.role;
-            
-            if (role === 'admin') {
-              return { name: 'admin-dashboard' };
-            }
-            // Default to projects for cardIssuer and other roles
-            return { name: 'projects' };
-          }
-        },
-        // Project Creator Routes (accessible by both cardIssuer and admin)
-        {
-          path: 'projects',
-          name: 'projects',
-          component: () => import('@/views/Dashboard/CardIssuer/MyCards.vue'),
-          meta: { requiredRoles: ['cardIssuer', 'admin'] }
-        },
-        // Backward compatibility redirect
-        {
-          path: 'mycards',
-          redirect: { name: 'projects' }
-        },
-        {
-          path: 'credits',
-          name: 'credits',
-          component: () => import('@/views/Dashboard/CardIssuer/CreditManagement.vue'),
-          meta: { requiredRoles: ['cardIssuer', 'admin'] }
-        },
-        {
-          path: 'subscription',
-          name: 'subscription',
-          component: () => import('@/views/Dashboard/CardIssuer/SubscriptionManagement.vue'),
-          meta: { requiredRoles: ['cardIssuer', 'admin'] }
-        },
-        // Backward compatibility redirect
-        {
-          path: 'plan',
-          redirect: { name: 'subscription' }
+          name: 'landing-lang',
+          component: () => import('@/views/Public/LandingPage.vue')
         },
         
-        // Admin Routes (now using the same DashboardLayout)
-        // Redirect old print-requests route to batches page
+        // Dashboard routes with language prefix
         {
-          path: 'admin/print-requests',
-          redirect: { name: 'admin-batches' }
+          path: 'cms',
+          component: AppLayout,
+          meta: { requiresAuth: true },
+          children: [
+            // Default redirect - dynamically routes based on user role
+            {
+              path: '',
+              name: 'cms-home',
+              redirect: (to) => {
+                const authStore = useAuthStore()
+                const user = authStore.session?.user
+                const role = user?.app_metadata?.role || user?.user_metadata?.role
+                const lang = to.params.lang || DEFAULT_LANGUAGE
+                
+                if (role === 'admin') {
+                  return { name: 'admin-dashboard', params: { lang } }
+                }
+                return { name: 'projects', params: { lang } }
+              }
+            },
+            // Project Creator Routes
+            {
+              path: 'projects',
+              name: 'projects',
+              component: () => import('@/views/Dashboard/CardIssuer/MyCards.vue'),
+              meta: { requiredRoles: ['cardIssuer', 'admin'] }
+            },
+            {
+              path: 'mycards',
+              redirect: (to) => ({ name: 'projects', params: { lang: to.params.lang } })
+            },
+            {
+              path: 'credits',
+              name: 'credits',
+              component: () => import('@/views/Dashboard/CardIssuer/CreditManagement.vue'),
+              meta: { requiredRoles: ['cardIssuer', 'admin'] }
+            },
+            {
+              path: 'subscription',
+              name: 'subscription',
+              component: () => import('@/views/Dashboard/CardIssuer/SubscriptionManagement.vue'),
+              meta: { requiredRoles: ['cardIssuer', 'admin'] }
+            },
+            {
+              path: 'plan',
+              redirect: (to) => ({ name: 'subscription', params: { lang: to.params.lang } })
+            },
+            
+            // Admin Routes
+            {
+              path: 'admin/print-requests',
+              redirect: (to) => ({ name: 'admin-batches', params: { lang: to.params.lang } })
+            },
+            {
+              path: 'admin/users',
+              name: 'admin-users',
+              component: () => import('@/views/Dashboard/Admin/UserManagement.vue'),
+              meta: { requiredRole: 'admin' }
+            },
+            {
+              path: 'admin/batches',
+              name: 'admin-batches',
+              component: () => import('@/views/Dashboard/Admin/BatchManagement.vue'),
+              meta: { requiredRole: 'admin' }
+            },
+            {
+              path: 'admin/credits',
+              name: 'admin-credits',
+              component: () => import('@/views/Dashboard/Admin/AdminCreditManagement.vue'),
+              meta: { requiredRole: 'admin' }
+            },
+            {
+              path: 'admin',
+              name: 'admin-dashboard',
+              component: () => import('@/views/Dashboard/Admin/AdminDashboard.vue'),
+              meta: { requiredRole: 'admin' }
+            },
+            {
+              path: 'admin/history',
+              name: 'admin-history-logs',
+              component: () => import('@/views/Dashboard/Admin/HistoryLogs.vue'),
+              meta: { requiredRole: 'admin' }
+            },
+            {
+              path: 'admin/user-projects',
+              name: 'admin-user-projects',
+              component: () => import('@/views/Dashboard/Admin/UserCardsView.vue'),
+              meta: { requiredRole: 'admin' }
+            },
+            {
+              path: 'admin/user-cards',
+              redirect: (to) => ({ name: 'admin-user-projects', params: { lang: to.params.lang } })
+            },
+            {
+              path: 'admin/templates',
+              name: 'admin-templates',
+              component: () => import('@/views/Dashboard/Admin/TemplateManagement.vue'),
+              meta: { requiredRole: 'admin' }
+            },
+            {
+              path: 'admin/issue-batch',
+              redirect: (to) => ({ name: 'admin-batches', params: { lang: to.params.lang } })
+            },
+          ]
+        },
+        
+        // Auth routes with language prefix
+        {
+          path: 'login',
+          component: AppLayout,
+          children: [
+            {
+              path: '',
+              name: 'login',
+              component: () => import('@/views/Dashboard/SignIn.vue')
+            }
+          ]
         },
         {
-          path: 'admin/users',
-          name: 'admin-users',
-          component: () => import('@/views/Dashboard/Admin/UserManagement.vue'),
-          meta: { requiredRole: 'admin' }
+          path: 'signup',
+          component: AppLayout,
+          children: [
+            {
+              path: '',
+              name: 'signup',
+              component: () => import('@/views/Dashboard/SignUp.vue')
+            }
+          ]
         },
         {
-          path: 'admin/batches',
-          name: 'admin-batches',
-          component: () => import('@/views/Dashboard/Admin/BatchManagement.vue'),
-          meta: { requiredRole: 'admin' }
+          path: 'reset-password',
+          component: AppLayout,
+          children: [
+            {
+              path: '',
+              name: 'reset-password',
+              component: () => import('@/views/Dashboard/ResetPassword.vue')
+            }
+          ]
+        },
+        
+        // Mobile client public card view with language
+        {
+          path: 'c/:issue_card_id',
+          name: 'publiccardview',
+          component: () => import('@/views/MobileClient/PublicCardView.vue')
         },
         {
-          path: 'admin/credits',
-          name: 'admin-credits',
-          component: () => import('@/views/Dashboard/Admin/AdminCreditManagement.vue'),
-          meta: { requiredRole: 'admin' }
+          path: 'c/:issue_card_id/list',
+          name: 'publiccardview-list',
+          component: () => import('@/views/MobileClient/PublicCardView.vue')
         },
         {
-          path: 'admin',
-          name: 'admin-dashboard',
-          component: () => import('@/views/Dashboard/Admin/AdminDashboard.vue'),
-          meta: { requiredRole: 'admin' }
+          path: 'c/:issue_card_id/item/:content_item_id',
+          name: 'publiccardview-item',
+          component: () => import('@/views/MobileClient/PublicCardView.vue')
         },
+        
+        // Preview mode with language
         {
-          path: 'admin/history',
-          name: 'admin-history-logs',
-          component: () => import('@/views/Dashboard/Admin/HistoryLogs.vue'),
-          meta: { requiredRole: 'admin' }
+          path: 'preview/:card_id',
+          name: 'cardpreview',
+          component: () => import('@/views/MobileClient/PublicCardView.vue'),
+          meta: { requiresAuth: true, isPreviewMode: true }
         },
+        
+        // Documentation with language
         {
-          path: 'admin/user-projects',
-          name: 'admin-user-projects',
-          component: () => import('@/views/Dashboard/Admin/UserCardsView.vue'),
-          meta: { requiredRole: 'admin' }
-        },
-        // Backward compatibility redirect
-        {
-          path: 'admin/user-cards',
-          redirect: { name: 'admin-user-projects' }
-        },
-        {
-          path: 'admin/templates',
-          name: 'admin-templates',
-          component: () => import('@/views/Dashboard/Admin/TemplateManagement.vue'),
-          meta: { requiredRole: 'admin' }
-        },
-        // Redirect old issue-batch route to batches page
-        {
-          path: 'admin/issue-batch',
-          redirect: { name: 'admin-batches' }
+          path: 'docs',
+          name: 'documentation',
+          component: () => import('@/views/Public/Documentation.vue')
         },
       ]
     },
-    {
-      path: '/login',
-      component: AppLayout,
-      children: [
-        {
-          path: '',
-          name: 'login',
-          component: () => import('@/views/Dashboard/SignIn.vue')
-        }
-      ]
-    },
-    {
-      path: '/signup',
-      component: AppLayout,
-      children: [
-        {
-          path: '',
-          name: 'signup',
-          component: () => import('@/views/Dashboard/SignUp.vue')
-        }
-      ]
-    },
-    {
-      path: '/reset-password',
-      component: AppLayout,
-      children: [
-        {
-          path: '',
-          name: 'reset-password',
-          component: () => import('@/views/Dashboard/ResetPassword.vue')
-        }
-      ]
-    },
-    {
-      path: '/c/:issue_card_id',
-      name: 'publiccardview',
-      component: () => import('@/views/MobileClient/PublicCardView.vue')
-    },
-    {
-      path: '/preview/:card_id',
-      name: 'cardpreview',
-      component: () => import('@/views/MobileClient/PublicCardView.vue'),
-      meta: { requiresAuth: true, isPreviewMode: true }
-    },
+    
+    // ===== ROOT ROUTES (redirect to language-prefixed) =====
     {
       path: '/',
       name: 'landing',
-      component: () => import('@/views/Public/LandingPage.vue')
+      redirect: (to) => {
+        // Landing page defaults to English (not browser detection)
+        // Only use saved preference if user explicitly chose a language before
+        const savedLocale = localStorage.getItem('userLocale')
+        const lang = savedLocale && isValidLanguage(savedLocale) ? savedLocale : 'en'
+        if (to.hash) {
+          return `/${lang}${to.hash}`
+        }
+        return `/${lang}`
+      }
+    },
+    
+    // Legacy routes without language prefix - redirect to language-prefixed versions
+    {
+      path: '/cms/:pathMatch(.*)*',
+      redirect: (to) => {
+        const lang = getSavedLanguage(true) // Dashboard only languages
+        return `/${lang}/cms${to.path.replace('/cms', '')}`
+      }
+    },
+    {
+      path: '/c/:issue_card_id',
+      redirect: (to) => {
+        const lang = getSavedLanguage()
+        return `/${lang}/c/${to.params.issue_card_id}`
+      }
+    },
+    {
+      path: '/c/:issue_card_id/list',
+      redirect: (to) => {
+        const lang = getSavedLanguage()
+        return `/${lang}/c/${to.params.issue_card_id}/list`
+      }
+    },
+    {
+      path: '/c/:issue_card_id/item/:content_item_id',
+      redirect: (to) => {
+        const lang = getSavedLanguage()
+        return `/${lang}/c/${to.params.issue_card_id}/item/${to.params.content_item_id}`
+      }
+    },
+    {
+      path: '/preview/:card_id',
+      redirect: (to) => {
+        const lang = getSavedLanguage()
+        return `/${lang}/preview/${to.params.card_id}`
+      }
+    },
+    {
+      path: '/login',
+      redirect: () => `/${getSavedLanguage(true)}/login`
+    },
+    {
+      path: '/signup',
+      redirect: () => `/${getSavedLanguage(true)}/signup`
+    },
+    {
+      path: '/reset-password',
+      redirect: () => `/${getSavedLanguage(true)}/reset-password`
     },
     {
       path: '/docs',
-      name: 'documentation',
-      component: () => import('@/views/Public/Documentation.vue')
+      redirect: () => `/${getSavedLanguage()}/docs`
     },
-    // Catch-all for any other routes
+    
+    // Catch-all for any other routes - redirect to landing with detected language
     {
       path: '/:pathMatch(.*)*',
-      redirect: '/'
+      redirect: () => {
+        const lang = getSavedLanguage()
+        return `/${lang}`
+      }
     }
   ],
   scrollBehavior(to, from, savedPosition) {
     if (savedPosition) {
       return savedPosition
-    } else {
-      return { top: 0 }
     }
+    if (to.hash) {
+      return {
+        el: to.hash,
+        behavior: 'smooth',
+      }
+    }
+    return { top: 0 }
   }
 })
 
@@ -193,76 +320,90 @@ const router = createRouter({
 // =================================================================
 
 const getUserRole = (authStore: any): string | undefined => {
-  // Check both app_metadata and user_metadata for role
-  // user_metadata comes from raw_user_meta_data in the database  
-  const user = authStore.session?.user;
+  const user = authStore.session?.user
+  let role = user?.app_metadata?.role || user?.user_metadata?.role || user?.raw_user_meta_data?.role
   
-  let role = user?.app_metadata?.role || user?.user_metadata?.role || user?.raw_user_meta_data?.role;
+  // Handle both cardIssuer and card_issuer formats
+  if (role === 'card_issuer') return 'cardIssuer'
   
-  // Handle both cardIssuer and card_issuer formats for backward compatibility
-  if (role === 'card_issuer') return 'cardIssuer';
-  
-  // If no role is found and user is logged in, assume cardIssuer (default role)
+  // Default to cardIssuer for logged-in users without role
   if (!role && user) {
-    console.warn('No role found for logged in user, defaulting to cardIssuer');
-    return 'cardIssuer';
+    console.warn('No role found for logged in user, defaulting to cardIssuer')
+    return 'cardIssuer'
   }
   
-  return role;
-};
+  return role
+}
 
 const hasRequiredRole = (userRole: string | undefined, requiredRole: string | string[] | undefined): boolean => {
-  if (!requiredRole) return true; // No role required
+  if (!requiredRole) return true
   if (Array.isArray(requiredRole)) {
-    // Support multiple allowed roles
-    return requiredRole.includes(userRole || '');
+    return requiredRole.includes(userRole || '')
   }
-  return userRole === requiredRole;
-};
+  return userRole === requiredRole
+}
 
-const getDefaultRouteForRole = (userRole: string | undefined): { name: string } => {
+const getDefaultRouteForRole = (userRole: string | undefined, lang: LanguageCode): { name: string; params: { lang: LanguageCode } } => {
   if (userRole === 'admin') {
-    return { name: 'admin-dashboard' };
+    return { name: 'admin-dashboard', params: { lang } }
   }
   if (userRole === 'cardIssuer') {
-    return { name: 'projects' };
+    return { name: 'projects', params: { lang } }
   }
-  // If no role is found, default to projects (most users are cardIssuer)
-  return { name: 'projects' };
-};
+  return { name: 'projects', params: { lang } }
+}
 
-// Track if auth has been initialized to avoid redundant checks
-let authInitialized = false;
+// Track auth initialization
+let authInitialized = false
 
 router.beforeEach(async (to, from, next) => {
-  const authStore = useAuthStore();
-  const toast = useToast(); 
+  const authStore = useAuthStore()
+  const toast = useToast()
 
-  // Early return for public routes that don't need any auth checks
-  // This skips all auth logic for landing page and public card views
-  const requiresAuth = to.matched.some(record => record.meta.requiresAuth);
-  const isAuthRoute = to.name === 'login' || to.name === 'signup';
+  // ===== LANGUAGE HANDLING =====
+  const lang = to.params.lang as LanguageCode | undefined
   
+  // If route has valid language param, sync i18n locale
+  if (lang && isValidLanguage(lang)) {
+    // Check if dashboard route requires dashboard-only languages
+    const isDashboardRoute = to.path.includes('/cms')
+    if (isDashboardRoute && !DASHBOARD_LANGUAGES.includes(lang)) {
+      // Redirect to a supported dashboard language
+      const dashboardLang = getSavedLanguage(true)
+      const newPath = to.path.replace(`/${lang}/`, `/${dashboardLang}/`)
+      return next(newPath)
+    }
+    
+    // Update i18n locale and save preference
+    setLocale(lang)
+    saveLanguagePreference(lang)
+  }
+
+  // ===== AUTH HANDLING =====
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const isAuthRoute = to.name === 'login' || to.name === 'signup'
+  
+  // Early return for public routes
   if (!requiresAuth && !isAuthRoute) {
-    // Public routes like landing page and public card views - no auth needed
-    return next();
+    return next()
   }
 
-  // Initialize auth store only once on first navigation (for protected routes)
-  if (!authInitialized && authStore.loading) {
-    await authStore.initialize();
-    authInitialized = true;
+  // Initialize auth store once
+  if (!authInitialized) {
+    if (authStore.loading) {
+      await authStore.initialize()
+    }
+    authInitialized = true
   }
 
-  const isLoggedIn = !!authStore.session?.user;
-  const userRole = getUserRole(authStore);
-  // Support both single role (requiredRole) and multiple roles (requiredRoles)
-  const requiredRole = (to.meta.requiredRoles || to.meta.requiredRole) as string | string[] | undefined;
+  const isLoggedIn = !!authStore.session?.user
+  const userRole = getUserRole(authStore)
+  const requiredRole = (to.meta.requiredRoles || to.meta.requiredRole) as string | string[] | undefined
+  const currentLang = (lang || DEFAULT_LANGUAGE) as LanguageCode
 
-  // Check if route requires authentication
+  // Check authentication
   if (requiresAuth) {
     if (!isLoggedIn) {
-      // User is not logged in, redirect to login
       if (to.name !== 'login') {
         toast.add({
           severity: 'info',
@@ -270,44 +411,38 @@ router.beforeEach(async (to, from, next) => {
           detail: 'Please log in to access this page.',
           group: 'br',
           life: 3000
-        });
-        next({ name: 'login' });
+        })
+        next({ name: 'login', params: { lang: currentLang } })
       } else {
-        next();
+        next()
       }
     } else {
-      // User is logged in, check role requirements
+      // Check role requirements
       if (hasRequiredRole(userRole, requiredRole)) {
-        next();
+        next()
       } else {
-        // User does not have the required role, redirect to their default page
         toast.add({
           severity: 'error',
           summary: 'Access Denied',
           detail: `You don't have permission to access this section. Required role: ${requiredRole}`,
           group: 'br',
           life: 5000
-        });
-        next(getDefaultRouteForRole(userRole));
+        })
+        next(getDefaultRouteForRole(userRole, currentLang))
       }
     }
   } else {
-    // For public routes (no auth required)
+    // Public routes - redirect logged-in users from auth pages
     if (isLoggedIn && (to.name === 'login' || to.name === 'signup')) {
-      // If logged in, redirect from login/signup to their dashboard
-      // But only if we have a valid role to prevent infinite redirects
       if (userRole) {
-        // Silently redirect already logged-in users to their dashboard
-        next(getDefaultRouteForRole(userRole));
+        next(getDefaultRouteForRole(userRole, currentLang))
       } else {
-        // If no role found, allow access to login page to prevent infinite redirect
-        next();
+        next()
       }
     } else {
-      // Allow navigation to public routes (landing, login, signup, public card view)
-      next();
+      next()
     }
   }
-});
+})
 
-export default router;
+export default router

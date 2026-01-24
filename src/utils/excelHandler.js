@@ -480,8 +480,8 @@ async function createCardSheet(workbook, cardData, options = {}) {
     cardData.is_grouped ? true : false, // Is Grouped
     sanitizeString(cardData.group_display || 'expanded'), // Group Display
     sanitizeString(cardData.billing_type || 'physical'), // Access mode
-    cardData.max_scans !== null && cardData.max_scans !== undefined ? cardData.max_scans : '', // Total scan limit
-    cardData.daily_scan_limit !== null && cardData.daily_scan_limit !== undefined ? cardData.daily_scan_limit : '', // Daily scan limit
+    cardData.max_sessions !== null && cardData.max_sessions !== undefined ? cardData.max_sessions : '', // Total scan limit
+    cardData.default_daily_session_limit !== null && cardData.default_daily_session_limit !== undefined ? cardData.default_daily_session_limit : '', // Default daily limit for new QR codes
     '', // Placeholder for image
     sanitizeString(cardData.crop_parameters ? JSON.stringify(cardData.crop_parameters) : ''), // Hidden crop parameters
     sanitizeString(cardData.translations ? JSON.stringify(cardData.translations) : '{}'), // Hidden translations data
@@ -992,8 +992,8 @@ async function parseCardSheet(worksheet, result) {
         'Is Grouped': 'is_grouped',
         'Group Display': 'group_display',
         'Access Mode': 'billing_type',
-        'Max Scans': 'max_scans',
-        'Daily Scan Limit': 'daily_scan_limit',
+        'Max Scans': 'max_sessions',
+        'Default Daily Limit': 'default_daily_session_limit',
         'Crop Data': 'crop_parameters_json',
         'Translations': 'translations_json',
         'Content Hash': 'content_hash'
@@ -1048,7 +1048,7 @@ async function parseCardSheet(worksheet, result) {
             cardData[dbField] = 'physical';
             result.warnings.push(`Invalid Access Mode '${processedValue}' - using default 'physical'. Valid options: physical, digital`);
           }
-        } else if (dbField === 'max_scans' || dbField === 'daily_scan_limit') {
+        } else if (dbField === 'max_sessions' || dbField === 'default_daily_session_limit') {
           // Handle scan limits - can be null/empty or a number
           if (processedValue === '' || processedValue === null || processedValue === undefined) {
             cardData[dbField] = null;

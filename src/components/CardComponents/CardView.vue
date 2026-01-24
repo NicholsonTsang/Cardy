@@ -95,11 +95,11 @@
                                 <i class="pi pi-eye"></i>
                             </div>
                             <div class="stat-info">
-                                <span class="stat-value">{{ cardProp.current_scans || 0 }}</span>
-                                <span class="stat-label">{{ $t('dashboard.total_scans') }}</span>
+                                <span class="stat-value">{{ cardProp.total_sessions || 0 }}</span>
+                                <span class="stat-label">{{ $t('dashboard.total_sessions') }}</span>
                             </div>
                             <div class="stat-limit">
-                                / {{ cardProp.max_scans || '∞' }}
+                                / {{ cardProp.max_sessions || '∞' }}
                             </div>
                         </div>
 

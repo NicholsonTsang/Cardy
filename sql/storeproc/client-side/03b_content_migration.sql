@@ -193,7 +193,7 @@ BEGIN
         RAISE EXCEPTION 'Cannot move an item to itself';
     END IF;
     
-    -- If new parent specified, verify it exists and belongs to the same card
+    -- If new parent specified, verify it exists and belongs to the same project
     IF p_new_parent_id IS NOT NULL THEN
         IF NOT EXISTS (
             SELECT 1 FROM content_items 
@@ -201,7 +201,7 @@ BEGIN
             AND card_id = v_card_id
             AND parent_id IS NULL  -- Parent must be a top-level item (category)
         ) THEN
-            RAISE EXCEPTION 'New parent must be a top-level category in the same card';
+            RAISE EXCEPTION 'New parent must be a top-level category in the same project';
         END IF;
     END IF;
     

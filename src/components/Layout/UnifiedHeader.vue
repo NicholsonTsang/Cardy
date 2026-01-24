@@ -11,7 +11,7 @@
           <router-link to="/" class="flex items-center gap-2 sm:gap-2.5 hover:opacity-90 transition-opacity group">
             <LogoAnimation size="md" />
             <span class="hidden sm:inline text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              FunTell
+              {{ $t('common.app_name') }}
             </span>
           </router-link>
         </div>
@@ -80,7 +80,7 @@
           <router-link to="/" class="flex items-center gap-2 sm:gap-2.5 hover:opacity-90 transition-opacity group">
             <LogoAnimation size="md" />
             <span class="hidden sm:inline text-lg sm:text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              FunTell
+              {{ $t('common.app_name') }}
             </span>
           </router-link>
         </div>
@@ -112,8 +112,8 @@
 
         <!-- Right Side: Dashboard Controls -->
         <div class="flex items-center space-x-2 sm:space-x-4">
-          <!-- Language Selector -->
-          <DashboardLanguageSelector />
+          <!-- Language Selector (10 languages for landing page) -->
+          <LandingLanguageSelector />
 
           <!-- Get Started Button - Desktop Only -->
           <div class="hidden lg:flex items-center">
@@ -180,6 +180,7 @@ import Button from 'primevue/button'
 import Menu from 'primevue/menu'
 import { useToast } from 'primevue/usetoast'
 import DashboardLanguageSelector from '@/components/DashboardLanguageSelector.vue'
+import LandingLanguageSelector from '@/components/LandingLanguageSelector.vue'
 import LogoAnimation from '@/components/Landing/LogoAnimation.vue'
 
 const props = defineProps({
@@ -192,7 +193,7 @@ const props = defineProps({
 
 const emit = defineEmits(['scroll-to', 'toggle-mobile-menu'])
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
@@ -312,6 +313,11 @@ const adminMenuItems = computed(() => [
     command: () => router.push('/cms/admin')
   },
   {
+    label: t('dashboard.my_cards'),
+    icon: 'pi pi-folder',
+    command: () => router.push('/cms/projects')
+  },
+  {
     label: t('admin.user_management'),
     icon: 'pi pi-users',
     command: () => router.push('/cms/admin/users')
@@ -419,12 +425,23 @@ const handleGetStarted = () => {
 
 // Handle scroll to section - if on landing page, emit event; otherwise navigate to landing with hash
 const handleScrollTo = (section) => {
-  if (route.path === '/' || route.path === '') {
-    // On landing page - emit event to scroll
+  // Check if we are on the landing page (checking name is more reliable with language routes)
+  const isLandingPage = route.name === 'landing-lang' || route.path === '/' || route.path === `/${locale.value}`;
+  
+  if (isLandingPage) {
+    // On landing page - emit event to scroll and update URL hash
     emit('scroll-to', section)
+    // Update URL with hash without triggering navigation
+    router.replace({ 
+      hash: `#${section}` 
+    })
   } else {
-    // On another page - navigate to landing page with hash
-    router.push({ path: '/', hash: `#${section}` })
+    // On another page - navigate to landing page with hash and current language
+    router.push({ 
+      name: 'landing-lang', 
+      params: { lang: locale.value },
+      hash: `#${section}` 
+    })
   }
 }
 

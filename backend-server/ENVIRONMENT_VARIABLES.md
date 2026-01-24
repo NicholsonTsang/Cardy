@@ -30,6 +30,8 @@ Supabase project URL and service role key (with admin privileges) for database o
 STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key_here
 STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
 STRIPE_API_VERSION=2025-08-27.basil
+STRIPE_PREMIUM_PRICE_ID=price_premium_id_here
+STRIPE_STARTER_PRICE_ID=price_starter_id_here
 ```
 Stripe API credentials for payment processing and webhook signature verification.
 
@@ -85,6 +87,41 @@ Time window in milliseconds for rate limiting.
 RATE_LIMIT_MAX_REQUESTS=100  # Default: 100
 ```
 Maximum number of requests allowed per IP within the time window.
+
+---
+
+### Subscription & Pricing
+
+These variables control the pricing and limits for the three tiers.
+
+#### Starter Tier
+```bash
+STARTER_MONTHLY_FEE_USD=40
+STARTER_EXPERIENCE_LIMIT=5
+STARTER_MONTHLY_BUDGET_USD=40
+STARTER_AI_ENABLED_SESSION_COST_USD=0.05
+STARTER_AI_DISABLED_SESSION_COST_USD=0.025
+```
+
+#### Premium Tier
+```bash
+PREMIUM_MONTHLY_FEE_USD=280
+PREMIUM_EXPERIENCE_LIMIT=35
+PREMIUM_MONTHLY_BUDGET_USD=280
+PREMIUM_AI_ENABLED_SESSION_COST_USD=0.045
+PREMIUM_AI_DISABLED_SESSION_COST_USD=0.02
+```
+
+#### Free Tier
+```bash
+FREE_TIER_EXPERIENCE_LIMIT=3
+FREE_TIER_MONTHLY_SESSION_LIMIT=50
+```
+
+#### Overage
+```bash
+OVERAGE_CREDITS_PER_BATCH=5
+```
 
 ---
 

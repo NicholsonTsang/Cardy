@@ -142,10 +142,10 @@ RETURNS TABLE (
     critical_actions_today BIGINT,
     high_severity_actions_week BIGINT,
     unique_admin_users_month BIGINT,
-    -- ACCESS MODE METRICS (NEW)
+    -- ACCESS MODE METRICS
     physical_cards_count BIGINT,
     digital_cards_count BIGINT,
-    -- DIGITAL ACCESS METRICS (NEW)
+    -- DIGITAL ACCESS METRICS (from card_access_tokens and card_access_log)
     total_digital_scans BIGINT,
     daily_digital_scans BIGINT,
     weekly_digital_scans BIGINT,
@@ -157,14 +157,18 @@ RETURNS TABLE (
     content_mode_grid BIGINT,
     content_mode_cards BIGINT,
     is_grouped_count BIGINT,
-    -- SUBSCRIPTION METRICS (NEW)
+    -- SUBSCRIPTION METRICS (3 tiers: free, starter, premium)
     total_free_users BIGINT,
+    total_starter_users BIGINT,
     total_premium_users BIGINT,
     active_subscriptions BIGINT,
     estimated_mrr_cents BIGINT,
-    -- ACCESS LOG METRICS (NEW)
+    -- ACCESS LOG METRICS
     monthly_total_accesses BIGINT,
-    monthly_overage_accesses BIGINT
+    monthly_overage_accesses BIGINT,
+    -- QR CODE METRICS (Multi-QR system)
+    total_qr_codes BIGINT,
+    active_qr_codes BIGINT
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     caller_role TEXT;
@@ -218,26 +222,38 @@ BEGIN
         -- ACCESS MODE METRICS (Physical vs Digital cards)
         (SELECT COUNT(*) FROM cards WHERE billing_type = 'physical') as physical_cards_count,
         (SELECT COUNT(*) FROM cards WHERE billing_type = 'digital') as digital_cards_count,
-        -- DIGITAL ACCESS METRICS (Scan counts and credit consumption)
-        (SELECT COALESCE(SUM(current_scans), 0)::BIGINT FROM cards WHERE billing_type = 'digital') as total_digital_scans,
-        (SELECT COALESCE(SUM(daily_scans), 0)::BIGINT FROM cards WHERE billing_type = 'digital' AND last_scan_date = CURRENT_DATE) as daily_digital_scans,
-        (SELECT COALESCE(SUM(cc.quantity), 0)::BIGINT FROM credit_consumptions cc WHERE cc.consumption_type = 'digital_scan' AND cc.created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_digital_scans,
-        (SELECT COALESCE(SUM(cc.quantity), 0)::BIGINT FROM credit_consumptions cc WHERE cc.consumption_type = 'digital_scan' AND cc.created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_digital_scans,
-        (SELECT COALESCE(SUM(cc.total_credits), 0)::NUMERIC FROM credit_consumptions cc WHERE cc.consumption_type = 'digital_scan') as digital_credits_consumed,
+        -- DIGITAL ACCESS METRICS (from card_access_tokens and card_access_log)
+        -- Note: Session counters now live in card_access_tokens table (Multi-QR refactor Dec 2025)
+        (SELECT COALESCE(SUM(cat.total_sessions), 0)::BIGINT FROM card_access_tokens cat INNER JOIN cards c ON cat.card_id = c.id WHERE c.billing_type = 'digital') as total_digital_scans,
+        (SELECT COALESCE(SUM(cat.daily_sessions), 0)::BIGINT FROM card_access_tokens cat INNER JOIN cards c ON cat.card_id = c.id WHERE c.billing_type = 'digital' AND cat.last_session_date = CURRENT_DATE) as daily_digital_scans,
+        -- Weekly/Monthly from card_access_log for consistency (source of truth for billing)
+        (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_digital_scans,
+        (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_digital_scans,
+        -- Total session cost from access log (ai_enabled costs more)
+        (SELECT COALESCE(SUM(session_cost_usd), 0)::NUMERIC FROM card_access_log) as digital_credits_consumed,
         -- CONTENT MODE DISTRIBUTION
         (SELECT COUNT(*) FROM cards WHERE content_mode = 'single') as content_mode_single,
         (SELECT COUNT(*) FROM cards WHERE content_mode = 'list') as content_mode_list,
         (SELECT COUNT(*) FROM cards WHERE content_mode = 'grid') as content_mode_grid,
         (SELECT COUNT(*) FROM cards WHERE content_mode = 'cards') as content_mode_cards,
         (SELECT COUNT(*) FROM cards WHERE is_grouped = true) as is_grouped_count,
-        -- SUBSCRIPTION METRICS
-        (SELECT COUNT(*) FROM auth.users) - (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as total_free_users,
+        -- SUBSCRIPTION METRICS (3 tiers: free, starter, premium)
+        -- Free = users with no subscription record OR tier = 'free'
+        (SELECT COUNT(*) FROM auth.users u WHERE NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND s.tier IN ('starter', 'premium'))) as total_free_users,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'starter') as total_starter_users,
         (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as total_premium_users,
-        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium' AND status = 'active') as active_subscriptions,
-        (SELECT COUNT(*) * 5000 FROM subscriptions WHERE tier = 'premium' AND status = 'active') as estimated_mrr_cents,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier IN ('starter', 'premium') AND status = 'active') as active_subscriptions,
+        -- MRR: Starter=$40/month (4000 cents) + Premium=$280/month (28000 cents)
+        (
+            (SELECT COUNT(*) * 4000 FROM subscriptions WHERE tier = 'starter' AND status = 'active') +
+            (SELECT COUNT(*) * 28000 FROM subscriptions WHERE tier = 'premium' AND status = 'active')
+        )::BIGINT as estimated_mrr_cents,
         -- ACCESS LOG METRICS
         (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= date_trunc('month', CURRENT_DATE)) as monthly_total_accesses,
-        (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= date_trunc('month', CURRENT_DATE) AND was_overage = true) as monthly_overage_accesses;
+        (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= date_trunc('month', CURRENT_DATE) AND was_overage = true) as monthly_overage_accesses,
+        -- QR CODE METRICS (Multi-QR system)
+        (SELECT COUNT(*) FROM card_access_tokens) as total_qr_codes,
+        (SELECT COUNT(*) FROM card_access_tokens WHERE is_enabled = true) as active_qr_codes;
 END;
 $$;
 
@@ -572,7 +588,8 @@ $$;
 CREATE OR REPLACE FUNCTION admin_update_user_subscription(
     p_user_id UUID,
     p_new_tier TEXT,
-    p_reason TEXT
+    p_reason TEXT,
+    p_duration_months INTEGER DEFAULT NULL  -- NULL = permanent, number = specific months
 )
 RETURNS BOOLEAN
 LANGUAGE plpgsql SECURITY DEFINER AS $$
@@ -581,6 +598,8 @@ DECLARE
     v_user_email VARCHAR(255);
     v_old_tier TEXT;
     v_subscription_exists BOOLEAN;
+    v_period_end TIMESTAMPTZ;
+    v_duration_text TEXT;
 BEGIN
     -- Check if the caller is an admin
     SELECT raw_user_meta_data->>'role' INTO caller_role
@@ -592,8 +611,13 @@ BEGIN
     END IF;
 
     -- Validate new tier
-    IF p_new_tier NOT IN ('free', 'premium') THEN
-        RAISE EXCEPTION 'Invalid tier. Must be: free or premium.';
+    IF p_new_tier NOT IN ('free', 'starter', 'premium') THEN
+        RAISE EXCEPTION 'Invalid tier. Must be: free, starter, or premium.';
+    END IF;
+
+    -- Validate duration (must be positive if provided)
+    IF p_duration_months IS NOT NULL AND p_duration_months <= 0 THEN
+        RAISE EXCEPTION 'Duration must be a positive number of months.';
     END IF;
 
     -- Get current user info
@@ -608,6 +632,17 @@ BEGIN
     -- Check if subscription exists
     SELECT EXISTS(SELECT 1 FROM subscriptions WHERE user_id = p_user_id) INTO v_subscription_exists;
     
+    -- Block if user has active Stripe subscription (mutually exclusive with admin grants)
+    IF v_subscription_exists THEN
+        PERFORM 1 FROM subscriptions 
+        WHERE user_id = p_user_id 
+        AND stripe_subscription_id IS NOT NULL;
+        
+        IF FOUND THEN
+            RAISE EXCEPTION 'Cannot grant privilege to user with active Stripe subscription. Please cancel their Stripe subscription first via Stripe Dashboard.';
+        END IF;
+    END IF;
+    
     -- Get old tier if exists
     IF v_subscription_exists THEN
         SELECT tier::TEXT INTO v_old_tier
@@ -617,25 +652,33 @@ BEGIN
         v_old_tier := 'free';
     END IF;
 
-    -- Create or update subscription
+    -- Calculate period end based on duration
+    -- For paid tiers (starter/premium): use duration or NULL for permanent
+    -- For free tier: always NULL (no period)
+    IF p_new_tier = 'free' THEN
+        v_period_end := NULL;
+    ELSIF p_duration_months IS NULL THEN
+        -- Permanent subscription (far future date)
+        v_period_end := NOW() + INTERVAL '100 years';
+    ELSE
+        -- Specific duration
+        v_period_end := NOW() + (p_duration_months || ' months')::INTERVAL;
+    END IF;
+
+    -- Create or update subscription (Stripe users already blocked above)
     IF v_subscription_exists THEN
         UPDATE subscriptions
         SET 
             tier = p_new_tier::"SubscriptionTier",
             status = 'active'::subscription_status,
-            -- Clear Stripe fields when admin manually sets tier
-            -- (this means it's not a Stripe-managed subscription anymore)
-            stripe_subscription_id = CASE 
-                WHEN p_new_tier = 'free' THEN NULL 
-                ELSE stripe_subscription_id 
-            END,
+            -- stripe_subscription_id stays NULL (admin-managed only)
             current_period_start = CASE 
-                WHEN p_new_tier = 'premium' AND stripe_subscription_id IS NULL THEN NOW()
-                ELSE current_period_start
+                WHEN p_new_tier IN ('starter', 'premium') THEN NOW()
+                ELSE NULL
             END,
             current_period_end = CASE 
-                WHEN p_new_tier = 'premium' AND stripe_subscription_id IS NULL THEN NOW() + INTERVAL '1 year'
-                ELSE current_period_end
+                WHEN p_new_tier IN ('starter', 'premium') THEN v_period_end
+                ELSE NULL
             END,
             cancel_at_period_end = false,
             updated_at = NOW()
@@ -652,18 +695,36 @@ BEGIN
             p_user_id,
             p_new_tier::"SubscriptionTier",
             'active'::subscription_status,
-            CASE WHEN p_new_tier = 'premium' THEN NOW() ELSE NULL END,
-            CASE WHEN p_new_tier = 'premium' THEN NOW() + INTERVAL '1 year' ELSE NULL END,
+            CASE WHEN p_new_tier IN ('starter', 'premium') THEN NOW() ELSE NULL END,
+            CASE WHEN p_new_tier IN ('starter', 'premium') THEN v_period_end ELSE NULL END,
             false
         );
     END IF;
 
+    -- Build duration text for log
+    IF p_new_tier = 'free' THEN
+        v_duration_text := '';
+    ELSIF p_duration_months IS NULL THEN
+        v_duration_text := ' (permanent)';
+    ELSE
+        v_duration_text := ' (' || p_duration_months || ' months)';
+    END IF;
+
     -- Log operation
-    PERFORM log_operation(
-        'Admin changed subscription tier from ' || COALESCE(v_old_tier, 'none') || 
-        ' to ' || p_new_tier || ' for user: ' || v_user_email || 
-        ' - Reason: ' || p_reason
-    );
+    IF v_old_tier = p_new_tier THEN
+        -- Same tier - just updating duration
+        PERFORM log_operation(
+            'Admin updated ' || p_new_tier || ' subscription duration' || v_duration_text || 
+            ' for user: ' || v_user_email || ' - Reason: ' || p_reason
+        );
+    ELSE
+        -- Tier change
+        PERFORM log_operation(
+            'Admin changed subscription tier from ' || COALESCE(v_old_tier, 'none') || 
+            ' to ' || p_new_tier || v_duration_text || ' for user: ' || v_user_email || 
+            ' - Reason: ' || p_reason
+        );
+    END IF;
 
     RETURN TRUE;
 END;
@@ -770,7 +831,9 @@ RETURNS TABLE (
     user_id UUID,
     email TEXT,
     role TEXT,
-    created_at TIMESTAMPTZ
+    created_at TIMESTAMPTZ,
+    subscription_tier TEXT,
+    subscription_status TEXT
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_caller_role TEXT;
@@ -789,14 +852,17 @@ BEGIN
         au.id AS user_id,
         au.email::TEXT,
         COALESCE(au.raw_user_meta_data->>'role', 'user')::TEXT AS role,
-        au.created_at
+        au.created_at,
+        COALESCE(s.tier::TEXT, 'free') as subscription_tier,
+        COALESCE(s.status::TEXT, 'active') as subscription_status
     FROM auth.users au
+    LEFT JOIN subscriptions s ON s.user_id = au.id
     WHERE LOWER(au.email) = LOWER(p_email);
 END;
 $$;
 
 -- Get all cards for a specific user (admin view)
--- Updated to include all card fields for complete admin visibility
+-- Updated to aggregate session data from card_access_tokens
 CREATE OR REPLACE FUNCTION admin_get_user_cards(p_user_id UUID)
 RETURNS TABLE (
     id UUID,
@@ -816,12 +882,12 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    max_scans INT,
-    current_scans INT,
-    daily_scan_limit INT,
-    daily_scans INT,
-    is_access_enabled BOOLEAN,
-    access_token TEXT,
+    default_daily_session_limit INT,
+    -- Aggregated from access tokens
+    total_sessions BIGINT,
+    daily_sessions BIGINT,
+    active_qr_codes BIGINT,
+    total_qr_codes BIGINT,
     translations JSONB,
     original_language VARCHAR(10),
     batches_count BIGINT,
@@ -860,27 +926,26 @@ BEGIN
         c.is_grouped,
         c.group_display::TEXT,
         c.billing_type::TEXT,
-        c.max_scans,
-        c.current_scans,
-        c.daily_scan_limit,
-        c.daily_scans,
-        c.is_access_enabled,
-        c.access_token,
+        c.default_daily_session_limit,
+        -- Aggregate from access tokens
+        COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
+        COALESCE(SUM(t.daily_sessions), 0)::BIGINT AS daily_sessions,
+        COALESCE(COUNT(t.id) FILTER (WHERE t.is_enabled), 0)::BIGINT AS active_qr_codes,
+        COALESCE(COUNT(t.id), 0)::BIGINT AS total_qr_codes,
         c.translations,
         c.original_language,
-        COUNT(cb.id)::BIGINT AS batches_count,
+        (SELECT COUNT(*) FROM card_batches cb WHERE cb.card_id = c.id)::BIGINT AS batches_count,
         c.created_at,
         c.updated_at,
         au.email::TEXT AS user_email
     FROM cards c
     JOIN auth.users au ON c.user_id = au.id
-    LEFT JOIN card_batches cb ON c.id = cb.card_id
+    LEFT JOIN card_access_tokens t ON t.card_id = c.id
     WHERE c.user_id = p_user_id
     GROUP BY c.id, c.name, c.description, c.image_url, c.original_image_url,
              c.crop_parameters, c.conversation_ai_enabled, c.ai_instruction, c.ai_knowledge_base,
              c.ai_welcome_general, c.ai_welcome_item, c.qr_code_position, c.content_mode, 
-             c.is_grouped, c.group_display, c.billing_type, c.max_scans, c.current_scans,
-             c.daily_scan_limit, c.daily_scans, c.is_access_enabled, c.access_token,
+             c.is_grouped, c.group_display, c.billing_type, c.default_daily_session_limit,
              c.translations, c.original_language, c.created_at, c.updated_at, au.email
     ORDER BY c.created_at DESC;
 END;
@@ -1089,7 +1154,7 @@ GRANT EXECUTE ON FUNCTION get_admin_batches_requiring_attention() TO authenticat
 GRANT EXECUTE ON FUNCTION get_admin_all_batches(TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_all_print_requests("PrintRequestStatus", TEXT, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_all_users() TO authenticated;
-GRANT EXECUTE ON FUNCTION admin_update_user_subscription(UUID, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION admin_update_user_subscription(UUID, TEXT, TEXT, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_subscription_stats() TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_update_user_role(UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_user_by_email(TEXT) TO authenticated;

@@ -18,11 +18,23 @@ const props = defineProps({
   width: {
     type: Number,
     default: 180
+  },
+  /**
+   * Aspect ratio of the phone (width/height)
+   * Examples:
+   * - 9/19.5 = Modern tall phones (iPhone 14 Pro, default)
+   * - 9/16 = Compact phones (iPhone SE, older Android)
+   * - 9/17.5 = Medium height (balanced)
+   */
+  aspectRatio: {
+    type: String,
+    default: '9 / 19.5'
   }
 })
 
 const phoneStyle = computed(() => ({
-  '--phone-width': `${props.width}px`
+  '--phone-width': `${props.width}px`,
+  '--phone-aspect-ratio': props.aspectRatio
 }))
 </script>
 
@@ -33,7 +45,7 @@ const phoneStyle = computed(() => ({
   
   position: relative;
   width: var(--phone-width);
-  aspect-ratio: 9 / 19.5; /* Phone aspect ratio */
+  aspect-ratio: var(--phone-aspect-ratio);
   background: linear-gradient(145deg, #1f1f1f, #2a2a2a);
   border-radius: calc(var(--phone-width) * 0.06);
   padding: var(--phone-border);

@@ -89,10 +89,7 @@
               <div v-if="card.billing_type === 'digital'" class="flex items-center gap-3 text-xs text-slate-600 mb-1">
                 <span class="flex items-center gap-1">
                   <i class="pi pi-eye text-[10px]"></i>
-                  {{ card.current_scans?.toLocaleString() || 0 }} {{ $t('admin.scans') }}
-                </span>
-                <span v-if="card.max_scans" class="text-slate-400">
-                  / {{ card.max_scans.toLocaleString() }}
+                  {{ card.total_sessions?.toLocaleString() || 0 }} {{ $t('admin.scans') }}
                 </span>
               </div>
               <p v-else-if="card.description" class="text-xs text-slate-600 line-clamp-1">
@@ -146,11 +143,12 @@ interface Card {
   billing_type: 'physical' | 'digital'
   content_mode: 'single' | 'list' | 'grid' | 'cards'
   is_grouped?: boolean
-  current_scans?: number
-  max_scans?: number | null
-  daily_scans?: number
-  daily_scan_limit?: number | null
-  is_access_enabled?: boolean
+  total_sessions?: number
+  monthly_sessions?: number
+  daily_sessions?: number
+  active_qr_codes?: number
+  total_qr_codes?: number
+  default_daily_session_limit?: number | null
   created_at: string
 }
 

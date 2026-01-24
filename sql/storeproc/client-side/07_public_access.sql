@@ -70,10 +70,7 @@ RETURNS TABLE (
     card_is_grouped BOOLEAN, -- Whether content is organized into categories
     card_group_display TEXT, -- How grouped items display: expanded or collapsed
     card_billing_type TEXT, -- Billing model: physical or digital
-    card_max_scans INTEGER, -- NULL for physical (unlimited), Integer for digital
-    card_current_scans INTEGER, -- Current total scan count
-    card_daily_scan_limit INTEGER, -- Daily scan limit (NULL = unlimited)
-    card_daily_scans INTEGER, -- Today's scan count
+    -- Note: Session tracking is now per-QR-code in card_access_tokens (not needed for preview)
     content_item_id UUID,
     content_item_parent_id UUID,
     content_item_name TEXT,
@@ -139,10 +136,6 @@ BEGIN
         COALESCE(c.is_grouped, FALSE)::BOOLEAN AS card_is_grouped, -- Grouping mode
         COALESCE(c.group_display, 'expanded')::TEXT AS card_group_display, -- Group display
         COALESCE(c.billing_type, 'physical')::TEXT AS card_billing_type, -- Billing model
-        c.max_scans AS card_max_scans,
-        c.current_scans AS card_current_scans,
-        c.daily_scan_limit AS card_daily_scan_limit,
-        c.daily_scans AS card_daily_scans,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,

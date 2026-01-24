@@ -21,7 +21,7 @@ export interface SubscriptionPricing {
 }
 
 export interface SubscriptionDetails {
-  tier: 'free' | 'premium';
+  tier: 'free' | 'starter' | 'premium';
   status: string;
   is_premium: boolean;
   
@@ -30,6 +30,7 @@ export interface SubscriptionDetails {
   current_period_start: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
+  scheduled_tier: 'free' | 'starter' | 'premium' | null;  // Tier to switch to after period ends (for downgrades)
   
   // Usage
   monthly_access_limit: number | null;
@@ -110,13 +111,18 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   const error = ref<string | null>(null);
   
   // Computed
-  const isPremium = computed(() => subscription.value?.is_premium ?? false);
   const tier = computed(() => subscription.value?.tier ?? 'free');
+  const isPaid = computed(() => tier.value === 'starter' || tier.value === 'premium');
+  const isStarter = computed(() => tier.value === 'starter');
+  const isPremium = computed(() => tier.value === 'premium');
+  
   const canTranslate = computed(() => subscription.value?.features?.translations_enabled ?? false);
   const canCreateExperience = computed(() => {
     if (!subscription.value) return true; // Allow by default if not loaded
     const limit = subscription.value.experience_limit ?? 
-      (subscription.value.is_premium ? SubscriptionConfig.premium.experienceLimit : SubscriptionConfig.free.experienceLimit);
+      (tier.value === 'premium' ? SubscriptionConfig.premium.experienceLimit : 
+       tier.value === 'starter' ? SubscriptionConfig.starter.experienceLimit : 
+       SubscriptionConfig.free.experienceLimit);
     return (subscription.value.experience_count ?? 0) < limit;
   });
   
@@ -129,24 +135,42 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     if (subscription.value?.monthly_access_limit) {
       return subscription.value.monthly_access_limit;
     }
-    // Default based on tier - Premium uses budget-based (show AI-enabled session count as reference)
-    return isPremium.value 
-      ? SubscriptionConfig.calculated.defaultAiEnabledSessions 
-      : SubscriptionConfig.free.monthlySessionLimit;
+    // Default based on tier
+    if (tier.value === 'premium') return SubscriptionConfig.calculated.defaultAiEnabledSessions;
+    if (tier.value === 'starter') return SubscriptionConfig.calculated.starterDefaultAiEnabledSessions;
+    return SubscriptionConfig.free.monthlySessionLimit;
   });
   const monthlyAccessRemaining = computed(() => subscription.value?.monthly_access_remaining ?? 0);
-  const canBuyOverage = computed(() => isPremium.value); // Only premium can buy overage credits
+  const canBuyOverage = computed(() => isPaid.value); // Starter and Premium can buy overage
   const overageCreditsPerBatch = computed(() => SubscriptionConfig.overage.creditsPerBatch);
   // Sessions per overage batch (using AI-enabled cost as reference)
-  const overageAccessPerBatch = computed(() => SubscriptionConfig.calculated.aiEnabledSessionsPerBatch);
-  const monthlyFee = computed(() => SubscriptionConfig.premium.monthlyFeeUsd);
+  const overageAccessPerBatch = computed(() => {
+    if (tier.value === 'starter') return Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.starter.aiEnabledSessionCostUsd);
+    return SubscriptionConfig.calculated.aiEnabledSessionsPerBatch;
+  });
+  const monthlyFee = computed(() => {
+    if (tier.value === 'starter') return SubscriptionConfig.starter.monthlyFeeUsd;
+    return SubscriptionConfig.premium.monthlyFeeUsd;
+  });
   
   // New budget-based computed values
-  const monthlyBudgetUsd = computed(() => SubscriptionConfig.premium.monthlyBudgetUsd);
-  const aiEnabledSessionCost = computed(() => SubscriptionConfig.premium.aiEnabledSessionCostUsd);
-  const aiDisabledSessionCost = computed(() => SubscriptionConfig.premium.aiDisabledSessionCostUsd);
+  const monthlyBudgetUsd = computed(() => {
+    if (tier.value === 'starter') return SubscriptionConfig.starter.monthlyBudgetUsd;
+    return SubscriptionConfig.premium.monthlyBudgetUsd;
+  });
+  const aiEnabledSessionCost = computed(() => {
+    if (tier.value === 'starter') return SubscriptionConfig.starter.aiEnabledSessionCostUsd;
+    return SubscriptionConfig.premium.aiEnabledSessionCostUsd;
+  });
+  const aiDisabledSessionCost = computed(() => {
+    if (tier.value === 'starter') return SubscriptionConfig.starter.aiDisabledSessionCostUsd;
+    return SubscriptionConfig.premium.aiDisabledSessionCostUsd;
+  });
   
   const isScheduledForCancellation = computed(() => subscription.value?.cancel_at_period_end ?? false);
+  const scheduledTier = computed(() => subscription.value?.scheduled_tier ?? null);
+  const isDowngrading = computed(() => isScheduledForCancellation.value && scheduledTier.value && scheduledTier.value !== 'free');
+  const isCancelingToFree = computed(() => isScheduledForCancellation.value && (!scheduledTier.value || scheduledTier.value === 'free'));
   const periodEndDate = computed(() => {
     if (!subscription.value?.current_period_end) return null;
     return new Date(subscription.value.current_period_end);
@@ -237,7 +261,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     }
   }
   
-  async function createCheckout(): Promise<{ url: string } | null> {
+  async function createCheckout(tier: 'starter' | 'premium' = 'premium'): Promise<{ url: string } | null> {
     if (!authStore.session?.access_token) return null;
     
     loading.value = true;
@@ -252,7 +276,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
           'Authorization': `Bearer ${authStore.session.access_token}`,
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ baseUrl })
+        body: JSON.stringify({ baseUrl, tier })
       });
       
       if (!response.ok) {
@@ -417,6 +441,8 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     error,
     
     // Computed
+    isPaid,
+    isStarter,
     isPremium,
     tier,
     canTranslate,
@@ -430,7 +456,13 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     overageCreditsPerBatch,
     overageAccessPerBatch,
     monthlyFee,
+    monthlyBudgetUsd,
+    aiEnabledSessionCost,
+    aiDisabledSessionCost,
     isScheduledForCancellation,
+    scheduledTier,
+    isDowngrading,
+    isCancelingToFree,
     periodEndDate,
     
     // Config (for display)

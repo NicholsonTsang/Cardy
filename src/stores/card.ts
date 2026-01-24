@@ -7,6 +7,23 @@ import { v4 as uuidv4 } from 'uuid';
 export type ContentMode = 'single' | 'grid' | 'list' | 'cards';
 export type GroupDisplay = 'expanded' | 'collapsed';
 
+// Access Token interface (Multiple QR codes per project)
+export interface AccessToken {
+    id: string;
+    card_id: string;
+    name: string; // Display name (e.g., "Front Entrance", "Table 5")
+    access_token: string; // 12-char URL-safe token
+    is_enabled: boolean; // Toggle to enable/disable this specific QR code
+    daily_session_limit: number | null; // Daily session limit (NULL = unlimited)
+    total_sessions: number; // All-time sessions for this QR code
+    daily_sessions: number; // Today's session count
+    monthly_sessions: number; // Current month's session count
+    last_session_date: string | null; // Date of last session
+    current_month: string | null; // Month being tracked (1st of month)
+    created_at: string;
+    updated_at: string;
+}
+
 // Define interfaces for Card data
 export interface Card {
     id: string;
@@ -29,13 +46,16 @@ export interface Card {
     content_mode: ContentMode; // Content rendering mode: single, grid, list, cards
     is_grouped: boolean; // Whether content is organized into categories
     group_display: GroupDisplay; // How grouped items display: expanded or collapsed
-    billing_type: 'physical' | 'digital'; // Billing model: physical = per-card, digital = per-scan
-    max_scans: number | null; // NULL for physical (unlimited), Integer for digital (total limit)
-    current_scans: number; // Current total scan count (for digital)
-    daily_scan_limit: number | null; // Daily scan limit for digital access (NULL = unlimited)
-    daily_scans: number; // Today's scan count (for digital)
-    is_access_enabled: boolean; // Toggle to enable/disable QR code access (for digital cards)
-    access_token: string; // Unique token for access URL (can be regenerated)
+    billing_type: 'physical' | 'digital'; // Billing model: physical = per-card, digital = per-session subscription
+    default_daily_session_limit: number | null; // Default daily limit for new QR codes (NULL = unlimited)
+    // Computed from access_tokens (aggregated stats)
+    total_sessions: number; // Sum of all tokens' all-time sessions
+    monthly_sessions: number; // Sum of all tokens' monthly sessions
+    daily_sessions: number; // Sum of today's sessions across all tokens
+    active_qr_codes: number; // Count of enabled QR codes
+    total_qr_codes: number; // Total QR codes for this project
+    // Access tokens array (populated by fetchAccessTokens)
+    access_tokens?: AccessToken[];
     created_at: string;
     updated_at: string;
     // Template library fields (returned by get_user_cards)
@@ -62,9 +82,15 @@ export interface CardFormData {
     is_grouped?: boolean; // Whether content is organized into categories
     group_display?: GroupDisplay; // How grouped items display
     billing_type?: 'physical' | 'digital'; // Billing model
-    max_scans?: number | null; // Total scan limit for digital cards
-    daily_scan_limit?: number | null; // Daily scan limit for digital cards (default: 500)
+    default_daily_session_limit?: number | null; // Default daily limit for new QR codes (default: 500)
     id?: string; // Optional for updates
+}
+
+// Access Token form data for creating/updating
+export interface AccessTokenFormData {
+    name: string;
+    daily_session_limit?: number | null; // NULL = unlimited
+    is_enabled?: boolean;
 }
 
 // Get storage bucket name from environment variable
@@ -191,8 +217,7 @@ export const useCardStore = defineStore('card', () => {
                     p_is_grouped: cardData.is_grouped || false,
                     p_group_display: cardData.group_display || 'expanded',
                     p_billing_type: cardData.billing_type || 'physical',
-                    p_max_scans: cardData.billing_type === 'digital' ? (cardData.max_scans || null) : null,
-                    p_daily_scan_limit: cardData.billing_type === 'digital' ? (cardData.daily_scan_limit ?? defaultDailyLimit) : null
+                    p_default_daily_session_limit: cardData.billing_type === 'digital' ? (cardData.default_daily_session_limit ?? defaultDailyLimit) : null
                 });
                 
             if (createError) throw createError;
@@ -302,8 +327,7 @@ export const useCardStore = defineStore('card', () => {
                 p_is_grouped: updateData.is_grouped ?? null,
                 p_group_display: updateData.group_display || null,
                 p_billing_type: updateData.billing_type || null,
-                p_max_scans: updateData.billing_type === 'digital' ? (updateData.max_scans || null) : null,
-                p_daily_scan_limit: updateData.billing_type === 'digital' ? (updateData.daily_scan_limit || null) : null
+                p_default_daily_session_limit: updateData.billing_type === 'digital' ? (updateData.default_daily_session_limit || null) : null
             };
             
             const { data, error: updateError } = await supabase
@@ -312,15 +336,17 @@ export const useCardStore = defineStore('card', () => {
             if (updateError) throw updateError;
             
             // Invalidate backend caches after successful update
-            // This is critical for daily_scan_limit changes to take effect immediately
+            // This is critical for default_daily_session_limit changes to take effect immediately
             const existingCard = cards.value.find(c => c.id === cardId);
-            if (existingCard?.access_token) {
+            // Get the first access token if available for cache invalidation
+            const firstToken = existingCard?.access_tokens?.[0];
+            if (firstToken?.access_token) {
                 try {
                     const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
                     await fetch(`${backendUrl}/api/mobile/card/${cardId}/invalidate-cache`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ accessToken: existingCard.access_token })
+                        body: JSON.stringify({ accessToken: firstToken.access_token })
                     });
                     console.log('[CardStore] Cache invalidated for card', cardId);
                 } catch (cacheErr) {
@@ -365,62 +391,220 @@ export const useCardStore = defineStore('card', () => {
         }
     };
 
-    // Toggle access enabled/disabled for a digital card
-    const toggleCardAccess = async (cardId: string, isEnabled: boolean): Promise<boolean> => {
+    // ========================================================================
+    // ACCESS TOKEN MANAGEMENT (Multiple QR codes per project)
+    // ========================================================================
+
+    // Fetch all access tokens for a card
+    const fetchAccessTokens = async (cardId: string): Promise<AccessToken[]> => {
+        try {
+            const { data, error: fetchError } = await supabase
+                .rpc('get_card_access_tokens', { p_card_id: cardId });
+            
+            if (fetchError) throw fetchError;
+            
+            const tokens = data as AccessToken[] || [];
+            
+            // Update local card state with tokens and computed stats
+            const card = cards.value.find(c => c.id === cardId);
+            if (card) {
+                card.access_tokens = tokens;
+                // Compute aggregate values from tokens
+                card.total_sessions = tokens.reduce((sum, t) => sum + (t.total_sessions || 0), 0);
+                card.monthly_sessions = tokens.reduce((sum, t) => sum + (t.monthly_sessions || 0), 0);
+                card.daily_sessions = tokens.reduce((sum, t) => sum + (t.daily_sessions || 0), 0);
+                card.active_qr_codes = tokens.filter(t => t.is_enabled).length;
+                card.total_qr_codes = tokens.length;
+            }
+            
+            return tokens;
+        } catch (err: any) {
+            console.error('Error fetching access tokens:', err);
+            error.value = err.message || 'Failed to fetch access tokens';
+            return [];
+        }
+    };
+
+    // Create a new access token (QR code) for a card
+    const createAccessToken = async (
+        cardId: string, 
+        tokenData: AccessTokenFormData
+    ): Promise<AccessToken | null> => {
         isLoading.value = true;
         error.value = null;
         
         try {
-            const { error: toggleError } = await supabase
-                .rpc('toggle_card_access', {
+            const { data, error: createError } = await supabase
+                .rpc('create_access_token', {
                     p_card_id: cardId,
-                    p_is_enabled: isEnabled
+                    p_name: tokenData.name || 'Default',
+                    p_daily_session_limit: tokenData.daily_session_limit ?? null
                 });
-                
-            if (toggleError) throw toggleError;
             
-            // Update local state
-            const card = cards.value.find(c => c.id === cardId);
-            if (card) {
-                card.is_access_enabled = isEnabled;
+            if (createError) throw createError;
+            
+            if (data?.success) {
+                // Refresh tokens list
+                await fetchAccessTokens(cardId);
+                
+                // Return the new token info
+                return {
+                    id: data.token_id,
+                    card_id: cardId,
+                    name: data.name,
+                    access_token: data.access_token,
+                    is_enabled: true,
+                    daily_session_limit: tokenData.daily_session_limit ?? null,
+                    total_sessions: 0,
+                    daily_sessions: 0,
+                    monthly_sessions: 0,
+                    last_session_date: null,
+                    current_month: null,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                };
             }
             
-            return true;
+            return null;
         } catch (err: any) {
-            console.error('Error toggling card access:', err);
-            error.value = err.message || 'An unknown error occurred';
+            console.error('Error creating access token:', err);
+            error.value = err.message || 'Failed to create access token';
+            return null;
+        } finally {
+            isLoading.value = false;
+        }
+    };
+
+    // Update an access token's settings
+    const updateAccessToken = async (
+        tokenId: string,
+        cardId: string,
+        updates: Partial<AccessTokenFormData>
+    ): Promise<boolean> => {
+        isLoading.value = true;
+        error.value = null;
+        
+        try {
+            const { data, error: updateError } = await supabase
+                .rpc('update_access_token', {
+                    p_token_id: tokenId,
+                    p_name: updates.name ?? null,
+                    p_is_enabled: updates.is_enabled ?? null,
+                    p_daily_session_limit: updates.daily_session_limit === undefined 
+                        ? null 
+                        : (updates.daily_session_limit === null ? -1 : updates.daily_session_limit)
+                });
+            
+            if (updateError) throw updateError;
+            
+            if (data?.success) {
+                // Refresh tokens list
+                await fetchAccessTokens(cardId);
+                return true;
+            }
+            
+            return false;
+        } catch (err: any) {
+            console.error('Error updating access token:', err);
+            error.value = err.message || 'Failed to update access token';
             return false;
         } finally {
             isLoading.value = false;
         }
     };
 
-    // Regenerate access token for a digital card (invalidates old QR codes)
-    const regenerateAccessToken = async (cardId: string): Promise<string | null> => {
+    // Delete an access token
+    const deleteAccessToken = async (tokenId: string, cardId: string): Promise<boolean> => {
         isLoading.value = true;
         error.value = null;
         
         try {
-            const { data, error: regenError } = await supabase
-                .rpc('regenerate_access_token', {
-                    p_card_id: cardId
-                });
-                
-            if (regenError) throw regenError;
+            const { data, error: deleteError } = await supabase
+                .rpc('delete_access_token', { p_token_id: tokenId });
             
-            // Update local state
-            const card = cards.value.find(c => c.id === cardId);
-            if (card && data) {
-                card.access_token = data;
+            if (deleteError) throw deleteError;
+            
+            if (data?.success) {
+                // Refresh tokens list
+                await fetchAccessTokens(cardId);
+                return true;
             }
             
-            return data;
+            return false;
         } catch (err: any) {
-            console.error('Error regenerating access token:', err);
-            error.value = err.message || 'An unknown error occurred';
+            console.error('Error deleting access token:', err);
+            error.value = err.message || 'Failed to delete access token';
+            return false;
+        } finally {
+            isLoading.value = false;
+        }
+    };
+
+    // Refresh (regenerate) a specific access token
+    const refreshAccessToken = async (tokenId: string, cardId: string): Promise<string | null> => {
+        isLoading.value = true;
+        error.value = null;
+        
+        try {
+            const { data, error: refreshError } = await supabase
+                .rpc('refresh_access_token', { p_token_id: tokenId });
+            
+            if (refreshError) throw refreshError;
+            
+            if (data?.success) {
+                // Refresh tokens list
+                await fetchAccessTokens(cardId);
+                return data.access_token;
+            }
+            
+            return null;
+        } catch (err: any) {
+            console.error('Error refreshing access token:', err);
+            error.value = err.message || 'Failed to refresh access token';
             return null;
         } finally {
             isLoading.value = false;
+        }
+    };
+
+    // Toggle a specific access token's enabled state
+    const toggleAccessToken = async (
+        tokenId: string, 
+        cardId: string, 
+        isEnabled: boolean
+    ): Promise<boolean> => {
+        return updateAccessToken(tokenId, cardId, { is_enabled: isEnabled });
+    };
+
+    // Get monthly stats for a card (aggregated across all tokens)
+    const getCardMonthlyStats = async (cardId: string): Promise<{
+        monthStart: string;
+        monthEnd: string;
+        totalMonthlySessions: number;
+        totalDailySessions: number;
+        totalAllTimeSessions: number;
+        activeQrCodes: number;
+        totalQrCodes: number;
+    } | null> => {
+        try {
+            const { data, error: statsError } = await supabase
+                .rpc('get_card_monthly_stats', { p_card_id: cardId });
+            
+            if (statsError) throw statsError;
+            
+            return {
+                monthStart: data.month_start,
+                monthEnd: data.month_end,
+                totalMonthlySessions: data.total_monthly_sessions,
+                totalDailySessions: data.total_daily_sessions,
+                totalAllTimeSessions: data.total_all_time_sessions,
+                activeQrCodes: data.active_qr_codes,
+                totalQrCodes: data.total_qr_codes
+            };
+        } catch (err: any) {
+            console.error('Error getting monthly stats:', err);
+            error.value = err.message || 'Failed to get monthly stats';
+            return null;
         }
     };
 
@@ -433,7 +617,13 @@ export const useCardStore = defineStore('card', () => {
         getCardById,
         updateCard,
         deleteCard,
-        toggleCardAccess,
-        regenerateAccessToken
+        // Access token management (per-QR-code operations)
+        fetchAccessTokens,
+        createAccessToken,
+        updateAccessToken,
+        deleteAccessToken,
+        refreshAccessToken,
+        toggleAccessToken,
+        getCardMonthlyStats
     };
 });

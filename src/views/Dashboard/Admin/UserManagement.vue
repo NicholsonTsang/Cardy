@@ -228,6 +228,40 @@
             </template>
           </Column>
 
+          <Column field="stripe_subscription_id" :header="$t('admin.source') || 'Source'" :style="{ width: '110px', minWidth: '110px' }">
+            <template #body="{ data }">
+              <Tag 
+                v-if="data.subscription_tier !== 'free'"
+                :value="data.stripe_subscription_id ? ($t('admin.stripe') || 'Stripe') : ($t('admin.admin') || 'Admin')"
+                :severity="data.stripe_subscription_id ? 'info' : 'secondary'"
+                class="whitespace-nowrap text-xs"
+              >
+                <template #icon>
+                  <i :class="data.stripe_subscription_id ? 'pi pi-credit-card mr-1' : 'pi pi-shield mr-1'" style="font-size: 0.6rem;"></i>
+                </template>
+              </Tag>
+              <span v-else class="text-slate-400 text-xs">-</span>
+            </template>
+          </Column>
+
+          <Column field="current_period_end" :header="$t('admin.renewal_expiry') || 'Renewal/Expiry'" sortable :style="{ width: '150px', minWidth: '150px' }">
+            <template #body="{ data }">
+              <div v-if="data.subscription_tier !== 'free' && data.current_period_end" class="text-xs">
+                <div class="flex items-center gap-1 text-slate-700">
+                  <i :class="data.stripe_subscription_id ? 'pi pi-sync' : 'pi pi-calendar'" class="text-[10px] text-slate-400"></i>
+                  <span>{{ formatDate(data.current_period_end) }}</span>
+                </div>
+                <div v-if="isPermanentSubscription(data.current_period_end)" class="text-slate-400 text-[10px] mt-0.5">
+                  {{ $t('admin.permanent') || 'Permanent' }}
+                </div>
+                <div v-else class="text-slate-400 text-[10px] mt-0.5">
+                  {{ getDaysRemaining(data.current_period_end) }}
+                </div>
+              </div>
+              <span v-else class="text-slate-400 text-xs">-</span>
+            </template>
+          </Column>
+
           <Column field="last_sign_in_at" :header="$t('admin.last_sign_in') || 'Last Sign In'" sortable :style="{ width: '140px', minWidth: '140px' }">
             <template #body="{ data }">
               <span class="text-sm text-slate-600 whitespace-nowrap">
@@ -332,7 +366,7 @@
             <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('admin.user') || 'User' }}</label>
             <div class="p-3 bg-slate-50 rounded-lg">
               <p class="font-medium text-slate-900">{{ selectedUser.user_email }}</p>
-              <div class="flex items-center gap-2 mt-1">
+              <div class="flex items-center flex-wrap gap-2 mt-1">
                 <Tag 
                   :value="getTierLabel(selectedUser.subscription_tier)"
                   :severity="getTierSeverity(selectedUser.subscription_tier)"
@@ -347,32 +381,45 @@
                   :severity="getSubscriptionStatusSeverity(selectedUser)"
                   size="small"
                 />
+                <!-- Source badge for paid tiers -->
+                <Tag 
+                  v-if="selectedUser.subscription_tier !== 'free'"
+                  :value="selectedUser.stripe_subscription_id ? ($t('admin.stripe') || 'Stripe') : ($t('admin.admin') || 'Admin')"
+                  :severity="selectedUser.stripe_subscription_id ? 'info' : 'secondary'"
+                  size="small"
+                >
+                  <template #icon>
+                    <i :class="selectedUser.stripe_subscription_id ? 'pi pi-credit-card mr-1' : 'pi pi-shield mr-1'" style="font-size: 0.6rem;"></i>
+                  </template>
+                </Tag>
+              </div>
+              <!-- Current expiry info for existing subscriptions -->
+              <div v-if="isEditingExistingSubscription" class="mt-2 pt-2 border-t border-slate-200">
+                <div class="flex items-center gap-1.5 text-xs text-slate-600">
+                  <i class="pi pi-calendar text-slate-400"></i>
+                  <span>{{ $t('admin.current_expiry') || 'Current expiry' }}:</span>
+                  <span class="font-medium text-slate-700">
+                    {{ isPermanentSubscription(selectedUser.current_period_end) 
+                      ? ($t('admin.permanent') || 'Permanent') 
+                      : formatDate(selectedUser.current_period_end) }}
+                  </span>
+                  <span v-if="!isPermanentSubscription(selectedUser.current_period_end)" class="text-slate-400">
+                    ({{ getDaysRemaining(selectedUser.current_period_end) }})
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-
-          <!-- Current Subscription Info -->
-          <div v-if="selectedUser.subscription_tier === 'premium'" class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <div class="flex items-center gap-2 mb-2">
-              <i class="pi pi-info-circle text-amber-600"></i>
-              <span class="font-medium text-amber-800">{{ $t('admin.current_subscription_info') || 'Current Subscription Info' }}</span>
-            </div>
-            <div class="text-sm text-amber-700 space-y-1">
-              <p v-if="selectedUser.stripe_subscription_id">
-                <span class="font-medium">{{ $t('admin.stripe_managed') || 'Stripe Managed' }}:</span> 
-                <code class="bg-amber-100 px-1 rounded text-xs">{{ selectedUser.stripe_subscription_id }}</code>
-              </p>
-              <p v-else>
-                <span class="font-medium">{{ $t('admin.admin_managed') || 'Admin Managed' }}</span> ({{ $t('admin.no_stripe_subscription') || 'No Stripe subscription' }})
-              </p>
-              <p v-if="selectedUser.current_period_end">
-                <span class="font-medium">{{ $t('admin.period_ends') || 'Period Ends' }}:</span> 
-                {{ formatDate(selectedUser.current_period_end) }}
-              </p>
-              <p v-if="selectedUser.cancel_at_period_end" class="text-red-600">
-                <i class="pi pi-exclamation-triangle mr-1"></i>
-                {{ $t('admin.scheduled_cancellation') || 'Scheduled for cancellation at period end' }}
-              </p>
+          
+          <!-- Editing notice for existing subscriptions -->
+          <div v-if="isEditingExistingSubscription && newSubscriptionTier === selectedUser.subscription_tier" 
+            class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-start gap-2">
+              <i class="pi pi-info-circle text-blue-600 mt-0.5"></i>
+              <div class="text-sm text-blue-700">
+                <p class="font-medium">{{ $t('admin.editing_existing_subscription') || 'Editing Existing Subscription' }}</p>
+                <p class="mt-0.5 text-xs">{{ $t('admin.editing_existing_desc') || 'You are updating the duration for this user\'s existing subscription. The new expiry will be calculated from today.' }}</p>
+              </div>
             </div>
           </div>
 
@@ -381,44 +428,132 @@
             <label for="newTier" class="block text-sm font-medium text-slate-700 mb-2">
               {{ $t('admin.new_tier') || 'New Tier' }} <span class="text-red-500">*</span>
             </label>
-            <div class="grid grid-cols-2 gap-3">
+            <div class="grid grid-cols-3 gap-2">
               <div 
                 @click="newSubscriptionTier = 'free'"
                 :class="[
-                  'p-4 border-2 rounded-xl cursor-pointer transition-all duration-200',
+                  'p-3 border-2 rounded-xl cursor-pointer transition-all duration-200',
                   newSubscriptionTier === 'free' 
                     ? 'border-slate-500 bg-slate-50' 
                     : 'border-slate-200 hover:border-slate-300'
                 ]"
               >
-                <div class="flex items-center gap-2 mb-2">
-                  <i class="pi pi-user text-slate-600"></i>
-                  <span class="font-semibold text-slate-900">{{ $t('subscription.free_plan') || 'Free' }}</span>
+                <div class="flex items-center gap-1.5 mb-1.5">
+                  <i class="pi pi-user text-slate-600 text-sm"></i>
+                  <span class="font-semibold text-slate-900 text-sm">{{ $t('subscription.free_plan') || 'Free' }}</span>
                 </div>
-                <ul class="text-xs text-slate-600 space-y-1">
+                <ul class="text-[10px] text-slate-600 space-y-0.5 leading-tight">
                   <li>• {{ SubscriptionConfig.free.experienceLimit }} {{ $t('admin.projects_label') || 'projects' }}</li>
-                  <li>• {{ SubscriptionConfig.free.monthlyAccessLimit }} {{ $t('admin.monthly_access_label') || 'monthly access' }}</li>
-                  <li>• {{ $t('admin.no_translations') || 'No translations' }}</li>
+                  <li>• {{ SubscriptionConfig.free.monthlyAccessLimit }} {{ $t('admin.access') || 'access' }}</li>
                 </ul>
               </div>
+              
+              <div 
+                @click="newSubscriptionTier = 'starter'"
+                :class="[
+                  'p-3 border-2 rounded-xl cursor-pointer transition-all duration-200',
+                  newSubscriptionTier === 'starter' 
+                    ? 'border-emerald-500 bg-emerald-50' 
+                    : 'border-slate-200 hover:border-emerald-200'
+                ]"
+              >
+                <div class="flex items-center gap-1.5 mb-1.5">
+                  <i class="pi pi-bolt text-emerald-500 text-sm"></i>
+                  <span class="font-semibold text-slate-900 text-sm">{{ $t('subscription.starter_plan') || 'Starter' }}</span>
+                </div>
+                <ul class="text-[10px] text-slate-600 space-y-0.5 leading-tight">
+                  <li>• {{ SubscriptionConfig.starter.experienceLimit }} {{ $t('admin.projects_label') || 'projects' }}</li>
+                  <li>• ${{ SubscriptionConfig.starter.monthlyBudgetUsd }} {{ $t('admin.budget') || 'budget' }}</li>
+                </ul>
+              </div>
+
               <div 
                 @click="newSubscriptionTier = 'premium'"
                 :class="[
-                  'p-4 border-2 rounded-xl cursor-pointer transition-all duration-200',
+                  'p-3 border-2 rounded-xl cursor-pointer transition-all duration-200',
                   newSubscriptionTier === 'premium' 
                     ? 'border-amber-500 bg-amber-50' 
                     : 'border-slate-200 hover:border-amber-200'
                 ]"
               >
-                <div class="flex items-center gap-2 mb-2">
-                  <i class="pi pi-star-fill text-amber-500"></i>
-                  <span class="font-semibold text-slate-900">{{ $t('subscription.premium_plan') || 'Premium' }}</span>
+                <div class="flex items-center gap-1.5 mb-1.5">
+                  <i class="pi pi-star-fill text-amber-500 text-sm"></i>
+                  <span class="font-semibold text-slate-900 text-sm">{{ $t('subscription.premium_plan') || 'Premium' }}</span>
                 </div>
-                <ul class="text-xs text-slate-600 space-y-1">
+                <ul class="text-[10px] text-slate-600 space-y-0.5 leading-tight">
                   <li>• {{ SubscriptionConfig.premium.experienceLimit }} {{ $t('admin.projects_label') || 'projects' }}</li>
-                  <li>• {{ SubscriptionConfig.premium.monthlyAccessLimit.toLocaleString() }} {{ $t('admin.monthly_access_label') || 'monthly access' }}</li>
-                  <li>• {{ $t('admin.full_translations') || 'Full translations' }}</li>
+                  <li>• ${{ SubscriptionConfig.premium.monthlyBudgetUsd }} {{ $t('admin.budget') || 'budget' }}</li>
                 </ul>
+              </div>
+            </div>
+          </div>
+
+          <!-- Duration Selection (only for paid tiers) -->
+          <div v-if="newSubscriptionTier === 'starter' || newSubscriptionTier === 'premium'">
+            <label class="block text-sm font-medium text-slate-700 mb-2">
+              {{ $t('admin.subscription_duration') || 'Subscription Duration' }}
+            </label>
+            <div class="space-y-3">
+              <!-- Duration Type -->
+              <div class="flex gap-3">
+                <div 
+                  @click="subscriptionDurationType = 'permanent'"
+                  :class="[
+                    'flex-1 p-3 border-2 rounded-xl cursor-pointer transition-all duration-200 text-center',
+                    subscriptionDurationType === 'permanent' 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-slate-200 hover:border-blue-200'
+                  ]"
+                >
+                  <div class="flex items-center justify-center gap-1.5">
+                    <i class="pi pi-infinity text-blue-500 text-sm"></i>
+                    <span class="font-medium text-slate-900 text-sm">{{ $t('admin.permanent') || 'Permanent' }}</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 mt-1">{{ $t('admin.no_expiration') || 'No expiration date' }}</p>
+                </div>
+                <div 
+                  @click="subscriptionDurationType = 'months'"
+                  :class="[
+                    'flex-1 p-3 border-2 rounded-xl cursor-pointer transition-all duration-200 text-center',
+                    subscriptionDurationType === 'months' 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-slate-200 hover:border-blue-200'
+                  ]"
+                >
+                  <div class="flex items-center justify-center gap-1.5">
+                    <i class="pi pi-calendar text-blue-500 text-sm"></i>
+                    <span class="font-medium text-slate-900 text-sm">{{ $t('admin.specific_duration') || 'Specific Duration' }}</span>
+                  </div>
+                  <p class="text-[10px] text-slate-500 mt-1">{{ $t('admin.set_months') || 'Set number of months' }}</p>
+                </div>
+              </div>
+              
+              <!-- Months Input (shown when specific duration selected) -->
+              <div v-if="subscriptionDurationType === 'months'" class="space-y-2">
+                <div class="flex items-center gap-3">
+                  <InputNumber 
+                    v-model="subscriptionDurationMonths"
+                    :min="1"
+                    :max="120"
+                    showButtons
+                    buttonLayout="horizontal"
+                    :step="1"
+                    class="w-32"
+                    inputClass="text-center font-medium"
+                  >
+                    <template #incrementicon>
+                      <i class="pi pi-plus text-xs"></i>
+                    </template>
+                    <template #decrementicon>
+                      <i class="pi pi-minus text-xs"></i>
+                    </template>
+                  </InputNumber>
+                  <span class="text-sm text-slate-600">{{ $t('admin.months') || 'months' }}</span>
+                </div>
+                <div class="flex items-center gap-1.5 text-xs text-slate-500">
+                  <i class="pi pi-calendar text-slate-400"></i>
+                  <span>{{ $t('admin.expires_on') || 'Expires on' }}: <strong class="text-slate-700">{{ getExpirationDate() }}</strong></span>
+                </div>
               </div>
             </div>
           </div>
@@ -437,14 +572,24 @@
             />
           </div>
 
-          <!-- Warning for Stripe-managed subscriptions -->
-          <div v-if="selectedUser.stripe_subscription_id && newSubscriptionTier !== selectedUser.subscription_tier" class="p-3 bg-red-50 border border-red-200 rounded-lg">
+          <!-- Block for Stripe-managed subscriptions (mutually exclusive) -->
+          <div v-if="selectedUser.stripe_subscription_id" class="p-3 bg-red-50 border border-red-200 rounded-lg">
             <div class="flex items-start gap-2">
-              <i class="pi pi-exclamation-triangle text-red-600 mt-0.5"></i>
+              <i class="pi pi-ban text-red-600 mt-0.5"></i>
               <div class="text-sm text-red-700">
-                <p class="font-medium">{{ $t('admin.stripe_warning_title') || 'Warning: Stripe-managed subscription' }}</p>
+                <p class="font-medium">{{ $t('admin.stripe_block_title') || 'Cannot Modify: Stripe Subscription Active' }}</p>
                 <p class="mt-1">
-                  {{ $t('admin.stripe_warning_desc') || 'This user has an active Stripe subscription. Manually changing the tier will not affect their Stripe billing. Consider using Stripe Dashboard to manage billing changes.' }}
+                  {{ $t('admin.stripe_block_desc') || 'Admin grants and Stripe subscriptions are mutually exclusive. To grant admin privilege:' }}
+                </p>
+                <ol class="mt-1.5 ml-4 list-decimal text-xs space-y-1">
+                  <li>{{ $t('admin.stripe_block_step1') || 'Go to Stripe Dashboard' }}</li>
+                  <li>{{ $t('admin.stripe_block_step2') || 'Cancel this user\'s subscription' }}</li>
+                  <li>{{ $t('admin.stripe_block_step3') || 'Return here to grant admin privilege' }}</li>
+                </ol>
+                <p class="mt-2 text-xs text-red-600 font-medium">
+                  <i class="pi pi-info-circle mr-1"></i>
+                  {{ $t('admin.stripe_block_id') || 'Stripe Subscription ID' }}: 
+                  <code class="bg-red-100 px-1 rounded">{{ selectedUser.stripe_subscription_id }}</code>
                 </p>
               </div>
             </div>
@@ -457,7 +602,7 @@
             :label="$t('admin.update_subscription') || 'Update Subscription'" 
             :severity="newSubscriptionTier === 'premium' ? 'warning' : 'primary'"
             @click="updateUserSubscription"
-            :disabled="!newSubscriptionTier || !subscriptionChangeReason || newSubscriptionTier === selectedUser?.subscription_tier"
+            :disabled="!newSubscriptionTier || !subscriptionChangeReason || (newSubscriptionTier === 'free' && selectedUser?.subscription_tier === 'free') || selectedUser?.stripe_subscription_id"
             :loading="isUpdatingSubscription"
           >
             <template #icon>
@@ -485,6 +630,7 @@ import IconField from 'primevue/iconfield'
 import Select from 'primevue/select'
 import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
+import InputNumber from 'primevue/inputnumber'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
 import { SubscriptionConfig } from '@/config/subscription'
 
@@ -512,6 +658,15 @@ const showSubscriptionDialog = ref(false)
 const newSubscriptionTier = ref('')
 const subscriptionChangeReason = ref('')
 const isUpdatingSubscription = ref(false)
+const subscriptionDurationType = ref('permanent') // 'permanent' or 'months'
+const subscriptionDurationMonths = ref(12) // Default 12 months
+
+// Computed: Check if editing existing paid subscription
+const isEditingExistingSubscription = computed(() => {
+  return selectedUser.value && 
+    selectedUser.value.subscription_tier !== 'free' && 
+    selectedUser.value.current_period_end
+})
 
 // Computed
 const userStats = computed(() => {
@@ -519,13 +674,15 @@ const userStats = computed(() => {
   const cardIssuers = allUsers.value.filter(u => u.role === 'cardIssuer' || u.role === 'card_issuer').length
   const admins = allUsers.value.filter(u => u.role === 'admin').length
   const premiumUsers = allUsers.value.filter(u => u.subscription_tier === 'premium').length
-  const freeUsers = total - premiumUsers
+  const starterUsers = allUsers.value.filter(u => u.subscription_tier === 'starter').length
+  const freeUsers = total - premiumUsers - starterUsers
 
   return {
     total,
     cardIssuers,
     admins,
     premiumUsers,
+    starterUsers,
     freeUsers
   }
 })
@@ -557,6 +714,7 @@ const roleChangeOptions = computed(() => [
 const tierOptions = computed(() => [
   { label: t('admin.all_tiers') || 'All Tiers', value: null },
   { label: t('subscription.premium_plan') || 'Premium', value: 'premium' },
+  { label: t('subscription.starter_plan') || 'Starter', value: 'starter' },
   { label: t('subscription.free_plan') || 'Free', value: 'free' }
 ])
 
@@ -702,6 +860,28 @@ const manageUserSubscription = (user) => {
   selectedUser.value = user
   newSubscriptionTier.value = user.subscription_tier || 'free'
   subscriptionChangeReason.value = ''
+  
+  // Pre-fill duration based on current subscription
+  if (user.subscription_tier !== 'free' && user.current_period_end) {
+    const periodEnd = new Date(user.current_period_end)
+    const now = new Date()
+    const yearsFromNow = (periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 365)
+    
+    if (yearsFromNow > 50) {
+      // Permanent subscription
+      subscriptionDurationType.value = 'permanent'
+      subscriptionDurationMonths.value = 12
+    } else {
+      // Calculate remaining months
+      const monthsRemaining = Math.max(1, Math.round((periodEnd.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 30)))
+      subscriptionDurationType.value = 'months'
+      subscriptionDurationMonths.value = monthsRemaining
+    }
+  } else {
+    subscriptionDurationType.value = 'permanent'
+    subscriptionDurationMonths.value = 12
+  }
+  
   showSubscriptionDialog.value = true
 }
 
@@ -709,20 +889,29 @@ const closeSubscriptionDialog = () => {
   selectedUser.value = null
   newSubscriptionTier.value = ''
   subscriptionChangeReason.value = ''
+  subscriptionDurationType.value = 'permanent'
+  subscriptionDurationMonths.value = 12
   showSubscriptionDialog.value = false
 }
 
 const updateUserSubscription = async () => {
   if (!selectedUser.value || !newSubscriptionTier.value || !subscriptionChangeReason.value) return
-  if (newSubscriptionTier.value === selectedUser.value.subscription_tier) return
+  // Only block if updating Free to Free (no changes possible)
+  if (newSubscriptionTier.value === 'free' && selectedUser.value.subscription_tier === 'free') return
 
   isUpdatingSubscription.value = true
+  
+  // Calculate duration: null for permanent or free tier, number for specific months
+  const durationMonths = (newSubscriptionTier.value === 'free' || subscriptionDurationType.value === 'permanent') 
+    ? null 
+    : subscriptionDurationMonths.value
   
   try {
     const { error } = await supabase.rpc('admin_update_user_subscription', {
       p_user_id: selectedUser.value.user_id,
       p_new_tier: newSubscriptionTier.value,
-      p_reason: subscriptionChangeReason.value
+      p_reason: subscriptionChangeReason.value,
+      p_duration_months: durationMonths
     })
 
     if (error) throw error
@@ -764,11 +953,13 @@ const getRoleSeverity = (role) => {
 
 const getTierLabel = (tier) => {
   if (tier === 'premium') return t('subscription.premium_plan') || 'Premium'
+  if (tier === 'starter') return t('subscription.starter_plan') || 'Starter'
   return t('subscription.free_plan') || 'Free'
 }
 
 const getTierSeverity = (tier) => {
   if (tier === 'premium') return 'warning'
+  if (tier === 'starter') return 'success'
   return 'secondary'
 }
 
@@ -801,6 +992,46 @@ const getSubscriptionStatusSeverity = (user) => {
     case 'canceled': return 'secondary'
     case 'trialing': return 'info'
     default: return 'secondary'
+  }
+}
+
+const getExpirationDate = () => {
+  const date = new Date()
+  date.setMonth(date.getMonth() + subscriptionDurationMonths.value)
+  return date.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric'
+  })
+}
+
+const isPermanentSubscription = (dateString) => {
+  if (!dateString) return false
+  const date = new Date(dateString)
+  const now = new Date()
+  // If expiration is more than 50 years from now, consider it permanent
+  const yearsFromNow = (date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24 * 365)
+  return yearsFromNow > 50
+}
+
+const getDaysRemaining = (dateString) => {
+  if (!dateString) return ''
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffTime = date.getTime() - now.getTime()
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  
+  if (diffDays < 0) {
+    return t('admin.expired') || 'Expired'
+  } else if (diffDays === 0) {
+    return t('admin.expires_today') || 'Expires today'
+  } else if (diffDays === 1) {
+    return t('admin.expires_tomorrow') || 'Expires tomorrow'
+  } else if (diffDays <= 30) {
+    return (t('admin.days_remaining') || '{days} days remaining').replace('{days}', diffDays)
+  } else {
+    const months = Math.floor(diffDays / 30)
+    return (t('admin.months_remaining') || '{months} months remaining').replace('{months}', months)
   }
 }
 

@@ -1,6 +1,6 @@
 -- =================================================================
--- CARD BATCH MANAGEMENT FUNCTIONS
--- Functions for managing card batches and issued cards
+-- PHYSICAL CARD BATCH MANAGEMENT FUNCTIONS
+-- Functions for managing physical card batches and issued cards
 -- =================================================================
 
 -- Get next batch number for a card
@@ -36,7 +36,7 @@ DECLARE
     v_batch_id UUID;
     v_batch_number INTEGER;
     v_batch_name TEXT;
-    v_card_owner_id UUID;
+    v_project_owner_id UUID;
     v_credits_per_card DECIMAL := 2.00;
     v_total_credits DECIMAL;
     v_current_balance DECIMAL;
@@ -49,15 +49,15 @@ BEGIN
     END IF;
     
     -- Check if the user owns the card
-    SELECT user_id INTO v_card_owner_id
+    SELECT user_id INTO v_project_owner_id
     FROM cards
     WHERE id = p_card_id;
     
-    IF v_card_owner_id IS NULL THEN
-        RAISE EXCEPTION 'Card not found.';
+    IF v_project_owner_id IS NULL THEN
+        RAISE EXCEPTION 'Project not found.';
     END IF;
 
-    IF v_card_owner_id != auth.uid() THEN
+    IF v_project_owner_id != auth.uid() THEN
         RAISE EXCEPTION 'Not authorized to issue cards for this card.';
     END IF;
     
@@ -155,7 +155,7 @@ BEGIN
 END;
 $$;
 
--- Get card batches for a card
+-- Get physical card batches for a card
 CREATE OR REPLACE FUNCTION get_card_batches(p_card_id UUID)
 RETURNS TABLE (
     id UUID,
@@ -365,19 +365,19 @@ $$;
 CREATE OR REPLACE FUNCTION delete_issued_card(p_issued_card_id UUID)
 RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
-    v_card_owner_id UUID;
+    v_project_owner_id UUID;
 BEGIN
     -- Check if the user owns the card that contains this issued card
-    SELECT c.user_id INTO v_card_owner_id
+    SELECT c.user_id INTO v_project_owner_id
     FROM issue_cards ic
     JOIN cards c ON ic.card_id = c.id
     WHERE ic.id = p_issued_card_id;
     
-    IF v_card_owner_id IS NULL THEN
+    IF v_project_owner_id IS NULL THEN
         RAISE EXCEPTION 'Issued card not found';
     END IF;
     
-    IF v_card_owner_id != auth.uid() THEN
+    IF v_project_owner_id != auth.uid() THEN
         RAISE EXCEPTION 'Not authorized to delete this issued card';
     END IF;
     

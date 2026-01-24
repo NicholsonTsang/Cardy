@@ -37,9 +37,15 @@ const NON_AI_SESSIONS_KEY = (userId: string, month: string) => `sessions:nonai:$
 const TIER_KEY = (userId: string) => `user:tier:${userId}`;
 const CARD_AI_ENABLED_KEY = (cardId: string) => `card:ai_enabled:${cardId}`;
 
-// Daily limit keys (per-card creator protection)
-const DAILY_SCANS_KEY = (cardId: string, date: string) => `access:card:${cardId}:date:${date}:scans`;
-const DAILY_LIMIT_KEY = (cardId: string) => `access:card:${cardId}:daily_limit`;
+// LEGACY: Card-level daily limit keys (deprecated - use token-level keys below)
+// Commented out as they are no longer used
+// const DAILY_SCANS_KEY = (cardId: string, date: string) => `access:card:${cardId}:date:${date}:scans`;
+// const DAILY_LIMIT_KEY = (cardId: string) => `access:card:${cardId}:daily_limit`;
+
+// Token-based tracking keys (per-QR code)
+const TOKEN_DAILY_SESSIONS_KEY = (tokenId: string, date: string) => `access:token:${tokenId}:date:${date}:sessions`;
+const TOKEN_MONTHLY_SESSIONS_KEY = (tokenId: string, month: string) => `access:token:${tokenId}:month:${month}:sessions`;
+const TOKEN_DAILY_LIMIT_KEY = (tokenId: string) => `token:${tokenId}:daily_limit`;
 
 // Cache TTLs
 const CACHE_TTL = 35 * 24 * 60 * 60; // 35 days (covers month + buffer)
@@ -54,7 +60,7 @@ interface SessionCheckResult {
   allowed: boolean;
   isNewSession: boolean;
   sessionCost: number;
-  tier: 'free' | 'premium';
+  tier: 'free' | 'starter' | 'premium';
   isAiEnabled: boolean;
   budgetRemaining: number;
   needsOverage: boolean;
@@ -72,7 +78,7 @@ interface SessionRecordResult {
 
 interface DailyLimitCheckResult {
   allowed: boolean;
-  currentScans: number;
+  currentSessions: number;
   dailyLimit: number | null;
   reason: string;
 }
@@ -136,7 +142,7 @@ async function getCardAiEnabledFromDb(cardId: string): Promise<boolean> {
  * Redis tracks AVAILABLE budget (remaining), not consumed
  */
 async function getOrInitUserInfo(userId: string): Promise<{ 
-  tier: 'free' | 'premium'; 
+  tier: 'free' | 'starter' | 'premium'; 
   budgetAvailable: number;  // Available budget (source of truth in Redis)
 }> {
   const month = getCurrentMonth();
@@ -155,7 +161,7 @@ async function getOrInitUserInfo(userId: string): Promise<{
 
   if (tierStr && budgetStr !== null) {
     return {
-      tier: tierStr as 'free' | 'premium',
+      tier: tierStr as 'free' | 'starter' | 'premium',
       budgetAvailable: parseFloat(budgetStr || '0')
     };
   }
@@ -177,7 +183,7 @@ async function getOrInitUserInfo(userId: string): Promise<{
  * All pricing values come from environment variables
  */
 async function getSubscriptionFromDb(userId: string): Promise<{
-  tier: 'free' | 'premium';
+  tier: 'free' | 'starter' | 'premium';
   budgetAvailable: number;
 }> {
   const { data: rows, error } = await supabaseAdmin.rpc(
@@ -195,11 +201,15 @@ async function getSubscriptionFromDb(userId: string): Promise<{
     };
   }
 
-  const tier = data.tier as 'free' | 'premium';
+  const tier = data.tier as 'free' | 'starter' | 'premium';
   // Initialize available budget from config (all pricing from env vars)
-  const budgetAvailable = tier === 'premium' 
-    ? SubscriptionConfig.premium.monthlyBudgetUsd
-    : 0;
+  let budgetAvailable = 0;
+  
+  if (tier === 'premium') {
+    budgetAvailable = SubscriptionConfig.premium.monthlyBudgetUsd;
+  } else if (tier === 'starter') {
+    budgetAvailable = SubscriptionConfig.starter.monthlyBudgetUsd;
+  }
 
   return { 
     tier, 
@@ -208,129 +218,43 @@ async function getSubscriptionFromDb(userId: string): Promise<{
 }
 
 // ============================================================================
-// DAILY ACCESS LIMIT (Per-Card Creator Protection)
+// LEGACY: CARD-LEVEL DAILY ACCESS LIMIT (DEPRECATED)
+// ============================================================================
+// NOTE: Daily limits are now per-QR-code (token), not per-card.
+// Use checkTokenDailyLimit, recordTokenDailyAccess instead.
+// These functions are kept for backward compatibility but should not be used.
 // ============================================================================
 
 /**
- * Get card's daily scan limit from Redis cache or DB
+ * @deprecated Use checkTokenDailyLimit instead. Daily limits are now per-token.
  */
-async function getCardDailyLimit(cardId: string): Promise<number | null> {
-  if (!isRedisConfigured()) {
-    return getDailyLimitFromDb(cardId);
-  }
-
-  const cachedLimit = await redis.get(DAILY_LIMIT_KEY(cardId));
-  
-  if (cachedLimit !== null) {
-    if (cachedLimit === 'null') return null;
-    return parseInt(cachedLimit as string, 10);
-  }
-
-  const dbLimit = await getDailyLimitFromDb(cardId);
-  await redis.set(
-    DAILY_LIMIT_KEY(cardId), 
-    dbLimit === null ? 'null' : dbLimit.toString(), 
-    { ex: DAILY_CACHE_TTL }
-  );
-
-  return dbLimit;
+export async function checkDailyLimit(_cardId: string): Promise<DailyLimitCheckResult> {
+  console.warn(`[SessionTracker] checkDailyLimit is deprecated. Use checkTokenDailyLimit instead.`);
+  // Always allow - actual limits are checked at token level
+  return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'Card-level daily limit deprecated - use token limits' };
 }
 
 /**
- * Get daily limit from database via stored procedure
+ * @deprecated Use recordTokenDailyAccess instead. Daily limits are now per-token.
  */
-async function getDailyLimitFromDb(cardId: string): Promise<number | null> {
-  const { data, error } = await supabaseAdmin.rpc('get_card_daily_limit_server', {
-    p_card_id: cardId
-  });
-
-  if (error) {
-    console.warn(`[SessionTracker] Failed to get daily limit for card ${cardId}:`, error);
-    return null;
-  }
-
-  return data; // NULL means unlimited
+export async function recordDailyAccess(_cardId: string): Promise<number> {
+  console.warn(`[SessionTracker] recordDailyAccess is deprecated. Use recordTokenDailyAccess instead.`);
+  return 0; // No-op - use recordTokenDailyAccess instead
 }
 
 /**
- * Get current daily scan count from Redis
+ * @deprecated Rollback is now handled at token level
  */
-async function getCurrentDailyScans(cardId: string): Promise<number> {
-  if (!isRedisConfigured()) return 0;
-  const date = getCurrentDate();
-  const count = await redis.get(DAILY_SCANS_KEY(cardId, date));
-  return count ? parseInt(count as string, 10) : 0;
+export async function rollbackDailyAccess(_cardId: string): Promise<void> {
+  // No-op - rollback is now handled at token level
 }
 
 /**
- * Check if card has reached daily scan limit
+ * @deprecated Use invalidateTokenDailyLimit instead. Daily limits are now per-token.
  */
-export async function checkDailyLimit(cardId: string): Promise<DailyLimitCheckResult> {
-  const isDebug = process.env.DEBUG_USAGE === 'true';
-
-  if (!isRedisConfigured()) {
-    return { allowed: true, currentScans: 0, dailyLimit: null, reason: 'Redis not configured' };
-  }
-
-  try {
-    const dailyLimit = await getCardDailyLimit(cardId);
-    if (dailyLimit === null) {
-      return { allowed: true, currentScans: 0, dailyLimit: null, reason: 'No daily limit configured' };
-    }
-
-    const currentScans = await getCurrentDailyScans(cardId);
-    
-    if (isDebug) console.log(`[SessionTracker] Card ${cardId.slice(0, 8)}... daily: ${currentScans}/${dailyLimit}`);
-
-    if (currentScans < dailyLimit) {
-      return { allowed: true, currentScans, dailyLimit, reason: 'Within daily limit' };
-    }
-
-    console.log(`[SessionTracker] ❌ Daily limit reached for card ${cardId.slice(0, 8)}...: ${currentScans}/${dailyLimit}`);
-    return {
-      allowed: false,
-      currentScans,
-      dailyLimit,
-      reason: `Daily access limit reached (${dailyLimit}/day). Please try again tomorrow.`
-    };
-  } catch (error) {
-    console.error('[SessionTracker] Daily limit check error:', error);
-    return { allowed: true, currentScans: 0, dailyLimit: null, reason: 'Error checking - allowing access' };
-  }
-}
-
-/**
- * Record daily access
- */
-export async function recordDailyAccess(cardId: string): Promise<number> {
-  if (!isRedisConfigured()) return 0;
-
-  const date = getCurrentDate();
-  const key = DAILY_SCANS_KEY(cardId, date);
-  const newCount = await redis.incr(key);
-  
-  if (newCount === 1) {
-    await redis.expire(key, DAILY_CACHE_TTL);
-  }
-
-  return newCount;
-}
-
-/**
- * Rollback daily access if session ultimately denied
- */
-export async function rollbackDailyAccess(cardId: string): Promise<void> {
-  if (!isRedisConfigured()) return;
-  const date = getCurrentDate();
-  await redis.decr(DAILY_SCANS_KEY(cardId, date));
-}
-
-/**
- * Invalidate card's cached daily limit
- */
-export async function invalidateCardDailyLimit(cardId: string): Promise<void> {
-  if (!isRedisConfigured()) return;
-  await redis.del(DAILY_LIMIT_KEY(cardId));
+export async function invalidateCardDailyLimit(_cardId: string): Promise<void> {
+  console.warn(`[SessionTracker] invalidateCardDailyLimit is deprecated. Use invalidateTokenDailyLimit instead.`);
+  // No-op - limits are now per-token
 }
 
 /**
@@ -405,13 +329,13 @@ export async function checkSessionAllowed(
       };
     }
 
-    // Get card's AI-enabled status and calculate session cost (from env vars)
-    const isAiEnabled = await getCardAiEnabled(cardId);
-    const sessionCost = getSessionCost(isAiEnabled);
-    
     // Get user's tier and available budget (Redis is source of truth)
     const { tier, budgetAvailable } = await getOrInitUserInfo(userId);
     const budgetRemaining = budgetAvailable;
+
+    // Get card's AI-enabled status and calculate session cost (from env vars)
+    const isAiEnabled = await getCardAiEnabled(cardId);
+    const sessionCost = getSessionCost(isAiEnabled, tier);
     
     if (isDebug) {
       console.log(`[SessionTracker] User ${userId.slice(0, 8)}... tier=${tier} budgetAvailable=$${budgetAvailable}`);
@@ -657,7 +581,7 @@ export async function checkAndIncrementUsage(
   allowed: boolean;
   currentUsage: number;
   limit: number;
-  tier: 'free' | 'premium';
+  tier: 'free' | 'starter' | 'premium';
   isOverage: boolean;
   needsDbCheck: boolean;
   reason: string;
@@ -752,7 +676,7 @@ export async function logAccess(
 ): Promise<void> {
   // Determine AI-enabled and cost if not provided
   const effectiveIsAiEnabled = isAiEnabled ?? await getCardAiEnabled(cardId);
-  const effectiveCost = sessionCostUsd ?? (isOwnerAccess ? 0 : getSessionCost(effectiveIsAiEnabled));
+  const effectiveCost = sessionCostUsd ?? (isOwnerAccess ? 0 : getSessionCost(effectiveIsAiEnabled, tier as 'free' | 'starter' | 'premium'));
   const effectiveSessionId = sessionId || visitorHash;
 
   if (!isRedisConfigured()) {
@@ -916,9 +840,12 @@ export async function getUsageStats(userId: string): Promise<{
   const month = getCurrentMonth();
   
   // Total budget from config
-  const monthlyBudget = tier === 'premium' 
-    ? SubscriptionConfig.premium.monthlyBudgetUsd 
-    : 0;
+  let monthlyBudget = 0;
+  if (tier === 'premium') {
+    monthlyBudget = SubscriptionConfig.premium.monthlyBudgetUsd;
+  } else if (tier === 'starter') {
+    monthlyBudget = SubscriptionConfig.starter.monthlyBudgetUsd;
+  }
   const budgetConsumed = Math.max(0, monthlyBudget - budgetAvailable);
   
   let aiSessions = 0;
@@ -950,9 +877,12 @@ export async function resetUsage(userId: string): Promise<void> {
   const { tier } = await getSubscriptionFromDb(userId);
   
   // Set available budget to full monthly budget (from config)
-  const fullBudget = tier === 'premium' 
-    ? SubscriptionConfig.premium.monthlyBudgetUsd 
-    : 0;
+  let fullBudget = 0;
+  if (tier === 'premium') {
+    fullBudget = SubscriptionConfig.premium.monthlyBudgetUsd;
+  } else if (tier === 'starter') {
+    fullBudget = SubscriptionConfig.starter.monthlyBudgetUsd;
+  }
   
   await Promise.all([
     redis.set(BUDGET_KEY(userId, month), fullBudget.toString(), { ex: CACHE_TTL }),
@@ -966,13 +896,17 @@ export async function resetUsage(userId: string): Promise<void> {
 /**
  * Update user's tier in Redis (called when subscription changes)
  */
-export async function updateUserTier(userId: string, newTier: 'free' | 'premium'): Promise<void> {
+export async function updateUserTier(userId: string, newTier: 'free' | 'starter' | 'premium'): Promise<void> {
   if (!isRedisConfigured()) return;
 
   const month = getCurrentMonth();
-  const newBudget = newTier === 'premium' 
-    ? SubscriptionConfig.premium.monthlyBudgetUsd 
-    : 0;
+  let newBudget = 0;
+  
+  if (newTier === 'premium') {
+    newBudget = SubscriptionConfig.premium.monthlyBudgetUsd;
+  } else if (newTier === 'starter') { 
+    newBudget = SubscriptionConfig.starter.monthlyBudgetUsd;
+  }
 
   await Promise.all([
     redis.set(TIER_KEY(userId), newTier, { ex: CACHE_TTL }),
@@ -983,19 +917,172 @@ export async function updateUserTier(userId: string, newTier: 'free' | 'premium'
 }
 
 /**
- * Get daily access stats for a card (for display purposes)
+ * @deprecated Stats are now per-token, not per-card.
+ * This function returns placeholder values for backward compatibility.
  */
-export async function getDailyAccessStats(cardId: string): Promise<{
+export async function getDailyAccessStats(_cardId: string): Promise<{
   dailyLimit: number | null;
-  currentScans: number;
+  currentSessions: number;
   remaining: number | null;
 }> {
-  const dailyLimit = await getCardDailyLimit(cardId);
-  const currentScans = await getCurrentDailyScans(cardId);
+  console.warn(`[SessionTracker] getDailyAccessStats is deprecated. Stats are now per-token.`);
+  return {
+    dailyLimit: null,
+    currentSessions: 0,
+    remaining: null
+  };
+}
+
+// ============================================================================
+// TOKEN-BASED ACCESS TRACKING (Per-QR Code)
+// ============================================================================
+
+/**
+ * Get current daily session count for a token from Redis
+ */
+async function getCurrentTokenDailySessions(tokenId: string): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+  const date = getCurrentDate();
+  const count = await redis.get(TOKEN_DAILY_SESSIONS_KEY(tokenId, date));
+  return count ? parseInt(count as string, 10) : 0;
+}
+
+/**
+ * Get current monthly session count for a token from Redis
+ */
+async function getCurrentTokenMonthlySessions(tokenId: string): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+  const month = getCurrentMonth();
+  const count = await redis.get(TOKEN_MONTHLY_SESSIONS_KEY(tokenId, month));
+  return count ? parseInt(count as string, 10) : 0;
+}
+
+/**
+ * Check if token has reached daily session limit
+ * @param tokenId - The access token ID
+ * @param dailyLimit - The daily limit from the database (null = unlimited)
+ */
+export async function checkTokenDailyLimit(
+  tokenId: string, 
+  dailyLimit: number | null
+): Promise<DailyLimitCheckResult> {
+  const isDebug = process.env.DEBUG_USAGE === 'true';
+
+  if (!isRedisConfigured()) {
+    return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'Redis not configured' };
+  }
+
+  try {
+    // If no limit configured, always allow
+    if (dailyLimit === null || dailyLimit === undefined) {
+      return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'No daily limit configured' };
+    }
+
+    const currentSessions = await getCurrentTokenDailySessions(tokenId);
+    
+    if (isDebug) {
+      console.log(`[SessionTracker] Token ${tokenId.slice(0, 8)}... daily: ${currentSessions}/${dailyLimit}`);
+    }
+
+    if (currentSessions < dailyLimit) {
+      return { allowed: true, currentSessions, dailyLimit, reason: 'Within daily limit' };
+    }
+
+    console.log(`[SessionTracker] ❌ Daily limit reached for token ${tokenId.slice(0, 8)}...: ${currentSessions}/${dailyLimit}`);
+    return {
+      allowed: false,
+      currentSessions,
+      dailyLimit,
+      reason: `Daily session limit reached (${dailyLimit}/day). Please try again tomorrow.`
+    };
+  } catch (error) {
+    console.error('[SessionTracker] Token daily limit check error:', error);
+    return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'Error checking - allowing access' };
+  }
+}
+
+/**
+ * Record daily access for a token
+ */
+export async function recordTokenDailyAccess(tokenId: string): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+
+  const date = getCurrentDate();
+  const key = TOKEN_DAILY_SESSIONS_KEY(tokenId, date);
+  const newCount = await redis.incr(key);
+  
+  // Set TTL to 2 days (covers today + tomorrow for timezone edge cases)
+  if (newCount === 1) {
+    await redis.expire(key, DAILY_CACHE_TTL);
+  }
+
+  return newCount;
+}
+
+/**
+ * Record monthly access for a token
+ */
+export async function recordTokenMonthlyAccess(tokenId: string): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+
+  const month = getCurrentMonth();
+  const key = TOKEN_MONTHLY_SESSIONS_KEY(tokenId, month);
+  const newCount = await redis.incr(key);
+  
+  // Set TTL to 35 days (covers full month + buffer)
+  if (newCount === 1) {
+    await redis.expire(key, CACHE_TTL);
+  }
+
+  return newCount;
+}
+
+/**
+ * Invalidate token's cached daily limit
+ */
+export async function invalidateTokenDailyLimit(tokenId: string): Promise<void> {
+  if (!isRedisConfigured()) return;
+  await redis.del(TOKEN_DAILY_LIMIT_KEY(tokenId));
+}
+
+/**
+ * Update token session counters in database (async, for display purposes)
+ * Called after successful session recording
+ */
+export async function updateTokenSessionCounters(tokenId: string): Promise<void> {
+  try {
+    const dailySessions = await getCurrentTokenDailySessions(tokenId);
+    const monthlySessions = await getCurrentTokenMonthlySessions(tokenId);
+    
+    // Update DB via stored procedure (async, non-blocking)
+    await supabaseAdmin.rpc('update_token_session_counters_server', {
+      p_token_id: tokenId,
+      p_daily_sessions: dailySessions,
+      p_monthly_sessions: monthlySessions,
+      p_total_sessions: 1 // Increment by 1 (handled in stored proc)
+    });
+  } catch (error) {
+    console.error('[SessionTracker] Failed to update token counters:', error);
+    // Non-critical - Redis is source of truth
+  }
+}
+
+/**
+ * Get token session stats (for display purposes)
+ */
+export async function getTokenSessionStats(tokenId: string, dailyLimit: number | null): Promise<{
+  dailyLimit: number | null;
+  dailySessions: number;
+  monthlySessions: number;
+  dailyRemaining: number | null;
+}> {
+  const dailySessions = await getCurrentTokenDailySessions(tokenId);
+  const monthlySessions = await getCurrentTokenMonthlySessions(tokenId);
 
   return {
     dailyLimit,
-    currentScans,
-    remaining: dailyLimit === null ? null : Math.max(0, dailyLimit - currentScans)
+    dailySessions,
+    monthlySessions,
+    dailyRemaining: dailyLimit === null ? null : Math.max(0, dailyLimit - dailySessions)
   };
 }

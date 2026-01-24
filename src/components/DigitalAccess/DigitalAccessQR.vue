@@ -1,240 +1,319 @@
 <template>
   <div class="space-y-6">
-    <!-- Header -->
-    <div class="text-center">
-      <h3 class="text-lg font-semibold text-slate-900 mb-2">{{ $t('digital_access.qr_code') }}</h3>
-      <p class="text-slate-600 text-sm">{{ $t('digital_access.qr_code_description') }}</p>
+    <!-- Header with Add Button -->
+    <div class="flex items-center justify-between">
+      <div>
+        <h3 class="text-lg font-semibold text-slate-900">{{ $t('digital_access.qr_codes_title') }}</h3>
+        <p class="text-slate-600 text-sm">{{ $t('digital_access.qr_codes_description') }}</p>
+      </div>
+      <Button 
+        v-if="!readOnly"
+        :label="$t('digital_access.add_qr_code')"
+        icon="pi pi-plus"
+        size="small"
+        class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0"
+        @click="showAddDialog = true"
+      />
     </div>
 
-    <!-- Access Control Card -->
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-      <div class="p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div 
-              class="p-2 rounded-lg"
-              :class="isAccessEnabled ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-gradient-to-r from-slate-400 to-slate-500'"
-            >
-              <i :class="isAccessEnabled ? 'pi pi-lock-open' : 'pi pi-lock'" class="text-white"></i>
-            </div>
-            <div>
-              <h4 class="font-semibold text-slate-900">{{ $t('digital_access.access_control') }}</h4>
-              <p class="text-xs text-slate-500">{{ $t('digital_access.access_control_desc') }}</p>
-            </div>
-          </div>
-          <div class="flex items-center gap-4">
-            <span 
-              class="text-sm font-medium"
-              :class="isAccessEnabled ? 'text-emerald-600' : 'text-slate-500'"
-            >
-              {{ isAccessEnabled ? $t('digital_access.access_enabled') : $t('digital_access.access_disabled') }}
-            </span>
-            <ToggleSwitch 
-              v-if="!readOnly"
-              :modelValue="isAccessEnabled" 
-              @update:modelValue="handleToggleAccess"
-              :disabled="isTogglingAccess"
-            />
-          </div>
+    <!-- Monthly Stats Summary -->
+    <div class="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-xl shadow-lg p-5 text-white">
+      <div class="flex items-center gap-2 mb-3">
+        <i class="pi pi-calendar text-emerald-400"></i>
+        <h4 class="text-sm font-medium text-slate-400 uppercase tracking-wider">{{ $t('digital_access.monthly_summary') }}</h4>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="text-center">
+          <p class="text-2xl font-bold text-white">{{ monthlyStats?.totalMonthlySessions || 0 }}</p>
+          <p class="text-xs text-slate-400">{{ $t('digital_access.this_month') }}</p>
         </div>
+        <div class="text-center">
+          <p class="text-2xl font-bold text-white">{{ monthlyStats?.totalDailySessions || 0 }}</p>
+          <p class="text-xs text-slate-400">{{ $t('digital_access.today') }}</p>
+        </div>
+        <div class="text-center">
+          <p class="text-2xl font-bold text-white">{{ monthlyStats?.totalAllTimeSessions || 0 }}</p>
+          <p class="text-xs text-slate-400">{{ $t('digital_access.all_time') }}</p>
+        </div>
+        <div class="text-center">
+          <p class="text-2xl font-bold text-emerald-400">{{ monthlyStats?.activeQrCodes || 0 }}</p>
+          <p class="text-xs text-slate-400">{{ $t('digital_access.active_qr_codes') }} / {{ monthlyStats?.totalQrCodes || 0 }}</p>
+        </div>
+      </div>
+      <div class="mt-3 text-xs text-slate-500 text-center">
+        {{ $t('digital_access.billing_period') }}: {{ formatDate(monthlyStats?.monthStart) }} - {{ formatDate(monthlyStats?.monthEnd) }}
       </div>
     </div>
 
-    <!-- Main QR Card -->
-    <div 
-      class="bg-white rounded-xl shadow-lg border overflow-hidden transition-all duration-300"
-      :class="isAccessEnabled ? 'border-slate-200' : 'border-red-200 opacity-75'"
-    >
-      <!-- Header -->
+    <!-- Loading State -->
+    <div v-if="isLoading" class="flex items-center justify-center py-12">
+      <ProgressSpinner />
+    </div>
+
+    <!-- QR Codes List -->
+    <div v-else-if="accessTokens.length > 0" class="space-y-4">
       <div 
-        class="p-4 border-b"
-        :class="isAccessEnabled 
-          ? 'border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100' 
-          : 'border-red-200 bg-gradient-to-r from-red-50 to-orange-50'"
+        v-for="token in accessTokens" 
+        :key="token.id"
+        class="bg-white rounded-xl shadow-lg border overflow-hidden transition-all duration-200"
+        :class="token.is_enabled ? 'border-slate-200 hover:border-blue-200' : 'border-slate-300 opacity-75'"
       >
-        <div class="flex items-center justify-between">
+        <!-- Token Header -->
+        <div 
+          class="p-4 border-b flex items-center justify-between cursor-pointer"
+          :class="token.is_enabled ? 'bg-slate-50 border-slate-200' : 'bg-slate-100 border-slate-300'"
+          @click="toggleTokenExpanded(token.id)"
+        >
           <div class="flex items-center gap-3">
             <div 
               class="p-2 rounded-lg"
-              :class="isAccessEnabled 
+              :class="token.is_enabled 
                 ? 'bg-gradient-to-r from-blue-500 to-purple-500' 
-                : 'bg-gradient-to-r from-red-400 to-orange-400'"
+                : 'bg-slate-400'"
             >
               <i class="pi pi-qrcode text-white"></i>
             </div>
             <div>
-              <h4 class="font-semibold text-slate-900">{{ cardName }}</h4>
-              <p class="text-xs text-slate-500">{{ $t('digital_access.content_name') }}</p>
+              <h4 class="font-semibold text-slate-900">{{ token.name }}</h4>
+              <p class="text-xs text-slate-500">
+                {{ $t('digital_access.monthly') }}: {{ token.monthly_sessions || 0 }} · 
+                {{ $t('digital_access.today') }}: {{ token.daily_sessions || 0 }}
+                <span v-if="token.daily_session_limit"> / {{ token.daily_session_limit }}</span>
+              </p>
             </div>
           </div>
-          <!-- Refresh QR Button (hidden in read-only mode) -->
-          <Button 
-            v-if="!readOnly"
-            :label="$t('digital_access.refresh_qr')"
-            icon="pi pi-refresh"
-            severity="warning"
-            outlined
-            size="small"
-            @click="handleRefreshToken"
-            :loading="isRefreshing"
-            v-tooltip.left="$t('digital_access.refresh_qr_tooltip')"
-          />
+          <div class="flex items-center gap-3">
+            <span 
+              class="text-sm font-medium px-2 py-1 rounded-full"
+              :class="token.is_enabled 
+                ? 'bg-emerald-100 text-emerald-700' 
+                : 'bg-slate-200 text-slate-600'"
+            >
+              {{ token.is_enabled ? $t('common.active') : $t('common.inactive') }}
+            </span>
+            <i 
+              class="pi transition-transform duration-200"
+              :class="expandedTokenId === token.id ? 'pi-chevron-up' : 'pi-chevron-down'"
+            ></i>
+          </div>
         </div>
-      </div>
-      
-      <!-- Access Disabled Warning -->
-      <div v-if="!isAccessEnabled" class="px-6 pt-4">
-        <div class="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-lg">
-          <i class="pi pi-exclamation-triangle text-red-600"></i>
-          <p class="text-sm text-red-700">{{ $t('digital_access.qr_disabled_warning') }}</p>
-        </div>
-      </div>
-      
-      <div class="p-6 lg:p-8">
-        <div class="flex flex-col lg:flex-row items-center gap-8">
-          <!-- QR Code Display -->
-          <div class="flex-shrink-0">
-            <div class="relative group">
-              <!-- Decorative rings with hover effect -->
-              <div 
-                class="absolute -inset-4 rounded-3xl transition-all duration-300"
-                :class="isAccessEnabled 
-                  ? 'bg-gradient-to-r from-blue-500/10 to-purple-500/10 group-hover:from-blue-500/20 group-hover:to-purple-500/20' 
-                  : 'bg-gradient-to-r from-slate-300/20 to-slate-400/20'"
-              ></div>
-              <div 
-                class="absolute -inset-2 rounded-2xl"
-                :class="isAccessEnabled 
-                  ? 'bg-gradient-to-r from-blue-500/5 to-purple-500/5' 
-                  : 'bg-gradient-to-r from-slate-300/10 to-slate-400/10'"
-              ></div>
-              <!-- QR Code -->
-              <div 
-                class="relative bg-white p-5 rounded-xl border-2 shadow-lg transition-all duration-300"
-                :class="isAccessEnabled 
-                  ? 'border-slate-200 group-hover:shadow-xl group-hover:border-blue-200' 
-                  : 'border-slate-300 grayscale'"
-              >
-                <QrCode :value="accessUrl" :size="200" level="M" />
-                <!-- Disabled Overlay -->
+
+        <!-- Expanded Content -->
+        <div v-if="expandedTokenId === token.id" class="p-6">
+          <div class="flex flex-col lg:flex-row items-center gap-8">
+            <!-- QR Code Display -->
+            <div class="flex-shrink-0">
+              <div class="relative group">
                 <div 
-                  v-if="!isAccessEnabled" 
-                  class="absolute inset-0 bg-white/60 flex items-center justify-center rounded-xl"
+                  class="relative bg-white p-4 rounded-xl border-2 shadow-lg"
+                  :class="token.is_enabled ? 'border-slate-200' : 'border-slate-300 grayscale'"
                 >
-                  <div class="text-center">
-                    <i class="pi pi-lock text-4xl text-slate-400 mb-2"></i>
-                    <p class="text-sm font-medium text-slate-500">{{ $t('digital_access.disabled') }}</p>
+                  <QrCode :value="getAccessUrl(token.access_token)" :size="160" level="M" />
+                  <div 
+                    v-if="!token.is_enabled" 
+                    class="absolute inset-0 bg-white/60 flex items-center justify-center rounded-xl"
+                  >
+                    <i class="pi pi-lock text-3xl text-slate-400"></i>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-          
-          <!-- QR Code Info & Actions -->
-          <div class="flex-1 w-full text-center lg:text-left space-y-5">
-            <!-- URL Display -->
-            <div>
-              <label class="text-xs font-medium text-slate-500 uppercase tracking-wider">{{ $t('digital_access.access_url') }}</label>
-              <div class="mt-2 flex items-center gap-2 bg-slate-50 rounded-lg p-3 border border-slate-200">
-                <code class="flex-1 text-sm text-slate-700 break-all font-mono">{{ accessUrl }}</code>
+
+            <!-- Token Info & Actions -->
+            <div class="flex-1 w-full space-y-4">
+              <!-- URL Display -->
+              <div>
+                <label class="text-xs font-medium text-slate-500 uppercase tracking-wider">{{ $t('digital_access.access_url') }}</label>
+                <div class="mt-1 flex items-center gap-2 bg-slate-50 rounded-lg p-2 border border-slate-200">
+                  <code class="flex-1 text-xs text-slate-700 break-all font-mono">{{ getAccessUrl(token.access_token) }}</code>
+                  <Button 
+                    icon="pi pi-copy"
+                    severity="secondary"
+                    text
+                    rounded
+                    size="small"
+                    @click="copyUrl(token.access_token)"
+                    :disabled="!token.is_enabled"
+                  />
+                </div>
+              </div>
+
+              <!-- Stats -->
+              <div class="grid grid-cols-3 gap-2 text-center">
+                <div class="bg-slate-50 rounded-lg p-2">
+                  <p class="text-lg font-bold text-slate-900">{{ token.total_sessions || 0 }}</p>
+                  <p class="text-xs text-slate-500">{{ $t('digital_access.total') }}</p>
+                </div>
+                <div class="bg-slate-50 rounded-lg p-2">
+                  <p class="text-lg font-bold text-slate-900">{{ token.monthly_sessions || 0 }}</p>
+                  <p class="text-xs text-slate-500">{{ $t('digital_access.monthly') }}</p>
+                </div>
+                <div class="bg-slate-50 rounded-lg p-2">
+                  <p class="text-lg font-bold text-slate-900">{{ token.daily_sessions || 0 }}</p>
+                  <p class="text-xs text-slate-500">{{ $t('digital_access.daily') }}</p>
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div v-if="!readOnly" class="flex flex-wrap gap-2">
                 <Button 
-                  icon="pi pi-copy"
-                  severity="secondary"
-                  text
-                  rounded
+                  :label="$t('digital_access.download_qr')"
+                  icon="pi pi-download"
                   size="small"
-                  @click="copyUrl"
-                  v-tooltip.top="$t('common.copy')"
-                  :disabled="!isAccessEnabled"
+                  @click="downloadQrCode(token)"
+                  :disabled="!token.is_enabled"
+                />
+                <Button 
+                  icon="pi pi-external-link"
+                  severity="secondary"
+                  outlined
+                  size="small"
+                  @click="openPreview(token.access_token)"
+                  :disabled="!token.is_enabled"
+                  v-tooltip="$t('digital_access.open_preview')"
+                />
+                <Button 
+                  :icon="token.is_enabled ? 'pi pi-pause' : 'pi pi-play'"
+                  :severity="token.is_enabled ? 'warning' : 'success'"
+                  outlined
+                  size="small"
+                  @click="toggleTokenEnabled(token)"
+                  :loading="togglingTokenId === token.id"
+                  v-tooltip="token.is_enabled ? $t('digital_access.disable') : $t('digital_access.enable')"
+                />
+                <Button 
+                  icon="pi pi-pencil"
+                  severity="secondary"
+                  outlined
+                  size="small"
+                  @click="editToken(token)"
+                  v-tooltip="$t('common.edit')"
+                />
+                <Button 
+                  icon="pi pi-refresh"
+                  severity="warning"
+                  outlined
+                  size="small"
+                  @click="refreshToken(token)"
+                  :loading="refreshingTokenId === token.id"
+                  v-tooltip="$t('digital_access.refresh_qr_tooltip')"
+                />
+                <Button 
+                  icon="pi pi-trash"
+                  severity="danger"
+                  outlined
+                  size="small"
+                  @click="confirmDeleteToken(token)"
+                  :disabled="accessTokens.length <= 1"
+                  v-tooltip="accessTokens.length <= 1 ? $t('digital_access.cannot_delete_last') : $t('common.delete')"
                 />
               </div>
             </div>
-            
-            <!-- Action Buttons -->
-            <div class="flex flex-wrap gap-3 justify-center lg:justify-start">
-              <Button 
-                :label="$t('digital_access.download_qr')"
-                icon="pi pi-download"
-                @click="downloadQrCode"
-                class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0"
-                :disabled="!isAccessEnabled"
-              />
-              <Button 
-                :label="$t('digital_access.open_preview')"
-                icon="pi pi-external-link"
-                severity="secondary"
-                outlined
-                @click="openPreview"
-                :disabled="!isAccessEnabled"
-              />
-            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Usage Stats -->
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-      <div class="p-4 border-b border-slate-100 bg-slate-50/50">
-        <div class="grid grid-cols-3 gap-4">
-          <div class="text-center">
-            <div class="flex items-center justify-center gap-2 mb-1">
-              <i class="pi pi-eye text-blue-600 text-sm"></i>
-              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">{{ $t('digital_access.total_scans') }}</span>
-            </div>
-            <p class="text-2xl font-bold text-slate-900">{{ formatNumber(card.current_scans || 0) }}</p>
-            <p v-if="card.max_scans" class="text-xs text-slate-400 mt-0.5">/ {{ formatNumber(card.max_scans) }}</p>
-          </div>
-          <div class="text-center border-x border-slate-200">
-            <div class="flex items-center justify-center gap-2 mb-1">
-              <i class="pi pi-calendar text-purple-600 text-sm"></i>
-              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">{{ $t('digital_access.today_scans') }}</span>
-            </div>
-            <p class="text-2xl font-bold text-slate-900">{{ card.daily_scans || 0 }}</p>
-            <p v-if="card.daily_scan_limit" class="text-xs text-slate-400 mt-0.5">/ {{ card.daily_scan_limit }}</p>
-          </div>
-          <div class="text-center">
-            <div class="flex items-center justify-center gap-2 mb-1">
-              <i class="pi pi-check-circle text-emerald-600 text-sm"></i>
-              <span class="text-xs font-medium text-slate-500 uppercase tracking-wider">{{ $t('common.status') }}</span>
-            </div>
-            <p class="text-2xl font-bold" :class="isCardActive ? 'text-emerald-600' : 'text-red-600'">
-              {{ isCardActive ? $t('common.active') : $t('common.inactive') }}
-            </p>
-          </div>
-        </div>
-      </div>
+    <!-- Empty State -->
+    <div v-else class="text-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+      <i class="pi pi-qrcode text-4xl text-slate-400 mb-3"></i>
+      <p class="text-slate-600">{{ $t('digital_access.no_qr_codes') }}</p>
+      <Button 
+        v-if="!readOnly"
+        :label="$t('digital_access.create_first_qr')"
+        icon="pi pi-plus"
+        size="small"
+        class="mt-4"
+        @click="showAddDialog = true"
+      />
     </div>
 
-    <!-- Tips Card (hidden in read-only mode) -->
-    <div v-if="!readOnly" class="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 p-5">
+    <!-- Add/Edit Dialog -->
+    <Dialog 
+      v-model:visible="showAddDialog" 
+      :header="editingToken ? $t('digital_access.edit_qr_code') : $t('digital_access.add_qr_code')"
+      :style="{ width: '450px' }"
+      :modal="true"
+    >
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ $t('digital_access.qr_name') }}</label>
+          <InputText 
+            v-model="formData.name" 
+            class="w-full" 
+            :placeholder="$t('digital_access.qr_name_placeholder')"
+          />
+          <p class="text-xs text-slate-500 mt-1">{{ $t('digital_access.qr_name_hint') }}</p>
+        </div>
+        
+        <div>
+          <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <span class="text-sm font-medium text-slate-700">{{ $t('digital_access.enable_daily_limit') }}</span>
+            <ToggleSwitch v-model="formData.hasDailyLimit" />
+          </div>
+        </div>
+
+        <div v-if="formData.hasDailyLimit">
+          <label class="block text-sm font-medium text-slate-700 mb-1">{{ $t('digital_access.daily_limit') }}</label>
+          <InputNumber 
+            v-model="formData.daily_session_limit"
+            :min="1"
+            :max="100000"
+            showButtons
+            class="w-full"
+          />
+          <p class="text-xs text-slate-500 mt-1">{{ $t('digital_access.daily_limit_hint') }}</p>
+        </div>
+      </div>
+      
+      <template #footer>
+        <Button 
+          :label="$t('common.cancel')" 
+          severity="secondary" 
+          outlined
+          @click="closeDialog" 
+        />
+        <Button 
+          :label="editingToken ? $t('common.save') : $t('common.create')"
+          icon="pi pi-check"
+          @click="saveToken" 
+          :loading="isSaving"
+        />
+      </template>
+    </Dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <Dialog 
+      v-model:visible="showDeleteDialog" 
+      :header="$t('digital_access.delete_qr_confirm_title')"
+      :style="{ width: '400px' }"
+      :modal="true"
+    >
       <div class="flex items-start gap-4">
-        <div class="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex-shrink-0">
-          <i class="pi pi-lightbulb text-white"></i>
+        <div class="p-3 bg-red-100 rounded-full flex-shrink-0">
+          <i class="pi pi-exclamation-triangle text-red-600 text-xl"></i>
         </div>
         <div>
-          <h4 class="font-semibold text-slate-900 mb-2">{{ $t('digital_access.qr_tips_title') }}</h4>
-          <ul class="space-y-1.5 text-sm text-slate-700">
-            <li class="flex items-start gap-2">
-              <i class="pi pi-check text-blue-600 text-xs mt-1"></i>
-              <span>{{ $t('digital_access.qr_tip_1') }}</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <i class="pi pi-check text-blue-600 text-xs mt-1"></i>
-              <span>{{ $t('digital_access.qr_tip_2') }}</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <i class="pi pi-check text-blue-600 text-xs mt-1"></i>
-              <span>{{ $t('digital_access.qr_tip_3') }}</span>
-            </li>
-            <li class="flex items-start gap-2">
-              <i class="pi pi-check text-blue-600 text-xs mt-1"></i>
-              <span>{{ $t('digital_access.qr_tip_refresh') }}</span>
-            </li>
-          </ul>
+          <p class="text-slate-700 mb-2">{{ $t('digital_access.delete_qr_confirm_message') }}</p>
+          <p class="text-sm text-slate-600 font-medium">"{{ deletingToken?.name }}"</p>
         </div>
       </div>
-    </div>
+      <template #footer>
+        <Button 
+          :label="$t('common.cancel')" 
+          severity="secondary" 
+          outlined
+          @click="showDeleteDialog = false" 
+        />
+        <Button 
+          :label="$t('common.delete')"
+          severity="danger"
+          icon="pi pi-trash"
+          @click="deleteToken" 
+          :loading="isDeleting"
+        />
+      </template>
+    </Dialog>
 
     <!-- Refresh Confirmation Dialog -->
     <Dialog 
@@ -242,7 +321,6 @@
       :header="$t('digital_access.refresh_qr_confirm_title')"
       :style="{ width: '450px' }"
       :modal="true"
-      :closable="true"
     >
       <div class="flex items-start gap-4">
         <div class="p-3 bg-amber-100 rounded-full flex-shrink-0">
@@ -268,7 +346,7 @@
           severity="warning"
           icon="pi pi-refresh"
           @click="confirmRefreshToken" 
-          :loading="isRefreshing"
+          :loading="refreshingTokenId !== null"
         />
       </template>
     </Dialog>
@@ -276,13 +354,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useI18n } from 'vue-i18n'
-import { useCardStore, type Card } from '@/stores/card'
+import { useCardStore, type Card, type AccessToken } from '@/stores/card'
 import Button from 'primevue/button'
 import Dialog from 'primevue/dialog'
+import InputText from 'primevue/inputtext'
+import InputNumber from 'primevue/inputnumber'
 import ToggleSwitch from 'primevue/toggleswitch'
+import ProgressSpinner from 'primevue/progressspinner'
 import QrCode from 'qrcode.vue'
 import * as QRCodeLib from 'qrcode'
 
@@ -303,109 +384,84 @@ const emit = defineEmits<{
 }>()
 
 // State
-const isTogglingAccess = ref(false)
-const isRefreshing = ref(false)
+const isLoading = ref(false)
+const accessTokens = ref<AccessToken[]>([])
+const expandedTokenId = ref<string | null>(null)
+const monthlyStats = ref<{
+  monthStart: string
+  monthEnd: string
+  totalMonthlySessions: number
+  totalDailySessions: number
+  totalAllTimeSessions: number
+  activeQrCodes: number
+  totalQrCodes: number
+} | null>(null)
+
+// Dialog states
+const showAddDialog = ref(false)
+const showDeleteDialog = ref(false)
 const showRefreshDialog = ref(false)
+const editingToken = ref<AccessToken | null>(null)
+const deletingToken = ref<AccessToken | null>(null)
+const refreshingToken = ref<AccessToken | null>(null)
 
-// Computed
-const accessUrl = computed(() => {
-  // Use access_token for the URL instead of card.id
-  return `${window.location.origin}/c/${props.card.access_token}`
+// Loading states
+const isSaving = ref(false)
+const isDeleting = ref(false)
+const togglingTokenId = ref<string | null>(null)
+const refreshingTokenId = ref<string | null>(null)
+
+// Form data
+const formData = ref({
+  name: '',
+  daily_session_limit: 500,
+  hasDailyLimit: true
 })
 
-const isAccessEnabled = computed(() => {
-  return props.card.is_access_enabled ?? true
-})
-
-const isCardActive = computed(() => {
-  // A digital card is active if it has not exceeded total scans and access is enabled
-  if (!isAccessEnabled.value) return false
-  if (props.card.max_scans && (props.card.current_scans || 0) >= props.card.max_scans) {
-    return false
+// Load data
+async function loadData() {
+  isLoading.value = true
+  try {
+    const [tokens, stats] = await Promise.all([
+      cardStore.fetchAccessTokens(props.card.id),
+      cardStore.getCardMonthlyStats(props.card.id)
+    ])
+    accessTokens.value = tokens
+    monthlyStats.value = stats
+    
+    // Expand first token by default if there's only one
+    if (tokens.length === 1) {
+      expandedTokenId.value = tokens[0].id
+    }
+  } catch (err) {
+    console.error('Error loading access tokens:', err)
+  } finally {
+    isLoading.value = false
   }
-  return true
-})
+}
+
+onMounted(loadData)
+
+// Watch for card changes
+watch(() => props.card.id, loadData)
 
 // Methods
-function formatNumber(num: number): string {
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
-  return num.toLocaleString()
+function getAccessUrl(token: string): string {
+  return `${window.location.origin}/c/${token}`
 }
 
-async function handleToggleAccess(newValue: boolean) {
-  isTogglingAccess.value = true
-  
+function formatDate(dateStr: string | undefined): string {
+  if (!dateStr) return '-'
+  return new Date(dateStr).toLocaleDateString()
+}
+
+function toggleTokenExpanded(tokenId: string) {
+  expandedTokenId.value = expandedTokenId.value === tokenId ? null : tokenId
+}
+
+async function copyUrl(token: string) {
   try {
-    const success = await cardStore.toggleCardAccess(props.card.id, newValue)
-    
-    if (success) {
-      toast.add({
-        severity: 'success',
-        summary: t('common.success'),
-        detail: newValue 
-          ? t('digital_access.access_enabled_success') 
-          : t('digital_access.access_disabled_success'),
-        life: 3000
-      })
-      
-      emit('updated', {
-        ...props.card,
-        is_access_enabled: newValue
-      })
-    }
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('digital_access.toggle_failed'),
-      life: 5000
-    })
-  } finally {
-    isTogglingAccess.value = false
-  }
-}
-
-function handleRefreshToken() {
-  showRefreshDialog.value = true
-}
-
-async function confirmRefreshToken() {
-  isRefreshing.value = true
-  
-  try {
-    const newToken = await cardStore.regenerateAccessToken(props.card.id)
-    
-    if (newToken) {
-      showRefreshDialog.value = false
-      
-      toast.add({
-        severity: 'success',
-        summary: t('common.success'),
-        detail: t('digital_access.token_refreshed'),
-        life: 3000
-      })
-      
-      emit('updated', {
-        ...props.card,
-        access_token: newToken
-      })
-    }
-  } catch (err: any) {
-    toast.add({
-      severity: 'error',
-      summary: t('common.error'),
-      detail: err.message || t('digital_access.refresh_failed'),
-      life: 5000
-    })
-  } finally {
-    isRefreshing.value = false
-  }
-}
-
-async function copyUrl() {
-  try {
-    await navigator.clipboard.writeText(accessUrl.value)
+    await navigator.clipboard.writeText(getAccessUrl(token))
     toast.add({
       severity: 'success',
       summary: t('common.copied'),
@@ -422,9 +478,9 @@ async function copyUrl() {
   }
 }
 
-async function downloadQrCode() {
+async function downloadQrCode(token: AccessToken) {
   try {
-    const qrDataURL = await QRCodeLib.toDataURL(accessUrl.value, { 
+    const qrDataURL = await QRCodeLib.toDataURL(getAccessUrl(token.access_token), { 
       width: 512,
       margin: 2,
       errorCorrectionLevel: 'M'
@@ -432,7 +488,7 @@ async function downloadQrCode() {
     
     const link = document.createElement('a')
     link.href = qrDataURL
-    link.download = `${props.cardName || 'digital-access'}_qr.png`
+    link.download = `${token.name || 'qr-code'}_qr.png`
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -453,11 +509,171 @@ async function downloadQrCode() {
   }
 }
 
-function openPreview() {
-  window.open(accessUrl.value, '_blank')
+function openPreview(token: string) {
+  window.open(getAccessUrl(token), '_blank')
+}
+
+async function toggleTokenEnabled(token: AccessToken) {
+  togglingTokenId.value = token.id
+  try {
+    await cardStore.toggleAccessToken(token.id, props.card.id, !token.is_enabled)
+    await loadData()
+    
+    toast.add({
+      severity: 'success',
+      summary: t('common.success'),
+      detail: token.is_enabled 
+        ? t('digital_access.qr_disabled') 
+        : t('digital_access.qr_enabled'),
+      life: 3000
+    })
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: err.message || t('digital_access.toggle_failed'),
+      life: 5000
+    })
+  } finally {
+    togglingTokenId.value = null
+  }
+}
+
+function editToken(token: AccessToken) {
+  editingToken.value = token
+  formData.value = {
+    name: token.name,
+    daily_session_limit: token.daily_session_limit || 500,
+    hasDailyLimit: token.daily_session_limit !== null
+  }
+  showAddDialog.value = true
+}
+
+function closeDialog() {
+  showAddDialog.value = false
+  editingToken.value = null
+  formData.value = {
+    name: '',
+    daily_session_limit: 500,
+    hasDailyLimit: true
+  }
+}
+
+async function saveToken() {
+  if (!formData.value.name.trim()) {
+    toast.add({
+      severity: 'warn',
+      summary: t('common.warning'),
+      detail: t('digital_access.name_required'),
+      life: 3000
+    })
+    return
+  }
+
+  isSaving.value = true
+  try {
+    const dailyLimit = formData.value.hasDailyLimit ? formData.value.daily_session_limit : null
+    
+    if (editingToken.value) {
+      // Update existing
+      await cardStore.updateAccessToken(editingToken.value.id, props.card.id, {
+        name: formData.value.name,
+        daily_session_limit: dailyLimit
+      })
+    } else {
+      // Create new
+      await cardStore.createAccessToken(props.card.id, {
+        name: formData.value.name,
+        daily_session_limit: dailyLimit
+      })
+    }
+    
+    await loadData()
+    closeDialog()
+    
+    toast.add({
+      severity: 'success',
+      summary: t('common.success'),
+      detail: editingToken.value 
+        ? t('digital_access.qr_updated') 
+        : t('digital_access.qr_created'),
+      life: 3000
+    })
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: err.message || t('digital_access.save_failed'),
+      life: 5000
+    })
+  } finally {
+    isSaving.value = false
+  }
+}
+
+function confirmDeleteToken(token: AccessToken) {
+  deletingToken.value = token
+  showDeleteDialog.value = true
+}
+
+async function deleteToken() {
+  if (!deletingToken.value) return
+  
+  isDeleting.value = true
+  try {
+    await cardStore.deleteAccessToken(deletingToken.value.id, props.card.id)
+    await loadData()
+    showDeleteDialog.value = false
+    deletingToken.value = null
+    
+    toast.add({
+      severity: 'success',
+      summary: t('common.success'),
+      detail: t('digital_access.qr_deleted'),
+      life: 3000
+    })
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: err.message || t('digital_access.delete_failed'),
+      life: 5000
+    })
+  } finally {
+    isDeleting.value = false
+  }
+}
+
+function refreshToken(token: AccessToken) {
+  refreshingToken.value = token
+  showRefreshDialog.value = true
+}
+
+async function confirmRefreshToken() {
+  if (!refreshingToken.value) return
+  
+  refreshingTokenId.value = refreshingToken.value.id
+  try {
+    await cardStore.refreshAccessToken(refreshingToken.value.id, props.card.id)
+    await loadData()
+    showRefreshDialog.value = false
+    refreshingToken.value = null
+    
+    toast.add({
+      severity: 'success',
+      summary: t('common.success'),
+      detail: t('digital_access.token_refreshed'),
+      life: 3000
+    })
+  } catch (err: any) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: err.message || t('digital_access.refresh_failed'),
+      life: 5000
+    })
+  } finally {
+    refreshingTokenId.value = null
+  }
 }
 </script>
-
-<style scoped>
-/* No custom styles - using Tailwind */
-</style>

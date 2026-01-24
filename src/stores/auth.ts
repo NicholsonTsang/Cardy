@@ -5,6 +5,9 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 
+// Track if auth listener has been set up (prevents duplicates during hot-reload)
+let authListenerInitialized = false
+
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const session = ref<Session | null>(null)
@@ -22,44 +25,54 @@ export const useAuthStore = defineStore('auth', () => {
       user.value = currentSession?.user ?? null
     }
     loading.value = false
+    
+    // Set up auth listener only once
+    setupAuthListener()
   }
 
-
-  supabase.auth.onAuthStateChange((event, newSession) => {
-    session.value = newSession
-    user.value = newSession?.user ?? null
-    loading.value = false // Ensure loading is false after any auth state change
-
-    console.log('Auth state change:', event, newSession?.user)
-
-    if (event === 'SIGNED_OUT') {
-      // Only redirect to login if the user is on a protected route (CMS pages)
-      // Don't redirect if on public routes like landing page, public card views, etc.
-      const currentPath = router.currentRoute.value.path
-      const isProtectedRoute = currentPath.startsWith('/cms') || currentPath.startsWith('/preview')
-      
-      if (isProtectedRoute) {
-        console.log('Signed out from protected route, redirecting to login')
-        router.push('/login')
-      } else {
-        console.log('Signed out on public route, staying on current page:', currentPath)
-      }
+  function setupAuthListener() {
+    // Prevent duplicate listeners during hot-reload
+    if (authListenerInitialized) {
+      return
     }
+    authListenerInitialized = true
     
-    // Handle password recovery - redirect to reset password page only if not already there
-    if (event === 'PASSWORD_RECOVERY') {
-      console.log('Password recovery event detected')
-      // Only redirect if not already on reset-password page
-      // This prevents losing the hash parameters (access_token, etc.)
-      if (router.currentRoute.value.path !== '/reset-password') {
-        console.log('Redirecting to reset-password page')
-        router.push('/reset-password')
-      } else {
-        console.log('Already on reset-password page, keeping hash parameters')
+    supabase.auth.onAuthStateChange((event, newSession) => {
+      session.value = newSession
+      user.value = newSession?.user ?? null
+      loading.value = false // Ensure loading is false after any auth state change
+
+      console.log('Auth state change:', event)
+
+      if (event === 'SIGNED_OUT') {
+        // Only redirect to login if the user is on a protected route (CMS pages)
+        // Don't redirect if on public routes like landing page, public card views, etc.
+        const currentPath = router.currentRoute.value.path
+        const isProtectedRoute = currentPath.startsWith('/cms') || currentPath.startsWith('/preview')
+        
+        if (isProtectedRoute) {
+          console.log('Signed out from protected route, redirecting to login')
+          router.push('/login')
+        } else {
+          console.log('Signed out on public route, staying on current page:', currentPath)
+        }
       }
-    }
-    // Remove automatic redirect - let router guard handle it
-  })
+      
+      // Handle password recovery - redirect to reset password page only if not already there
+      if (event === 'PASSWORD_RECOVERY') {
+        console.log('Password recovery event detected')
+        // Only redirect if not already on reset-password page
+        // This prevents losing the hash parameters (access_token, etc.)
+        if (router.currentRoute.value.path !== '/reset-password') {
+          console.log('Redirecting to reset-password page')
+          router.push('/reset-password')
+        } else {
+          console.log('Already on reset-password page, keeping hash parameters')
+        }
+      }
+      // Remove automatic redirect - let router guard handle it
+    })
+  }
 
   async function signUpWithEmail(email_value: string, password_value: string) {
     loading.value = true

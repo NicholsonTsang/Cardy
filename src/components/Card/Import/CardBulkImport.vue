@@ -1020,8 +1020,8 @@ async function importDataToDatabase(importData) {
         p_is_grouped: importData.cardData.is_grouped || false,
         p_group_display: groupDisplay,
         p_billing_type: billingType,
-        p_max_scans: importData.cardData.max_scans ?? null,
-        p_daily_scan_limit: importData.cardData.daily_scan_limit ?? 500
+        p_max_sessions: importData.cardData.max_sessions ?? null,
+        p_default_daily_session_limit: importData.cardData.default_daily_session_limit ?? 500
       })
       
       if (error) throw error

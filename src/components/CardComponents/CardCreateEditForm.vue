@@ -160,7 +160,7 @@
                         </label>
                         <div class="flex items-center gap-3 flex-wrap">
                             <InputNumber 
-                                v-model="formData.daily_scan_limit"
+                                v-model="formData.default_daily_session_limit"
                                 :disabled="isDailyLimitUnlimited"
                                 :min="1"
                                 :max="100000"
@@ -806,8 +806,8 @@ const formData = reactive({
     is_grouped: false, // Whether content is organized into categories
     group_display: 'expanded', // How grouped items display: expanded or collapsed
     billing_type: 'physical', // Default: physical card (per-card billing)
-    max_scans: null, // NULL for physical (unlimited), Integer for digital (total limit)
-    daily_scan_limit: 500 // Default daily limit for digital access
+    max_sessions: null, // NULL for physical (unlimited), Integer for digital (total limit)
+    default_daily_session_limit: 500 // Default daily limit for new QR codes
 });
 
 // Content Mode Options with descriptions and guidance
@@ -1063,10 +1063,10 @@ onMounted(() => {
 // Watch for daily limit unlimited toggle
 watch(isDailyLimitUnlimited, (isUnlimited) => {
     if (isUnlimited) {
-        formData.daily_scan_limit = null;
-    } else if (formData.daily_scan_limit === null) {
+        formData.default_daily_session_limit = null;
+    } else if (formData.default_daily_session_limit === null) {
         // Set default when switching from unlimited
-        formData.daily_scan_limit = 500;
+        formData.default_daily_session_limit = 500;
     }
 });
 
@@ -1105,11 +1105,11 @@ const initializeForm = () => {
         formData.is_grouped = props.cardProp.is_grouped || false;
         formData.group_display = props.cardProp.group_display || 'expanded';
         formData.billing_type = props.cardProp.billing_type || 'physical'; // Access mode
-        formData.max_scans = props.cardProp.max_scans || null;
-        formData.daily_scan_limit = props.cardProp.daily_scan_limit ?? 500;
+        formData.max_sessions = props.cardProp.max_sessions || null;
+        formData.default_daily_session_limit = props.cardProp.default_daily_session_limit ?? 500;
         
-        // Set unlimited toggle based on daily_scan_limit value
-        isDailyLimitUnlimited.value = props.cardProp.daily_scan_limit === null;
+        // Set unlimited toggle based on default_daily_session_limit value
+        isDailyLimitUnlimited.value = props.cardProp.default_daily_session_limit === null;
         
         // Set crop parameters if they exist
         if (formData.cropParameters) {
@@ -1147,8 +1147,8 @@ const resetForm = () => {
     formData.is_grouped = false;
     formData.group_display = 'expanded';
     formData.billing_type = 'physical'; // Reset to default access mode
-    formData.max_scans = null;
-    formData.daily_scan_limit = 500; // Reset to default daily limit
+    formData.max_sessions = null;
+    formData.default_daily_session_limit = 500; // Reset to default daily limit
     
     previewImage.value = null;
     imageFile.value = null;

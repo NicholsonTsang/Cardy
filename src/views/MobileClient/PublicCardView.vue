@@ -1,5 +1,5 @@
 <template>
-  <div class="mobile-card-container" :class="{ 'digital-mode': isDigitalMode, 'card-overview-view': isCardView }">
+  <div class="mobile-card-container" :class="{ 'card-overview-view': isCardView }">
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-container">
       <ProgressSpinner class="spinner" />
@@ -66,7 +66,11 @@
     </div>
 
     <!-- Main Content -->
-    <div v-else-if="cardData && !cardData.scan_limit_reached && !cardData.monthly_limit_exceeded && !cardData.daily_limit_exceeded && !cardData.credits_insufficient && !cardData.access_disabled" class="content-wrapper">
+    <div 
+      v-else-if="cardData && !cardData.scan_limit_reached && !cardData.monthly_limit_exceeded && !cardData.daily_limit_exceeded && !cardData.credits_insufficient && !cardData.access_disabled" 
+      class="content-wrapper"
+      ref="contentWrapperRef"
+    >
       <!-- Navigation Header (show when not on overview page) -->
       <MobileHeader 
         v-if="!isCardView"
@@ -112,10 +116,12 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, watchEffect } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
-import { useMobileLanguageStore } from '@/stores/language'
+import { useMobileLanguageStore, AVAILABLE_LANGUAGES } from '@/stores/language'
+import { isValidLanguage } from '@/router/languageRouting'
+import type { LanguageCode } from '@/stores/translation'
 import ProgressSpinner from 'primevue/progressspinner'
 import Button from 'primevue/button'
 
@@ -123,7 +129,15 @@ import Button from 'primevue/button'
 import { fetchCardContent, transformCardResponse } from '@/services/mobileApi'
 
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
 const mobileLanguageStore = useMobileLanguageStore()
+
+// Sync language from URL on component mount
+const urlLang = route.params.lang as string
+if (urlLang && isValidLanguage(urlLang)) {
+  mobileLanguageStore.syncFromUrl(urlLang)
+}
 
 // Child Components
 import MobileHeader from './components/MobileHeader.vue'
@@ -149,16 +163,17 @@ interface CardData {
   is_grouped?: boolean // Whether content is organized into categories
   group_display?: 'expanded' | 'collapsed' // How grouped items display
   billing_type?: 'physical' | 'digital' // Billing model
-  max_scans?: number | null // Total scan limit for digital
-  current_scans?: number // Current total scan count
-  daily_scan_limit?: number | null // Daily scan limit for digital
-  daily_scans?: number // Today's scan count
+  max_sessions?: number | null // Total scan limit for digital
+  total_sessions?: number // Current total scan count
+  daily_session_limit?: number | null // Daily scan limit for digital
+  daily_sessions?: number // Today's scan count
   scan_limit_reached?: boolean // TRUE if digital card has reached total limit
   monthly_limit_exceeded?: boolean // TRUE if monthly subscription access limit exceeded
   daily_limit_exceeded?: boolean // TRUE if daily access limit reached (creator protection)
   credits_insufficient?: boolean // TRUE if card owner has insufficient credits
   access_disabled?: boolean // TRUE if digital card access has been disabled by owner
   has_translation?: boolean // TRUE if card has translations available
+  subscription_tier?: string // Owner's subscription tier
 }
 
 interface ContentItem {
@@ -177,9 +192,6 @@ interface ContentItem {
 
 type ViewType = 'card' | 'content-list' | 'content-detail'
 
-// Route
-const route = useRoute()
-
 // State
 const isLoading = ref(true)
 const error = ref<string | null>(null)
@@ -197,7 +209,6 @@ const isPreviewMode = computed(() => route.meta.isPreviewMode === true)
 const isCardView = computed(() => currentView.value === 'card')
 const isContentListView = computed(() => currentView.value === 'content-list')
 const isContentDetailView = computed(() => currentView.value === 'content-detail')
-const isDigitalMode = computed(() => cardData.value?.billing_type === 'digital')
 
 const headerTitle = computed(() => {
   if (isContentListView.value) return t('mobile.explore_content')
@@ -347,26 +358,33 @@ async function fetchCardData() {
       is_grouped: firstRow.card_is_grouped || false,
       group_display: firstRow.card_group_display || 'expanded', // How grouped items display
       billing_type: firstRow.card_billing_type || 'physical', // Billing model
-      max_scans: firstRow.card_max_scans,
-      current_scans: firstRow.card_current_scans,
-      daily_scan_limit: firstRow.card_daily_scan_limit,
-      daily_scans: firstRow.card_daily_scans,
+      max_sessions: firstRow.card_max_sessions,
+      total_sessions: firstRow.card_total_sessions,
+      daily_session_limit: firstRow.card_daily_session_limit,
+      daily_sessions: firstRow.card_daily_sessions,
       scan_limit_reached: firstRow.card_scan_limit_reached || false,
       monthly_limit_exceeded: firstRow.monthly_limit_exceeded || false,
       daily_limit_exceeded: firstRow.daily_limit_exceeded || false,
       credits_insufficient: firstRow.card_credits_insufficient || false,
-      has_translation: firstRow.card_has_translation || false
+      has_translation: firstRow.card_has_translation || false,
+      subscription_tier: firstRow.card_subscription_tier || 'free'
     }
 
     // Extract available languages for this card
     availableLanguages.value = firstRow.card_available_languages || [firstRow.card_original_language || 'en']
 
     // Set mobile client language to card's original language on first load
-    // (unless user has already manually selected a language for this session)
+    // (unless user has already manually selected a language for this session,
+    // OR the URL explicitly specifies a language)
     const cardOriginalLang = firstRow.card_original_language || 'en'
     const hasUserSelectedLanguage = sessionStorage.getItem('userSelectedLanguage') === 'true'
+    const urlLang = route.params.lang as string
+    const hasUrlLanguage = urlLang && isValidLanguage(urlLang)
     
-    if (!hasUserSelectedLanguage) {
+    // Only force original language if no user selection AND no valid URL language
+    // Note: Since all routes now have :lang param, we need to check if it matches the detected browser lang
+    // vs an explicit choice. But for simplicity, if the URL has a valid language, we respect it.
+    if (!hasUserSelectedLanguage && !hasUrlLanguage) {
       // Check if we need to switch to card's original language
       if (mobileLanguageStore.selectedLanguage.code !== cardOriginalLang) {
         const originalLanguage = mobileLanguageStore.getLanguageByCode(cardOriginalLang)
@@ -383,7 +401,7 @@ async function fetchCardData() {
         isFirstLoad.value = false
       }
     } else {
-      // User has manually selected language, mark as loaded
+      // User has manually selected language or URL specified it, mark as loaded
       isFirstLoad.value = false
     }
 
@@ -410,31 +428,92 @@ async function fetchCardData() {
   }
 }
 
+// Refs
+const contentWrapperRef = ref<HTMLElement | null>(null)
+
+// Methods
+function scrollToTop() {
+  // Reset window scroll
+  window.scrollTo(0, 0)
+  
+  // Reset container scroll
+  if (contentWrapperRef.value) {
+    contentWrapperRef.value.scrollTop = 0
+  }
+  
+  // Also try to find the scrolling container via class if ref misses
+  const scrollContainer = document.querySelector('.mobile-card-container:not(.card-overview-view)')
+  if (scrollContainer) {
+    scrollContainer.scrollTop = 0
+  }
+}
+
 function openContentList() {
-  pushNavigation()
-  currentView.value = 'content-list'
+  const lang = route.params.lang as string
+  const cardId = route.params.issue_card_id as string
+  router.push(`/${lang}/c/${cardId}/list`)
 }
 
 function selectContent(item: ContentItem) {
-  pushNavigation()
-  selectedContent.value = item
-  currentView.value = 'content-detail'
-}
-
-function pushNavigation() {
-  navigationStack.value.push({
-    view: currentView.value,
-    content: selectedContent.value
-  })
+  const lang = route.params.lang as string
+  const cardId = route.params.issue_card_id as string
+  router.push(`/${lang}/c/${cardId}/item/${item.content_item_id}`)
 }
 
 function handleNavigation() {
-  if (navigationStack.value.length > 0) {
-    const previousState = navigationStack.value.pop()!
-    currentView.value = previousState.view
-    selectedContent.value = previousState.content
+  // Always navigate to previous view with CURRENT language
+  // This ensures language stays consistent after language change
+  const lang = mobileLanguageStore.selectedLanguage.code
+  const cardId = route.params.issue_card_id as string
+  
+  if (isContentDetailView.value) {
+    // From detail view, go to list view
+    router.replace(`/${lang}/c/${cardId}/list`)
+  } else if (isContentListView.value) {
+    // From list view, go to overview
+    router.replace(`/${lang}/c/${cardId}`)
   }
+  // From overview, no navigation (already at top level)
 }
+
+// Watch route to update view state
+watch(() => route.path, () => {
+  const path = route.path
+  const itemId = route.params.content_item_id as string
+  
+  if (itemId) {
+    currentView.value = 'content-detail'
+    // Find item in loaded content
+    const item = contentItems.value.find(i => i.content_item_id === itemId)
+    if (item) {
+      selectedContent.value = item
+      // Scroll to top when entering detail view
+      setTimeout(scrollToTop, 0)
+    }
+  } else if (path.endsWith('/list')) {
+    currentView.value = 'content-list'
+    selectedContent.value = null
+    // Scroll to top when entering list view (optional, maybe keep position?)
+    // User requested "click to content item -> show top", so detail needs scroll top.
+    // List view might benefit from keeping position if going back. 
+    // Vue router's scrollBehavior usually handles "savedPosition" on popstate (back button).
+  } else {
+    currentView.value = 'card'
+    selectedContent.value = null
+  }
+}, { immediate: true })
+
+// Watch contentItems to sync selectedContent if loaded after route
+watch(contentItems, (items) => {
+  const itemId = route.params.content_item_id as string
+  if (itemId && items.length > 0) {
+    const item = items.find(i => i.content_item_id === itemId)
+    if (item) {
+      selectedContent.value = item
+      currentView.value = 'content-detail'
+    }
+  }
+})
 
 function handleRetry() {
   fetchCardData()
@@ -472,9 +551,9 @@ onMounted(() => {
   }
 })
 
-// Prevent body scroll when in digital mode overview (no scrolling needed)
+// Prevent body scroll when in card overview (no scrolling needed for either mode)
 watchEffect(() => {
-  const shouldLockScroll = isDigitalMode.value && isCardView.value
+  const shouldLockScroll = isCardView.value
   if (shouldLockScroll) {
     document.body.style.overflow = 'hidden'
     document.documentElement.style.overflow = 'hidden'
@@ -513,8 +592,15 @@ onUnmounted(() => {
 })
 
 // Watch for language changes and reload content
-watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
-  console.log('📱 Language changed to:', mobileLanguageStore.selectedLanguage.code)
+watch(() => mobileLanguageStore.selectedLanguage.code, async (newLang, oldLang) => {
+  console.log('📱 Language changed to:', newLang)
+  
+  // Update URL to reflect new language (use replaceState to avoid adding history entry)
+  const currentLang = route.params.lang as string
+  if (currentLang !== newLang) {
+    const newPath = route.fullPath.replace(`/${currentLang}/`, `/${newLang}/`)
+    router.replace(newPath)
+  }
   
   // Store the currently selected content ID to restore selection after reload
   const currentContentId = selectedContent.value?.content_item_id
@@ -528,6 +614,24 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
     if (updatedContent) {
       selectedContent.value = updatedContent
     }
+  }
+})
+
+// Watch for URL language parameter changes (e.g., browser back/forward)
+// If user has explicitly selected a language, keep that language when navigating
+watch(() => route.params.lang, (newLang) => {
+  if (!newLang || !isValidLanguage(newLang as string)) return
+  
+  const userSelectedLanguage = sessionStorage.getItem('userSelectedLanguage') === 'true'
+  const currentStoreLang = mobileLanguageStore.selectedLanguage.code
+  
+  if (userSelectedLanguage && newLang !== currentStoreLang) {
+    // User has selected a language - redirect to that language instead of syncing from URL
+    const newPath = route.fullPath.replace(`/${newLang}/`, `/${currentStoreLang}/`)
+    router.replace(newPath)
+  } else {
+    // No explicit user selection - sync store from URL
+    mobileLanguageStore.syncFromUrl(newLang as string)
   }
 })
 </script>
@@ -558,8 +662,8 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
   pointer-events: none; /* Don't interfere with touch events */
 }
 
-/* Digital mode on card overview only: Fill entire viewport */
-.mobile-card-container.digital-mode.card-overview-view {
+/* Card overview: Fill entire viewport (both physical and digital modes) */
+.mobile-card-container.card-overview-view {
   position: fixed;
   top: 0;
   left: 0;
@@ -571,8 +675,8 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
   overflow: hidden;
 }
 
-/* Digital mode on other pages: Allow scrolling */
-.mobile-card-container.digital-mode:not(.card-overview-view) {
+/* Other pages: Allow scrolling */
+.mobile-card-container:not(.card-overview-view) {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
@@ -774,8 +878,8 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
   background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
 }
 
-/* Digital mode card overview content wrapper */
-.digital-mode.card-overview-view .content-wrapper {
+/* Card overview content wrapper (both physical and digital) */
+.card-overview-view .content-wrapper {
   position: absolute;
   top: 0;
   left: 0;
@@ -791,8 +895,8 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async () => {
   background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
 }
 
-/* Digital mode other pages content wrapper - allow scrolling */
-.digital-mode:not(.card-overview-view) .content-wrapper {
+/* Other pages content wrapper - allow scrolling */
+.mobile-card-container:not(.card-overview-view) .content-wrapper {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }

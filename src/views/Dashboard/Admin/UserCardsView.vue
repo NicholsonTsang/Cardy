@@ -59,6 +59,21 @@
                 >
                   {{ currentUser.role }}
                 </span>
+                <span 
+                  class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium"
+                  :class="{
+                    'bg-amber-100 text-amber-700': currentUser.subscription_tier === 'premium',
+                    'bg-emerald-100 text-emerald-700': currentUser.subscription_tier === 'starter',
+                    'bg-slate-100 text-slate-700': currentUser.subscription_tier === 'free' || !currentUser.subscription_tier
+                  }"
+                >
+                  <i :class="{
+                    'pi pi-star-fill': currentUser.subscription_tier === 'premium',
+                    'pi pi-bolt': currentUser.subscription_tier === 'starter',
+                    'pi pi-user': currentUser.subscription_tier === 'free' || !currentUser.subscription_tier
+                  }" style="font-size: 0.6rem;"></i>
+                  {{ currentUser.subscription_tier || 'free' }}
+                </span>
                 <span class="text-slate-400">•</span>
                 <span>{{ $t('admin.registered') }} {{ formatDate(currentUser.created_at) }}</span>
               </div>

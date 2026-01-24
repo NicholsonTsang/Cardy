@@ -29,8 +29,7 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    max_scans INTEGER,
-    daily_scan_limit INTEGER,
+    default_daily_session_limit INTEGER,
     original_language TEXT,
     qr_code_position TEXT,
     item_count BIGINT,
@@ -66,8 +65,7 @@ BEGIN
         COALESCE(c.is_grouped, false),
         COALESCE(c.group_display, 'expanded')::TEXT,
         COALESCE(c.billing_type, 'digital')::TEXT,
-        c.max_scans,
-        c.daily_scan_limit,
+        c.default_daily_session_limit,
         COALESCE(c.original_language, 'en')::TEXT,
         COALESCE(c.qr_code_position::TEXT, 'BR'),
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
@@ -127,8 +125,7 @@ RETURNS TABLE (
     ai_welcome_item TEXT,
     original_language TEXT,
     qr_code_position TEXT,
-    max_scans INTEGER,
-    daily_scan_limit INTEGER,
+    default_daily_session_limit INTEGER,
     crop_parameters JSONB,
     translations JSONB,
     content_hash TEXT,
@@ -190,8 +187,7 @@ BEGIN
         END::TEXT AS ai_welcome_item,
         COALESCE(c.original_language, 'en')::TEXT,
         COALESCE(c.qr_code_position::TEXT, 'BR'),
-        c.max_scans,
-        c.daily_scan_limit,
+        c.default_daily_session_limit,
         c.crop_parameters,
         COALESCE(c.translations, '{}'::JSONB),
         c.content_hash,
@@ -348,8 +344,7 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        max_scans,
-        daily_scan_limit,
+        default_daily_session_limit,
         conversation_ai_enabled,
         ai_instruction,
         ai_knowledge_base,
@@ -370,8 +365,7 @@ BEGIN
         v_template.is_grouped,
         v_template.group_display,
         v_final_billing,
-        v_template.max_scans,
-        v_template.daily_scan_limit,
+        v_template.default_daily_session_limit,
         v_template.conversation_ai_enabled,
         CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_instruction', v_template.ai_instruction) ELSE v_template.ai_instruction END,
         CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_knowledge_base', v_template.ai_knowledge_base) ELSE v_template.ai_knowledge_base END,
@@ -385,6 +379,22 @@ BEGIN
         NULL,  -- No translations - start fresh
         NULL   -- No content_hash - will be calculated on first edit
     ) RETURNING id INTO v_new_card_id;
+    
+    -- Create a default enabled access token (QR code) for the new card
+    -- Every project must have at least one QR code
+    INSERT INTO card_access_tokens (
+        card_id,
+        name,
+        access_token,
+        is_enabled,
+        daily_session_limit
+    ) VALUES (
+        v_new_card_id,
+        'Default',
+        substring(replace(gen_random_uuid()::text, '-', ''), 1, 12),
+        true,
+        v_template.default_daily_session_limit
+    );
     
     -- PERFORMANCE: Bulk copy content items using CTE with ID mapping
     -- This avoids N+1 individual INSERT statements
@@ -960,6 +970,7 @@ GRANT EXECUTE ON FUNCTION public.get_admin_template_cards(UUID) TO authenticated
 -- Get featured demo templates for landing page (public access)
 -- Returns templates with their public access URLs
 -- Supports multilingual display via p_language parameter
+-- Uses card_access_tokens to get the first enabled QR code
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.get_demo_templates(
     p_limit INTEGER DEFAULT 100,
@@ -992,17 +1003,23 @@ BEGIN
         COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
         COALESCE(c.content_mode, 'list')::TEXT,
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
-        CASE 
-            WHEN c.is_access_enabled AND c.access_token IS NOT NULL 
-            THEN c.access_token
-            ELSE NULL
-        END AS access_url
+        -- Get first enabled access token for this card
+        (
+            SELECT t.access_token
+            FROM card_access_tokens t
+            WHERE t.card_id = c.id AND t.is_enabled = true
+            ORDER BY t.created_at ASC
+            LIMIT 1
+        )::TEXT AS access_url
     FROM content_templates ct
     JOIN cards c ON ct.card_id = c.id
     WHERE ct.is_active = true
       AND ct.is_featured = true
-      AND c.is_access_enabled = true
-      AND c.access_token IS NOT NULL
+      -- Only include templates that have at least one enabled access token
+      AND EXISTS (
+          SELECT 1 FROM card_access_tokens t 
+          WHERE t.card_id = c.id AND t.is_enabled = true
+      )
     ORDER BY ct.sort_order ASC, c.name ASC
     LIMIT p_limit;
 END;

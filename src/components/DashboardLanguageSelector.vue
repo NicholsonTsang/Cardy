@@ -45,15 +45,45 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useDashboardLanguageStore } from '@/stores/language'
+import { isValidLanguage } from '@/router/languageRouting'
 import type { Language } from '@/stores/language'
 
+const route = useRoute()
+const router = useRouter()
 const languageStore = useDashboardLanguageStore()
 const showModal = ref(false)
 
+// Sync language from URL on component mount
+const urlLang = route.params.lang as string
+if (urlLang && isValidLanguage(urlLang, true)) {
+  languageStore.syncFromUrl(urlLang)
+}
+
+// Watch for URL language changes
+watch(() => route.params.lang, (newLang) => {
+  if (newLang && isValidLanguage(newLang as string, true)) {
+    languageStore.syncFromUrl(newLang as string)
+  }
+})
+
 function selectLanguage(language: Language) {
   languageStore.setLanguage(language)
+  
+  // Update URL with new language
+  const currentLang = route.params.lang as string
+  if (currentLang && currentLang !== language.code) {
+    // Replace language in existing path
+    const newPath = route.fullPath.replace(`/${currentLang}/`, `/${language.code}/`)
+      .replace(`/${currentLang}`, `/${language.code}`) // Handle paths without trailing content
+    router.replace(newPath)
+  } else if (!currentLang) {
+    // No language in URL yet, add it
+    router.replace(`/${language.code}${route.fullPath}`)
+  }
+  
   showModal.value = false
 }
 </script>
