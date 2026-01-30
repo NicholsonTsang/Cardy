@@ -4,10 +4,12 @@ ExperienceQR supports automatic translation to reach global audiences. Translate
 
 :::info Paid Feature
 Multi-language translations are available on paid plans:
-- **Starter ($40/mo)**: Up to **2 languages**
-- **Premium ($280/mo)**: **Unlimited languages** (all 10 supported)
 
-Free tier users can create content in one language only.
+| Plan | Languages |
+|------|-----------|
+| Free | None (single language only) |
+| Starter | Up to 2 |
+| Premium | Unlimited (all 10) |
 :::
 
 ## Supported Languages
