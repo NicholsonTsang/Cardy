@@ -1,33 +1,36 @@
 ## Credit Management
 
-Credits are used for overage access when you exceed your monthly limit. Manage your credit balance from the Plan & Usage page.
+Credits provide additional session capacity when your monthly budget is depleted. Available for Starter and Premium subscribers.
 
 ## Understanding Credits
 
-Credits provide flexible access beyond your monthly allocation:
+Credits let you continue serving visitors beyond your monthly session budget:
 
-- **Overage Access** - Additional visitor access beyond monthly limit (Premium only)
-- **Batch Purchasing** - Buy access in convenient batches
+- **Flexible Access** - Purchase credits anytime to handle traffic spikes
+- **Never Expire** - Credits carry over across billing cycles
+- **Same Rates** - Credits use your plan's session costs
 
-:::info Translations Are Free
-Unlike other platforms, translations are **completely free** for Premium subscribers. No credits required for translations!
+:::info Both Paid Plans Support Credits
+Both Starter ($40/mo) and Premium ($280/mo) subscribers can purchase overage credits. Free tier users cannot purchase credits.
 :::
 
-## Credit Usage
+## How Credits Work
 
-### Overage Credits (Premium Only)
+### Session Budget Flow
 
-When your monthly access pool is exhausted:
+1. **Monthly budget** consumed first ($40 Starter / $280 Premium)
+2. When budget depletes, **credits used automatically**
+3. Visitors experience no interruption
+4. Purchase more credits as needed
 
-| Credits | Access Granted |
-|---------|----------------|
-| 5 credits | 100 additional access |
+### Credit Conversion
 
-**How it works:**
-1. Your 3,000 monthly access is consumed
-2. System automatically uses credits for additional access
-3. Each 5 credits grants 100 more visitor scans
-4. Access continues seamlessly for your visitors
+Credits convert to sessions based on your plan and project type:
+
+| Plan | AI Sessions per $5 | Non-AI Sessions per $5 |
+|------|-------------------|------------------------|
+| **Starter** | ~100 sessions | ~200 sessions |
+| **Premium** | ~125 sessions | ~250 sessions |
 
 ## Purchasing Credits
 
@@ -35,69 +38,94 @@ When your monthly access pool is exhausted:
 
 Click "Plan & Usage" in your dashboard navigation.
 
-### Step 2: View Credit Balance
+### Step 2: View Current Balance
 
-Your current credit balance is displayed at the top of the page.
+Your credit balance is displayed alongside your monthly budget usage.
 
-![Credit Balance](/Image/docs/credit-balance.png "Credit Balance Display")
+### Step 3: Buy Credits
 
-### Step 3: Purchase Credits
-
-1. Click "Purchase Credits"
-2. Select credit package
+1. Click **"Buy Credits"**
+2. Enter the amount you want to purchase (minimum $5)
 3. Complete payment via Stripe
-4. Credits added immediately
+4. Credits added immediately to your account
 
-## Credit Packages
-
-| Package | Credits | Price | Best For |
-|---------|---------|-------|----------|
-| Starter | 50 | $10 | Light overage needs |
-| Standard | 200 | $35 | Regular extra access |
-| Professional | 500 | $75 | High-traffic venues |
-
-:::tip When to Buy Credits
-Purchase credits if you anticipate exceeding your monthly limit, such as during special events, holidays, or promotional periods.
+:::tip Plan Ahead
+Purchase credits before busy periods (events, holidays, promotions) to ensure uninterrupted service.
 :::
 
-## Credit History
+## Credit Usage Tracking
 
-View your credit transactions:
+### View Usage
 
-1. Go to Plan & Usage
-2. Click "Credit History"
-3. Review purchases and usage
+In Plan & Usage, you can see:
+- Current credit balance
+- Monthly budget remaining
+- Session breakdown (AI vs Non-AI)
+- Historical usage trends
 
-Transaction types:
-- **Purchase** - Credit package bought
-- **Overage** - Credits used for extra access beyond monthly limit
+### Usage Analytics
 
-## Credit Expiration
+The daily stats chart shows:
+- Sessions per day
+- AI vs Non-AI breakdown
+- Cost per session type
+- Budget consumption rate
 
-- **Purchased credits never expire**
-- Use at your own pace
-- Credits transfer across billing cycles
-- Subscription cancellation doesn't affect credit balance
+## When to Buy Credits
 
-## Planning Your Access
+Consider purchasing credits when:
 
-### Monthly Estimation
+- **Approaching monthly limit** - Usage chart shows you'll exceed budget
+- **Upcoming event** - Expecting higher traffic
+- **Peak season** - Holidays, tourist season
+- **Promotional period** - Marketing campaigns driving traffic
 
-To estimate if you'll need credits:
-
-1. Check your current monthly access usage
-2. Look at trends from previous months
-3. Consider upcoming events or promotions
-4. Purchase credits proactively if needed
-
-### Usage Monitoring
-
-Monitor your access usage in the Plan & Usage dashboard:
-- Current month consumption
-- Days remaining in cycle
-- Historical trends
-- Real-time usage graph
-
-:::tip Stay Ahead
-Set up usage alerts (coming soon) to get notified when approaching your monthly limit.
+:::info Budget Alerts
+Monitor your usage regularly in the Plan & Usage dashboard. The system shows your consumption rate and remaining budget.
 :::
+
+## Credit Best Practices
+
+### Monitor Usage Patterns
+
+1. Check weekly usage trends
+2. Note peak days/times
+3. Identify high-traffic projects
+4. Plan credit purchases accordingly
+
+### Optimize Costs
+
+- **Disable AI** on projects that don't need it (50% lower session cost)
+- **Set daily limits** on QR codes to prevent abuse
+- **Review analytics** to understand visitor patterns
+
+### Seasonal Planning
+
+| Season | Action |
+|--------|--------|
+| Low season | Monitor standard usage |
+| Pre-peak | Purchase credits proactively |
+| Peak season | Monitor daily, top up as needed |
+| Post-peak | Review analytics, plan for next peak |
+
+## Credit FAQ
+
+### Do credits expire?
+
+No. Purchased credits never expire and remain in your account until used.
+
+### Can I get a refund on unused credits?
+
+Credits are non-refundable. Purchase only what you anticipate needing.
+
+### What happens if I cancel my subscription?
+
+Credits remain in your account. If you resubscribe later, they'll be available. However, free tier users cannot use credits.
+
+### Is there a minimum purchase?
+
+Yes, the minimum credit purchase is $5.
+
+### How quickly are credits added?
+
+Credits are added immediately after successful payment.

@@ -22,7 +22,7 @@ The Excel template includes multiple sheets:
 |--------|-------------|----------|
 | Name | Project name | Yes |
 | Description | Project overview | Yes |
-| Content Mode | single/list/grid/grouped/inline | Yes |
+| Content Mode | single/list/grid/cards | Yes |
 | Original Language | Source language code | No |
 | AI Instruction | AI behavior guidelines | No |
 | AI Knowledge Base | General AI context | No |
@@ -125,7 +125,7 @@ Common import errors and solutions:
 - Add distinguishing details to duplicate names
 
 ### Invalid Content Mode
-- Use exact values: single, list, grid, grouped, inline
+- Use exact values: single, list, grid, cards
 - Case-sensitive matching
 
 ## Preserving Translations

@@ -161,7 +161,7 @@ Control how each QR code is used:
 Your monthly session budget is shared across all projects and QR codes:
 - **Free**: 50 sessions/month
 - **Starter**: $40 budget (~800-1,600 sessions)
-- **Premium**: $280 budget (~6,200-14,000 sessions)
+- **Premium**: $280 budget (~7,000-14,000 sessions)
 
 ## Deleting QR Codes
 

@@ -9,8 +9,8 @@ ExperienceQR features a powerful dual AI assistant system that allows visitors t
 The project-level assistant answers general questions about your entire venue or experience.
 
 **Appears on:**
-- Card Overview page
-- Content list/grid navigation pages
+- Project Overview page
+- Content list/grid/cards navigation pages
 - Floating button throughout the mobile experience
 
 **Best for questions like:**
@@ -52,47 +52,62 @@ Each content item can have its own AI configuration:
 - **Item Knowledge Base** - Specific details about this item
 - **Item Welcome Message** - Custom greeting for item-specific conversations (supports `{name}` placeholder)
 
-## Proactive AI Guidance
+## AI and Session Billing
 
-Our AI assistants are designed to be **proactive**, not passive. Instead of generic "How can I help?" greetings, they:
+Enabling AI affects your session costs:
 
-1. **Suggest specific topics** based on the knowledge base
-2. **Offer 2-3 example questions** visitors might ask
-3. **Share unprompted insights** that enhance the experience
-4. **Guide users** with phrases like "I can also tell you about..." or "Many visitors ask about..."
+| Plan | AI Enabled | AI Disabled |
+|------|------------|-------------|
+| Starter | $0.05/session | $0.025/session |
+| Premium | $0.04/session | $0.02/session |
 
-### Example Proactive Greeting
-
-> "Hi! I'm your guide for the Renaissance Gallery. I can share stories about these masterpieces, explain the artists' techniques, or recommend what to see next. What interests you most?"
+:::tip Cost Optimization
+Only enable AI on projects where visitors will benefit from it. Projects without AI enabled cost 50% less per session.
+:::
 
 ## Writing Effective AI Instructions
 
+AI Instructions tell the assistant how to behave. Keep them under ~100 words.
+
 :::tip Instruction Best Practices
 Be specific about:
-- Tone (formal, casual, friendly)
+- Tone (formal, casual, friendly, enthusiastic)
 - Focus areas (history, recommendations, facts)
-- Restrictions (avoid pricing discussions, don't make promises)
+- Restrictions (avoid pricing, don't make promises)
 :::
 
-Example instruction:
+### Example Instructions
+
+**Museum Guide:**
 ```
-You are a friendly museum guide. Focus on art history and artist backgrounds. 
+You are a friendly museum guide. Focus on art history and artist backgrounds.
 Keep answers concise but informative. Suggest related artworks when relevant.
 Don't discuss artwork valuations or authentication.
 ```
 
+**Restaurant Assistant:**
+```
+You are a helpful restaurant assistant. Describe dishes enthusiastically.
+Mention ingredients and preparation when asked. Suggest pairings.
+Don't discuss competitor restaurants or make health claims.
+```
+
 ## Building Knowledge Bases
 
-The knowledge base provides context for AI responses. Include:
+The knowledge base provides context for AI responses. This is where you add all the information the AI should know.
 
-### For Projects
+### For Projects (~2000 words max)
+
+Include:
 - Venue history and background
 - Operating hours and location details
 - General policies and guidelines
 - Frequently asked questions
-- Staff recommendations
+- Staff recommendations and highlights
 
 ### For Content Items
+
+Include:
 - Detailed descriptions and history
 - Creator/artist information
 - Interesting facts and stories
@@ -126,31 +141,62 @@ Used when visitors tap the AI button on a specific item. Use `{name}` as a place
 Both AI assistants support:
 
 - **Text Chat** - Type questions and receive written responses
-- **Voice Recording** - Speak your question, receive text response
-- **Real-time Voice** - Have a natural back-and-forth conversation
+- **Voice Recording** - Speak your question, receive text response with audio playback
+- **Real-time Voice** - Have a natural back-and-forth conversation (like talking to a guide)
 
-The AI automatically responds in the visitor's selected language using translated knowledge bases.
+The AI automatically responds in the visitor's selected language when translations are available.
 
-## Testing Your AI
+## AI in Different Content Modes
 
-Before publishing, test your AI configuration:
-
-1. Use the Preview mode in your dashboard
-2. Ask various questions a visitor might ask
-3. Test both general questions and item-specific ones
-4. Verify responses are accurate, helpful, and proactive
-5. Adjust instructions or knowledge base as needed
-
-![AI Testing](/Image/docs/ai-testing.png "Testing AI Responses")
-
-## Content Mode Context
-
-The AI adapts its behavior based on the current content mode:
+The AI adapts its behavior based on your content display mode:
 
 | Mode | AI Behavior |
 |------|-------------|
 | Single | Deep-dive on the featured item |
 | List | Help browse and filter options |
 | Grid | Explore the gallery, suggest items |
-| Grouped | Navigate categories, compare items |
-| Inline | Guide through the continuous experience |
+| Cards | Guide through featured content |
+
+## Testing Your AI
+
+Before publishing, test your AI configuration:
+
+1. Use the **Preview** mode in your dashboard
+2. Ask various questions a visitor might ask
+3. Test both general questions and item-specific ones
+4. Verify responses are accurate and helpful
+5. Adjust instructions or knowledge base as needed
+
+![AI Testing](/Image/docs/ai-testing.png "Testing AI Responses")
+
+### Test Questions to Try
+
+| Type | Example Questions |
+|------|-------------------|
+| General | "What are your hours?", "What should I see first?" |
+| Specific | "Tell me about [item name]", "Who created this?" |
+| Recommendations | "What's popular?", "What's good for kids?" |
+| Practical | "Where is the restroom?", "Is there a café?" |
+
+## Troubleshooting
+
+### AI Gives Wrong Answers
+
+- Check if information is in the knowledge base
+- Look for conflicting information
+- Make instructions more specific
+
+### AI Goes Off-Topic
+
+Add to instructions:
+```
+If asked about topics outside [your venue], politely redirect:
+"I specialize in [venue name]. Is there something about our
+exhibits I can help with?"
+```
+
+### Responses Too Long/Short
+
+Adjust instructions:
+- For shorter: "Keep responses to 2-3 sentences maximum."
+- For longer: "Provide detailed responses with examples when asked."

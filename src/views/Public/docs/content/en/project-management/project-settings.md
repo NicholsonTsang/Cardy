@@ -14,8 +14,8 @@ Project settings allow you to customize how your digital experience looks and be
 
 ### Display Settings
 
-- **Content Mode** - Change how content is displayed (Single, List, Grid, Grouped, or Inline)
-- **Grouped Layout** - Enable/disable category grouping for applicable modes
+- **Content Mode** - Change how content is displayed (Single, List, Grid, or Cards)
+- **Content Grouping** - Enable/disable category grouping to organize items
 - **Original Language** - Set the source language of your content
 
 :::warning Changing Content Mode
@@ -89,7 +89,7 @@ Your monthly budget is managed at the account level:
 |------|---------------|
 | Free | 50 sessions |
 | Starter | $40 (~800-1,600 sessions) |
-| Premium | $280 (~6,200-14,000 sessions) |
+| Premium | $280 (~7,000-14,000 sessions) |
 
 All QR code scans across all projects count toward your monthly budget.
 

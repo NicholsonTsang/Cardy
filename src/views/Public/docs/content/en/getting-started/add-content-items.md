@@ -69,11 +69,11 @@ For grouped content modes, you can add sub-items under parent categories:
 
 ### Flat vs Grouped
 
-- **Flat layouts** (List, Grid, Inline): Items appear at the same level
-- **Grouped layout**: Items can have parent-child relationships
+- **Flat layouts** (List, Grid, Cards): Items appear at the same level
+- **Grouped content**: Items can have parent-child relationships with category headers
 
 :::warning Flat Layout with Hierarchy
-If you have parent-child content but choose a flat layout (List/Grid), only the leaf items (children) will display. Parent items act as organizational containers.
+If you have parent-child content but disable grouping, only the leaf items (children with no sub-items) will display. Parent items act as organizational containers.
 :::
 
 ## Translating Content

@@ -4,11 +4,13 @@ Content modes determine how your content is displayed to visitors. Choose the mo
 
 ## Available Modes
 
+ExperienceQR offers **4 content display modes**:
+
 ### Single Mode
 
 Perfect for focused experiences with one main piece of content.
 
-- **Best for**: Product showcases, special exhibits, event information
+- **Best for**: Product showcases, special exhibits, event information, announcements
 - **Layout**: Full-screen content with maximum detail
 - **AI Behavior**: Deep-dive conversations about the featured item
 
@@ -16,90 +18,123 @@ Perfect for focused experiences with one main piece of content.
 
 Vertical scrolling list of content items.
 
-- **Best for**: Menus, service lists, simple catalogs
-- **Layout**: Clean list with images and descriptions
-- **AI Behavior**: Help browse and filter options
+- **Best for**: Menus, service lists, resource directories, link-in-bio style content
+- **Layout**: Clean vertical list with images and descriptions
+- **AI Behavior**: Help browse options, answer questions about any item
 
 ### Grid Mode
 
-Visual gallery layout with thumbnail grid.
+Visual gallery layout with 2-column thumbnail grid.
 
 - **Best for**: Art galleries, photo collections, product catalogs
-- **Layout**: Responsive grid with image previews
+- **Layout**: Responsive 2-column grid with image previews
 - **AI Behavior**: Explore the gallery, suggest items based on interests
 
-### Grouped Mode
+### Cards Mode
 
-Content organized into expandable categories.
+Full-width card layout for featured content.
 
-- **Best for**: Museums, multi-floor venues, categorized menus
-- **Layout**: Collapsible sections with nested items
-- **AI Behavior**: Navigate categories, compare items, give overviews
-
-### Inline Mode
-
-Continuous scrolling with all content visible.
-
-- **Best for**: Timeline experiences, story-driven content, tours
-- **Layout**: Seamless vertical flow
-- **AI Behavior**: Guide through the continuous experience
+- **Best for**: Featured items, news feeds, highlighted content, portfolios
+- **Layout**: Large cards with prominent images
+- **AI Behavior**: Guide through featured content, provide recommendations
 
 ## Choosing the Right Mode
 
 | Venue Type | Recommended Mode | Why |
-|------------|-----------------|-----|
-| Museum | Grouped | Natural gallery/floor organization |
-| Restaurant | List | Easy menu scanning |
-| Gallery | Grid | Visual browsing experience |
+|------------|------------------|-----|
+| Museum | List or Grid | Easy navigation of exhibits |
+| Restaurant | List | Clear menu scanning |
+| Art Gallery | Grid | Visual browsing experience |
 | Event | Single | Focused information |
-| Tour | Inline | Sequential storytelling |
 | Hotel | List | Service directory format |
-| Conference | Grouped | Sessions by track/day |
+| Conference | List | Session/speaker listings |
+| Portfolio | Cards | Showcase featured work |
+| News/Blog | Cards | Highlight articles |
 
 :::tip Preview Before Publishing
 Use the Preview function to see how each mode displays your content before making a final decision.
 :::
+
+## Content Grouping
+
+In addition to display modes, you can enable **content grouping** to organize items into categories.
+
+### Enabling Grouping
+
+1. Go to Project Settings
+2. Toggle **"Enable Grouping"** on
+3. Create parent items (categories)
+4. Nest content items under parents
+
+### Grouping + Mode Combinations
+
+| Mode | With Grouping | Example |
+|------|---------------|---------|
+| List | Categories with nested items | Menu with sections (Appetizers, Mains, Desserts) |
+| Grid | Category headers above grids | Gallery floors (Floor 1, Floor 2, Floor 3) |
+| Cards | Grouped featured sections | News categories (Tech, Sports, Culture) |
+
+### Group Display Options
+
+| Option | Behavior |
+|--------|----------|
+| **Expanded** | All items visible under category headers |
+| **Collapsed** | Tap category to reveal items |
 
 ## AI Assistant in Different Modes
 
 The AI assistant adapts its behavior based on the current content mode:
 
 ### Navigation Pages
+
 - **General Assistant** appears (floating button)
 - Helps with browsing, recommendations, general questions
-- Available on all list/grid/grouped views
+- Available on all list/grid/cards views
 
 ### Detail Pages
+
 - **Item Assistant** appears (inline button)
 - Provides deep information about the specific item
 - Uses item-specific knowledge base and welcome message
+
+| Mode | AI Behavior |
+|------|-------------|
+| Single | Deep-dive on the featured item |
+| List | Help browse and filter options |
+| Grid | Explore the gallery, suggest items |
+| Cards | Guide through featured content |
 
 ## Changing Content Mode
 
 To change your project's content mode:
 
-1. Open your project settings
-2. Navigate to Display Settings
-3. Select a new Content Mode
-4. Preview the changes
-5. Save if satisfied
+1. Open your project
+2. Go to **Settings** tab
+3. Find **Display Settings**
+4. Select a new Content Mode
+5. Preview the changes
+6. Save if satisfied
 
 :::warning Content Reorganization
-When switching to Grouped mode, you may need to reorganize items into categories. When switching away from Grouped mode, sub-items will become top-level items.
+When enabling grouping, you may need to reorganize items into categories. When disabling grouping, parent items will be shown alongside their children.
 :::
 
-## Grouped vs Flat Layouts
+## Best Practices
 
-### Grouped Display (`is_grouped: true`)
-- Shows parent items as expandable category headers
-- Child items nested under their parents
-- Great for hierarchical content
+### Mode Selection
 
-### Flat Display (`is_grouped: false`)
-- All items at the same visual level
-- Parent items hidden, only children shown
-- Better for browsing without category structure
+- **Consider your content type** - Visual content → Grid, Text-heavy → List
+- **Think about visitor journey** - How will they browse?
+- **Test with real content** - Preview before committing
 
-:::info Hierarchy Detection
-If your content has parent-child relationships but you use a flat layout, the system automatically shows only leaf items (actual content) and hides parent containers.
-:::
+### Content Organization
+
+- **Use consistent naming** - Clear titles help visitors navigate
+- **Logical ordering** - Most important items first or logical sequence
+- **Appropriate images** - Match image style to chosen mode
+
+### Mobile Experience
+
+- **All modes are mobile-optimized**
+- **Test on phone** - Your visitors will primarily use mobile
+- **Consider touch targets** - Ensure items are easy to tap

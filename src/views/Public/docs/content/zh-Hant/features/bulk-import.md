@@ -22,7 +22,7 @@ Excel 範本包含多個工作表：
 |------|------|------|
 | Name | 專案名稱 | 是 |
 | Description | 專案概覽 | 是 |
-| Content Mode | single/list/grid/grouped/inline | 是 |
+| Content Mode | single/list/grid/cards | 是 |
 | Original Language | 源語言代碼 | 否 |
 | AI Instruction | AI 行為指南 | 否 |
 | AI Knowledge Base | 通用 AI 背景 | 否 |
@@ -125,7 +125,7 @@ Excel 範本包含多個工作表：
 - 為重複名稱新增區分細節
 
 ### 無效內容模式
-- 使用確切值：single、list、grid、grouped、inline
+- 使用確切值：single、list、grid、cards
 - 區分大小寫
 
 ## 保留翻譯

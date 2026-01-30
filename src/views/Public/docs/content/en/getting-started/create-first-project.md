@@ -2,8 +2,10 @@
 
 A project is the foundation of your digital experience. It represents your venue, event, or collection of content that visitors will explore.
 
-:::info Free Tier Limit
-Free tier users can create up to 3 projects. Upgrade to Premium for up to 35 projects.
+:::info Project Limits
+- **Free**: Up to 3 projects
+- **Starter**: Up to 5 projects
+- **Premium**: Up to 35 projects
 :::
 
 ## Step-by-Step Guide
@@ -26,8 +28,12 @@ Complete the project creation form with the following information:
 
 - **Project Name** - A clear, descriptive name for your venue or experience
 - **Description** - Brief overview that helps visitors understand what they'll discover
-- **Cover Image** - An eye-catching image that represents your project (recommended: 1200x630px)
-- **Content Mode** - Choose how content will be displayed (Single, List, Grid, Grouped, or Inline)
+- **Cover Image** - An eye-catching image that represents your project (recommended: 1200x800px)
+- **Content Mode** - Choose how content will be displayed:
+  - **Single** - One featured item
+  - **List** - Vertical scrolling list
+  - **Grid** - 2-column visual gallery
+  - **Cards** - Full-width featured cards
 
 ![Project Form](/Image/docs/project-form.png "Project Details Form")
 
@@ -35,7 +41,7 @@ Complete the project creation form with the following information:
 
 Set up your AI assistant during creation or later:
 
-- **AI Instructions** - How the AI should respond to visitors
+- **AI Instructions** - How the AI should respond to visitors (tone, focus, restrictions)
 - **Knowledge Base** - Background information about your venue
 - **Welcome Message** - Custom greeting for AI conversations
 
@@ -51,7 +57,7 @@ Use the Preview button to see how your project will look to visitors before publ
 
 ### Starting from Template
 
-For faster setup, choose from 20+ pre-built templates:
+For faster setup, choose from pre-built templates:
 
 1. Click "New Project"
 2. Select "Start from Template"
@@ -69,12 +75,46 @@ Build a custom project with full control:
 3. Fill in project details
 4. Add content items manually
 
+## Content Grouping
+
+After creating your project, you can enable **content grouping** to organize items into categories:
+
+1. Go to Project Settings
+2. Enable "Content Grouping"
+3. Create parent items (categories)
+4. Nest content items under them
+
+**Example**: A museum might group by floor (Floor 1, Floor 2) or by exhibit type (Paintings, Sculptures).
+
 ## Next Steps
 
 After creating your project, you can:
 
 - **Add content items** with descriptions, images, and AI knowledge
 - **Configure AI settings** with custom instructions and welcome messages
-- **Set up translations** for multi-language support (Premium)
-- **Set access limits** to control daily and total scans
+- **Set up translations** for multi-language support (paid plans)
 - **Generate QR codes** to share with visitors
+- **Set access limits** to control daily sessions per QR code
+
+## Tips for Success
+
+### Project Naming
+
+Good names are:
+- Clear and descriptive
+- Easy to remember
+- Relevant to your venue
+
+Examples: "City Art Museum Guide", "Summer Menu 2024", "Conference Schedule"
+
+### Cover Images
+
+- Use high-quality images (1200x800px recommended)
+- Choose images that represent your venue
+- Avoid text-heavy images (they don't translate)
+
+### AI Setup
+
+- Be specific in AI instructions
+- Include FAQs in knowledge base
+- Test AI responses before publishing
