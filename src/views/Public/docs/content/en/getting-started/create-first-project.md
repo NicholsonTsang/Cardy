@@ -3,9 +3,11 @@
 A project is the foundation of your digital experience. It represents your venue, event, or collection of content that visitors will explore.
 
 :::info Project Limits
-- **Free**: Up to 3 projects
-- **Starter**: Up to 5 projects
-- **Premium**: Up to 35 projects
+| Plan | Max Projects |
+|------|--------------|
+| Free | 3 |
+| Starter | 5 |
+| Premium | 35 |
 :::
 
 ## Step-by-Step Guide
