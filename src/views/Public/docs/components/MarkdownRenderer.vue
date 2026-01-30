@@ -194,6 +194,12 @@ watch([() => props.contentPath, locale], loadContent)
 
 <style scoped>
 /* Markdown content styling - Mobile First */
+
+/* First h2 should not have top margin */
+.markdown-content :deep(h2:first-child) {
+  @apply mt-0;
+}
+
 .markdown-content :deep(h2) {
   @apply text-xl sm:text-2xl font-bold text-slate-900 mt-8 sm:mt-10 mb-3 sm:mb-4 pb-2 border-b border-slate-200;
 }
@@ -210,16 +216,23 @@ watch([() => props.contentPath, locale], loadContent)
   @apply text-sm sm:text-base text-slate-600 leading-relaxed mb-3 sm:mb-4;
 }
 
+/* Lists with better indentation */
 .markdown-content :deep(ul) {
-  @apply list-disc list-inside space-y-1.5 sm:space-y-2 mb-3 sm:mb-4 text-slate-600 text-sm sm:text-base;
+  @apply list-disc pl-5 sm:pl-6 space-y-1.5 sm:space-y-2 mb-3 sm:mb-4 text-slate-600 text-sm sm:text-base;
 }
 
 .markdown-content :deep(ol) {
-  @apply list-decimal list-inside space-y-1.5 sm:space-y-2 mb-3 sm:mb-4 text-slate-600 text-sm sm:text-base;
+  @apply list-decimal pl-5 sm:pl-6 space-y-1.5 sm:space-y-2 mb-3 sm:mb-4 text-slate-600 text-sm sm:text-base;
 }
 
 .markdown-content :deep(li) {
-  @apply leading-relaxed;
+  @apply leading-relaxed pl-1;
+}
+
+/* Nested lists */
+.markdown-content :deep(li ul),
+.markdown-content :deep(li ol) {
+  @apply mt-1.5 mb-0;
 }
 
 .markdown-content :deep(strong) {
@@ -239,23 +252,42 @@ watch([() => props.contentPath, locale], loadContent)
 }
 
 .markdown-content :deep(a) {
-  @apply text-blue-600 hover:text-blue-800 underline break-words;
+  @apply text-blue-600 hover:text-blue-800 underline break-words transition-colors;
 }
 
+/* Blockquote - used for example quotes */
 .markdown-content :deep(blockquote) {
-  @apply border-l-4 border-blue-500 pl-3 sm:pl-4 py-2 my-3 sm:my-4 bg-blue-50 rounded-r-lg italic text-slate-700 text-sm sm:text-base;
+  @apply border-l-4 border-blue-400 pl-3 sm:pl-4 py-2 my-4 sm:my-5 bg-gradient-to-r from-blue-50 to-transparent rounded-r-lg text-slate-700 text-sm sm:text-base not-italic;
 }
 
+.markdown-content :deep(blockquote p) {
+  @apply mb-0 italic;
+}
+
+/* Table container for horizontal scroll on mobile */
 .markdown-content :deep(table) {
   @apply w-full border-collapse my-4 sm:my-6 text-xs sm:text-sm;
+  display: block;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .markdown-content :deep(th) {
-  @apply bg-slate-100 text-left p-2 sm:p-3 font-semibold text-slate-900 border border-slate-200;
+  @apply bg-slate-100 text-left p-2 sm:p-3 font-semibold text-slate-900 border border-slate-200 whitespace-nowrap;
 }
 
 .markdown-content :deep(td) {
   @apply p-2 sm:p-3 border border-slate-200 text-slate-600;
+}
+
+/* Alternating row colors for better readability */
+.markdown-content :deep(tr:nth-child(even) td) {
+  @apply bg-slate-50/50;
+}
+
+/* Subtle hover effect on table rows */
+.markdown-content :deep(tbody tr:hover td) {
+  @apply bg-blue-50/50;
 }
 
 .markdown-content :deep(hr) {
@@ -263,7 +295,7 @@ watch([() => props.contentPath, locale], loadContent)
 }
 
 .markdown-content :deep(img) {
-  @apply rounded-lg sm:rounded-xl shadow-lg border border-slate-200 my-4 sm:my-6 w-full;
+  @apply rounded-lg sm:rounded-xl shadow-lg border border-slate-200 my-4 sm:my-6 max-w-full h-auto;
 }
 
 /* Screenshot frame styling */
@@ -271,18 +303,19 @@ watch([() => props.contentPath, locale], loadContent)
   @apply rounded-lg sm:rounded-xl overflow-hidden;
 }
 
-/* Responsive table wrapper for overflow */
-.markdown-content :deep(table) {
-  @apply block overflow-x-auto whitespace-nowrap;
+/* Tipbox spacing - reduce margin when consecutive */
+.markdown-content :deep(.tipbox + .tipbox) {
+  @apply mt-3 sm:mt-4;
 }
 
 /* Tipbox content styling - ensure tables render properly inside info/tip boxes */
 .markdown-content :deep(.tipbox-content table) {
   @apply w-full border-collapse my-2 text-xs sm:text-sm;
+  display: table;
 }
 
 .markdown-content :deep(.tipbox-content th) {
-  @apply bg-white/50 text-left p-1.5 sm:p-2 font-semibold border border-slate-300;
+  @apply bg-white/50 text-left p-1.5 sm:p-2 font-semibold border border-slate-300 whitespace-nowrap;
 }
 
 .markdown-content :deep(.tipbox-content td) {
@@ -295,6 +328,22 @@ watch([() => props.contentPath, locale], loadContent)
 
 .markdown-content :deep(.tipbox-content ul),
 .markdown-content :deep(.tipbox-content ol) {
-  @apply mb-2 last:mb-0;
+  @apply mb-2 last:mb-0 pl-4;
+}
+
+/* Emoji support - ensure proper display */
+.markdown-content :deep(td:first-child),
+.markdown-content :deep(th:first-child) {
+  @apply whitespace-nowrap;
+}
+
+/* Better visual hierarchy for feature/plan comparison tables */
+.markdown-content :deep(td:first-child strong) {
+  @apply text-slate-800;
+}
+
+/* Checkmark and X styling in tables */
+.markdown-content :deep(td) {
+  vertical-align: middle;
 }
 </style>

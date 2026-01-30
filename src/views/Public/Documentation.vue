@@ -490,7 +490,7 @@ watch(() => route.query, (query) => {
 
 /* Responsive Tables */
 .docs-prose :deep(table) {
-  @apply w-full text-sm mb-6 border-collapse;
+  @apply w-full text-sm mb-6 border-collapse rounded-lg overflow-hidden;
   display: block;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
@@ -498,16 +498,60 @@ watch(() => route.query, (query) => {
 
 .docs-prose :deep(table th),
 .docs-prose :deep(table td) {
-  @apply px-3 py-2 border border-slate-200 text-left;
-  min-width: 120px;
+  @apply px-3 py-2.5 border border-slate-200 text-left;
+  min-width: 100px;
 }
 
 .docs-prose :deep(table th) {
-  @apply bg-slate-50 font-semibold text-slate-700;
+  @apply bg-slate-100 font-semibold text-slate-800 whitespace-nowrap;
 }
 
-.docs-prose :deep(table tr:hover) {
-  @apply bg-slate-50/50;
+.docs-prose :deep(table td) {
+  @apply text-slate-600;
+}
+
+/* Alternating row colors for better readability */
+.docs-prose :deep(table tbody tr:nth-child(even) td) {
+  @apply bg-slate-50/70;
+}
+
+.docs-prose :deep(table tbody tr:hover td) {
+  @apply bg-blue-50/60;
+}
+
+/* First column often contains labels - make them stand out */
+.docs-prose :deep(table td:first-child) {
+  @apply font-medium text-slate-700;
+}
+
+/* Tipbox styles - ensure they display properly in docs */
+.docs-prose :deep(.tipbox) {
+  @apply my-6;
+}
+
+.docs-prose :deep(.tipbox + .tipbox) {
+  @apply mt-4;
+}
+
+.docs-prose :deep(.tipbox-content p) {
+  @apply mb-2 text-sm leading-relaxed;
+}
+
+.docs-prose :deep(.tipbox-content p:last-child) {
+  @apply mb-0;
+}
+
+.docs-prose :deep(.tipbox-content table) {
+  @apply my-3 text-sm;
+  display: table;
+}
+
+.docs-prose :deep(.tipbox-content th) {
+  @apply bg-white/60 py-1.5 px-2;
+}
+
+.docs-prose :deep(.tipbox-content td) {
+  @apply py-1.5 px-2;
 }
 
 /* Prevent text overflow */
@@ -515,5 +559,10 @@ watch(() => route.query, (query) => {
 .docs-prose :deep(li) {
   word-break: break-word;
   overflow-wrap: break-word;
+}
+
+/* Feature cards spacing */
+.docs-prose :deep(.grid) {
+  @apply my-6;
 }
 </style>
