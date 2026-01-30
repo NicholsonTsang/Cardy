@@ -12,6 +12,8 @@ Welcome to the ExperienceQR developer documentation. This folder contains techni
 | [Database](DATABASE.md) | Schema, stored procedures, security |
 | [API Reference](API_REFERENCE.md) | Backend API endpoints |
 | [Development Workflow](DEVELOPMENT_WORKFLOW.md) | Setup, git workflow, deployment |
+| [Billing](BILLING.md) | Subscription tiers, Stripe, credits, session tracking |
+| [AI Integration](AI_INTEGRATION.md) | Chat, TTS, realtime voice, OpenAI |
 
 ## Component Documentation
 
