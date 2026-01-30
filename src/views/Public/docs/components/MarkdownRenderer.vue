@@ -282,11 +282,11 @@ watch([() => props.contentPath, locale], loadContent)
 }
 
 .markdown-content :deep(.tipbox-content th) {
-  @apply bg-white/50 text-left p-1.5 sm:p-2 font-semibold border border-current/20;
+  @apply bg-white/50 text-left p-1.5 sm:p-2 font-semibold border border-slate-300;
 }
 
 .markdown-content :deep(.tipbox-content td) {
-  @apply p-1.5 sm:p-2 border border-current/20;
+  @apply p-1.5 sm:p-2 border border-slate-300;
 }
 
 .markdown-content :deep(.tipbox-content p) {
