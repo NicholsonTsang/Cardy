@@ -128,7 +128,7 @@ const convertDirectivesToPlaceholders = (content: string): { content: string, di
   
   // Process tip/info/warning/important directives
   const directiveRegex = /:::(tip|info|warning|important)\s*(.*?)\n([\s\S]*?):::/g
-  
+
   processedContent = processedContent.replace(directiveRegex, (match, type, title, innerContent) => {
     const icons: Record<string, string> = {
       tip: 'pi-lightbulb',
@@ -148,10 +148,12 @@ const convertDirectivesToPlaceholders = (content: string): { content: string, di
       warning: 'text-amber-600',
       important: 'text-red-600'
     }
-    
+
     const titleHtml = title ? `<strong class="block mb-1 text-sm sm:text-base">${title.trim()}</strong>` : ''
-    const html = `<div class="tipbox rounded-lg sm:rounded-xl p-3 sm:p-4 my-4 sm:my-6 flex gap-2 sm:gap-3 border ${colors[type]} text-xs sm:text-sm"><i class="pi ${icons[type]} text-base sm:text-lg mt-0.5 ${iconColors[type]} shrink-0"></i><div>${titleHtml}${innerContent.trim()}</div></div>`
-    
+    // Parse inner content as markdown to support tables and other formatting
+    const parsedInnerContent = marked.parse(innerContent.trim()) as string
+    const html = `<div class="tipbox rounded-lg sm:rounded-xl p-3 sm:p-4 my-4 sm:my-6 flex gap-2 sm:gap-3 border ${colors[type]} text-xs sm:text-sm"><i class="pi ${icons[type]} text-base sm:text-lg mt-0.5 ${iconColors[type]} shrink-0"></i><div class="tipbox-content flex-1 min-w-0">${titleHtml}${parsedInnerContent}</div></div>`
+
     const placeholder = `%%DIRECTIVE_${counter++}%%`
     directives.set(placeholder, html)
     return placeholder
@@ -272,5 +274,27 @@ watch([() => props.contentPath, locale], loadContent)
 /* Responsive table wrapper for overflow */
 .markdown-content :deep(table) {
   @apply block overflow-x-auto whitespace-nowrap;
+}
+
+/* Tipbox content styling - ensure tables render properly inside info/tip boxes */
+.markdown-content :deep(.tipbox-content table) {
+  @apply w-full border-collapse my-2 text-xs sm:text-sm;
+}
+
+.markdown-content :deep(.tipbox-content th) {
+  @apply bg-white/50 text-left p-1.5 sm:p-2 font-semibold border border-current/20;
+}
+
+.markdown-content :deep(.tipbox-content td) {
+  @apply p-1.5 sm:p-2 border border-current/20;
+}
+
+.markdown-content :deep(.tipbox-content p) {
+  @apply mb-2 last:mb-0;
+}
+
+.markdown-content :deep(.tipbox-content ul),
+.markdown-content :deep(.tipbox-content ol) {
+  @apply mb-2 last:mb-0;
 }
 </style>
