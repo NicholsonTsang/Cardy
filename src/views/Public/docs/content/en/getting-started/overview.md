@@ -56,16 +56,12 @@ Plus optional **content grouping** to organize items into categories.
 
 ExperienceQR supports 10 languages for both visitor interface and content translation:
 
-- English
-- Traditional Chinese (繁體中文)
-- Simplified Chinese (简体中文)
-- Japanese (日本語)
-- Korean (한국어)
-- Spanish (Español)
-- French (Français)
-- Russian (Русский)
-- Arabic (العربية)
-- Thai (ไทย)
+| | | |
+|---|---|---|
+| 🇺🇸 English | 🇹🇼 繁體中文 | 🇨🇳 简体中文 |
+| 🇯🇵 日本語 | 🇰🇷 한국어 | 🇪🇸 Español |
+| 🇫🇷 Français | 🇷🇺 Русский | 🇸🇦 العربية |
+| 🇹🇭 ไทย | | |
 
 ## Ready to Get Started?
 

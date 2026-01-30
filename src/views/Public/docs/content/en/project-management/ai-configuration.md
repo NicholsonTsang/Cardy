@@ -52,17 +52,17 @@ Each content item can have its own AI configuration:
 - **Item Knowledge Base** - Specific details about this item
 - **Item Welcome Message** - Custom greeting for item-specific conversations (supports `{name}` placeholder)
 
-## AI and Session Billing
+## AI and Session Costs
 
 Enabling AI affects your session costs:
 
-| Plan | AI Enabled | AI Disabled |
-|------|------------|-------------|
-| Starter | $0.05/session | $0.025/session |
-| Premium | $0.04/session | $0.02/session |
+| Plan | AI Enabled | AI Disabled | Savings |
+|------|------------|-------------|---------|
+| **Starter** | $0.05/session | $0.025/session | 50% off |
+| **Premium** | $0.04/session | $0.02/session | 50% off |
 
 :::tip Cost Optimization
-Only enable AI on projects where visitors will benefit from it. Projects without AI enabled cost 50% less per session.
+Disable AI on projects that don't need voice/chat assistance to pay half the session rate.
 :::
 
 ## Writing Effective AI Instructions
