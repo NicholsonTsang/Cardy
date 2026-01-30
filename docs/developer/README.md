@@ -1,0 +1,39 @@
+# Developer Documentation
+
+Technical documentation for developers working on the ExperienceQR codebase.
+
+## Quick Links
+
+| Document | Description |
+|----------|-------------|
+| [Architecture](ARCHITECTURE.md) | System design, data flow, key decisions |
+| [Frontend](FRONTEND.md) | Vue 3 application structure and patterns |
+| [Backend](BACKEND.md) | Express.js server, services, Redis |
+| [Database](DATABASE.md) | Schema, stored procedures, security |
+| [API Reference](API_REFERENCE.md) | Backend API endpoints |
+| [Development Workflow](DEVELOPMENT_WORKFLOW.md) | Setup, git workflow, deployment |
+| [Billing](BILLING.md) | Subscription tiers, Stripe, credits, session tracking |
+| [AI Integration](AI_INTEGRATION.md) | Chat, TTS, realtime voice, OpenAI |
+
+## Component Documentation
+
+| Component | Description |
+|-----------|-------------|
+| [CreditConfirmationDialog](components/CreditConfirmationDialog.md) | Credit consumption confirmation dialog |
+
+## Related Documentation
+
+| Document | Location | Description |
+|----------|----------|-------------|
+| Project Overview | [/README.md](/README.md) | Comprehensive project documentation |
+| AI Assistant Guide | [/CLAUDE.md](/CLAUDE.md) | Quick reference for AI assistants |
+| Environment Variables | [/backend-server/ENVIRONMENT_VARIABLES.md](/backend-server/ENVIRONMENT_VARIABLES.md) | Backend environment configuration |
+| Realtime Job Processor | [/backend-server/REALTIME_JOB_PROCESSOR.md](/backend-server/REALTIME_JOB_PROCESSOR.md) | Job processor architecture |
+
+## Getting Started
+
+New to the codebase? Start with:
+
+1. **[Development Workflow](DEVELOPMENT_WORKFLOW.md)** - Set up your local environment
+2. **[Architecture](ARCHITECTURE.md)** - Understand the system design
+3. **[CLAUDE.md](/CLAUDE.md)** - Quick reference for coding standards
