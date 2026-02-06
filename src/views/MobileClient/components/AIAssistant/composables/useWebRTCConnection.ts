@@ -19,7 +19,14 @@ export function useWebRTCConnection() {
   // Transcript callbacks
   let onUserTranscriptCallback: ((text: string) => void) | null = null
   let onAssistantTranscriptCallback: ((text: string) => void) | null = null
-  
+
+  // Generation counter to prevent stale audio check loops from ICE reconnections
+  let audioCheckGeneration = 0
+
+  // Greeting state (moved to composable scope so it's accessible in message handler)
+  let greetingInfo: { language: string; customWelcome?: string; isItemMode: boolean } | null = null
+  let greetingSent = false
+
   // Voice configuration by language (Realtime API)
   // Supported voices: 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse', 'marin', 'cedar'
   // For Chinese, voice is determined by voice preference (mandarin/cantonese), not text script
@@ -113,37 +120,88 @@ export function useWebRTCConnection() {
       
       // Get ephemeral token
       const ephemeralToken = await getEphemeralToken(language)
-      
+
       // Request microphone access
-      mediaStream.value = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
+      console.log('🎤 Requesting microphone access...')
+      try {
+        mediaStream.value = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+            sampleRate: 24000  // OpenAI Realtime API expects 24kHz
+          }
+        })
+        console.log('✅ Microphone access granted')
+
+        // Log audio track info for debugging
+        const audioTracks = mediaStream.value.getAudioTracks()
+        if (audioTracks.length > 0) {
+          const track = audioTracks[0]
+          console.log('🎤 Audio track:', {
+            label: track.label,
+            enabled: track.enabled,
+            muted: track.muted,
+            settings: track.getSettings()
+          })
         }
-      })
+      } catch (err: any) {
+        console.error('❌ Microphone access denied:', err)
+        throw new Error('Microphone access required for voice conversation. Please allow microphone permission in your browser settings.')
+      }
       
       // Create peer connection
+      console.log('🔗 Creating peer connection...')
       pc.value = new RTCPeerConnection({
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' }
         ]
       })
-      
+
+      // Monitor ICE connection state for debugging
+      pc.value.oniceconnectionstatechange = () => {
+        console.log('🔗 ICE connection state:', pc.value?.iceConnectionState)
+        if (pc.value?.iceConnectionState === 'failed') {
+          console.error('❌ ICE connection failed - audio may not flow')
+        }
+      }
+
+      // Monitor connection state
+      pc.value.onconnectionstatechange = () => {
+        console.log('🔗 Connection state:', pc.value?.connectionState)
+      }
+
       // Add audio track
       const audioTrack = mediaStream.value.getAudioTracks()[0]
-      pc.value.addTrack(audioTrack, mediaStream.value)
-      
+      console.log('📤 Adding audio track to peer connection...')
+      const sender = pc.value.addTrack(audioTrack, mediaStream.value)
+      console.log('✅ Audio track added:', {
+        trackId: audioTrack.id,
+        senderId: sender.track?.id,
+        enabled: sender.track?.enabled,
+        muted: sender.track?.muted
+      })
+
+      // Verify the sender is actually sending
+      if (sender.track) {
+        console.log('📤 Audio sender ready:', {
+          readyState: sender.track.readyState,
+          enabled: sender.track.enabled
+        })
+      }
+
       // Create data channel for text/events
       dc.value = pc.value.createDataChannel('oai-events', {
         ordered: true
       })
-      
+
       // Set up data channel handlers
       dc.value.onopen = () => {
         isConnected.value = true
         status.value = 'connected'
-        
+
+        console.log('✅ Data channel opened, configuring session...')
+
         // Language name mapping for explicit instructions
         const languageNames: Record<string, string> = {
           'en': 'English',
@@ -161,7 +219,16 @@ export function useWebRTCConnection() {
           'ru': 'Russian (Русский)',
           'ar': 'Arabic (العربية)'
         }
-        
+
+        // Store greeting info to be sent after session.updated confirmation
+        greetingInfo = {
+          language: languageNames[language] || 'English',
+          customWelcome,
+          isItemMode: false // will be passed from caller if needed
+        }
+        greetingSent = false // Reset flag for new connection
+        console.log('💾 Greeting info stored:', greetingInfo)
+
         // Map language codes to Whisper language codes (ISO-639-1)
         // Whisper expects 2-letter codes for accurate transcription
         const whisperLanguageMap: Record<string, string> = {
@@ -180,7 +247,7 @@ export function useWebRTCConnection() {
           'ru': 'ru',
           'ar': 'ar'
         }
-        
+
         // Prepare session configuration with language enforcement
         const sessionConfig = {
           type: 'session.update',
@@ -190,13 +257,13 @@ export function useWebRTCConnection() {
             voice: voiceMap[language] || 'alloy',
             input_audio_format: 'pcm16',
             output_audio_format: 'pcm16',
-            input_audio_transcription: { 
+            input_audio_transcription: {
               model: 'whisper-1',
               language: whisperLanguageMap[language] || 'en'  // Tell Whisper which language to expect
             },
-            turn_detection: { 
+            turn_detection: {
               type: 'server_vad',
-              threshold: parseFloat(import.meta.env.VITE_REALTIME_VAD_THRESHOLD) || 0.65,           // Higher = less sensitive to noise (range: 0.0-1.0, default: 0.65)
+              threshold: parseFloat(import.meta.env.VITE_REALTIME_VAD_THRESHOLD) || 0.5,           // Lower = more sensitive (range: 0.0-1.0, default: 0.5 for better detection)
               prefix_padding_ms: parseInt(import.meta.env.VITE_REALTIME_VAD_PREFIX_PADDING) || 300, // Audio before speech detection (default: 300ms)
               silence_duration_ms: parseInt(import.meta.env.VITE_REALTIME_VAD_SILENCE_DURATION) || 800 // Silence required before ending turn (default: 800ms)
             },
@@ -204,29 +271,13 @@ export function useWebRTCConnection() {
             max_response_output_tokens: 4096
           }
         }
-        
-        // Send session configuration with context
+
+        // Send session configuration
+        console.log('📤 Sending session configuration...')
+        console.log('🎙️ VAD settings:', sessionConfig.session.turn_detection)
         sendMessage(sessionConfig)
-        
-        // Trigger AI's proactive greeting after session is configured
-        // Use streamlined greeting instructions that are concise for voice
-        setTimeout(() => {
-          const greetingInstructions = buildRealtimeGreetingInstructions(
-            languageNames[language] || 'English',
-            customWelcome,
-            false // isItemMode - will be passed from caller if needed
-          )
-          
-          const greetingConfig = {
-            type: 'response.create',
-            response: {
-              modalities: ['text', 'audio'],
-              instructions: greetingInstructions
-            }
-          }
-          
-          sendMessage(greetingConfig)
-        }, 500)
+
+        // Greeting will be triggered after receiving session.updated confirmation
       }
       
       dc.value.onmessage = (event) => {
@@ -268,27 +319,55 @@ export function useWebRTCConnection() {
         }
         
         // Create new audio element
+        console.log('🔊 Setting up audio playback...')
         audioElement.value = new Audio()
         audioElement.value.srcObject = event.streams[0]
         audioElement.value.autoplay = true
-        
+
+        // CRITICAL: Explicitly play the audio (autoplay alone may not work)
+        audioElement.value.play().then(() => {
+          console.log('✅ Audio playback started successfully')
+        }).catch((err) => {
+          console.error('❌ Audio playback failed:', err)
+          // Try again - sometimes first attempt fails on mobile
+          setTimeout(() => {
+            audioElement.value?.play().catch(e => console.error('Retry failed:', e))
+          }, 100)
+        })
+
         // Track speaking state
         const audioContext = new AudioContext()
+
+        // CRITICAL: Resume AudioContext if suspended (required on many browsers)
+        if (audioContext.state === 'suspended') {
+          console.log('⚠️ AudioContext suspended, resuming...')
+          audioContext.resume().then(() => {
+            console.log('✅ AudioContext resumed')
+          })
+        }
+
         const source = audioContext.createMediaStreamSource(event.streams[0])
         const analyser = audioContext.createAnalyser()
         source.connect(analyser)
-        
+
         // Store analyser for cleanup
         audioAnalyser.value = { context: audioContext, analyser }
-        
+
+        console.log('🔊 Audio output connected, AudioContext state:', audioContext.state)
+
+        // Increment generation to invalidate any previous audio check loops
+        const currentGeneration = ++audioCheckGeneration
+
         const dataArray = new Uint8Array(analyser.frequencyBinCount)
         const checkAudio = () => {
+          // Stop if generation has changed (new ontrack fired) or disconnected
+          if (audioCheckGeneration !== currentGeneration || !isConnected.value) {
+            return
+          }
           analyser.getByteFrequencyData(dataArray)
           const average = dataArray.reduce((a, b) => a + b) / dataArray.length
           isSpeaking.value = average > 30
-          if (isConnected.value) {
-            requestAnimationFrame(checkAudio)
-          }
+          requestAnimationFrame(checkAudio)
         }
         checkAudio()
       }
@@ -296,11 +375,9 @@ export function useWebRTCConnection() {
       // Create offer
       const offer = await pc.value.createOffer()
       await pc.value.setLocalDescription(offer)
-      
-      // Get model from environment (must match what was used for ephemeral token)
-      const model = import.meta.env.VITE_OPENAI_REALTIME_MODEL || 'gpt-realtime-mini-2025-10-06'
-      
+
       // Use backend server to proxy the WebRTC connection
+      // Note: Backend determines the model from its environment config
       const response = await fetch(`${backendUrl}/offer`, {
         method: 'POST',
         headers: {
@@ -308,7 +385,6 @@ export function useWebRTCConnection() {
         },
         body: JSON.stringify({
           sdp: offer.sdp,
-          model,
           token: ephemeralToken
         })
       })
@@ -327,7 +403,28 @@ export function useWebRTCConnection() {
         type: 'answer',
         sdp: answerSdp
       })
-      
+
+      console.log('✅ WebRTC connection established')
+      console.log('📊 Connection details:', {
+        iceConnectionState: pc.value.iceConnectionState,
+        connectionState: pc.value.connectionState,
+        signalingState: pc.value.signalingState,
+        senders: pc.value.getSenders().length,
+        receivers: pc.value.getReceivers().length
+      })
+
+      // Verify audio is being sent
+      const senders = pc.value.getSenders()
+      senders.forEach((sender, index) => {
+        if (sender.track?.kind === 'audio') {
+          console.log(`📤 Audio sender ${index}:`, {
+            enabled: sender.track.enabled,
+            muted: sender.track.muted,
+            readyState: sender.track.readyState
+          })
+        }
+      })
+
     } catch (err: any) {
       console.error('Connection failed:', err)
       error.value = err.message
@@ -339,23 +436,81 @@ export function useWebRTCConnection() {
   
   // Transcript state for accumulation
   let currentAssistantTranscript = ''
-  
+
   // Handle incoming data channel messages
   function handleDataChannelMessage(data: string) {
     try {
       const message = JSON.parse(data)
-      
+
       // Handle different message types
       switch (message.type) {
         case 'session.created':
+          console.log('✅ Session created')
+          break
+
         case 'session.updated':
+          console.log('✅ Session updated, sending AI greeting...')
+          console.log('🔍 Greeting state check:', {
+            greetingSent,
+            hasGreetingInfo: !!greetingInfo,
+            greetingInfo
+          })
+
+          // FIX: Send greeting AFTER session is fully configured
+          // This ensures the AI speaks first to guide the user
+          if (!greetingSent && greetingInfo) {
+            console.log('📤 Triggering AI greeting...')
+
+            const greetingInstructions = buildRealtimeGreetingInstructions(
+              greetingInfo.language,
+              greetingInfo.customWelcome,
+              greetingInfo.isItemMode
+            )
+
+            console.log('📝 Greeting instructions:', greetingInstructions.substring(0, 100) + '...')
+
+            const greetingConfig = {
+              type: 'response.create',
+              response: {
+                modalities: ['text', 'audio'],
+                instructions: greetingInstructions
+              }
+            }
+
+            sendMessage(greetingConfig)
+            greetingSent = true
+            console.log('✅ Greeting message sent')
+          } else {
+            console.warn('⚠️ Skipping greeting:', {
+              reason: greetingSent ? 'Already sent' : 'No greeting info',
+              greetingSent,
+              greetingInfo
+            })
+          }
           break
           
         case 'conversation.item.input_audio_transcription.completed':
           // User's speech transcript
+          console.log('🎤 User speech transcribed:', message.transcript)
           if (message.transcript && onUserTranscriptCallback) {
             onUserTranscriptCallback(message.transcript)
           }
+          break
+
+        case 'input_audio_buffer.speech_started':
+          console.log('🎤 Speech detected - user started speaking', message)
+          break
+
+        case 'input_audio_buffer.speech_stopped':
+          console.log('🎤 Speech stopped - processing...', message)
+          break
+
+        case 'input_audio_buffer.committed':
+          console.log('🎤 Audio buffer committed', message)
+          break
+
+        case 'conversation.item.created':
+          console.log('💬 Conversation item created:', message.item?.type)
           break
           
         case 'response.audio_transcript.delta':
@@ -364,21 +519,31 @@ export function useWebRTCConnection() {
             currentAssistantTranscript += message.delta
           }
           break
-          
+
         case 'response.audio_transcript.done':
           // AI response complete
+          console.log('🤖 AI response complete:', currentAssistantTranscript)
           if (currentAssistantTranscript && onAssistantTranscriptCallback) {
             onAssistantTranscriptCallback(currentAssistantTranscript)
             currentAssistantTranscript = ''
           }
           break
-          
+
         case 'response.done':
           // Response fully completed - fallback if no audio_transcript.done
+          console.log('✅ Response done')
           if (currentAssistantTranscript && onAssistantTranscriptCallback) {
             onAssistantTranscriptCallback(currentAssistantTranscript)
             currentAssistantTranscript = ''
           }
+          break
+
+        case 'response.created':
+          console.log('🤖 AI response started')
+          break
+
+        case 'response.output_item.added':
+          console.log('🤖 AI output item added')
           break
           
         case 'error':
@@ -519,6 +684,12 @@ export function useWebRTCConnection() {
     isSpeaking.value = false
     status.value = 'disconnected'
     currentAssistantTranscript = ''
+
+    // Reset callbacks and greeting state to prevent stale closures on reconnect
+    onUserTranscriptCallback = null
+    onAssistantTranscriptCallback = null
+    greetingInfo = null
+    greetingSent = false
   }
   
   // Set transcript callbacks
@@ -530,39 +701,19 @@ export function useWebRTCConnection() {
     onAssistantTranscriptCallback = callback
   }
   
-  // Handle page visibility changes (mobile browser going to background)
-  function handleVisibilityChange() {
-    if (document.hidden && isConnected.value) {
-      disconnect()
-    }
-  }
-  
-  // Set up visibility listener
-  if (typeof document !== 'undefined') {
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-  }
-  
-  // Cleanup visibility listener
-  function destroyVisibilityListener() {
-    if (typeof document !== 'undefined') {
-      document.removeEventListener('visibilitychange', handleVisibilityChange)
-    }
-  }
-  
   return {
     // State
     isConnected,
     status,
     error,
     isSpeaking,
-    
+
     // Methods
     connect,
     disconnect,
     interrupt,
     sendText,
     onUserTranscript,
-    onAssistantTranscript,
-    destroyVisibilityListener  // Expose for cleanup when composable is unmounted
+    onAssistantTranscript
   }
 }

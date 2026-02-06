@@ -115,8 +115,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted, watch, watchEffect } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted, watch, watchEffect, provide } from 'vue'
+import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
 import { useMobileLanguageStore, AVAILABLE_LANGUAGES } from '@/stores/language'
@@ -132,6 +132,26 @@ const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const mobileLanguageStore = useMobileLanguageStore()
+
+// ============================================================================
+// AI DISCONNECT REGISTRY
+// Ensures all active WebRTC connections are terminated on card change or route leave
+// ============================================================================
+const disconnectCallbacks = new Set<() => void>()
+
+function registerDisconnect(callback: () => void) {
+  disconnectCallbacks.add(callback)
+}
+
+function unregisterDisconnect(callback: () => void) {
+  disconnectCallbacks.delete(callback)
+}
+
+function disconnectAllActive() {
+  disconnectCallbacks.forEach(cb => cb())
+}
+
+provide('aiDisconnectRegistry', { registerDisconnect, unregisterDisconnect })
 
 // Sync language from URL on component mount
 const urlLang = route.params.lang as string
@@ -267,7 +287,6 @@ async function fetchCardData() {
       const cardIdOrToken = route.params.issue_card_id as string
       const language = mobileLanguageStore.selectedLanguage.code
       
-      console.log('📱 Fetching card via Express API:', cardIdOrToken)
       const response = await fetchCardContent(cardIdOrToken, language)
       
       if (!response.success) {
@@ -291,8 +310,6 @@ async function fetchCardData() {
       }
       
       // Log cache/dedup status for debugging
-      if (response.cached) console.log('📦 Response from cache')
-      if (response.deduplicated) console.log('🔄 Access deduplicated (no credit charged)')
       
       // Transform API response to Supabase RPC format
       const transformed = transformCardResponse(response)
@@ -389,7 +406,6 @@ async function fetchCardData() {
       if (mobileLanguageStore.selectedLanguage.code !== cardOriginalLang) {
         const originalLanguage = mobileLanguageStore.getLanguageByCode(cardOriginalLang)
         if (originalLanguage) {
-          console.log('📱 Setting mobile language to card original language:', cardOriginalLang)
           // Set isFirstLoad to false BEFORE setting language to prevent double-fetch
           isFirstLoad.value = false
           mobileLanguageStore.setLanguage(originalLanguage)
@@ -593,7 +609,6 @@ onUnmounted(() => {
 
 // Watch for language changes and reload content
 watch(() => mobileLanguageStore.selectedLanguage.code, async (newLang, oldLang) => {
-  console.log('📱 Language changed to:', newLang)
   
   // Update URL to reflect new language (use replaceState to avoid adding history entry)
   const currentLang = route.params.lang as string
@@ -615,6 +630,16 @@ watch(() => mobileLanguageStore.selectedLanguage.code, async (newLang, oldLang) 
       selectedContent.value = updatedContent
     }
   }
+})
+
+// Disconnect all active AI connections when navigating to a different card
+watch(() => route.params.issue_card_id, () => {
+  disconnectAllActive()
+})
+
+// Disconnect all active AI connections when leaving PublicCardView entirely
+onBeforeRouteLeave(() => {
+  disconnectAllActive()
 })
 
 // Watch for URL language parameter changes (e.g., browser back/forward)

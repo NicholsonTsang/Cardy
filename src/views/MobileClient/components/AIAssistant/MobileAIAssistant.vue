@@ -59,7 +59,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, nextTick, onUnmounted, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AIAssistantModal from './components/AIAssistantModal.vue'
 import ChatInterface from './components/ChatInterface.vue'
@@ -105,6 +105,12 @@ const { t } = useI18n()
 const chatCompletion = useChatCompletion()
 const voiceRecording = useVoiceRecording()
 const realtimeConnection = useWebRTCConnection()
+
+// Route-level disconnect registry
+const aiDisconnectRegistry = inject<{
+  registerDisconnect: (cb: () => void) => void
+  unregisterDisconnect: (cb: () => void) => void
+}>('aiDisconnectRegistry', null as any)
 
 // ============================================================================
 // STATE
@@ -156,9 +162,13 @@ const modeContext = computed(() => {
   }
 })
 
-const systemInstructions = computed(() => {
-  return buildContentItemPrompt({
-    assistantName: 'AI Assistant',
+// OPTIMIZATION: Use ref instead of computed to prevent rebuilding on every render
+// Same optimization as CardLevelAssistant - enables prompt caching and reduces CPU usage
+const systemInstructions = ref('')
+
+// Build prompt once on mount
+onMounted(() => {
+  systemInstructions.value = buildContentItemPrompt({
     cardName: props.cardData.card_name,
     cardDescription: props.cardData.card_description,
     languageName: languageStore.selectedLanguage.name,
@@ -178,7 +188,56 @@ const systemInstructions = computed(() => {
   })
 })
 
+// Rebuild only when actual dependencies change
+watch(
+  [
+    () => languageStore.selectedLanguage.code,
+    () => languageStore.chineseVoice,
+    () => props.cardData.card_name,
+    () => props.cardData.card_description,
+    () => props.cardData.ai_knowledge_base,
+    () => props.cardData.ai_instruction,
+    () => props.contentItemName,
+    () => props.contentItemContent,
+    () => props.contentItemKnowledgeBase,
+    () => props.parentContentName,
+    () => props.parentContentDescription,
+    () => props.parentContentKnowledgeBase,
+    () => modeContext.value
+  ],
+  () => {
+    systemInstructions.value = buildContentItemPrompt({
+      cardName: props.cardData.card_name,
+      cardDescription: props.cardData.card_description,
+      languageName: languageStore.selectedLanguage.name,
+      languageCode: languageStore.selectedLanguage.code,
+      chineseVoice: languageStore.chineseVoice as 'mandarin' | 'cantonese' | undefined,
+      knowledgeBase: props.cardData.ai_knowledge_base,
+      customInstruction: props.cardData.ai_instruction,
+      contentItemName: props.contentItemName,
+      contentItemContent: props.contentItemContent,
+      contentItemKnowledge: props.contentItemKnowledgeBase,
+      parentContext: props.parentContentName ? {
+        name: props.parentContentName,
+        description: props.parentContentDescription,
+        knowledge: props.parentContentKnowledgeBase
+      } : undefined,
+      modeContext: modeContext.value
+    })
+  }
+)
+
 // Mode-specific welcome message key
+// Propagate runtime errors from WebRTC composable to UI
+watch(
+  () => realtimeConnection.error.value,
+  (err) => {
+    if (err && isModalOpen.value && conversationMode.value === 'realtime') {
+      connectionError.value = err
+    }
+  }
+)
+
 const welcomeKey = computed(() => {
   switch (props.contentMode) {
     case 'single':
@@ -242,8 +301,9 @@ const inactivityTimer = useInactivityTimer(300000, () => {
   }
 })
 
-const costSafeguards = useCostSafeguards(
+useCostSafeguards(
   realtimeConnection.isConnected,
+  realtimeConnection.status,
   () => disconnectRealtime()
 )
 
@@ -488,10 +548,7 @@ async function connectRealtime() {
     
     // Start inactivity timer
     inactivityTimer.startTimer()
-    
-    // Cost safeguards
-    costSafeguards.addSafeguards()
-    
+
     // Clear error on success
     connectionError.value = null
   } catch (err: any) {
@@ -520,7 +577,6 @@ async function connectRealtime() {
 
 function disconnectRealtime() {
   realtimeConnection.disconnect()
-  costSafeguards.removeSafeguards()
   inactivityTimer.clearTimer()
   
   // Add goodbye message
@@ -538,10 +594,14 @@ function disconnectRealtime() {
 // LIFECYCLE HOOKS
 // ============================================================================
 
-// Cleanup when component is unmounted
-onUnmounted(() => {
-  realtimeConnection.destroyVisibilityListener()
-})
+// Register with route-level disconnect registry
+if (aiDisconnectRegistry) {
+  aiDisconnectRegistry.registerDisconnect(disconnectRealtime)
+
+  onUnmounted(() => {
+    aiDisconnectRegistry.unregisterDisconnect(disconnectRealtime)
+  })
+}
 </script>
 
 <style scoped>
