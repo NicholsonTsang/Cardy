@@ -1,5 +1,6 @@
 import { Router, Request, Response } from 'express';
-import { optionalAuth } from '../middleware/auth';
+import { optionalAuth, authenticateUser } from '../middleware/auth';
+import { supabaseAdmin } from '../config/supabase';
 
 const router = Router();
 
@@ -46,13 +47,19 @@ router.post('/chat/stream', optionalAuth, async (req: Request, res: Response) =>
     }
 
     // Build messages with system prompt
+    // OPTIMIZATION: OpenAI automatically caches static system prompts for cost reduction
+    // To maximize caching benefits:
+    // 1. System prompt should be consistent across requests for the same card
+    // 2. System prompt should be placed first in the messages array
+    // 3. Frontend should avoid regenerating prompts unnecessarily
+    // With caching: ~40% cost reduction on repeated system prompts (after 1st message)
     const systemMessage = systemPrompt || systemInstructions || 'You are a helpful assistant.';
     const fullMessages = [
       { role: 'system', content: systemMessage },
       ...validMessages
     ];
 
-    // Call OpenAI streaming API
+    // Call OpenAI streaming API with prompt caching
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -64,7 +71,9 @@ router.post('/chat/stream', optionalAuth, async (req: Request, res: Response) =>
         messages: fullMessages,
         max_tokens: parseInt(process.env.OPENAI_MAX_TOKENS || '3500'),
         temperature: 0.7,
-        stream: true
+        stream: true,
+        // OpenAI automatically applies prompt caching to repeated content
+        // No explicit parameter needed - caching happens server-side
       })
     });
 
@@ -247,7 +256,7 @@ router.post('/realtime-token', optionalAuth, async (req: Request, res: Response)
     }
 
     // Get Realtime model
-    const REALTIME_MODEL = process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-mini-2025-10-06';
+    const REALTIME_MODEL = process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-mini-2025-12-15';
 
     console.log('🎤 Generating ephemeral token:', {
       model: REALTIME_MODEL,
@@ -292,6 +301,163 @@ router.post('/realtime-token', optionalAuth, async (req: Request, res: Response)
     return res.status(500).json({
       error: 'Internal server error',
       message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/ai/generate-ai-settings
+ * Generate AI configuration fields (instruction, knowledge base, welcome messages)
+ * using OpenAI based on card context and content items
+ * Requires authentication (creator tool)
+ */
+router.post('/generate-ai-settings', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const {
+      cardId,
+      cardName,
+      cardDescription,
+      originalLanguage,
+      contentMode,
+      isGrouped,
+      billingType
+    } = req.body;
+
+    if (!cardName || typeof cardName !== 'string' || !cardName.trim()) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Card name is required'
+      });
+    }
+
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+      return res.status(500).json({
+        error: 'Configuration error',
+        message: 'OpenAI API key not configured'
+      });
+    }
+
+    // Fetch content items for richer context (edit mode only)
+    let contentItemsContext = '';
+    if (cardId) {
+      try {
+        const { data: contentItems } = await supabaseAdmin.rpc(
+          'get_content_items_server',
+          { p_card_id: cardId }
+        );
+        if (contentItems && contentItems.length > 0) {
+          const itemsSummary = contentItems
+            .slice(0, 20)
+            .map((item: any) => {
+              const content = item.content ? item.content.substring(0, 200) : '';
+              const knowledge = item.ai_knowledge_base
+                ? ` [Knowledge: ${item.ai_knowledge_base.substring(0, 100)}]`
+                : '';
+              return `- ${item.name}${content ? ': ' + content : ''}${knowledge}`;
+            })
+            .join('\n');
+          contentItemsContext = `\n\nContent Items (${contentItems.length} total):\n${itemsSummary}`;
+        }
+      } catch (err) {
+        console.warn('Failed to fetch content items for AI generation:', err);
+      }
+    }
+
+    const LANGUAGE_NAMES: Record<string, string> = {
+      'en': 'English', 'zh-Hant': 'Traditional Chinese',
+      'zh-Hans': 'Simplified Chinese', 'ja': 'Japanese',
+      'ko': 'Korean', 'es': 'Spanish', 'fr': 'French',
+      'ru': 'Russian', 'ar': 'Arabic', 'th': 'Thai'
+    };
+    const langName = LANGUAGE_NAMES[originalLanguage] || 'English';
+
+    const systemPrompt = `You are an expert at configuring AI assistants for digital interactive experiences (museums, restaurants, events, exhibitions, tourist attractions, etc.).
+
+Given information about a venue/experience project, generate optimal AI assistant configuration.
+
+You MUST respond with a JSON object containing exactly these 4 string fields:
+- "ai_instruction": Role and personality instructions for the AI assistant (max 80 words). Define the AI's persona, tone, and behavioral guidelines specific to this venue/experience.
+- "ai_knowledge_base": Comprehensive knowledge base (max 1500 words). Include relevant facts, history, context, and domain expertise that helps the AI answer visitor questions accurately. Be specific and practical, not generic.
+- "ai_welcome_general": Welcome message for the general assistant (max 80 words). A warm greeting introducing what the AI can help with. Natural and conversational.
+- "ai_welcome_item": Welcome message for the item-specific assistant (max 80 words). Use {name} as a placeholder for the content item name. Should feel focused and expert-like.
+
+IMPORTANT:
+- Write ALL content in ${langName}
+- Tailor everything to the specific type of venue/experience described
+- If content items are provided, use them to infer the domain and generate highly relevant knowledge
+- Knowledge base should contain practical, factual information, not generic filler text
+- Welcome messages should be concise for voice delivery`;
+
+    const userPrompt = `Project Name: ${cardName}
+${cardDescription ? `Description: ${cardDescription}` : ''}
+Original Language: ${langName}
+Content Display Mode: ${contentMode || 'list'}
+Content Structure: ${isGrouped ? 'Grouped into categories' : 'Flat list'}
+Access Type: ${billingType || 'digital'}${contentItemsContext}`;
+
+    console.log('🤖 Generating AI settings:', {
+      cardName,
+      hasCardId: !!cardId,
+      language: originalLanguage,
+      hasContentItems: !!contentItemsContext
+    });
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_TEXT_MODEL || 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: parseInt(process.env.OPENAI_MAX_TOKENS || '3500'),
+        temperature: 0.7,
+        response_format: { type: 'json_object' }
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ OpenAI API error:', errorText);
+      return res.status(response.status).json({
+        error: 'OpenAI API error',
+        message: 'Failed to generate AI settings'
+      });
+    }
+
+    const completion = await response.json() as any;
+    const content = completion.choices?.[0]?.message?.content;
+
+    if (!content) {
+      return res.status(500).json({
+        error: 'Generation error',
+        message: 'No content returned from AI'
+      });
+    }
+
+    const generated = JSON.parse(content);
+
+    const result = {
+      ai_instruction: typeof generated.ai_instruction === 'string' ? generated.ai_instruction : '',
+      ai_knowledge_base: typeof generated.ai_knowledge_base === 'string' ? generated.ai_knowledge_base : '',
+      ai_welcome_general: typeof generated.ai_welcome_general === 'string' ? generated.ai_welcome_general : '',
+      ai_welcome_item: typeof generated.ai_welcome_item === 'string' ? generated.ai_welcome_item : '',
+    };
+
+    console.log('✅ AI settings generated successfully');
+
+    return res.json({ success: true, data: result });
+
+  } catch (error: any) {
+    console.error('❌ AI generation error:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message || 'Failed to generate AI settings'
     });
   }
 });

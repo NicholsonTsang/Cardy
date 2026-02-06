@@ -129,8 +129,8 @@ app.post('/offer', async (req: Request, res: Response) => {
   const startTime = Date.now();
   
   try {
-    const { sdp, model, token } = req.body;
-    
+    const { sdp, token } = req.body;
+
     // Validate request
     if (!sdp) {
       return res.status(400).json({
@@ -138,23 +138,19 @@ app.post('/offer', async (req: Request, res: Response) => {
         message: 'Request body must contain "sdp" field'
       });
     }
-    
-    if (!model) {
-      return res.status(400).json({
-        error: 'Missing model',
-        message: 'Request body must contain "model" field (e.g., gpt-realtime-mini-2025-10-06)'
-      });
-    }
-    
+
     if (!token) {
       return res.status(400).json({
         error: 'Missing ephemeral token',
         message: 'Request body must contain "token" field (ephemeral token from OpenAI)'
       });
     }
-    
+
+    // Use model from environment variable (backend controls the model)
+    const model = process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-mini-2025-12-15';
+
     console.log(`📡 Relaying WebRTC offer to OpenAI (model: ${model})`);
-    
+
     // Forward the SDP offer to OpenAI's Realtime API
     const openaiUrl = `https://api.openai.com/v1/realtime?model=${encodeURIComponent(model)}`;
     
@@ -248,6 +244,7 @@ const server = app.listen(PORT, async () => {
   console.log(`    POST http://localhost:${PORT}/api/ai/chat/stream`);
   console.log(`    POST http://localhost:${PORT}/api/ai/generate-tts`);
   console.log(`    POST http://localhost:${PORT}/api/ai/realtime-token`);
+  console.log(`    POST http://localhost:${PORT}/api/ai/generate-ai-settings`);
   console.log(`    POST http://localhost:${PORT}/api/webhooks/stripe`);
   console.log('  Mobile:');
   console.log(`    GET  http://localhost:${PORT}/api/mobile/card/digital/:accessToken`);

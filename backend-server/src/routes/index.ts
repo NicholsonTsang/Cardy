@@ -46,6 +46,7 @@ router.get('/', (_req, res) => {
           chatStream: 'POST /api/ai/chat/stream',
           generateTts: 'POST /api/ai/generate-tts',
           realtimeToken: 'POST /api/ai/realtime-token',
+          generateAiSettings: 'POST /api/ai/generate-ai-settings',
         },
         webhooks: {
           stripe: 'POST /api/webhooks/stripe',
