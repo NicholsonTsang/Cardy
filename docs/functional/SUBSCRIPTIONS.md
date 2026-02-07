@@ -74,7 +74,7 @@ Perfect for:
 
 A **session** is counted when a visitor accesses your project. Sessions are:
 
-- Counted once per visitor per 5-minute window
+- Counted once per visitor per 30-minute window
 - Billed at different rates based on AI setting
 - Tracked in real-time
 
@@ -102,7 +102,7 @@ Mixed usage (50/50):
 
 ### Session Deduplication
 
-To prevent abuse, the same visitor scanning multiple times within 5 minutes counts as **one session**. This protects your budget from:
+To prevent abuse, the same visitor scanning multiple times within 30 minutes counts as **one session**. This protects your budget from:
 - Accidental double-scans
 - Page refreshes
 - Testing

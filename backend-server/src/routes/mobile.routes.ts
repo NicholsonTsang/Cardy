@@ -110,7 +110,7 @@ interface CardContentResponse {
  * - For enhanced session tracking, enable "Bot Fight Mode" in Dashboard
  * 
  * Session Expiration:
- * - Sessions are deduplicated within SESSION_DEDUP_WINDOW_SECONDS (default: 5 min)
+ * - Sessions are deduplicated within SESSION_DEDUP_WINDOW_SECONDS (default: 30 min)
  * - Same visitor accessing same card within window = same session (no charge)
  * 
  * @see https://developers.cloudflare.com/fundamentals/reference/http-request-headers/

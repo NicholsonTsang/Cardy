@@ -1,13 +1,72 @@
 <template>
-    <div class="space-y-6">
-        <!-- Preview Header -->
-        <div class="flex items-center justify-between">
-            <div>
-                <h3 class="text-lg font-semibold text-slate-900 flex items-center gap-2">
-                    <i class="pi pi-mobile text-blue-600"></i>
-                    {{ $t('dashboard.mobile_preview') }}
-                </h3>
-                <p class="text-sm text-slate-600 mt-1">{{ $t('dashboard.mobile_preview_description') }}</p>
+    <!-- Compact mode: minimal phone frame for sidebar -->
+    <div v-if="compact" class="flex flex-col items-center gap-3" style="width: 240px;">
+        <div v-if="isLoading" class="flex flex-col items-center justify-center py-8">
+            <ProgressSpinner strokeWidth="3" animationDuration=".8s" class="w-6 h-6"/>
+        </div>
+        <div v-else-if="accessError" class="flex flex-col items-center justify-center py-6 px-4 text-center">
+            <i class="pi pi-exclamation-triangle text-red-400 text-lg mb-2"></i>
+            <p class="text-xs text-slate-500 mb-2">{{ accessError }}</p>
+            <Button
+                :label="$t('dashboard.retry')"
+                icon="pi pi-refresh"
+                @click="loadPreview"
+                size="small"
+                text
+            />
+        </div>
+        <PhoneIframePreview
+            v-else
+            :src="previewUrl"
+            :iframeKey="previewUrl"
+            :width="240"
+            :title="cardProp?.name || 'Mobile Preview'"
+            :loadingText="$t('dashboard.loading_mobile_preview')"
+            :errorText="$t('dashboard.failed_load_preview_content')"
+            :retryText="$t('dashboard.retry')"
+            @error="handleIframeError"
+        />
+        <div class="flex items-center gap-1.5">
+            <span class="text-[11px] text-slate-400 uppercase tracking-wide font-medium">{{ $t('dashboard.preview') }}</span>
+            <Button
+                icon="pi pi-refresh"
+                size="small"
+                severity="secondary"
+                text
+                @click="loadPreview"
+                :loading="isLoading"
+                v-tooltip.bottom="$t('dashboard.refresh_preview')"
+                class="!w-6 !h-6"
+            />
+        </div>
+    </div>
+
+    <!-- Full mode: original layout with header + card wrapper -->
+    <div v-else class="space-y-6">
+        <!-- Preview Header with Explanation -->
+        <div class="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl p-4 border border-emerald-200">
+            <div class="flex items-start gap-3">
+                <div class="p-2 bg-emerald-100 rounded-lg flex-shrink-0">
+                    <i class="pi pi-mobile text-emerald-600"></i>
+                </div>
+                <div class="flex-1">
+                    <h3 class="text-base font-semibold text-emerald-900">{{ $t('dashboard.mobile_preview') }}</h3>
+                    <p class="text-sm text-emerald-700 mt-1">{{ $t('dashboard.mobile_preview_explanation') }}</p>
+                    <div class="flex items-center gap-2 mt-2">
+                        <i class="pi pi-info-circle text-emerald-500 text-xs"></i>
+                        <span class="text-xs text-emerald-600">{{ $t('dashboard.preview_auto_refresh_hint') }}</span>
+                    </div>
+                </div>
+                <Button
+                    icon="pi pi-refresh"
+                    size="small"
+                    severity="secondary"
+                    outlined
+                    @click="loadPreview"
+                    :loading="isLoading"
+                    v-tooltip.left="$t('dashboard.refresh_preview')"
+                    class="flex-shrink-0"
+                />
             </div>
         </div>
 
@@ -26,10 +85,10 @@
                 </div>
                 <h4 class="text-sm font-medium text-red-600 mb-2">{{ $t('dashboard.preview_unavailable') }}</h4>
                 <p class="text-xs text-slate-600 mb-4">{{ accessError }}</p>
-                <Button 
-                    :label="$t('dashboard.retry')" 
-                    icon="pi pi-refresh" 
-                    @click="loadPreview" 
+                <Button
+                    :label="$t('dashboard.retry')"
+                    icon="pi pi-refresh"
+                    @click="loadPreview"
                     size="small"
                     outlined
                 />
@@ -46,7 +105,7 @@
                     :retryText="$t('dashboard.retry')"
                     @error="handleIframeError"
                 />
-                
+
                 <!-- Preview Info -->
                 <div class="preview-info">
                     <p class="info-text">{{ $t('dashboard.live_preview') }}</p>
@@ -57,7 +116,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { supabase } from '@/lib/supabase';
 import Button from 'primevue/button';
@@ -70,6 +129,10 @@ const props = defineProps({
     cardProp: {
         type: Object,
         required: true
+    },
+    compact: {
+        type: Boolean,
+        default: false
     }
 });
 
@@ -84,24 +147,24 @@ const previewUrl = computed(() => {
 
 const loadPreview = async () => {
     if (!props.cardProp?.id) return;
-    
+
     isLoading.value = true;
     accessError.value = null;
-    
+
     try {
         const { data: previewData, error: previewError } = await supabase.rpc('get_card_preview_access', {
             p_card_id: props.cardProp.id
         });
-        
+
         if (previewError) {
             throw new Error(previewError.message);
         }
-        
+
         if (!previewData || previewData.length === 0) {
             accessError.value = t('dashboard.preview_access_denied');
             return;
         }
-        
+
     } catch (err) {
         console.error('Error loading preview:', err);
         accessError.value = err.message || t('dashboard.failed_load_preview');
@@ -114,7 +177,7 @@ const handleIframeError = () => {
     accessError.value = t('dashboard.failed_load_preview_content');
 };
 
-// Watch for card changes
+// Watch for card changes (immediate: true handles initial mount)
 watch(
     () => props.cardProp?.id,
     (newCardId) => {
@@ -124,12 +187,6 @@ watch(
     },
     { immediate: true }
 );
-
-onMounted(() => {
-    if (props.cardProp?.id) {
-        loadPreview();
-    }
-});
 </script>
 
 <style scoped>

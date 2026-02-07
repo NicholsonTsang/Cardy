@@ -20,7 +20,8 @@
         </div>
         
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <router-link :to="{ name: 'admin-batches' }" class="block">
+          <!-- Physical card: Print requests quick action -->
+          <router-link v-if="isPhysicalCardsEnabled" :to="{ name: 'admin-batches' }" class="block">
             <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 hover:from-blue-100 hover:to-blue-200 transition-colors">
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
@@ -33,8 +34,9 @@
               </div>
             </div>
           </router-link>
-          
-          <router-link :to="{ name: 'admin-batches' }" class="block">
+
+          <!-- Physical card: Batch management quick action -->
+          <router-link v-if="isPhysicalCardsEnabled" :to="{ name: 'admin-batches' }" class="block">
             <div class="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-4 hover:from-purple-100 hover:to-purple-200 transition-colors">
               <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-lg bg-purple-500 flex items-center justify-center">
@@ -47,7 +49,7 @@
               </div>
             </div>
           </router-link>
-          
+
           <router-link :to="{ name: 'admin-history-logs' }" class="block">
             <div class="bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 rounded-xl p-4 hover:from-slate-100 hover:to-slate-200 transition-colors">
               <div class="flex items-center gap-3">
@@ -160,8 +162,8 @@
         </div>
       </div>
 
-      <!-- Print Request Management Section -->
-      <div>
+      <!-- Print Request Management Section - Only show when physical cards enabled -->
+      <div v-if="isPhysicalCardsEnabled">
         <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
           <i class="pi pi-print text-blue-600"></i>
           {{ $t('admin.print_request_pipeline') }}
@@ -454,8 +456,8 @@
             </div>
           </template>
           <template v-else>
-            <!-- Physical Cards -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+            <!-- Physical Cards - Only show when physical cards enabled -->
+            <div v-if="isPhysicalCardsEnabled" class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
                   <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.physical_cards') }}</p>
@@ -486,8 +488,8 @@
               </div>
             </div>
 
-            <!-- Digital Adoption Rate -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
+            <!-- Digital Adoption Rate - Only show when physical cards enabled (compares digital vs physical) -->
+            <div v-if="isPhysicalCardsEnabled" class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
                 <div class="min-w-0 flex-1">
                   <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.digital_adoption_rate') }}</p>
@@ -702,19 +704,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, computed, onUnmounted } from 'vue'
 import { useAdminDashboardStore } from '@/stores/admin'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
-import { supabase } from '@/lib/supabase'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import { useI18n } from 'vue-i18n'
+import { usePhysicalCards } from '@/composables/usePhysicalCards'
 
 const dashboardStore = useAdminDashboardStore()
-const router = useRouter()
 const toast = useToast()
 const { t } = useI18n()
+const { isPhysicalCardsEnabled } = usePhysicalCards()
 
 // Use dashboard store state directly
 const stats = computed(() => dashboardStore.dashboardStats || {
@@ -775,22 +776,16 @@ const digitalAdoptionRate = computed(() => {
   return Math.round((stats.value.digital_cards_count / total) * 100)
 })
 
-// Computed property for verification rate
-
 // Use dashboard store loading states
 const isLoading = computed(() => dashboardStore.isLoading)
 const isLoadingStats = computed(() => dashboardStore.isLoadingStats)
-
-// Remove activity-related state since Recent Activity is now in History Logs page
 
 // Function to format revenue
 const formatRevenue = (cents) => {
   return `$${((cents || 0) / 100).toFixed(2)}`
 }
 
-// Remove activity loading functions since Recent Activity is now in History Logs page
-
-// Update the loadDashboardData function to use dashboard store
+// Load dashboard data from store
 const loadDashboardData = async () => {
   try {
     await dashboardStore.fetchDashboardStats()
@@ -817,53 +812,6 @@ onUnmounted(() => {
     clearInterval(refreshInterval)
   }
 })
-
-
-function handleBatch(batch) {
-  router.push({ 
-    name: 'admin-batches',
-    query: { batch: batch.id }
-  })
-}
-
-function getActivityColor(activity) {
-  // Simple color mapping without feedback store
-  const colorMap = {
-    'USER_ROLE_UPDATE': 'orange',
-    'PRINT_REQUEST_STATUS_UPDATE': 'blue',
-    'DEFAULT': 'slate'
-  }
-  return colorMap[activity.action_type] || colorMap['DEFAULT']
-}
-
-function getActivityIcon(activity) {
-  const icons = {
-    'USER_REGISTRATION': 'pi-user-plus',
-    'CARD_CREATION': 'pi-plus-circle',
-    'CARD_UPDATE': 'pi-pencil',
-    'CARD_DELETION': 'pi-trash',
-    'BATCH_STATUS_CHANGE': 'pi-refresh',
-    'CARD_GENERATION': 'pi-cog',
-    'VERIFICATION_REVIEW': 'pi-shield',
-    'PRINT_REQUEST_UPDATE': 'pi-print',
-    'PRINT_REQUEST_WITHDRAWAL': 'pi-times-circle',
-    'ROLE_CHANGE': 'pi-users'
-  }
-  return icons[activity.action_type] || 'pi-history'
-}
-
-function formatTimeAgo(date) {
-  const now = new Date()
-  const past = new Date(date)
-  const diffMs = now - past
-  const diffMins = Math.floor(diffMs / (60 * 1000))
-  const diffHours = Math.floor(diffMs / (60 * 60 * 1000))
-  const diffDays = Math.floor(diffMs / (24 * 60 * 60 * 1000))
-
-  if (diffMins < 60) return t('common.minutes_ago', { count: diffMins })
-  if (diffHours < 24) return t('common.hours_ago', { count: diffHours })
-  return t('common.days_ago', { count: diffDays })
-}
 
 const refreshData = async () => {
   await loadDashboardData()

@@ -117,7 +117,7 @@ Users can switch between subscription tiers at any time:
 | Starter Max Languages | 2 | `SubscriptionConfig.starter.maxLanguages` |
 | Premium Max Languages | Unlimited | `SubscriptionConfig.premium.maxLanguages` |
 | Free Tier Sessions | 50/month | `FREE_TIER_MONTHLY_SESSION_LIMIT` |
-| Session Dedup Window | 5 minutes | `SESSION_DEDUP_WINDOW_SECONDS` |
+| Session Dedup Window | 30 minutes | `SESSION_DEDUP_WINDOW_SECONDS` |
 | Auto Top-Up Amount | $5 | `OVERAGE_CREDITS_PER_BATCH` |
 
 #### Daily Access Limit (Creator Protection)
@@ -222,7 +222,7 @@ User scans QR → Cloudflare Proxy → Backend extracts CF-Connecting-IP + User-
 
 ##### Session Deduplication
 
-- **Window:** 5 minutes (configurable via `SESSION_DEDUP_WINDOW_SECONDS`)
+- **Window:** 30 minutes (configurable via `SESSION_DEDUP_WINDOW_SECONDS`)
 - **Key format:** `session:{userId}:{month}:{sessionId}:{cardId}`
 - **Same visitor + same card within window = no additional charge**
 
@@ -257,7 +257,7 @@ If neither Cloudflare nor anonymous auth is available:
 > ⚠️ **Note:** IP fingerprinting groups users behind NAT/shared IPs. Use Cloudflare or Anonymous Auth for production.
 
 **Redis Keys for Sessions:**
-- `session:dedup:${sessionId}:${cardId}` - Deduplication window (5 min TTL)
+- `session:dedup:${sessionId}:${cardId}` - Deduplication window (30 min TTL)
 - `budget:user:${userId}:month:${month}` - Monthly budget
 - `budget:consumed:${userId}:month:${month}` - Budget consumed
 - `sessions:ai:${userId}:month:${month}` - AI session count
@@ -288,7 +288,7 @@ All pricing values are configurable via environment variables. **No pricing is s
 | `OVERAGE_CREDITS_PER_BATCH` | 5 | Credits per auto top-up batch ($5) |
 | **Session Tracking** | | |
 | `SESSION_EXPIRATION_SECONDS` | 1800 | Session expiry (30 min default) |
-| `SESSION_DEDUP_WINDOW_SECONDS` | 300 | Deduplication window (5 min) |
+| `SESSION_DEDUP_WINDOW_SECONDS` | 300 | Deduplication window (30 min) |
 
 **Frontend variables** use `VITE_` prefix (e.g., `VITE_PREMIUM_MONTHLY_FEE_USD`).
 
@@ -732,7 +732,7 @@ The Admin Portal includes a comprehensive **History Logs** page that tracks all 
 **Features:**
 - Filter by activity type, date range, or search text
 - Paginated results with CSV export
-- Auto-refresh every 5 minutes
+- Auto-refresh every 30 minutes
 - Visual icons and color coding by action type
 
 **Action Types vs Stored Procedure Log Messages:**
@@ -1285,7 +1285,7 @@ Without Cloudflare, the system falls back to Supabase Anonymous Auth or IP finge
 |----------|---------|-------------|
 | `SESSION_EXPIRATION_SECONDS` | `1800` | Session expiry (30 min) |
 | `SESSION_REDIS_TTL_SECONDS` | `3024000` | Redis key TTL (35 days) |
-| `SESSION_DEDUP_WINDOW_SECONDS` | `300` | Deduplication window (5 min) |
+| `SESSION_DEDUP_WINDOW_SECONDS` | `1800` | Deduplication window (30 min) |
 
 #### Server Configuration
 
@@ -1354,7 +1354,7 @@ ExperienceQR uses a **Redis-first architecture** for session tracking and budget
         ↓
 4. If new session: Check daily limit → Deduct budget → Log access
         ↓
-5. If existing session (within 5 min): Return content (no charge)
+5. If existing session (within 30 min): Return content (no charge)
 ```
 
 ### Budget Management
@@ -1443,8 +1443,7 @@ Cardy/
 │   ├── assets/
 │   ├── components/
 │   │   ├── Card/
-│   │   │   ├── TranslationDialog.vue         # Translation dialog
-│   │   │   └── CardTranslationSection.vue    # Translation section
+│   │   │   └── TranslationDialog.vue         # Translation dialog (language selection, progress, management)
 │   ├── services/
 │   │   └── mobileApi.ts    # Mobile client API service (routes through Express)
 │   ├── stores/             # Pinia stores
@@ -1535,7 +1534,7 @@ ExperienceQR uses a **synchronous translation system** powered by Google Gemini 
 | **Free Creator** | ❌ No (button disabled) |
 
 **Validation Layers:**
-- **Frontend**: `CardTranslationSection.vue` checks `authStore.getUserRole() === 'admin'` OR `subscriptionStore.canTranslate`
+- **Frontend**: `CardView.vue` checks `authStore.getUserRole() === 'admin'` OR `subscriptionStore.canTranslate`
 - **Backend**: `translation.routes.direct.ts` calls `check_premium_subscription_server` stored procedure
 - **Database**: `check_premium_subscription_server` returns `true` if user role is `admin` OR subscription tier is `premium`
 

@@ -236,6 +236,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { formatDateTime } from '@/utils/formatters'
 
 const { t } = useI18n()
 
@@ -280,15 +281,6 @@ const translatedLanguages = computed(() => {
   return Object.keys(props.card.translations)
 })
 
-const formatDateTime = (dateString: string) => {
-  return new Date(dateString).toLocaleString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 const getContentModeLabel = (mode: string) => {
   const labels: Record<string, string> = {

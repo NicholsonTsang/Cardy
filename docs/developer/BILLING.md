@@ -99,7 +99,7 @@ OVERAGE_CREDITS_PER_BATCH=5
 
 # Session tracking
 SESSION_EXPIRATION_SECONDS=1800
-SESSION_DEDUP_WINDOW_SECONDS=300
+SESSION_DEDUP_WINDOW_SECONDS=1800
 ```
 
 ## Session Tracking
@@ -126,7 +126,7 @@ SESSION_DEDUP_WINDOW_SECONDS=300
 | Key Pattern | Purpose | TTL |
 |-------------|---------|-----|
 | `budget:user:{userId}:month:{YYYY-MM}` | Remaining budget (USD cents) | End of month |
-| `session:dedup:{sessionId}:{cardId}` | Prevent duplicate billing | 5 minutes |
+| `session:dedup:{sessionId}:{cardId}` | Prevent duplicate billing | 30 minutes |
 | `tier:user:{userId}` | Cached tier for fast lookup | 1 hour |
 
 ### Session Flow
@@ -141,16 +141,21 @@ SESSION_DEDUP_WINDOW_SECONDS=300
 
 ### Deduplication
 
-Sessions are deduplicated within a 5-minute window:
+Sessions are deduplicated within a 30-minute window:
 
 ```typescript
 const dedupKey = `session:dedup:${sessionId}:${cardId}`
 const isNew = await redis.setnx(dedupKey, '1')
 if (isNew) {
-  await redis.expire(dedupKey, 300) // 5 min TTL
+  await redis.expire(dedupKey, 1800) // 30 min TTL
   // Bill the session
 }
 ```
+
+**Why 30 minutes?**
+- Balances visitor experience (allows exploring exhibits/content freely) with platform revenue
+- Covers typical single-location visit duration (museum exhibit, restaurant, event)
+- Prevents abuse from rapid refreshes while not over-charging returning visitors
 
 ## Stripe Integration
 

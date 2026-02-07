@@ -49,7 +49,7 @@ const TOKEN_DAILY_LIMIT_KEY = (tokenId: string) => `token:${tokenId}:daily_limit
 
 // Cache TTLs
 const CACHE_TTL = 35 * 24 * 60 * 60; // 35 days (covers month + buffer)
-const DEDUP_TTL = SubscriptionConfig.session.dedupWindowSeconds; // 5 minutes default
+const DEDUP_TTL = SubscriptionConfig.session.dedupWindowSeconds; // 30 minutes default
 const DAILY_CACHE_TTL = 2 * 24 * 60 * 60; // 2 days
 
 // ============================================================================

@@ -104,7 +104,8 @@ export const SubscriptionConfig = {
     redisTtlSeconds: parseInt(process.env.SESSION_REDIS_TTL_SECONDS || String(35 * 24 * 60 * 60)),
     
     // Deduplication window for same visitor (prevents rapid refresh abuse)
-    dedupWindowSeconds: parseInt(process.env.SESSION_DEDUP_WINDOW_SECONDS || '300'),
+    // Fixed at 30 minutes to balance visitor experience and platform revenue
+    dedupWindowSeconds: parseInt(process.env.SESSION_DEDUP_WINDOW_SECONDS || '1800'),
   },
   
   // Stripe configuration

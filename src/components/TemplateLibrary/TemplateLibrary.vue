@@ -129,7 +129,8 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { useTemplateLibraryStore, type ContentTemplate, type ContentTemplateDetails } from '@/stores/templateLibrary'
-import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/stores/translation'
+import { SUPPORTED_LANGUAGES } from '@/stores/translation'
+import { getLanguageFlag, getLanguageName } from '@/utils/formatters'
 import { storeToRefs } from 'pinia'
 
 import Dialog from 'primevue/dialog'
@@ -164,20 +165,6 @@ const showImportDialog = ref(false)
 const selectedTemplate = ref<ContentTemplateDetails | null>(null)
 const templateToImport = ref<ContentTemplate | null>(null)
 
-// Language flags mapping - aligned with SUPPORTED_LANGUAGES from translation store
-const LANGUAGE_FLAGS: Record<LanguageCode, string> = {
-  'en': '🇺🇸',
-  'zh-Hant': '🇭🇰',
-  'zh-Hans': '🇨🇳',
-  'ja': '🇯🇵',
-  'ko': '🇰🇷',
-  'es': '🇪🇸',
-  'fr': '🇫🇷',
-  'ru': '🇷🇺',
-  'ar': '🇸🇦',
-  'th': '🇹🇭'
-}
-
 // Language options for dropdown - using SUPPORTED_LANGUAGES as source of truth
 const languageOptions = computed(() => {
   return Object.entries(SUPPORTED_LANGUAGES).map(([code, name]) => ({
@@ -185,14 +172,6 @@ const languageOptions = computed(() => {
     label: name
   }))
 })
-
-function getLanguageFlag(code: string): string {
-  return LANGUAGE_FLAGS[code as LanguageCode] || '🌐'
-}
-
-function getLanguageName(code: string): string {
-  return SUPPORTED_LANGUAGES[code as LanguageCode] || code
-}
 
 // Helpers
 function formatVenueType(type: string): string {

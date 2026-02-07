@@ -1,361 +1,416 @@
 <template>
-    <div class="card-view-container">
-        <!-- Hero Header with Card Identity -->
-        <div v-if="cardProp" class="card-hero" :class="cardProp.billing_type === 'digital' ? 'hero-digital' : 'hero-physical'">
-            <div class="hero-content">
-                <div class="hero-left">
-                    <!-- Access Mode Icon -->
-                    <div class="hero-icon" :class="cardProp.billing_type === 'digital' ? 'icon-digital' : 'icon-physical'">
-                        <i :class="cardProp.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-credit-card'"></i>
+    <div class="xl:grid xl:grid-cols-[1fr_auto] gap-4">
+        <!-- Left Column: Configuration -->
+        <div class="flex flex-col gap-4 min-w-0">
+
+        <!-- Project Overview Card -->
+        <div v-if="cardProp" class="rounded-2xl bg-white border border-slate-200 shadow-sm overflow-hidden">
+            <!-- Header: Icon + Title + Badge + Actions -->
+            <div class="p-4">
+                <div class="flex items-start gap-3">
+                    <!-- Project Icon -->
+                    <div class="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-gradient-to-br from-cyan-500 to-cyan-600">
+                        <i class="pi pi-qrcode text-lg text-white"></i>
                     </div>
-                    <div class="hero-info">
-                        <div class="hero-badges">
-                            <span class="badge" :class="cardProp.billing_type === 'digital' ? 'badge-digital' : 'badge-physical'">
-                                {{ cardProp.billing_type === 'digital' ? $t('dashboard.digital_access') : $t('dashboard.physical_card') }}
-                            </span>
-                            <span class="badge badge-mode">
+
+                    <!-- Title + Badge + Description -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <h1 class="text-lg font-bold text-slate-900 m-0 truncate">{{ displayedCardName }}</h1>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-slate-100 text-slate-500 shrink-0">
                                 {{ getContentModeLabel(cardProp.content_mode) }}
                             </span>
-                            <span v-if="cardProp.is_grouped" class="badge badge-grouped">
-                                {{ $t('dashboard.badge_grouped') }}
-                            </span>
-                            <span v-else class="badge badge-flat">
-                                {{ $t('dashboard.badge_flat') }}
-                            </span>
+                            <!-- Action buttons (right-aligned) -->
+                            <div class="ml-auto flex items-center gap-0.5 shrink-0">
+                                <Button
+                                    icon="pi pi-pencil"
+                                    @click="editSection = 'details'; showEditDialog = true"
+                                    severity="secondary"
+                                    text
+                                    size="small"
+                                    v-tooltip.bottom="$t('dashboard.edit_project_details')"
+                                />
+                                <Button
+                                    icon="pi pi-mobile"
+                                    @click="emit('show-preview')"
+                                    severity="secondary"
+                                    text
+                                    size="small"
+                                    v-tooltip.bottom="$t('dashboard.preview')"
+                                />
+                                <Button
+                                    icon="pi pi-download"
+                                    @click="showExportDialog = true"
+                                    severity="secondary"
+                                    text
+                                    size="small"
+                                    v-tooltip.bottom="$t('common.export')"
+                                />
+                                <Button
+                                    icon="pi pi-trash"
+                                    @click="handleRequestDelete"
+                                    severity="danger"
+                                    text
+                                    size="small"
+                                    v-tooltip.bottom="$t('common.delete')"
+                                />
+                            </div>
                         </div>
-                        <h1 class="hero-title">{{ displayedCardName }}</h1>
-                        <p v-if="displayedCardDescription" class="hero-description">
-                            {{ truncateText(displayedCardDescription, 120) }}
+                        <p v-if="displayedCardDescription" class="text-sm text-slate-500 m-0 mt-1 leading-normal line-clamp-2">
+                            {{ truncateText(displayedCardDescription, 200) }}
+                        </p>
+                        <p v-else
+                            class="text-sm text-slate-400 italic m-0 mt-1 cursor-pointer hover:text-slate-500 transition-colors"
+                            @click="editSection = 'details'; showEditDialog = true">
+                            {{ $t('dashboard.add_description_hint') }}
                         </p>
                     </div>
                 </div>
-                <div class="hero-actions">
-                    <Button 
-                        :label="$t('dashboard.edit_card')" 
-                        icon="pi pi-pencil" 
-                        @click="handleEdit" 
-                        class="btn-edit"
-                    />
-                    <Button 
-                        icon="pi pi-trash" 
-                        @click="handleRequestDelete" 
-                        severity="danger" 
-                        outlined
-                        class="btn-delete"
-                        v-tooltip.bottom="$t('common.delete')"
-                    />
+            </div>
+
+            <!-- Metadata Footer -->
+            <div class="px-4 py-2.5 border-t border-slate-100 bg-slate-50/50">
+                <div class="flex items-center gap-x-4 gap-y-1 flex-wrap text-xs text-slate-500 ml-[3.25rem]">
+                    <span>{{ getLanguageFlag(cardProp.original_language) }} {{ getLanguageName(cardProp.original_language) }}</span>
+                    <span class="text-slate-300">|</span>
+                    <span>{{ cardProp.total_sessions || 0 }} <span class="text-slate-400">/ {{ cardProp.max_sessions || '∞' }}</span> {{ $t('dashboard.total_sessions').toLowerCase() }}</span>
+                    <span class="text-slate-300">|</span>
+                    <span>{{ translatedCount }} {{ $t('dashboard.translations').toLowerCase() }}</span>
+                    <span class="text-slate-300">|</span>
+                    <span>{{ formatDate(cardProp.created_at) }}</span>
                 </div>
             </div>
         </div>
 
-        <!-- Main Content Grid -->
-        <div v-if="cardProp" class="content-grid">
-            <!-- Left Column: Card Preview & Quick Stats -->
-            <div class="left-column">
-                <!-- Card Preview -->
-                <div v-if="cardProp.billing_type !== 'digital'" class="card-preview-section">
-                    <div class="section-header">
-                        <i class="pi pi-image"></i>
-                        <span>{{ $t('dashboard.card_artwork') }}</span>
-                    </div>
-                    <div class="card-preview-wrapper">
-                        <div class="card-artwork-container">
-                            <img
-                                v-if="displayImageForView"
-                                :src="displayImageForView"
-                                alt="Card Artwork"
-                                class="card-image"
-                            />
-                            <div v-else class="card-placeholder">
-                                <i class="pi pi-image"></i>
-                                <span>{{ $t('dashboard.no_artwork_uploaded') }}</span>
-                            </div>
-                            <!-- QR Code Overlay -->
-                            <div 
-                                v-if="cardProp.qr_code_position"
-                                class="qr-overlay"
-                                :class="getQrCodePositionClass(cardProp.qr_code_position)"
-                            >
-                                <i class="pi pi-qrcode"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+        <!-- Export Dialog -->
+        <Dialog
+            v-model:visible="showExportDialog"
+            modal
+            :header="$t('common.export_card_data')"
+            :style="{ width: '40rem' }"
+            :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
+            class="standardized-dialog"
+        >
+            <CardExport
+                :card="cardProp"
+                @exported="showExportDialog = false"
+                @cancel="showExportDialog = false"
+            />
+        </Dialog>
 
-                <!-- Quick Stats -->
-                <div class="quick-stats-section">
-                    <div class="section-header">
-                        <i class="pi pi-chart-line"></i>
-                        <span>{{ $t('dashboard.quick_stats') }}</span>
-                    </div>
-                    <div class="stats-grid">
-                        <!-- Scan Stats for Digital -->
-                        <div v-if="cardProp.billing_type === 'digital'" class="stat-card stat-scans">
-                            <div class="stat-icon">
-                                <i class="pi pi-eye"></i>
-                            </div>
-                            <div class="stat-info">
-                                <span class="stat-value">{{ cardProp.total_sessions || 0 }}</span>
-                                <span class="stat-label">{{ $t('dashboard.total_sessions') }}</span>
-                            </div>
-                            <div class="stat-limit">
-                                / {{ cardProp.max_sessions || '∞' }}
-                            </div>
-                        </div>
+        <!-- Translation Dialog -->
+        <TranslationDialog
+            v-model:visible="showTranslationDialog"
+            :card-id="cardProp.id"
+            :available-languages="availableLanguagesForDialog"
+            :initial-mode="translationDialogMode"
+            :pre-selected-languages="preSelectedLanguages"
+            @translated="handleTranslationSuccess"
+        />
 
-                        <!-- AI Status -->
-                        <div class="stat-card" :class="cardProp.conversation_ai_enabled ? 'stat-ai-on' : 'stat-ai-off'">
-                            <div class="stat-icon">
-                                <i :class="cardProp.conversation_ai_enabled ? 'pi pi-microphone' : 'pi pi-microphone-slash'"></i>
-                            </div>
-                            <div class="stat-info">
-                                <span class="stat-value">{{ cardProp.conversation_ai_enabled ? $t('common.enabled') : $t('common.disabled') }}</span>
-                                <span class="stat-label">{{ $t('dashboard.ai_assistant') }}</span>
-                            </div>
-                            <div v-if="cardProp.conversation_ai_enabled" class="stat-cost-hint" v-tooltip.top="$t('dashboard.ai_cost_tooltip', pricingVars)">
-                                <i class="pi pi-bolt"></i>
-                            </div>
-                        </div>
+        <!-- Main Content (single-column flow) -->
+        <template v-if="cardProp">
 
-                        <!-- Translations -->
-                        <div class="stat-card stat-translations">
-                            <div class="stat-icon">
-                                <i class="pi pi-globe"></i>
-                            </div>
-                            <div class="stat-info">
-                                <span class="stat-value">{{ availableTranslations.length }}</span>
-                                <span class="stat-label">{{ $t('dashboard.translations') }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Metadata -->
-                <div class="metadata-section">
-                    <div class="section-header">
-                        <i class="pi pi-clock"></i>
-                        <span>{{ $t('dashboard.timeline') }}</span>
-                    </div>
-                    <div class="timeline">
-                        <div class="timeline-item">
-                            <div class="timeline-dot"></div>
-                            <div class="timeline-content">
-                                <span class="timeline-label">{{ $t('dashboard.created') }}</span>
-                                <span class="timeline-value">{{ formatDate(cardProp.created_at) }}</span>
-                            </div>
-                        </div>
-                        <div class="timeline-item">
-                            <div class="timeline-dot dot-active"></div>
-                            <div class="timeline-content">
-                                <span class="timeline-label">{{ $t('dashboard.last_updated') }}</span>
-                                <span class="timeline-value">{{ formatDate(cardProp.updated_at) }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Right Column: Details -->
-            <div class="right-column">
-                <!-- Translation Preview Selector (compact inline design) -->
-                <div v-if="availableTranslations.length > 0" class="translation-preview-bar">
-                    <i class="pi pi-language preview-icon"></i>
-                    <span class="preview-label">{{ $t('translation.preview') }}:</span>
-                    <Dropdown
-                        v-model="selectedPreviewLanguage"
-                        :options="languageOptions"
-                        optionLabel="label"
-                        optionValue="value"
-                        class="language-selector-compact"
+            <!-- Translation Management (Inline) -->
+            <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                <!-- Header -->
+                <div class="flex items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-50/80">
+                    <i class="pi pi-language text-sm text-slate-500"></i>
+                    <span class="text-sm font-medium text-slate-700 truncate">{{ $t('translation.sectionTitle') }}</span>
+                    <span v-if="translatedCount > 0"
+                        class="shrink-0 px-2 py-0.5 rounded-full text-[0.6875rem] font-medium bg-blue-100 text-blue-700"
+                    >{{ translatedCount }}/{{ totalLanguagesCount - 1 }}</span>
+                    <span v-else
+                        class="shrink-0 px-2 py-0.5 rounded-full text-[0.6875rem] font-medium bg-slate-100 text-slate-500"
+                    >{{ $t('translation.none') }}</span>
+                    <div class="flex-1"></div>
+                    <button
+                        v-if="canTranslate"
+                        type="button"
+                        @click="openTranslationDialog('translate')"
+                        class="flex items-center justify-center w-8 h-7 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                        v-tooltip.bottom="$t('translation.dialog.addTranslations')"
                     >
-                        <template #value="slotProps">
-                            <div v-if="slotProps.value" class="lang-option">
-                                <span>{{ getLanguageFlag(slotProps.value) }}</span>
-                                <span>{{ getLanguageName(slotProps.value) }}</span>
-                            </div>
-                            <div v-else class="lang-option">
-                                <span>{{ getLanguageFlag(cardProp?.original_language || 'en') }}</span>
-                                <span>{{ $t('translation.original') }}</span>
-                            </div>
-                        </template>
-                        <template #option="slotProps">
-                            <div class="lang-option">
-                                <span>{{ getLanguageFlag(slotProps.option.value) }}</span>
-                                <span>{{ slotProps.option.label }}</span>
-                            </div>
-                        </template>
-                    </Dropdown>
+                        <i class="pi pi-plus text-xs"></i>
+                    </button>
+                    <button
+                        v-if="canTranslate"
+                        type="button"
+                        @click="openTranslationDialog('manage')"
+                        class="flex items-center justify-center w-8 h-7 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+                        v-tooltip.bottom="$t('translation.manage')"
+                    >
+                        <i class="pi pi-cog text-xs"></i>
+                    </button>
                 </div>
 
-                <!-- Content Details -->
-                <div class="details-section">
-                    <div class="section-header">
-                        <div class="header-left">
-                            <i class="pi pi-file-edit"></i>
-                            <span>{{ $t('dashboard.content_details') }}</span>
-                        </div>
+                <!-- Content -->
+                <div class="p-3 space-y-2">
+                    <!-- Preview dropdown (shown when translations exist) -->
+                    <div v-if="translatedCount > 0" class="flex items-center gap-2">
+                        <span class="text-xs text-slate-500 shrink-0">{{ $t('translation.preview') }}:</span>
+                        <Dropdown
+                            v-model="selectedPreviewLanguage"
+                            :options="languageOptions"
+                            optionLabel="label"
+                            optionValue="value"
+                            class="flex-1 language-selector-compact"
+                        >
+                            <template #value="slotProps">
+                                <div v-if="slotProps.value" class="flex items-center gap-1.5 text-xs">
+                                    <span>{{ getLanguageFlag(slotProps.value) }}</span>
+                                    <span>{{ getLanguageName(slotProps.value) }}</span>
+                                </div>
+                                <div v-else class="flex items-center gap-1.5 text-xs">
+                                    <span>{{ getLanguageFlag(cardProp?.original_language || 'en') }}</span>
+                                    <span>{{ $t('translation.original') }}</span>
+                                </div>
+                            </template>
+                            <template #option="slotProps">
+                                <div class="flex items-center gap-1.5 text-[0.8125rem]">
+                                    <span>{{ getLanguageFlag(slotProps.option.value) }}</span>
+                                    <span>{{ slotProps.option.label }}</span>
+                                </div>
+                            </template>
+                        </Dropdown>
                     </div>
-                    
-                    <div class="details-content">
-                        <div class="detail-item">
-                            <label>{{ $t('dashboard.card_name') }}</label>
-                            <p class="detail-value detail-name">{{ displayedCardName }}</p>
-                        </div>
-                        <div v-if="displayedCardDescription" class="detail-item">
-                            <label>{{ $t('common.description') }}</label>
-                            <div 
-                                class="detail-value prose-content"
-                                v-html="renderMarkdown(displayedCardDescription)"
-                            ></div>
-                        </div>
-                    </div>
-                </div>
 
-                <!-- Configuration -->
-                <div class="config-section">
-                    <div class="section-header">
-                        <i class="pi pi-sliders-h"></i>
-                        <span>{{ $t('dashboard.configuration') }}</span>
-                    </div>
-                    <div class="config-grid">
-                        <div class="config-item">
-                            <i :class="cardProp.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-credit-card'"></i>
-                            <div class="config-info">
-                                <span class="config-label">{{ $t('dashboard.access_mode') }}</span>
-                                <span class="config-value">{{ cardProp.billing_type === 'digital' ? $t('dashboard.digital_access') : $t('dashboard.physical_card') }}</span>
-                            </div>
-                        </div>
-                        <div class="config-item">
-                            <i :class="getContentModeIcon(cardProp.content_mode)"></i>
-                            <div class="config-info">
-                                <span class="config-label">{{ $t('dashboard.content_mode') }}</span>
-                                <span class="config-value">{{ getContentModeLabel(cardProp.content_mode) }}</span>
-                            </div>
-                        </div>
-                        <div class="config-item">
-                            <i :class="cardProp.is_grouped ? 'pi pi-folder' : 'pi pi-list'"></i>
-                            <div class="config-info">
-                                <span class="config-label">{{ $t('dashboard.grouping') }}</span>
-                                <span class="config-value">{{ cardProp.is_grouped ? $t('dashboard.badge_grouped') : $t('dashboard.badge_flat') }}</span>
-                            </div>
-                        </div>
-                        <div v-if="cardProp.billing_type !== 'digital'" class="config-item">
-                            <i class="pi pi-qrcode"></i>
-                            <div class="config-info">
-                                <span class="config-label">{{ $t('dashboard.qr_code_position') }}</span>
-                                <span class="config-value">{{ displayQrCodePositionForView || $t('dashboard.not_set') }}</span>
-                            </div>
-                        </div>
-                        <div class="config-item">
-                            <i class="pi pi-globe"></i>
-                            <div class="config-info">
-                                <span class="config-label">{{ $t('dashboard.original_language') }}</span>
-                                <span class="config-value">{{ getLanguageFlag(cardProp.original_language) }} {{ getLanguageName(cardProp.original_language) }}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    <!-- Language Status List -->
+                    <div v-if="allLanguageStatuses.length > 0" class="space-y-0.5">
+                        <div
+                            v-for="lang in displayedLanguages"
+                            :key="lang.language"
+                            class="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-slate-50 transition-colors"
+                        >
+                            <!-- Flag + Name -->
+                            <span class="text-sm shrink-0">{{ getLanguageFlag(lang.language) }}</span>
+                            <span class="text-xs font-medium text-slate-700 truncate flex-1 min-w-0">{{ lang.language_name }}</span>
 
-                <!-- AI Configuration (Enabled) -->
-                <div v-if="cardProp.conversation_ai_enabled" class="ai-section">
-                    <div class="section-header">
-                        <i class="pi pi-sparkles"></i>
-                        <span>{{ $t('dashboard.ai_assistance_configuration') }}</span>
-                        <span class="ai-badge">{{ $t('common.enabled') }}</span>
+                            <!-- Status indicators -->
+                            <template v-if="lang.status === 'original'">
+                                <span class="text-[11px] text-slate-400 shrink-0">({{ $t('translation.original') }})</span>
+                            </template>
+                            <template v-else-if="lang.status === 'up_to_date'">
+                                <i class="pi pi-check text-[10px] text-emerald-600 shrink-0"></i>
+                                <span class="text-[11px] text-emerald-700 shrink-0">{{ $t('translation.status.up_to_date') }}</span>
+                                <span v-if="lang.translated_at" class="text-[10px] text-slate-400 shrink-0">{{ formatRelativeTime(lang.translated_at) }}</span>
+                            </template>
+                            <template v-else-if="lang.status === 'outdated'">
+                                <i class="pi pi-exclamation-circle text-[10px] text-amber-600 shrink-0"></i>
+                                <span class="text-[11px] text-amber-700 shrink-0">{{ $t('translation.status.outdated') }}</span>
+                                <span v-if="lang.translated_at" class="text-[10px] text-slate-400 shrink-0">{{ formatRelativeTime(lang.translated_at) }}</span>
+                                <button
+                                    v-if="canTranslate"
+                                    @click="openTranslationDialog('translate', [lang.language])"
+                                    class="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors shrink-0"
+                                >
+                                    <i class="pi pi-refresh text-[8px] mr-0.5"></i>{{ $t('translation.actions.update') }}
+                                </button>
+                            </template>
+                            <template v-else>
+                                <span class="text-[11px] text-slate-400 shrink-0">{{ $t('translation.status.not_translated') }}</span>
+                            </template>
+                        </div>
+
+                        <!-- Show all / Show less toggle -->
+                        <button
+                            v-if="allLanguageStatuses.length > 5"
+                            @click="showAllLanguages = !showAllLanguages"
+                            class="w-full text-center py-1.5 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-colors"
+                        >
+                            {{ showAllLanguages ? $t('translation.showLess') : $t('translation.showAllLanguages', { count: allLanguageStatuses.length }) }}
+                        </button>
                     </div>
-                    
-                    <!-- AI Cost Notice Banner -->
-                    <div class="ai-cost-banner">
-                        <div class="ai-cost-icon">
-                            <i class="pi pi-bolt"></i>
-                        </div>
-                        <div class="ai-cost-content">
-                            <span class="ai-cost-title">{{ $t('dashboard.ai_cost_notice_title') }}</span>
-                            <span class="ai-cost-desc">{{ $t('dashboard.ai_cost_notice_short') }}</span>
-                        </div>
-                        <div class="ai-cost-rate">
-                            <span class="ai-cost-amount">${{ aiSessionCost }}</span>
-                            <span class="ai-cost-per">{{ $t('dashboard.per_session') }}</span>
-                        </div>
+
+                    <!-- Outdated Warning Banner -->
+                    <div v-if="outdatedCount > 0 && canTranslate"
+                        class="flex items-center gap-3 py-2 px-3 bg-amber-50 border border-amber-200 rounded-lg"
+                    >
+                        <i class="pi pi-exclamation-triangle text-amber-500 text-xs shrink-0"></i>
+                        <span class="text-xs text-amber-800 flex-1">{{ $t('translation.outdatedWarning', { count: outdatedCount }) }}</span>
+                        <button
+                            @click="openTranslationDialog('translate', translationStore.outdatedLanguages.map(l => l.language))"
+                            class="px-2.5 py-1 rounded-md text-[11px] font-medium bg-amber-200 text-amber-800 hover:bg-amber-300 transition-colors shrink-0"
+                        >
+                            {{ $t('translation.updateAll') }}
+                        </button>
                     </div>
-                    
-                    <div class="ai-content">
-                        <div v-if="displayedAiInstruction" class="ai-item">
-                            <label>
-                                <i class="pi pi-user"></i>
-                                {{ $t('dashboard.ai_instruction_role') }}
-                            </label>
-                            <p>{{ displayedAiInstruction }}</p>
-                        </div>
-                        <div v-if="displayedAiKnowledgeBase" class="ai-item">
-                            <label>
-                                <i class="pi pi-book"></i>
-                                {{ $t('dashboard.ai_knowledge_base') }}
-                            </label>
-                            <p>{{ displayedAiKnowledgeBase }}</p>
-                        </div>
-                        <div v-if="displayedAiWelcomeGeneral" class="ai-item">
-                            <label>
-                                <i class="pi pi-comment"></i>
-                                {{ $t('dashboard.ai_welcome_general') }}
-                            </label>
-                            <p>{{ displayedAiWelcomeGeneral }}</p>
-                        </div>
-                        <div v-if="displayedAiWelcomeItem" class="ai-item">
-                            <label>
-                                <i class="pi pi-comments"></i>
-                                {{ $t('dashboard.ai_welcome_item') }}
-                            </label>
-                            <p>{{ displayedAiWelcomeItem }}</p>
-                        </div>
+
+                    <!-- Empty state: no translations + can translate -->
+                    <div v-if="translatedCount === 0 && canTranslate"
+                        class="flex items-center gap-3 py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer hover:border-slate-300 transition-colors"
+                        @click="openTranslationDialog('translate')"
+                    >
+                        <i class="pi pi-plus-circle text-slate-400 text-xs shrink-0"></i>
+                        <span class="text-xs text-slate-600 flex-1">{{ $t('dashboard.translation_hint') }}</span>
+                        <i class="pi pi-arrow-right text-[10px] text-slate-400"></i>
                     </div>
-                </div>
-                
-                <!-- AI Configuration (Disabled but has data) -->
-                <div v-else-if="hasAiData" class="ai-section ai-section-disabled">
-                    <div class="section-header">
-                        <i class="pi pi-sparkles"></i>
-                        <span>{{ $t('dashboard.ai_assistance_configuration') }}</span>
-                        <span class="ai-badge-disabled">{{ $t('common.disabled') }}</span>
-                    </div>
-                    
-                    <!-- AI Data Preserved Notice -->
-                    <div class="ai-preserved-banner">
-                        <div class="ai-preserved-icon">
-                            <i class="pi pi-save"></i>
-                        </div>
-                        <div class="ai-preserved-content">
-                            <span class="ai-preserved-title">{{ $t('dashboard.ai_data_preserved_title') }}</span>
-                            <span class="ai-preserved-desc">{{ $t('dashboard.ai_data_preserved_view_message') }}</span>
-                        </div>
-                    </div>
-                    
-                    <!-- Collapsed AI Data Preview -->
-                    <div class="ai-data-preview">
-                        <div v-if="cardProp.ai_instruction" class="ai-preview-item">
-                            <i class="pi pi-user"></i>
-                            <span class="ai-preview-label">{{ $t('dashboard.ai_instruction_role') }}</span>
-                            <span class="ai-preview-value">{{ truncateText(cardProp.ai_instruction, 50) }}</span>
-                        </div>
-                        <div v-if="cardProp.ai_knowledge_base" class="ai-preview-item">
-                            <i class="pi pi-book"></i>
-                            <span class="ai-preview-label">{{ $t('dashboard.ai_knowledge_base') }}</span>
-                            <span class="ai-preview-value">{{ truncateText(cardProp.ai_knowledge_base, 50) }}</span>
-                        </div>
+
+                    <!-- Subscription guard: can't translate -->
+                    <div v-if="!canTranslate"
+                        class="flex items-center gap-3 py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-lg"
+                    >
+                        <i class="pi pi-lock text-slate-400 text-xs shrink-0"></i>
+                        <span class="text-xs text-slate-500 flex-1">{{ $t('subscription.upgrade_for_translations') }}</span>
                     </div>
                 </div>
             </div>
+
+            <!-- Content Prompt (shown when no content items) -->
+            <div
+                v-if="contentCount === 0"
+                class="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl cursor-pointer hover:bg-amber-100 transition-colors"
+                @click="emit('navigate-tab', '1')"
+            >
+                <i class="pi pi-list text-amber-500"></i>
+                <span class="text-sm text-amber-700 flex-1">{{ $t('dashboard.no_content_hint') }}</span>
+                <i class="pi pi-arrow-right text-xs text-amber-400"></i>
+            </div>
+
+            <!-- AI Configuration -->
+            <div class="rounded-xl border border-slate-200 bg-white overflow-hidden">
+                <!-- Header -->
+                <div class="flex items-center gap-2 px-4 py-3 border-b border-slate-200 bg-slate-50/80">
+                    <i :class="['pi pi-sparkles text-sm', cardProp.conversation_ai_enabled ? 'text-blue-500' : 'text-slate-400']"></i>
+                    <span class="text-sm font-medium text-slate-700 truncate">{{ $t('dashboard.ai_assistance_configuration') }}</span>
+                    <span :class="[
+                        'shrink-0 px-2 py-0.5 rounded-full text-[0.6875rem] font-medium',
+                        cardProp.conversation_ai_enabled
+                            ? 'bg-emerald-100 text-emerald-700'
+                            : 'bg-slate-100 text-slate-500'
+                    ]">
+                        {{ cardProp.conversation_ai_enabled ? $t('common.enabled') : $t('common.disabled') }}
+                    </span>
+                    <div class="flex-1"></div>
+                    <button
+                        v-if="cardProp.conversation_ai_enabled || hasAiData"
+                        type="button"
+                        @click="editSection = 'ai'; showEditDialog = true"
+                        class="flex items-center justify-center w-8 h-7 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+                        v-tooltip.bottom="$t('dashboard.configure')"
+                    >
+                        <i class="pi pi-pencil text-xs"></i>
+                    </button>
+                </div>
+
+                <!-- Enabled: cost info + expandable previews -->
+                <template v-if="cardProp.conversation_ai_enabled">
+                    <div class="p-3 space-y-2">
+                        <!-- Cost info -->
+                        <div class="flex items-center gap-3 py-2 px-3 bg-amber-50 border border-amber-200 rounded-lg">
+                            <i class="pi pi-bolt text-amber-500 text-xs shrink-0"></i>
+                            <div class="flex-1 min-w-0">
+                                <span class="text-xs text-amber-800">{{ $t('dashboard.ai_cost_notice_short') }}</span>
+                            </div>
+                            <div class="flex items-baseline gap-1 shrink-0">
+                                <span class="text-sm font-semibold text-slate-800">${{ aiSessionCost }}</span>
+                                <span class="text-[0.6rem] text-slate-500 uppercase">{{ $t('dashboard.per_session') }}</span>
+                            </div>
+                        </div>
+                        <!-- AI Instruction -->
+                        <div v-if="cardProp.ai_instruction"
+                            class="py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs cursor-pointer hover:border-slate-300 transition-colors"
+                            @click="toggleAiSection('instruction')"
+                        >
+                            <div class="flex items-center gap-2 min-w-0">
+                                <i class="pi pi-user text-slate-400 text-xs shrink-0"></i>
+                                <span class="text-slate-700 font-medium truncate">{{ $t('dashboard.ai_instruction_role') }}</span>
+                                <div class="flex-1"></div>
+                                <i :class="['pi text-[10px] text-slate-400 shrink-0 transition-transform', expandedAiSections.instruction ? 'pi-chevron-up' : 'pi-chevron-down']"></i>
+                            </div>
+                            <p v-if="expandedAiSections.instruction" class="text-slate-500 mt-2 whitespace-pre-line leading-relaxed line-clamp-6">{{ cardProp.ai_instruction }}</p>
+                            <p v-else class="text-slate-400 mt-1.5 italic truncate">{{ truncateText(cardProp.ai_instruction, 80) }}</p>
+                        </div>
+                        <!-- AI Knowledge Base -->
+                        <div v-if="cardProp.ai_knowledge_base"
+                            class="py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs cursor-pointer hover:border-slate-300 transition-colors"
+                            @click="toggleAiSection('knowledge')"
+                        >
+                            <div class="flex items-center gap-2 min-w-0">
+                                <i class="pi pi-book text-slate-400 text-xs shrink-0"></i>
+                                <span class="text-slate-700 font-medium truncate">{{ $t('dashboard.ai_knowledge_base') }}</span>
+                                <div class="flex-1"></div>
+                                <i :class="['pi text-[10px] text-slate-400 shrink-0 transition-transform', expandedAiSections.knowledge ? 'pi-chevron-up' : 'pi-chevron-down']"></i>
+                            </div>
+                            <p v-if="expandedAiSections.knowledge" class="text-slate-500 mt-2 whitespace-pre-line leading-relaxed line-clamp-6">{{ cardProp.ai_knowledge_base }}</p>
+                            <p v-else class="text-slate-400 mt-1.5 italic truncate">{{ truncateText(cardProp.ai_knowledge_base, 80) }}</p>
+                        </div>
+                        <!-- General Welcome Message -->
+                        <div v-if="cardProp.ai_welcome_general"
+                            class="py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs cursor-pointer hover:border-slate-300 transition-colors"
+                            @click="toggleAiSection('welcomeGeneral')"
+                        >
+                            <div class="flex items-center gap-2 min-w-0">
+                                <i class="pi pi-comment text-slate-400 text-xs shrink-0"></i>
+                                <span class="text-slate-700 font-medium truncate">{{ $t('dashboard.ai_welcome_general') }}</span>
+                                <div class="flex-1"></div>
+                                <i :class="['pi text-[10px] text-slate-400 shrink-0 transition-transform', expandedAiSections.welcomeGeneral ? 'pi-chevron-up' : 'pi-chevron-down']"></i>
+                            </div>
+                            <p v-if="expandedAiSections.welcomeGeneral" class="text-slate-500 mt-2 whitespace-pre-line leading-relaxed">{{ cardProp.ai_welcome_general }}</p>
+                            <p v-else class="text-slate-400 mt-1.5 italic truncate">{{ truncateText(cardProp.ai_welcome_general, 80) }}</p>
+                        </div>
+                        <!-- Item Welcome Message -->
+                        <div v-if="cardProp.ai_welcome_item"
+                            class="py-2 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs cursor-pointer hover:border-slate-300 transition-colors"
+                            @click="toggleAiSection('welcomeItem')"
+                        >
+                            <div class="flex items-center gap-2 min-w-0">
+                                <i class="pi pi-comments text-slate-400 text-xs shrink-0"></i>
+                                <span class="text-slate-700 font-medium truncate">{{ $t('dashboard.ai_welcome_item') }}</span>
+                                <div class="flex-1"></div>
+                                <i :class="['pi text-[10px] text-slate-400 shrink-0 transition-transform', expandedAiSections.welcomeItem ? 'pi-chevron-up' : 'pi-chevron-down']"></i>
+                            </div>
+                            <p v-if="expandedAiSections.welcomeItem" class="text-slate-500 mt-2 whitespace-pre-line leading-relaxed">{{ cardProp.ai_welcome_item }}</p>
+                            <p v-else class="text-slate-400 mt-1.5 italic truncate">{{ truncateText(cardProp.ai_welcome_item, 80) }}</p>
+                        </div>
+                    </div>
+                </template>
+
+                <!-- Disabled: preserved data notice or empty state -->
+                <template v-else>
+                    <div v-if="hasAiData" class="p-3">
+                        <div class="flex items-center gap-3 py-2.5 px-3 bg-slate-50 border border-slate-200 rounded-lg">
+                            <i class="pi pi-save text-slate-400 text-xs shrink-0"></i>
+                            <div class="flex-1 min-w-0 flex flex-col gap-0.5">
+                                <span class="text-xs font-medium text-slate-700">{{ $t('dashboard.ai_data_preserved_title') }}</span>
+                                <span class="text-[0.6875rem] text-slate-500 truncate">{{ $t('dashboard.ai_data_preserved_view_message') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div v-else class="flex flex-col items-center text-center py-6 px-4 gap-3">
+                        <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center">
+                            <i class="pi pi-sparkles text-xl text-slate-300"></i>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-slate-600 m-0">{{ $t('dashboard.ai_empty_title') }}</p>
+                            <p class="text-xs text-slate-400 m-0 mt-1 max-w-xs">{{ $t('dashboard.enable_ai_to_configure') }}</p>
+                        </div>
+                        <Button
+                            :label="$t('dashboard.enable_and_configure')"
+                            icon="pi pi-sparkles"
+                            size="small"
+                            outlined
+                            @click="editSection = 'ai'; showEditDialog = true"
+                        />
+                    </div>
+                </template>
+            </div>
+
+        </template>
+
+        </div><!-- end Left Column -->
+
+        <!-- Right Column: Compact Mobile Preview (xl: only) -->
+        <div v-if="cardProp" class="hidden xl:block">
+            <div class="sticky top-4">
+                <MobilePreview compact :cardProp="cardProp" />
+            </div>
         </div>
 
-        <!-- Translation Section -->
-        <div v-if="cardProp" class="translation-section">
-            <CardTranslationSection ref="translationSectionRef" :card-id="cardProp.id" />
-        </div>
-
-        <!-- Edit Dialog -->
+        <!-- Edit Dialog (dynamic based on editSection) -->
         <MyDialog
             v-model="showEditDialog"
-            :header="$t('dashboard.edit_card')"
+            :header="editDialogHeader"
             :confirmHandle="handleSaveEdit"
             :confirmLabel="$t('dashboard.save_changes')"
             confirmSeverity="primary"
@@ -364,42 +419,43 @@
             :errorMessage="$t('messages.operation_failed')"
             @cancel="handleCancelEdit"
             @hide="handleDialogHide"
-            style="width: 90vw; max-width: 1200px;"
+            :style="editDialogStyle"
         >
-            <CardCreateEditForm 
+            <CardCreateEditForm
                 ref="editFormRef"
-                :cardProp="cardProp" 
+                :cardProp="cardProp"
                 :isEditMode="true"
                 :isInDialog="true"
+                :sections="editFormSections"
             />
         </MyDialog>
     </div>
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue';
+import { computed, ref, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import MyDialog from '@/components/MyDialog.vue';
+import CardExport from '@/components/Card/Export/CardExport.vue';
 import CardCreateEditForm from './CardCreateEditForm.vue';
-import CardTranslationSection from '@/components/Card/CardTranslationSection.vue';
-import cardPlaceholder from '@/assets/images/card-placeholder.svg';
-import { getCardAspectRatio } from '@/utils/cardConfig';
-import { renderMarkdown } from '@/utils/markdownRenderer';
-import { SUPPORTED_LANGUAGES, useTranslationStore } from '@/stores/translation';
+import TranslationDialog from '@/components/Card/TranslationDialog.vue';
+import MobilePreview from './MobilePreview.vue';
+import { useTranslationStore, SUPPORTED_LANGUAGES } from '@/stores/translation';
+import { useSubscriptionStore } from '@/stores/subscription';
+import { useAuthStore } from '@/stores/auth';
+import { getLanguageFlag, getLanguageName, formatDate } from '@/utils/formatters';
 import { SubscriptionConfig } from '@/config/subscription';
 
 const { t } = useI18n();
 
 // Session costs from config (environment variables)
 const aiSessionCost = SubscriptionConfig.premium.aiEnabledSessionCostUsd;
-const nonAiSessionCost = SubscriptionConfig.premium.aiDisabledSessionCostUsd;
-const pricingVars = {
-    aiCost: aiSessionCost,
-    nonAiCost: nonAiSessionCost
-};
 const translationStore = useTranslationStore();
+const subscriptionStore = useSubscriptionStore();
+const authStore = useAuthStore();
 
 const props = defineProps({
     cardProp: {
@@ -409,24 +465,124 @@ const props = defineProps({
     updateCardFn: {
         type: Function,
         default: null
-    }
+    },
+    contentCount: {
+        type: Number,
+        default: 0
+    },
 });
 
-const emit = defineEmits(['edit', 'delete-requested', 'update-card']);
+const emit = defineEmits(['edit', 'delete-requested', 'update-card', 'show-preview', 'navigate-tab']);
 
 const showEditDialog = ref(false);
+const showExportDialog = ref(false);
+const showTranslationDialog = ref(false);
+const translationDialogMode = ref('translate');
+const preSelectedLanguages = ref([]);
+const showAllLanguages = ref(false);
 const editFormRef = ref(null);
-const translationSectionRef = ref(null);
-const isLoading = ref(false);
+
+// Dynamic edit section for contextual dialogs
+const editSection = ref(null); // 'details' | 'artwork' | 'ai'
+
+const editFormSections = computed(() => {
+    if (editSection.value === 'details') return ['details'];
+    if (editSection.value === 'ai') return ['ai'];
+    return ['details', 'ai'];
+});
+
+const editDialogHeader = computed(() => {
+    if (editSection.value === 'details') return t('dashboard.project_details');
+    if (editSection.value === 'ai') return t('dashboard.ai_assistant_configuration');
+    return t('dashboard.edit_card');
+});
+
+const editDialogStyle = computed(() => {
+    if (editSection.value === 'ai') return 'width: 90vw; max-width: 800px;';
+    if (editSection.value) return 'width: 90vw; max-width: 700px;';
+    return 'width: 90vw; max-width: 1200px;';
+});
 
 // Language preview state
 const selectedPreviewLanguage = ref(null);
 
-// Parse translations from card
+// Parse translations from card (for preview dropdown)
 const availableTranslations = computed(() => {
     if (!props.cardProp?.translations) return [];
     return Object.keys(props.cardProp.translations);
 });
+
+// Translation status from store
+const isAdmin = computed(() => authStore.getUserRole() === 'admin');
+const canTranslate = computed(() => isAdmin.value || subscriptionStore.canTranslate);
+
+const translatedCount = computed(() => {
+    return translationStore.upToDateLanguages.length + translationStore.outdatedLanguages.length;
+});
+
+const outdatedCount = computed(() => {
+    return translationStore.outdatedLanguages.length;
+});
+
+const totalLanguagesCount = computed(() => {
+    return Object.keys(SUPPORTED_LANGUAGES).length;
+});
+
+// All languages sorted: original → up-to-date → outdated → not translated
+const allLanguageStatuses = computed(() => {
+    const statuses = Object.values(translationStore.translationStatus);
+    if (statuses.length === 0) return [];
+
+    const statusOrder = { original: 0, up_to_date: 1, outdated: 2, not_translated: 3 };
+    return [...statuses].sort((a, b) => {
+        const orderA = statusOrder[a.status] ?? 4;
+        const orderB = statusOrder[b.status] ?? 4;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.language_name.localeCompare(b.language_name);
+    });
+});
+
+const displayedLanguages = computed(() => {
+    return showAllLanguages.value ? allLanguageStatuses.value : allLanguageStatuses.value.slice(0, 5);
+});
+
+// Languages for the TranslationDialog (all non-original)
+const availableLanguagesForDialog = computed(() => {
+    return Object.values(translationStore.translationStatus).filter(
+        (status) => status.status !== 'original'
+    );
+});
+
+// Translation dialog helpers
+const openTranslationDialog = (mode, preSelected = []) => {
+    translationDialogMode.value = mode;
+    preSelectedLanguages.value = preSelected;
+    showTranslationDialog.value = true;
+};
+
+const handleTranslationSuccess = async () => {
+    if (props.cardProp?.id) {
+        await translationStore.fetchTranslationStatus(props.cardProp.id);
+    }
+};
+
+const formatRelativeTime = (dateString) => {
+    if (!dateString) return '';
+    const now = Date.now();
+    const date = new Date(dateString).getTime();
+    const diffMs = now - date;
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return t('common.just_now');
+    if (diffMin < 60) return `${diffMin}m`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h`;
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 30) return `${diffDay}d`;
+    const diffMo = Math.floor(diffDay / 30);
+    if (diffMo < 12) return `${diffMo}mo`;
+    const diffYr = Math.floor(diffDay / 365);
+    return `${diffYr}y`;
+};
 
 // Generate language options for dropdown
 const languageOptions = computed(() => {
@@ -437,14 +593,14 @@ const languageOptions = computed(() => {
             value: null
         }
     ];
-    
+
     availableTranslations.value.forEach(langCode => {
         options.push({
             label: getLanguageName(langCode),
             value: langCode
         });
     });
-    
+
     return options;
 });
 
@@ -464,66 +620,26 @@ const displayedCardDescription = computed(() => {
     return props.cardProp.translations[selectedPreviewLanguage.value]?.description || props.cardProp?.description || '';
 });
 
-// Get displayed AI instruction (original or translated)
-const displayedAiInstruction = computed(() => {
-    if (!selectedPreviewLanguage.value || !props.cardProp?.translations?.[selectedPreviewLanguage.value]) {
-        return props.cardProp?.ai_instruction || '';
-    }
-    return props.cardProp.translations[selectedPreviewLanguage.value]?.ai_instruction || props.cardProp?.ai_instruction || '';
+// Expandable AI section state
+const expandedAiSections = ref({
+    instruction: true,
+    knowledge: true,
+    welcomeGeneral: true,
+    welcomeItem: true
 });
 
-// Get displayed AI knowledge base (original or translated)
-const displayedAiKnowledgeBase = computed(() => {
-    if (!selectedPreviewLanguage.value || !props.cardProp?.translations?.[selectedPreviewLanguage.value]) {
-        return props.cardProp?.ai_knowledge_base || '';
-    }
-    return props.cardProp.translations[selectedPreviewLanguage.value]?.ai_knowledge_base || props.cardProp?.ai_knowledge_base || '';
-});
-
-// Get displayed AI welcome general (original or translated)
-const displayedAiWelcomeGeneral = computed(() => {
-    if (!selectedPreviewLanguage.value || !props.cardProp?.translations?.[selectedPreviewLanguage.value]) {
-        return props.cardProp?.ai_welcome_general || '';
-    }
-    return props.cardProp.translations[selectedPreviewLanguage.value]?.ai_welcome_general || props.cardProp?.ai_welcome_general || '';
-});
-
-// Get displayed AI welcome item (original or translated)
-const displayedAiWelcomeItem = computed(() => {
-    if (!selectedPreviewLanguage.value || !props.cardProp?.translations?.[selectedPreviewLanguage.value]) {
-        return props.cardProp?.ai_welcome_item || '';
-    }
-    return props.cardProp.translations[selectedPreviewLanguage.value]?.ai_welcome_item || props.cardProp?.ai_welcome_item || '';
-});
+function toggleAiSection(section) {
+    expandedAiSections.value[section] = !expandedAiSections.value[section];
+}
 
 // Check if there's existing AI data (for showing preserved data when disabled)
 const hasAiData = computed(() => {
-    return !!(props.cardProp?.ai_instruction?.trim() || 
-              props.cardProp?.ai_knowledge_base?.trim() || 
-              props.cardProp?.ai_welcome_general?.trim() || 
+    return !!(props.cardProp?.ai_instruction?.trim() ||
+              props.cardProp?.ai_knowledge_base?.trim() ||
+              props.cardProp?.ai_welcome_general?.trim() ||
               props.cardProp?.ai_welcome_item?.trim());
 });
 
-// Helper functions for language display
-const getLanguageName = (langCode) => {
-    return SUPPORTED_LANGUAGES[langCode] || langCode;
-};
-
-const getLanguageFlag = (langCode) => {
-    const flagMap = {
-        en: '🇬🇧',
-        'zh-Hant': '🇹🇼',
-        'zh-Hans': '🇨🇳',
-        ja: '🇯🇵',
-        ko: '🇰🇷',
-        es: '🇪🇸',
-        fr: '🇫🇷',
-        ru: '🇷🇺',
-        ar: '🇸🇦',
-        th: '🇹🇭',
-    };
-    return flagMap[langCode] || '🌐';
-};
 
 const truncateText = (text, maxLength) => {
     if (!text) return '';
@@ -533,34 +649,11 @@ const truncateText = (text, maxLength) => {
     return plainText.substring(0, maxLength) + '...';
 };
 
-const displayImageForView = computed(() => {
-    if (props.cardProp && props.cardProp.image_url) {
-        return props.cardProp.image_url;
-    }
-    return null;
-});
-
-const displayQrCodePositionForView = computed(() => {
-    if (!props.cardProp || !props.cardProp.qr_code_position) return null;
-    
-    const positions = {
-        'TL': t('dashboard.top_left'),
-        'TR': t('dashboard.top_right'),
-        'BL': t('dashboard.bottom_left'),
-        'BR': t('dashboard.bottom_right')
-    };
-    
-    return positions[props.cardProp.qr_code_position] || props.cardProp.qr_code_position;
-});
-
-const handleEdit = () => {
-    showEditDialog.value = true;
-};
 
 const handleSaveEdit = async () => {
     if (editFormRef.value) {
         const payload = editFormRef.value.getPayload();
-        
+
         if (props.updateCardFn) {
             // Use the passed update function for proper async handling
             await props.updateCardFn(payload);
@@ -568,15 +661,10 @@ const handleSaveEdit = async () => {
             // Fallback to emit (but this won't work properly with MyDialog)
             await emit('update-card', payload);
         }
-        
-        // Refresh translation section to show updated original_language and status
-        if (translationSectionRef.value) {
-            translationSectionRef.value.loadTranslationStatus();
-        }
-        
+
         // Refetch translation status (card content changed)
         await translationStore.fetchTranslationStatus(props.cardProp.id);
-        
+
         // Don't manually close dialog - MyDialog will close it automatically after success
     }
 };
@@ -590,10 +678,11 @@ const handleCancelEdit = () => {
 };
 
 const handleDialogHide = () => {
-    // Reset form when dialog is hidden
+    // Reset form and edit section when dialog is hidden
     if (editFormRef.value) {
         editFormRef.value.initializeForm();
     }
+    editSection.value = null;
 };
 
 const handleRequestDelete = () => {
@@ -602,25 +691,6 @@ const handleRequestDelete = () => {
     }
 };
 
-const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-};
-
-const getQrCodePositionClass = (position) => {
-    const classes = {
-        'TL': 'top-2 left-2',
-        'TR': 'top-2 right-2',
-        'BL': 'bottom-2 left-2',
-        'BR': 'bottom-2 right-2'
-    };
-    return classes[position] || 'bottom-2 right-2'; // Default to bottom-right
-};
 
 // Content mode helper functions
 const getContentModeLabel = (mode) => {
@@ -633,496 +703,25 @@ const getContentModeLabel = (mode) => {
     return modeLabels[mode] || t('dashboard.mode_list');
 };
 
-const getContentModeIcon = (mode) => {
-    const modeIcons = {
-        'single': 'pi pi-file',
-        'list': 'pi pi-list',
-        'grid': 'pi pi-th-large',
-        'cards': 'pi pi-id-card'
-    };
-    return modeIcons[mode] || 'pi pi-list';
-};
-
-// Set up CSS custom property for aspect ratio
-onMounted(() => {
-    const aspectRatio = getCardAspectRatio();
-    document.documentElement.style.setProperty('--card-aspect-ratio', aspectRatio);
+// Lifecycle: fetch translation status on mount and card change
+onMounted(async () => {
+    if (props.cardProp?.id) {
+        await translationStore.fetchTranslationStatus(props.cardProp.id);
+    }
+    await subscriptionStore.fetchSubscription();
 });
+
+watch(() => props.cardProp?.id, async (newId) => {
+    if (newId) {
+        showAllLanguages.value = false;
+        await translationStore.fetchTranslationStatus(newId);
+    }
+});
+
 </script>
 
 <style scoped>
-/* ===== Main Container ===== */
-.card-view-container {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-/* ===== Hero Header ===== */
-.card-hero {
-    border-radius: 1rem;
-    padding: 1.25rem;
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border: 1px solid #e2e8f0;
-}
-
-.card-hero.hero-physical {
-    background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 100%);
-    border-color: #e9d5ff;
-}
-
-.card-hero.hero-digital {
-    background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
-    border-color: #a5f3fc;
-}
-
-.hero-content {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 1rem;
-    flex-wrap: wrap;
-}
-
-.hero-left {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    flex: 1;
-    min-width: 0;
-}
-
-.hero-icon {
-    width: 3.5rem;
-    height: 3.5rem;
-    border-radius: 0.875rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.hero-icon.icon-physical {
-    background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
-    box-shadow: 0 4px 12px rgba(168, 85, 247, 0.3);
-}
-
-.hero-icon.icon-digital {
-    background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-    box-shadow: 0 4px 12px rgba(6, 182, 212, 0.3);
-}
-
-.hero-icon i {
-    font-size: 1.5rem;
-    color: white;
-}
-
-.hero-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.hero-badges {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-bottom: 0.5rem;
-}
-
-.badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.25rem 0.625rem;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 500;
-}
-
-.badge-physical {
-    background: #f3e8ff;
-    color: #7c3aed;
-}
-
-.badge-digital {
-    background: #cffafe;
-    color: #0891b2;
-}
-
-.badge-mode {
-    background: #dbeafe;
-    color: #2563eb;
-}
-
-.badge-grouped {
-    background: #f3e8ff;
-    color: #7c3aed;
-}
-
-.badge-flat {
-    background: #f1f5f9;
-    color: #64748b;
-}
-
-.hero-title {
-    font-size: 1.375rem;
-    font-weight: 700;
-    color: #0f172a;
-    margin: 0 0 0.25rem 0;
-    line-height: 1.3;
-}
-
-.hero-description {
-    font-size: 0.875rem;
-    color: #64748b;
-    margin: 0;
-    line-height: 1.5;
-}
-
-.hero-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-shrink: 0;
-}
-
-.btn-edit {
-    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
-    border: none !important;
-    box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-    transition: all 0.2s ease;
-}
-
-.btn-edit:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
-}
-
-.btn-delete {
-    width: 2.5rem !important;
-    padding: 0 !important;
-}
-
-/* ===== Content Grid ===== */
-.content-grid {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-}
-
-@media (min-width: 1024px) {
-    .content-grid {
-        grid-template-columns: 260px 1fr;
-    }
-}
-
-/* ===== Left Column ===== */
-.left-column {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-/* ===== Section Headers ===== */
-.section-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding-bottom: 0.75rem;
-    border-bottom: 1px solid #e2e8f0;
-    margin-bottom: 1rem;
-    font-weight: 600;
-    font-size: 0.875rem;
-    color: #334155;
-}
-
-.section-header i {
-    color: #3b82f6;
-    font-size: 1rem;
-}
-
-.section-header .header-left {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    flex: 1;
-}
-
-/* ===== Card Preview Section ===== */
-.card-preview-section {
-    background: white;
-    border-radius: 1rem;
-    padding: 1rem;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.card-preview-wrapper {
-    display: flex;
-    justify-content: center;
-}
-
-.card-artwork-container {
-    position: relative;
-    aspect-ratio: var(--card-aspect-ratio, 2/3);
-    width: 100%;
-    max-width: 200px;
-    border-radius: 0.75rem;
-    overflow: hidden;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
-}
-
-.card-image {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-}
-
-.card-artwork-container:hover .card-image {
-    transform: scale(1.03);
-}
-
-.card-placeholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-    color: #94a3b8;
-    gap: 0.5rem;
-}
-
-.card-placeholder i {
-    font-size: 2rem;
-}
-
-.card-placeholder span {
-    font-size: 0.75rem;
-}
-
-.qr-overlay {
-    position: absolute;
-    width: 2.5rem;
-    height: 2.5rem;
-    background: white;
-    border-radius: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.qr-overlay i {
-    font-size: 1.25rem;
-    color: #1e293b;
-}
-
-.qr-overlay.top-2.left-2 { top: 0.5rem; left: 0.5rem; }
-.qr-overlay.top-2.right-2 { top: 0.5rem; right: 0.5rem; }
-.qr-overlay.bottom-2.left-2 { bottom: 0.5rem; left: 0.5rem; }
-.qr-overlay.bottom-2.right-2 { bottom: 0.5rem; right: 0.5rem; }
-
-/* ===== Quick Stats Section ===== */
-.quick-stats-section {
-    background: white;
-    border-radius: 1rem;
-    padding: 1rem;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.stats-grid {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-.stat-card {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem;
-    border-radius: 0.75rem;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-}
-
-.stat-card.stat-scans {
-    background: linear-gradient(135deg, #ecfeff 0%, #cffafe 100%);
-    border-color: #a5f3fc;
-}
-
-.stat-card.stat-ai-on {
-    background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-    border-color: #93c5fd;
-}
-
-.stat-card.stat-ai-off {
-    background: #f8fafc;
-}
-
-.stat-cost-hint {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 1.5rem;
-    height: 1.5rem;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: white;
-    font-size: 0.75rem;
-    cursor: help;
-}
-
-.stat-card.stat-translations {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border-color: #fcd34d;
-}
-
-.stat-icon {
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 0.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: white;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-}
-
-.stat-icon i {
-    font-size: 1rem;
-    color: #3b82f6;
-}
-
-.stat-info {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-}
-
-.stat-value {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #0f172a;
-}
-
-.stat-label {
-    font-size: 0.75rem;
-    color: #64748b;
-}
-
-.stat-limit {
-    font-size: 0.875rem;
-    font-weight: 500;
-    color: #94a3b8;
-}
-
-/* ===== Metadata Section ===== */
-.metadata-section {
-    background: white;
-    border-radius: 1rem;
-    padding: 1rem;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.timeline {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-    padding-left: 0.5rem;
-}
-
-.timeline-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.75rem;
-    position: relative;
-}
-
-.timeline-item:not(:last-child)::after {
-    content: '';
-    position: absolute;
-    left: 4px;
-    top: 1.25rem;
-    width: 1px;
-    height: calc(100% + 0.5rem);
-    background: #e2e8f0;
-}
-
-.timeline-dot {
-    width: 9px;
-    height: 9px;
-    border-radius: 50%;
-    background: #cbd5e1;
-    flex-shrink: 0;
-    margin-top: 0.375rem;
-}
-
-.timeline-dot.dot-active {
-    background: #3b82f6;
-    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-}
-
-.timeline-content {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-}
-
-.timeline-label {
-    font-size: 0.75rem;
-    color: #64748b;
-}
-
-.timeline-value {
-    font-size: 0.8125rem;
-    color: #334155;
-    font-weight: 500;
-}
-
-/* ===== Right Column ===== */
-.right-column {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-/* ===== Details Section ===== */
-.details-section {
-    background: white;
-    border-radius: 1rem;
-    padding: 1.25rem;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-/* Translation Preview Bar - Compact inline design */
-.translation-preview-bar {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.375rem 0.625rem;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.375rem;
-    margin-bottom: 0.75rem;
-}
-
-.preview-icon {
-    color: #64748b;
-    font-size: 0.875rem;
-}
-
-.preview-label {
-    color: #64748b;
-    font-size: 0.75rem;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
+/* PrimeVue Dropdown override for compact language selector */
 .language-selector-compact {
     border: none !important;
     background: transparent !important;
@@ -1143,453 +742,4 @@ onMounted(() => {
     padding: 0;
 }
 
-.lang-option {
-    display: flex;
-    align-items: center;
-    gap: 0.375rem;
-    font-size: 0.8125rem;
-}
-
-@media (max-width: 768px) {
-    .translation-preview-bar {
-        padding: 0.25rem 0.5rem;
-    }
-    
-    .preview-label {
-        font-size: 0.6875rem;
-    }
-    
-    .lang-option {
-        font-size: 0.75rem;
-    }
-}
-
-.language-selector {
-    min-width: 140px;
-}
-
-.details-content {
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-}
-
-.detail-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.375rem;
-}
-
-.detail-item label {
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: #64748b;
-    text-transform: uppercase;
-    letter-spacing: 0.025em;
-}
-
-.detail-value {
-    font-size: 0.9375rem;
-    color: #1e293b;
-    line-height: 1.6;
-}
-
-.detail-name {
-    font-size: 1.125rem;
-    font-weight: 600;
-}
-
-/* ===== Config Section ===== */
-.config-section {
-    background: white;
-    border-radius: 1rem;
-    padding: 1.25rem;
-    border: 1px solid #e2e8f0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.config-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 0.75rem;
-}
-
-.config-item {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.875rem;
-    border-radius: 0.75rem;
-    background: #f8fafc;
-    border: 1px solid #e2e8f0;
-    transition: all 0.2s ease;
-}
-
-.config-item:hover {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
-}
-
-.config-item > i {
-    font-size: 1.125rem;
-    color: #64748b;
-    width: 1.5rem;
-    text-align: center;
-}
-
-.config-info {
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-}
-
-.config-label {
-    font-size: 0.6875rem;
-    color: #94a3b8;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-
-.config-value {
-    font-size: 0.875rem;
-    color: #334155;
-    font-weight: 500;
-}
-
-/* ===== AI Section ===== */
-.ai-section {
-    background: linear-gradient(135deg, #eff6ff 0%, #f5f3ff 100%);
-    border-radius: 1rem;
-    padding: 1.25rem;
-    border: 1px solid #c7d2fe;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-}
-
-.ai-section .section-header {
-    border-bottom-color: #c7d2fe;
-}
-
-.ai-section .section-header i {
-    color: #7c3aed;
-}
-
-.ai-badge {
-    margin-left: auto;
-    padding: 0.25rem 0.5rem;
-    border-radius: 9999px;
-    background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%);
-    color: white;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-.ai-badge-disabled {
-    margin-left: auto;
-    padding: 0.25rem 0.5rem;
-    border-radius: 9999px;
-    background: #94a3b8;
-    color: white;
-    font-size: 0.6875rem;
-    font-weight: 600;
-    text-transform: uppercase;
-}
-
-/* AI Cost Banner */
-.ai-cost-banner {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.875rem 1rem;
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    border: 1px solid #fbbf24;
-    border-radius: 0.75rem;
-    margin-bottom: 1rem;
-}
-
-.ai-cost-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 0.5rem;
-    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-    color: white;
-    font-size: 1rem;
-    flex-shrink: 0;
-}
-
-.ai-cost-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-}
-
-.ai-cost-title {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: #92400e;
-}
-
-.ai-cost-desc {
-    font-size: 0.75rem;
-    color: #a16207;
-}
-
-.ai-cost-rate {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 0.125rem;
-    flex-shrink: 0;
-}
-
-.ai-cost-amount {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #92400e;
-}
-
-.ai-cost-per {
-    font-size: 0.6875rem;
-    color: #a16207;
-    text-transform: uppercase;
-}
-
-/* AI Section Disabled State */
-.ai-section-disabled {
-    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-    border-color: #cbd5e1;
-}
-
-.ai-section-disabled .section-header {
-    border-bottom-color: #cbd5e1;
-}
-
-.ai-section-disabled .section-header i {
-    color: #64748b;
-}
-
-/* AI Preserved Data Banner */
-.ai-preserved-banner {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.75rem;
-    margin-bottom: 0.75rem;
-}
-
-.ai-preserved-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 0.5rem;
-    background: #f1f5f9;
-    color: #64748b;
-    font-size: 0.875rem;
-    flex-shrink: 0;
-}
-
-.ai-preserved-content {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.125rem;
-}
-
-.ai-preserved-title {
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: #334155;
-}
-
-.ai-preserved-desc {
-    font-size: 0.75rem;
-    color: #64748b;
-}
-
-/* AI Data Preview (collapsed view when disabled) */
-.ai-data-preview {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.ai-preview-item {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.5rem 0.75rem;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 0.5rem;
-    font-size: 0.8125rem;
-}
-
-.ai-preview-item i {
-    color: #94a3b8;
-    font-size: 0.875rem;
-    width: 1rem;
-}
-
-.ai-preview-label {
-    color: #64748b;
-    font-weight: 500;
-    white-space: nowrap;
-}
-
-.ai-preview-value {
-    color: #94a3b8;
-    font-style: italic;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.ai-content {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-}
-
-.ai-item {
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-
-.ai-item label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: #4c1d95;
-}
-
-.ai-item label i {
-    font-size: 0.875rem;
-}
-
-.ai-item p {
-    font-size: 0.875rem;
-    color: #5b21b6;
-    background: white;
-    padding: 0.875rem;
-    border-radius: 0.5rem;
-    border: 1px solid #c7d2fe;
-    line-height: 1.6;
-    white-space: pre-wrap;
-    margin: 0;
-}
-
-/* ===== Translation Section ===== */
-.translation-section {
-    margin-top: 0.5rem;
-}
-
-/* ===== Prose Content ===== */
-.prose-content {
-    color: #475569;
-}
-
-.prose-content :deep(h1),
-.prose-content :deep(h2),
-.prose-content :deep(h3),
-.prose-content :deep(h4),
-.prose-content :deep(h5),
-.prose-content :deep(h6) {
-    color: #1e293b;
-    font-weight: 600;
-    margin-top: 0.75em;
-    margin-bottom: 0.5em;
-}
-
-.prose-content :deep(h1) { font-size: 1.25em; }
-.prose-content :deep(h2) { font-size: 1.125em; }
-.prose-content :deep(h3) { font-size: 1em; }
-
-.prose-content :deep(p) {
-    margin-top: 0.5em;
-    margin-bottom: 0.5em;
-}
-
-.prose-content :deep(strong) {
-    font-weight: 600;
-    color: #1e293b;
-}
-
-.prose-content :deep(ul),
-.prose-content :deep(ol) {
-    margin: 0.5em 0;
-    padding-left: 1.25em;
-}
-
-.prose-content :deep(ul) { list-style-type: disc; }
-.prose-content :deep(ol) { list-style-type: decimal; }
-
-.prose-content :deep(li) {
-    margin: 0.25em 0;
-}
-
-.prose-content :deep(blockquote) {
-    border-left: 3px solid #cbd5e1;
-    padding-left: 1em;
-    margin: 0.75em 0;
-    font-style: italic;
-    color: #64748b;
-}
-
-.prose-content :deep(code) {
-    background: #f1f5f9;
-    padding: 0.125em 0.25em;
-    border-radius: 0.25rem;
-    font-size: 0.875em;
-    color: #dc2626;
-}
-
-.prose-content :deep(a) {
-    color: #3b82f6;
-    text-decoration: underline;
-}
-
-.prose-content :deep(a:hover) {
-    color: #1d4ed8;
-}
-
-/* ===== Responsive ===== */
-@media (max-width: 640px) {
-    .card-hero {
-        padding: 1rem;
-    }
-    
-    .hero-icon {
-        width: 2.75rem;
-        height: 2.75rem;
-    }
-    
-    .hero-icon i {
-        font-size: 1.25rem;
-    }
-    
-    .hero-title {
-        font-size: 1.125rem;
-    }
-    
-    .hero-actions {
-        width: 100%;
-        justify-content: flex-end;
-    }
-    
-    .config-grid {
-        grid-template-columns: 1fr;
-    }
-}
 </style>

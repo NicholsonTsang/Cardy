@@ -493,6 +493,7 @@ import ProgressBar from 'primevue/progressbar';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from 'primevue/useconfirm';
 import { useTranslationStore, SUPPORTED_LANGUAGES, type LanguageCode, type TranslationStatus } from '@/stores/translation';
+import { getLanguageFlag } from '@/utils/formatters';
 import { useSubscriptionStore } from '@/stores/subscription';
 import { SubscriptionConfig } from '@/config/subscription';
 
@@ -501,6 +502,8 @@ const props = defineProps<{
   visible: boolean;
   cardId: string;
   availableLanguages: TranslationStatus[];
+  initialMode?: 'translate' | 'manage';
+  preSelectedLanguages?: string[];
 }>();
 
 const emit = defineEmits<{
@@ -529,6 +532,18 @@ const deleteProgress = ref({
   completed: 0,
   total: 0,
   current: null as LanguageCode | null,
+});
+
+// Initialize from props when dialog opens
+watch(() => props.visible, (isVisible) => {
+  if (isVisible) {
+    if (props.initialMode) {
+      viewMode.value = props.initialMode;
+    }
+    if (props.preSelectedLanguages && props.preSelectedLanguages.length > 0) {
+      selectedLanguages.value = [...props.preSelectedLanguages] as LanguageCode[];
+    }
+  }
 });
 
 // Computed
@@ -783,22 +798,6 @@ const handleVisibleChange = (visible: boolean) => {
 
 const getLanguageName = (code: LanguageCode): string => {
   return SUPPORTED_LANGUAGES[code] || code;
-};
-
-const getLanguageFlag = (languageCode: string): string => {
-  const flagMap: Record<string, string> = {
-    en: '🇬🇧',
-    'zh-Hant': '🇹🇼',
-    'zh-Hans': '🇨🇳',
-    ja: '🇯🇵',
-    ko: '🇰🇷',
-    es: '🇪🇸',
-    fr: '🇫🇷',
-    ru: '🇷🇺',
-    ar: '🇸🇦',
-    th: '🇹🇭',
-  };
-  return flagMap[languageCode] || '🌐';
 };
 
 // Management Methods

@@ -450,7 +450,7 @@ import { applyCropParametersToImage, parseCropParameters } from '@/utils/imageCr
 import { getCardAspectRatio, getContentAspectRatio } from '@/utils/cardConfig'
 import { supabase } from '@/lib/supabase'
 import { useSubscriptionStore } from '@/stores/subscription'
-import { SUPPORTED_LANGUAGES } from '@/stores/translation'
+import { getLanguageFlag } from '@/utils/formatters'
 import Button from 'primevue/button'
 import ProgressBar from 'primevue/progressbar'
 import { Transition } from 'vue'
@@ -1338,25 +1338,6 @@ function getContentModeLabel(mode) {
     inline: t('templates.mode_inline')
   }
   return labels[mode] || mode
-}
-
-// Language flags - aligned with SUPPORTED_LANGUAGES from translation store
-// Language flags - aligned with SUPPORTED_LANGUAGES from translation store
-const LANGUAGE_FLAGS = {
-  'en': '🇺🇸',
-  'zh-Hant': '🇭🇰',
-  'zh-Hans': '🇨🇳',
-  'ja': '🇯🇵',
-  'ko': '🇰🇷',
-  'es': '🇪🇸',
-  'fr': '🇫🇷',
-  'ru': '🇷🇺',
-  'ar': '🇸🇦',
-  'th': '🇹🇭'
-}
-
-function getLanguageFlag(lang) {
-  return LANGUAGE_FLAGS[lang] || '🌐'
 }
 
 // Function to get card image URL

@@ -1,20 +1,20 @@
 <template>
-    <PageWrapper :title="$t('dashboard.my_cards')" :description="$t('dashboard.manage_cards_description')">
+    <PageWrapper :showHeader="false">
         <div class="space-y-3 sm:space-y-4 lg:space-y-6">
-            <!-- Add Card Dialog -->
-            <MyDialog 
+            <!-- Add Card Dialog (Wizard) -->
+            <MyDialog
                 v-model="showAddCardDialog"
                 modal
                 :header="$t('dashboard.create_new_card')"
-                :confirmHandle="handleAddCard"
-                :confirmLabel="$t('dashboard.create_card')"
-                confirmClass="bg-blue-600 hover:bg-blue-700 text-white border-0"
-                :successMessage="$t('dashboard.card_created')"
-                :errorMessage="$t('messages.operation_failed')"
-                :showToasts="false"
+                :showConfirm="false"
+                :showCancel="false"
                 @hide="onDialogHide"
             >
-                <CardCreateEditView ref="cardCreateEditRef" modeProp="create" />
+                <CardCreateWizard
+                    ref="cardCreateEditRef"
+                    @submit="handleWizardSubmit"
+                    @cancel="showAddCardDialog = false"
+                />
             </MyDialog>
 
             <!-- Delete Confirmation Dialog -->
@@ -32,7 +32,6 @@
                         v-model:searchQuery="search"
                         v-model:selectedYear="selectedYear"
                         v-model:selectedMonth="selectedMonth"
-                        v-model:translationFilter="translationFilter"
                         :currentPage="currentPage"
                         :itemsPerPage="itemsPerPage"
                         :experienceCount="subscriptionStore.experienceCount"
@@ -56,7 +55,6 @@
                         v-model:activeTab="activeTabString"
                         :selectedBatchId="selectedBatchId"
                         @update-card="handleCardUpdate"
-                        @cancel-edit="handleCardCancel"
                         @delete-card="triggerDeleteConfirmation"
                         @card-imported="handleCardImported"
                         @batch-changed="handleBatchChange"
@@ -78,7 +76,7 @@ import { useConfirm } from "primevue/useconfirm";
 import { useToast } from "primevue/usetoast";
 import MyDialog from '@/components/MyDialog.vue';
 import PageWrapper from '@/components/Layout/PageWrapper.vue';
-import CardCreateEditView from '@/components/CardComponents/CardCreateEditView.vue';
+import CardCreateWizard from '@/components/CardComponents/CardCreateWizard.vue';
 import CardListPanel from '@/components/Card/CardListPanel.vue';
 import CardDetailPanel from '@/components/Card/CardDetailPanel.vue';
 import { useI18n } from 'vue-i18n';
@@ -114,9 +112,8 @@ const activeTab = ref(0);
 // Filters and pagination
 const selectedYear = ref(null);
 const selectedMonth = ref(null);
-const translationFilter = ref(null); // null = all, 'with' = has translations, 'without' = no translations
 const currentPage = ref(1);
-const itemsPerPage = ref(5);
+const itemsPerPage = ref(10);
 
 // Computed properties
 const selectedCardObject = computed(() => {
@@ -151,17 +148,6 @@ const filteredCards = computed(() => {
         );
     }
 
-    // Filter by translation status
-    if (translationFilter.value === 'with') {
-        tempCards = tempCards.filter(card => 
-            card.translations && Object.keys(card.translations).length > 0
-        );
-    } else if (translationFilter.value === 'without') {
-        tempCards = tempCards.filter(card => 
-            !card.translations || Object.keys(card.translations).length === 0
-        );
-    }
-
     return tempCards;
 });
 
@@ -175,7 +161,7 @@ const activeTabString = computed({
 });
 
 // Watchers
-watch([search, selectedYear, selectedMonth, translationFilter], () => {
+watch([search, selectedYear, selectedMonth], () => {
     currentPage.value = 1;
 });
 
@@ -228,7 +214,6 @@ const handlePageChange = (event) => {
 const clearFilters = () => {
     selectedYear.value = null;
     selectedMonth.value = null;
-    translationFilter.value = null;
 };
 
 const updateURL = (cardId = null, tab = 0, batchId = null) => {
@@ -328,36 +313,27 @@ const handleCreateCardClick = async () => {
     showAddCardDialog.value = true;
 };
 
-const handleAddCard = async () => {
-    if (!cardCreateEditRef.value) {
-        throw new Error("Form component not ready.");
-    }
-    
-    const payload = cardCreateEditRef.value.getPayload();
-    if (!payload.name) {
-        throw new Error('Card name is required.');
-    }
-    
+const handleWizardSubmit = async (payload) => {
     await handleAsyncError(async () => {
         const newCardId = await cardStore.addCard(payload);
         await cardStore.fetchCards();
-        
+
         // Refresh subscription count
         subscriptionStore.fetchSubscription();
-        
+
         // Auto-select the newly created card
         if (newCardId) {
             selectedCardId.value = newCardId;
-            activeTab.value = 0; // Switch to first tab (General)
+            activeTab.value = 0;
         }
-        
-        // Success feedback provided by UI update and dialog close
+
+        showAddCardDialog.value = false;
     }, 'creating card');
 };
 
 const onDialogHide = () => {
-    if (cardCreateEditRef.value && typeof cardCreateEditRef.value.resetFormForCreate === 'function') {
-        cardCreateEditRef.value.resetFormForCreate();
+    if (cardCreateEditRef.value && typeof cardCreateEditRef.value.resetForm === 'function') {
+        cardCreateEditRef.value.resetForm();
     }
 };
 
@@ -369,10 +345,6 @@ const handleCardUpdate = async (payload) => {
         await cardStore.fetchCards();
         // Success feedback provided by UI update and dialog close
     }, 'updating card');
-};
-
-const handleCardCancel = () => {
-    // Handle cancel edit if needed
 };
 
 const triggerDeleteConfirmation = (cardId) => {

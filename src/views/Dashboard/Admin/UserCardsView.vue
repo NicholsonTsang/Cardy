@@ -158,6 +158,7 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import AdminCardListPanel from '@/components/Admin/AdminCardListPanel.vue'
 import AdminCardDetailPanel from '@/components/Admin/AdminCardDetailPanel.vue'
+import { formatDate } from '@/utils/formatters'
 
 // Stores and composables
 const adminUserCardsStore = useAdminUserCardsStore()
@@ -272,13 +273,6 @@ const handleSelectCard = async (cardId: string) => {
   }
 }
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
-}
 </script>
 
 <style scoped>

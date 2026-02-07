@@ -40,8 +40,6 @@
     </template>
   </PDialog>
 
-  <!-- Toast component for feedback messages -->
-  <!-- <Toast position="bottom-right" /> -->
 </template>
 
 <script setup>
@@ -49,7 +47,6 @@ import { ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import PDialog from 'primevue/dialog';
 import Button from 'primevue/button';
-import Toast from 'primevue/toast';
 import { useToast } from 'primevue/usetoast';
 
 const { t } = useI18n();
@@ -184,7 +181,7 @@ const handleCancel = () => {
 
 <style scoped>
 .dialog-content {
-  @apply py-4;
+  padding: 0.5rem 0;
 }
 
 /* Ensure proper button sizing in dialog footer */
@@ -219,20 +216,50 @@ const handleCancel = () => {
   font-size: var(--font-size-xl);
 }
 
+/* Smooth scrolling for dialog content */
+.dialog-content {
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Mobile adjustments */
 @media (max-width: 768px) {
-  :deep(.p-dialog-header-icon) {
-    width: 2.75rem;
-    height: 2.75rem;
+  .dialog-content {
+    max-height: calc(80vh - 120px); /* Account for header and footer */
   }
-  
+
+  :deep(.p-dialog-header-icon) {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+
   :deep(.p-dialog-header-icon i) {
     font-size: var(--font-size-lg);
   }
-  
+
   :deep(.p-dialog-footer .p-button) {
-    padding: 0.625rem 1rem;
+    padding: 0.5rem 0.875rem;
     font-size: var(--font-size-sm);
+    min-width: 4rem;
+  }
+
+  :deep(.p-dialog-footer) {
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* Small screen adjustments */
+@media (max-width: 480px) {
+  .dialog-content {
+    max-height: calc(85vh - 110px);
+  }
+
+  :deep(.p-dialog-header) {
+    padding: 0.75rem 1rem;
+  }
+
+  :deep(.p-dialog-footer .p-button) {
+    padding: 0.5rem 0.75rem;
   }
 }
 </style>

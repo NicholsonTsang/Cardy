@@ -20,7 +20,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue';
+import { ref, watch } from 'vue';
 import CardView from './CardView.vue';
 import CardCreateEditForm from './CardCreateEditForm.vue';
 
@@ -52,10 +52,6 @@ const formRef = ref(null);
 // Watch for changes in modeProp
 watch(() => props.modeProp, (newVal) => {
     currentMode.value = newVal;
-});
-
-onMounted(() => {
-    currentMode.value = props.modeProp;
 });
 
 const handleSave = (payload) => {
@@ -107,30 +103,5 @@ defineExpose({
 </script>
 
 <style scoped>
-/* Ensure consistent height for image preview area */
-.h-90 { /* You might need to define this class if not already in Tailwind config or global styles */
-    height: 22.5rem; /* Example: 90 * 0.25rem if your spacing unit is 0.25rem */
-}
-.w-60 {
-    width: 15rem;
-}
-/* Optional: Customize FileUpload button appearance if needed */
-.p-fileupload-basic .p-button {
-    width: 100%;
-    justify-content: center;
-}
-.aspect-\[2\/3\] { /* Card standard aspect ratio */
-    aspect-ratio: 2 / 3;
-}
-
-.view-section {
-    display: flex;
-    flex-direction: column;
-
-    @container (min-width: 100px) {
-        flex-direction: row;
-    }
-}
-
 /* Component-specific styles - styles now handled by global theme */
 </style>

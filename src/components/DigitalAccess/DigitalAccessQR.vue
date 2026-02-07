@@ -1,18 +1,32 @@
 <template>
   <div class="space-y-6">
+    <!-- Section Header with Explanation -->
+    <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl p-4 border border-blue-200">
+      <div class="flex items-start gap-3">
+        <div class="p-2 bg-blue-100 rounded-lg flex-shrink-0">
+          <i class="pi pi-qrcode text-blue-600"></i>
+        </div>
+        <div class="flex-1">
+          <h3 class="text-base font-semibold text-blue-900">{{ $t('digital_access.qr_access_title') }}</h3>
+          <p class="text-sm text-blue-700 mt-1">{{ $t('digital_access.qr_access_explanation') }}</p>
+        </div>
+      </div>
+    </div>
+
     <!-- Header with Add Button -->
     <div class="flex items-center justify-between">
       <div>
         <h3 class="text-lg font-semibold text-slate-900">{{ $t('digital_access.qr_codes_title') }}</h3>
         <p class="text-slate-600 text-sm">{{ $t('digital_access.qr_codes_description') }}</p>
       </div>
-      <Button 
+      <Button
         v-if="!readOnly"
         :label="$t('digital_access.add_qr_code')"
         icon="pi pi-plus"
         size="small"
         class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0"
         @click="showAddDialog = true"
+        v-tooltip.left="$t('digital_access.add_qr_tooltip')"
       />
     </div>
 
@@ -155,24 +169,15 @@
               </div>
 
               <!-- Actions -->
-              <div v-if="!readOnly" class="flex flex-wrap gap-2">
-                <Button 
+              <div v-if="!readOnly" class="flex flex-wrap items-center gap-2">
+                <Button
                   :label="$t('digital_access.download_qr')"
                   icon="pi pi-download"
                   size="small"
                   @click="downloadQrCode(token)"
                   :disabled="!token.is_enabled"
                 />
-                <Button 
-                  icon="pi pi-external-link"
-                  severity="secondary"
-                  outlined
-                  size="small"
-                  @click="openPreview(token.access_token)"
-                  :disabled="!token.is_enabled"
-                  v-tooltip="$t('digital_access.open_preview')"
-                />
-                <Button 
+                <Button
                   :icon="token.is_enabled ? 'pi pi-pause' : 'pi pi-play'"
                   :severity="token.is_enabled ? 'warning' : 'success'"
                   outlined
@@ -181,32 +186,16 @@
                   :loading="togglingTokenId === token.id"
                   v-tooltip="token.is_enabled ? $t('digital_access.disable') : $t('digital_access.enable')"
                 />
-                <Button 
-                  icon="pi pi-pencil"
+                <Button
+                  icon="pi pi-ellipsis-v"
                   severity="secondary"
-                  outlined
+                  text
+                  rounded
                   size="small"
-                  @click="editToken(token)"
-                  v-tooltip="$t('common.edit')"
+                  @click="toggleOverflowMenu($event, token)"
+                  v-tooltip="$t('common.more_actions')"
                 />
-                <Button 
-                  icon="pi pi-refresh"
-                  severity="warning"
-                  outlined
-                  size="small"
-                  @click="refreshToken(token)"
-                  :loading="refreshingTokenId === token.id"
-                  v-tooltip="$t('digital_access.refresh_qr_tooltip')"
-                />
-                <Button 
-                  icon="pi pi-trash"
-                  severity="danger"
-                  outlined
-                  size="small"
-                  @click="confirmDeleteToken(token)"
-                  :disabled="accessTokens.length <= 1"
-                  v-tooltip="accessTokens.length <= 1 ? $t('digital_access.cannot_delete_last') : $t('common.delete')"
-                />
+                <Menu ref="overflowMenuRef" :model="getOverflowMenuItems(token)" :popup="true" />
               </div>
             </div>
           </div>
@@ -363,9 +352,11 @@ import Dialog from 'primevue/dialog'
 import InputText from 'primevue/inputtext'
 import InputNumber from 'primevue/inputnumber'
 import ToggleSwitch from 'primevue/toggleswitch'
+import Menu from 'primevue/menu'
 import ProgressSpinner from 'primevue/progressspinner'
 import QrCode from 'qrcode.vue'
 import * as QRCodeLib from 'qrcode'
+import { formatDate } from '@/utils/formatters'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -450,13 +441,48 @@ function getAccessUrl(token: string): string {
   return `${window.location.origin}/c/${token}`
 }
 
-function formatDate(dateStr: string | undefined): string {
-  if (!dateStr) return '-'
-  return new Date(dateStr).toLocaleDateString()
-}
-
 function toggleTokenExpanded(tokenId: string) {
   expandedTokenId.value = expandedTokenId.value === tokenId ? null : tokenId
+}
+
+// Overflow menu
+const overflowMenuRef = ref()
+
+function toggleOverflowMenu(event: Event, token: AccessToken) {
+  overflowMenuRef.value?.toggle(event)
+  // Store token ref for menu item actions
+  currentMenuToken.value = token
+}
+
+const currentMenuToken = ref<AccessToken | null>(null)
+
+function getOverflowMenuItems(token: AccessToken) {
+  return [
+    {
+      label: t('digital_access.open_preview'),
+      icon: 'pi pi-external-link',
+      disabled: !token.is_enabled,
+      command: () => openPreview(token.access_token)
+    },
+    {
+      label: t('common.edit'),
+      icon: 'pi pi-pencil',
+      command: () => editToken(token)
+    },
+    {
+      label: t('digital_access.refresh_qr_tooltip'),
+      icon: 'pi pi-refresh',
+      command: () => refreshToken(token)
+    },
+    { separator: true },
+    {
+      label: t('common.delete'),
+      icon: 'pi pi-trash',
+      disabled: accessTokens.value.length <= 1,
+      class: 'text-red-600',
+      command: () => confirmDeleteToken(token)
+    }
+  ]
 }
 
 async function copyUrl(token: string) {

@@ -30,12 +30,9 @@ Creator-facing pages for managing projects:
 
 | View | Route | Purpose |
 |------|-------|---------|
-| DashboardHome | `/dashboard` | Overview and navigation |
-| CardListView | `/dashboard/cards` | List all projects |
-| CardDetailView | `/dashboard/cards/:id` | Edit single project |
-| ContentEditor | `/dashboard/cards/:id/content` | Manage content items |
-| BatchManagement | `/dashboard/cards/:id/batches` | Physical card batches |
-| AccessTokenManager | `/dashboard/cards/:id/tokens` | QR code management |
+| MyCards | `/dashboard/cards` | Project list + detail (tabbed: General, Content, Issuance/Control, QR & Access) |
+| CreditManagement | `/dashboard/credits` | Credit purchase and history |
+| SubscriptionManagement | `/dashboard/subscription` | Plan management |
 
 ### Mobile Client (`/views/MobileClient/`)
 

@@ -2,80 +2,144 @@
     <div class="grid grid-cols-1 xl:grid-cols-5 gap-4 lg:gap-6">
         <!-- Content Items List -->
         <div class="xl:col-span-2 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
-            <div class="p-2.5 sm:p-3 border-b border-slate-200" :class="headerConfig.bgClass">
-                <div class="flex justify-between items-center gap-2">
-                    <div class="flex items-center gap-2 min-w-0">
-                        <div class="p-1.5 rounded-lg" :class="headerConfig.iconBgClass">
-                            <i :class="['pi', headerConfig.icon, 'text-xs', headerConfig.iconClass]"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <div class="flex items-center gap-2">
-                                <h2 class="text-sm sm:text-base font-semibold text-slate-900 truncate">{{ headerConfig.title }}</h2>
-                                <!-- Compact count badge -->
-                                <span v-if="displayItemsCount > 0" class="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full whitespace-nowrap">
-                                    <template v-if="effectiveIsGrouped">
-                                        {{ contentItems.length }}{{ totalChildItems > 0 ? ` · ${totalChildItems}` : '' }}
-                                    </template>
-                                    <template v-else>{{ displayItemsCount }}</template>
-                                </span>
-                            </div>
-                            <!-- Mode badges - single row, more compact -->
-                            <div class="flex items-center gap-1 mt-0.5">
-                                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-slate-100/80 text-slate-500">
-                                    <i :class="['pi', modeIndicator.icon, 'text-[8px]']"></i>
-                                    {{ modeIndicator.label }}
-                                </span>
-                                <span v-if="effectiveIsGrouped" class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-50 text-amber-600">
-                                    <i class="pi pi-folder-open text-[8px]"></i>
-                                    {{ props.groupDisplay === 'collapsed' ? $t('dashboard.group_display_collapsed') : $t('dashboard.group_display_expanded') }}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <Button 
+            <!-- Header -->
+            <div class="px-3 sm:px-4 py-2.5 border-b border-slate-200 bg-slate-50/80">
+                <!-- Header row: status + actions -->
+                <div class="flex items-center gap-2">
+                    <i :class="[headerIcon, 'text-sm text-slate-500']"></i>
+                    <span class="text-sm font-medium text-slate-700 truncate">{{ headerLabel }}</span>
+                    <span v-if="headerCountText" class="text-xs text-slate-400 whitespace-nowrap">{{ headerCountText }}</span>
+                    <div class="flex-1"></div>
+                    <!-- Mode selector button -->
+                    <button
+                        type="button"
+                        @click="toggleModePopover"
+                        class="relative flex items-center gap-1.5 px-2 h-7 rounded-md text-xs font-medium transition-all text-slate-500 hover:text-slate-700 hover:bg-slate-100"
+                    >
+                        <i :class="['pi', currentModeIcon, 'text-xs']"></i>
+                        <span class="hidden sm:inline">{{ $t('dashboard.mode_' + localContentMode) }}</span>
+                        <i class="pi pi-chevron-down text-[10px]"></i>
+                        <span v-if="hasUnsavedModeChanges" class="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-amber-500 rounded-full"></span>
+                    </button>
+                    <!-- Add button -->
+                    <button
                         v-if="normalizedMode !== 'single' || contentItems.length === 0"
-                        icon="pi pi-plus" 
-                        @click="showAddSerieDialog = true" 
-                        size="small"
-                        rounded
-                        class="!w-8 !h-8 flex-shrink-0"
-                        :class="headerConfig.buttonClass"
-                        v-tooltip.left="headerConfig.addLabel"
-                    />
+                        type="button"
+                        @click="showAddSerieDialog = true"
+                        class="flex items-center justify-center w-8 h-7 rounded-md text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-all"
+                        v-tooltip.bottom="addDialogHeader"
+                    >
+                        <i class="pi pi-plus text-sm"></i>
+                    </button>
                 </div>
-                <!-- Mode hint for Single mode - more compact -->
-                <p v-if="normalizedMode === 'single' && contentItems.length >= 1" class="text-[10px] text-purple-600 mt-1.5 flex items-center gap-1">
-                    <i class="pi pi-info-circle text-[10px]"></i>
+
+                <!-- Single mode hint -->
+                <p v-if="normalizedMode === 'single' && contentItems.length >= 1" class="text-xs text-slate-500 mt-1.5 flex items-center gap-1">
+                    <i class="pi pi-info-circle text-xs"></i>
                     {{ $t('content.single_mode_hint') }}
                 </p>
             </div>
 
-            <!-- Content Items List -->
-            <div class="flex-1 overflow-y-auto p-2">
-                <!-- Empty State - Mode Specific -->
-                <div v-if="(effectiveIsGrouped ? contentItems.length : displayItems.length) === 0" class="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
-                    <div class="w-14 h-14 sm:w-16 sm:h-16 rounded-full flex items-center justify-center mb-3 sm:mb-4" :class="emptyStateConfig.bgClass">
-                        <i :class="['pi', emptyStateConfig.icon, 'text-xl sm:text-2xl', emptyStateConfig.iconClass]"></i>
+            <!-- Mode Configuration Popover -->
+            <Popover ref="modePopover">
+                <div class="w-64 p-3">
+                    <!-- Section 1: Layout -->
+                    <div class="text-[11px] uppercase tracking-wide text-slate-400 font-medium mb-2">
+                        {{ $t('content.layout') }}
                     </div>
-                    <h3 class="text-base sm:text-lg font-medium text-slate-900 mb-2 px-2">{{ emptyStateConfig.title }}</h3>
-                    <p class="text-sm sm:text-base text-slate-500 mb-4 px-2">{{ emptyStateConfig.description }}</p>
-                    <Button 
-                        :icon="emptyStateConfig.buttonIcon" 
-                        :label="emptyStateConfig.buttonLabel" 
-                        @click="showAddSerieDialog = true"
-                        :class="emptyStateConfig.buttonClass"
-                    />
+                    <div class="grid grid-cols-4 gap-1.5">
+                        <button
+                            v-for="mode in contentModeOptions"
+                            :key="mode.value"
+                            type="button"
+                            @click="localContentMode = mode.value"
+                            class="flex flex-col items-center gap-1 px-1 py-2 rounded-lg border transition-all text-center"
+                            :class="localContentMode === mode.value
+                                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                                : 'border-slate-200 text-slate-500 hover:border-slate-300 hover:bg-slate-50'"
+                        >
+                            <i :class="['pi', mode.icon, 'text-base']"></i>
+                            <span class="text-[11px] font-medium leading-tight">{{ $t('dashboard.mode_' + mode.value) }}</span>
+                        </button>
+                    </div>
+
+                    <!-- Section 2: Organization (if mode supports grouping) -->
+                    <template v-if="currentModeSupportsGrouping">
+                        <div class="border-t border-slate-100 pt-3 mt-3">
+                            <div class="text-[11px] uppercase tracking-wide text-slate-400 font-medium mb-2">
+                                {{ $t('content.organization') }}
+                            </div>
+                            <label class="flex items-center gap-2.5 cursor-pointer">
+                                <ToggleSwitch v-model="localIsGrouped" />
+                                <div>
+                                    <span class="text-sm font-medium text-slate-700">{{ $t('content.enable_categories') }}</span>
+                                    <p class="text-xs text-slate-400 mt-0.5">{{ $t('content.enable_categories_desc') }}</p>
+                                </div>
+                            </label>
+                        </div>
+                    </template>
+
+                    <!-- Section 3: Category Display (if grouped) -->
+                    <template v-if="localIsGrouped && currentModeSupportsGrouping">
+                        <div class="border-t border-slate-100 pt-3 mt-3">
+                            <div class="text-[11px] uppercase tracking-wide text-slate-400 font-medium mb-2">
+                                {{ $t('dashboard.group_display_title') }}
+                            </div>
+                            <div class="space-y-1.5">
+                                <label
+                                    class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg border cursor-pointer transition-all"
+                                    :class="localGroupDisplay === 'expanded'
+                                        ? 'border-blue-500 bg-blue-50/50'
+                                        : 'border-slate-200 hover:border-slate-300'"
+                                >
+                                    <RadioButton v-model="localGroupDisplay" value="expanded" />
+                                    <div>
+                                        <span class="text-sm font-medium text-slate-700">{{ $t('dashboard.group_display_expanded') }}</span>
+                                        <p class="text-xs text-slate-400 mt-0.5">{{ $t('dashboard.group_display_expanded_desc') }}</p>
+                                    </div>
+                                </label>
+                                <label
+                                    class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg border cursor-pointer transition-all"
+                                    :class="localGroupDisplay === 'collapsed'
+                                        ? 'border-blue-500 bg-blue-50/50'
+                                        : 'border-slate-200 hover:border-slate-300'"
+                                >
+                                    <RadioButton v-model="localGroupDisplay" value="collapsed" />
+                                    <div>
+                                        <span class="text-sm font-medium text-slate-700">{{ $t('dashboard.group_display_collapsed') }}</span>
+                                        <p class="text-xs text-slate-400 mt-0.5">{{ $t('dashboard.group_display_collapsed_desc') }}</p>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Save/Cancel footer (only when changes exist) -->
+                    <div v-if="hasUnsavedModeChanges" class="border-t border-slate-100 pt-3 mt-3 flex justify-end gap-2">
+                        <Button :label="$t('common.cancel')" size="small" severity="secondary" text @click="resetModeConfig" />
+                        <Button :label="$t('common.save')" icon="pi pi-check" size="small" :loading="isSavingMode" @click="saveModeConfig" />
+                    </div>
+                </div>
+            </Popover>
+
+            <!-- Content Items List -->
+            <div class="flex-1 overflow-y-auto p-3">
+                <!-- Empty State -->
+                <div v-if="(effectiveIsGrouped ? contentItems.length : displayItems.length) === 0" class="flex flex-col items-center py-8 text-center px-4">
+                    <i class="pi pi-inbox text-3xl text-slate-300 mb-3"></i>
+                    <p class="text-sm text-slate-500 mb-3">{{ emptyStateMessage }}</p>
+                    <Button icon="pi pi-plus" :label="addDialogHeader" size="small" @click="showAddSerieDialog = true" />
                 </div>
 
                 <!-- Drag Hint - compact inline design -->
-                <div v-if="contentItems.length > 1 && !dragHintDismissed" class="flex items-center gap-2 px-2 py-1.5 mb-2 bg-slate-50 rounded-md text-[10px] text-slate-500">
-                    <i class="pi pi-arrows-v text-slate-400 text-[10px]"></i>
+                <div v-if="contentItems.length > 1 && !dragHintDismissed" class="flex items-center gap-2 px-3 py-2 mb-2 bg-slate-50 rounded-lg text-xs text-slate-500">
+                    <i class="pi pi-arrows-v text-slate-400 text-xs"></i>
                     <span class="flex-1">{{ $t('content.drag_tip_short') }}</span>
-                    <button 
+                    <button
                         @click="dragHintDismissed = true"
                         class="text-slate-400 hover:text-slate-600 transition-colors p-0.5"
                     >
-                        <i class="pi pi-times text-[9px]"></i>
+                        <i class="pi pi-times text-[10px]"></i>
                     </button>
                 </div>
 
@@ -86,7 +150,7 @@
                     @end="onParentDragEnd"
                     item-key="id"
                     handle=".parent-drag-handle"
-                    class="space-y-1.5"
+                    class="space-y-2"
                 >
                     <template #item="{ element: item, index }">
                         <div class="group">
@@ -95,11 +159,11 @@
                                 v-if="normalizedMode === 'single'"
                                 class="relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm cursor-pointer"
                                 :class="selectedContentItem === item.id 
-                                    ? 'border-purple-400 border-l-[3px] shadow-sm bg-purple-50/30' 
-                                    : 'border-slate-200 hover:border-purple-200'"
+                                    ? 'border-blue-500 border-l-[3px] shadow-sm bg-blue-50/30'
+                                    : 'border-slate-200 hover:border-slate-300'"
                                 @click="selectedContentItem = item.id"
                             >
-                                <div class="flex items-center gap-2.5 p-2.5">
+                                <div class="flex items-center gap-2.5 p-3">
                                     <!-- Page Icon -->
                                     <div class="flex-shrink-0 w-9 h-9 bg-purple-100 rounded-md flex items-center justify-center">
                                         <i class="pi pi-file text-purple-500 text-sm"></i>
@@ -108,7 +172,7 @@
                                     <!-- Page Info -->
                                     <div class="flex-1 min-w-0">
                                         <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
-                                        <div v-if="item.content" class="text-[10px] text-slate-500 line-clamp-1">
+                                        <div v-if="item.content" class="text-xs text-slate-500 line-clamp-1">
                                             {{ stripMarkdown(item.content) }}
                                         </div>
                                     </div>
@@ -120,21 +184,21 @@
                                 v-else-if="effectiveIsGrouped"
                                 class="category-card group/card relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm"
                                 :class="selectedContentItem === item.id 
-                                    ? 'border-orange-400 border-l-[3px] shadow-sm bg-orange-50/30' 
-                                    : 'border-slate-200 hover:border-orange-200'"
+                                    ? 'border-blue-500 border-l-[3px] shadow-sm bg-blue-50/30'
+                                    : 'border-slate-200 hover:border-slate-300'"
                             >
-                                <div class="flex items-center gap-2 p-2">
+                                <div class="flex items-center gap-2.5 p-3">
                                     <!-- Drag Handle -->
-                                    <div 
+                                    <div
                                         class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move parent-drag-handle opacity-40 group-hover/card:opacity-100 transition-opacity"
                                         @click.stop
                                     >
-                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
+                                        <i class="pi pi-bars text-slate-400 text-xs"></i>
                                     </div>
-                                    
+
                                     <!-- Category Icon -->
-                                    <div 
-                                        class="flex-shrink-0 w-8 h-8 bg-orange-100 rounded-md flex items-center justify-center cursor-pointer"
+                                    <div
+                                        class="flex-shrink-0 w-9 h-9 bg-orange-100 rounded-md flex items-center justify-center cursor-pointer"
                                         @click="selectedContentItem = item.id"
                                     >
                                         <i class="pi pi-folder text-orange-500 text-sm"></i>
@@ -146,7 +210,7 @@
                                         @click="() => { selectedContentItem = item.id; expandContentItems[index] = !expandContentItems[index]; }"
                                     >
                                         <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
-                                        <div class="text-[10px] text-slate-500">
+                                        <div class="text-xs text-slate-500">
                                             <span v-if="item.children && item.children.length > 0">
                                                 {{ item.children.length }} {{ $t('content.items_count') }}
                                             </span>
@@ -155,23 +219,23 @@
                                             </span>
                                         </div>
                                     </div>
-                                    
+
                                     <!-- Add Item Button (visible on hover) -->
                                     <button
-                                        class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md bg-orange-100 text-orange-600 hover:bg-orange-200 opacity-0 group-hover/card:opacity-100 transition-all"
+                                        class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md bg-orange-100 text-orange-600 hover:bg-orange-200 opacity-0 group-hover/card:opacity-100 transition-all"
                                         @click.stop="() => { showAddItemDialog = true; parentItemId = item.id; }"
                                         v-tooltip.top="$t('content.add_item')"
                                     >
-                                        <i class="pi pi-plus text-[10px]"></i>
+                                        <i class="pi pi-plus text-xs"></i>
                                     </button>
-                                    
+
                                     <!-- Expand/Collapse -->
                                     <button
-                                        class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-100 transition-colors"
+                                        class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md hover:bg-slate-100 transition-colors"
                                         :class="item.children && item.children.length > 0 ? '' : 'invisible'"
                                         @click.stop="expandContentItems[index] = !expandContentItems[index]"
                                     >
-                                        <i :class="expandContentItems[index] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-slate-400 text-[10px]"></i>
+                                        <i :class="expandContentItems[index] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-slate-400 text-xs"></i>
                                     </button>
                                 </div>
                             </div>
@@ -181,20 +245,20 @@
                                 v-else-if="normalizedMode === 'list' && !effectiveIsGrouped"
                                 class="group/list relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm"
                                 :class="selectedContentItem === item.id 
-                                    ? 'border-blue-400 border-l-[3px] shadow-sm bg-blue-50/30' 
-                                    : 'border-slate-200 hover:border-blue-200'"
+                                    ? 'border-blue-500 border-l-[3px] shadow-sm bg-blue-50/30'
+                                    : 'border-slate-200 hover:border-slate-300'"
                             >
-                                <div class="flex items-center gap-2 p-2">
+                                <div class="flex items-center gap-2.5 p-3">
                                     <!-- Drag Handle -->
-                                    <div 
+                                    <div
                                         class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move parent-drag-handle opacity-40 group-hover/list:opacity-100 transition-opacity"
                                         @click.stop
                                     >
-                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
+                                        <i class="pi pi-bars text-slate-400 text-xs"></i>
                                     </div>
-                                    
+
                                     <!-- List Icon -->
-                                    <div class="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-md flex items-center justify-center">
+                                    <div class="flex-shrink-0 w-9 h-9 bg-blue-100 rounded-md flex items-center justify-center">
                                         <i :class="['pi', getLinkIcon(item.content), 'text-blue-500 text-sm']"></i>
                                     </div>
                                     
@@ -204,7 +268,7 @@
                                         @click="selectedContentItem = item.id"
                                     >
                                         <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
-                                        <div v-if="item.content" class="text-[10px] text-slate-500 truncate">
+                                        <div v-if="item.content" class="text-xs text-slate-500 truncate">
                                             {{ item.content }}
                                         </div>
                                     </div>
@@ -216,16 +280,16 @@
                                 v-else-if="normalizedMode === 'grid' && !effectiveIsGrouped"
                                 class="group/grid relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm"
                                 :class="selectedContentItem === item.id 
-                                    ? 'border-green-400 border-l-[3px] shadow-sm bg-green-50/20' 
-                                    : 'border-slate-200 hover:border-green-200'"
+                                    ? 'border-blue-500 border-l-[3px] shadow-sm bg-blue-50/30'
+                                    : 'border-slate-200 hover:border-slate-300'"
                             >
-                                <div class="flex items-center gap-2 p-2">
+                                <div class="flex items-center gap-2.5 p-3">
                                     <!-- Drag Handle -->
-                                    <div 
+                                    <div
                                         class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move parent-drag-handle opacity-40 group-hover/grid:opacity-100 transition-opacity"
                                         @click.stop
                                     >
-                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
+                                        <i class="pi pi-bars text-slate-400 text-xs"></i>
                                     </div>
                                     
                                     <!-- Thumbnail (Square) -->
@@ -247,10 +311,10 @@
                                         @click="selectedContentItem = item.id"
                                     >
                                         <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
-                                        <div v-if="!item.image_url" class="text-[10px] text-amber-500">
+                                        <div v-if="!item.image_url" class="text-xs text-amber-500">
                                             {{ $t('content.needs_photo') }}
                                         </div>
-                                        <div v-else-if="item.content" class="text-[10px] text-slate-500 truncate">
+                                        <div v-else-if="item.content" class="text-xs text-slate-500 truncate">
                                             {{ stripMarkdown(item.content) }}
                                         </div>
                                     </div>
@@ -262,16 +326,16 @@
                                 v-else-if="normalizedMode === 'cards' && !effectiveIsGrouped"
                                 class="group/cards relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm"
                                 :class="selectedContentItem === item.id 
-                                    ? 'border-cyan-400 border-l-[3px] shadow-sm bg-cyan-50/20' 
-                                    : 'border-slate-200 hover:border-cyan-200'"
+                                    ? 'border-blue-500 border-l-[3px] shadow-sm bg-blue-50/30'
+                                    : 'border-slate-200 hover:border-slate-300'"
                             >
-                                <div class="flex items-center gap-2 p-2">
+                                <div class="flex items-center gap-2.5 p-3">
                                     <!-- Drag Handle -->
-                                    <div 
+                                    <div
                                         class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move parent-drag-handle opacity-40 group-hover/cards:opacity-100 transition-opacity"
                                         @click.stop
                                     >
-                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
+                                        <i class="pi pi-bars text-slate-400 text-xs"></i>
                                     </div>
                                     
                                     <!-- Thumbnail (16:9) -->
@@ -293,7 +357,7 @@
                                         @click="selectedContentItem = item.id"
                                     >
                                         <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
-                                        <div v-if="item.content" class="text-[10px] text-slate-500 truncate">
+                                        <div v-if="item.content" class="text-xs text-slate-500 truncate">
                                             {{ stripMarkdown(item.content) }}
                                         </div>
                                     </div>
@@ -303,12 +367,12 @@
                             <!-- ========== DEFAULT MODE: Generic Item ========== -->
                             <div 
                                 v-else
-                                class="group/default relative rounded-lg border border-slate-200 transition-all duration-200 overflow-hidden bg-white hover:shadow-sm hover:border-blue-200"
-                                :class="{ 'border-l-[3px] border-l-blue-400 shadow-sm bg-blue-50/20': selectedContentItem === item.id }"
+                                class="group/default relative rounded-lg border border-slate-200 transition-all duration-200 overflow-hidden bg-white hover:shadow-sm hover:border-slate-300"
+                                :class="{ 'border-l-[3px] border-l-blue-500 shadow-sm bg-blue-50/30': selectedContentItem === item.id }"
                             >
-                                <div class="flex items-center gap-2 p-2">
+                                <div class="flex items-center gap-2.5 p-3">
                                     <div class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move parent-drag-handle opacity-40 group-hover/default:opacity-100 transition-opacity" @click.stop>
-                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
+                                        <i class="pi pi-bars text-slate-400 text-xs"></i>
                                     </div>
                                     <div v-if="item.image_url" class="flex-shrink-0">
                                         <div class="w-10 rounded-md overflow-hidden border border-slate-200" style="aspect-ratio: 4/3">
@@ -320,55 +384,55 @@
                                     </div>
                                     <div class="flex-1 min-w-0 cursor-pointer" @click="() => { selectedContentItem = item.id; expandContentItems[index] = !expandContentItems[index]; }">
                                         <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
-                                        <div v-if="item.children && item.children.length > 0" class="text-[10px] text-slate-500">
+                                        <div v-if="item.children && item.children.length > 0" class="text-xs text-slate-500">
                                             {{ $t('content.sub_items_count', { count: item.children.length }) }}
                                         </div>
                                     </div>
-                                    <button v-if="item.children && item.children.length > 0" class="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-md hover:bg-slate-100 transition-colors" @click.stop="expandContentItems[index] = !expandContentItems[index]">
-                                        <i :class="expandContentItems[index] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-slate-400 text-[10px]"></i>
+                                    <button v-if="item.children && item.children.length > 0" class="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md hover:bg-slate-100 transition-colors" @click.stop="expandContentItems[index] = !expandContentItems[index]">
+                                        <i :class="expandContentItems[index] ? 'pi pi-chevron-up' : 'pi pi-chevron-down'" class="text-slate-400 text-xs"></i>
                                     </button>
                                 </div>
                             </div>
 
                             <!-- Sub-items (for Grouped mode - Category Items) -->
                             <Transition name="expand">
-                                <div v-if="expandContentItems[index] && effectiveIsGrouped" class="ml-6 mt-1.5 space-y-1 border-l-2 border-slate-100 pl-2">
-                                    <draggable 
-                                        v-model="item.children" 
+                                <div v-if="expandContentItems[index] && effectiveIsGrouped" class="ml-6 mt-2 space-y-1.5 border-l-2 border-slate-100 pl-2">
+                                    <draggable
+                                        v-model="item.children"
                                         :group="{ name: 'content-items', pull: true, put: true }"
                                         @start="isDragging = true"
                                         @end="(evt) => { onChildDragEnd(evt, item.id); isDragging = false; }"
                                         @change="(evt) => onCrossParentChange(evt, item.id)"
                                         item-key="id"
                                         handle=".child-drag-handle"
-                                        class="space-y-1 min-h-[32px] rounded transition-colors"
+                                        class="space-y-1.5 min-h-[36px] rounded transition-colors"
                                         :class="{ 'bg-amber-50/50 border border-dashed border-amber-200': isDragging }"
                                     >
                                         <template #item="{ element: child, index: childIndex }">
-                                            <div 
+                                            <div
                                                 class="group/child relative rounded-md border bg-white transition-all duration-150 hover:shadow-sm"
-                                                :class="selectedContentItem === child.id 
-                                                    ? 'border-amber-400 border-l-2 shadow-sm bg-amber-50/30' 
-                                                    : 'border-slate-150 hover:border-amber-200'"
+                                                :class="selectedContentItem === child.id
+                                                    ? 'border-blue-500 border-l-2 shadow-sm bg-blue-50/30'
+                                                    : 'border-slate-200 hover:border-slate-300'"
                                             >
-                                                <div class="flex items-center gap-2 p-1.5">
+                                                <div class="flex items-center gap-2 p-2">
                                                     <!-- Drag Handle -->
-                                                    <div class="flex-shrink-0 flex items-center justify-center w-4 h-4 rounded hover:bg-slate-100 cursor-move child-drag-handle opacity-30 group-hover/child:opacity-100 transition-opacity" @click.stop>
-                                                        <i class="pi pi-bars text-slate-400 text-[9px]"></i>
+                                                    <div class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move child-drag-handle opacity-30 group-hover/child:opacity-100 transition-opacity" @click.stop>
+                                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
                                                     </div>
-                                                    
+
                                                     <!-- Item Thumbnail -->
-                                                    <div v-if="child.image_url" class="flex-shrink-0 w-7 h-7 rounded overflow-hidden border border-slate-200">
+                                                    <div v-if="child.image_url" class="flex-shrink-0 w-8 h-8 rounded overflow-hidden border border-slate-200">
                                                         <img :src="child.image_url" :alt="child.name" class="w-full h-full object-cover" />
                                                     </div>
-                                                    <div v-else class="flex-shrink-0 w-7 h-7 bg-amber-50 rounded flex items-center justify-center">
-                                                        <i class="pi pi-box text-amber-300 text-[10px]"></i>
+                                                    <div v-else class="flex-shrink-0 w-8 h-8 bg-amber-50 rounded flex items-center justify-center">
+                                                        <i class="pi pi-box text-amber-300 text-xs"></i>
                                                     </div>
-                                                    
+
                                                     <!-- Item Info -->
                                                     <div class="flex-1 min-w-0 cursor-pointer" @click="selectedContentItem = child.id">
-                                                        <div class="font-medium text-slate-800 text-xs truncate">{{ child.name }}</div>
-                                                        <div v-if="child.content" class="text-[10px] text-slate-400 truncate">
+                                                        <div class="font-medium text-slate-800 text-sm truncate">{{ child.name }}</div>
+                                                        <div v-if="child.content" class="text-xs text-slate-400 truncate">
                                                             {{ stripMarkdown(child.content) }}
                                                         </div>
                                                     </div>
@@ -381,33 +445,33 @@
 
                             <!-- Sub-items (for Default mode) -->
                             <Transition name="expand">
-                                <div v-if="expandContentItems[index] && !['single', 'list', 'grid', 'cards'].includes(contentMode)" class="ml-6 mt-1.5 space-y-1 border-l-2 border-slate-100 pl-2">
-                                    <draggable 
-                                        v-model="item.children" 
+                                <div v-if="expandContentItems[index] && !['single', 'list', 'grid', 'cards'].includes(contentMode)" class="ml-6 mt-2 space-y-1.5 border-l-2 border-slate-100 pl-2">
+                                    <draggable
+                                        v-model="item.children"
                                         @end="(evt) => onChildDragEnd(evt, item.id)"
                                         item-key="id"
                                         handle=".child-drag-handle"
-                                        class="space-y-1"
+                                        class="space-y-1.5"
                                     >
                                         <template #item="{ element: child, index: childIndex }">
-                                            <div 
-                                                class="group/subitem relative rounded-md border border-slate-200 bg-white transition-all duration-150 hover:shadow-sm hover:border-blue-200"
-                                                :class="{ 'border-l-2 border-l-blue-400 shadow-sm bg-blue-50/20': selectedContentItem === child.id }"
+                                            <div
+                                                class="group/subitem relative rounded-md border border-slate-200 bg-white transition-all duration-150 hover:shadow-sm hover:border-slate-300"
+                                                :class="{ 'border-l-2 border-l-blue-500 shadow-sm bg-blue-50/30': selectedContentItem === child.id }"
                                             >
-                                                <div class="flex items-center gap-2 p-1.5">
-                                                    <div class="flex-shrink-0 flex items-center justify-center w-4 h-4 rounded hover:bg-slate-100 cursor-move child-drag-handle opacity-30 group-hover/subitem:opacity-100 transition-opacity" @click.stop>
-                                                        <i class="pi pi-bars text-slate-400 text-[9px]"></i>
+                                                <div class="flex items-center gap-2 p-2">
+                                                    <div class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move child-drag-handle opacity-30 group-hover/subitem:opacity-100 transition-opacity" @click.stop>
+                                                        <i class="pi pi-bars text-slate-400 text-[10px]"></i>
                                                     </div>
                                                     <div class="flex-shrink-0 cursor-pointer" @click="selectedContentItem = child.id">
-                                                        <div v-if="child.image_url" class="w-7 rounded overflow-hidden border border-slate-200" style="aspect-ratio: 4/3">
+                                                        <div v-if="child.image_url" class="w-8 rounded overflow-hidden border border-slate-200" style="aspect-ratio: 4/3">
                                                             <img :src="child.image_url" :alt="child.name" class="w-full h-full object-cover" />
                                                         </div>
-                                                        <div v-else class="w-7 bg-slate-100 rounded border border-slate-200 flex items-center justify-center" style="aspect-ratio: 4/3">
-                                                            <i class="pi pi-image text-slate-400 text-[9px]"></i>
+                                                        <div v-else class="w-8 bg-slate-100 rounded border border-slate-200 flex items-center justify-center" style="aspect-ratio: 4/3">
+                                                            <i class="pi pi-image text-slate-400 text-[10px]"></i>
                                                         </div>
                                                     </div>
                                                     <div class="flex-1 min-w-0 cursor-pointer" @click="selectedContentItem = child.id">
-                                                        <div class="font-medium text-xs text-slate-800 truncate group-hover/subitem:text-blue-600 transition-colors">
+                                                        <div class="font-medium text-sm text-slate-800 truncate group-hover/subitem:text-blue-600 transition-colors">
                                                             {{ child.name }}
                                                         </div>
                                                     </div>
@@ -428,23 +492,23 @@
                     @end="onFlatItemDragEnd"
                     item-key="id"
                     handle=".flat-drag-handle"
-                    class="space-y-1.5"
+                    class="space-y-2"
                 >
                     <template #item="{ element: item }">
                         <div 
                             class="group/flat relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm cursor-pointer"
-                            :class="selectedContentItem === item.id 
-                                ? 'border-blue-400 border-l-[3px] shadow-sm bg-blue-50/20' 
-                                : 'border-slate-200 hover:border-blue-200'"
+                            :class="selectedContentItem === item.id
+                                ? 'border-blue-500 border-l-[3px] shadow-sm bg-blue-50/30'
+                                : 'border-slate-200 hover:border-slate-300'"
                             @click="selectedContentItem = item.id"
                         >
-                            <div class="flex items-center gap-2 p-2">
+                            <div class="flex items-center gap-2.5 p-3">
                                 <!-- Drag Handle -->
-                                <div 
+                                <div
                                     class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move flat-drag-handle opacity-40 group-hover/flat:opacity-100 transition-opacity"
                                     @click.stop
                                 >
-                                    <i class="pi pi-bars text-slate-400 text-[10px]"></i>
+                                    <i class="pi pi-bars text-slate-400 text-xs"></i>
                                 </div>
                                 
                                 <!-- Thumbnail based on mode -->
@@ -460,14 +524,14 @@
                                 <div v-else-if="normalizedMode === 'cards'" class="flex-shrink-0 w-14 bg-cyan-50 rounded-md border border-cyan-200 border-dashed flex items-center justify-center" style="aspect-ratio: 16/9">
                                     <i class="pi pi-image text-cyan-300 text-xs"></i>
                                 </div>
-                                <div v-else class="flex-shrink-0 w-8 h-8 bg-blue-50 rounded-md flex items-center justify-center">
-                                    <i class="pi pi-file text-blue-400 text-xs"></i>
+                                <div v-else class="flex-shrink-0 w-9 h-9 bg-blue-50 rounded-md flex items-center justify-center">
+                                    <i class="pi pi-file text-blue-400 text-sm"></i>
                                 </div>
-                                
+
                                 <!-- Item Info -->
                                 <div class="flex-1 min-w-0">
                                     <div class="font-medium text-slate-900 text-sm truncate">{{ item.name }}</div>
-                                    <div v-if="item.content" class="text-[10px] text-slate-500 truncate">
+                                    <div v-if="item.content" class="text-xs text-slate-500 truncate">
                                         {{ stripMarkdown(item.content) }}
                                     </div>
                                 </div>
@@ -475,59 +539,33 @@
                         </div>
                     </template>
                 </draggable>
-                
-                <!-- Empty state for flat mode with no items -->
-                <div v-if="!effectiveIsGrouped && displayItems.length === 0" class="text-center py-8 text-slate-500">
-                    <i class="pi pi-inbox text-3xl text-slate-300 mb-2"></i>
-                    <p class="text-sm">{{ $t('content.no_content_items') }}</p>
-                    <p class="text-xs text-slate-400 mt-1">{{ $t('content.add_content_hint') }}</p>
-                </div>
             </div>
         </div>
     
         <!-- Content Item Details View -->
         <div class="xl:col-span-3 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
-            <div class="p-3 sm:p-4 border-b border-slate-200 bg-gradient-to-r from-slate-50 to-slate-100">
+            <div class="p-3 sm:p-4 border-b border-slate-200">
                 <div class="flex items-center justify-between gap-2">
-                    <div class="flex items-center gap-2 min-w-0">
-                        <div class="p-2 bg-slate-200 rounded-lg">
-                            <i class="pi pi-file-edit text-slate-600 text-sm"></i>
-                        </div>
-                        <div class="min-w-0">
-                            <h3 class="text-base sm:text-lg font-semibold text-slate-900 truncate">
-                                {{ currentSelectedItemData ? currentSelectedItemData.name : $t('content.content_details') }}
-                            </h3>
-                            <p v-if="currentSelectedItemData" class="text-xs text-slate-500">
-                                {{ currentSelectedItemData.parent_id ? $t('content.sub_item') : $t('content.parent_item') }}
-                            </p>
-                        </div>
+                    <div class="min-w-0">
+                        <h3 class="text-base font-semibold text-slate-900 truncate">
+                            {{ currentSelectedItemData ? currentSelectedItemData.name : $t('content.content_details') }}
+                        </h3>
+                        <p v-if="currentSelectedItemData" class="text-xs text-slate-400">
+                            {{ currentSelectedItemData.parent_id ? $t('content.sub_item') : $t('content.parent_item') }}
+                        </p>
                     </div>
-                    <div v-if="currentSelectedItemData" class="flex gap-2 flex-shrink-0">
-                        <Button 
-                            icon="pi pi-pencil" 
-                            :label="$t('common.edit')"
-                            size="small"
-                            @click="() => openEditDialog(currentSelectedItemData)"
-                        />
-                        <Button 
-                            icon="pi pi-trash" 
-                            severity="danger" 
-                            outlined
-                            size="small"
-                            @click="() => confirmDeleteContentItem(currentSelectedItemData.id, currentSelectedItemData.name, currentSelectedItemData.parent_id ? 'sub-item' : 'content item')"
-                            v-tooltip.top="$t('common.delete')"
-                        />
+                    <div v-if="currentSelectedItemData" class="flex gap-1 flex-shrink-0">
+                        <Button icon="pi pi-pencil" size="small" text rounded @click="() => openEditDialog(currentSelectedItemData)" v-tooltip.top="$t('common.edit')" />
+                        <Button icon="pi pi-trash" severity="danger" size="small" text rounded @click="() => confirmDeleteContentItem(currentSelectedItemData.id, currentSelectedItemData.name, currentSelectedItemData.parent_id ? 'sub-item' : 'content item')" v-tooltip.top="$t('common.delete')" />
                     </div>
                 </div>
             </div>
             <div class="flex-1 p-4">
                 <!-- Empty State (when no item ID is selected) -->
                 <div v-if="!selectedContentItem" class="flex flex-col items-center justify-center h-full text-center">
-                    <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                        <i class="pi pi-file-edit text-3xl text-slate-400"></i>
-                    </div>
-                    <h3 class="text-xl font-medium text-slate-900 mb-2">{{ $t('content.select_content_item') }}</h3>
-                    <p class="text-slate-500">{{ $t('content.choose_item_to_view') }}</p>
+                    <i class="pi pi-file-edit text-3xl text-slate-300 mb-3"></i>
+                    <p class="text-sm text-slate-500">{{ $t('content.select_content_item') }}</p>
+                    <p class="text-xs text-slate-400 mt-1">{{ $t('content.choose_item_to_view') }}</p>
                 </div>
                 
                 <!-- Content Details (when an item ID is selected) -->
@@ -542,11 +580,9 @@
                     </div>
                     <!-- Empty state if selectedContentItem ID is set, but data not found -->
                     <div v-else class="flex flex-col items-center justify-center h-full text-center">
-                         <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-                            <i class="pi pi-ghost text-3xl text-slate-400"></i>
-                         </div>
-                         <h3 class="text-xl font-medium text-slate-900 mb-2">{{ $t('content.item_not_found') }}</h3>
-                         <p class="text-slate-500">{{ $t('content.item_not_found_description') }}</p>
+                        <i class="pi pi-ghost text-3xl text-slate-300 mb-3"></i>
+                        <p class="text-sm text-slate-500">{{ $t('content.item_not_found') }}</p>
+                        <p class="text-xs text-slate-400 mt-1">{{ $t('content.item_not_found_description') }}</p>
                     </div>
                 </template>
             </div>
@@ -605,17 +641,19 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue';
 import Button from 'primevue/button';
-import Divider from 'primevue/divider';
+import Popover from 'primevue/popover';
+import ToggleSwitch from 'primevue/toggleswitch';
+import RadioButton from 'primevue/radiobutton';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from "primevue/useconfirm";
 import draggable from 'vuedraggable';
 import MyDialog from '../MyDialog.vue';
 import CardContentView from './CardContentView.vue';
 import CardContentCreateEditForm from './CardContentCreateEditForm.vue';
-import CroppedImageDisplay from '@/components/CroppedImageDisplay.vue';
 import { getContentAspectRatio } from '@/utils/cardConfig';
 import { useContentItemStore } from '@/stores/contentItem';
 import { useTranslationStore } from '@/stores/translation';
+import { useCardStore } from '@/stores/card';
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
 
@@ -623,6 +661,10 @@ const props = defineProps({
     cardId: {
         type: String,
         required: true
+    },
+    card: {
+        type: Object,
+        default: null
     },
     cardAiEnabled: {
         type: Boolean,
@@ -644,31 +686,134 @@ const props = defineProps({
     }
 });
 
-// Effective grouped state
+const emit = defineEmits(['update-card']);
+
+// Effective grouped state - uses local state when editing, props otherwise
 const effectiveIsGrouped = computed(() => {
-    return props.isGrouped;
+    return localIsGrouped.value;
 });
 
-// Content mode
+// Content mode - uses local state
 const normalizedMode = computed(() => {
-    return props.contentMode;
+    return localContentMode.value;
 });
 
-// Mode indicator for the header badge
-const modeIndicator = computed(() => {
-    switch (normalizedMode.value) {
-        case 'single':
-            return { icon: 'pi-file', label: t('dashboard.mode_single') };
-        case 'list':
-            return { icon: 'pi-list', label: t('dashboard.mode_list') };
-        case 'grid':
-            return { icon: 'pi-th-large', label: t('dashboard.mode_grid') };
-        case 'cards':
-            return { icon: 'pi-clone', label: t('dashboard.mode_cards') };
-        default:
-            return { icon: 'pi-list', label: t('dashboard.mode_list') };
+// --- Content Mode Config ---
+const cardStore = useCardStore();
+const isSavingMode = ref(false);
+const modePopover = ref(null);
+
+const toggleModePopover = (event) => {
+    modePopover.value.toggle(event);
+};
+
+const currentModeIcon = computed(() => {
+    const icons = { single: 'pi-file', list: 'pi-list', grid: 'pi-th-large', cards: 'pi-clone' };
+    return icons[localContentMode.value] || 'pi-list';
+});
+
+// Header computeds
+const headerIcon = computed(() => {
+    if (effectiveIsGrouped.value) return 'pi pi-folder';
+    const icons = { single: 'pi pi-file', list: 'pi pi-list', grid: 'pi pi-th-large', cards: 'pi pi-clone' };
+    return icons[normalizedMode.value] || 'pi pi-list';
+});
+
+const headerLabel = computed(() => {
+    if (effectiveIsGrouped.value) return t('content.categories_list');
+    return t('dashboard.mode_' + normalizedMode.value);
+});
+
+const headerCountText = computed(() => {
+    if (displayItemsCount.value === 0) return '';
+    if (effectiveIsGrouped.value) return `(${contentItems.value.length} / ${totalChildItems.value})`;
+    return `(${displayItemsCount.value})`;
+});
+
+// Local state for mode configuration
+const localContentMode = ref(props.contentMode);
+const localIsGrouped = ref(props.isGrouped);
+const localGroupDisplay = ref(props.groupDisplay);
+
+// Sync local state when props change (e.g., after save, parent re-renders)
+watch(() => props.contentMode, (v) => { localContentMode.value = v; });
+watch(() => props.isGrouped, (v) => { localIsGrouped.value = v; });
+watch(() => props.groupDisplay, (v) => { localGroupDisplay.value = v; });
+
+// Reset grouping when switching to single mode
+watch(localContentMode, (newMode) => {
+    if (newMode === 'single') {
+        localIsGrouped.value = false;
+        localGroupDisplay.value = 'expanded';
     }
 });
+
+const hasUnsavedModeChanges = computed(() => {
+    return localContentMode.value !== props.contentMode
+        || localIsGrouped.value !== props.isGrouped
+        || localGroupDisplay.value !== props.groupDisplay;
+});
+
+const currentModeSupportsGrouping = computed(() => {
+    return localContentMode.value !== 'single';
+});
+
+const saveModeConfig = async () => {
+    if (!props.card) return;
+    isSavingMode.value = true;
+    try {
+        await cardStore.updateCard(props.card.id, {
+            name: props.card.name,
+            description: props.card.description,
+            conversation_ai_enabled: props.card.conversation_ai_enabled,
+            ai_instruction: props.card.ai_instruction,
+            ai_knowledge_base: props.card.ai_knowledge_base,
+            qr_code_position: props.card.qr_code_position,
+            billing_type: props.card.billing_type,
+            content_mode: localContentMode.value,
+            is_grouped: localIsGrouped.value,
+            group_display: localGroupDisplay.value,
+        });
+        toast.add({
+            severity: 'success',
+            summary: t('messages.success'),
+            detail: t('messages.save_success'),
+            life: 2000
+        });
+        emit('update-card', {
+            ...props.card,
+            content_mode: localContentMode.value,
+            is_grouped: localIsGrouped.value,
+            group_display: localGroupDisplay.value,
+        });
+        modePopover.value?.hide();
+    } catch (err) {
+        console.error('Error saving mode config:', err);
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: t('messages.operation_failed'),
+            life: 3000
+        });
+    } finally {
+        isSavingMode.value = false;
+    }
+};
+
+const resetModeConfig = () => {
+    localContentMode.value = props.contentMode;
+    localIsGrouped.value = props.isGrouped;
+    localGroupDisplay.value = props.groupDisplay;
+    modePopover.value?.hide();
+};
+
+const contentModeOptions = [
+    { value: 'single', icon: 'pi-file' },
+    { value: 'list', icon: 'pi-list' },
+    { value: 'grid', icon: 'pi-th-large' },
+    { value: 'cards', icon: 'pi-clone' },
+];
+
 
 const contentItemStore = useContentItemStore();
 const translationStore = useTranslationStore();
@@ -806,176 +951,22 @@ const addDialogConfirmLabel = computed(() => {
 });
 
 const addDialogButtonClass = computed(() => {
-    const mode = normalizedMode.value;
-    const isGroupedContent = effectiveIsGrouped.value;
-    
-    // If content is grouped, use orange theme
-    if (isGroupedContent && mode !== 'single') {
-        return 'bg-orange-600 hover:bg-orange-700 text-white border-0';
-    }
-    
-    switch (mode) {
-        case 'single': return 'bg-purple-600 hover:bg-purple-700 text-white border-0';
-        case 'list': return 'bg-blue-600 hover:bg-blue-700 text-white border-0';
-        case 'grid': return 'bg-green-600 hover:bg-green-700 text-white border-0';
-        case 'cards': return 'bg-cyan-600 hover:bg-cyan-700 text-white border-0';
-        default: return 'bg-blue-600 hover:bg-blue-700 text-white border-0';
-    }
+    return 'bg-blue-600 hover:bg-blue-700 text-white border-0';
 });
 
-// Mode-specific header configuration
-const headerConfig = computed(() => {
-    const mode = normalizedMode.value;
-    const isGroupedContent = effectiveIsGrouped.value;
-    
-    // If content is grouped, show category-based header
-    if (isGroupedContent && mode !== 'single') {
-        return {
-            icon: 'pi-folder',
-            iconClass: 'text-orange-600',
-            iconBgClass: 'bg-orange-100',
-            bgClass: 'bg-gradient-to-r from-orange-50 to-slate-50',
-            title: t('content.categories_list'),
-            addIcon: 'pi pi-plus',
-            addLabel: t('content.add_category'),
-            buttonClass: 'bg-orange-600 hover:bg-orange-700 border-orange-600'
-        };
-    }
-    
-    switch (mode) {
-        case 'single':
-            return {
-                icon: 'pi-file',
-                iconClass: 'text-purple-600',
-                iconBgClass: 'bg-purple-100',
-                bgClass: 'bg-gradient-to-r from-purple-50 to-slate-50',
-                title: t('content.single_content'),
-                addIcon: 'pi pi-plus',
-                addLabel: t('content.add_content'),
-                buttonClass: 'bg-purple-600 hover:bg-purple-700 border-purple-600'
-            };
-        case 'list':
-            return {
-                icon: 'pi-list',
-                iconClass: 'text-blue-600',
-                iconBgClass: 'bg-blue-100',
-                bgClass: 'bg-gradient-to-r from-blue-50 to-slate-50',
-                title: t('content.list_items'),
-                addIcon: 'pi pi-plus',
-                addLabel: t('content.add_list_item'),
-                buttonClass: 'bg-blue-600 hover:bg-blue-700 border-blue-600'
-            };
-        case 'grid':
-            return {
-                icon: 'pi-th-large',
-                iconClass: 'text-green-600',
-                iconBgClass: 'bg-green-100',
-                bgClass: 'bg-gradient-to-r from-green-50 to-slate-50',
-                title: t('content.gallery_items'),
-                addIcon: 'pi pi-plus',
-                addLabel: t('content.add_gallery_item'),
-                buttonClass: 'bg-green-600 hover:bg-green-700 border-green-600'
-            };
-        case 'cards':
-            return {
-                icon: 'pi-clone',
-                iconClass: 'text-cyan-600',
-                iconBgClass: 'bg-cyan-100',
-                bgClass: 'bg-gradient-to-r from-cyan-50 to-slate-50',
-                title: t('content.cards_list'),
-                addIcon: 'pi pi-plus',
-                addLabel: t('content.add_card'),
-                buttonClass: 'bg-cyan-600 hover:bg-cyan-700 border-cyan-600'
-            };
-        default:
-            return {
-                icon: 'pi-list',
-                iconClass: 'text-blue-600',
-                iconBgClass: 'bg-blue-100',
-                bgClass: 'bg-gradient-to-r from-blue-50 to-slate-50',
-                title: t('content.content_items'),
-                addIcon: 'pi pi-plus',
-                addLabel: t('content.add_item'),
-                buttonClass: 'bg-blue-600 hover:bg-blue-700 border-blue-600'
-            };
-    }
-});
 
-// Mode-specific empty state configuration
-const emptyStateConfig = computed(() => {
-    const mode = normalizedMode.value;
+// Empty state message
+const emptyStateMessage = computed(() => {
     const isGroupedContent = effectiveIsGrouped.value;
-    
-    // If content is grouped, show category-based empty state
-    if (isGroupedContent && mode !== 'single') {
-        return {
-            icon: 'pi-folder',
-            iconClass: 'text-orange-400',
-            bgClass: 'bg-orange-100',
-            title: t('content.grouped_mode_empty_title'),
-            description: t('content.grouped_mode_empty_desc'),
-            buttonIcon: 'pi pi-plus',
-            buttonLabel: t('content.add_first_category'),
-            buttonClass: 'bg-orange-600 hover:bg-orange-700 border-orange-600'
-        };
+    if (isGroupedContent && normalizedMode.value !== 'single') {
+        return t('content.grouped_mode_empty_desc');
     }
-    
-    switch (mode) {
-        case 'single':
-            return {
-                icon: 'pi-file',
-                iconClass: 'text-purple-400',
-                bgClass: 'bg-purple-100',
-                title: t('content.single_mode_empty_title'),
-                description: t('content.single_mode_empty_desc'),
-                buttonIcon: 'pi pi-plus',
-                buttonLabel: t('content.add_page_content'),
-                buttonClass: 'bg-purple-600 hover:bg-purple-700 border-purple-600'
-            };
-        case 'list':
-            return {
-                icon: 'pi-list',
-                iconClass: 'text-blue-400',
-                bgClass: 'bg-blue-100',
-                title: t('content.list_mode_empty_title'),
-                description: t('content.list_mode_empty_desc'),
-                buttonIcon: 'pi pi-plus',
-                buttonLabel: t('content.add_first_list_item'),
-                buttonClass: 'bg-blue-600 hover:bg-blue-700 border-blue-600'
-            };
-        case 'grid':
-            return {
-                icon: 'pi-th-large',
-                iconClass: 'text-green-400',
-                bgClass: 'bg-green-100',
-                title: t('content.grid_mode_empty_title'),
-                description: t('content.grid_mode_empty_desc'),
-                buttonIcon: 'pi pi-plus',
-                buttonLabel: t('content.add_first_gallery_item'),
-                buttonClass: 'bg-green-600 hover:bg-green-700 border-green-600'
-            };
-        case 'cards':
-            return {
-                icon: 'pi-clone',
-                iconClass: 'text-cyan-400',
-                bgClass: 'bg-cyan-100',
-                title: t('content.inline_mode_empty_title'),
-                description: t('content.inline_mode_empty_desc'),
-                buttonIcon: 'pi pi-plus',
-                buttonLabel: t('content.add_first_card'),
-                buttonClass: 'bg-cyan-600 hover:bg-cyan-700 border-cyan-600'
-            };
-        default:
-            return {
-                icon: 'pi-list',
-                iconClass: 'text-blue-400',
-                bgClass: 'bg-blue-100',
-                title: t('content.empty_content_title'),
-                description: t('content.empty_content_desc'),
-                buttonIcon: 'pi pi-plus',
-                buttonLabel: t('content.add_first_item'),
-                buttonClass: 'bg-blue-600 hover:bg-blue-700 border-blue-600'
-            };
+    switch (normalizedMode.value) {
+        case 'single': return t('content.single_mode_empty_desc');
+        case 'list': return t('content.list_mode_empty_desc');
+        case 'grid': return t('content.grid_mode_empty_desc');
+        case 'cards': return t('content.inline_mode_empty_desc');
+        default: return t('content.empty_content_desc');
     }
 });
 
@@ -1422,14 +1413,4 @@ watch(() => props.cardId, async (newCardId) => {
     padding: 0.5rem 0.75rem;
 }
 
-/* Content thumbnail with proper aspect ratio */
-.content-thumbnail-container {
-    width: 40px;
-    height: 40px;
-    aspect-ratio: var(--content-aspect-ratio, 4/3);
-    width: auto;
-    max-width: 40px;
-    max-height: 40px;
-    overflow: hidden;
-}
 </style>

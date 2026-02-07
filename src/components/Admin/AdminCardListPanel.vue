@@ -134,6 +134,7 @@ import Tag from 'primevue/tag'
 
 const { t } = useI18n()
 import Paginator from 'primevue/paginator'
+import { formatDate } from '@/utils/formatters'
 
 interface Card {
   id: string
@@ -190,14 +191,6 @@ const paginatedCards = computed(() => {
 // Methods
 const handlePageChange = (event: any) => {
   first.value = event.first
-}
-
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
 }
 
 const getContentModeLabel = (mode: string) => {

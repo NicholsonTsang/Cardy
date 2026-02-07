@@ -61,11 +61,15 @@ interface ImportMetaEnv {
   
   // AI Configuration
   readonly VITE_DEFAULT_AI_INSTRUCTION: string
-  readonly VITE_OPENAI_REALTIME_MODEL: string
-  
+
+  // App Configuration
+  readonly VITE_APP_URL: string
+
   // Digital Access Configuration
-  readonly VITE_DIGITAL_ACCESS_CREDIT_RATE: string
   readonly VITE_DIGITAL_ACCESS_DEFAULT_DAILY_LIMIT: string
+
+  // Feature Flags
+  readonly VITE_ENABLE_PHYSICAL_CARDS?: string
 }
 
 interface ImportMeta {

@@ -633,6 +633,7 @@ import Textarea from 'primevue/textarea'
 import InputNumber from 'primevue/inputnumber'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
 import { SubscriptionConfig } from '@/config/subscription'
+import { formatDate } from '@/utils/formatters'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -1033,15 +1034,6 @@ const getDaysRemaining = (dateString) => {
     const months = Math.floor(diffDays / 30)
     return (t('admin.months_remaining') || '{months} months remaining').replace('{months}', months)
   }
-}
-
-const formatDate = (dateString) => {
-  if (!dateString) return 'N/A'
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
 }
 
 // Lifecycle

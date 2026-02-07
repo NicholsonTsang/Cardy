@@ -61,7 +61,7 @@
         <div class="button-icon">
           <i class="pi pi-phone" />
         </div>
-        <span>{{ status === 'connecting' ? $t('mobile.connecting') : $t('mobile.start_live_call') }}</span>
+        <span>{{ status === 'connecting' ? $t('mobile.connecting') : status === 'error' ? $t('mobile.retry_call') : $t('mobile.start_live_call') }}</span>
       </button>
 
       <!-- Disconnect Button -->
@@ -107,6 +107,7 @@ const avatarState = computed(() => ({
   'speaking': props.isSpeaking,
   'listening': props.isConnected && !props.isSpeaking,
   'connecting': props.status === 'connecting',
+  'error': props.status === 'error',
   'idle': props.status === 'disconnected'
 }))
 
@@ -114,11 +115,13 @@ const avatarState = computed(() => ({
 const statusBadgeClass = computed(() => ({
   'connected': props.isConnected,
   'connecting': props.status === 'connecting',
-  'speaking': props.isSpeaking
+  'speaking': props.isSpeaking,
+  'error': props.status === 'error'
 }))
 
 // Status text
 const statusText = computed(() => {
+  if (props.status === 'error') return t('common.connection_failed')
   if (props.status === 'disconnected') return t('mobile.ready_to_connect')
   if (props.status === 'connecting') return t('mobile.connecting')
   if (props.isSpeaking) return t('mobile.ai_speaking')
@@ -394,6 +397,21 @@ watch(streamingProgressKey, async () => {
   50% { opacity: 1; transform: scale(1.08); }
 }
 
+.avatar-container.error .avatar-core {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow:
+    0 0 30px rgba(239, 68, 68, 0.4),
+    0 4px 20px rgba(0, 0, 0, 0.25),
+    inset 0 -2px 8px rgba(0, 0, 0, 0.2),
+    inset 0 2px 8px rgba(255, 255, 255, 0.15);
+  animation: none;
+}
+
+.avatar-container.error .avatar-core::before {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(220, 38, 38, 0.3));
+  animation: none;
+}
+
 .avatar-container.connecting .avatar-core {
   background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
   animation: connectingPulse 1s ease-in-out infinite;
@@ -469,6 +487,11 @@ watch(streamingProgressKey, async () => {
   box-shadow: 
     0 0 12px rgba(34, 197, 94, 0.6),
     0 0 24px rgba(34, 197, 94, 0.3);
+}
+
+.status-badge.error .status-dot {
+  background: #ef4444;
+  box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
 }
 
 .status-badge.connecting .status-dot {

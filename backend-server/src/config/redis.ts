@@ -168,8 +168,9 @@ export const CacheTTL = {
   // Card content: 5 minutes (default, configurable)
   cardContent: parseInt(process.env.CACHE_CARD_CONTENT_TTL || '300', 10),
   
-  // Scan deduplication: 5 minutes (configurable)
-  scanDedup: parseInt(process.env.SCAN_DEDUP_WINDOW_SECONDS || '300', 10),
+  // Scan deduplication: 30 minutes (configurable)
+  // Matches session deduplication window for consistency
+  scanDedup: parseInt(process.env.SCAN_DEDUP_WINDOW_SECONDS || '1800', 10),
 };
 
 /**

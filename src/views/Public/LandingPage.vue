@@ -150,8 +150,8 @@
         </div>
         
         <div class="max-w-5xl mx-auto">
-          <!-- Demo Mode Toggle -->
-          <div class="flex justify-center mt-12 mb-4">
+          <!-- Demo Mode Toggle - Only show when physical cards enabled -->
+          <div v-if="isPhysicalCardsEnabled" class="flex justify-center mt-12 mb-4">
             <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-1.5 inline-flex gap-1">
               <button
                 @click="demoMode = 'digital'"
@@ -1067,8 +1067,8 @@
           </div>
         </div>
 
-        <!-- Physical Cards Add-on -->
-        <div class="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-xl rounded-3xl border border-amber-400/30 p-6 sm:p-8 mb-8 max-w-4xl mx-auto">
+        <!-- Physical Cards Add-on - Only show when physical cards enabled -->
+        <div v-if="isPhysicalCardsEnabled" class="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-xl rounded-3xl border border-amber-400/30 p-6 sm:p-8 mb-8 max-w-4xl mx-auto">
           <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6">
             <div class="flex items-center gap-4">
               <div class="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
@@ -1244,11 +1244,13 @@ import UnifiedHeader from '@/components/Layout/UnifiedHeader.vue'
 import PhoneIframePreview from '@/components/common/PhoneIframePreview.vue'
 import HeroAnimation from '@/components/Landing/HeroAnimation.vue'
 import LogoAnimation from '@/components/Landing/LogoAnimation.vue'
+import { usePhysicalCards } from '@/composables/usePhysicalCards'
 
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const { updateSEO } = useSEO()
+const { isPhysicalCardsEnabled } = usePhysicalCards()
 
 // Navigation state
 const showFloatingCta = ref(false)
@@ -1526,7 +1528,6 @@ const handleGetStarted = () => {
 // Demo Templates functions
 const fetchDemoTemplates = async () => {
   isLoadingTemplates.value = true
-  console.log('[LandingPage] Fetching demo templates with language:', locale.value)
   try {
     // Try with language parameter first for multilingual support
     let { data, error } = await supabase.rpc('get_demo_templates', { 
@@ -1548,7 +1549,6 @@ const fetchDemoTemplates = async () => {
       return
     }
     
-    console.log('[LandingPage] Demo templates fetched:', data?.length || 0, 'templates')
     if (data?.length === 0) {
       console.warn('[LandingPage] No demo templates found. Check that templates have is_featured=true, is_active=true, and linked cards have at least one enabled QR code (access token) in card_access_tokens.')
     }

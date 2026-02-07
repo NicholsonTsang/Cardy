@@ -2,8 +2,6 @@
 
 This folder contains sample content templates for different venue types and content modes. Use these templates as a starting point when creating your digital experiences.
 
-> **⚠️ Schema Update Required (Dec 2025):** The SQL templates in `sql/` folder use the old schema (`is_access_enabled`, `access_token` on cards table). The new multi-QR code architecture stores access tokens in `card_access_tokens` table. When using these templates, remove the `is_access_enabled` and `access_token` columns from the INSERT and add a separate INSERT into `card_access_tokens` after the card is created. See `auction_house_grouped.sql` for an updated example.
-
 ## Template Structure
 
 Each template file follows the naming convention: `{venue_type}_{content_mode}.md`
@@ -12,8 +10,8 @@ Each template file follows the naming convention: `{venue_type}_{content_mode}.m
 
 | Mode | Description | Billing |
 |------|-------------|---------|
-| **Physical Card** | Printed souvenir cards with QR codes | 2 credits per card |
-| **Digital Access** | QR-code-only (no physical card) | 0.03 credits per scan |
+| **Physical Card** | Printed souvenir cards with QR codes | Per-card issuance |
+| **Digital Access** | QR-code-only (no physical card) | Session-based budget |
 
 > **Note:** All templates in this folder use **Digital Access** mode by default.
 
@@ -99,8 +97,8 @@ For list, grid, and cards modes, content can be grouped into categories:
 | `image_url` | Physical only | Card artwork image |
 | `ai_instruction` | Optional | AI assistant role/personality (max 100 words) |
 | `ai_knowledge_base` | Optional | Background knowledge for AI (max 2000 words) |
-| `ai_welcome_general` | Optional | Custom welcome for General AI Assistant |
-| `ai_welcome_item` | Optional | Custom welcome for Item AI (use {name} placeholder) |
+| `ai_welcome_general` | Optional | Custom welcome for General AI Assistant (200 char limit for voice mode) |
+| `ai_welcome_item` | Optional | Custom welcome for Item AI (use {name} placeholder, 200 char limit for voice) |
 
 ### Content Item Fields
 | Field | Required | Description |
@@ -156,6 +154,8 @@ Include practical information visitors need:
 
 ✅ **Good:** "Welcome to Modern Visions! I can tell you about any artwork's meaning, the artist's story, techniques used, or suggest what to see based on your interests. What draws your attention?"
 
+> **Voice Mode Note:** In Realtime voice conversations, welcome messages are automatically truncated to 200 characters (~15 seconds spoken) to prevent long monologues. Keep voice greetings concise.
+
 ### `ai_welcome_item` (Item-Level Greeting)
 **Pattern:** Offer specific information types available for the item, use `{name}` placeholder.
 
@@ -164,6 +164,8 @@ Include practical information visitors need:
 ✅ **Good:** "This is \"{name}\" - I can share the artist's inspiration, explain the technique, give historical context, or connect it to other works here. What interests you?"
 
 > **Key Insight:** Users often don't know what to ask. By listing specific topics, the AI guides them to valuable information they didn't know was available.
+>
+> **Voice Mode Note:** Messages longer than 200 characters are automatically truncated in Realtime mode for better UX.
 
 ## Usage
 

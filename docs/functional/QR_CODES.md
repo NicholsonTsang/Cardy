@@ -167,7 +167,7 @@ Limit sessions per QR code per day:
 A **session** is one visitor accessing your project. Sessions are:
 
 - Counted when visitor first accesses
-- Deduplicated (same visitor within 5 minutes = 1 session)
+- Deduplicated (same visitor within 30 minutes = 1 session)
 - Billed based on your plan
 
 ### Session Metrics
@@ -272,7 +272,7 @@ Include with your QR code:
 - Analytics delay (up to a few minutes)
 - Page didn't fully load
 
-**Note:** Sessions deduplicate within 5 minutes to prevent double-counting.
+**Note:** Sessions deduplicate within 30 minutes to prevent double-counting.
 
 ## Best Practices
 

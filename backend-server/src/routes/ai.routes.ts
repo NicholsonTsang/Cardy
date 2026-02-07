@@ -462,5 +462,139 @@ Access Type: ${billingType || 'digital'}${contentItemsContext}`;
   }
 });
 
+/**
+ * POST /api/ai/optimize-description
+ * Optimize/polish an existing project description using AI
+ * Requires authentication (creator tool)
+ */
+router.post('/optimize-description', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const {
+      cardId,
+      cardName,
+      description,
+      originalLanguage
+    } = req.body;
+
+    if (!description || typeof description !== 'string' || !description.trim()) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Description text is required'
+      });
+    }
+
+    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+    if (!OPENAI_API_KEY) {
+      return res.status(500).json({
+        error: 'Configuration error',
+        message: 'OpenAI API key not configured'
+      });
+    }
+
+    // Fetch content items for context
+    let contentItemsContext = '';
+    if (cardId) {
+      try {
+        const { data: contentItems } = await supabaseAdmin.rpc(
+          'get_content_items_server',
+          { p_card_id: cardId }
+        );
+        if (contentItems && contentItems.length > 0) {
+          const itemsSummary = contentItems
+            .slice(0, 20)
+            .map((item: any) => {
+              const content = item.content ? item.content.substring(0, 200) : '';
+              return `- ${item.name}${content ? ': ' + content : ''}`;
+            })
+            .join('\n');
+          contentItemsContext = `\n\nContent Items for context:\n${itemsSummary}`;
+        }
+      } catch (err) {
+        console.warn('Failed to fetch content items for description optimization:', err);
+      }
+    }
+
+    const LANGUAGE_NAMES: Record<string, string> = {
+      'en': 'English', 'zh-Hant': 'Traditional Chinese',
+      'zh-Hans': 'Simplified Chinese', 'ja': 'Japanese',
+      'ko': 'Korean', 'es': 'Spanish', 'fr': 'French',
+      'ru': 'Russian', 'ar': 'Arabic', 'th': 'Thai'
+    };
+    const langName = LANGUAGE_NAMES[originalLanguage] || 'English';
+
+    const systemPrompt = `You are an expert copywriter. Optimize the given project description that visitors see when scanning a QR code.
+
+Rules:
+- Write in ${langName}
+- Preserve the original meaning and intent
+- Improve clarity, tone, and readability
+- Keep it concise: 2-4 sentences, max 60 words
+- Make it welcoming and engaging for visitors
+- Preserve any markdown formatting, or add light formatting if it improves readability
+- If content items are provided, use them to add relevant context
+- Do NOT add generic filler — keep it specific to this project
+
+Respond with ONLY the optimized description text, no JSON, no quotes.`;
+
+    const userPrompt = `Project Name: ${cardName || 'Untitled'}
+Description to optimize:
+${description}${contentItemsContext}`;
+
+    console.log('🤖 Optimizing description:', {
+      cardName,
+      hasCardId: !!cardId,
+      language: originalLanguage,
+      descriptionLength: description.length
+    });
+
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${OPENAI_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: process.env.OPENAI_TEXT_MODEL || 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 300,
+        temperature: 0.7
+      })
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ OpenAI API error:', errorText);
+      return res.status(response.status).json({
+        error: 'OpenAI API error',
+        message: 'Failed to optimize description'
+      });
+    }
+
+    const completion = await response.json() as any;
+    const optimized = completion.choices?.[0]?.message?.content?.trim();
+
+    if (!optimized) {
+      return res.status(500).json({
+        error: 'Generation error',
+        message: 'No content returned from AI'
+      });
+    }
+
+    console.log('✅ Description optimized successfully');
+
+    return res.json({ success: true, data: { description: optimized } });
+
+  } catch (error: any) {
+    console.error('❌ Description optimization error:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message || 'Failed to optimize description'
+    });
+  }
+});
+
 export default router;
 

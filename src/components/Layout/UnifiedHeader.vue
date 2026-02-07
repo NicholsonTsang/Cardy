@@ -182,6 +182,7 @@ import { useToast } from 'primevue/usetoast'
 import DashboardLanguageSelector from '@/components/DashboardLanguageSelector.vue'
 import LandingLanguageSelector from '@/components/LandingLanguageSelector.vue'
 import LogoAnimation from '@/components/Landing/LogoAnimation.vue'
+import { usePhysicalCards } from '@/composables/usePhysicalCards'
 
 const props = defineProps({
   mode: {
@@ -199,6 +200,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 const creditStore = useCreditStore()
 const toast = useToast()
+const { isPhysicalCardsEnabled } = usePhysicalCards()
 
 // Refs
 const mainMenu = ref()
@@ -306,58 +308,64 @@ const cardIssuerMenuItems = computed(() => [
   }
 ])
 
-const adminMenuItems = computed(() => [
-  {
-    label: t('dashboard.dashboard'),
-    icon: 'pi pi-chart-line',
-    command: () => router.push('/cms/admin')
-  },
-  {
-    label: t('dashboard.my_cards'),
-    icon: 'pi pi-folder',
-    command: () => router.push('/cms/projects')
-  },
-  {
-    label: t('admin.user_management'),
-    icon: 'pi pi-users',
-    command: () => router.push('/cms/admin/users')
-  },
-  {
-    label: t('header.batch_management'),
-    icon: 'pi pi-box',
-    command: () => router.push('/cms/admin/batches')
-  },
-  {
-    label: t('templates.admin.management_title'),
-    icon: 'pi pi-copy',
-    command: () => router.push('/cms/admin/templates')
-  },
-  {
-    label: t('admin.credits.title'),
-    icon: 'pi pi-wallet',
-    command: () => router.push('/cms/admin/credits')
-  },
-  {
-    label: t('admin.print_requests'),
-    icon: 'pi pi-print',
-    command: () => router.push('/cms/admin/print-requests')
-  },
-  {
-    label: t('admin.user_cards_viewer'),
-    icon: 'pi pi-id-card',
-    command: () => router.push('/cms/admin/user-projects')
-  },
-  {
-    label: t('header.issue_free_batch'),
-    icon: 'pi pi-gift',
-    command: () => router.push('/cms/admin/issue-batch')
-  },
-  {
-    label: t('header.history_logs'),
-    icon: 'pi pi-history',
-    command: () => router.push('/cms/admin/history')
-  }
-])
+const adminMenuItems = computed(() => {
+  const items = [
+    {
+      label: t('dashboard.dashboard'),
+      icon: 'pi pi-chart-line',
+      command: () => router.push('/cms/admin')
+    },
+    {
+      label: t('dashboard.my_cards'),
+      icon: 'pi pi-folder',
+      command: () => router.push('/cms/projects')
+    },
+    {
+      label: t('admin.user_management'),
+      icon: 'pi pi-users',
+      command: () => router.push('/cms/admin/users')
+    },
+    // Physical cards: batch management
+    ...(isPhysicalCardsEnabled.value ? [{
+      label: t('header.batch_management'),
+      icon: 'pi pi-box',
+      command: () => router.push('/cms/admin/batches')
+    }] : []),
+    {
+      label: t('templates.admin.management_title'),
+      icon: 'pi pi-copy',
+      command: () => router.push('/cms/admin/templates')
+    },
+    {
+      label: t('admin.credits.title'),
+      icon: 'pi pi-wallet',
+      command: () => router.push('/cms/admin/credits')
+    },
+    // Physical cards: print requests
+    ...(isPhysicalCardsEnabled.value ? [{
+      label: t('admin.print_requests'),
+      icon: 'pi pi-print',
+      command: () => router.push('/cms/admin/print-requests')
+    }] : []),
+    {
+      label: t('admin.user_cards_viewer'),
+      icon: 'pi pi-id-card',
+      command: () => router.push('/cms/admin/user-projects')
+    },
+    // Physical cards: issue free batch
+    ...(isPhysicalCardsEnabled.value ? [{
+      label: t('header.issue_free_batch'),
+      icon: 'pi pi-gift',
+      command: () => router.push('/cms/admin/issue-batch')
+    }] : []),
+    {
+      label: t('header.history_logs'),
+      icon: 'pi pi-history',
+      command: () => router.push('/cms/admin/history')
+    }
+  ]
+  return items
+})
 
 // Unified menu items
 const unifiedMenuItems = computed(() => {
@@ -397,21 +405,6 @@ const unifiedMenuItems = computed(() => {
 // Menu toggle
 const toggleMainMenu = (event) => {
   mainMenu.value.toggle(event)
-}
-
-// Auth button handler (Sign In / Dashboard)
-const handleAuthButtonClick = () => {
-  if (isAuthenticated.value) {
-    // If logged in, route to dashboard based on role
-    if (userRole.value === 'admin') {
-      router.push('/cms/admin')
-    } else {
-      router.push('/cms/projects')
-    }
-  } else {
-    // If not logged in, route to login page
-    router.push('/login')
-  }
 }
 
 // Get Started handler - navigates to login or dashboard based on auth state

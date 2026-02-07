@@ -70,7 +70,6 @@ export function detectBrowserLanguage(availableLanguages: Language[] = AVAILABLE
   // Get browser languages in order of preference
   const browserLanguages = navigator.languages || [navigator.language]
   
-  console.log('🌐 Browser languages:', browserLanguages)
   
   // Try to find exact match first
   for (const browserLang of browserLanguages) {
@@ -79,7 +78,6 @@ export function detectBrowserLanguage(availableLanguages: Language[] = AVAILABLE
       lang => lang.code.toLowerCase() === normalizedBrowserLang.toLowerCase()
     )
     if (exactMatch) {
-      console.log('✅ Exact language match found:', exactMatch.code, exactMatch.name)
       return exactMatch
     }
   }
@@ -91,7 +89,6 @@ export function detectBrowserLanguage(availableLanguages: Language[] = AVAILABLE
       lang => lang.code.toLowerCase().startsWith(baseLang)
     )
     if (partialMatch) {
-      console.log('✅ Partial language match found:', partialMatch.code, partialMatch.name)
       return partialMatch
     }
   }

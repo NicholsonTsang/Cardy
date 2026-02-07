@@ -631,6 +631,7 @@ import Textarea from 'primevue/textarea'
 import Chip from 'primevue/chip'
 import ProgressSpinner from 'primevue/progressspinner'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
+import { formatDate } from '@/utils/formatters'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -735,16 +736,6 @@ function onSort(event: any) {
 onMounted(async () => {
   await refreshData()
 })
-
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
 
 function getTransactionTypeSeverity(type: string) {
   switch (type) {

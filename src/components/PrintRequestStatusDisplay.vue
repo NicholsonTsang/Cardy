@@ -101,6 +101,7 @@ import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
+import { formatDate } from '@/utils/formatters';
 
 const { t } = useI18n();
 
@@ -156,16 +157,6 @@ const getPrintStatusLabel = (status) => {
     case 'CANCELLED': return t('print.cancelled');
     default: return status;
   }
-};
-
-const formatDate = (dateString) => {
-  if (!dateString) return '-';
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
 };
 
 const truncateAddress = (address) => {

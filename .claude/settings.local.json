@@ -19,8 +19,31 @@
       "Bash(git rm:*)",
       "Bash(test:*)",
       "Bash(node:*)",
-      "Bash(echo $0)"
+      "Bash(echo $0)",
+      "Bash(claude mcp add:*)",
+      "mcp__supabase__list_tables",
+      "mcp__supabase__execute_sql",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nRemove unused components and stores\n\n- Remove EmptyState.vue - unused component with no imports\n- Remove LanguageSwitcher.vue - replaced by LandingLanguageSelector and DashboardLanguageSelector\n- Remove issuedCard.ts store - functionality moved inline to CardIssuanceCheckout.vue\n- Remove misplaced README_CreditConfirmationDialog.md from components folder\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(done)",
+      "Bash(comm:*)",
+      "WebSearch",
+      "WebFetch(domain:docs.x.ai)",
+      "Bash(npx tsc:*)",
+      "Bash(xargs:*)",
+      "WebFetch(domain:primevue.org)",
+      "Bash(npx vite build:*)",
+      "Bash(lsof:*)",
+      "Bash(/Applications/Google\\\\ Chrome.app/Contents/MacOS/Google\\\\ Chrome:*)",
+      "Bash(mkdir:*)",
+      "Bash(/Applications/Google Chrome.app/Contents/MacOS/Google Chrome:*)"
     ],
     "deny": []
-  }
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "supabase"
+  ]
 }

@@ -1,16 +1,23 @@
 /**
  * Prompt Builder Utility
- * 
+ *
  * Provides structured, concise system prompts for AI assistants.
  * Follows prompt engineering best practices:
  * - Clear role definition
  * - Explicit language requirements
  * - Structured knowledge context
  * - Natural conversation flow (suggestions only in greeting)
+ *
+ * Version History:
+ * - v2.0.0 (2026-02-02): Optimized for prompt caching, added truncation, fixed rebuilding
+ * - v1.0.0: Initial structured prompt system
  */
 
+// PROMPT VERSION - Increment when changing prompt structure or behavior
+// Used for debugging and A/B testing
+const PROMPT_VERSION = '2.0.0'
+
 interface PromptConfig {
-  assistantName: string
   cardName: string
   cardDescription?: string
   languageName: string
@@ -82,10 +89,10 @@ export function buildCardLevelPrompt(config: PromptConfig): string {
     config.languageCode,
     config.chineseVoice
   )
-  
+
   const behavior = buildBehaviorGuidelines(false)
-  
-  let prompt = `# ROLE
+
+  let prompt = `[v${PROMPT_VERSION}] # ROLE
 You are the personal AI guide for "${config.cardName}".
 
 # ${languageReq}
@@ -123,16 +130,17 @@ export function buildContentItemPrompt(config: PromptConfig): string {
     config.languageCode,
     config.chineseVoice
   )
-  
+
   const behavior = buildBehaviorGuidelines(true)
-  
-  let prompt = `# ROLE
+
+  let prompt = `[v${PROMPT_VERSION}] # ROLE
 You are an expert guide for "${config.contentItemName}" within "${config.cardName}".
 
 # ${languageReq}
 
 # CURRENT ITEM: "${config.contentItemName}"
 ${config.contentItemContent || ''}
+${config.modeContext ? `\n# DISPLAY MODE\n${config.modeContext}` : ''}
 `
 
   if (config.parentContext) {
@@ -140,6 +148,7 @@ ${config.contentItemContent || ''}
 # CONTEXT
 Part of: "${config.parentContext.name}"
 ${config.parentContext.description ? `Description: ${config.parentContext.description}` : ''}
+${config.parentContext.knowledge ? `\nBackground: ${config.parentContext.knowledge}` : ''}
 `
   }
 
@@ -172,7 +181,7 @@ ${behavior}`
 
 /**
  * Build greeting instructions for realtime voice mode
- * 
+ *
  * This is the ONLY place where topic suggestions should appear.
  * After the greeting, conversations should flow naturally without constant suggestions.
  */
@@ -182,13 +191,20 @@ export function buildRealtimeGreetingInstructions(
   isItemMode: boolean = false
 ): string {
   const languageNote = `RESPOND ONLY in ${languageName}.`
-  
+
   if (customWelcome) {
+    // OPTIMIZATION: Truncate custom welcome to prevent excessively long greetings
+    // Limit to 200 characters to keep voice greetings under ~15 seconds
+    const MAX_WELCOME_LENGTH = 200
+    const truncated = customWelcome.length > MAX_WELCOME_LENGTH
+      ? customWelcome.substring(0, MAX_WELCOME_LENGTH).trim() + '...'
+      : customWelcome
+
     // Use custom welcome as inspiration, but keep it brief for voice
     return `${languageNote}
 
-GREETING GUIDANCE (from creator):
-"${customWelcome}"
+GREETING GUIDANCE (from creator${customWelcome.length > MAX_WELCOME_LENGTH ? ', summarized' : ''}):
+"${truncated}"
 
 Generate a BRIEF spoken greeting (1-2 sentences max) that:
 1. Warmly welcomes the user

@@ -108,6 +108,11 @@ const props = defineProps({
     theme: {
         type: String,
         default: 'light'
+    },
+    // Fixed width override (bypasses responsive calculation)
+    width: {
+        type: Number,
+        default: null
     }
 });
 
@@ -123,6 +128,7 @@ const phoneAspectRatio = '9 / 16';
 const phoneAspectValue = 16 / 9;
 
 const phoneWidth = computed(() => {
+    if (props.width) return props.width;
     if (windowWidth.value < 380) return 240;
     if (windowWidth.value < 480) return 260;
     if (windowWidth.value < 640) return 280;

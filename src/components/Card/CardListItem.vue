@@ -1,87 +1,41 @@
 <template>
-    <div 
-        class="group relative p-4 rounded-xl border cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5"
-        :class="{ 
-            'bg-blue-50 border-blue-300 shadow-md ring-2 ring-blue-200': isSelected && !multiSelectMode,
-            'bg-white hover:bg-slate-50/80 border-slate-200 hover:border-slate-300': !isSelected && !isChecked,
-            'bg-indigo-50 border-indigo-300 ring-2 ring-indigo-200': isChecked
-        }"
+    <div
+        class="relative rounded-lg border transition-all duration-200 overflow-hidden bg-white cursor-pointer"
+        :class="itemClasses"
         @click="handleClick"
     >
-        <!-- Multi-select checkbox overlay -->
-        <div 
-            v-if="multiSelectMode" 
-            class="absolute top-3 left-3 z-10" 
-            @click.stop="toggleCheck"
-        >
-            <div 
-                class="w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer shadow-sm bg-white"
-                :class="isChecked 
-                    ? 'bg-indigo-600 border-indigo-600 scale-110' 
-                    : 'border-slate-300 hover:border-indigo-400'"
+        <div class="flex items-center gap-2.5 p-3">
+            <!-- Multi-select checkbox -->
+            <div
+                v-if="multiSelectMode"
+                class="flex-shrink-0 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center transition-all"
+                :class="isChecked
+                    ? 'bg-indigo-600 border-indigo-600'
+                    : 'border-slate-300 hover:border-slate-400'"
+                @click.stop="toggleCheck"
             >
-                <i v-if="isChecked" class="pi pi-check text-white text-[10px]"></i>
+                <i v-if="isChecked" class="pi pi-check text-white text-[8px]"></i>
             </div>
-        </div>
 
-        <!-- Main Content -->
-        <div class="flex gap-3">
             <!-- Thumbnail -->
-            <div 
-                class="flex-shrink-0 w-14 h-14 rounded-lg overflow-hidden border-2 flex items-center justify-center shadow-sm"
-                :class="card.billing_type === 'digital' 
-                    ? 'bg-gradient-to-br from-sky-100 to-blue-100 border-sky-200' 
-                    : 'bg-slate-100 border-slate-200'"
+            <div
+                class="flex-shrink-0 w-9 h-9 rounded-md overflow-hidden flex items-center justify-center"
+                :class="card.billing_type === 'digital'
+                    ? 'bg-sky-50'
+                    : 'bg-slate-100'"
             >
-                <i v-if="card.billing_type === 'digital'" class="pi pi-qrcode text-sky-600 text-2xl"></i>
-                <img
-                    v-else
-                    :src="displayImage"
-                    :alt="card.name"
-                    class="w-full h-full object-cover"
-                />
+                <i v-if="card.billing_type === 'digital'" class="pi pi-qrcode text-sky-500 text-sm"></i>
+                <img v-else :src="displayImage" :alt="card.name" class="w-full h-full object-cover" />
             </div>
-            
-            <!-- Info -->
-            <div class="flex-1 min-w-0 flex flex-col justify-center">
-                <!-- Title Row -->
-                <div class="flex items-start gap-2">
-                    <h3 class="font-semibold text-slate-800 leading-tight group-hover:text-blue-600 transition-colors line-clamp-2">
-                        {{ card.name }}
-                    </h3>
-                    <!-- Template indicator (small star) -->
-                    <span 
-                        v-if="card.is_template"
-                        class="flex-shrink-0 text-amber-500 text-sm"
-                        :title="card.template_slug ? t('dashboard.template_indicator', { slug: card.template_slug }) : t('dashboard.linked_to_template')"
-                    >
-                        ⭐
-                    </span>
-                </div>
-                
-                <!-- Meta Row: Compact inline info -->
-                <div class="flex items-center gap-1.5 mt-1 text-[11px] font-medium text-slate-500">
-                    <span :class="card.billing_type === 'digital' ? 'text-sky-600' : 'text-emerald-600'">
-                        {{ card.billing_type === 'digital' ? t('dashboard.access_digital') : t('dashboard.access_physical') }}
-                    </span>
-                    <span class="text-slate-300">·</span>
-                    <span :class="contentModeColor">
-                        {{ contentModeLabel }}
-                    </span>
-                    <span v-if="card.is_grouped" class="text-slate-300">·</span>
-                    <span v-if="card.is_grouped" class="text-violet-600">{{ t('common.grouped') }}</span>
-                </div>
-                
-                <!-- Date Row -->
-                <div class="text-[10px] text-slate-400 mt-1">
-                    {{ formatDate(card.created_at) }}
-                </div>
-            </div>
-        </div>
 
-        <!-- Selection Indicator -->
-        <div v-if="isSelected && !multiSelectMode" class="absolute top-3 right-3">
-            <div class="w-2 h-2 bg-blue-500 rounded-full"></div>
+            <!-- Name -->
+            <span class="flex-1 min-w-0 text-[13px] font-medium text-slate-800 line-clamp-2">
+                {{ card.name }}
+                <span v-if="card.is_template" class="text-amber-400 text-[11px] ml-0.5">&#11088;</span>
+            </span>
+
+            <!-- Relative date -->
+            <span class="text-[11px] text-slate-400 flex-shrink-0 tabular-nums self-start mt-0.5">{{ relativeDate }}</span>
         </div>
     </div>
 </template>
@@ -114,6 +68,16 @@ const props = defineProps({
 
 const emit = defineEmits(['select', 'toggle-check']);
 
+const itemClasses = computed(() => {
+    if (props.isSelected && !props.multiSelectMode) {
+        return 'border-blue-500 border-l-[3px] shadow-sm bg-blue-50/30';
+    }
+    if (props.isChecked) {
+        return 'border-indigo-400 bg-indigo-50/30';
+    }
+    return 'border-slate-200 hover:border-slate-300 hover:shadow-sm';
+});
+
 function handleClick() {
     if (props.multiSelectMode) {
         toggleCheck();
@@ -127,52 +91,26 @@ function toggleCheck() {
 }
 
 const displayImage = computed(() => {
-    return props.card.image_url 
-        ? props.card.image_url 
+    return props.card.image_url
+        ? props.card.image_url
         : cardPlaceholder;
 });
 
-// Content mode display (using i18n)
-const contentModeLabels = computed(() => ({
-    single: t('templates.mode_single'),
-    list: t('templates.mode_list'),
-    grid: t('templates.mode_grid'),
-    cards: t('templates.mode_cards')
-}));
-
-const contentModeColors = {
-    single: 'text-purple-600',
-    list: 'text-blue-600',
-    grid: 'text-amber-600',
-    cards: 'text-rose-600'
-};
-
-const contentModeLabel = computed(() => {
-    const mode = props.card.content_mode || 'list';
-    return contentModeLabels.value[mode] || t('templates.mode_list');
+const relativeDate = computed(() => {
+    if (!props.card.created_at) return '';
+    const now = Date.now();
+    const created = new Date(props.card.created_at).getTime();
+    const diffMs = now - created;
+    const diffMin = Math.floor(diffMs / 60000);
+    if (diffMin < 1) return t('common.just_now');
+    if (diffMin < 60) return `${diffMin}m`;
+    const diffHr = Math.floor(diffMin / 60);
+    if (diffHr < 24) return `${diffHr}h`;
+    const diffDay = Math.floor(diffHr / 24);
+    if (diffDay < 30) return `${diffDay}d`;
+    const diffMo = Math.floor(diffDay / 30);
+    if (diffMo < 12) return `${diffMo}mo`;
+    const diffYr = Math.floor(diffDay / 365);
+    return `${diffYr}y`;
 });
-
-const contentModeColor = computed(() => {
-    const mode = props.card.content_mode || 'list';
-    return contentModeColors[mode] || 'text-blue-600';
-});
-
-const formatDate = (dateString) => {
-    if (!dateString) return '';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric'
-    });
-};
 </script>
-
-<style scoped>
-.line-clamp-2 {
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-    line-clamp: 2;
-}
-</style>

@@ -35,10 +35,10 @@
         </div>
 
         <!-- Section 1: Access Mode -->
-        <div class="form-section" :class="{ 'section-locked': isEditMode }">
+        <div v-if="sections.includes('accessMode')" class="form-section" :class="{ 'section-locked': isEditMode }">
             <div class="section-header" @click="toggleSection('accessMode')">
                 <div class="section-header-left">
-                    <div class="section-number" :class="{ 'number-complete': isEditMode }">
+                    <div v-if="!isSingleSection" class="section-number" :class="{ 'number-complete': isEditMode }">
                         <span v-if="!isEditMode">1</span>
                         <i v-else class="pi pi-lock text-xs"></i>
                     </div>
@@ -198,10 +198,10 @@
         </div>
             
         <!-- Section 2: Card Artwork (Physical Cards Only) -->
-        <div v-if="formData.billing_type === 'physical'" class="form-section">
+        <div v-if="formData.billing_type === 'physical' && sections.includes('artwork')" class="form-section">
             <div class="section-header" @click="toggleSection('artwork')">
                 <div class="section-header-left">
-                    <div class="section-number" :class="{ 'number-complete': previewImage }">
+                    <div v-if="!isSingleSection" class="section-number" :class="{ 'number-complete': previewImage }">
                         <span v-if="!previewImage">2</span>
                         <i v-else class="pi pi-check text-xs"></i>
                     </div>
@@ -294,10 +294,10 @@
         </div>
 
         <!-- Section 3: Project Details (Section 2 for Digital) -->
-        <div class="form-section">
-            <div class="section-header" @click="toggleSection('details')">
+        <div v-if="sections.includes('details')" class="form-section">
+            <div v-if="!isDirectContent" class="section-header" @click="toggleSection('details')">
                 <div class="section-header-left">
-                    <div class="section-number" :class="{ 'number-complete': formData.name.trim() }">
+                    <div v-if="!isSingleSection" class="section-number" :class="{ 'number-complete': formData.name.trim() }">
                         <span v-if="!formData.name.trim()">{{ formData.billing_type === 'physical' ? '3' : '2' }}</span>
                         <i v-else class="pi pi-check text-xs"></i>
                     </div>
@@ -312,7 +312,7 @@
             </div>
 
             <Transition name="slide">
-                <div v-show="expandedSections.details" class="section-content">
+                <div v-show="isDirectContent || expandedSections.details" class="section-content">
                     <div class="space-y-4">
                         <!-- Card/QR Name -->
                         <div>
@@ -368,10 +368,23 @@
 
                         <!-- Card Description -->
                         <div>
-                            <label for="cardDescription" class="block text-sm font-medium text-slate-700 mb-1.5">
-                                {{ formData.billing_type === 'digital' ? $t('dashboard.welcome_description') : $t('dashboard.card_description') }}
-                                <span class="text-xs text-slate-400 font-normal ml-1">({{ $t('dashboard.markdown_supported') }})</span>
-                            </label>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label for="cardDescription" class="text-sm font-medium text-slate-700">
+                                    {{ formData.billing_type === 'digital' ? $t('dashboard.welcome_description') : $t('dashboard.card_description') }}
+                                    <span class="text-xs text-slate-400 font-normal ml-1">({{ $t('dashboard.markdown_supported') }})</span>
+                                </label>
+                                <Button
+                                    v-if="descriptionWordCount >= 5"
+                                    :label="isOptimizingDescription ? $t('dashboard.ai_generating') : $t('dashboard.ai_optimize')"
+                                    icon="pi pi-sparkles"
+                                    severity="secondary"
+                                    text
+                                    size="small"
+                                    :loading="isOptimizingDescription"
+                                    :disabled="isOptimizingDescription"
+                                    @click="optimizeDescription"
+                                />
+                            </div>
                             <p v-if="formData.billing_type === 'digital'" class="text-xs text-cyan-600 mb-2">
                                 {{ $t('dashboard.digital_description_hint') }}
                             </p>
@@ -394,104 +407,13 @@
             </Transition>
         </div>
 
-        <!-- Section 4: Content Display Mode -->
-        <div class="form-section">
-            <div class="section-header" @click="toggleSection('contentMode')">
+        <!-- Section 4: AI Assistant Configuration -->
+        <div v-if="sections.includes('ai')" :class="isDirectContent ? '' : ['form-section', { 'section-ai-enabled': formData.conversation_ai_enabled }]">
+            <div v-if="!isDirectContent" class="section-header" @click="toggleSection('ai')">
                 <div class="section-header-left">
-                    <div class="section-number">
-                        <span>{{ formData.billing_type === 'physical' ? '4' : '3' }}</span>
-                    </div>
-                    <div class="section-title-group">
-                        <h3 class="section-title">{{ $t('dashboard.content_mode') }}</h3>
-                        <p class="section-subtitle">{{ getContentModeLabel(formData.content_mode) }}</p>
-                    </div>
-                </div>
-                <i class="pi section-chevron" :class="expandedSections.contentMode ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
-            </div>
-
-            <Transition name="slide">
-                <div v-show="expandedSections.contentMode" class="section-content">
-                    <!-- Content Mode Selector -->
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-                        <button
-                            v-for="mode in filteredContentModeOptions"
-                            :key="mode.value"
-                            type="button"
-                            @click="formData.content_mode = mode.value"
-                            class="content-mode-card"
-                            :class="formData.content_mode === mode.value ? 'content-mode-card--selected' : 'content-mode-card--unselected'"
-                        >
-                            <i :class="['pi', mode.icon, 'text-lg mb-1', formData.content_mode === mode.value ? 'text-blue-600' : 'text-slate-400']"></i>
-                            <span class="text-xs font-medium" :class="formData.content_mode === mode.value ? 'text-blue-900' : 'text-slate-600'">{{ mode.label }}</span>
-                        </button>
-                    </div>
-
-                    <!-- Mode Description -->
-                    <div class="p-3 rounded-lg mb-4" :class="formData.billing_type === 'physical' ? 'bg-slate-50 border border-slate-200' : 'bg-cyan-50 border border-cyan-200'">
-                        <div class="flex items-start gap-2">
-                            <i :class="['pi', currentModeDetails.icon, formData.billing_type === 'physical' ? 'text-slate-500' : 'text-cyan-600', 'mt-0.5']"></i>
-                            <div class="flex-1">
-                                <p class="text-sm font-medium" :class="formData.billing_type === 'physical' ? 'text-slate-700' : 'text-cyan-800'">{{ currentModeDetails.label }}</p>
-                                <p class="text-xs mt-0.5" :class="formData.billing_type === 'physical' ? 'text-slate-500' : 'text-cyan-600'">{{ currentModeDetails.guidance }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Grouping Options -->
-                    <div v-if="currentModeSupportsGrouping" class="p-3 rounded-lg border border-slate-200 bg-slate-50">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-2">
-                                <i class="pi pi-folder text-amber-500"></i>
-                                <span class="text-sm font-medium text-slate-700">{{ $t('dashboard.grouping_title') }}</span>
-                                <i class="pi pi-info-circle text-slate-400 text-xs cursor-help"
-                                   v-tooltip.right="{ value: $t('dashboard.grouping_tooltip'), class: 'max-w-xs' }"></i>
-                            </div>
-                            <ToggleSwitch v-model="formData.is_grouped" />
-                        </div>
-                        <p class="text-xs text-slate-500 mt-2">{{ $t('dashboard.grouping_description') }}</p>
-
-                        <!-- Group Display Options -->
-                        <Transition name="slide">
-                            <div v-if="formData.is_grouped" class="mt-3 pt-3 border-t border-slate-200">
-                                <label class="block text-xs font-medium text-slate-600 mb-2">{{ $t('dashboard.group_display_title') }}</label>
-                                <div class="grid grid-cols-2 gap-2">
-                                    <button
-                                        type="button"
-                                        @click="formData.group_display = 'expanded'"
-                                        class="p-2 rounded-lg border transition-all text-center"
-                                        :class="formData.group_display === 'expanded' ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-white hover:border-slate-300'"
-                                    >
-                                        <i :class="['pi pi-list text-sm', formData.group_display === 'expanded' ? 'text-amber-600' : 'text-slate-400']"></i>
-                                        <span class="block text-xs mt-1" :class="formData.group_display === 'expanded' ? 'text-amber-800 font-medium' : 'text-slate-600'">
-                                            {{ $t('dashboard.group_display_expanded') }}
-                                        </span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        @click="formData.group_display = 'collapsed'"
-                                        class="p-2 rounded-lg border transition-all text-center"
-                                        :class="formData.group_display === 'collapsed' ? 'border-amber-400 bg-amber-50' : 'border-slate-200 bg-white hover:border-slate-300'"
-                                    >
-                                        <i :class="['pi pi-folder text-sm', formData.group_display === 'collapsed' ? 'text-amber-600' : 'text-slate-400']"></i>
-                                        <span class="block text-xs mt-1" :class="formData.group_display === 'collapsed' ? 'text-amber-800 font-medium' : 'text-slate-600'">
-                                            {{ $t('dashboard.group_display_collapsed') }}
-                                        </span>
-                                    </button>
-                                </div>
-                            </div>
-                        </Transition>
-                    </div>
-                </div>
-            </Transition>
-        </div>
-                    
-        <!-- Section 5: AI Assistant Configuration -->
-        <div class="form-section" :class="{ 'section-ai-enabled': formData.conversation_ai_enabled }">
-            <div class="section-header" @click="toggleSection('ai')">
-                <div class="section-header-left">
-                    <div class="section-number" :class="{ 'number-ai': formData.conversation_ai_enabled }">
+                    <div v-if="!isSingleSection" class="section-number" :class="{ 'number-ai': formData.conversation_ai_enabled }">
                         <i v-if="formData.conversation_ai_enabled" class="pi pi-sparkles text-xs"></i>
-                        <span v-else>{{ formData.billing_type === 'physical' ? '5' : '4' }}</span>
+                        <span v-else>{{ formData.billing_type === 'physical' ? '4' : '3' }}</span>
                     </div>
                     <div class="section-title-group">
                         <h3 class="section-title">{{ $t('dashboard.ai_assistant_configuration') }}</h3>
@@ -508,14 +430,19 @@
             </div>
 
             <Transition name="slide">
-                <div v-show="expandedSections.ai" class="section-content">
-                    <!-- AI Cost Notice (when enabled) -->
-                    <div v-if="formData.conversation_ai_enabled" class="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
-                        <i class="pi pi-bolt text-amber-500 mt-0.5 flex-shrink-0"></i>
-                        <div class="text-xs text-amber-800">
-                            <strong>{{ $t('dashboard.ai_cost_notice_title') }}</strong>
-                            <p class="mt-0.5">{{ $t('dashboard.ai_cost_notice_message', pricingVars) }}</p>
+                <div v-show="isDirectContent || expandedSections.ai" class="section-content">
+                    <!-- Toggle status card (dialog mode) -->
+                    <div v-if="isDirectContent" class="flex items-center gap-3 p-3 rounded-xl border mb-4"
+                         :class="formData.conversation_ai_enabled ? 'bg-violet-50 border-violet-200' : 'bg-slate-50 border-slate-200'">
+                        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                             :class="formData.conversation_ai_enabled ? 'bg-violet-100' : 'bg-slate-200'">
+                            <i :class="['pi pi-sparkles', formData.conversation_ai_enabled ? 'text-violet-600' : 'text-slate-400']"></i>
                         </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-slate-800 m-0">{{ $t('dashboard.ai_voice_assistant') }}</p>
+                            <p class="text-xs text-slate-500 m-0">{{ $t('dashboard.ai_voice_description') }}</p>
+                        </div>
+                        <ToggleSwitch v-model="formData.conversation_ai_enabled" />
                     </div>
 
                     <!-- AI Disabled Notice -->
@@ -527,34 +454,38 @@
                         </div>
                     </div>
 
-                    <!-- AI Auto-Generate Button (when enabled) -->
-                    <div v-if="formData.conversation_ai_enabled" class="mb-4">
+                    <!-- Cost + Auto-generate bar (when enabled) -->
+                    <div v-if="formData.conversation_ai_enabled" class="flex items-center gap-2 mb-4 flex-wrap">
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-amber-50 border border-amber-200 text-[0.6875rem] text-amber-700">
+                            <i class="pi pi-bolt text-amber-500 text-[0.625rem]"></i>
+                            {{ $t('dashboard.ai_cost_inline', pricingVars) }}
+                        </span>
+                        <div class="flex-1"></div>
                         <Button
                             :label="isGeneratingAi ? $t('dashboard.ai_generating') : $t('dashboard.ai_auto_generate')"
                             icon="pi pi-sparkles"
-                            severity="info"
-                            outlined
+                            severity="secondary"
+                            text
                             size="small"
-                            class="w-full"
                             :loading="isGeneratingAi"
                             :disabled="isGeneratingAi || !formData.name.trim()"
                             @click="generateAiSettings"
                         />
-                        <p class="text-xs text-slate-400 mt-1.5 text-center">
-                            {{ $t('dashboard.ai_auto_generate_hint') }}
-                        </p>
                     </div>
 
-                    <!-- AI Configuration Fields (shown when enabled) -->
-                    <div v-if="formData.conversation_ai_enabled" class="space-y-4">
+                    <!-- AI Configuration Fields (always visible, disabled when AI off) -->
+                    <div :class="{ 'opacity-40 pointer-events-none select-none': !formData.conversation_ai_enabled }">
+                        <!-- Instructions section -->
+                        <div class="flex items-center gap-2 mb-3">
+                            <span class="text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-400">{{ $t('dashboard.ai_section_instructions') }}</span>
+                            <div class="flex-1 border-t border-slate-200"></div>
+                        </div>
+
                         <!-- AI Instruction -->
-                        <div class="p-3 bg-blue-50/50 border border-blue-200 rounded-lg">
-                            <label class="block text-sm font-medium text-slate-700 mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5">
-                                    <i class="pi pi-user text-blue-500"></i>
-                                    {{ $t('dashboard.ai_instruction_role_guidelines') }}
-                                </span>
-                                <span class="text-xs font-normal" :class="aiInstructionWordCount > 100 ? 'text-red-500' : 'text-slate-400'">
+                        <div class="mb-4">
+                            <label class="flex items-center justify-between mb-1.5">
+                                <span class="text-sm font-medium text-slate-700">{{ $t('dashboard.ai_instruction_role_guidelines') }}</span>
+                                <span class="text-xs" :class="aiInstructionWordCount > 100 ? 'text-red-500' : 'text-slate-400'">
                                     {{ aiInstructionWordCount }}/100
                                 </span>
                             </label>
@@ -564,19 +495,17 @@
                                 class="w-full"
                                 :class="{ 'p-invalid': aiInstructionWordCount > 100 }"
                                 :placeholder="$t('dashboard.enter_ai_role_guidelines')"
+                                :disabled="!formData.conversation_ai_enabled"
                                 autoResize
                             />
-                            <p class="text-xs text-slate-500 mt-1.5">{{ $t('dashboard.purpose_define_ai') }}</p>
+                            <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.purpose_define_ai') }}</p>
                         </div>
 
                         <!-- AI Knowledge Base -->
-                        <div class="p-3 bg-blue-50/50 border border-blue-200 rounded-lg">
-                            <label class="block text-sm font-medium text-slate-700 mb-1.5 flex items-center justify-between">
-                                <span class="flex items-center gap-1.5">
-                                    <i class="pi pi-database text-blue-500"></i>
-                                    {{ $t('dashboard.ai_knowledge_base_label') }}
-                                </span>
-                                <span class="text-xs font-normal" :class="aiKnowledgeBaseWordCount > 2000 ? 'text-red-500' : 'text-slate-400'">
+                        <div class="mb-4">
+                            <label class="flex items-center justify-between mb-1.5">
+                                <span class="text-sm font-medium text-slate-700">{{ $t('dashboard.ai_knowledge_base_label') }}</span>
+                                <span class="text-xs" :class="aiKnowledgeBaseWordCount > 2000 ? 'text-red-500' : 'text-slate-400'">
                                     {{ aiKnowledgeBaseWordCount }}/2000
                                 </span>
                             </label>
@@ -586,77 +515,61 @@
                                 class="w-full"
                                 :class="{ 'p-invalid': aiKnowledgeBaseWordCount > 2000 }"
                                 :placeholder="$t('dashboard.knowledge_base_placeholder')"
+                                :disabled="!formData.conversation_ai_enabled"
                                 autoResize
                             />
-                            <p class="text-xs text-slate-500 mt-1.5">{{ $t('dashboard.knowledge_purpose') }}</p>
+                            <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.knowledge_purpose') }}</p>
                         </div>
 
-                        <!-- Advanced AI Options (Collapsible) -->
-                        <button
-                            type="button"
-                            @click="showAdvancedAi = !showAdvancedAi"
-                            class="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800 transition-colors"
-                        >
-                            <i class="pi text-xs" :class="showAdvancedAi ? 'pi-chevron-down' : 'pi-chevron-right'"></i>
-                            <span>{{ $t('dashboard.ai_welcome_messages') }}</span>
-                        </button>
-
-                        <Transition name="slide">
-                            <div v-show="showAdvancedAi" class="space-y-3 pl-4 border-l-2 border-blue-200">
-                                <!-- General Assistant Welcome -->
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1 flex items-center justify-between">
-                                        <span class="flex items-center gap-1">
-                                            <i class="pi pi-comments text-blue-400"></i>
-                                            {{ $t('dashboard.ai_welcome_general_label') }}
-                                        </span>
-                                        <span :class="aiWelcomeGeneralWordCount > 100 ? 'text-red-500' : 'text-slate-400'">
-                                            {{ aiWelcomeGeneralWordCount }}/100
-                                        </span>
-                                    </label>
-                                    <Textarea
-                                        v-model="formData.ai_welcome_general"
-                                        rows="2"
-                                        class="w-full text-sm"
-                                        :class="{ 'p-invalid': aiWelcomeGeneralWordCount > 100 }"
-                                        :placeholder="$t('dashboard.ai_welcome_general_placeholder')"
-                                        autoResize
-                                    />
-                                    <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.ai_welcome_general_hint') }}</p>
-                                </div>
-
-                                <!-- Item Assistant Welcome -->
-                                <div>
-                                    <label class="block text-xs font-medium text-slate-600 mb-1 flex items-center justify-between">
-                                        <span class="flex items-center gap-1">
-                                            <i class="pi pi-info-circle text-emerald-400"></i>
-                                            {{ $t('dashboard.ai_welcome_item_label') }}
-                                        </span>
-                                        <span :class="aiWelcomeItemWordCount > 100 ? 'text-red-500' : 'text-slate-400'">
-                                            {{ aiWelcomeItemWordCount }}/100
-                                        </span>
-                                    </label>
-                                    <Textarea
-                                        v-model="formData.ai_welcome_item"
-                                        rows="2"
-                                        class="w-full text-sm"
-                                        :class="{ 'p-invalid': aiWelcomeItemWordCount > 100 }"
-                                        :placeholder="$t('dashboard.ai_welcome_item_placeholder')"
-                                        autoResize
-                                    />
-                                    <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.ai_welcome_item_hint') }}</p>
-                                </div>
-                            </div>
-                        </Transition>
-                    </div>
-
-                    <!-- Placeholder when AI is disabled -->
-                    <div v-if="!formData.conversation_ai_enabled && !hasAiData" class="text-center py-6">
-                        <div class="w-12 h-12 mx-auto mb-3 rounded-full bg-slate-100 flex items-center justify-center">
-                            <i class="pi pi-sparkles text-slate-400"></i>
+                        <!-- Welcome Messages section -->
+                        <div class="flex items-center gap-2 mb-3 mt-5">
+                            <span class="text-[0.6875rem] font-semibold uppercase tracking-wider text-slate-400">{{ $t('dashboard.ai_section_welcome') }}</span>
+                            <span class="text-[0.625rem] text-slate-300">&middot; {{ $t('dashboard.ai_welcome_optional') }}</span>
+                            <div class="flex-1 border-t border-slate-200"></div>
                         </div>
-                        <p class="text-sm text-slate-500">{{ $t('dashboard.enable_ai_to_configure') }}</p>
+
+                        <!-- General Assistant Welcome -->
+                        <div class="mb-4">
+                            <label class="flex items-center justify-between mb-1.5">
+                                <span class="text-sm font-medium text-slate-700">{{ $t('dashboard.ai_welcome_general_label') }}</span>
+                                <span class="text-xs" :class="aiWelcomeGeneralWordCount > 100 ? 'text-red-500' : 'text-slate-400'">
+                                    {{ aiWelcomeGeneralWordCount }}/100
+                                </span>
+                            </label>
+                            <Textarea
+                                v-model="formData.ai_welcome_general"
+                                rows="2"
+                                class="w-full"
+                                :class="{ 'p-invalid': aiWelcomeGeneralWordCount > 100 }"
+                                :placeholder="$t('dashboard.ai_welcome_general_placeholder')"
+                                :disabled="!formData.conversation_ai_enabled"
+                                autoResize
+                            />
+                            <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.ai_welcome_general_hint') }}</p>
+                        </div>
+
+                        <!-- Item Assistant Welcome -->
+                        <div>
+                            <label class="flex items-center justify-between mb-1.5">
+                                <span class="text-sm font-medium text-slate-700">{{ $t('dashboard.ai_welcome_item_label') }}</span>
+                                <span class="text-xs" :class="aiWelcomeItemWordCount > 100 ? 'text-red-500' : 'text-slate-400'">
+                                    {{ aiWelcomeItemWordCount }}/100
+                                </span>
+                            </label>
+                            <Textarea
+                                v-model="formData.ai_welcome_item"
+                                rows="2"
+                                class="w-full"
+                                :class="{ 'p-invalid': aiWelcomeItemWordCount > 100 }"
+                                :placeholder="$t('dashboard.ai_welcome_item_placeholder')"
+                                :disabled="!formData.conversation_ai_enabled"
+                                autoResize
+                            />
+                            <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.ai_welcome_item_hint') }}</p>
+                        </div>
                     </div>
+
+
                 </div>
             </Transition>
         </div>
@@ -710,6 +623,7 @@ import MyDialog from '@/components/MyDialog.vue';
 import { MdEditor } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
 import { SUPPORTED_LANGUAGES } from '@/stores/translation';
+import { getLanguageFlag } from '@/utils/formatters';
 import { usePhysicalCards } from '@/composables/usePhysicalCards';
 import { supabase } from '@/lib/supabase';
 import { useToast } from 'primevue/usetoast';
@@ -730,6 +644,10 @@ const props = defineProps({
     loading: {
         type: Boolean,
         default: false
+    },
+    sections: {
+        type: Array,
+        default: () => ['accessMode', 'artwork', 'details', 'ai']
     }
 });
 
@@ -746,9 +664,6 @@ const pricingVars = {
     aiCost: SubscriptionConfig.premium.aiEnabledSessionCostUsd,
     nonAiCost: SubscriptionConfig.premium.aiDisabledSessionCostUsd
 };
-
-// Get default AI instruction from environment
-const DEFAULT_AI_INSTRUCTION = import.meta.env.VITE_DEFAULT_AI_INSTRUCTION || "You are a knowledgeable and friendly AI assistant for museum and exhibition visitors. Provide accurate, engaging, and educational explanations about exhibits and artifacts. Keep responses conversational and easy to understand. If you don't know something, politely say so rather than making up information.";
 
 const formData = reactive({
     id: null,
@@ -770,22 +685,26 @@ const formData = reactive({
     default_daily_session_limit: 500 // Default daily limit for new QR codes
 });
 
+// Single-section mode (when opened from contextual edit buttons)
+const isSingleSection = computed(() => props.sections.length === 1);
+const isDirectContent = computed(() => isSingleSection.value && props.isInDialog);
+
 // Section expansion state - all expanded by default for create, only first section for edit
 const expandedSections = reactive({
     accessMode: true,
     artwork: true,
     details: true,
-    contentMode: true,
     ai: false // AI section collapsed by default for cleaner form
 });
 
 // Advanced options visibility
 const showAdvancedAccess = ref(false);
-const showAdvancedAi = ref(false);
+
 
 // AI generation state
 const toast = useToast();
 const isGeneratingAi = ref(false);
+const isOptimizingDescription = ref(false);
 
 const generateAiSettings = async () => {
     if (isGeneratingAi.value) return;
@@ -835,9 +754,6 @@ const generateAiSettings = async () => {
             formData.ai_welcome_general = result.data.ai_welcome_general || '';
             formData.ai_welcome_item = result.data.ai_welcome_item || '';
 
-            // Auto-expand advanced section to show welcome messages
-            showAdvancedAi.value = true;
-
             toast.add({
                 severity: 'success',
                 summary: t('dashboard.ai_generate_success'),
@@ -858,140 +774,74 @@ const generateAiSettings = async () => {
     }
 };
 
+const descriptionWordCount = computed(() => {
+    return formData.description.trim().split(/\s+/).filter(w => w.length > 0).length;
+});
+
+const optimizeDescription = async () => {
+    if (isOptimizingDescription.value) return;
+
+    isOptimizingDescription.value = true;
+
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            throw new Error('Please sign in to use this feature');
+        }
+
+        const payload = {
+            cardName: formData.name,
+            description: formData.description,
+            originalLanguage: formData.original_language,
+        };
+
+        if (props.isEditMode && formData.id) {
+            payload.cardId = formData.id;
+        }
+
+        const backendUrl = import.meta.env.VITE_BACKEND_URL;
+        const response = await fetch(`${backendUrl}/api/ai/optimize-description`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${session.access_token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Optimization failed');
+        }
+
+        const result = await response.json();
+
+        if (result.success && result.data?.description) {
+            formData.description = result.data.description;
+            toast.add({
+                severity: 'success',
+                summary: t('dashboard.ai_generate_success'),
+                detail: t('dashboard.description_optimized_detail'),
+                life: 3000
+            });
+        }
+    } catch (error) {
+        console.error('Description optimization failed:', error);
+        toast.add({
+            severity: 'error',
+            summary: t('dashboard.ai_generate_error'),
+            detail: error.message || t('dashboard.ai_generate_error_detail'),
+            life: 5000
+        });
+    } finally {
+        isOptimizingDescription.value = false;
+    }
+};
+
 // Toggle section expansion
 const toggleSection = (section) => {
     expandedSections[section] = !expandedSections[section];
 };
-
-// Helper to get content mode label
-const getContentModeLabel = (mode) => {
-    const modeOption = contentModeOptions.value.find(m => m.value === mode);
-    return modeOption?.label || mode;
-};
-
-// Content Mode Options with descriptions and guidance
-// 4 base layouts, with grouping as a separate option
-const contentModeOptions = computed(() => [
-    {
-        value: 'single',
-        label: t('dashboard.mode_single'),
-        icon: 'pi-file',
-        description: t('dashboard.mode_single_desc'),
-        guidance: t('dashboard.mode_single_guidance'),
-        color: 'purple',
-        supportsGrouping: false
-    },
-    {
-        value: 'grid',
-        label: t('dashboard.mode_grid'),
-        icon: 'pi-th-large',
-        description: t('dashboard.mode_grid_desc'),
-        guidance: t('dashboard.mode_grid_guidance'),
-        color: 'amber',
-        supportsGrouping: true
-    },
-    {
-        value: 'list',
-        label: t('dashboard.mode_list'),
-        icon: 'pi-list',
-        description: t('dashboard.mode_list_desc'),
-        guidance: t('dashboard.mode_list_guidance'),
-        color: 'blue',
-        supportsGrouping: true
-    },
-    {
-        value: 'cards',
-        label: t('dashboard.mode_cards'),
-        icon: 'pi-clone',
-        description: t('dashboard.mode_cards_desc'),
-        guidance: t('dashboard.mode_cards_guidance'),
-        color: 'cyan',
-        supportsGrouping: true
-    }
-]);
-
-// Check if current mode supports grouping
-const currentModeSupportsGrouping = computed(() => {
-    const mode = contentModeOptions.value.find(m => m.value === formData.content_mode);
-    return mode?.supportsGrouping ?? false;
-});
-
-// Reset grouping when switching to a mode that doesn't support it
-watch(() => formData.content_mode, (newMode) => {
-    const mode = contentModeOptions.value.find(m => m.value === newMode);
-    if (!mode?.supportsGrouping) {
-        formData.is_grouped = false;
-        formData.group_display = 'expanded';
-    }
-});
-
-// No migration needed when switching is_grouped - just a display change
-// Layer 1 = categories (shown in grouped mode, hidden in flat mode)
-// Layer 2 = content items (always the actual content)
-
-// Get current mode details
-const currentModeDetails = computed(() => {
-    return contentModeOptions.value.find(m => m.value === formData.content_mode) || contentModeOptions.value[2]; // Default to 'list'
-});
-
-// Filter content modes based on access mode
-// All modes available for both access types
-const filteredContentModeOptions = computed(() => {
-    // All modes available for both access types
-    // Reorder to show most relevant first for digital
-    if (formData.billing_type === 'digital') {
-        // For digital: List is most common, then Single, Grid, Cards
-        const order = ['list', 'single', 'grid', 'cards'];
-        return [...contentModeOptions.value].sort((a, b) => 
-            order.indexOf(a.value) - order.indexOf(b.value)
-        );
-    }
-    return contentModeOptions.value;
-});
-
-// Mode requirements validation
-const currentModeRequirements = computed(() => {
-    // If grouped mode, show grouped requirements
-    if (formData.is_grouped) {
-        return [
-            { key: 'parents', label: t('dashboard.req_parent_items_categories'), met: true },
-            { key: 'children', label: t('dashboard.req_child_items'), met: true }
-        ];
-    }
-    
-    switch (formData.content_mode) {
-        case 'single':
-            return [
-                { key: 'one_item', label: t('dashboard.req_one_content_item'), met: true } // Validated in Content tab
-            ];
-        case 'list':
-            return [
-                { key: 'items', label: t('dashboard.req_content_items'), met: true } // Validated in Content tab
-            ];
-        case 'grid':
-            return [
-                { key: 'items', label: t('dashboard.req_content_items_with_images'), met: true } // Validated in Content tab
-            ];
-        case 'cards':
-            return [
-                { key: 'items', label: t('dashboard.req_content_items'), met: true } // Validated in Content tab
-            ];
-        default:
-            return [];
-    }
-});
-
-// Check if all mode requirements are met
-const modeRequirementsMet = computed(() => {
-    return currentModeRequirements.value.every(req => req.met);
-});
-
-// Dynamic class for requirements box
-const modeRequirementsClass = computed(() => {
-    return modeRequirementsMet.value 
-        ? 'bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200'
-        : 'bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200';
-});
 
 // Language options for dropdown
 const languageOptions = computed(() => {
@@ -1001,23 +851,6 @@ const languageOptions = computed(() => {
         flag: getLanguageFlag(code)
     }));
 });
-
-// Helper function to get language flag
-const getLanguageFlag = (langCode) => {
-    const flagMap = {
-        en: '🇬🇧',
-        'zh-Hant': '🇹🇼',
-        'zh-Hans': '🇨🇳',
-        ja: '🇯🇵',
-        ko: '🇰🇷',
-        es: '🇪🇸',
-        fr: '🇫🇷',
-        ru: '🇷🇺',
-        ar: '🇸🇦',
-        th: '🇹🇭',
-    };
-    return flagMap[langCode] || '🌐';
-};
 
 // Word count computed properties
 const aiInstructionWordCount = computed(() => {
@@ -1119,6 +952,13 @@ onMounted(() => {
     document.documentElement.style.setProperty('--card-aspect-ratio', aspectRatio);
 });
 
+// Auto-expand visible sections when sections prop changes (e.g., single-section mode)
+watch(() => props.sections, (newSections) => {
+    newSections.forEach(section => {
+        expandedSections[section] = true;
+    });
+}, { immediate: true });
+
 // Watch for daily limit unlimited toggle
 watch(isDailyLimitUnlimited, (isUnlimited) => {
     if (isUnlimited) {
@@ -1138,11 +978,18 @@ watch(() => props.cardProp, (newVal) => {
 
 // Check if there's existing AI data (for showing preserved data notice)
 const hasAiData = computed(() => {
-    return !!(formData.ai_instruction?.trim() || 
-              formData.ai_knowledge_base?.trim() || 
-              formData.ai_welcome_general?.trim() || 
+    return !!(formData.ai_instruction?.trim() ||
+              formData.ai_knowledge_base?.trim() ||
+              formData.ai_welcome_general?.trim() ||
               formData.ai_welcome_item?.trim());
 });
+
+// Auto-enable AI when opening as direct single-section dialog
+// with no existing AI data (matches "Enable & Configure" intent)
+if (isDirectContent.value && props.sections.includes('ai')
+    && !formData.conversation_ai_enabled && !hasAiData.value) {
+    formData.conversation_ai_enabled = true;
+}
 
 // Note: AI data is intentionally preserved when AI is disabled
 // This allows users to re-enable AI and have their data restored immediately
@@ -1647,34 +1494,6 @@ defineExpose({
     box-shadow: 0 0 0 3px rgba(6, 182, 212, 0.1);
 }
 
-/* ===== Content Mode Cards ===== */
-.content-mode-card {
-    padding: 0.75rem;
-    border-radius: 0.5rem;
-    border: 2px solid transparent;
-    transition: all 0.2s ease;
-    cursor: pointer;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-}
-
-.content-mode-card--unselected {
-    border-color: #e2e8f0;
-    background: white;
-}
-
-.content-mode-card--unselected:hover {
-    border-color: #cbd5e1;
-    background: #f8fafc;
-}
-
-.content-mode-card--selected {
-    border-color: #3b82f6;
-    background: #eff6ff;
-}
-
 /* ===== Card Artwork Container ===== */
 .card-artwork-container {
     aspect-ratio: var(--card-aspect-ratio, 2/3);
@@ -1774,10 +1593,6 @@ defineExpose({
 
     .access-mode-card {
         padding: 0.75rem;
-    }
-
-    .content-mode-card {
-        padding: 0.5rem;
     }
 
     .card-artwork-container {

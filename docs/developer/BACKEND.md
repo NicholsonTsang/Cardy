@@ -87,7 +87,7 @@ export const redis = new Redis({
 | Pattern | Purpose | TTL |
 |---------|---------|-----|
 | `budget:user:{userId}:month:{YYYY-MM}` | Available monthly budget | End of month |
-| `session:dedup:{sessionId}:{cardId}` | Session deduplication | 5 minutes |
+| `session:dedup:{sessionId}:{cardId}` | Session deduplication | 30 minutes |
 | `access:card:{cardId}:date:{date}:scans` | Daily scan count | 24 hours |
 | `card:ai:{cardId}` | AI-enabled status cache | 1 hour |
 | `card:content:{cardId}` | Content cache | 10 minutes |
@@ -108,7 +108,7 @@ const remaining = await redis.decrby(
 const dedupKey = `session:dedup:${sessionId}:${cardId}`
 const isNew = await redis.setnx(dedupKey, '1')
 if (isNew) {
-  await redis.expire(dedupKey, 300) // 5 min TTL
+  await redis.expire(dedupKey, 1800) // 30 min TTL
 }
 ```
 

@@ -1092,6 +1092,7 @@ const newBatch = computed(() => ({
 
 // Default placeholder image
 import cardPlaceholder from '@/assets/images/card-placeholder.jpg'
+import { formatDate, formatNumber } from '@/utils/formatters'
 
 // Computed
 const readyToPrintBatches = computed(() => {
@@ -1719,19 +1720,6 @@ const formatPaymentStatus = (status) => {
   }
 }
 
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
-}
-
-const formatNumber = (num) => {
-  if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
-  if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
-  return num.toLocaleString()
-}
 
 // Print status helpers
 const getPrintStatusLabel = (status) => {

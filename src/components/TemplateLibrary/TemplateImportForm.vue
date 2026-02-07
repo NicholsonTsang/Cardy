@@ -92,11 +92,11 @@
         <small class="field-hint">{{ $t('templates.custom_name_hint') }}</small>
       </div>
 
-      <!-- Billing Type -->
-      <div class="form-field">
+      <!-- Billing Type - Only show selector when physical cards are enabled -->
+      <div v-if="isPhysicalCardsEnabled" class="form-field">
         <label>{{ $t('templates.billing_type') }}</label>
         <div class="billing-options">
-          <div 
+          <div
             class="billing-option"
             :class="{ selected: selectedBillingType === 'physical' }"
             @click="selectedBillingType = 'physical'"
@@ -105,7 +105,7 @@
             <span class="option-label">{{ $t('templates.billing_physical') }}</span>
             <span class="option-description">{{ $t('templates.billing_physical_desc') }}</span>
           </div>
-          <div 
+          <div
             class="billing-option"
             :class="{ selected: selectedBillingType === 'digital' }"
             @click="selectedBillingType = 'digital'"
@@ -148,12 +148,14 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useTemplateLibraryStore, type ContentTemplate } from '@/stores/templateLibrary'
 import { useSubscriptionStore } from '@/stores/subscription'
-import { SUPPORTED_LANGUAGES, type LanguageCode } from '@/stores/translation'
+import { getLanguageFlag, getLanguageName } from '@/utils/formatters'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
+import { usePhysicalCards } from '@/composables/usePhysicalCards'
 
 const { t } = useI18n()
+const { isPhysicalCardsEnabled, getDefaultBillingType } = usePhysicalCards()
 const templateStore = useTemplateLibraryStore()
 const subscriptionStore = useSubscriptionStore()
 
@@ -169,7 +171,12 @@ const emit = defineEmits<{
 
 // Form state
 const customName = ref('')
-const selectedBillingType = ref<'physical' | 'digital'>(props.template.billing_type as 'physical' | 'digital' || 'digital')
+// Default to feature flag value if template doesn't specify, or override to 'digital' when physical cards disabled
+const selectedBillingType = ref<'physical' | 'digital'>(
+  isPhysicalCardsEnabled.value
+    ? (props.template.billing_type as 'physical' | 'digital' || 'digital')
+    : 'digital'
+)
 // Use defaultLanguage from browse view if provided, otherwise use template's original language
 const selectedLanguage = ref<string>(
   props.defaultLanguage && isLanguageAvailable(props.defaultLanguage) 
@@ -271,28 +278,6 @@ function getModeLabel(mode: string): string {
     inline: t('templates.mode_inline')
   }
   return labels[mode] || mode
-}
-
-// Language flags - aligned with SUPPORTED_LANGUAGES from translation store
-const LANGUAGE_FLAGS: Record<LanguageCode, string> = {
-  'en': '🇺🇸',
-  'zh-Hant': '🇭🇰',
-  'zh-Hans': '🇨🇳',
-  'ja': '🇯🇵',
-  'ko': '🇰🇷',
-  'es': '🇪🇸',
-  'fr': '🇫🇷',
-  'ru': '🇷🇺',
-  'ar': '🇸🇦',
-  'th': '🇹🇭'
-}
-
-function getLanguageFlag(lang: string): string {
-  return LANGUAGE_FLAGS[lang as LanguageCode] || '🌐'
-}
-
-function getLanguageName(lang: string): string {
-  return SUPPORTED_LANGUAGES[lang as LanguageCode] || lang
 }
 
 async function handleImport() {

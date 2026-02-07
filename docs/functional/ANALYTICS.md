@@ -68,11 +68,11 @@ Each QR code tracks:
 A session is recorded when:
 - Visitor scans QR code and loads content
 - Page fully loads (not just the scan)
-- At least 5 minutes since last session from same visitor
+- At least 30 minutes since last session from same visitor
 
 ### What Doesn't Count?
 
-- Same visitor within 5 minutes (deduplicated)
+- Same visitor within 30 minutes (deduplicated)
 - Your own testing from dashboard preview
 - Failed loads (network errors)
 
@@ -258,14 +258,14 @@ Upgrade when:
 ### Sessions Not Showing
 
 **Possible causes:**
-- Analytics delay (up to 5 minutes)
+- Analytics delay (up to 30 minutes)
 - Session was deduplicated
 - Network issue during load
 
 **Solutions:**
 - Wait and refresh
 - Check specific QR code stats
-- Test with fresh session (wait 5 min)
+- Test with fresh session (wait 30 min)
 
 ### Unexpected Spike in Usage
 

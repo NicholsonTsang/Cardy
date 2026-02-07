@@ -17,79 +17,50 @@
 
         <!-- Card Details -->
         <div v-else class="flex-1 flex flex-col">
-            <!-- Card Header -->
-            <div class="p-3 sm:p-4 lg:p-6 border-b border-slate-200 bg-white">
-                <div class="flex items-center justify-between gap-2">
-                    <div class="min-w-0 flex-1">
-                        <h2 class="text-base sm:text-lg lg:text-xl font-semibold text-slate-900 truncate">{{ selectedCard.name }}</h2>
-                        <p class="text-xs sm:text-sm lg:text-base text-slate-600 mt-0.5 sm:mt-1">{{ t('dashboard.manage_card_subtitle') }}</p>
-                    </div>
-                    <div class="flex-shrink-0">
-                        <Button 
-                            :label="t('common.export')" 
-                            icon="pi pi-download" 
-                            @click="showExportDialog = true"
-                            class="export-button bg-blue-600 hover:bg-blue-700 text-white border-0 text-xs sm:text-sm"
-                            size="small"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            <!-- Export Dialog -->
-            <Dialog 
-                v-model:visible="showExportDialog"
-                modal 
-                :header="t('common.export_card_data')"
-                :style="{ width: '40rem' }"
-                :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
-                class="export-dialog standardized-dialog"
-            >
-                <CardExport 
-                    :card="selectedCard"
-                    @exported="handleExportComplete"
-                    @cancel="handleExportCancel"
-                />
-            </Dialog>
-
-            <!-- Tabs -->
+            <!-- Tabs with Step Indicators -->
             <Tabs :value="activeTab" @update:value="$emit('update:activeTab', $event)" class="flex-1 flex flex-col">
                 <TabList class="flex-shrink-0 border-b border-slate-200 bg-white px-1 sm:px-3 lg:px-6 overflow-x-auto scrollbar-hide">
-                    <Tab v-for="(tab, index) in tabs" :key="index" :value="index.toString()" 
-                         class="px-1.5 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 font-medium text-xs sm:text-sm text-slate-600 hover:text-slate-900 transition-colors whitespace-nowrap flex-shrink-0">
+                    <Tab v-for="(tab, index) in tabs" :key="index" :value="index.toString()"
+                         class="px-1.5 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 font-medium text-xs sm:text-sm text-slate-600 hover:text-slate-900 transition-colors whitespace-nowrap flex-shrink-0"
+                         v-tooltip.bottom="tab.hint">
                         <i :class="tab.icon" class="mr-0.5 sm:mr-1 lg:mr-2 text-xs sm:text-sm"></i>
                         <span class="hidden sm:inline">{{ tab.label }}</span>
                         <span class="sm:hidden">{{ tab.label.split(' ')[0] }}</span>
+                        <!-- Action needed indicator when no content items -->
+                        <span v-if="index === 1 && contentCount === 0" class="ml-1 w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
                     </Tab>
                 </TabList>
                 <TabPanels class="flex-1 overflow-hidden bg-slate-50">
                     <TabPanel v-for="(tab, index) in tabs" :value="index.toString()" class="h-full">
                         <div class="h-full overflow-y-auto px-0 py-2 sm:p-3 lg:p-4 xl:p-6">
                             <!-- General Tab -->
-                            <CardGeneral 
+                            <CardView
                                 v-if="getTabComponent(index) === 'general'"
                                 :cardProp="selectedCard"
-                                :loading="loading"
                                 :updateCardFn="updateCardFn"
+                                :contentCount="contentCount"
                                 @update-card="$emit('update-card', $event)"
-                                @cancel-edit="$emit('cancel-edit')"
-                                @delete-card-requested="$emit('delete-card', $event)"
+                                @delete-requested="$emit('delete-card', $event)"
+                                @navigate-tab="$emit('update:activeTab', $event)"
+                                @show-preview="showPreviewDialog = true"
                             />
                             <!-- Content Tab -->
-                            <CardContent 
-                                v-if="getTabComponent(index) === 'content'" 
-                                :cardId="selectedCard.id" 
+                            <CardContent
+                                v-if="getTabComponent(index) === 'content'"
+                                :cardId="selectedCard.id"
+                                :card="selectedCard"
                                 :cardAiEnabled="selectedCard.conversation_ai_enabled"
-                                :contentMode="selectedCard.content_mode || 'list'" 
+                                :contentMode="selectedCard.content_mode || 'list'"
                                 :isGrouped="selectedCard.is_grouped || false"
                                 :groupDisplay="selectedCard.group_display || 'expanded'"
-                                :key="selectedCard.id + '-content'" 
+                                :key="selectedCard.id + '-content'"
+                                @update-card="$emit('update-card', $event)"
                             />
                             <!-- Issuance Tab (Physical Cards Only) -->
                             <CardIssuanceCheckout 
                                 v-if="getTabComponent(index) === 'issuance'" 
                                 :cardId="selectedCard.id" 
-                                :key="selectedCard.id + '-issurance'"
+                                :key="selectedCard.id + '-issuance'"
                                 @batch-created="handleBatchCreated"
                             />
                             <!-- QR & Access Tab (Physical Cards - batch-based) -->
@@ -116,17 +87,27 @@
                                 :key="selectedCard.id + '-digital-access'"
                                 @updated="handleDigitalAccessUpdated"
                             />
-                            <!-- Preview Tab -->
-                            <MobilePreview 
-                                v-if="getTabComponent(index) === 'preview'" 
-                                :cardProp="selectedCard" 
-                                :key="`${selectedCard.id}-mobile-preview-${mobilePreviewRefreshKey}`"
-                            />
                         </div>
                     </TabPanel>
                 </TabPanels>
             </Tabs>
         </div>
+        <!-- Preview Dialog -->
+        <Dialog
+            v-model:visible="showPreviewDialog"
+            modal
+            :header="t('dashboard.mobile_preview')"
+            :style="{ width: '28rem' }"
+            :breakpoints="{ '768px': '90vw' }"
+            :dismissableMask="true"
+            class="standardized-dialog"
+        >
+            <MobilePreview
+                v-if="showPreviewDialog"
+                :cardProp="selectedCard"
+                :key="`${selectedCard.id}-preview-dialog`"
+            />
+        </Dialog>
     </div>
 </template>
 
@@ -138,18 +119,20 @@ import TabList from 'primevue/tablist';
 import Tab from 'primevue/tab';
 import TabPanels from 'primevue/tabpanels';
 import TabPanel from 'primevue/tabpanel';
-import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
-import CardGeneral from '@/components/CardComponents/Card.vue';
+import CardView from '@/components/CardComponents/CardView.vue';
 import CardContent from '@/components/CardContent/CardContent.vue';
 import CardIssuanceCheckout from '@/components/CardIssuanceCheckout.vue';
 import CardAccessQR from '@/components/CardComponents/CardAccessQR.vue';
 import DigitalAccessQR from '@/components/DigitalAccess/DigitalAccessQR.vue';
 import MobilePreview from '@/components/CardComponents/MobilePreview.vue';
-import CardExport from '@/components/Card/Export/CardExport.vue';
 import DigitalAccessSettings from '@/components/DigitalAccess/DigitalAccessSettings.vue';
+import { usePhysicalCards } from '@/composables/usePhysicalCards';
+import { useContentItemStore } from '@/stores/contentItem';
 
 const { t } = useI18n();
+const { isPhysicalCardsEnabled } = usePhysicalCards();
+const contentItemStore = useContentItemStore();
 
 const props = defineProps({
     selectedCard: {
@@ -182,7 +165,6 @@ const emit = defineEmits([
     'batch-changed',
     'update:activeTab',
     'update-card',
-    'cancel-edit',
     'delete-card',
     'card-imported'
 ]);
@@ -192,24 +174,11 @@ function handleCardImported() {
     emit('card-imported');
 }
 
-// Handle export completion
-function handleExportComplete() {
-    showExportDialog.value = false;
-}
-
-// Handle export cancellation
-function handleExportCancel() {
-    showExportDialog.value = false;
-}
-
-// Counter to force MobilePreview refresh when tab is clicked
-const mobilePreviewRefreshKey = ref(0);
+// Preview dialog state
+const showPreviewDialog = ref(false);
 
 // Counter to force CardAccessQR refresh when batch is created
 const accessQRRefreshKey = ref(0);
-
-// Export dialog state
-const showExportDialog = ref(false);
 
 // Handle batch created event from CardIssuanceCheckout
 const handleBatchCreated = async (batchId) => {
@@ -217,47 +186,65 @@ const handleBatchCreated = async (batchId) => {
     accessQRRefreshKey.value++;
 };
 
-// Tabs are dynamic based on billing_type (access mode)
+// Tabs are dynamic based on billing_type (access mode) and feature flags
+// Each tab includes a hint for tooltips to help users understand the workflow
 const tabs = computed(() => {
     const baseTabs = [
-        { label: t('dashboard.general'), icon: 'pi pi-cog' },
-        { label: t('dashboard.content'), icon: 'pi pi-list' }
+        {
+            label: t('dashboard.general'),
+            icon: 'pi pi-cog',
+            hint: t('dashboard.tab_hint_general')
+        },
+        {
+            label: t('dashboard.content'),
+            icon: 'pi pi-list',
+            hint: t('dashboard.tab_hint_content')
+        }
     ];
-    
-    // Physical cards have Issuance tab (for batch printing)
-    if (props.selectedCard?.billing_type !== 'digital') {
-        baseTabs.push({ label: t('dashboard.card_issuance'), icon: 'pi pi-credit-card' });
+
+    // Physical cards have Issuance tab (for batch printing) - only when feature is enabled
+    if (props.selectedCard?.billing_type !== 'digital' && isPhysicalCardsEnabled.value) {
+        baseTabs.push({
+            label: t('dashboard.card_issuance'),
+            icon: 'pi pi-credit-card',
+            hint: t('dashboard.tab_hint_issuance')
+        });
     } else {
-        // Digital cards have Control Settings tab
-        baseTabs.push({ label: t('digital_access.control_settings'), icon: 'pi pi-sliders-h' });
+        // Digital cards (or physical cards when feature disabled) have Control Settings tab
+        baseTabs.push({
+            label: t('digital_access.control_settings'),
+            icon: 'pi pi-sliders-h',
+            hint: t('dashboard.tab_hint_control')
+        });
     }
-    
+
     // Both have QR & Access tab
-    baseTabs.push({ label: t('dashboard.qr_access'), icon: 'pi pi-qrcode' });
-    
-    // Both have Mobile Preview tab
-    baseTabs.push({ label: t('dashboard.mobile_preview'), icon: 'pi pi-mobile' });
-    
+    baseTabs.push({
+        label: t('dashboard.qr_access'),
+        icon: 'pi pi-qrcode',
+        hint: t('dashboard.tab_hint_qr')
+    });
+
     return baseTabs;
 });
 
-// Map tab index to component type based on billing_type
+// Map tab index to component type based on billing_type and feature flags
 const getTabComponent = (index) => {
     const isDigital = props.selectedCard?.billing_type === 'digital';
-    
+    // Treat physical cards as digital when feature is disabled (no issuance tab)
+    const showPhysicalTabs = !isDigital && isPhysicalCardsEnabled.value;
+
     if (index === 0) return 'general';
     if (index === 1) return 'content';
-    
-    if (isDigital) {
-        // Digital: [General, Content, Digital Access, QR, Preview]
-        if (index === 2) return 'digital-access';
-        if (index === 3) return 'qr';
-        if (index === 4) return 'preview';
-    } else {
-        // Physical: [General, Content, Issuance, QR, Preview]
+
+    if (showPhysicalTabs) {
+        // Physical with feature enabled: [General, Content, Issuance, QR]
         if (index === 2) return 'issuance';
         if (index === 3) return 'qr';
-        if (index === 4) return 'preview';
+    } else {
+        // Digital or Physical with feature disabled: [General, Content, Digital Access, QR]
+        if (index === 2) return 'digital-access';
+        if (index === 3) return 'qr';
     }
     return null;
 };
@@ -272,26 +259,36 @@ const emptyStateTitle = computed(() => {
 });
 
 const emptyStateMessage = computed(() => {
-    return props.hasCards 
-        ? t('dashboard.choose_card_to_view') 
+    return props.hasCards
+        ? t('dashboard.choose_card_to_view')
         : t('dashboard.create_first_card_instruction');
 });
 
-// Watch for tab changes and refresh MobilePreview when preview tab (index 4) is activated
-watch(() => props.activeTab, (newTab, oldTab) => {
-    if (newTab === '4') {
-        // Increment the refresh key to force MobilePreview component to re-mount
-        mobilePreviewRefreshKey.value += 1;
+// Content count for setup guide
+const contentCount = ref(0);
+
+const fetchContentCount = async (cardId) => {
+    const result = await contentItemStore.getContentItemsCount(cardId);
+    contentCount.value = result?.total_count ?? 0;
+};
+
+// Fetch content count when card changes
+watch(() => props.selectedCard?.id, (newId) => {
+    if (newId) fetchContentCount(newId);
+    else contentCount.value = 0;
+}, { immediate: true });
+
+// Re-fetch when returning to General tab (user may have added content)
+watch(() => props.activeTab, (newTab) => {
+    if (newTab === '0' && props.selectedCard?.id) {
+        fetchContentCount(props.selectedCard.id);
     }
 });
+
+
 </script>
 
 <style scoped>
-/* Custom export dialog styles */
-:deep(.export-dialog .p-dialog-content) {
-  padding: 0;
-}
-
 /* Hide scrollbar for TabList while maintaining scroll functionality */
 .scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */

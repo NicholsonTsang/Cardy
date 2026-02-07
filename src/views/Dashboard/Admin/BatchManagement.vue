@@ -143,7 +143,7 @@
                   <Column field="created_at" :header="$t('dashboard.created')" sortable style="min-width: 180px">
                     <template #body="{ data }">
                       <span class="text-sm text-slate-600">
-                        {{ formatDate(data.created_at) }}
+                        {{ formatDateTime(data.created_at) }}
                       </span>
                     </template>
                   </Column>
@@ -282,7 +282,7 @@
 
                   <Column field="requested_at" :header="$t('admin.requested_at')" sortable>
                     <template #body="{ data }">
-                      <span class="text-sm text-slate-600">{{ formatDate(data.requested_at) }}</span>
+                      <span class="text-sm text-slate-600">{{ formatDateTime(data.requested_at) }}</span>
                     </template>
                   </Column>
 
@@ -578,7 +578,7 @@
               </div>
               <div class="flex justify-between">
                 <span class="text-slate-600">{{ $t('admin.requested_at') }}:</span>
-                <span class="font-medium text-slate-900">{{ formatDate(selectedPrintRequest.requested_at) }}</span>
+                <span class="font-medium text-slate-900">{{ formatDateTime(selectedPrintRequest.requested_at) }}</span>
               </div>
             </div>
           </div>
@@ -610,7 +610,7 @@
                     severity="secondary" 
                     class="text-xs"
                   />
-                  <span class="text-xs text-slate-500">{{ formatDate(feedback.created_at) }}</span>
+                  <span class="text-xs text-slate-500">{{ formatDateTime(feedback.created_at) }}</span>
                 </div>
               </div>
               <pre class="text-sm text-slate-800 whitespace-pre-wrap">{{ feedback.message }}</pre>
@@ -656,6 +656,7 @@ import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
 import Dialog from 'primevue/dialog'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
+import { formatDateTime } from '@/utils/formatters'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -872,16 +873,6 @@ const refreshData = async () => {
   } finally {
     isRefreshing.value = false
   }
-}
-
-const formatDate = (dateString) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
 }
 
 const getPaymentStatusSeverity = (status) => {

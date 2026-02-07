@@ -14,6 +14,7 @@ Technical documentation for developers working on the ExperienceQR codebase.
 | [Development Workflow](DEVELOPMENT_WORKFLOW.md) | Setup, git workflow, deployment |
 | [Billing](BILLING.md) | Subscription tiers, Stripe, credits, session tracking |
 | [AI Integration](AI_INTEGRATION.md) | Chat, TTS, realtime voice, OpenAI |
+| [AI Instruction Composition](AI_INSTRUCTION_COMPOSITION.md) | Prompt structure, optimization, best practices |
 
 ## Component Documentation
 

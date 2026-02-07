@@ -111,7 +111,7 @@ const router = createRouter({
               path: 'admin/batches',
               name: 'admin-batches',
               component: () => import('@/views/Dashboard/Admin/BatchManagement.vue'),
-              meta: { requiredRole: 'admin' }
+              meta: { requiredRole: 'admin', requiresPhysicalCards: true }
             },
             {
               path: 'admin/credits',
@@ -353,6 +353,12 @@ const getDefaultRouteForRole = (userRole: string | undefined, lang: LanguageCode
   return { name: 'projects', params: { lang } }
 }
 
+// Check if physical cards feature is enabled via environment variable
+const isPhysicalCardsEnabled = (): boolean => {
+  const envValue = import.meta.env.VITE_ENABLE_PHYSICAL_CARDS
+  return envValue !== 'false'
+}
+
 // Track auth initialization
 let authInitialized = false
 
@@ -419,7 +425,20 @@ router.beforeEach(async (to, from, next) => {
     } else {
       // Check role requirements
       if (hasRequiredRole(userRole, requiredRole)) {
-        next()
+        // Check if route requires physical cards feature
+        const requiresPhysicalCards = to.matched.some(record => record.meta.requiresPhysicalCards)
+        if (requiresPhysicalCards && !isPhysicalCardsEnabled()) {
+          toast.add({
+            severity: 'info',
+            summary: 'Feature Disabled',
+            detail: 'Physical cards feature is not enabled.',
+            group: 'br',
+            life: 3000
+          })
+          next(getDefaultRouteForRole(userRole, currentLang))
+        } else {
+          next()
+        }
       } else {
         toast.add({
           severity: 'error',

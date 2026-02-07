@@ -68,6 +68,7 @@ import { useI18n } from 'vue-i18n'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
+import { formatDate } from '@/utils/formatters'
 
 const { t } = useI18n()
 
@@ -106,13 +107,6 @@ const getPaymentSeverity = (status: string) => {
   }
 }
 
-const formatDate = (dateString: string) => {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric'
-  })
-}
 </script>
 
 <style scoped>

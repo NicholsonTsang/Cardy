@@ -384,6 +384,7 @@ import Tag from 'primevue/tag'
 import InputNumber from 'primevue/inputnumber'
 import Divider from 'primevue/divider'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
+import { formatDate } from '@/utils/formatters'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -408,14 +409,6 @@ onMounted(async () => {
     creditStore.fetchConsumptions()
   ])
 })
-
-function formatDate(dateString: string) {
-  return new Date(dateString).toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
-}
 
 function formatTime(dateString: string) {
   return new Date(dateString).toLocaleTimeString(undefined, {

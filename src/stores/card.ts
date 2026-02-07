@@ -154,13 +154,11 @@ export const useCardStore = defineStore('card', () => {
                 const originalFileName = `${uuidv4()}_original.${fileExt}`;
                 const originalFilePath = `${user.id}/card-images/${originalFileName}`;
                 
-                console.log('Uploading original image to:', originalFilePath);
                 const { error: uploadError } = await supabase.storage
                     .from(USER_FILES_BUCKET)
                     .upload(originalFilePath, cardData.imageFile);
                     
                 if (uploadError) throw uploadError;
-                console.log('Original image uploaded successfully');
 
                 const { data: { publicUrl } } = supabase.storage
                     .from(USER_FILES_BUCKET)
@@ -169,7 +167,6 @@ export const useCardStore = defineStore('card', () => {
                 if (publicUrl) {
                     originalImageUrl = publicUrl;
                 }
-                console.log('Original image URL:', publicUrl);
             }
             
             // Upload cropped image if provided
@@ -178,13 +175,11 @@ export const useCardStore = defineStore('card', () => {
                 const croppedFileName = `${uuidv4()}_cropped.${fileExt}`;
                 const croppedFilePath = `${user.id}/card-images/${croppedFileName}`;
                 
-                console.log('Uploading cropped image to:', croppedFilePath);
                 const { error: uploadError } = await supabase.storage
                     .from(USER_FILES_BUCKET)
                     .upload(croppedFilePath, cardData.croppedImageFile);
                     
                 if (uploadError) throw uploadError;
-                console.log('Cropped image uploaded successfully');
 
                 const { data: { publicUrl } } = supabase.storage
                     .from(USER_FILES_BUCKET)
@@ -193,7 +188,6 @@ export const useCardStore = defineStore('card', () => {
                 if (publicUrl) {
                     croppedImageUrl = publicUrl;
                 }
-                console.log('Cropped image URL:', publicUrl);
             }
             
             // Get default daily limit from env
@@ -348,7 +342,6 @@ export const useCardStore = defineStore('card', () => {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ accessToken: firstToken.access_token })
                     });
-                    console.log('[CardStore] Cache invalidated for card', cardId);
                 } catch (cacheErr) {
                     // Non-critical - log but don't fail the update
                     console.warn('[CardStore] Failed to invalidate cache:', cacheErr);

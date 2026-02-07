@@ -182,7 +182,7 @@
                     <span v-if="activity.target_user_email">• {{ $t('admin.user_email') }}: {{ activity.target_user_email }}</span>
                     <span>•</span>
                     <time :datetime="activity.created_at">
-                      {{ formatDate(activity.created_at) }}
+                      {{ formatDateTime(activity.created_at) }}
                     </time>
                   </div>
                   <div v-if="activity.action_details || activity.old_values || activity.new_values" class="mt-2 text-xs">
@@ -235,6 +235,7 @@ import Paginator from 'primevue/paginator'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
 import InputIcon from 'primevue/inputicon'
+import { formatDateTime } from '@/utils/formatters'
 
 const { t } = useI18n()
 const toast = useToast()
@@ -352,17 +353,6 @@ const onFilterChange = () => {
   loadActivity()
 }
 
-// Format date for display
-const formatDate = (date) => {
-  return new Date(date).toLocaleString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  })
-}
-
 // Refresh data
 const refreshData = async () => {
   await loadActivity()
@@ -405,7 +395,7 @@ const exportData = async () => {
     const csvContent = [
       headers.join(','),
       ...allData.map(activity => [
-        formatDate(activity.created_at),
+        formatDateTime(activity.created_at),
         activity.admin_email || '',
         activity.action_type || '',
         `"${(activity.description || '').replace(/"/g, '""')}"`,
