@@ -4,7 +4,7 @@ This guide covers creating, configuring, and managing your ExperienceQR projects
 
 ## Understanding Projects
 
-A **project** (also called an "experience") is your digital guide that visitors access via QR code. Each project is a self-contained experience with its own:
+A **project** (also called an "experience") is a self-contained content experience that you share with your audience via QR codes, links, or embeds. Each project has its own:
 
 - Content (text, images, links)
 - QR codes (one or multiple)

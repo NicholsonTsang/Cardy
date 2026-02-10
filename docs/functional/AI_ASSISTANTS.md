@@ -23,7 +23,7 @@ Each project can have two AI assistants:
 | **Location** | Overview page, floating chat button |
 | **Scope** | Entire project |
 | **Knowledge** | Project description + knowledge base |
-| **Best for** | General questions about your venue |
+| **Best for** | General questions about your project |
 
 ### Item Assistant
 
@@ -32,7 +32,7 @@ Each project can have two AI assistants:
 | **Location** | Individual content item pages |
 | **Scope** | Specific content item |
 | **Knowledge** | Item content + item-specific knowledge |
-| **Best for** | Detailed questions about specific exhibits/items |
+| **Best for** | Detailed questions about specific content items |
 
 ## Enabling AI
 
@@ -280,10 +280,10 @@ and rarely mentioned it in his letters.
 
 | Category | Example Questions |
 |----------|-------------------|
-| **Basic info** | "What are your hours?" |
-| **Specific items** | "Tell me about [exhibit name]" |
-| **Recommendations** | "What should I see first?" |
-| **Practical** | "Where is the bathroom?" |
+| **Basic info** | "What are your hours?" / "What does this product do?" |
+| **Specific items** | "Tell me about [item name]" |
+| **Recommendations** | "What should I look at first?" |
+| **Practical** | "How do I get started?" |
 | **Out of scope** | "What's the weather today?" |
 
 ### Refining Responses
@@ -351,9 +351,9 @@ The AI automatically:
 
 **Add to instructions:**
 ```
-If asked about topics outside [your venue], politely redirect:
-"I specialize in [venue name]. Is there something about
-our exhibits I can help with?"
+If asked about topics outside [your subject], politely redirect:
+"I specialize in [project name]. Is there something about
+our content I can help with?"
 ```
 
 ### Voice Not Working

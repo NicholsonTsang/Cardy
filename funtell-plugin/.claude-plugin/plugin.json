@@ -1,0 +1,10 @@
+{
+  "name": "funtell",
+  "description": "FunTell MCP workflow guide — helps Claude turn any information into AI-powered, multilingual content experiences. Create and manage projects for products, venues, education, knowledge bases, and more with AI assistants, translations, and distribution via QR codes, links, or embeds.",
+  "version": "1.0.0",
+  "author": {
+    "name": "FunTell"
+  },
+  "homepage": "https://funtell.app",
+  "license": "MIT"
+}

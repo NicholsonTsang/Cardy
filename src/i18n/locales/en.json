@@ -1,10 +1,10 @@
 {
   "seo": {
-    "title": "FunTell - AI-Powered Digital Experience Platform for Any Venue",
-    "description": "Transform visitor experiences with AI-powered souvenir cards. Multilingual voice guides & QR collectibles for museums, attractions & events. No app needed.",
-    "keywords": "AI souvenir cards, interactive museum guide, digital exhibition cards, QR code tour guide, multilingual AI assistant, museum technology, visitor engagement, collectible cards, audio guide alternative, museum souvenir, exhibition technology, tourist attraction cards, trade show cards, conference materials, hotel concierge AI, no-app experience",
+    "title": "FunTell - AI-Powered Content Experience Platform",
+    "description": "Turn any information into an AI-powered, multilingual content experience. Create structured content with conversational AI assistants, shared via links, QR codes, or embeds. No app needed.",
+    "keywords": "AI content platform, interactive content experience, multilingual AI assistant, QR code content, conversational AI, content management, knowledge base AI, digital experience platform, no-app experience, AI voice guide, content distribution, educational content, product information",
     "language": "English",
-    "structured_description": "AI-Powered Interactive Souvenir Cards for Museums, Exhibitions, Tourist Attractions, Trade Shows, Conferences, and Events Worldwide",
+    "structured_description": "AI-Powered Content Experience Platform — Create multilingual, interactive content with conversational AI assistants for products, education, venues, storytelling, and more",
     "features": [
       "AI voice conversations",
       "Multi-language support in 10+ languages",
@@ -15,11 +15,11 @@
       "Cloud hosting",
       "24/7 support"
     ],
-    "audience": "Museums, Exhibitions, Tourist Attractions, Trade Shows, Conferences, Hotels, Restaurants, Events"
+    "audience": "Products, Education, Venues, Events, Knowledge Bases, Print Media, Storytelling, Tourism, Retail, Food & Beverage"
   },
   "common": {
     "app_name": "FunTell",
-    "tagline": "Digital Souvenir Platform",
+    "tagline": "AI-Powered Content Experiences",
     "powered_by": "Powered by",
     "admin": "Admin",
     "card_issuer": "Creator",
@@ -141,25 +141,26 @@
     "one_card": "1 card",
     "items_count": "{count} items",
     "items_with_images": "Items with Images",
-    "excel_download_hint": "Excel file with embedded images will be downloaded",
+    "excel_download_hint": "ZIP archive with full-quality images will be downloaded",
     "loading_data": "Loading Data",
     "processing_images": "Processing Images",
-    "creating_excel": "Creating Excel",
+    "creating_archive": "Creating Archive",
     "downloading": "Downloading",
     "export_completed_successfully": "Export Completed Successfully",
     "file_name": "File Name",
     "file_size": "File Size",
     "export_time": "Export Time",
-    "images_embedded": "Images Embedded",
+    "images_embedded": "Images Included",
     "exporting": "Exporting...",
     "loading_card_data": "Loading card data...",
     "loading_content_items": "Loading content items...",
     "processing_images_status": "Processing images...",
-    "creating_excel_status": "Creating Excel file with embedded images...",
+    "creating_archive_status": "Creating archive with images...",
     "downloading_file": "Downloading file...",
     "export_complete": "Export Complete",
     "export_failed": "Export Failed",
-    "failed_to_export_card_data": "Failed to export card data"
+    "failed_to_export_card_data": "Failed to export card data",
+    "failed_to_load_content": "Failed to load content statistics"
   },
   
   "auth": {
@@ -453,6 +454,9 @@
     "upload_photo": "Upload photo",
     "image_requirements": "Image Requirements:",
     "image_requirements_text": "Upload JPG or PNG files up to 5MB. For best results, use images with a 2:3 aspect ratio (e.g., 800×1200px). You can crop and adjust your image after uploading.",
+    "image_processing_failed": "Failed to process the uploaded image. Please try again.",
+    "crop_failed": "Failed to apply crop. Please try again.",
+    "file_size_exceeded": "File size exceeds 5MB limit. Please choose a smaller image.",
     "card_information": "Project Information",
     "card_settings": "Project Settings",
     "save_changes": "Save Changes",
@@ -1532,16 +1536,16 @@
     "feature_ai_prompts": "AI conversation prompts",
     "feature_professional_images": "Professional images included",
     "download_template": "Download Template",
-    "template_desc": "Excel template with formulas and examples",
-    "choose_excel_file": "Choose Excel File",
-    "upload_excel_desc": "Upload .xlsx file with embedded images",
-    "drop_excel_here": "Drop your Excel file(s) here",
+    "template_desc": "ZIP archive template",
+    "choose_zip_file": "Choose ZIP File",
+    "upload_zip_desc": "Upload .zip file exported from FunTell",
+    "drop_zip_here": "Drop your ZIP file(s) here",
     "or_click_to_browse": "or click to browse files",
     "or_click_to_browse_multiple": "or click to browse (multiple files supported)",
-    "req_excel_with_images": "Excel files (.xlsx) with embedded images",
-    "req_max_size": "Maximum 25MB per file",
+    "req_zip_format": "ZIP archive files (.zip)",
+    "req_max_size_zip": "Maximum 50MB per file",
     "req_multiple_files": "Multiple files or multi-card files supported",
-    "req_images_extracted": "Images are automatically extracted",
+    "req_images_included": "Full-quality images included",
     "analyzing_multiple_files": "Analyzing {count} files...",
     "files_analyzed": "Files Analyzed",
     "files_analyzed_desc": "Found {cards} projects with {items} content items",
@@ -1576,10 +1580,10 @@
     "template_downloaded_desc": "Excel template with examples and formulas downloaded successfully",
     "failed_generate_template": "Failed to generate import template",
     "invalid_file_type": "Invalid File Type",
-    "select_excel_with_images": "Please select an Excel file (.xlsx) with embedded images",
+    "select_zip_file": "Please select a ZIP file (.zip)",
     "file_too_large": "File Too Large",
-    "file_size_limit": "File size must be less than 25MB",
-    "analyzing_excel_extracting": "Analyzing Excel file and extracting images...",
+    "file_size_limit": "File size must be less than 50MB",
+    "analyzing_archive": "Analyzing archive...",
     "file_analyzed": "File analyzed",
     "file_analyzed_desc": "Found {count} content items.",
     "file_analyzed_desc_with_images": "Found {count} content items with {images} embedded images.",
@@ -1607,7 +1611,8 @@
     "status_processing_content": "Processing content items...",
     "status_handling_images": "Handling embedded images...",
     "status_updating_relationships": "Updating relationships...",
-    "status_finalizing": "Finalizing import..."
+    "status_finalizing": "Finalizing import...",
+    "uploading_card_image": "Uploading card image..."
   },
 
   "landing": {
@@ -1626,12 +1631,12 @@
       "get_started": "Get Started"
     },
     "hero": {
-      "title_line1": "Turn Any Venue Into An",
+      "title_line1": "Turn Any Information Into An",
       "title_line2": "Interactive",
-      "title_line3": "AI-Powered Guide",
-      "subtitle_part1": "AI-powered digital experience platform with",
-      "subtitle_highlight": "voice conversations",
-      "subtitle_part2": "— instantly. No app required. Perfect for museums, restaurants, malls, and any venue.",
+      "title_line3": "AI‑Powered Experience",
+      "subtitle_part1": "Create content experiences people can talk to — with",
+      "subtitle_highlight": "multilingual AI conversations",
+      "subtitle_part2": " built in. Share via links, QR codes, or embeds. Perfect for products, venues, education, and any content.",
       "cta_pilot": "Contact Us for a Pilot",
       "cta_learn": "See Demo",
       "cta_demo": "See Demo",
@@ -1683,7 +1688,7 @@
     "demo_templates": {
       "badge": "Live Demos",
       "title": "Try Our Demo Projects",
-      "subtitle": "Scan any QR code below to experience FunTell in action. See how AI-powered interactive guides work in real-world scenarios.",
+      "subtitle": "Explore the demos below to experience FunTell in action. See how AI-powered content experiences work across different use cases.",
       "all_types": "All",
       "items": "items",
       "no_description": "Experience this demo to see our platform in action.",
@@ -1765,14 +1770,14 @@
     "how_it_works": {
       "title": "Simple",
       "title_highlight": "Three-Step Process",
-      "subtitle": "Launch your AI-powered digital experience in minutes—no technical skills required.",
+      "subtitle": "Launch your AI-powered content experience in minutes — no technical skills required.",
       "steps": {
         "create_title": "Create",
         "create_desc": "Build your project and add content through our intuitive dashboard.",
         "share_title": "Share",
-        "share_desc": "Display the QR code on signage, menus, or marketing materials.",
+        "share_desc": "Share via link, QR code, or embed on your website or printed materials.",
         "engage_title": "Engage",
-        "engage_desc": "Visitors scan and instantly interact with your AI-powered guide."
+        "engage_desc": "Visitors explore your content and interact with your AI-powered assistant."
       }
     },
     "features": {
@@ -1892,9 +1897,9 @@
       "title": "Frequently Asked",
       "title_highlight": "Questions",
       "q1": "What is FunTell?",
-      "a1": "FunTell is an AI-powered digital experience platform that transforms any venue into an interactive guide. Visitors scan a QR code to access multilingual content and conversational AI assistants—no app required. Physical cards available as optional collectible souvenirs.",
+      "a1": "FunTell is an AI-powered content experience platform that turns any information into interactive, multilingual experiences with built-in conversational AI. Create structured content for products, venues, education, storytelling, or any topic — then share via links, QR codes, or embeds. No app required.",
       "q2": "How does it work?",
-      "a2": "1) Place QR codes at your venue (or use physical cards)\n2) Visitors scan with their smartphone\n3) Access AI assistant and digital content instantly\n4) Optional: Cards become collectible souvenirs",
+      "a2": "1) Create a project and add your content through the dashboard\n2) Share via link, QR code, or embed\n3) Visitors access AI-powered, multilingual content instantly on any device\n4) Optional: Print physical cards as collectible souvenirs",
       "q3": "Do visitors need to download an app?",
       "a3": "No. FunTell works through any smartphone browser. Simply scan the QR code—nothing to download or install.",
       "q4": "What languages are supported?",
@@ -1913,7 +1918,7 @@
     },
     "footer": {
       "brand": "FunTell",
-      "description": "AI-powered digital experience platform. Turn any venue into an interactive guide.",
+      "description": "AI-powered content experience platform. Turn any information into interactive, multilingual experiences.",
       "quick_links": "Quick Links",
       "features": "Features",
       "demo": "Demo",
@@ -2641,9 +2646,9 @@
       "activate": "Activate",
       "delete_template": "Delete Template",
       "delete_confirm": "Are you sure you want to delete \"{name}\"? This action cannot be undone.",
-      "excel_import_title": "Import from Card Export",
+      "zip_import_title": "Import from Card Export",
       "excel_import_description": "Upload an Excel file to import multiple templates at once.",
-      "import_card_export_description": "Upload card export files (.xlsx) to add them as templates. Supports single card exports or multi-card batch exports.",
+      "import_card_export_description": "Upload card export archives (.zip) to add them as templates. Supports single or multiple files.",
       "failed_items": "Failed items:",
       "valid": "Valid",
       "invalid": "Invalid",
@@ -2657,11 +2662,11 @@
       "failed": "failed",
       "import_another": "Import Another File",
       "choose_file": "Choose File",
-      "drop_file_here": "Drop Excel file here",
+      "drop_file_here": "Drop ZIP file here",
       "or_click_to_browse": "or click to browse",
-      "invalid_file_type": "Please select an Excel file (.xlsx or .xls)",
-      "parse_error": "Failed to parse Excel file",
-      "invalid_card_export_format": "Invalid file format. Please upload a card export file with 'Card Information' sheet or multi-card export with 'Index' sheet.",
+      "invalid_file_type": "Please select a ZIP file (.zip)",
+      "parse_error": "Failed to parse ZIP archive",
+      "invalid_card_export_format": "Invalid file format. Please upload a ZIP archive exported from FunTell.",
       "preview": "Import Preview",
       "templates": "templates",
       "validation_errors": "Validation Errors",
@@ -2741,7 +2746,7 @@
         "articles": {
           "overview": {
             "title": "Platform Overview",
-            "description": "Learn what FunTell is and how it can transform your venue into an interactive AI-powered experience."
+            "description": "Learn what FunTell is and how it can turn any information into an interactive, AI-powered content experience."
           },
           "create_project": {
             "title": "Create Your First Project",

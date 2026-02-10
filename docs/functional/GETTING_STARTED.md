@@ -4,14 +4,14 @@ Welcome to ExperienceQR! This guide will help you set up your account and create
 
 ## What is ExperienceQR?
 
-ExperienceQR transforms any venue into an interactive guide through QR codes. Visitors scan a code and instantly access:
+ExperienceQR turns any information into an AI-powered, multilingual content experience. Create a project, add your content, and share it instantly via QR codes, links, or embeds. Your audience gets:
 
 - Rich content (text, images, links)
 - AI-powered voice conversations
 - Multi-language support
 - No app download required
 
-**Perfect for:** Museums, restaurants, hotels, events, trade shows, tourist attractions, and any venue wanting to engage visitors digitally.
+**Perfect for:** Product guides, museum exhibits, restaurant menus, educational materials, event programs, knowledge bases, storytelling, and any content you want to make interactive and multilingual.
 
 ## Creating Your Account
 

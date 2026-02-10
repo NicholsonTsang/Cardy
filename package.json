@@ -20,7 +20,6 @@
     "@supabase/supabase-js": "^2.49.4",
     "axios": "^1.7.7",
     "browser-image-compression": "^2.0.2",
-    "exceljs": "^4.4.0",
     "jszip": "^3.10.1",
     "marked": "^16.4.2",
     "md-editor-v3": "^6.0.1",

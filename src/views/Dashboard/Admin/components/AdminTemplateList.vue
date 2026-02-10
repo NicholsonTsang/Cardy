@@ -508,7 +508,7 @@ import { useConfirm } from 'primevue/useconfirm'
 import { useToast } from 'primevue/usetoast'
 import { useTemplateLibraryStore, type AdminContentTemplate } from '@/stores/templateLibrary'
 import { supabase } from '@/lib/supabase'
-import ExcelJS from 'exceljs'
+import { exportProject, exportMultipleProjects } from '@/utils/projectArchive'
 import { storeToRefs } from 'pinia'
 
 import Button from 'primevue/button'
@@ -964,38 +964,23 @@ async function exportTemplate(template: AdminContentTemplate) {
       p_template_id: template.id,
       p_slug: null
     })
-    
+
     if (templateError) throw templateError
     if (!templateData || templateData.length === 0) throw new Error('Template not found')
-    
+
     const fullTemplate = templateData[0]
-    
-    // Create Excel workbook
-    const workbook = new ExcelJS.Workbook()
-    workbook.creator = 'FunTell'
-    workbook.created = new Date()
-    
-    // Create Template Settings sheet (custom sheet for template metadata)
-    await createTemplateSettingsSheet(workbook, template, 'Template Settings')
-    
-    // Create Card Information sheet (standard format for re-import)
-    await createCardSheetStandard(workbook, fullTemplate, 'Card Information')
-    
-    // Create Content Items sheet (standard format for re-import)
-    if (fullTemplate.content_items && fullTemplate.content_items.length > 0) {
-      await createContentSheetStandard(workbook, fullTemplate.content_items, 'Content Items')
-    }
-    
+
+    // Export as ZIP using projectArchive
+    const { blob } = await exportProject(fullTemplate, fullTemplate.content_items || [])
+
     // Download file
-    const buffer = await workbook.xlsx.writeBuffer()
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `template_${template.slug}_${new Date().toISOString().split('T')[0]}.xlsx`
+    link.download = `template_${template.slug}_${new Date().toISOString().split('T')[0]}.zip`
     link.click()
     URL.revokeObjectURL(url)
-    
+
     toast.add({
       severity: 'success',
       summary: t('templates.admin.export_success'),
@@ -1017,85 +1002,38 @@ async function exportTemplate(template: AdminContentTemplate) {
 // Export all filtered templates
 async function exportAllTemplates() {
   if (filteredTemplates.value.length === 0) return
-  
+
   isExporting.value = true
   try {
-    const workbook = new ExcelJS.Workbook()
-    workbook.creator = 'FunTell'
-    workbook.created = new Date()
-    
-    // Create Index sheet
-    const indexSheet = workbook.addWorksheet('Index')
-    indexSheet.columns = [
-      { header: '#', key: 'index', width: 5 },
-      { header: 'Template Name', key: 'name', width: 30 },
-      { header: 'Slug', key: 'slug', width: 25 },
-      { header: 'Venue Type', key: 'venue_type', width: 15 },
-      { header: 'Content Mode', key: 'content_mode', width: 15 },
-      { header: 'Status', key: 'status', width: 12 },
-      { header: 'Featured', key: 'featured', width: 10 },
-      { header: 'Items', key: 'item_count', width: 8 },
-      { header: 'Imports', key: 'import_count', width: 10 },
-      { header: 'Card Sheet', key: 'card_sheet', width: 15 },
-      { header: 'Content Sheet', key: 'content_sheet', width: 15 }
-    ]
-    
-    // Style header row
-    indexSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
-    indexSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } }
-    
-    // Export each template to separate sheets
-    for (let i = 0; i < filteredTemplates.value.length; i++) {
-      const template = filteredTemplates.value[i]
-      const cardIndex = i + 1
-      const cardSheetName = `Card ${cardIndex}`
-      const contentSheetName = `Content ${cardIndex}`
-      
-      // Fetch full template details
+    // Build projects array for multi-project export
+    const projects: Array<{ card: Record<string, unknown>; contentItems: Record<string, unknown>[] }> = []
+
+    for (const template of filteredTemplates.value) {
       const { data: templateData } = await supabase.rpc('get_content_template', {
         p_template_id: template.id,
         p_slug: null
       })
-      
-      const hasContent = templateData && templateData.length > 0 && templateData[0].content_items?.length > 0
-      
-      // Add to index
-      indexSheet.addRow({
-        index: cardIndex,
-        name: template.name,
-        slug: template.slug,
-        venue_type: template.venue_type || '',
-        content_mode: template.content_mode,
-        status: template.is_active ? 'Active' : 'Inactive',
-        featured: template.is_featured ? 'Yes' : 'No',
-        item_count: template.item_count || 0,
-        import_count: template.import_count || 0,
-        card_sheet: cardSheetName,
-        content_sheet: hasContent ? contentSheetName : 'N/A'
-      })
-      
+
       if (templateData && templateData.length > 0) {
         const fullTemplate = templateData[0]
-        
-        // Create sheets for this template (use indexed names for multi-card format)
-        await createCardSheetStandard(workbook, fullTemplate, cardSheetName)
-        
-        if (fullTemplate.content_items && fullTemplate.content_items.length > 0) {
-          await createContentSheetStandard(workbook, fullTemplate.content_items, contentSheetName)
-        }
+        projects.push({
+          card: fullTemplate,
+          contentItems: fullTemplate.content_items || []
+        })
       }
     }
-    
+
+    // Export as combined ZIP
+    const blob = await exportMultipleProjects(projects)
+
     // Download file
-    const buffer = await workbook.xlsx.writeBuffer()
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `templates_export_${new Date().toISOString().split('T')[0]}.xlsx`
+    link.download = `templates_export_${new Date().toISOString().split('T')[0]}.zip`
     link.click()
     URL.revokeObjectURL(url)
-    
+
     toast.add({
       severity: 'success',
       summary: t('templates.admin.export_success'),
@@ -1118,78 +1056,38 @@ async function exportAllTemplates() {
 // Export selected templates
 async function exportSelectedTemplates() {
   if (selectedTemplates.value.length === 0) return
-  
+
   isExporting.value = true
   try {
-    const workbook = new ExcelJS.Workbook()
-    workbook.creator = 'FunTell'
-    workbook.created = new Date()
-    
-    // Create Index sheet
-    const indexSheet = workbook.addWorksheet('Index')
-    indexSheet.columns = [
-      { header: '#', key: 'index', width: 5 },
-      { header: 'Template Name', key: 'name', width: 30 },
-      { header: 'Slug', key: 'slug', width: 25 },
-      { header: 'Venue Type', key: 'venue_type', width: 15 },
-      { header: 'Content Mode', key: 'content_mode', width: 15 },
-      { header: 'Status', key: 'status', width: 12 },
-      { header: 'Featured', key: 'featured', width: 10 },
-      { header: 'Items', key: 'item_count', width: 8 },
-      { header: 'Imports', key: 'import_count', width: 10 },
-      { header: 'Card Sheet', key: 'card_sheet', width: 15 },
-      { header: 'Content Sheet', key: 'content_sheet', width: 15 }
-    ]
-    
-    indexSheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } }
-    indexSheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } }
-    
-    for (let i = 0; i < selectedTemplates.value.length; i++) {
-      const template = selectedTemplates.value[i]
-      const cardIndex = i + 1
-      const cardSheetName = `Card ${cardIndex}`
-      const contentSheetName = `Content ${cardIndex}`
-      
+    // Build projects array for multi-project export
+    const projects: Array<{ card: Record<string, unknown>; contentItems: Record<string, unknown>[] }> = []
+
+    for (const template of selectedTemplates.value) {
       const { data: templateData } = await supabase.rpc('get_content_template', {
         p_template_id: template.id,
         p_slug: null
       })
-      
-      const hasContent = templateData && templateData.length > 0 && templateData[0].content_items?.length > 0
-      
-      indexSheet.addRow({
-        index: cardIndex,
-        name: template.name,
-        slug: template.slug,
-        venue_type: template.venue_type || '',
-        content_mode: template.content_mode,
-        status: template.is_active ? 'Active' : 'Inactive',
-        featured: template.is_featured ? 'Yes' : 'No',
-        item_count: template.item_count || 0,
-        import_count: template.import_count || 0,
-        card_sheet: cardSheetName,
-        content_sheet: hasContent ? contentSheetName : 'N/A'
-      })
-      
+
       if (templateData && templateData.length > 0) {
         const fullTemplate = templateData[0]
-        await createCardSheetStandard(workbook, fullTemplate, cardSheetName)
-        
-        if (fullTemplate.content_items && fullTemplate.content_items.length > 0) {
-          await createContentSheetStandard(workbook, fullTemplate.content_items, contentSheetName)
-        }
+        projects.push({
+          card: fullTemplate,
+          contentItems: fullTemplate.content_items || []
+        })
       }
     }
-    
-    const buffer = await workbook.xlsx.writeBuffer()
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+
+    // Export as combined ZIP
+    const blob = await exportMultipleProjects(projects)
+
+    // Download file
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `templates_selected_${new Date().toISOString().split('T')[0]}.xlsx`
+    link.download = `templates_selected_${new Date().toISOString().split('T')[0]}.zip`
     link.click()
     URL.revokeObjectURL(url)
-    
+
     toast.add({
       severity: 'success',
       summary: t('templates.admin.export_success'),
@@ -1373,253 +1271,6 @@ async function bulkDelete() {
   }
 }
 
-// Helper: Create Template Settings sheet (metadata only, not for re-import)
-async function createTemplateSettingsSheet(workbook: ExcelJS.Workbook, template: AdminContentTemplate, sheetName = 'Template Settings') {
-  const sheet = workbook.addWorksheet(sheetName)
-  
-  // Title row
-  sheet.mergeCells('A1:B1')
-  const titleCell = sheet.getCell('A1')
-  titleCell.value = '📋 Template Settings'
-  titleCell.font = { bold: true, size: 14, color: { argb: 'FF1E40AF' } }
-  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }
-  sheet.getRow(1).height = 30
-  
-  // Headers
-  sheet.getRow(2).values = ['Setting', 'Value']
-  sheet.getRow(2).font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  sheet.getRow(2).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4472C4' } }
-  
-  // Settings data
-  const settings = [
-    ['Slug', template.slug],
-    ['Venue Type', template.venue_type || ''],
-    ['Is Featured', template.is_featured ? 'Yes' : 'No'],
-    ['Is Active', template.is_active ? 'Yes' : 'No'],
-    ['Sort Order', template.sort_order],
-    ['Import Count', template.import_count || 0],
-    ['Content Mode', template.content_mode],
-    ['Is Grouped', template.is_grouped ? 'Yes' : 'No'],
-    ['Group Display', template.group_display || 'expanded'],
-    ['Billing Type', template.billing_type || 'digital']
-  ]
-  
-  settings.forEach((row, index) => {
-    const rowNum = index + 3
-    sheet.getRow(rowNum).values = row
-    sheet.getRow(rowNum).getCell(1).font = { bold: true }
-  })
-  
-  // Column widths
-  sheet.getColumn(1).width = 20
-  sheet.getColumn(2).width = 40
-}
-
-// Helper: Create Card Information sheet in STANDARD FORMAT (compatible with import)
-async function createCardSheetStandard(workbook: ExcelJS.Workbook, cardData: any, sheetName = 'Card Information') {
-  const sheet = workbook.addWorksheet(sheetName)
-  
-  // Row 1: Title (A through S = 19 columns)
-  sheet.mergeCells('A1:S1')
-  const titleCell = sheet.getCell('A1')
-  titleCell.value = '🎴 FunTell - Card Export Data'
-  titleCell.font = { bold: true, size: 18, color: { argb: 'FF1E40AF' } }
-  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }
-  titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
-  sheet.getRow(1).height = 30
-  
-  // Row 2: Instructions (A through S = 19 columns)
-  sheet.mergeCells('A2:S2')
-  const instructionCell = sheet.getCell('A2')
-  instructionCell.value = '📝 Fill in your project details below. Required fields marked with *. Use dropdowns for validation.'
-  instructionCell.font = { bold: true, size: 12, color: { argb: 'FF6B7280' } }
-  instructionCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
-  sheet.getRow(2).height = 25
-  
-  // Row 3: Headers (must match EXCEL_CONFIG.COLUMNS.CARD)
-  const headers = ['Name*', 'Description', '🤖 AI Instruction*', '🤖 AI Knowledge Base*', '🤖 AI Welcome (General)', '🤖 AI Welcome (Item)', 'Original Language*', 'AI Enabled*', 'QR Position*', 'Content Mode*', 'Is Grouped', 'Group Display', 'Access Mode*', 'Max Scans', 'Daily Scan Limit', '📷 Card Image', 'Crop Data', 'Translations', 'Content Hash']
-  sheet.getRow(3).values = headers
-  sheet.getRow(3).font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  sheet.getRow(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } }
-  sheet.getRow(3).height = 25
-  sheet.getRow(3).eachCell(cell => {
-    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-  })
-  
-  // Row 4: Descriptions
-  const descriptions = [
-    'Enter card title',
-    'Brief description',
-    'AI instructions',
-    'Background knowledge for AI',
-    'Welcome message for general assistant',
-    'Welcome message for item assistant ({name} placeholder)',
-    'Original language (en, zh-Hant, etc.)',
-    'Select true/false',
-    'QR position: TL/TR/BL/BR',
-    'Content mode: single/list/grid/cards',
-    'Group content into categories (true/false)',
-    'Group display: expanded/collapsed',
-    'Access mode: physical/digital',
-    'Total scan limit',
-    'Daily scan limit',
-    'Card image',
-    'Auto-generated crop data',
-    'Translation data (auto-managed)',
-    'Content hash (auto-managed)'
-  ]
-  sheet.getRow(4).values = descriptions
-  sheet.getRow(4).font = { italic: true, size: 10, color: { argb: 'FF6B7280' } }
-  sheet.getRow(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
-  sheet.getRow(4).height = 25
-  
-  // Row 5: Data
-  sheet.getRow(5).values = [
-    cardData.name || '',
-    cardData.description || '',
-    cardData.ai_instruction || '',
-    cardData.ai_knowledge_base || '',
-    cardData.ai_welcome_general || '',
-    cardData.ai_welcome_item || '',
-    cardData.original_language || 'en',
-    cardData.conversation_ai_enabled ? true : false,
-    cardData.qr_code_position || 'BR',
-    cardData.content_mode || 'list',
-    cardData.is_grouped ? true : false,
-    cardData.group_display || 'expanded',
-    cardData.billing_type || 'digital',
-    cardData.max_sessions ?? '',
-    cardData.default_daily_session_limit ?? '',
-    '', // Card image placeholder
-    cardData.crop_parameters ? JSON.stringify(cardData.crop_parameters) : '',
-    cardData.translations ? JSON.stringify(cardData.translations) : '{}',
-    cardData.content_hash || ''
-  ]
-  
-  // Set column widths
-  sheet.columns = [
-    { width: 25 }, { width: 40 }, { width: 30 }, { width: 45 },
-    { width: 35 }, { width: 35 }, { width: 15 }, { width: 12 },
-    { width: 12 }, { width: 15 }, { width: 12 }, { width: 15 },
-    { width: 12 }, { width: 12 }, { width: 15 }, { width: 25 },
-    { width: 0 }, { width: 0 }, { width: 0 } // Hidden columns
-  ]
-  
-  // Wrap text for data row
-  sheet.getRow(5).eachCell(cell => {
-    cell.alignment = { wrapText: true, vertical: 'top' }
-  })
-  
-  // Freeze headers
-  sheet.views = [{ state: 'frozen', ySplit: 4 }]
-}
-
-// Helper: Create Content Items sheet in STANDARD FORMAT (compatible with import)
-async function createContentSheetStandard(workbook: ExcelJS.Workbook, contentItems: any[], sheetName = 'Content Items') {
-  const sheet = workbook.addWorksheet(sheetName)
-  
-  // Row 1: Title
-  sheet.mergeCells('A1:J1')
-  const titleCell = sheet.getCell('A1')
-  titleCell.value = '📚 Content Items - Hierarchical Structure'
-  titleCell.font = { bold: true, size: 18, color: { argb: 'FF1E40AF' } }
-  titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }
-  titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
-  sheet.getRow(1).height = 30
-  
-  // Row 2: Instructions
-  sheet.mergeCells('A2:J2')
-  const instructionCell = sheet.getCell('A2')
-  instructionCell.value = '📝 Create hierarchy: Layer 1 (main items) → Layer 2 (sub-items). Parent references use cell format (A5, A8, etc.)'
-  instructionCell.font = { bold: true, size: 12, color: { argb: 'FF6B7280' } }
-  instructionCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
-  sheet.getRow(2).height = 25
-  
-  // Row 3: Headers (must match EXCEL_CONFIG.COLUMNS.CONTENT)
-  const headers = ['Name*', 'Content', '🤖 AI Knowledge Base', 'Sort Order', '📋 Layer*', 'Parent Reference', '📷 Image', 'Crop Data', 'Translations', 'Content Hash']
-  sheet.getRow(3).values = headers
-  sheet.getRow(3).font = { bold: true, color: { argb: 'FFFFFFFF' } }
-  sheet.getRow(3).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF3B82F6' } }
-  sheet.getRow(3).height = 25
-  sheet.getRow(3).eachCell(cell => {
-    cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
-  })
-  
-  // Row 4: Descriptions
-  const descriptions = [
-    'Item title',
-    'Main content text',
-    'AI knowledge for this item',
-    'Auto-generated from row order',
-    'Layer 1 = Main, Layer 2 = Sub',
-    'Cell reference (e.g., A5)',
-    'Image',
-    'Crop data (auto)',
-    'Translations (auto)',
-    'Content hash (auto)'
-  ]
-  sheet.getRow(4).values = descriptions
-  sheet.getRow(4).font = { italic: true, size: 10, color: { argb: 'FF6B7280' } }
-  sheet.getRow(4).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
-  sheet.getRow(4).height = 25
-  
-  // Build parent lookup for cell references
-  const itemIdToRowNum = new Map<string, number>()
-  contentItems.forEach((item, index) => {
-    itemIdToRowNum.set(item.id, 5 + index) // Data starts at row 5
-  })
-  
-  // Row 5+: Data rows
-  contentItems.forEach((item, index) => {
-    const rowNum = 5 + index
-    const layer = item.parent_id ? 'Layer 2' : 'Layer 1'
-    
-    // Build parent reference as cell reference (e.g., "A5") for re-import compatibility
-    let parentReference = ''
-    if (item.parent_id) {
-      const parentRowNum = itemIdToRowNum.get(item.parent_id)
-      if (parentRowNum) {
-        parentReference = `A${parentRowNum}`
-      }
-    }
-    
-    sheet.getRow(rowNum).values = [
-      item.name || '',
-      item.content || '',
-      item.ai_knowledge_base || '',
-      item.sort_order ?? index,
-      layer,
-      parentReference,
-      item.image_url || '',
-      item.crop_parameters ? JSON.stringify(item.crop_parameters) : '',
-      item.translations ? JSON.stringify(item.translations) : '{}',
-      item.content_hash || ''
-    ]
-    
-    // Apply layer coloring
-    const layerCell = sheet.getRow(rowNum).getCell(5)
-    if (layer === 'Layer 1') {
-      layerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFECFDF5' } }
-    } else {
-      layerCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }
-    }
-    
-    // Wrap text
-    sheet.getRow(rowNum).eachCell(cell => {
-      cell.alignment = { wrapText: true, vertical: 'top' }
-    })
-  })
-  
-  // Column widths
-  sheet.columns = [
-    { width: 25 }, { width: 50 }, { width: 40 },
-    { width: 12 }, { width: 12 }, { width: 15 }, { width: 25 },
-    { width: 0 }, { width: 0 }, { width: 0 } // Hidden columns
-  ]
-  
-  // Freeze headers
-  sheet.views = [{ state: 'frozen', ySplit: 4 }]
-}
 </script>
 
 <style scoped>

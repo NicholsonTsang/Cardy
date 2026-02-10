@@ -1,6 +1,6 @@
 ## Project Settings Overview
 
-Project settings allow you to customize how your digital experience looks and behaves. Access settings by clicking the gear icon on your project card.
+Project settings allow you to customize how your content experience looks and behaves. Access settings by clicking the gear icon on your project card.
 
 ## Basic Settings
 

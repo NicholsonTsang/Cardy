@@ -4,12 +4,12 @@ This file provides guidance for AI assistants working on this repository. For de
 
 ## Project Overview
 
-ExperienceQR is an **AI-powered digital experience platform** that transforms venues (museums, restaurants, events, etc.) into interactive guides via QR codes. Visitors scan QR codes for free digital content and AI-powered voice conversations.
+ExperienceQR is an **AI-powered content experience platform** that turns any information into structured, multilingual content with AI conversational assistants. Creators build interactive content experiences for products, venues, education, storytelling, knowledge bases, print materials, and more. Content is distributed via links, QR codes, or embeds, and visitors access it for free with optional AI-powered voice conversations.
 
 **Three-Tier Ecosystem:**
-1. **Creators** (B2B) - Venues creating interactive digital projects
+1. **Creators** (B2B) - Businesses, educators, and organizations creating interactive content experiences
 2. **Administrators** - Platform operators
-3. **Visitors** (B2C) - Anyone scanning QR codes
+3. **Visitors** (B2C) - Anyone accessing content via links, QR codes, or embeds
 
 ## Core Architecture
 

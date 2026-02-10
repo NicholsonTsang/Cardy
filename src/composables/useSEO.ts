@@ -182,8 +182,8 @@ export function useSEO() {
     const ogLocale = ogLocaleMap[currentLocale] || 'en_US'
     
     // Get SEO content from i18n or use config
-    const title = config?.title || t('seo.title', 'FunTell - AI-Powered Digital Experience Platform')
-    const description = config?.description || t('seo.description', 'Transform visitor experiences with AI-powered souvenir cards.')
+    const title = config?.title || t('seo.title', 'FunTell - Turn Any Information into an AI-Powered Content Experience')
+    const description = config?.description || t('seo.description', 'Create AI-powered, multilingual content experiences for products, venues, education, storytelling, and more. Share via QR code - no app required.')
     const keywords = config?.keywords || t('seo.keywords', '')
     const image = config?.image || `${baseUrl}/logo.png`
     const currentUrl = config?.url || `${baseUrl}${route.path}`
@@ -271,7 +271,7 @@ export function useSEO() {
       "@type": "SoftwareApplication",
       "name": "FunTell",
       "applicationCategory": "BusinessApplication",
-      "description": t('seo.structured_description', 'AI-Powered Interactive Digital Experience Platform'),
+      "description": t('seo.structured_description', 'AI-powered platform that turns any information into multilingual, interactive content experiences shared via QR codes'),
       "inLanguage": hreflangMap[lang],
       "operatingSystem": "Web",
       "offers": {
@@ -306,7 +306,7 @@ export function useSEO() {
       "featureList": featuresArray,
       "audience": {
         "@type": "Audience",
-        "audienceType": t('seo.audience', 'Museums, Exhibitions, Tourist Attractions, Events')
+        "audienceType": t('seo.audience', 'Businesses, Educators, Creators, Venues, Product Teams, Storytellers')
       },
       "availableLanguage": SUPPORTED_LANGUAGES.map(l => ({
         "@type": "Language",

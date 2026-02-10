@@ -150,8 +150,8 @@
               class="flex flex-col items-center gap-2 text-xs transition-colors"
               :class="currentStep >= 3 ? (currentStep > 3 ? 'text-blue-800' : 'text-blue-600') : 'text-slate-400'"
             >
-              <i class="pi pi-file-excel text-lg"></i>
-              <span>{{ $t('export.creating_excel') }}</span>
+              <i class="pi pi-file text-lg"></i>
+              <span>{{ $t('export.creating_archive') }}</span>
             </div>
             <div
               class="flex flex-col items-center gap-2 text-xs transition-colors"
@@ -206,7 +206,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
-import { exportCardToExcel } from '@/utils/excelHandler'
+import { exportProject } from '@/utils/projectArchive'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 
@@ -260,9 +260,14 @@ async function loadContentStats() {
     ).length
 
   } catch (error) {
-    console.error('Error loading content stats:', error)
     contentCount.value = 0
     contentWithImages.value = 0
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: t('export.failed_to_load_content'),
+      life: 5000
+    })
   }
 }
 
@@ -287,36 +292,21 @@ async function exportCard() {
     if (contentError) throw contentError
     const contentItems = contentData || []
 
-    // Process images
-    if (contentItems.some(item => item.image_url)) {
-      exportStatus.value = 'Processing images...'
-      await new Promise(resolve => setTimeout(resolve, 500)) // Small delay for UI feedback
-    }
-
-    // Step 3: Generate Excel file
+    // Step 3: Create archive (fetches images at full quality)
     currentStep.value = 3
-    exportStatus.value = 'Creating Excel file with embedded images...'
+    exportStatus.value = 'Creating archive...'
 
-    const exportOptions = {
-      includeContent: true
-    }
-
-    const buffer = await exportCardToExcel(card, contentItems, exportOptions)
+    const { blob, imageCount } = await exportProject(card, contentItems)
 
     // Step 4: Download file
     currentStep.value = 4
     exportStatus.value = 'Downloading file...'
 
-    // Generate filename
     const timestamp = new Date().toISOString().split('T')[0]
     const cardName = card.name || 'card'
     const safeName = cardName.replace(/[^a-z0-9]/gi, '_')
-    const filename = `${safeName}_export_${timestamp}.xlsx`
+    const filename = `${safeName}_export_${timestamp}.zip`
 
-    // Create and download blob
-    const blob = new Blob([buffer], {
-      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    })
     const url = window.URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
@@ -324,18 +314,13 @@ async function exportCard() {
     link.click()
     window.URL.revokeObjectURL(url)
 
-    // Calculate statistics
-    const imageCount = contentItems.reduce((count, item) =>
-      count + (item.image_url ? 1 : 0), 0
-    )
-
     // Update last export info
     lastExport.value = {
       filename,
-      fileSize: buffer.byteLength,
+      fileSize: blob.size,
       timestamp: Date.now(),
       imageCount,
-      message: `Successfully exported "${cardName}" with ${contentItems.length} content items${imageCount > 0 ? ` and ${imageCount} embedded images` : ''}`
+      message: `Successfully exported "${cardName}" with ${contentItems.length} content items${imageCount > 0 ? ` and ${imageCount} images` : ''}`
     }
 
     // Success notification
@@ -347,7 +332,6 @@ async function exportCard() {
     })
 
   } catch (error) {
-    console.error('Export error:', error)
     toast.add({
       severity: 'error',
       summary: t('export.export_failed'),

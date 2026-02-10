@@ -38,8 +38,8 @@ Perfect for:
 ### Starter Plan ($40/month)
 
 Perfect for:
-- Small businesses
-- Single-location venues
+- Small businesses and creators
+- Single projects or small catalogs
 - Growing operations
 
 **Includes:**
@@ -53,8 +53,8 @@ Perfect for:
 ### Premium Plan ($280/month)
 
 Perfect for:
-- Large venues
-- Multi-location businesses
+- Large organizations and brands
+- Multi-project portfolios
 - High-traffic operations
 - Enterprise needs
 

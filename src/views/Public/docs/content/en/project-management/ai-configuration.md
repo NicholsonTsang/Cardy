@@ -1,12 +1,12 @@
 ## AI Assistant Configuration
 
-ExperienceQR features a powerful dual AI assistant system that allows visitors to have natural conversations at both the project level and individual content item level.
+ExperienceQR features a powerful dual AI assistant system that allows your audience to have natural conversations at both the project level and individual content item level.
 
 ## Dual AI Assistant System
 
 ### Project-Level Assistant (General)
 
-The project-level assistant answers general questions about your entire venue or experience.
+The project-level assistant answers general questions about your entire project or experience.
 
 **Appears on:**
 - Project Overview page
@@ -14,10 +14,10 @@ The project-level assistant answers general questions about your entire venue or
 - Floating button throughout the mobile experience
 
 **Best for questions like:**
-- "What should I see first?"
-- "Where is the most popular item?"
-- "What are your opening hours?"
-- "Can you recommend something for kids?"
+- "What should I explore first?"
+- "What is the most popular item?"
+- "Can you give me an overview?"
+- "Can you recommend something for beginners?"
 
 ### Content Item Assistant (Specific)
 
@@ -40,7 +40,7 @@ Each content item can have its own AI assistant for detailed, item-specific info
 Configure the general AI assistant that answers questions about your entire project:
 
 - **AI Instructions** - Guide how the AI responds (tone, focus areas, restrictions)
-- **Knowledge Base** - General information about your venue/project
+- **Knowledge Base** - General information about your project and its subject matter
 - **General Welcome Message** - Custom greeting when visitors start a conversation
 
 ![AI Configuration](/Image/docs/ai-configuration.png "AI Configuration Panel")
@@ -85,11 +85,25 @@ Keep answers concise but informative. Suggest related artworks when relevant.
 Don't discuss artwork valuations or authentication.
 ```
 
+**Product Catalog Assistant:**
+```
+You are a knowledgeable product specialist. Highlight key features and benefits.
+Compare products when asked. Provide usage tips and recommendations.
+Don't discuss competitor products or make unverified claims.
+```
+
 **Restaurant Assistant:**
 ```
 You are a helpful restaurant assistant. Describe dishes enthusiastically.
 Mention ingredients and preparation when asked. Suggest pairings.
 Don't discuss competitor restaurants or make health claims.
+```
+
+**Educational Course Guide:**
+```
+You are an encouraging learning assistant. Explain concepts clearly.
+Provide examples and suggest related topics. Adapt to the learner's level.
+Don't provide exam answers directly.
 ```
 
 ## Building Knowledge Bases
@@ -99,39 +113,39 @@ The knowledge base provides context for AI responses. This is where you add all 
 ### For Projects (~2000 words max)
 
 Include:
-- Venue history and background
-- Operating hours and location details
-- General policies and guidelines
+- Background and context about your subject matter
+- Key facts, specifications, or details your audience may ask about
+- General policies, guidelines, or scope
 - Frequently asked questions
-- Staff recommendations and highlights
+- Highlights and recommendations
 
 ### For Content Items
 
 Include:
 - Detailed descriptions and history
-- Creator/artist information
+- Creator, author, or origin information
 - Interesting facts and stories
 - Related items or recommendations
 - Technical details (materials, dimensions, dates)
 
 :::info Knowledge Quality = AI Quality
-The more detailed and accurate your knowledge base, the better the AI assistant will perform. Update it based on common visitor questions.
+The more detailed and accurate your knowledge base, the better the AI assistant will perform. Update it based on common audience questions.
 :::
 
 ## Custom Welcome Messages
 
-Welcome messages set the tone for visitor interactions and guide them on what to ask.
+Welcome messages set the tone for audience interactions and guide them on what to ask.
 
 ### General Welcome (Project-Level)
 
-Used when visitors access the main AI assistant:
+Used when your audience accesses the main AI assistant:
 
 **Example:**
 > "Welcome to the Museum of Modern Art! I can explain any artwork here, share artist stories, suggest personalized tours, or answer questions about our facilities. What would you like to explore?"
 
 ### Item Welcome (Content-Item Level)
 
-Used when visitors tap the AI button on a specific item. Use `{name}` as a placeholder for the item name:
+Used when your audience taps the AI button on a specific item. Use `{name}` as a placeholder for the item name:
 
 **Example:**
 > "You're looking at {name}. I can share its history, explain the techniques used, discuss the artist's inspiration, or connect it to other works in our collection. What interests you most?"
@@ -144,7 +158,7 @@ Both AI assistants support:
 - **Voice Recording** - Speak your question, receive text response with audio playback
 - **Real-time Voice** - Have a natural back-and-forth conversation (like talking to a guide)
 
-The AI automatically responds in the visitor's selected language when translations are available.
+The AI automatically responds in the audience's selected language when translations are available.
 
 ## AI in Different Content Modes
 
@@ -173,10 +187,10 @@ Before publishing, test your AI configuration:
 
 | Type | Example Questions |
 |------|-------------------|
-| General | "What are your hours?", "What should I see first?" |
+| General | "What is this about?", "What should I explore first?" |
 | Specific | "Tell me about [item name]", "Who created this?" |
 | Recommendations | "What's popular?", "What's good for kids?" |
-| Practical | "Where is the restroom?", "Is there a café?" |
+| Practical | "How do I get started?", "Where can I learn more?" |
 
 ## Troubleshooting
 
@@ -190,9 +204,9 @@ Before publishing, test your AI configuration:
 
 Add to instructions:
 ```
-If asked about topics outside [your venue], politely redirect:
-"I specialize in [venue name]. Is there something about our
-exhibits I can help with?"
+If asked about topics outside [your subject], politely redirect:
+"I specialize in [project name]. Is there something about our
+content I can help with?"
 ```
 
 ### Responses Too Long/Short

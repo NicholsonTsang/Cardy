@@ -1,6 +1,6 @@
 ## Understanding Content Modes
 
-Content modes determine how your content is displayed to visitors. Choose the mode that best fits your venue type and content structure.
+Content modes determine how your content is displayed to your audience. Choose the mode that best fits your content type and structure.
 
 ## Available Modes
 
@@ -40,16 +40,16 @@ Full-width card layout for featured content.
 
 ## Choosing the Right Mode
 
-| Venue Type | Recommended Mode | Why |
-|------------|------------------|-----|
-| Museum | List or Grid | Easy navigation of exhibits |
-| Restaurant | List | Clear menu scanning |
-| Art Gallery | Grid | Visual browsing experience |
-| Event | Single | Focused information |
-| Hotel | List | Service directory format |
-| Conference | List | Session/speaker listings |
+| Use Case | Recommended Mode | Why |
+|----------|------------------|-----|
+| Product Catalog | List or Grid | Easy browsing of items |
+| Museum / Gallery | Grid | Visual browsing experience |
+| Restaurant Menu | List | Clear menu scanning |
+| Educational Course | List | Structured lesson sequence |
+| Event / Conference | Single or List | Focused information or session listings |
+| Knowledge Base | List | Organized reference content |
 | Portfolio | Cards | Showcase featured work |
-| News/Blog | Cards | Highlight articles |
+| Storytelling / Blog | Cards | Highlight articles or chapters |
 
 :::tip Preview Before Publishing
 Use the Preview function to see how each mode displays your content before making a final decision.
@@ -70,8 +70,8 @@ In addition to display modes, you can enable **content grouping** to organize it
 
 | Mode | With Grouping | Example |
 |------|---------------|---------|
-| List | Categories with nested items | Menu with sections (Appetizers, Mains, Desserts) |
-| Grid | Category headers above grids | Gallery floors (Floor 1, Floor 2, Floor 3) |
+| List | Categories with nested items | Menu sections (Appetizers, Mains), Course modules (Module 1, Module 2) |
+| Grid | Category headers above grids | Gallery rooms (Room 1, Room 2), Product categories (Electronics, Accessories) |
 | Cards | Grouped featured sections | News categories (Tech, Sports, Culture) |
 
 ### Group Display Options
@@ -124,7 +124,7 @@ When enabling grouping, you may need to reorganize items into categories. When d
 ### Mode Selection
 
 - **Consider your content type** - Visual content → Grid, Text-heavy → List
-- **Think about visitor journey** - How will they browse?
+- **Think about your audience's journey** - How will they browse?
 - **Test with real content** - Preview before committing
 
 ### Content Organization
@@ -136,5 +136,5 @@ When enabling grouping, you may need to reorganize items into categories. When d
 ### Mobile Experience
 
 - **All modes are mobile-optimized**
-- **Test on phone** - Your visitors will primarily use mobile
+- **Test on phone** - Your audience will primarily use mobile
 - **Consider touch targets** - Ensure items are easy to tap

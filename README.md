@@ -1,4 +1,4 @@
-# ExperienceQR - AI-Powered Digital Experience Platform
+# ExperienceQR - AI-Powered Content Experience Platform
 
 [![Vue.js](https://img.shields.io/badge/Vue.js-3-4FC08D.svg)](https://vuejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-blue.svg)](https://www.typescriptlang.org/)
@@ -6,22 +6,22 @@
 [![Express.js](https://img.shields.io/badge/Express.js-4.x-000000.svg)](https://expressjs.com/)
 [![Google Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4.svg)](https://cloud.google.com/run)
 
-ExperienceQR is a comprehensive **AI-powered digital experience platform** that transforms any venue into an interactive guide. The platform enables museums, restaurants, shopping malls, events, and any venue to provide visitors with rich, AI-powered digital content accessible through QR codes. Optional physical souvenir cards add collectible value to the digital experience.
+ExperienceQR is a comprehensive **AI-powered content experience platform** that turns any information into structured, multilingual content with AI conversational assistants. The platform enables businesses, educators, and organizations to create interactive content experiences for products, venues, education, storytelling, knowledge bases, print materials, and more. Content is distributed via links, QR codes, or embeds, and visitors access it for free with optional AI-powered voice conversations. Optional physical souvenir cards add collectible value to the digital experience.
 
 ## Project Overview
 
 ### Business Model & Architecture
 
 -   **Three-Tier Ecosystem**:
-    1.  **Creators** (B2B) - Museums, restaurants, malls, events, and any venue creating interactive digital projects.
+    1.  **Creators** (B2B) - Businesses, educators, and organizations creating interactive content experiences.
     2.  **Administrators** (Platform) - ExperienceQR operators managing platform operations.
-    3.  **Visitors** (B2C) - Anyone scanning QR codes for free digital content and AI guidance.
+    3.  **Visitors** (B2C) - Anyone accessing content via links, QR codes, or embeds for free digital content and AI guidance.
 
 -   **Core Value Proposition**:
-    -   **AI-Powered Interactive Guide**: Transform any venue into an intelligent, interactive experience.
-    -   **QR Code Access**: Instant access via any smartphone camera—no app required.
+    -   **AI-Powered Content Experiences**: Turn any information into an intelligent, interactive content experience.
+    -   **Multilingual by Design**: AI-powered, one-click translation of content into multiple languages.
+    -   **Flexible Distribution**: Share via links, QR codes, or embeds -- no app required.
     -   **Advanced AI Voice Conversations**: Real-time voice-based AI using OpenAI for natural conversations.
-    -   **Multi-Language Support**: AI-powered, one-click translation of content into multiple languages.
     -   **Optional Physical Cards**: Collectible souvenirs that add premium keepsake value.
 
 ### Subscription & Pricing

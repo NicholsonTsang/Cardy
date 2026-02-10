@@ -1,19 +1,20 @@
 ## QR Code Sharing
 
-QR codes are the primary way visitors access your digital experience. Create multiple QR codes per project, each with independent settings and tracking.
+QR codes are the primary way your audience accesses your content experience. Create multiple QR codes per project, each with independent settings and tracking.
 
 ## Multi-QR Code System
 
 Each project can have **multiple QR codes**, allowing you to:
-- Track different locations separately (e.g., "Front Entrance", "Table 5", "Exhibition Hall A")
+- Track different placements separately (e.g., "Front Entrance", "Product A Label", "Exhibition Hall A")
 - Set different daily limits per QR code
 - Enable/disable individual QR codes without affecting others
 - Monitor usage statistics per QR code
 
 :::tip Use Case Examples
+- **Product Line**: Create separate QR codes for each product or SKU
 - **Restaurant**: Create separate QR codes for each table
 - **Museum**: Different codes for each exhibit area
-- **Event**: Unique codes for different entry points
+- **Education**: Unique codes for different course materials or chapters
 :::
 
 ## Creating QR Codes
@@ -59,7 +60,7 @@ Each QR code tracks its own:
 - **Total Sessions**: All-time scan count
 
 :::info Billing Note
-All QR code sessions for a project count toward your monthly session budget. The per-QR tracking helps you understand which locations drive the most traffic.
+All QR code sessions for a project count toward your monthly session budget. The per-QR tracking helps you understand which placements drive the most traffic.
 :::
 
 ## Downloading & Sharing QR Codes
@@ -153,7 +154,7 @@ Control how each QR code is used:
 
 - Set individual daily scan limits
 - Prevents unexpected usage spikes on specific codes
-- Protects against abuse at specific locations
+- Protects against abuse at specific placements
 - Resets at midnight
 
 ### Monthly Budget (Account Level)
@@ -179,7 +180,7 @@ Each project must have at least one QR code. You cannot delete the last remainin
 
 ## Mobile Experience
 
-When visitors scan your QR code:
+When your audience scans your QR code:
 
 1. Content loads instantly in their browser
 2. No app download required

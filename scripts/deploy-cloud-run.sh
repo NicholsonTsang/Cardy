@@ -127,7 +127,8 @@ echo ""
 echo -e "${BLUE}[6/7]${NC} Preparing environment variables..."
 
 # Reserved variables that Cloud Run sets automatically
-RESERVED_VARS=("PORT" "K_SERVICE" "K_REVISION" "K_CONFIGURATION")
+# Also skip file-path credentials — Cloud Run uses Application Default Credentials (ADC)
+RESERVED_VARS=("PORT" "K_SERVICE" "K_REVISION" "K_CONFIGURATION" "GOOGLE_APPLICATION_CREDENTIALS")
 
 # Build env vars string from .env file
 ENV_VARS_STRING=""

@@ -4,7 +4,7 @@ Credits provide additional session capacity when your monthly budget is depleted
 
 ## Understanding Credits
 
-Credits let you continue serving visitors beyond your monthly session budget:
+Credits let you continue serving your audience beyond your monthly session budget:
 
 - **Flexible Access** - Purchase credits anytime to handle traffic spikes
 - **Never Expire** - Credits carry over across billing cycles
@@ -20,7 +20,7 @@ Both Starter ($40/mo) and Premium ($280/mo) subscribers can purchase overage cre
 
 1. **Monthly budget** consumed first ($40 Starter / $280 Premium)
 2. When budget depletes, **credits used automatically**
-3. Visitors experience no interruption
+3. Your audience experiences no interruption
 4. Purchase more credits as needed
 
 ### Credit Conversion
@@ -97,7 +97,7 @@ Monitor your usage regularly in the Plan & Usage dashboard. The system shows you
 
 - **Disable AI** on projects that don't need it (50% lower session cost)
 - **Set daily limits** on QR codes to prevent abuse
-- **Review analytics** to understand visitor patterns
+- **Review analytics** to understand usage patterns
 
 ### Seasonal Planning
 

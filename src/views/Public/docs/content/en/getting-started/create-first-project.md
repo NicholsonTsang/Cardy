@@ -1,6 +1,6 @@
 ## Creating a New Project
 
-A project is the foundation of your digital experience. It represents your venue, event, or collection of content that visitors will explore.
+A project is the foundation of your digital experience. It represents your content -- whether that is a product catalog, venue guide, educational course, storytelling collection, or any other information you want to share interactively.
 
 :::info Project Limits
 | Plan | Max Projects |
@@ -28,8 +28,8 @@ Click the "New Project" button in the top right corner of your projects page. Yo
 
 Complete the project creation form with the following information:
 
-- **Project Name** - A clear, descriptive name for your venue or experience
-- **Description** - Brief overview that helps visitors understand what they'll discover
+- **Project Name** - A clear, descriptive name for your experience or content
+- **Description** - Brief overview that helps your audience understand what they'll discover
 - **Cover Image** - An eye-catching image that represents your project (recommended: 1200x800px)
 - **Content Mode** - Choose how content will be displayed:
   - **Single** - One featured item
@@ -43,8 +43,8 @@ Complete the project creation form with the following information:
 
 Set up your AI assistant during creation or later:
 
-- **AI Instructions** - How the AI should respond to visitors (tone, focus, restrictions)
-- **Knowledge Base** - Background information about your venue
+- **AI Instructions** - How the AI should respond to your audience (tone, focus, restrictions)
+- **Knowledge Base** - Background information about your content or subject matter
 - **Welcome Message** - Custom greeting for AI conversations
 
 ### Step 5: Save and Continue
@@ -63,7 +63,7 @@ For faster setup, choose from pre-built templates:
 
 1. Click "New Project"
 2. Select "Start from Template"
-3. Browse by venue category
+3. Browse by category
 4. Preview and import
 
 Templates include sample content, AI configuration, and optimized layouts.
@@ -86,7 +86,7 @@ After creating your project, you can enable **content grouping** to organize ite
 3. Create parent items (categories)
 4. Nest content items under them
 
-**Example**: A museum might group by floor (Floor 1, Floor 2) or by exhibit type (Paintings, Sculptures).
+**Examples**: A museum might group by floor (Floor 1, Floor 2), a product catalog by category (Electronics, Accessories), or a course by module (Module 1, Module 2).
 
 ## Next Steps
 
@@ -95,7 +95,7 @@ After creating your project, you can:
 - **Add content items** with descriptions, images, and AI knowledge
 - **Configure AI settings** with custom instructions and welcome messages
 - **Set up translations** for multi-language support (paid plans)
-- **Generate QR codes** to share with visitors
+- **Generate QR codes** to share with your audience
 - **Set access limits** to control daily sessions per QR code
 
 ## Tips for Success
@@ -105,14 +105,14 @@ After creating your project, you can:
 Good names are:
 - Clear and descriptive
 - Easy to remember
-- Relevant to your venue
+- Relevant to your content
 
-Examples: "City Art Museum Guide", "Summer Menu 2024", "Conference Schedule"
+Examples: "City Art Museum Guide", "Summer Menu 2024", "Product Catalog", "History 101 Course", "Conference Schedule"
 
 ### Cover Images
 
 - Use high-quality images (1200x800px recommended)
-- Choose images that represent your venue
+- Choose images that represent your content
 - Avoid text-heavy images (they don't translate)
 
 ### AI Setup

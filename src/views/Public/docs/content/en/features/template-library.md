@@ -1,6 +1,6 @@
 ## Template Library
 
-Get started quickly with pre-built templates designed for various venue types.
+Get started quickly with pre-built templates designed for various use cases and industries.
 
 ## Available Templates
 
@@ -80,7 +80,7 @@ After import, customize the template:
 
 Each template includes:
 
-- **Optimized Content Mode** - Best layout for the venue type
+- **Optimized Content Mode** - Best layout for the use case
 - **Sample Content Structure** - Suggested organization with parent/child items
 - **AI Configuration** - Tailored AI instructions and knowledge base
 - **Proactive Welcome Messages** - Context-aware greetings that guide visitors
@@ -109,7 +109,7 @@ Featured templates are available as live demos on our landing page:
 
 | Approach | Best For |
 |----------|----------|
-| **Template** | Quick start, standard venue types, new users |
+| **Template** | Quick start, common use cases, new users |
 | **From Scratch** | Unique requirements, custom layouts, experienced users |
 
 :::tip Mix and Match
@@ -118,4 +118,4 @@ You can start with a template and then completely customize it - add, remove, or
 
 ## Requesting New Templates
 
-Don't see a template for your venue type? We regularly add new templates based on user feedback. Contact us through the support form in your dashboard.
+Don't see a template for your use case? We regularly add new templates based on user feedback. Contact us through the support form in your dashboard.

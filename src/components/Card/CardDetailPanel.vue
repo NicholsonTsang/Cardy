@@ -268,8 +268,12 @@ const emptyStateMessage = computed(() => {
 const contentCount = ref(0);
 
 const fetchContentCount = async (cardId) => {
-    const result = await contentItemStore.getContentItemsCount(cardId);
-    contentCount.value = result?.total_count ?? 0;
+    try {
+        const result = await contentItemStore.getContentItemsCount(cardId);
+        contentCount.value = result?.total_count ?? 0;
+    } catch {
+        contentCount.value = 0;
+    }
 };
 
 // Fetch content count when card changes

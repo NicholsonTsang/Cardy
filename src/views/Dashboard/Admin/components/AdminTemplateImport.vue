@@ -3,11 +3,11 @@
     <!-- Upload Section -->
     <div v-if="!previewData" class="upload-section">
       <div class="upload-info">
-        <h3>{{ $t('templates.admin.excel_import_title') }}</h3>
+        <h3>{{ $t('templates.admin.zip_import_title') }}</h3>
         <p class="text-slate-600">{{ $t('templates.admin.import_card_export_description') }}</p>
       </div>
-      
-      <div 
+
+      <div
         class="upload-dropzone"
         :class="{ 'dragover': isDragging }"
         @dragover.prevent="isDragging = true"
@@ -15,10 +15,10 @@
         @drop.prevent="handleDrop"
         @click="triggerFileInput"
       >
-        <input 
+        <input
           ref="fileInput"
           type="file"
-          accept=".xlsx,.xls"
+          accept=".zip"
           class="hidden"
           @change="handleFileSelect"
           multiple
@@ -26,9 +26,9 @@
         <i class="pi pi-cloud-upload text-4xl text-slate-400 mb-3"></i>
         <p class="font-medium text-slate-700">{{ $t('templates.admin.drop_file_here') }}</p>
         <p class="text-sm text-slate-500">{{ $t('templates.admin.or_click_to_browse') }}</p>
-        <p class="text-xs text-slate-400 mt-2">.xlsx, .xls</p>
+        <p class="text-xs text-slate-400 mt-2">.zip</p>
       </div>
-      
+
       <!-- Error Message -->
       <div v-if="errorMessage" class="error-message">
         <i class="pi pi-exclamation-circle"></i>
@@ -49,8 +49,8 @@
       </div>
 
       <!-- Preview Table -->
-      <DataTable 
-        :value="previewData" 
+      <DataTable
+        :value="previewData"
         class="preview-table"
         responsiveLayout="scroll"
         :paginator="previewData.length > 10"
@@ -64,13 +64,13 @@
             </div>
           </template>
         </Column>
-        
+
         <Column field="slug" :header="$t('templates.admin.slug')" style="min-width: 150px">
           <template #body="{ data }">
             <span class="text-slate-600 text-sm font-mono">{{ data.slug }}</span>
           </template>
         </Column>
-        
+
         <Column field="venue_type" :header="$t('templates.admin.venue_type')" style="width: 140px">
           <template #body="{ data }">
             <div v-if="data.venue_type" class="flex items-center gap-2">
@@ -79,25 +79,25 @@
             <span v-else class="text-slate-400">—</span>
           </template>
         </Column>
-        
+
         <Column field="content_mode" :header="$t('templates.admin.content_mode')" style="width: 120px">
           <template #body="{ data }">
             <Tag :value="formatContentMode(data.content_mode)" :severity="getModeSeverity(data.content_mode)" />
           </template>
         </Column>
-        
+
         <Column field="is_grouped" :header="$t('templates.admin.grouped')" style="width: 80px">
           <template #body="{ data }">
             <i :class="data.is_grouped ? 'pi pi-check text-green-500' : 'pi pi-minus text-slate-300'"></i>
           </template>
         </Column>
-        
+
         <Column field="item_count" :header="$t('templates.admin.items')" style="width: 80px">
             <template #body="{ data }">
                 <div class="text-center">{{ data.item_count }}</div>
             </template>
         </Column>
-        
+
         <Column field="original_language" header="Language" style="width: 100px">
           <template #body="{ data }">
             <span class="language-badge">
@@ -106,13 +106,13 @@
             </span>
           </template>
         </Column>
-        
+
         <Column header="Translations" style="min-width: 150px">
           <template #body="{ data }">
             <div v-if="data.translation_languages.length > 0" class="translation-badges">
-              <span 
-                v-for="lang in data.translation_languages.slice(0, 3)" 
-                :key="lang" 
+              <span
+                v-for="lang in data.translation_languages.slice(0, 3)"
+                :key="lang"
                 class="translation-lang-badge"
               >
                 {{ getLanguageFlag(lang) }} {{ lang }}
@@ -124,10 +124,10 @@
             <span v-else class="text-slate-400 text-sm">—</span>
           </template>
         </Column>
-        
+
         <Column :header="$t('templates.admin.status')" style="width: 100px">
           <template #body="{ data }">
-            <Tag 
+            <Tag
               :value="data.error ? $t('templates.admin.invalid') : $t('templates.admin.valid')"
               :severity="data.error ? 'danger' : 'success'"
             />
@@ -147,12 +147,12 @@
 
       <!-- Action Buttons -->
       <div class="action-buttons">
-        <Button 
+        <Button
           :label="$t('common.cancel')"
           text
           @click="resetImport"
         />
-        <Button 
+        <Button
           :label="isImporting ? $t('templates.admin.importing') : $t('templates.admin.import_all')"
           icon="pi pi-download"
           :disabled="validTemplates.length === 0 || isImporting"
@@ -172,8 +172,8 @@
     </div>
 
     <!-- Import Results -->
-    <Dialog 
-      v-model:visible="showResults" 
+    <Dialog
+      v-model:visible="showResults"
       :header="$t('templates.admin.import_complete')"
       :style="{ width: '500px' }"
       :modal="true"
@@ -184,7 +184,7 @@
           <p class="font-medium">{{ $t('templates.admin.all_templates_imported') }}</p>
           <p class="text-sm text-slate-600">{{ importResults.created }} {{ $t('templates.admin.created') }}</p>
         </div>
-        
+
         <div v-else class="partial-message">
           <i class="pi pi-exclamation-triangle text-amber-500 text-4xl mb-3"></i>
           <p class="font-medium">{{ $t('templates.admin.some_templates_failed') }}</p>
@@ -192,8 +192,7 @@
             <span class="text-green-600">{{ importResults.created }} {{ $t('templates.admin.created') }}</span>
             <span class="text-red-600">{{ importResults.failed }} {{ $t('templates.admin.failed') }}</span>
           </div>
-          
-          <!-- Failed Items List -->
+
           <div v-if="importResults.errors.length > 0" class="failed-list">
             <p class="text-sm font-medium text-slate-700 mb-2">{{ $t('templates.admin.failed_items') }}</p>
             <ul>
@@ -204,14 +203,14 @@
           </div>
         </div>
       </div>
-      
+
       <template #footer>
-        <Button 
+        <Button
           :label="$t('templates.admin.import_another')"
           text
           @click="resetAndClose"
         />
-        <Button 
+        <Button
           :label="$t('common.done')"
           class="bg-blue-600 hover:bg-blue-700 text-white border-0"
           @click="finishImport"
@@ -226,9 +225,9 @@ import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useToast } from 'primevue/usetoast'
 import { useTemplateLibraryStore } from '@/stores/templateLibrary'
-import { getLanguageFlag, getLanguageName } from '@/utils/formatters'
-import { importExcelToCardData } from '@/utils/excelHandler'
-import ExcelJS from 'exceljs'
+import { getLanguageFlag } from '@/utils/formatters'
+import { importProject } from '@/utils/projectArchive'
+import type { ImportedCard } from '@/utils/projectArchive'
 
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
@@ -249,7 +248,7 @@ interface PreviewTemplate {
   original_language: string
   item_count: number
   translation_languages: string[]
-  cardData: any // Full card data for import
+  cardData: ImportedCard
   error?: string
 }
 
@@ -313,117 +312,29 @@ function handleFileSelect(event: Event) {
 
 async function processFiles(files: File[]) {
   errorMessage.value = ''
-  
-  // Validate file types
-  const validFiles = files.filter(f => 
-    f.name.endsWith('.xlsx') || f.name.endsWith('.xls')
-  )
-  
+
+  const validFiles = files.filter(f => f.name.endsWith('.zip'))
+
   if (validFiles.length === 0) {
     errorMessage.value = t('templates.admin.invalid_file_type')
     return
   }
 
   try {
-    const allPreviews: PreviewTemplate[] = []
-    
-    for (const file of validFiles) {
-      try {
-        // First, read the file with ExcelJS to extract template metadata
-        const workbook = new ExcelJS.Workbook()
-        const buffer = await file.arrayBuffer()
-        await workbook.xlsx.load(buffer)
-        
-        // Try to extract venue_type from "Template Settings" sheet (single template export)
-        let extractedVenueType: string | null = null
-        const settingsSheet = workbook.getWorksheet('Template Settings')
-        if (settingsSheet) {
-          // Parse the settings sheet (Setting in column A, Value in column B, data starts at row 3)
-          settingsSheet.eachRow((row, rowNumber) => {
-            if (rowNumber >= 3) {
-              const setting = row.getCell(1).value?.toString() || ''
-              const value = row.getCell(2).value?.toString() || ''
-              if (setting === 'Venue Type' && value) {
-                extractedVenueType = value
-              }
-            }
-          })
-        }
-        
-        // For multi-card exports, build a map of card index -> venue_type from Index sheet
-        const venueTypeByIndex: Map<number, string> = new Map()
-        const indexSheet = workbook.getWorksheet('Index')
-        if (indexSheet) {
-          // Index sheet has headers in row 1, data starts at row 2
-          // Column D is venue_type, Column A is index
-          indexSheet.eachRow((row, rowNumber) => {
-            if (rowNumber >= 2) { // Skip header row
-              const indexVal = row.getCell(1).value
-              const venueType = row.getCell(4).value?.toString() || '' // Column D = venue_type
-              if (indexVal && venueType) {
-                venueTypeByIndex.set(Number(indexVal), venueType)
-              }
-            }
-          })
-        }
-        
-        // Use existing Excel handler to parse card data
-        const result = await importExcelToCardData(file)
-        
-        console.log('Excel import result:', {
-          file: file.name,
-          hasCards: !!result?.cards,
-          cardsLength: result?.cards?.length,
-          hasCardData: !!result?.cardData,
-          contentItemsLength: result?.contentItems?.length,
-          errors: result?.errors,
-          warnings: result?.warnings,
-          extractedVenueType,
-          venueTypeByIndex: Object.fromEntries(venueTypeByIndex)
-        })
-        
-        if (result && result.cards && result.cards.length > 0) {
-          // Multi-card export format: { cards: [{ cardData, contentItems }] }
-          for (let i = 0; i < result.cards.length; i++) {
-            const cardEntry = result.cards[i]
-            console.log('Processing card entry:', {
-              cardName: cardEntry.cardData?.name,
-              contentItemsCount: cardEntry.contentItems?.length,
-              firstItem: cardEntry.contentItems?.[0]
-            })
-            const cardWithItems = {
-              ...cardEntry.cardData,
-              contentItems: cardEntry.contentItems || []
-            }
-            // For multi-card, use venue_type from Index sheet by card index (1-based)
-            const cardVenueType = venueTypeByIndex.get(i + 1) || extractedVenueType
-            const preview = convertToPreviewTemplate(cardWithItems, cardVenueType)
-            allPreviews.push(preview)
-          }
-        } else if (result && result.cardData) {
-          // Single card export format: { cardData, contentItems }
-          console.log('Processing single card:', {
-            cardName: result.cardData?.name,
-            contentItemsCount: result.contentItems?.length,
-            firstItem: result.contentItems?.[0]
-          })
-          const cardWithItems = {
-            ...result.cardData,
-            contentItems: result.contentItems || []
-          }
-          const preview = convertToPreviewTemplate(cardWithItems, extractedVenueType)
-          allPreviews.push(preview)
-        } else {
-          console.error('Invalid format - no cards or cardData found:', result)
-          errorMessage.value = t('templates.admin.invalid_card_export_format')
-          return
-        }
-      } catch (e: any) {
-        console.error('Error parsing file:', file.name, e)
-        errorMessage.value = `${t('templates.admin.parse_error')}: ${file.name}`
-      }
+    const result = await importProject(validFiles)
+
+    if (result.cards.length === 0) {
+      errorMessage.value = result.errors.join('; ') || t('templates.admin.invalid_card_export_format')
+      return
     }
-    
+
+    const allPreviews: PreviewTemplate[] = []
+
+    for (const imported of result.cards) {
+      const preview = convertToPreviewTemplate(imported)
+      allPreviews.push(preview)
+    }
+
     if (allPreviews.length > 0) {
       previewData.value = allPreviews
     }
@@ -433,43 +344,30 @@ async function processFiles(files: File[]) {
   }
 }
 
-function convertToPreviewTemplate(card: any, extractedVenueType: string | null = null): PreviewTemplate {
+function convertToPreviewTemplate(imported: ImportedCard): PreviewTemplate {
+  const card = imported.card
   const slug = generateSlug(card.name || 'untitled')
-  
-  // Validate card data
+
   let error: string | undefined
   if (!card.name) {
     error = 'Missing card name'
   }
-  
-  // Extract translation languages from translations_json
-  let translationLanguages: string[] = []
-  if (card.translations_json) {
-    try {
-      const translations = typeof card.translations_json === 'string'
-        ? JSON.parse(card.translations_json) 
-        : card.translations_json
-      translationLanguages = Object.keys(translations)
-    } catch (e) {
-      console.warn('Failed to parse translations_json:', e)
-    }
-  }
-  
-  // Use venue_type from Excel file directly (no guessing)
-  // Admin can set it manually after import if not present
+
+  const translationLanguages = card.translations ? Object.keys(card.translations) : []
+
   return {
     name: card.name || 'Untitled',
     slug,
     description: card.description || '',
-    venue_type: extractedVenueType || null,
+    venue_type: null, // Admin can set after import
     content_mode: card.content_mode || 'list',
     is_grouped: card.is_grouped || false,
     group_display: card.group_display || 'expanded',
     billing_type: card.billing_type || 'digital',
     original_language: card.original_language || 'en',
-    item_count: card.contentItems?.length || 0,
+    item_count: imported.contentItems.length,
     translation_languages: translationLanguages,
-    cardData: card,
+    cardData: imported,
     error
   }
 }
@@ -486,47 +384,73 @@ function formatContentMode(mode: string): string {
   if (!mode) return 'List'
   const map: Record<string, string> = {
     'single': 'Single Item',
-    'grouped': 'Grouped',
     'list': 'List View',
     'grid': 'Grid View',
-    'inline': 'Inline',
-    'cards': 'Grouped' // Legacy/fallback
+    'cards': 'Cards View',
   }
   return map[mode] || mode.charAt(0).toUpperCase() + mode.slice(1)
 }
 
 function getModeSeverity(mode: string): string {
   const severities: Record<string, string> = {
-    single: 'success', // Green
-    list: 'info',      // Blue
-    grid: 'warning',   // Orange
-    grouped: 'help',   // Purple
-    cards: 'help',     // Fallback
-    inline: 'secondary' // Grey
+    single: 'success',
+    list: 'info',
+    grid: 'warning',
+    cards: 'help',
   }
   return severities[mode] || 'secondary'
 }
 
 async function handleBulkImport() {
   if (validTemplates.value.length === 0) return
-  
+
   isImporting.value = true
   currentImportIndex.value = 0
   importResults.value = { created: 0, failed: 0, errors: [] }
-  
+
   try {
     for (let i = 0; i < validTemplates.value.length; i++) {
       currentImportIndex.value = i
       const template = validTemplates.value[i]
-      
+
       try {
-        // Create the card and template using the store
+        // Build card data object matching what bulkImportTemplate expects
+        const imported = template.cardData
+        const cardWithItems = {
+          name: imported.card.name,
+          description: imported.card.description,
+          content_mode: imported.card.content_mode,
+          is_grouped: imported.card.is_grouped,
+          group_display: imported.card.group_display,
+          billing_type: imported.card.billing_type,
+          original_language: imported.card.original_language,
+          conversation_ai_enabled: imported.card.conversation_ai_enabled,
+          ai_instruction: imported.card.ai_instruction,
+          ai_knowledge_base: imported.card.ai_knowledge_base,
+          ai_welcome_general: imported.card.ai_welcome_general,
+          ai_welcome_item: imported.card.ai_welcome_item,
+          qr_code_position: imported.card.qr_code_position,
+          default_daily_session_limit: imported.card.default_daily_session_limit,
+          translations_json: imported.card.translations ? JSON.stringify(imported.card.translations) : null,
+          content_hash: imported.card.content_hash,
+          contentItems: imported.contentItems.map(item => ({
+            name: item.name,
+            content: item.content,
+            ai_knowledge_base: item.ai_knowledge_base,
+            sort_order: item.sort_order,
+            layer: item.parent_name === null ? 'Layer 1' : 'Layer 2',
+            parent_item: item.parent_name,
+            translations_json: item.translations ? JSON.stringify(item.translations) : null,
+            content_hash: item.content_hash,
+          })),
+        }
+
         const result = await templateStore.bulkImportTemplate(
-          template.cardData,
+          cardWithItems,
           template.slug,
           template.venue_type
         )
-        
+
         if (result.success) {
           importResults.value.created++
         } else {
@@ -565,97 +489,27 @@ function finishImport() {
 </script>
 
 <style scoped>
-.admin-template-import {
-  @apply space-y-6;
-}
-
-.upload-section {
-  @apply space-y-4;
-}
-
-.upload-info h3 {
-  @apply font-semibold text-slate-900 mb-1;
-}
-
-.upload-dropzone {
-  @apply flex flex-col items-center justify-center p-12 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 cursor-pointer transition-all;
-}
-
-.upload-dropzone:hover,
-.upload-dropzone.dragover {
-  @apply border-blue-400 bg-blue-50;
-}
-
-.error-message {
-  @apply flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm;
-}
-
-.preview-section {
-  @apply space-y-4;
-}
-
-.preview-header h3 {
-  @apply font-semibold text-slate-900;
-}
-
-.preview-table {
-  @apply border border-slate-200 rounded-lg overflow-hidden;
-}
-
-.validation-errors {
-  @apply p-4 bg-amber-50 border border-amber-200 rounded-lg;
-}
-
-.validation-errors h4 {
-  @apply flex items-center gap-2 font-medium text-amber-800 mb-2;
-}
-
-.validation-errors ul {
-  @apply list-disc list-inside text-sm text-amber-700 space-y-1;
-}
-
-.action-buttons {
-  @apply flex justify-end gap-3 pt-4 border-t border-slate-200;
-}
-
-.import-progress {
-  @apply p-4 bg-slate-50 rounded-lg;
-}
-
-.results-content {
-  @apply text-center py-4;
-}
-
-.success-message,
-.partial-message {
-  @apply flex flex-col items-center;
-}
-
-.results-stats {
-  @apply flex gap-4 mt-2 text-sm;
-}
-
-.failed-list {
-  @apply mt-4 p-3 bg-red-50 rounded-lg text-left max-h-32 overflow-y-auto;
-}
-
-.failed-list ul {
-  @apply list-disc list-inside;
-}
-
-.language-badge {
-  @apply inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-medium;
-}
-
-.translation-badges {
-  @apply flex flex-wrap gap-1;
-}
-
-.translation-lang-badge {
-  @apply inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs;
-}
-
-.translation-more-badge {
-  @apply inline-flex items-center px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium;
-}
+.admin-template-import { @apply space-y-6; }
+.upload-section { @apply space-y-4; }
+.upload-info h3 { @apply font-semibold text-slate-900 mb-1; }
+.upload-dropzone { @apply flex flex-col items-center justify-center p-12 border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 cursor-pointer transition-all; }
+.upload-dropzone:hover, .upload-dropzone.dragover { @apply border-blue-400 bg-blue-50; }
+.error-message { @apply flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm; }
+.preview-section { @apply space-y-4; }
+.preview-header h3 { @apply font-semibold text-slate-900; }
+.preview-table { @apply border border-slate-200 rounded-lg overflow-hidden; }
+.validation-errors { @apply p-4 bg-amber-50 border border-amber-200 rounded-lg; }
+.validation-errors h4 { @apply flex items-center gap-2 font-medium text-amber-800 mb-2; }
+.validation-errors ul { @apply list-disc list-inside text-sm text-amber-700 space-y-1; }
+.action-buttons { @apply flex justify-end gap-3 pt-4 border-t border-slate-200; }
+.import-progress { @apply p-4 bg-slate-50 rounded-lg; }
+.results-content { @apply text-center py-4; }
+.success-message, .partial-message { @apply flex flex-col items-center; }
+.results-stats { @apply flex gap-4 mt-2 text-sm; }
+.failed-list { @apply mt-4 p-3 bg-red-50 rounded-lg text-left max-h-32 overflow-y-auto; }
+.failed-list ul { @apply list-disc list-inside; }
+.language-badge { @apply inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-700 rounded-full text-xs font-medium; }
+.translation-badges { @apply flex flex-wrap gap-1; }
+.translation-lang-badge { @apply inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs; }
+.translation-more-badge { @apply inline-flex items-center px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium; }
 </style>

@@ -19,13 +19,14 @@
     <!-- Footer with action buttons -->
     <template #footer>
       <div class="flex justify-end gap-2 w-full">
-        <Button 
+        <Button
           v-if="props.showCancel"
-          :label="props.cancelLabel" 
-          icon="pi pi-times" 
+          :label="props.cancelLabel"
+          icon="pi pi-times"
           :severity="props.cancelSeverity"
           text
-          @click="handleCancel" 
+          :disabled="loading"
+          @click="handleCancel"
         />
         <Button 
           v-if="props.showConfirm"

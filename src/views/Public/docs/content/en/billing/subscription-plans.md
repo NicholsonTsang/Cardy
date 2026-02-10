@@ -1,6 +1,6 @@
 ## Subscription Plans
 
-ExperienceQR offers flexible subscription plans to fit your needs, from free personal use to enterprise-grade solutions.
+ExperienceQR offers flexible subscription plans to fit your needs, from free personal use to high-volume professional solutions.
 
 ## Plan Comparison
 
@@ -32,7 +32,7 @@ Perfect for getting started and trying the platform.
 
 ### Starter Tier - $40/month
 
-Best for growing venues and small businesses.
+Best for growing creators and small businesses.
 
 **Included:**
 - Up to 5 projects
@@ -43,14 +43,14 @@ Best for growing venues and small businesses.
 - Overage credits available when budget depletes
 
 :::features
-- icon: "pi pi-dollar" title: "Affordable" desc: "Start with just $40/month for growing businesses" color: "green"
+- icon: "pi pi-dollar" title: "Affordable" desc: "Start with just $40/month for growing creators and businesses" color: "green"
 - icon: "pi pi-globe" title: "2 Languages" desc: "Translate content to 2 additional languages" color: "blue"
 - icon: "pi pi-refresh" title: "Overage Credits" desc: "$5 adds ~100 AI or ~200 non-AI sessions" color: "purple"
 :::
 
 ### Premium Tier - $280/month
 
-For high-traffic venues requiring maximum flexibility.
+For high-traffic projects requiring maximum flexibility.
 
 **Included:**
 - Up to 35 projects
@@ -62,7 +62,7 @@ For high-traffic venues requiring maximum flexibility.
 - Overage credits available when budget depletes
 
 :::features
-- icon: "pi pi-check-circle" title: "More Projects" desc: "Create up to 35 projects for multiple venues" color: "green"
+- icon: "pi pi-check-circle" title: "More Projects" desc: "Create up to 35 projects for all your content needs" color: "green"
 - icon: "pi pi-globe" title: "Unlimited Languages" desc: "Translate to all 10 supported languages" color: "blue"
 - icon: "pi pi-eye-slash" title: "White Label" desc: "Your brand only - no FunTell branding" color: "purple"
 - icon: "pi pi-bolt" title: "Lower Rates" desc: "20% lower session costs than Starter" color: "amber"
@@ -74,7 +74,7 @@ Starter and Premium plans use session-based billing where you pay per visitor se
 
 ### What is a Session?
 
-A **session** is counted when a unique visitor scans your QR code and accesses your content. The same visitor scanning multiple times within 5 minutes counts as one session (deduplication).
+A **session** is counted when a unique user scans your QR code and accesses your content. The same user scanning multiple times within 5 minutes counts as one session (deduplication).
 
 ### AI vs Non-AI Sessions
 
@@ -89,7 +89,7 @@ If your project doesn't need the AI voice assistant, disable it in project setti
 
 ### Monthly Budget Examples
 
-Your monthly budget is consumed as visitors access your projects:
+Your monthly budget is consumed as users access your projects:
 
 **Starter ($40/month):**
 - All AI projects: ~800 sessions ($40 ÷ $0.05)

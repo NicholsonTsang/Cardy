@@ -29,6 +29,14 @@ coverage
 
 *.tsbuildinfo
 
+# MCP server config (contains credentials)
+.mcp.json
+
+# MCP server build output and secrets
+mcp-server/build/
+mcp-server/node_modules/
+mcp-server/.env
+
 # Supabase local configuration (contains secrets)
 supabase/config.toml
 supabase/.branches/

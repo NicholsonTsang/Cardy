@@ -80,7 +80,7 @@ import CardCreateWizard from '@/components/CardComponents/CardCreateWizard.vue';
 import CardListPanel from '@/components/Card/CardListPanel.vue';
 import CardDetailPanel from '@/components/Card/CardDetailPanel.vue';
 import { useI18n } from 'vue-i18n';
-import { exportCardsToExcel } from '@/utils/excelHandler.js';
+import { exportProject, exportMultipleProjects } from '@/utils/projectArchive';
 import { useContentItemStore } from '@/stores/contentItem';
 import { useSubscriptionStore } from '@/stores/subscription';
 import { useAuthStore } from '@/stores/auth';
@@ -489,11 +489,33 @@ const handleBulkExport = async ({ cards: cardsToExport, singleFile }) => {
             });
         }
         
-        // Export with chosen option
-        await exportCardsToExcel(exportData, {
-            singleFile,
-            filename: `cards_export_${new Date().toISOString().split('T')[0]}.xlsx`
-        });
+        // Export as ZIP archive(s)
+        const timestamp = new Date().toISOString().split('T')[0];
+        let blob;
+        let filename;
+
+        if (singleFile && exportData.length > 1) {
+            // Multiple cards in one ZIP
+            blob = await exportMultipleProjects(exportData);
+            filename = `cards_export_${timestamp}.zip`;
+        } else if (exportData.length === 1) {
+            // Single card
+            const result = await exportProject(exportData[0].card, exportData[0].contentItems);
+            blob = result.blob;
+            const safeName = (exportData[0].card.name || 'card').replace(/[^a-z0-9]/gi, '_');
+            filename = `${safeName}_export_${timestamp}.zip`;
+        } else {
+            // Multiple separate files — export as single bundle ZIP
+            blob = await exportMultipleProjects(exportData);
+            filename = `cards_export_${timestamp}.zip`;
+        }
+
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        window.URL.revokeObjectURL(url);
         
         toast.add({
             severity: 'success',

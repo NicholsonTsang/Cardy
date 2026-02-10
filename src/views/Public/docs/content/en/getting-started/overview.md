@@ -1,9 +1,9 @@
 ## Welcome to ExperienceQR
 
-ExperienceQR is a comprehensive AI-powered digital experience platform that transforms any venue into an interactive guide. Whether you're running a museum, restaurant, shopping mall, or hosting events, our platform helps you engage visitors like never before.
+ExperienceQR is an AI-powered content experience platform that turns any information into an interactive, multilingual digital experience. Whether you are showcasing products, guiding visitors through a venue, building educational content, telling stories, or creating a knowledge base, our platform helps you engage your audience like never before.
 
 :::info What is ExperienceQR?
-ExperienceQR combines QR codes with AI-powered voice assistants to create immersive, multilingual experiences. Visitors simply scan a QR code to access rich content and have natural conversations with AI assistants - no app download required.
+ExperienceQR combines QR codes with AI-powered voice assistants to create immersive, multilingual content experiences. Anyone simply scans a QR code to access rich content and have natural conversations with AI assistants - no app download required.
 :::
 
 ## Key Features
@@ -20,14 +20,14 @@ ExperienceQR combines QR codes with AI-powered voice assistants to create immers
 Getting started with ExperienceQR is simple. Follow these three steps to create your first interactive experience:
 
 1. **Create** - Build your project and add content through our intuitive dashboard
-2. **Share** - Display the QR code on signage, menus, or marketing materials
-3. **Engage** - Visitors scan and instantly interact with your AI-powered guide
+2. **Share** - Display the QR code on packaging, signage, documents, websites, or marketing materials
+3. **Engage** - Your audience scans and instantly interacts with your AI-powered content experience
 
 ## Platform Highlights
 
 ### Dual AI Assistant System
 
-- **Project-Level Assistant**: Answers general questions about your venue
+- **Project-Level Assistant**: Answers general questions about your project or experience
 - **Item-Level Assistant**: Provides detailed information about specific content items
 - Both support voice conversations and text chat in visitor's selected language
 
@@ -54,7 +54,7 @@ Plus optional **content grouping** to organize items into categories.
 
 ## Supported Languages
 
-ExperienceQR supports 10 languages for both visitor interface and content translation:
+ExperienceQR supports 10 languages for both the user interface and content translation:
 
 | | | |
 |---|---|---|
@@ -65,6 +65,6 @@ ExperienceQR supports 10 languages for both visitor interface and content transl
 
 ## Ready to Get Started?
 
-Create your free account and transform your venue into an interactive AI-powered experience in minutes.
+Create your free account and turn your content into an interactive AI-powered experience in minutes.
 
 [Sign Up Free →](/signup)

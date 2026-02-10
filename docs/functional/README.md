@@ -1,6 +1,6 @@
 # Functional Documentation
 
-Welcome to the ExperienceQR user guide. This documentation is for creators and administrators who use the platform to build interactive digital experiences.
+Welcome to the ExperienceQR user guide. This documentation is for creators and administrators who use the platform to turn any information into AI-powered, multilingual content experiences.
 
 ## Getting Started
 
@@ -31,9 +31,9 @@ New to ExperienceQR? Start here:
 
 ### What is a "Project"?
 
-A project (also called an "experience") is a digital guide that visitors access via QR code. Each project contains:
+A project (also called an "experience") is a self-contained content experience that you share with your audience. Each project contains:
 - **Content items** - Text, images, links organized in your chosen layout
-- **QR codes** - One or more access points for visitors
+- **QR codes and links** - One or more access points for your audience
 - **AI assistant** (optional) - Voice and chat conversations
 - **Translations** (paid plans) - Multi-language support
 

@@ -762,7 +762,6 @@ const generateAiSettings = async () => {
             });
         }
     } catch (error) {
-        console.error('AI generation failed:', error);
         toast.add({
             severity: 'error',
             summary: t('dashboard.ai_generate_error'),
@@ -826,7 +825,6 @@ const optimizeDescription = async () => {
             });
         }
     } catch (error) {
-        console.error('Description optimization failed:', error);
         toast.add({
             severity: 'error',
             summary: t('dashboard.ai_generate_error'),
@@ -1081,8 +1079,8 @@ const handleImageUpload = async (event) => {
         croppedImageFile.value = null;
         cropParameters.value = null;
         formData.cropParameters = null;
-    } catch (error) {
-        console.error("Failed to process image:", error);
+    } catch {
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('dashboard.image_processing_failed'), life: 5000 });
     }
 };
 
@@ -1127,15 +1125,12 @@ const handleCropConfirm = async () => {
                 // Use cropped image for preview
                 previewImage.value = croppedDataURL;
                 
-                console.log('Crop applied - parameters and cropped file saved');
             } else {
-                console.error('Failed to get crop parameters or cropped image');
+                toast.add({ severity: 'error', summary: t('common.error'), detail: t('dashboard.crop_failed'), life: 5000 });
             }
-        } catch (error) {
-            console.error('Error generating crop:', error);
+        } catch {
+            toast.add({ severity: 'error', summary: t('common.error'), detail: t('dashboard.crop_failed'), life: 5000 });
         }
-    } else {
-        console.error('ImageCropper ref not available');
     }
     
     // Close crop dialog
@@ -1171,8 +1166,6 @@ const handleCropImage = () => {
         }
         
         showCropDialog.value = true;
-    } else {
-        console.warn('No image available for cropping');
     }
 };
 
@@ -1199,7 +1192,6 @@ const handleUndoCrop = () => {
         previewImage.value = props.cardProp.image_url;
     }
     
-    console.log('Crop undone - reverted to object-fit: contain');
 };
 
 // LinkedIn-style upload functions
@@ -1241,8 +1233,7 @@ const handleDrop = (event) => {
 const processImageFile = (file) => {
     // Validate file size (5MB)
     if (file.size > 5000000) {
-        // You might want to add a toast notification here
-        console.error('File size exceeds 5MB limit');
+        toast.add({ severity: 'error', summary: t('common.error'), detail: t('dashboard.file_size_exceeded'), life: 5000 });
         return;
     }
     
