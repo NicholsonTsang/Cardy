@@ -1,7 +1,7 @@
 ---
 name: manage
-description: Create and manage FunTell content experience projects. Turn any information — products, venues, courses, knowledge bases, portfolios, and more — into AI-powered experiences with AI assistants and distribution via QR codes, links, or embeds. Supports PDF and Word document import with images.
-argument-hint: "[action] e.g. create museum project, list my projects, import menu.pdf"
+description: Create and manage FunTell content experience projects. Turn any information — products, venues, courses, knowledge bases, portfolios, and more — into AI-powered experiences with AI assistants and distribution via QR codes, links, or embeds. Supports PDF/DOCX/website import with images.
+argument-hint: "[action] e.g. create museum project, list my projects, import menu.pdf, scrape website"
 allowed-tools: Bash(python *)
 ---
 
@@ -18,7 +18,7 @@ After login, optionally call `get_subscription` to check the creator's tier and 
 - **Starter**: 5 projects, $40 session budget, max 2 translation languages
 - **Premium**: 35 projects, $280 session budget, unlimited translations
 
-## Three Creation Modes
+## Four Creation Modes
 
 Choose the mode based on the user's input.
 
@@ -59,7 +59,78 @@ MCP tools cannot handle images. This mode runs a local script to extract text + 
 
 For archive format details, see [scripts/format-reference.md](scripts/format-reference.md).
 
-### Mode B: Document without images (text-only → MCP tools)
+### Mode B: Website scraping (URL → archive ZIP)
+
+**Use when:** The user provides a website URL and wants to convert web content into a FunTell project.
+
+This mode scrapes website content (text + images), follows internal links, and generates a ZIP archive for import via the web portal.
+
+**Steps:**
+
+1. Check dependencies are installed:
+   ```bash
+   python3 -c "import bs4; import requests; import PIL" 2>/dev/null || pip3 install -r funtell-plugin/skills/manage/scripts/requirements-web.txt
+   ```
+
+2. Ask the user for scraping parameters:
+   - **Starting URL**: The website to scrape
+   - **Max depth** (default: 1, range: 1-3): How many levels of links to follow
+   - **Max pages** (default: 20, range: 1-100): Maximum number of pages to scrape
+   - **Same domain only** (default: yes): Restrict scraping to the same domain
+   - **Delay** (default: 1.0s): Time between requests (minimum 1 second for rate limiting)
+
+3. Determine the best options:
+   - `--name`: Project name (infer from page title or domain if not provided)
+   - `--mode`: `list` / `grid` / `cards` / `single` (use Content Mode Decision Guide below)
+   - `-g`: Add if website has clear sections/categories
+   - `--language`: Detect from content (default: `en`)
+
+4. Run the script:
+   ```bash
+   python3 funtell-plugin/skills/manage/scripts/web-to-archive.py <url> \
+     --name "Project Name" \
+     --mode list \
+     -g \
+     --max-depth 2 \
+     --max-pages 20 \
+     --delay 1.0
+   ```
+
+5. Check the summary output for:
+   - Pages scraped vs. skipped
+   - Images downloaded
+   - Warnings (robots.txt blocks, failed images, etc.)
+
+6. Tell the user:
+   > Your archive is ready at `{output_path}`. To import:
+   > 1. Open the FunTell web portal
+   > 2. Go to **Dashboard > Import**
+   > 3. Upload the ZIP file
+   > 4. Review and confirm the import
+
+7. After import, the user can configure AI settings via the web portal or ask you to use `generate_ai_settings` + `update_project` MCP tools.
+
+**Best Practices:**
+- **Start small**: Begin with max-depth 1 and 10-20 pages to preview structure
+- **Respect robots.txt**: Script automatically checks and obeys robots.txt rules
+- **Rate limiting**: Always use delay ≥ 1.0 seconds to avoid overloading servers
+- **Preview first**: For large sites, scrape a subset first to verify structure
+
+**Limitations:**
+- No JavaScript rendering (static HTML only)
+- No authentication (public pages only)
+- Social media platforms are blocked (Twitter, Facebook, Instagram, etc.)
+- Respects robots.txt — if blocked, the script will exit with an error
+
+**Common use cases:**
+- Convert blog posts into mobile experiences
+- Create product catalogs from e-commerce pages
+- Build knowledge bases from documentation sites
+- Turn event/venue websites into interactive guides
+
+For archive format details, see [scripts/format-reference.md](scripts/format-reference.md).
+
+### Mode C: Document without images (text-only → MCP tools)
 
 **Use when:** The user uploads a PDF, Word doc, or other file and **doesn't need images** included, or the document has no meaningful images.
 
@@ -79,7 +150,7 @@ This mode is faster — it creates the project directly via MCP tools with no ma
 - Use `optimize_description` to polish rough descriptions.
 - Present your decisions and ask for confirmation if the structure is ambiguous.
 
-### Mode C: Consultative (interactive Q&A)
+### Mode D: Consultative (interactive Q&A)
 
 **Use when:** The user describes what they want without providing source material.
 
@@ -113,7 +184,7 @@ If unclear which mode the user prefers, ask: "Would you like to upload a documen
 | Article/Blog | `single` | No | Single "default" category |
 | Link-in-bio | `list` | No | Single "default" category |
 
-## Project Setup Sequence (for Modes B and C)
+## Project Setup Sequence (for Modes C and D)
 
 ### 1. Create the project
 

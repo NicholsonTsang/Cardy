@@ -78,6 +78,8 @@ output.zip
 
 ## Script CLI Options
 
+### doc-to-archive.py (PDF/DOCX)
+
 ```
 python doc-to-archive.py input.pdf [options]
 
@@ -87,4 +89,21 @@ Options:
   -l, --language  Language code (default: en)
   -m, --mode      Content mode: single|list|grid|cards (default: list)
   -g, --grouped   Force grouped categories (default: auto-detect)
+```
+
+### web-to-archive.py (Website scraping)
+
+```
+python web-to-archive.py <url> [options]
+
+Options:
+  -o, --output         Output ZIP path (default: {domain}_archive.zip)
+  -n, --name           Project name (default: page title or domain)
+  -l, --language       Language code (default: en)
+  -m, --mode           Content mode: single|list|grid|cards (default: list)
+  -g, --grouped        Force grouped categories (default: auto-detect)
+  --max-depth          Maximum link depth (default: 1, max: 3)
+  --max-pages          Maximum pages to scrape (default: 20, max: 100)
+  --same-domain-only   Only follow same-domain links (default: true)
+  --delay              Delay between requests in seconds (default: 1.0)
 ```
