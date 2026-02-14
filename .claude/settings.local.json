@@ -59,7 +59,9 @@
       "Bash(python3:*)",
       "Bash(pip install:*)",
       "Bash(pip3 install:*)",
-      "Bash(SCRATCHPAD=\"/private/tmp/claude-501/-Users-nicholsontsang-coding-Cardy/44e9a083-4b57-4946-a6b2-8156200d78e2/scratchpad\":*)"
+      "Bash(SCRATCHPAD=\"/private/tmp/claude-501/-Users-nicholsontsang-coding-Cardy/44e9a083-4b57-4946-a6b2-8156200d78e2/scratchpad\":*)",
+      "Bash(xargs kill:*)",
+      "Bash(wc:*)"
     ],
     "deny": []
   },

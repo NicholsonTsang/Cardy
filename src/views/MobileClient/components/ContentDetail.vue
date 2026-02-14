@@ -2,23 +2,18 @@
   <div class="content-detail" :class="{ 'has-ai': card.conversation_ai_enabled }">
     <!-- Main Content -->
     <div class="main-content">
-      <!-- Hero Image -->
-      <div class="hero-image">
-        <!-- Display the already-cropped image_url directly from API -->
+      <!-- Hero Image (only shown if image exists) -->
+      <div v-if="content.content_item_image_url" class="hero-image">
         <img
-          v-if="content.content_item_image_url"
           :src="content.content_item_image_url"
           :alt="content.content_item_name"
           class="image"
           crossorigin="anonymous"
         />
-        <div v-else class="image-placeholder">
-          <i class="pi pi-image" />
-        </div>
       </div>
 
       <!-- Content Info -->
-      <div class="content-info">
+      <div class="content-info" :class="{ 'no-image': !content.content_item_image_url }">
         <h2 class="content-title">{{ content.content_item_name }}</h2>
         
         <!-- Description - show full content -->
@@ -33,27 +28,23 @@
     <div v-if="subItems.length > 0" class="sub-items">
       <h3 class="sub-items-title">{{ $t('mobile.related_content') }}</h3>
       <div class="sub-items-list">
-        <div 
-          v-for="subItem in subItems" 
+        <div
+          v-for="subItem in subItems"
           :key="subItem.content_item_id"
           @click="handleSelect(subItem)"
           class="sub-item-card"
+          :class="{ 'no-image': !subItem.content_item_image_url }"
         >
-          <!-- Thumbnail -->
-          <div class="sub-item-image">
-            <!-- Display the already-cropped image_url directly from API -->
+          <!-- Thumbnail (only shown if image exists) -->
+          <div v-if="subItem.content_item_image_url" class="sub-item-image">
             <img
-              v-if="subItem.content_item_image_url"
               :src="subItem.content_item_image_url"
               :alt="subItem.content_item_name"
               class="thumbnail"
               crossorigin="anonymous"
             />
-            <div v-else class="thumbnail-placeholder">
-              <i class="pi pi-file" />
-            </div>
           </div>
-          
+
           <!-- Info -->
           <div class="sub-item-info">
             <h4 class="sub-item-title">{{ subItem.content_item_name }}</h4>
@@ -204,16 +195,6 @@ onMounted(() => {
   object-fit: contain;
 }
 
-.image-placeholder {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 3rem;
-}
 
 /* Content Info */
 .content-info {
@@ -223,6 +204,11 @@ onMounted(() => {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 1.25rem;
   padding: 1.25rem;
+}
+
+/* No image state - add top margin since no hero image above */
+.content-info.no-image {
+  margin-top: 1rem;
 }
 
 .content-title {
@@ -445,14 +431,9 @@ onMounted(() => {
   object-fit: contain;
 }
 
-.thumbnail-placeholder {
-  width: 100%;
-  height: 100%;
-  background: rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.4);
+/* No image state for sub-items - no left gap needed */
+.sub-item-card.no-image {
+  padding-left: 1rem;
 }
 
 /* Sub Item Info */

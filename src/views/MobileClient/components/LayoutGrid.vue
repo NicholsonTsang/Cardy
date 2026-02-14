@@ -7,17 +7,14 @@
         :key="item.content_item_id"
         @click="handleItemClick(item)"
         class="grid-item"
+        :class="{ 'no-image': !item.content_item_image_url }"
       >
-        <div class="item-image">
-          <img 
-            v-if="item.content_item_image_url"
-            :src="item.content_item_image_url" 
-            :alt="item.content_item_name" 
+        <div v-if="item.content_item_image_url" class="item-image">
+          <img
+            :src="item.content_item_image_url"
+            :alt="item.content_item_name"
             crossorigin="anonymous"
           />
-          <div v-else class="image-placeholder">
-            <i class="pi pi-image" />
-          </div>
         </div>
         <div class="item-info">
           <span class="item-name">{{ item.content_item_name }}</span>
@@ -218,20 +215,6 @@ function handleItemClick(item: ContentItem) {
   transform: scale(1.05);
 }
 
-.image-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.4);
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(147, 51, 234, 0.15));
-}
-
-.image-placeholder i {
-  font-size: 2rem;
-}
-
 .item-info {
   padding: 0.75rem 0.625rem;
   text-align: center;
@@ -239,6 +222,21 @@ function handleItemClick(item: ContentItem) {
   display: flex;
   flex-direction: column;
   min-height: 3.5rem; /* Consistent height even without preview */
+}
+
+/* No-image grid items - show content-only card */
+.grid-item.no-image {
+  justify-content: center;
+  align-items: center;
+  padding: 1rem;
+  min-height: 120px;
+}
+
+.grid-item.no-image .item-info {
+  background: none;
+  padding: 0;
+  width: 100%;
+  min-height: auto;
 }
 
 .item-name {

@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """
-Doc-to-Archive: Extract text + images from a PDF or Word document (.docx)
+Doc-to-Archive: Extract text + images from a PDF or Word document (.doc, .docx)
 and generate a FunTell project archive ZIP for import via the web portal.
 
 Usage:
     python scripts/doc-to-archive.py input.pdf [options]
     python scripts/doc-to-archive.py input.docx [options]
+    python scripts/doc-to-archive.py input.doc [options]
 
 Options:
     --output, -o    Output ZIP path (default: {input_name}_archive.zip)
@@ -16,13 +17,17 @@ Options:
 
 Requirements:
     pip install -r scripts/requirements-doc.txt
+    LibreOffice (for .doc support): https://www.libreoffice.org/download
 """
 
 import argparse
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
+import tempfile
 import zipfile
 from collections import Counter
 from datetime import datetime, timezone
@@ -138,6 +143,81 @@ def process_pdf(file_path: str) -> tuple[list[dict], list[dict], list[dict]]:
         all_images.extend(_extract_pdf_images(page, doc))
     doc.close()
     return all_blocks, all_images, []
+
+
+# ── DOC to DOCX conversion ─────────────────────────────────────────
+
+def _find_libreoffice() -> str | None:
+    """Find LibreOffice executable path."""
+    candidates = [
+        "libreoffice",
+        "soffice",
+        "/Applications/LibreOffice.app/Contents/MacOS/soffice",
+        "/usr/bin/libreoffice",
+        "/usr/bin/soffice",
+        "C:\\Program Files\\LibreOffice\\program\\soffice.exe",
+        "C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe",
+    ]
+    for cmd in candidates:
+        if shutil.which(cmd) or os.path.isfile(cmd):
+            return cmd
+    return None
+
+
+def convert_doc_to_docx(doc_path: str) -> str:
+    """
+    Convert legacy .doc file to .docx using LibreOffice headless mode.
+    Returns path to the converted .docx file.
+    """
+    libreoffice = _find_libreoffice()
+    if not libreoffice:
+        print("Error: LibreOffice is required to process .doc files.")
+        print("Install from: https://www.libreoffice.org/download")
+        print("\nAlternatively, convert your .doc file to .docx manually and try again.")
+        sys.exit(1)
+
+    # Create temporary directory for conversion
+    temp_dir = tempfile.mkdtemp(prefix="doc2docx_")
+
+    try:
+        print(f"Converting .doc to .docx using LibreOffice...")
+        # Run LibreOffice in headless mode to convert
+        result = subprocess.run(
+            [
+                libreoffice,
+                "--headless",
+                "--convert-to", "docx",
+                "--outdir", temp_dir,
+                doc_path
+            ],
+            capture_output=True,
+            text=True,
+            timeout=60
+        )
+
+        if result.returncode != 0:
+            print(f"Error: LibreOffice conversion failed.")
+            print(f"stdout: {result.stdout}")
+            print(f"stderr: {result.stderr}")
+            sys.exit(1)
+
+        # Find the converted .docx file
+        base_name = os.path.splitext(os.path.basename(doc_path))[0]
+        docx_path = os.path.join(temp_dir, f"{base_name}.docx")
+
+        if not os.path.isfile(docx_path):
+            print(f"Error: Converted file not found at {docx_path}")
+            sys.exit(1)
+
+        print(f"✓ Conversion successful: {docx_path}")
+        return docx_path
+
+    except subprocess.TimeoutExpired:
+        print("Error: LibreOffice conversion timed out (>60s)")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error during conversion: {e}")
+        sys.exit(1)
 
 
 # ── DOCX processing ─────────────────────────────────────────────────
@@ -390,14 +470,14 @@ def create_zip(project: dict, image_files: dict[str, bytes], output_path: str) -
 
 # ── CLI ──────────────────────────────────────────────────────────────
 
-SUPPORTED_EXTENSIONS = {".pdf", ".docx"}
+SUPPORTED_EXTENSIONS = {".pdf", ".doc", ".docx"}
 
 
 def main():
     parser = argparse.ArgumentParser(
         description="Extract text + images from a PDF or Word document and generate a FunTell project archive ZIP."
     )
-    parser.add_argument("input", help="Path to the input file (.pdf or .docx)")
+    parser.add_argument("input", help="Path to the input file (.pdf, .doc, or .docx)")
     parser.add_argument("-o", "--output", help="Output ZIP path (default: {input}_archive.zip)")
     parser.add_argument("-n", "--name", help="Project name (default: filename)")
     parser.add_argument("-l", "--language", default="en", help="Original language code (default: en)")
@@ -423,27 +503,46 @@ def main():
 
     print(f"Processing: {args.input} ({ext})")
 
-    # Dispatch to format-specific processor
-    if ext == ".pdf":
-        all_blocks, all_images, _ = process_pdf(args.input)
-    else:  # .docx
-        all_blocks, all_images, _ = process_docx(args.input)
+    # Handle .doc conversion
+    temp_docx = None
+    processing_file = args.input
 
-    # Build structure and create archive
-    project, image_files = build_structure(all_blocks, all_images, args, args.input)
-    create_zip(project, image_files, args.output)
+    if ext == ".doc":
+        temp_docx = convert_doc_to_docx(args.input)
+        processing_file = temp_docx
+        ext = ".docx"
 
-    # Summary
-    items = [ci for ci in project["contentItems"] if ci["parent_name"] is not None]
-    cats = [ci for ci in project["contentItems"] if ci["parent_name"] is None]
-    images_with = sum(1 for ci in items if ci.get("image"))
+    try:
+        # Dispatch to format-specific processor
+        if ext == ".pdf":
+            all_blocks, all_images, _ = process_pdf(processing_file)
+        else:  # .docx
+            all_blocks, all_images, _ = process_docx(processing_file)
 
-    print(f"\nArchive created: {args.output}")
-    print(f"  Categories: {len(cats)}")
-    print(f"  Content items: {len(items)}")
-    print(f"  Images: {len(image_files)} extracted, {images_with} associated with items")
-    print(f"  Content mode: {args.mode}, Grouped: {project['card']['is_grouped']}")
-    print(f"\nImport this ZIP via the FunTell web portal: Dashboard > Import")
+        # Build structure and create archive
+        project, image_files = build_structure(all_blocks, all_images, args, args.input)
+        create_zip(project, image_files, args.output)
+
+        # Summary
+        items = [ci for ci in project["contentItems"] if ci["parent_name"] is not None]
+        cats = [ci for ci in project["contentItems"] if ci["parent_name"] is None]
+        images_with = sum(1 for ci in items if ci.get("image"))
+
+        print(f"\nArchive created: {args.output}")
+        print(f"  Categories: {len(cats)}")
+        print(f"  Content items: {len(items)}")
+        print(f"  Images: {len(image_files)} extracted, {images_with} associated with items")
+        print(f"  Content mode: {args.mode}, Grouped: {project['card']['is_grouped']}")
+        print(f"\nImport this ZIP via the FunTell web portal: Dashboard > Import")
+
+    finally:
+        # Clean up temporary .docx file if we converted from .doc
+        if temp_docx and os.path.isfile(temp_docx):
+            temp_dir = os.path.dirname(temp_docx)
+            try:
+                shutil.rmtree(temp_dir)
+            except Exception:
+                pass  # Best effort cleanup
 
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ A Claude Code plugin that connects to the FunTell MCP server and guides AI throu
 ## What's included
 
 - **MCP server connection** (`.mcp.json`) — auto-connects Claude to the FunTell MCP tools
-- **Workflow skill** (`/funtell:manage`) — teaches Claude the optimal project creation sequence, including document import with images
+- **Workflow skill** (`/funtell:manage`) — teaches Claude the optimal project creation sequence, including document import with images (.pdf, .doc, .docx)
 
 ## Installation
 
@@ -57,6 +57,10 @@ For documents with images (PDF/Word), the skill automatically uses a local scrip
 /funtell:manage import restaurant_menu.docx
 ```
 
+```
+/funtell:manage import product_catalog.doc
+```
+
 ## Plugin structure
 
 ```
@@ -69,7 +73,7 @@ funtell-plugin/
 │       ├── SKILL.md          # Workflow guide (loaded by Claude)
 │       ├── reference.md      # Full tool parameter reference
 │       └── scripts/
-│           ├── doc-to-archive.py    # PDF/DOCX → archive converter
+│           ├── doc-to-archive.py    # PDF/DOC/DOCX → archive converter
 │           ├── format-reference.md  # Archive format specs
 │           └── requirements-doc.txt # Python dependencies
 └── README.md

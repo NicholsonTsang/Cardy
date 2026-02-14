@@ -7,16 +7,14 @@
         <!-- Grid layout for categories -->
         <div class="categories-grid">
           <button
-            v-for="category in items" 
+            v-for="category in items"
             :key="category.content_item_id"
             @click="handleCategoryClick(category)"
             class="category-card category-card-grid"
+            :class="{ 'no-image': !category.content_item_image_url }"
           >
             <div v-if="category.content_item_image_url" class="category-image">
               <img :src="category.content_item_image_url" :alt="category.content_item_name" crossorigin="anonymous" />
-            </div>
-            <div v-else class="category-placeholder">
-              <i class="pi pi-folder" />
             </div>
             <div class="category-info">
               <span class="category-name">{{ category.content_item_name }}</span>
@@ -31,10 +29,11 @@
         <!-- Full-width card layout for categories -->
         <div class="categories-cards">
           <button
-            v-for="category in items" 
+            v-for="category in items"
             :key="category.content_item_id"
             @click="handleCategoryClick(category)"
             class="category-card category-card-full"
+            :class="{ 'no-image': !category.content_item_image_url }"
           >
             <div v-if="category.content_item_image_url" class="category-image-large">
               <img :src="category.content_item_image_url" :alt="category.content_item_name" crossorigin="anonymous" />
@@ -303,23 +302,27 @@ function handleCategoryClick(category: ContentItem) {
   object-fit: cover;
 }
 
-.category-placeholder {
-  width: 100%;
-  aspect-ratio: 4/3;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(139, 92, 246, 0.15));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.category-placeholder i {
-  font-size: 2rem;
-  color: rgba(255, 255, 255, 0.4);
-}
-
 .category-card-grid .category-info {
   padding: 0.875rem 1rem;
   width: 100%;
+}
+
+/* No-image grid cards - content-only layout */
+.category-card-grid.no-image {
+  justify-content: center;
+  align-items: center;
+  padding: 1.25rem 1rem;
+  min-height: 140px;
+}
+
+.category-card-grid.no-image .category-info {
+  padding: 0;
+  text-align: center;
+}
+
+.category-card-grid.no-image .category-arrow {
+  top: 0.625rem;
+  right: 0.625rem;
 }
 
 .category-card-grid .category-arrow {
@@ -387,6 +390,11 @@ function handleCategoryClick(category: ContentItem) {
   flex-direction: column;
   gap: 0.25rem;
   min-width: 0;
+}
+
+/* No-image full cards - adjust content padding */
+.category-card-full.no-image .category-content {
+  padding: 1rem 1rem 1rem 1.25rem;
 }
 
 .category-name-large {

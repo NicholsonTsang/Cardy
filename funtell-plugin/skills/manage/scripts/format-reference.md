@@ -80,6 +80,8 @@ output.zip
 
 ```
 python doc-to-archive.py input.pdf [options]
+python doc-to-archive.py input.docx [options]
+python doc-to-archive.py input.doc [options]
 
 Options:
   -o, --output    Output ZIP path (default: {input}_archive.zip)
@@ -88,3 +90,5 @@ Options:
   -m, --mode      Content mode: single|list|grid|cards (default: list)
   -g, --grouped   Force grouped categories (default: auto-detect)
 ```
+
+**Note:** Legacy .doc files require LibreOffice for automatic conversion to .docx before processing. Install from https://www.libreoffice.org/download

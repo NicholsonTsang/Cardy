@@ -1,26 +1,22 @@
 <template>
   <div class="content-list">
     <div class="content-grid">
-      <div 
-        v-for="item in items" 
+      <div
+        v-for="item in items"
         :key="item.content_item_id"
         @click="handleSelect(item)"
         class="content-card"
+        :class="{ 'no-image': !item.content_item_image_url }"
       >
-        <!-- Image -->
-        <div class="card-image">
-          <!-- Display the already-cropped image_url directly from API -->
+        <!-- Image (only shown if exists) -->
+        <div v-if="item.content_item_image_url" class="card-image">
           <img
-            v-if="item.content_item_image_url"
             :src="item.content_item_image_url"
             :alt="item.content_item_name"
             class="image"
             crossorigin="anonymous"
           />
-          <div v-else class="image-placeholder">
-            <i class="pi pi-image" />
-          </div>
-          
+
           <!-- Sub-items Badge -->
           <div v-if="getSubItemsCount(item) > 0" class="badge">
             {{ getSubItemsCount(item) }} {{ $t('mobile.items') }}
@@ -29,6 +25,10 @@
 
         <!-- Content -->
         <div class="card-content">
+          <!-- Sub-items Badge for no-image cards -->
+          <div v-if="!item.content_item_image_url && getSubItemsCount(item) > 0" class="badge-inline">
+            {{ getSubItemsCount(item) }} {{ $t('mobile.items') }}
+          </div>
           <h3 class="item-title">{{ item.content_item_name }}</h3>
           <p class="item-description">{{ item.content_item_content }}</p>
         </div>
@@ -143,17 +143,6 @@ onMounted(() => {
   object-fit: contain;
 }
 
-.image-placeholder {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.4);
-  font-size: 2rem;
-}
-
 .badge {
   position: absolute;
   top: 1rem;
@@ -166,6 +155,24 @@ onMounted(() => {
   color: white;
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+/* Inline badge for cards without images */
+.badge-inline {
+  display: inline-block;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.6875rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+
+/* No-image card state - increase content padding */
+.content-card.no-image .card-content {
+  padding: 1.5rem 1.25rem;
 }
 
 /* Card Content */

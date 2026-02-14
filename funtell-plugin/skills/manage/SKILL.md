@@ -1,6 +1,6 @@
 ---
 name: manage
-description: Create and manage FunTell content experience projects. Turn any information — products, venues, courses, knowledge bases, portfolios, and more — into AI-powered experiences with AI assistants and distribution via QR codes, links, or embeds. Supports PDF and Word document import with images.
+description: Create and manage FunTell content experience projects. Turn any information — products, venues, courses, knowledge bases, portfolios, and more — into AI-powered experiences with AI assistants and distribution via QR codes, links, or embeds. Supports PDF and Word document import (.pdf, .doc, .docx) with images.
 argument-hint: "[action] e.g. create museum project, list my projects, import menu.pdf"
 allowed-tools: Bash(python *)
 ---
@@ -24,7 +24,7 @@ Choose the mode based on the user's input.
 
 ### Mode A: Document with images (PDF/Word → archive ZIP)
 
-**Use when:** The user uploads a PDF or Word document (.docx) that contains **embedded images** they want included in their project.
+**Use when:** The user uploads a PDF or Word document (.pdf, .doc, .docx) that contains **embedded images** they want included in their project.
 
 MCP tools cannot handle images. This mode runs a local script to extract text + images into a ZIP archive, which the user imports via the web portal.
 
@@ -34,6 +34,7 @@ MCP tools cannot handle images. This mode runs a local script to extract text + 
    ```bash
    python3 -c "import fitz; import docx" 2>/dev/null || pip3 install -r funtell-plugin/skills/manage/scripts/requirements-doc.txt
    ```
+   **Note:** For .doc files (legacy Word format), LibreOffice is required for automatic conversion. If not installed, instruct the user to install from https://www.libreoffice.org/download or convert the file to .docx manually.
 
 2. Determine the best options from the document content:
    - `--name`: Project name (ask user or infer from document title)
@@ -61,7 +62,7 @@ For archive format details, see [scripts/format-reference.md](scripts/format-ref
 
 ### Mode B: Document without images (text-only → MCP tools)
 
-**Use when:** The user uploads a PDF, Word doc, or other file and **doesn't need images** included, or the document has no meaningful images.
+**Use when:** The user uploads a PDF or Word document (.pdf, .doc, .docx) and **doesn't need images** included, or the document has no meaningful images.
 
 This mode is faster — it creates the project directly via MCP tools with no manual import step.
 
