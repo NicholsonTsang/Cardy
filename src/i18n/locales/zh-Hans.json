@@ -75,10 +75,8 @@
     "grouped": "分组",
     "new": "NEW",
     "connection_failed": "连接失败",
-    "batch_prefix": "批次 #",
     "card_prefix": "卡片 #"
   },
-  
   "auth": {
     "sign_in": "登录",
     "sign_up": "注册",
@@ -131,7 +129,6 @@
     "password_good": "良好",
     "password_strong": "强"
   },
-
   "dashboard": {
     "dashboard": "仪表板",
     "my_cards": "我的项目",
@@ -148,7 +145,6 @@
     "general": "常规",
     "content": "内容",
     "qr_access": "二维码与访问",
-    "issuance": "发行",
     "mobile_preview": "移动端预览",
     "card_name": "项目名称",
     "card_description": "项目描述",
@@ -228,7 +224,6 @@
     "go_to_content": "添加内容",
     "tab_hint_general": "编辑项目设置、AI 助手和显示选项",
     "tab_hint_content": "添加和整理您的内容项目",
-    "tab_hint_issuance": "发行实体卡片以供印刷",
     "tab_hint_control": "配置访问限制和会话控制（选填）",
     "tab_hint_qr": "下载 QR 码并分享您的项目",
     "tab_hint_preview": "预览访客在手机上看到的内容",
@@ -276,7 +271,6 @@
     "wizard_creating": "创建中...",
     "wizard_optional_hint": "您可以立即创建项目，或继续配置其他设置。",
     "wizard_access_info": "QR 码和详细访问设置可在项目创建后管理。",
-    "wizard_physical_access_info": "卡片发行和 QR 访问将在项目创建后管理。",
     "wizard_step_translation": "翻译",
     "wizard_translation_desc": "选择要在创建后自动翻译的语言。",
     "wizard_translation_upgrade_title": "翻译功能需要付费方案",
@@ -307,7 +301,6 @@
     "duplicate_success_detail": "'{name}' 已成功创建",
     "duplicate_failed": "复制项目失败"
   },
-
   "templates": {
     "library_title": "模板库",
     "browse_templates": "浏览模板",
@@ -331,8 +324,6 @@
     "mode_list": "列表",
     "mode_grid": "网格",
     "mode_cards": "卡片",
-    "billing_physical": "实体卡片",
-    "billing_physical_desc": "按卡片计费",
     "billing_digital": "数字访问",
     "billing_digital_desc": "仅限 QR 码",
     "importing": "导入中...",
@@ -469,7 +460,6 @@
       "instruction_hint": "📝 在下方填写项目详情。带 * 的为必填字段。"
     }
   },
-
   "content": {
     "content_management": "内容管理",
     "content_items": "内容项目",
@@ -517,7 +507,6 @@
     "bulk_delete_success": "已成功删除 {count} 个项目",
     "bulk_delete_failed": "删除项目失败"
   },
-
   "bulk_import": {
     "step_upload": "上传 CSV 或 Excel 文件",
     "step_mapping": "列映射",
@@ -555,7 +544,6 @@
     "error_name_required": "您必须将至少一个列映射到「标题（名称）」。",
     "error_duplicate_mapping": "每个字段只能映射到一个列。",
     "error_empty_name": "标题/名称为空",
-    "error_batch_failed": "第 {start} 至 {end} 行的批次导入失败",
     "preview_data": "预览数据",
     "preview_description": "显示 {count} 行中的 {showing} 行。导入前请检查数据。",
     "total_rows": "总行数",
@@ -574,28 +562,8 @@
     "error_details": "错误详情",
     "import_another": "导入另一个"
   },
-
-  "batches": {
-    "card_batches": "Card Batches",
-    "issue_batch": "Issue Batch",
-    "batch_name": "Batch Name",
-    "quantity": "Quantity",
-    "payment_status": "Payment Status",
-    "batch_status": "Batch Status",
-    "payment_completed": "Payment Completed",
-    "payment_pending": "Payment Pending",
-    "admin_issued": "Admin Issued",
-    "cards_issued": "Cards Issued",
-    "view_cards": "View Cards",
-    "request_print": "Request Print",
-    "view_details": "View Details",
-    "no_batches_yet": "No batches issued yet",
-    "issue_first_batch": "Issue your first batch of cards"
-  },
-
   "admin": {
     "user_management": "User Management",
-    "print_requests": "Print Requests",
     "operations_log": "Operations Log",
     "user_cards": "用户项目",
     "view_user_cards_desc": "查看和管理此用户创建的所有项目",
@@ -611,28 +579,21 @@
     "search_for_user": "搜索用户",
     "enter_email_to_view_cards": "在上方输入用户邮箱地址以查看其项目",
     "user_found": "已找到用户",
-    "loaded_cards": "已加载 {count} 个项目，用户 {email}",
     "search_failed": "搜索失败",
     "failed_to_search_user": "搜索用户失败",
-    "please_enter_email": "请输入邮箱地址",
     "system_stats": "系统统计",
     "total_users": "总用户数",
     "total_cards": "总项目数",
-    "total_batches": "总批次数",
-    "pending_print_requests": "待处理打印请求",
     "search_by_email": "按邮箱搜索...",
     "user_email": "用户邮箱",
     "user_role": "用户角色",
     "change_role": "更改角色",
-    "issue_free_batch": "发放免费批次",
-    "print_status": "打印状态",
     "update_status": "更新状态",
     "operation_type": "操作类型",
     "operation_user": "用户",
     "operation_time": "时间",
     "operation_description": "描述",
     "no_users_found": "找不到用户",
-    "no_print_requests": "没有打印请求",
     "no_operations_logged": "没有操作日志",
     "card_issuers": "创作者",
     "admins": "管理员",
@@ -648,9 +609,7 @@
     "registered": "注册时间",
     "last_sign_in": "最后登录",
     "never": "从未",
-    "issued": "已发行",
     "all_statuses": "所有状态",
-    "no_batches_match_filters": "没有符合您当前筛选条件的批次",
     "premium_users": "付费用户",
     "estimated_mrr": "预估月营收 (MRR)",
     "recurring_revenue": "经常性营收",
@@ -662,7 +621,6 @@
     "all_time": "全部时间",
     "content_mode_distribution": "内容模式分布",
     "scans": "次扫描",
-    "physical": "实体卡",
     "digital": "数字访问",
     "total_sessions": "总会话次数",
     "today_sessions": "今日会话",
@@ -742,30 +700,15 @@
     "daily_new_cards": "每日新项目",
     "weekly_new_cards": "每周新项目",
     "monthly_new_cards": "每月新项目",
-    "card_issuance_trends": "项目发行趋势",
-    "daily_issued_cards": "每日发行项目",
-    "weekly_issued_cards": "每周发行项目",
-    "monthly_issued_cards": "每月发行项目",
     "access_mode_distribution": "访问模式分布",
-    "physical_cards": "实体卡片",
     "digital_access_cards": "数字通行项目",
     "digital_adoption_rate": "数字采用率",
     "quick_actions": "快速操作",
-    "manage_print_requests": "管理打印请求",
-    "manage_batches": "管理批次",
-    "view_all_batches": "查看所有批次",
     "view_history_logs": "查看历史日志",
     "all_admin_actions": "所有管理员操作",
     "admin_dashboard": "管理员仪表板",
     "system_overview": "系统概况",
     "refresh_data": "刷新数据",
-    "print_request_pipeline": "打印请求进度",
-    "admin_feedbacks": "管理员备注与更新",
-    "internal_note": "内部备注",
-    "print_submitted": "已提交打印",
-    "print_processing": "打印处理中",
-    "print_completed": "打印已完成",
-    "print_shipping": "打印运送中",
     "process": "处理",
     "monitor": "监控",
     "review": "审核",
@@ -842,14 +785,11 @@
       "modifyUserBalance": "修改用户积分余额"
     }
   },
-
   "cards": {
-    "access_physical": "实体",
     "access_digital": "数字",
     "badge_grouped": "分组",
     "badge_flat": "扁平"
   },
-
   "mobile": {
     "scan_qr": "扫描二维码",
     "card_overview": "卡片概览",
@@ -943,7 +883,6 @@
     "noResultsDesc": "请尝试调整搜索条件或筛选",
     "clearFilters": "清除筛选"
   },
-
   "validation": {
     "required_field": "This field is required",
     "invalid_email": "Invalid email address",
@@ -954,7 +893,6 @@
     "invalid_file_type": "Invalid file type",
     "max_words_exceeded": "Maximum {max} words allowed"
   },
-
   "messages": {
     "save_success": "保存成功",
     "delete_success": "删除成功",
@@ -966,7 +904,6 @@
     "loading_data": "加载中...",
     "network_error": "网络错误，请重试"
   },
-
   "credits": {
     "title": "积分管理",
     "description": "购买和管理您的卡片发行积分",
@@ -1012,11 +949,9 @@
       "refunded": "已退款"
     },
     "consumptionType": {
-      "batch_issuance": "批量发行",
       "translation": "翻译",
       "single_card": "单张卡片",
       "subscription_overage_batch": "超额访问批次",
-      "physical_card_order": "实体卡片订单",
       "digital_scan": "数字扫描（旧版）"
     },
     "lowBalance": "余额偏低",
@@ -1030,8 +965,6 @@
     "whatAreCreditsFor": "积分用途是什么？",
     "overageAccess": "超额访问",
     "overageAccessDesc": "5 积分 = 100 次额外访问（自动扣除）",
-    "physicalCards": "实体卡片",
-    "physicalCardsDesc": "为您的体验订购收藏卡片",
     "orCustomAmount": "或自定义金额",
     "processing": "处理中...",
     "unit": {
@@ -1042,7 +975,6 @@
       "units": "个单位"
     }
   },
-
   "plan": {
     "nav_title": "方案与用量",
     "title": "方案与用量",
@@ -1172,7 +1104,6 @@
     "translation_premium_only": "多语言翻译仅限专业版使用。",
     "upgrade_for_translations": "升级至专业版以将您的内容翻译成多种语言。"
   },
-
   "translation": {
     "sectionTitle": "多语言翻译",
     "sectionSubtitle": "将您的内容翻译成多种语言",
@@ -1204,11 +1135,8 @@
       "manageModeWarning": "⚠️ 删除翻译是永久性的，无法撤销。",
       "deselectAll": "取消全选",
       "deleteSelected": "删除所选 ({count})",
-      "confirmBatchDeleteTitle": "删除 {count} 个翻译？",
-      "confirmBatchDeleteMessage": "您确定要删除 {count} 个翻译吗？此操作无法撤销。",
       "deletingProgress": "正在删除翻译",
       "deletingLanguage": "正在删除 {language}...",
-      "batchDeleteSuccess": "翻译已删除",
       "deletedCount": "成功删除 {count} 个翻译",
       "noTranslations": "暂无翻译",
       "successfullyTranslated": "成功翻译 {count} 个",
@@ -1220,7 +1148,6 @@
       "retranslate": "重新翻译"
     }
   },
-
   "import": {
     "bulk_import_cards": "批量导入卡片",
     "bulk_import_desc": "上传 Excel 文件以一次性创建多个项目。",
@@ -1250,10 +1177,6 @@
     "import_completed_with_issues": "导入完成但有问题",
     "failed_unknown_error": "因未知错误导致导入失败",
     "failed_import_data": "导入数据失败"
-  },
-  "batch": {
-    "batch": "批次",
-    "quantity": "数量"
   },
   "landing": {
     "nav": {
@@ -1297,15 +1220,7 @@
       "project_features": "项目功能",
       "experience_features": "项目功能",
       "mode_toggle": {
-        "physical_card": "实体卡片",
         "digital_access": "数字通行"
-      },
-      "physical_card": {
-        "title": "实体卡片",
-        "desc": "印刷收藏纪念卡，内含 QR 码",
-        "hint": "访客先看到卡片图片，再浏览内容",
-        "caption": "印有 QR 码的实体卡片示范",
-        "full_desc": "实体卡片是印有 QR 码的收藏纪念品。访客扫码后会先看到卡片总览页面（显示卡片图片和介绍），然后探索互动内容。非常适合博物馆、活动和场馆提供高级纪念品。"
       },
       "digital_access": {
         "title": "数字通行",
@@ -1460,52 +1375,38 @@
         ],
         "cta": "免费开始"
       },
-        "starter_tier": {
-          "title": "入门版",
-          "price": "{starterFee}",
-          "per": "每月",
-          "desc": "适合成长中的场馆与企业",
-          "features": [
-            "最多 5 个项目",
-            "每月 US${starterBudget} 会话额度",
-            "AI 会话：US${starterAiCost}/次",
-            "一般会话：US${starterNonAiCost}/次",
-            "自动充值：US${topupCost} 增加 {starterAiTopupSessions} 次 AI 或 {starterNonAiTopupSessions} 次一般会话",
-            "最多 {starterMaxLanguages} 种翻译语言",
-            "由 FunTell 提供技术支持"
-          ],
-          "cta": "选择入门版"
-        },
-        "premium_tier": {
-          "title": "专业版",
-          "price": "{premiumFee}",
-          "per": "每月",
-          "desc": "适合高流量场馆与企业",
-          "popular": "最受欢迎",
-          "features": [
-            "最多 35 个项目",
-            "每月 US${monthlyBudget} 会话额度",
-            "AI 会话：US${aiCost}/次",
-            "一般会话：US${nonAiCost}/次",
-            "自动充值：US${topupCost} 增加 {aiTopupSessions} 次 AI 或 {nonAiTopupSessions} 次一般会话",
-            "无限翻译语言",
-            "白标服务（无品牌标识）"
-          ],
-          "cta": "升级至专业版"
-      },
-      "physical_cards": {
-        "title": "实体卡片",
-        "subtitle": "选购附加项目",
-        "price": "US$ 2",
-        "per": "每张卡",
-        "desc": "为您的访客制作精美的收藏纪念卡",
+      "starter_tier": {
+        "title": "入门版",
+        "price": "{starterFee}",
+        "per": "每月",
+        "desc": "适合成长中的场馆与企业",
         "features": [
-          "精美印刷卡片",
-          "每张卡无限次扫码",
-          "批量订购（最少 100 张）",
-          "适合博物馆和活动"
+          "最多 5 个项目",
+          "每月 US${starterBudget} 会话额度",
+          "AI 会话：US${starterAiCost}/次",
+          "一般会话：US${starterNonAiCost}/次",
+          "自动充值：US${topupCost} 增加 {starterAiTopupSessions} 次 AI 或 {starterNonAiTopupSessions} 次一般会话",
+          "最多 {starterMaxLanguages} 种翻译语言",
+          "由 FunTell 提供技术支持"
         ],
-        "cta": "了解更多"
+        "cta": "选择入门版"
+      },
+      "premium_tier": {
+        "title": "专业版",
+        "price": "{premiumFee}",
+        "per": "每月",
+        "desc": "适合高流量场馆与企业",
+        "popular": "最受欢迎",
+        "features": [
+          "最多 35 个项目",
+          "每月 US${monthlyBudget} 会话额度",
+          "AI 会话：US${aiCost}/次",
+          "一般会话：US${nonAiCost}/次",
+          "自动充值：US${topupCost} 增加 {aiTopupSessions} 次 AI 或 {nonAiTopupSessions} 次一般会话",
+          "无限翻译语言",
+          "白标服务（无品牌标识）"
+        ],
+        "cta": "升级至专业版"
       },
       "included_title": "所有方案皆包含",
       "features": {
@@ -1562,13 +1463,11 @@
     },
     "floating_cta": "开始使用"
   },
-
   "file_analyzed": "文件分析完成",
   "file_analyzed_desc": "找到 {count} 个内容项目。",
   "file_analyzed_desc_with_images": "找到 {count} 个内容项目，包含 {images} 张内嵌图片。",
   "validation_issues": "发现验证问题",
   "validation_issues_desc": "导入前请修正文件中的 {errors} 个错误。",
-
   "digital_access": {
     "settings": "数字访问",
     "control_settings": "控制设置",
@@ -1683,4 +1582,3 @@
     "top_up": "充值"
   }
 }
-

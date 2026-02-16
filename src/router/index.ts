@@ -98,20 +98,10 @@ const router = createRouter({
             
             // Admin Routes
             {
-              path: 'admin/print-requests',
-              redirect: (to) => ({ name: 'admin-batches', params: { lang: to.params.lang } })
-            },
-            {
               path: 'admin/users',
               name: 'admin-users',
               component: () => import('@/views/Dashboard/Admin/UserManagement.vue'),
               meta: { requiredRole: 'admin' }
-            },
-            {
-              path: 'admin/batches',
-              name: 'admin-batches',
-              component: () => import('@/views/Dashboard/Admin/BatchManagement.vue'),
-              meta: { requiredRole: 'admin', requiresPhysicalCards: true }
             },
             {
               path: 'admin/credits',
@@ -146,10 +136,6 @@ const router = createRouter({
               name: 'admin-templates',
               component: () => import('@/views/Dashboard/Admin/TemplateManagement.vue'),
               meta: { requiredRole: 'admin' }
-            },
-            {
-              path: 'admin/issue-batch',
-              redirect: (to) => ({ name: 'admin-batches', params: { lang: to.params.lang } })
             },
           ]
         },
@@ -189,23 +175,25 @@ const router = createRouter({
           ]
         },
         
-        // Mobile client public card view with language
+        // Public card access (mobile client) with language
         {
           path: 'c/:issue_card_id',
-          name: 'publiccardview',
-          component: () => import('@/views/MobileClient/PublicCardView.vue')
+          name: 'public-card',
+          component: () => import('@/views/MobileClient/PublicCardView.vue'),
+          children: [
+            {
+              path: 'list',
+              name: 'public-card-list',
+              component: () => import('@/views/MobileClient/PublicCardView.vue')
+            },
+            {
+              path: 'item/:content_item_id',
+              name: 'public-card-item',
+              component: () => import('@/views/MobileClient/PublicCardView.vue')
+            }
+          ]
         },
-        {
-          path: 'c/:issue_card_id/list',
-          name: 'publiccardview-list',
-          component: () => import('@/views/MobileClient/PublicCardView.vue')
-        },
-        {
-          path: 'c/:issue_card_id/item/:content_item_id',
-          name: 'publiccardview-item',
-          component: () => import('@/views/MobileClient/PublicCardView.vue')
-        },
-        
+
         // Preview mode with language
         {
           path: 'preview/:card_id',
@@ -248,24 +236,13 @@ const router = createRouter({
       }
     },
     {
-      path: '/c/:issue_card_id',
+      path: '/c/:issue_card_id/:pathMatch(.*)*',
       redirect: (to) => {
         const lang = getSavedLanguage()
-        return `/${lang}/c/${to.params.issue_card_id}`
-      }
-    },
-    {
-      path: '/c/:issue_card_id/list',
-      redirect: (to) => {
-        const lang = getSavedLanguage()
-        return `/${lang}/c/${to.params.issue_card_id}/list`
-      }
-    },
-    {
-      path: '/c/:issue_card_id/item/:content_item_id',
-      redirect: (to) => {
-        const lang = getSavedLanguage()
-        return `/${lang}/c/${to.params.issue_card_id}/item/${to.params.content_item_id}`
+        const subPath = to.params.pathMatch
+          ? `/${(to.params.pathMatch as string[]).join('/')}`
+          : ''
+        return `/${lang}/c/${to.params.issue_card_id}${subPath}`
       }
     },
     {
@@ -353,12 +330,6 @@ const getDefaultRouteForRole = (userRole: string | undefined, lang: LanguageCode
   return { name: 'projects', params: { lang } }
 }
 
-// Check if physical cards feature is enabled via environment variable
-const isPhysicalCardsEnabled = (): boolean => {
-  const envValue = import.meta.env.VITE_ENABLE_PHYSICAL_CARDS
-  return envValue !== 'false'
-}
-
 // Track auth initialization
 let authInitialized = false
 
@@ -425,20 +396,7 @@ router.beforeEach(async (to, from, next) => {
     } else {
       // Check role requirements
       if (hasRequiredRole(userRole, requiredRole)) {
-        // Check if route requires physical cards feature
-        const requiresPhysicalCards = to.matched.some(record => record.meta.requiresPhysicalCards)
-        if (requiresPhysicalCards && !isPhysicalCardsEnabled()) {
-          toast.add({
-            severity: 'info',
-            summary: 'Feature Disabled',
-            detail: 'Physical cards feature is not enabled.',
-            group: 'br',
-            life: 3000
-          })
-          next(getDefaultRouteForRole(userRole, currentLang))
-        } else {
-          next()
-        }
+        next()
       } else {
         toast.add({
           severity: 'error',

@@ -29,6 +29,7 @@ RETURNS TABLE (
     group_display TEXT,
     billing_type TEXT,
     default_daily_session_limit INTEGER,
+    metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
     monthly_sessions BIGINT,
@@ -64,6 +65,7 @@ BEGIN
         c.group_display,
         c.billing_type,
         c.default_daily_session_limit,
+        c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
         COALESCE(SUM(t.monthly_sessions), 0)::BIGINT AS monthly_sessions,
@@ -104,8 +106,9 @@ CREATE OR REPLACE FUNCTION create_card(
     p_content_mode TEXT DEFAULT 'list',  -- Content rendering mode: single, grid, list, cards
     p_is_grouped BOOLEAN DEFAULT FALSE,  -- Whether content is organized into categories
     p_group_display TEXT DEFAULT 'expanded',  -- How grouped items display: expanded or collapsed
-    p_billing_type TEXT DEFAULT 'physical',  -- Billing model: physical or digital
-    p_default_daily_session_limit INTEGER DEFAULT 500  -- Default daily session limit for new QR codes (default: 500)
+    p_billing_type TEXT DEFAULT 'digital',  -- Billing model: digital per-session subscription
+    p_default_daily_session_limit INTEGER DEFAULT 500,  -- Default daily session limit for new QR codes (default: 500)
+    p_metadata JSONB DEFAULT '{}'  -- Extensible metadata for future features
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -137,7 +140,8 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        default_daily_session_limit
+        default_daily_session_limit,
+        metadata
     ) VALUES (
         auth.uid(),
         p_name,
@@ -157,8 +161,9 @@ BEGIN
         COALESCE(p_content_mode, 'list'),
         COALESCE(p_is_grouped, FALSE),
         COALESCE(p_group_display, 'expanded'),
-        COALESCE(p_billing_type, 'physical'),
-        CASE WHEN p_billing_type = 'digital' THEN COALESCE(p_default_daily_session_limit, 500) ELSE NULL END
+        'digital',
+        COALESCE(p_default_daily_session_limit, 500),
+        COALESCE(p_metadata, '{}'::JSONB)
     )
     RETURNING id INTO v_card_id;
     
@@ -188,8 +193,7 @@ BEGIN
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER) TO authenticated;
--- Note: Last INTEGER parameter is p_default_daily_session_limit (was p_daily_session_limit)
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 -- Session stats are computed from card_access_tokens table
@@ -217,6 +221,7 @@ RETURNS TABLE (
     group_display TEXT,
     billing_type TEXT,
     default_daily_session_limit INTEGER,
+    metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
     monthly_sessions BIGINT,
@@ -251,13 +256,14 @@ BEGIN
         c.group_display,
         c.billing_type,
         c.default_daily_session_limit,
+        c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
         COALESCE(SUM(t.monthly_sessions), 0)::BIGINT AS monthly_sessions,
         COALESCE(SUM(t.daily_sessions), 0)::BIGINT AS daily_sessions,
         COALESCE(COUNT(t.id) FILTER (WHERE t.is_enabled), 0)::BIGINT AS active_qr_codes,
         COALESCE(COUNT(t.id), 0)::BIGINT AS total_qr_codes,
-        c.created_at, 
+        c.created_at,
         c.updated_at
     FROM cards c
     LEFT JOIN card_access_tokens t ON t.card_id = c.id
@@ -287,7 +293,8 @@ CREATE OR REPLACE FUNCTION update_card(
     p_is_grouped BOOLEAN DEFAULT NULL,
     p_group_display TEXT DEFAULT NULL,
     p_billing_type TEXT DEFAULT NULL,
-    p_default_daily_session_limit INTEGER DEFAULT NULL
+    p_default_daily_session_limit INTEGER DEFAULT NULL,
+    p_metadata JSONB DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_old_record RECORD;
@@ -314,6 +321,7 @@ BEGIN
         group_display,
         billing_type,
         default_daily_session_limit,
+        metadata,
         user_id,
         updated_at
     INTO v_old_record
@@ -408,7 +416,12 @@ BEGIN
         v_changes_made := v_changes_made || jsonb_build_object('default_daily_session_limit', jsonb_build_object('from', v_old_record.default_daily_session_limit, 'to', p_default_daily_session_limit));
         has_changes := TRUE;
     END IF;
-    
+
+    IF p_metadata IS NOT NULL AND p_metadata IS DISTINCT FROM v_old_record.metadata THEN
+        v_changes_made := v_changes_made || jsonb_build_object('metadata', 'updated');
+        has_changes := TRUE;
+    END IF;
+
     -- Only proceed if there are actual changes
     IF NOT has_changes THEN
         RETURN TRUE; -- No changes to make
@@ -434,7 +447,8 @@ BEGIN
         is_grouped = COALESCE(p_is_grouped, is_grouped),
         group_display = COALESCE(p_group_display, group_display),
         -- billing_type is immutable - not updated here
-        default_daily_session_limit = CASE WHEN billing_type = 'digital' THEN COALESCE(p_default_daily_session_limit, default_daily_session_limit) ELSE NULL END,
+        default_daily_session_limit = COALESCE(p_default_daily_session_limit, default_daily_session_limit),
+        metadata = COALESCE(p_metadata, metadata),
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
     
@@ -444,7 +458,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
@@ -518,6 +532,7 @@ CREATE OR REPLACE FUNCTION get_card_with_content(
   card_billing_type TEXT,
   card_default_daily_session_limit INT,
   card_qr_code_position TEXT,
+  card_metadata JSONB,
   -- Content items array
   content_items JSONB
 )
@@ -563,6 +578,7 @@ BEGIN
     c.billing_type,
     c.default_daily_session_limit,
     c.qr_code_position::TEXT,  -- Cast enum to TEXT
+    c.metadata,
     -- Aggregate content items into JSONB array
     COALESCE(
       (

@@ -118,18 +118,6 @@ After uploading, you can:
 
 1. **Adjust position** - Drag to reposition
 2. **Zoom** - Scale in or out
-3. **Set QR position** - Choose where QR code appears on printed materials
-
-### QR Code Position
-
-When printing cards with embedded QR codes:
-
-| Position | Code |
-|----------|------|
-| Top Left | TL |
-| Top Right | TR |
-| Bottom Left | BL |
-| Bottom Right | BR |
 
 ## Duplicating Projects
 

@@ -59,7 +59,6 @@
     "optional": "Optional",
     "use": "Utiliser"
   },
-  
   "auth": {
     "sign_in": "Sign In",
     "sign_up": "Sign Up",
@@ -98,7 +97,6 @@
     "cms_account_subtitle": "Sign in to your FunTell CMS account",
     "join_funtell": "Join FunTell CMS to start creating digital cards"
   },
-
   "dashboard": {
     "dashboard": "Dashboard",
     "my_cards": "My Cards",
@@ -108,7 +106,6 @@
     "general": "General",
     "content": "Content",
     "qr_access": "QR & Access",
-    "issuance": "Issuance",
     "mobile_preview": "Mobile Preview",
     "card_name": "Card Name",
     "card_description": "Card Description",
@@ -131,7 +128,6 @@
     "get_started_creating": "Get started by creating your first card",
     "select_card_to_view": "Select a card to view details"
   },
-
   "content": {
     "content_management": "Content Management",
     "content_items": "Content Items",
@@ -149,52 +145,26 @@
     "drag_to_reorder": "Drag to reorder",
     "reorder_tip": "Drag items to rearrange their display order"
   },
-
-  "batches": {
-    "card_batches": "Card Batches",
-    "issue_batch": "Issue Batch",
-    "batch_name": "Batch Name",
-    "quantity": "Quantity",
-    "payment_status": "Payment Status",
-    "batch_status": "Batch Status",
-    "payment_completed": "Payment Completed",
-    "payment_pending": "Payment Pending",
-    "admin_issued": "Admin Issued",
-    "cards_issued": "Cards Issued",
-    "view_cards": "View Cards",
-    "request_print": "Request Print",
-    "view_details": "View Details",
-    "no_batches_yet": "No batches issued yet",
-    "issue_first_batch": "Issue your first batch of cards"
-  },
-
   "admin": {
     "admin_dashboard": "Admin Dashboard",
     "user_management": "User Management",
-    "print_requests": "Print Requests",
     "operations_log": "Operations Log",
     "user_cards": "User Cards",
     "system_stats": "System Statistics",
     "total_users": "Total Users",
     "total_cards": "Total Cards",
-    "total_batches": "Total Batches",
-    "pending_print_requests": "Pending Print Requests",
     "search_by_email": "Search by email...",
     "user_email": "User Email",
     "user_role": "User Role",
     "change_role": "Change Role",
-    "issue_free_batch": "Issue Free Batch",
-    "print_status": "Print Status",
     "update_status": "Update Status",
     "operation_type": "Operation Type",
     "operation_user": "User",
     "operation_time": "Time",
     "operation_description": "Description",
     "no_users_found": "No users found",
-    "no_print_requests": "No print requests",
     "no_operations_logged": "No operations logged"
   },
-
   "mobile": {
     "scan_qr": "Scan QR Code",
     "card_overview": "Card Overview",
@@ -215,7 +185,6 @@
     "connected": "Connected",
     "disconnected": "Disconnected"
   },
-
   "validation": {
     "required_field": "This field is required",
     "invalid_email": "Invalid email address",
@@ -226,7 +195,6 @@
     "invalid_file_type": "Invalid file type",
     "max_words_exceeded": "Maximum {max} words allowed"
   },
-
   "messages": {
     "save_success": "Saved successfully",
     "delete_success": "Deleted successfully",
@@ -238,7 +206,6 @@
     "loading_data": "Loading data...",
     "network_error": "Network error. Please try again."
   },
-
   "landing": {
     "nav": {
       "about": "À Propos",
@@ -281,15 +248,7 @@
       "project_features": "Fonctionnalités Clés",
       "experience_features": "Fonctionnalités Clés",
       "mode_toggle": {
-        "physical_card": "Carte Physique",
         "digital_access": "Accès Digital"
-      },
-      "physical_card": {
-        "title": "Carte Physique",
-        "desc": "Souvenir collectable imprimé avec code QR",
-        "hint": "Les visiteurs voient d'abord l'image de la carte, puis explorent le contenu",
-        "caption": "Exemple de carte physique imprimée avec code QR",
-        "full_desc": "Les cartes physiques sont des souvenirs collectables avec un code QR intégré. Les visiteurs scannent pour voir d'abord la page de présentation de la carte (affichant l'image et la description), puis explorent le contenu interactif. Parfait pour musées, événements et lieux souhaitant offrir des souvenirs premium."
       },
       "digital_access": {
         "title": "Accès Digital",
@@ -489,20 +448,6 @@
         "auto_topup_title": "Recharge Automatique",
         "auto_topup_desc": "Quand le budget est épuisé, US$${topupCost} est automatiquement facturé pour des sessions supplémentaires"
       },
-      "physical_cards": {
-        "title": "Cartes Physiques",
-        "subtitle": "Option Additionnelle",
-        "price": "US$ 2",
-        "per": "par carte",
-        "desc": "Cartes souvenir collectables pour vos visiteurs",
-        "features": [
-          "Cartes imprimées premium",
-          "Scans illimités par carte",
-          "Commande par lot (min 100)",
-          "Parfait pour musées & événements"
-        ],
-        "cta": "En Savoir Plus"
-      },
       "included_title": "Inclus Dans Tous les Plans",
       "features": {
         "ai_voice": "Conversations vocales IA",
@@ -559,4 +504,3 @@
     "floating_cta": "Commencer"
   }
 }
-

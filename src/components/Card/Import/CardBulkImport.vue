@@ -166,8 +166,8 @@
                   <i class="pi pi-sitemap"></i> {{ $t('templates.grouped') }}
                 </span>
                 <span class="settings-badge badge-billing">
-                  <i :class="currentImported.card.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-id-card'"></i>
-                  {{ currentImported.card.billing_type === 'digital' ? $t('templates.billing_digital') : $t('templates.billing_physical') }}
+                  <i class="pi pi-qrcode"></i>
+                  {{ $t('templates.billing_digital') }}
                 </span>
                 <span v-if="currentImported.card.original_language && currentImported.card.original_language !== 'en'" class="settings-badge badge-language">
                   {{ getLanguageFlag(currentImported.card.original_language) }}
@@ -681,6 +681,7 @@ async function executeImport() {
           p_group_display: imported.card.group_display,
           p_billing_type: imported.card.billing_type,
           p_default_daily_session_limit: imported.card.default_daily_session_limit ?? 500,
+          p_metadata: imported.card.metadata || {},
         })
 
         if (cardErr) throw cardErr

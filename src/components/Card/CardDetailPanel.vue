@@ -56,31 +56,15 @@
                                 :key="selectedCard.id + '-content'"
                                 @update-card="$emit('update-card', $event)"
                             />
-                            <!-- Issuance Tab (Physical Cards Only) -->
-                            <CardIssuanceCheckout 
-                                v-if="getTabComponent(index) === 'issuance'" 
-                                :cardId="selectedCard.id" 
-                                :key="selectedCard.id + '-issuance'"
-                                @batch-created="handleBatchCreated"
-                            />
-                            <!-- QR & Access Tab (Physical Cards - batch-based) -->
-                            <CardAccessQR 
-                                v-if="getTabComponent(index) === 'qr' && selectedCard.billing_type !== 'digital'"
-                                :cardId="selectedCard.id"
-                                :cardName="selectedCard.name"
-                                :selectedBatchId="selectedBatchId"
-                                @batch-changed="$emit('batch-changed', $event)"
-                                :key="`${selectedCard.id}-access-qr-${accessQRRefreshKey}`" 
-                            />
-                            <!-- QR & Access Tab (Digital Cards - single QR) -->
-                            <DigitalAccessQR 
-                                v-if="getTabComponent(index) === 'qr' && selectedCard.billing_type === 'digital'"
+                            <!-- QR & Access Tab -->
+                            <DigitalAccessQR
+                                v-if="getTabComponent(index) === 'qr'"
                                 :card="selectedCard"
                                 :cardName="selectedCard.name"
                                 :key="`${selectedCard.id}-digital-qr`"
                                 @updated="handleDigitalAccessUpdated"
                             />
-                            <!-- Digital Access Settings Tab (Digital Cards Only) -->
+                            <!-- Control Settings Tab -->
                             <DigitalAccessSettings 
                                 v-if="getTabComponent(index) === 'digital-access'"
                                 :card="selectedCard"
@@ -122,16 +106,12 @@ import TabPanel from 'primevue/tabpanel';
 import Dialog from 'primevue/dialog';
 import CardView from '@/components/CardComponents/CardView.vue';
 import CardContent from '@/components/CardContent/CardContent.vue';
-import CardIssuanceCheckout from '@/components/CardIssuanceCheckout.vue';
-import CardAccessQR from '@/components/CardComponents/CardAccessQR.vue';
 import DigitalAccessQR from '@/components/DigitalAccess/DigitalAccessQR.vue';
 import MobilePreview from '@/components/CardComponents/MobilePreview.vue';
 import DigitalAccessSettings from '@/components/DigitalAccess/DigitalAccessSettings.vue';
-import { usePhysicalCards } from '@/composables/usePhysicalCards';
 import { useContentItemStore } from '@/stores/contentItem';
 
 const { t } = useI18n();
-const { isPhysicalCardsEnabled } = usePhysicalCards();
 const contentItemStore = useContentItemStore();
 
 const props = defineProps({
@@ -155,14 +135,9 @@ const props = defineProps({
         type: Function,
         default: null
     },
-    selectedBatchId: {
-        type: String,
-        default: null
-    }
 });
 
 const emit = defineEmits([
-    'batch-changed',
     'update:activeTab',
     'update-card',
     'delete-card',
@@ -177,16 +152,7 @@ function handleCardImported() {
 // Preview dialog state
 const showPreviewDialog = ref(false);
 
-// Counter to force CardAccessQR refresh when batch is created
-const accessQRRefreshKey = ref(0);
-
-// Handle batch created event from CardIssuanceCheckout
-const handleBatchCreated = async (batchId) => {
-    // Increment key to force CardAccessQR to remount with fresh data
-    accessQRRefreshKey.value++;
-};
-
-// Tabs are dynamic based on billing_type (access mode) and feature flags
+// Tab configuration
 // Each tab includes a hint for tooltips to help users understand the workflow
 const tabs = computed(() => {
     const baseTabs = [
@@ -202,23 +168,14 @@ const tabs = computed(() => {
         }
     ];
 
-    // Physical cards have Issuance tab (for batch printing) - only when feature is enabled
-    if (props.selectedCard?.billing_type !== 'digital' && isPhysicalCardsEnabled.value) {
-        baseTabs.push({
-            label: t('dashboard.card_issuance'),
-            icon: 'pi pi-credit-card',
-            hint: t('dashboard.tab_hint_issuance')
-        });
-    } else {
-        // Digital cards (or physical cards when feature disabled) have Control Settings tab
-        baseTabs.push({
-            label: t('digital_access.control_settings'),
-            icon: 'pi pi-sliders-h',
-            hint: t('dashboard.tab_hint_control')
-        });
-    }
+    // Control Settings tab
+    baseTabs.push({
+        label: t('digital_access.control_settings'),
+        icon: 'pi pi-sliders-h',
+        hint: t('dashboard.tab_hint_control')
+    });
 
-    // Both have QR & Access tab
+    // QR & Access tab
     baseTabs.push({
         label: t('dashboard.qr_access'),
         icon: 'pi pi-qrcode',
@@ -228,24 +185,12 @@ const tabs = computed(() => {
     return baseTabs;
 });
 
-// Map tab index to component type based on billing_type and feature flags
+// Map tab index to component type: [General, Content, Digital Access, QR]
 const getTabComponent = (index) => {
-    const isDigital = props.selectedCard?.billing_type === 'digital';
-    // Treat physical cards as digital when feature is disabled (no issuance tab)
-    const showPhysicalTabs = !isDigital && isPhysicalCardsEnabled.value;
-
     if (index === 0) return 'general';
     if (index === 1) return 'content';
-
-    if (showPhysicalTabs) {
-        // Physical with feature enabled: [General, Content, Issuance, QR]
-        if (index === 2) return 'issuance';
-        if (index === 3) return 'qr';
-    } else {
-        // Digital or Physical with feature disabled: [General, Content, Digital Access, QR]
-        if (index === 2) return 'digital-access';
-        if (index === 3) return 'qr';
-    }
+    if (index === 2) return 'digital-access';
+    if (index === 3) return 'qr';
     return null;
 };
 
@@ -266,11 +211,15 @@ const emptyStateMessage = computed(() => {
 
 // Content count for setup guide
 const contentCount = ref(0);
+let lastContentCountCardId = null;
+let contentCountDirty = false;
 
 const fetchContentCount = async (cardId) => {
     try {
         const result = await contentItemStore.getContentItemsCount(cardId);
         contentCount.value = result?.total_count ?? 0;
+        lastContentCountCardId = cardId;
+        contentCountDirty = false;
     } catch {
         contentCount.value = 0;
     }
@@ -278,13 +227,21 @@ const fetchContentCount = async (cardId) => {
 
 // Fetch content count when card changes
 watch(() => props.selectedCard?.id, (newId) => {
-    if (newId) fetchContentCount(newId);
-    else contentCount.value = 0;
+    if (newId) {
+        fetchContentCount(newId);
+    } else {
+        contentCount.value = 0;
+        lastContentCountCardId = null;
+    }
 }, { immediate: true });
 
-// Re-fetch when returning to General tab (user may have added content)
-watch(() => props.activeTab, (newTab) => {
-    if (newTab === '0' && props.selectedCard?.id) {
+// Mark dirty when leaving General tab (user may edit content on other tabs)
+// Only re-fetch when returning to General tab if we left it
+watch(() => props.activeTab, (newTab, oldTab) => {
+    if (oldTab === '0' && newTab !== '0') {
+        contentCountDirty = true;
+    }
+    if (newTab === '0' && contentCountDirty && props.selectedCard?.id) {
         fetchContentCount(props.selectedCard.id);
     }
 });

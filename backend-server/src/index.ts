@@ -248,7 +248,6 @@ const server = app.listen(PORT, async () => {
   console.log(`    POST http://localhost:${PORT}/api/webhooks/stripe`);
   console.log('  Mobile:');
   console.log(`    GET  http://localhost:${PORT}/api/mobile/card/digital/:accessToken`);
-  console.log(`    GET  http://localhost:${PORT}/api/mobile/card/physical/:issueCardId`);
   console.log('');
 });
 

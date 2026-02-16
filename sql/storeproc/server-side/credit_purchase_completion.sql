@@ -244,7 +244,14 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Grant execution permissions to service_role only (called by webhooks/backend)
+-- =================================================================
+-- GRANTS - Only service_role can execute these
+-- =================================================================
+REVOKE ALL ON FUNCTION complete_credit_purchase(UUID, VARCHAR, VARCHAR, INTEGER, TEXT, JSONB) FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION complete_credit_purchase(UUID, VARCHAR, VARCHAR, INTEGER, TEXT, JSONB) TO service_role;
+
+REVOKE ALL ON FUNCTION refund_credit_purchase(UUID, UUID, DECIMAL, TEXT) FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION refund_credit_purchase(UUID, UUID, DECIMAL, TEXT) TO service_role;
+
+REVOKE ALL ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) TO service_role;

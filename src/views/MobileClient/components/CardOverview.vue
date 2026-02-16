@@ -139,7 +139,7 @@ interface Props {
     ai_welcome_general?: string
     ai_welcome_item?: string
     is_activated: boolean
-    billing_type?: 'physical' | 'digital'
+    billing_type?: 'digital'
     has_translation?: boolean // TRUE if card has translations available
     subscription_tier?: string
   }

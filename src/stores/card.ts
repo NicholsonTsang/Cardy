@@ -46,8 +46,9 @@ export interface Card {
     content_mode: ContentMode; // Content rendering mode: single, grid, list, cards
     is_grouped: boolean; // Whether content is organized into categories
     group_display: GroupDisplay; // How grouped items display: expanded or collapsed
-    billing_type: 'physical' | 'digital'; // Billing model: physical = per-card, digital = per-session subscription
+    billing_type: 'digital'; // Billing model: per-session subscription
     default_daily_session_limit: number | null; // Default daily limit for new QR codes (NULL = unlimited)
+    metadata?: Record<string, any>; // Extensible JSONB metadata for future features
     // Computed from access_tokens (aggregated stats)
     total_sessions: number; // Sum of all tokens' all-time sessions
     monthly_sessions: number; // Sum of all tokens' monthly sessions
@@ -81,8 +82,9 @@ export interface CardFormData {
     content_mode?: ContentMode; // Content rendering mode
     is_grouped?: boolean; // Whether content is organized into categories
     group_display?: GroupDisplay; // How grouped items display
-    billing_type?: 'physical' | 'digital'; // Billing model
+    billing_type?: 'digital'; // Billing model
     default_daily_session_limit?: number | null; // Default daily limit for new QR codes (default: 500)
+    metadata?: Record<string, any>; // Extensible JSONB metadata
     id?: string; // Optional for updates
 }
 
@@ -210,8 +212,9 @@ export const useCardStore = defineStore('card', () => {
                     p_content_mode: cardData.content_mode || 'list',
                     p_is_grouped: cardData.is_grouped || false,
                     p_group_display: cardData.group_display || 'expanded',
-                    p_billing_type: cardData.billing_type || 'physical',
-                    p_default_daily_session_limit: cardData.billing_type === 'digital' ? (cardData.default_daily_session_limit ?? defaultDailyLimit) : null
+                    p_billing_type: cardData.billing_type || 'digital',
+                    p_default_daily_session_limit: cardData.default_daily_session_limit ?? defaultDailyLimit,
+                    p_metadata: cardData.metadata || {}
                 });
                 
             if (createError) throw createError;
@@ -321,7 +324,8 @@ export const useCardStore = defineStore('card', () => {
                 p_is_grouped: updateData.is_grouped ?? null,
                 p_group_display: updateData.group_display || null,
                 p_billing_type: updateData.billing_type || null,
-                p_default_daily_session_limit: updateData.billing_type === 'digital' ? (updateData.default_daily_session_limit || null) : null
+                p_default_daily_session_limit: updateData.default_daily_session_limit || null,
+                p_metadata: updateData.metadata || null
             };
             
             const { data, error: updateError } = await supabase
@@ -645,8 +649,9 @@ export const useCardStore = defineStore('card', () => {
                     p_content_mode: original.card_content_mode || 'list',
                     p_is_grouped: original.card_is_grouped || false,
                     p_group_display: original.card_group_display || 'expanded',
-                    p_billing_type: original.card_billing_type || 'physical',
-                    p_default_daily_session_limit: original.card_default_daily_session_limit || null
+                    p_billing_type: original.card_billing_type || 'digital',
+                    p_default_daily_session_limit: original.card_default_daily_session_limit || null,
+                    p_metadata: original.card_metadata || {}
                 });
 
             if (createError) throw createError;

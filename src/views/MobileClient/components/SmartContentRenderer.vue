@@ -101,11 +101,14 @@
           </div>
         </div>
 
-        <!-- Result count (when filters active) -->
+        <!-- Result count (only when search text is active, not for category/sort changes) -->
         <div
-          v-if="hasActiveFilters && !noResults"
+          v-if="debouncedQuery && !noResults"
           class="result-count"
-          :class="{ 'has-header': hasHeader, 'has-categories': hasCategories }"
+          :class="{
+            'has-header': hasHeader,
+            'has-categories': hasCategories && isGrouped && groupDisplay === 'expanded'
+          }"
           aria-live="polite"
         >
           {{ resultCount }} / {{ totalItemCount }}
@@ -137,7 +140,9 @@
             :all-items="allItems || items"
             :available-languages="availableLanguages"
             :has-header="hasHeader"
+            :has-categories="hasCategories && showSearchBar"
             :layout-style="detectedLayout"
+            :matching-child-ids="hasActiveFilters ? matchingChildIds : undefined"
             @select="handleSelect"
           />
 
@@ -347,11 +352,13 @@ const showSearchBar = computed(() => {
 // For grouped content, search across parent items; for flat, search across flat items
 const {
   searchQuery,
+  debouncedQuery,
   selectedCategory,
   sortOption,
   categories,
   hasCategories,
   filteredItems,
+  matchingChildIds,
   resultCount,
   totalCount: totalItemCount,
   hasActiveFilters,
@@ -441,9 +448,9 @@ onMounted(() => {
   z-index: 45;
   padding: 0.75rem 1rem;
   padding-top: max(0.75rem, env(safe-area-inset-top));
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.4), rgba(0, 0, 0, 0.15));
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.35));
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -632,17 +639,20 @@ onMounted(() => {
   left: 0;
   right: 0;
   z-index: 44;
-  /* Position below search bar with proper safe-area handling */
-  top: calc(3.75rem + 0.75rem);
-  padding-top: max(0.5rem, env(safe-area-inset-top));
+  /* Overlap upward into search bar area to eliminate gap (search bar is z-45, clips above) */
+  top: calc(3.75rem - 0.25rem);
+  padding-top: calc(0.75rem + max(0.25rem, env(safe-area-inset-top)));
   padding-bottom: 0.5rem;
   padding-left: 0;
   padding-right: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.2));
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
 }
 
 .category-chips-wrapper.has-header {
-  /* Stack below: header (4.5rem) + search bar (3.75rem) + gaps */
-  top: calc(4.5rem + 3.75rem + 0.75rem);
+  /* Overlap upward into search bar area to eliminate gap */
+  top: calc(4.5rem + 3.75rem - 0.25rem);
 }
 
 .category-chips-scroll {
@@ -713,12 +723,12 @@ onMounted(() => {
 }
 
 .result-count.has-categories {
-  /* Shift down when category chips are also visible (~2.5rem chip height + padding) */
-  top: calc(3.75rem + 0.75rem + 2.5rem);
+  /* Shift down when category chips are also visible (~3.5rem: 0.5rem pad + 2.5rem chip + 0.5rem pad) */
+  top: calc(3.75rem + 0.75rem + 3.5rem);
 }
 
 .result-count.has-header.has-categories {
-  top: calc(4.5rem + 3.75rem + 0.75rem + 2.5rem);
+  top: calc(4.5rem + 3.75rem + 0.75rem + 3.5rem);
 }
 
 /* No Results State */

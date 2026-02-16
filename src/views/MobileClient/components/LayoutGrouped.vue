@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-grouped" :class="{ 'has-header': hasHeader, 'has-ai': card.conversation_ai_enabled }">
+  <div class="layout-grouped" :class="{ 'has-header': hasHeader, 'has-ai': card.conversation_ai_enabled, 'has-categories': hasCategories }">
     <!-- Grouped Content: Categories with sub-items -->
     <div class="categories-container">
       <div 
@@ -96,10 +96,14 @@ interface Props {
   allItems: ContentItem[] // All items including children
   availableLanguages?: string[]
   hasHeader?: boolean
+  hasCategories?: boolean // Whether category chips are shown above this layout
+  matchingChildIds?: Set<string> // When search is active, only show matching children
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  hasHeader: false
+  hasHeader: false,
+  hasCategories: false,
+  matchingChildIds: undefined
 })
 
 const emit = defineEmits<{
@@ -125,9 +129,16 @@ function openAssistant() {
 }
 
 // Get child items for a category
+// When matchingChildIds is provided (search active), only show matching children
 function getChildItems(parentId: string): ContentItem[] {
   return (props.allItems || [])
-    .filter(item => item.content_item_parent_id === parentId)
+    .filter(item => {
+      if (item.content_item_parent_id !== parentId) return false
+      if (props.matchingChildIds && props.matchingChildIds.size > 0) {
+        return props.matchingChildIds.has(item.content_item_id)
+      }
+      return true
+    })
     .sort((a, b) => a.content_item_sort_order - b.content_item_sort_order)
 }
 
@@ -162,6 +173,16 @@ function handleItemClick(item: ContentItem) {
 .layout-grouped.has-header {
   /* Fixed header (4.5rem) + search bar (3.75rem) + gaps (0.75rem) + safe area */
   padding-top: calc(9rem + env(safe-area-inset-top));
+}
+
+.layout-grouped.has-header.has-categories {
+  /* Add extra space for category filter chips (~3.5rem) + result count indicator (~1rem) */
+  padding-top: calc(13.5rem + env(safe-area-inset-top));
+}
+
+.layout-grouped.has-categories:not(.has-header) {
+  /* Category chips without header */
+  padding-top: calc(5rem + env(safe-area-inset-top));
 }
 
 /* Extra bottom padding when AI assistant is present (fixed at bottom) */

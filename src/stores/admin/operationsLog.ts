@@ -122,10 +122,8 @@ export const useOperationsLogStore = defineStore('operationsLog', () => {
   const getOperationIcon = (operation: string): string => {
     const op = operation.toLowerCase()
     if (op.includes('card')) return 'pi-credit-card'
-    if (op.includes('batch')) return 'pi-box'
     if (op.includes('payment') || op.includes('waived')) return 'pi-dollar'
     if (op.includes('user') || op.includes('role')) return 'pi-user'
-    if (op.includes('print')) return 'pi-print'
     if (op.includes('content')) return 'pi-file'
     return 'pi-info-circle'
   }

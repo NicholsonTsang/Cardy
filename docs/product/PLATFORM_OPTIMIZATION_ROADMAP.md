@@ -1738,7 +1738,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 | POST | `/api/translations/translate-card` | Start translation job | Required |
 | GET | `/api/translations/job/:jobId` | Poll job status | Required |
 | POST | `/api/ai/generate-ai-settings` | Auto-generate AI config | Required |
-| POST | `/api/payments/create-credit-checkout` | Buy physical card credits | Required |
+| POST | `/api/payments/create-credit-checkout` | Buy session credits | Required |
 | GET | `/api/analytics/card/:cardId` | Advanced analytics | Required |
 | POST | `/api/teams/invite` | Invite team member | Required |
 | GET | `/api/teams/:teamId/activity` | Activity feed | Required |

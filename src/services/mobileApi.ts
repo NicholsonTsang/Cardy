@@ -40,6 +40,7 @@ export interface MobileCardResponse {
       dailyLimitExceeded: boolean;
       creditsInsufficient: boolean;
       accessDisabled?: boolean;
+      metadata?: Record<string, any>;
     };
     contentItems: Array<{
       id: string;
@@ -222,86 +223,12 @@ export async function fetchDigitalCardContent(
 }
 
 /**
- * Fetch physical card content by issue card ID
- * Uses Express backend with Redis caching
- */
-export async function fetchPhysicalCardContent(
-  issueCardId: string,
-  language: string = 'en'
-): Promise<MobileCardResponse> {
-  try {
-    const url = `${BACKEND_URL}/api/mobile/card/physical/${encodeURIComponent(issueCardId)}?language=${encodeURIComponent(language)}`;
-    
-    const response = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      
-      if (response.status === 404) {
-        return {
-          success: false,
-          error: 'Card not found',
-          message: errorData.message || 'Invalid issue card ID',
-        };
-      }
-      
-      if (response.status === 429) {
-        return {
-          success: false,
-          error: 'Rate limit exceeded',
-          message: errorData.message || 'Too many requests. Please try again later.',
-        };
-      }
-      
-      return {
-        success: false,
-        error: errorData.error || 'Failed to fetch card',
-        message: errorData.message || 'An error occurred',
-      };
-    }
-    
-    const data = await response.json();
-    return data;
-    
-  } catch (error: any) {
-    console.error('[MobileAPI] Physical card fetch error:', error);
-    return {
-      success: false,
-      error: 'Network error',
-      message: error.message || 'Failed to connect to server',
-    };
-  }
-}
-
-/**
- * Check if a string is a valid UUID
- */
-export function isValidUUID(str: string): boolean {
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(str);
-}
-
-/**
- * Determine card type from ID/token and fetch content accordingly
+ * Fetch card content by access token
  */
 export async function fetchCardContent(
   cardIdOrToken: string,
   language: string = 'en'
 ): Promise<MobileCardResponse> {
-  // If it's a UUID, try physical card first
-  if (isValidUUID(cardIdOrToken)) {
-    const physicalResult = await fetchPhysicalCardContent(cardIdOrToken, language);
-    if (physicalResult.success) {
-      return physicalResult;
-    }
-  }
-  
-  // Otherwise, try as digital access token
   return fetchDigitalCardContent(cardIdOrToken, language);
 }
 

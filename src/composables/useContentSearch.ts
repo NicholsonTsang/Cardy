@@ -152,8 +152,49 @@ export function useContentSearch(options: UseContentSearchOptions) {
   }
 
   /**
+   * When searching grouped content, build a set of child IDs that match the query.
+   * This allows LayoutGrouped to show only matching children within each category.
+   */
+  const matchingChildIds = computed<Set<string>>(() => {
+    const ids = new Set<string>()
+    if (!debouncedQuery.value) return ids
+
+    const allItems = options.allItems ? options.allItems() : []
+    const query = debouncedQuery.value.toLowerCase()
+
+    for (const item of allItems) {
+      if (!item || !item.content_item_parent_id) continue
+      const name = (item.content_item_name || '').toLowerCase()
+      const content = (item.content_item_content || item.content_preview || '').toLowerCase()
+      if (name.includes(query) || content.includes(query)) {
+        ids.add(item.content_item_id)
+      }
+    }
+    return ids
+  })
+
+  /**
+   * Set of parent IDs whose children match the search query.
+   * Used to include parent categories in results when their children match.
+   */
+  const parentIdsWithMatchingChildren = computed<Set<string>>(() => {
+    const ids = new Set<string>()
+    if (!debouncedQuery.value) return ids
+
+    const allItems = options.allItems ? options.allItems() : []
+    for (const item of allItems) {
+      if (!item || !item.content_item_parent_id) continue
+      if (matchingChildIds.value.has(item.content_item_id)) {
+        ids.add(item.content_item_parent_id)
+      }
+    }
+    return ids
+  })
+
+  /**
    * The fully filtered and sorted result set
    * Bug #9 fix: Defensive checks to prevent race conditions
+   * Enhanced: For grouped content, also matches children and includes their parent categories
    */
   const filteredItems = computed(() => {
     const sourceItems = options.items()
@@ -164,11 +205,20 @@ export function useContentSearch(options: UseContentSearchOptions) {
     }
 
     // Filter and sort in a single reactive computation
-    const filtered = sourceItems.filter(item =>
-      item && // Ensure item exists
-      matchesSearch(item) &&
-      matchesCategory(item)
-    )
+    const filtered = sourceItems.filter(item => {
+      if (!item) return false
+      if (!matchesCategory(item)) return false
+
+      // Match if the item itself matches search
+      if (matchesSearch(item)) return true
+
+      // For parent items in grouped mode: also match if any children match the search
+      if (item.content_item_parent_id === null && parentIdsWithMatchingChildren.value.has(item.content_item_id)) {
+        return true
+      }
+
+      return false
+    })
 
     return sortItems(filtered)
   })
@@ -232,6 +282,7 @@ export function useContentSearch(options: UseContentSearchOptions) {
     categories,
     hasCategories,
     filteredItems,
+    matchingChildIds,
     resultCount,
     totalCount,
     hasActiveFilters,

@@ -1,19 +1,10 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { supabase } from '@/lib/supabase'
 
 export interface AdminDashboardStats {
   total_users: number;
   total_cards: number;
-  total_batches: number;
-  total_issued_cards: number;
-  total_activated_cards: number;
-  pending_payment_batches: number;
-  paid_batches: number;
-  waived_batches: number;
-  print_requests_submitted: number;
-  print_requests_processing: number;
-  print_requests_shipping: number;
   // Audit-related metrics
   total_audit_entries: number;
   critical_actions_today: number;
@@ -30,11 +21,6 @@ export interface AdminDashboardStats {
   daily_new_cards: number;
   weekly_new_cards: number;
   monthly_new_cards: number;
-  daily_issued_cards: number;
-  weekly_issued_cards: number;
-  monthly_issued_cards: number;
-  // Access Mode metrics (Physical vs Digital)
-  physical_cards_count: number;
   digital_cards_count: number;
   // Digital Access metrics
   total_digital_scans: number;
@@ -79,13 +65,6 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
   const isLoadingActivity = ref(false)
   const isLoading = ref(false)
 
-  // Computed
-  const totalPrintRequestsCount = computed(() => {
-    const stats = dashboardStats.value
-    if (!stats) return 0
-    return (stats.print_requests_submitted || 0) + (stats.print_requests_processing || 0) + (stats.print_requests_shipping || 0)
-  })
-
   // Actions
   const fetchDashboardStats = async (): Promise<AdminDashboardStats> => {
     isLoadingStats.value = true
@@ -104,19 +83,10 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
       const stats: AdminDashboardStats = {
         total_users: dbStats.total_users || 0,
         total_cards: dbStats.total_cards || 0,
-        total_batches: dbStats.total_batches || 0,
-        total_issued_cards: dbStats.total_issued_cards || 0,
-        total_activated_cards: dbStats.total_activated_cards || 0,
-        pending_payment_batches: dbStats.pending_payment_batches || 0,
-        paid_batches: dbStats.paid_batches || 0,
-        waived_batches: dbStats.waived_batches || 0,
-        print_requests_submitted: dbStats.print_requests_submitted || 0,
-        print_requests_processing: dbStats.print_requests_processing || 0,
-        print_requests_shipping: dbStats.print_requests_shipping || 0,
         // Audit metrics
         total_audit_entries: dbStats.total_audit_entries || 0,
-        critical_actions_today: dbStats.payment_waivers_today || 0,
-        high_severity_actions_week: dbStats.role_changes_week || 0,
+        critical_actions_today: dbStats.critical_actions_today || 0,
+        high_severity_actions_week: dbStats.high_severity_actions_week || 0,
         unique_admin_users_month: dbStats.unique_admin_users_month || 0,
         // Revenue metrics
         daily_revenue_cents: dbStats.daily_revenue_cents || 0,
@@ -129,11 +99,6 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
         daily_new_cards: dbStats.daily_new_cards || 0,
         weekly_new_cards: dbStats.weekly_new_cards || 0,
         monthly_new_cards: dbStats.monthly_new_cards || 0,
-        daily_issued_cards: dbStats.daily_issued_cards || 0,
-        weekly_issued_cards: dbStats.weekly_issued_cards || 0,
-        monthly_issued_cards: dbStats.monthly_issued_cards || 0,
-        // Access Mode metrics
-        physical_cards_count: dbStats.physical_cards_count || 0,
         digital_cards_count: dbStats.digital_cards_count || 0,
         // Digital Access metrics
         total_digital_scans: dbStats.total_digital_scans || 0,
@@ -264,9 +229,6 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
     isLoadingStats,
     isLoadingActivity,
     isLoading,
-    
-    // Computed
-    totalPrintRequestsCount,
     
     // Actions
     fetchDashboardStats,

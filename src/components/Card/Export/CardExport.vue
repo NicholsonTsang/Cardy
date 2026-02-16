@@ -27,7 +27,7 @@
               <i class="pi pi-qrcode"></i>
               <span class="text-xs font-medium mt-1">{{ $t('export.digital_access') }}</span>
             </div>
-            <!-- Physical Card: Show image -->
+            <!-- Card with image -->
             <img
               v-else-if="props.card.image_url"
               :src="props.card.image_url"

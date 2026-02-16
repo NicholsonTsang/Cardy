@@ -92,31 +92,6 @@
         <small class="field-hint">{{ $t('templates.custom_name_hint') }}</small>
       </div>
 
-      <!-- Billing Type - Only show selector when physical cards are enabled -->
-      <div v-if="isPhysicalCardsEnabled" class="form-field">
-        <label>{{ $t('templates.billing_type') }}</label>
-        <div class="billing-options">
-          <div
-            class="billing-option"
-            :class="{ selected: selectedBillingType === 'physical' }"
-            @click="selectedBillingType = 'physical'"
-          >
-            <i class="pi pi-id-card"></i>
-            <span class="option-label">{{ $t('templates.billing_physical') }}</span>
-            <span class="option-description">{{ $t('templates.billing_physical_desc') }}</span>
-          </div>
-          <div
-            class="billing-option"
-            :class="{ selected: selectedBillingType === 'digital' }"
-            @click="selectedBillingType = 'digital'"
-          >
-            <i class="pi pi-qrcode"></i>
-            <span class="option-label">{{ $t('templates.billing_digital') }}</span>
-            <span class="option-description">{{ $t('templates.billing_digital_desc') }}</span>
-          </div>
-        </div>
-      </div>
-
       <!-- Actions -->
       <div class="form-actions">
         <Button 
@@ -152,10 +127,7 @@ import { getLanguageFlag, getLanguageName } from '@/utils/formatters'
 import InputText from 'primevue/inputtext'
 import Button from 'primevue/button'
 import Message from 'primevue/message'
-import { usePhysicalCards } from '@/composables/usePhysicalCards'
-
 const { t } = useI18n()
-const { isPhysicalCardsEnabled, getDefaultBillingType } = usePhysicalCards()
 const templateStore = useTemplateLibraryStore()
 const subscriptionStore = useSubscriptionStore()
 
@@ -171,12 +143,7 @@ const emit = defineEmits<{
 
 // Form state
 const customName = ref('')
-// Default to feature flag value if template doesn't specify, or override to 'digital' when physical cards disabled
-const selectedBillingType = ref<'physical' | 'digital'>(
-  isPhysicalCardsEnabled.value
-    ? (props.template.billing_type as 'physical' | 'digital' || 'digital')
-    : 'digital'
-)
+const selectedBillingType = ref<'digital'>('digital')
 // Use defaultLanguage from browse view if provided, otherwise use template's original language
 const selectedLanguage = ref<string>(
   props.defaultLanguage && isLanguageAvailable(props.defaultLanguage) 
@@ -406,38 +373,6 @@ async function handleImport() {
   @apply text-xs text-slate-500;
 }
 
-.billing-options {
-  @apply grid grid-cols-2 gap-3;
-}
-
-.billing-option {
-  @apply p-4 border-2 border-slate-200 rounded-lg cursor-pointer transition-all text-center hover:border-indigo-300;
-}
-
-.billing-option.selected {
-  @apply border-indigo-500 bg-indigo-50;
-}
-
-.billing-option i {
-  @apply text-2xl text-slate-400 mb-2 block;
-}
-
-.billing-option.selected i {
-  @apply text-indigo-600;
-}
-
-.option-label {
-  @apply block font-medium text-slate-700;
-}
-
-.billing-option.selected .option-label {
-  @apply text-indigo-700;
-}
-
-.option-description {
-  @apply block text-xs text-slate-500 mt-1;
-}
-
 .form-actions {
   @apply flex justify-end gap-3 pt-4 border-t border-slate-200;
 }
@@ -485,10 +420,6 @@ async function handleImport() {
 
 /* Mobile responsive */
 @media (max-width: 480px) {
-  .billing-options {
-    @apply grid-cols-1;
-  }
-  
   .language-option {
     @apply p-2;
   }

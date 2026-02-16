@@ -95,7 +95,7 @@
           <!-- Info -->
           <div class="sub-item-info">
             <h4 class="sub-item-title">{{ subItem.content_item_name }}</h4>
-            <p class="sub-item-description">{{ subItem.content_item_content }}</p>
+            <p class="sub-item-description">{{ truncatePreview(subItem.content_item_content || subItem.content_preview || '') }}</p>
           </div>
         </div>
       </div>
@@ -137,7 +137,7 @@ const route = useRoute()
 const { share, buildContentShareData, isSharing } = useShare()
 
 // Favorites composable (card ID from route)
-const cardId = computed(() => (route.params.issue_card_id || route.params.card_id) as string)
+const cardId = computed(() => route.params.card_id as string)
 const { isFavorite, toggleFavorite } = useFavorites({ cardId: cardId.value })
 
 
@@ -202,6 +202,12 @@ const cardDataForAssistant = computed(() => ({
 
 function handleSelect(item: ContentItem) {
   emit('select', item)
+}
+
+function truncatePreview(text: string, maxLength = 80): string {
+  if (!text) return ''
+  const plain = text.replace(/<[^>]*>/g, '').replace(/[#*_`]/g, '')
+  return plain.length > maxLength ? plain.slice(0, maxLength) + '...' : plain
 }
 
 function handleToggleFavorite() {

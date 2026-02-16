@@ -100,14 +100,12 @@ onMounted(async () => {
     window.history.replaceState({}, '', route.path);
   }
   
-  // Fetch subscription data
-  await subscriptionStore.fetchSubscription();
-  
-  // Fetch credit balance
-  await creditStore.fetchCreditBalance();
-  
-  // Fetch daily stats for chart
-  await subscriptionStore.fetchDailyStats(chartDays.value);
+  // Fetch all data in parallel (independent API calls)
+  await Promise.all([
+    subscriptionStore.fetchSubscription(),
+    creditStore.fetchCreditBalance(),
+    subscriptionStore.fetchDailyStats(chartDays.value)
+  ]);
 });
 
 // Reload chart when days change
@@ -193,10 +191,10 @@ const experienceUsagePercent = computed(() => {
 const periodEndFormatted = computed(() => {
   const date = subscriptionStore.periodEndDate;
   if (!date) return null;
-  return date.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   });
 });
 
@@ -593,7 +591,7 @@ async function openPortal() {
       <!-- ============ PAID USER VIEW (Starter & Premium) ============ -->
       <div v-else class="space-y-8">
         
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
           <!-- Left Col: Plan & Usage -->
           <div class="space-y-8">
             <!-- Paid Plan Status -->
@@ -789,7 +787,7 @@ async function openPortal() {
           </div>
           
           <!-- Right Col: Daily Chart -->
-          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full">
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <div class="flex items-center justify-between mb-6">
               <div>
                 <h3 class="text-lg font-bold text-slate-800">{{ $t('subscription.traffic.title') }}</h3>
@@ -835,7 +833,7 @@ async function openPortal() {
                 </div>
                 
                 <!-- Chart -->
-                <div class="flex-1 min-h-[300px] relative">
+                <div class="h-[250px] relative">
                   <div v-if="chartData.length" class="absolute inset-0 flex flex-col">
                     <!-- Grid -->
                     <div class="flex-1 relative border-l border-b border-slate-200 ml-8 mb-6">

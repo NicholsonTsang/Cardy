@@ -76,7 +76,7 @@ const { t } = useI18n()
 const route = useRoute()
 
 // Favorites composable
-const cardId = computed(() => (route.params.issue_card_id || route.params.card_id) as string)
+const cardId = computed(() => route.params.card_id as string)
 const { isFavorite, toggleFavorite } = useFavorites({ cardId: cardId.value })
 
 // Card Level Assistant ref

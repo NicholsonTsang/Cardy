@@ -319,8 +319,7 @@ router.post('/generate-ai-settings', authenticateUser, async (req: Request, res:
       cardDescription,
       originalLanguage,
       contentMode,
-      isGrouped,
-      billingType
+      isGrouped
     } = req.body;
 
     if (!cardName || typeof cardName !== 'string' || !cardName.trim()) {
@@ -394,7 +393,7 @@ ${cardDescription ? `Description: ${cardDescription}` : ''}
 Original Language: ${langName}
 Content Display Mode: ${contentMode || 'list'}
 Content Structure: ${isGrouped ? 'Grouped into categories' : 'Flat list'}
-Access Type: ${billingType || 'digital'}${contentItemsContext}`;
+Access Type: digital${contentItemsContext}`;
 
     console.log('🤖 Generating AI settings:', {
       cardName,

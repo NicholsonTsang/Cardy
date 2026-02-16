@@ -14,22 +14,22 @@
     <div class="space-y-6">
 
       <!-- Balance Overview Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         <!-- Current Balance -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group hover:shadow-md transition-all">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 relative overflow-hidden group hover:shadow-md transition-all">
           <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <i class="pi pi-wallet text-6xl text-blue-500"></i>
+            <i class="pi pi-wallet text-5xl sm:text-6xl text-blue-500"></i>
           </div>
           <div class="relative z-10">
-            <div class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('credits.currentBalance') }}</div>
-            <div class="text-3xl font-bold text-slate-900 mb-2">{{ creditStore.formattedBalance }}</div>
+            <div class="text-xs sm:text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('credits.currentBalance') }}</div>
+            <div class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">${{ creditStore.formattedBalance }}</div>
             <div class="text-sm text-slate-600 flex items-center gap-1">
               <i class="pi pi-check-circle text-emerald-500"></i>
               {{ $t('credits.availableCredits') }}
             </div>
-            
+
             <!-- Low Balance Warning -->
-            <div v-if="parseFloat(creditStore.formattedBalance) < 50" class="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium border border-amber-100">
+            <div v-if="parseFloat(creditStore.formattedBalance) < 50" class="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium border border-amber-100">
               <i class="pi pi-exclamation-triangle"></i>
               {{ $t('credits.lowBalance') }}
             </div>
@@ -37,36 +37,36 @@
         </div>
 
         <!-- Total Purchased -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group hover:shadow-md transition-all">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 relative overflow-hidden group hover:shadow-md transition-all">
           <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <i class="pi pi-arrow-circle-up text-6xl text-emerald-500"></i>
+            <i class="pi pi-arrow-circle-up text-5xl sm:text-6xl text-emerald-500"></i>
           </div>
           <div class="relative z-10">
-            <div class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('credits.totalPurchased') }}</div>
-            <div class="text-3xl font-bold text-slate-900 mb-2">{{ statistics?.total_purchased?.toFixed(2) || '0.00' }}</div>
+            <div class="text-xs sm:text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('credits.totalPurchased') }}</div>
+            <div class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">${{ statistics?.total_purchased?.toFixed(2) || '0.00' }}</div>
             <div class="text-sm text-slate-600">
-              <span class="font-medium text-emerald-600">+{{ statistics?.monthly_purchases?.toFixed(2) || '0.00' }}</span> {{ $t('credits.thisMonth') }}
+              <span class="font-medium text-emerald-600">+${{ statistics?.monthly_purchases?.toFixed(2) || '0.00' }}</span> {{ $t('credits.thisMonth') }}
             </div>
           </div>
         </div>
 
         <!-- Total Consumed -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group hover:shadow-md transition-all">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 relative overflow-hidden group hover:shadow-md transition-all">
           <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <i class="pi pi-arrow-circle-down text-6xl text-orange-500"></i>
+            <i class="pi pi-arrow-circle-down text-5xl sm:text-6xl text-orange-500"></i>
           </div>
           <div class="relative z-10">
-            <div class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('credits.totalConsumed') }}</div>
-            <div class="text-3xl font-bold text-slate-900 mb-2">{{ statistics?.total_consumed?.toFixed(2) || '0.00' }}</div>
+            <div class="text-xs sm:text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('credits.totalConsumed') }}</div>
+            <div class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">${{ statistics?.total_consumed?.toFixed(2) || '0.00' }}</div>
             <div class="text-sm text-slate-600">
-              <span class="font-medium text-orange-600">-{{ statistics?.monthly_consumption?.toFixed(2) || '0.00' }}</span> {{ $t('credits.thisMonth') }}
+              <span class="font-medium text-orange-600">-${{ statistics?.monthly_consumption?.toFixed(2) || '0.00' }}</span> {{ $t('credits.thisMonth') }}
             </div>
           </div>
         </div>
       </div>
 
       <!-- History Tables -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
         <Tabs :value="activeTab" @update:value="(value) => activeTab = String(value)" class="flex-1 flex flex-col">
           <TabList class="flex-shrink-0 border-b border-slate-200 bg-white px-2 sm:px-4 overflow-x-auto scrollbar-hide">
             <Tab value="0" class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-3 sm:py-4 font-medium text-slate-600 data-[p-active=true]:text-blue-600 data-[p-active=true]:border-b-2 data-[p-active=true]:border-blue-600 transition-all whitespace-nowrap text-sm sm:text-base">
@@ -89,16 +89,17 @@
           <TabPanels class="flex-1 bg-slate-50/50 p-0">
             <!-- Transactions Tab -->
             <TabPanel value="0" class="p-0">
-              <DataTable 
-                :value="creditStore.transactions" 
+              <DataTable
+                :value="creditStore.transactions"
                 :loading="creditStore.loading"
-                paginator 
-                :rows="10" 
+                paginator
+                :rows="10"
                 :rowsPerPageOptions="[10, 20, 50]"
                 :showGridlines="false"
                 stripedRows
+                scrollable
+                scrollHeight="flex"
                 class="p-datatable-sm border-0"
-                tableStyle="min-width: 50rem"
               >
                 <template #empty>
                   <div class="text-center py-16">
@@ -136,17 +137,17 @@
                   </template>
                 </Column>
                 
-                <Column field="amount" :header="$t('credits.amount')" sortable alignFrozen="right" frozen style="width: 120px">
+                <Column field="amount" :header="$t('credits.amount')" sortable style="width: 130px">
                   <template #body="{ data }">
-                    <div class="font-bold font-mono" :class="data.type === 'purchase' ? 'text-emerald-600' : 'text-slate-700'">
-                      {{ data.type === 'purchase' ? '+' : '' }}{{ data.amount.toFixed(2) }}
+                    <div class="font-bold font-mono" :class="getAmountColor(data)">
+                      {{ formatTransactionAmount(data) }}
                     </div>
                   </template>
                 </Column>
-                
-                <Column field="balance_after" :header="$t('credits.balanceAfter')" sortable alignFrozen="right" frozen style="width: 120px">
+
+                <Column field="balance_after" :header="$t('credits.balanceAfter')" sortable style="width: 120px">
                   <template #body="{ data }">
-                    <span class="text-sm font-medium text-slate-600">{{ data.balance_after.toFixed(2) }}</span>
+                    <span class="text-sm font-medium text-slate-600">${{ data.balance_after.toFixed(2) }}</span>
                   </template>
                 </Column>
               </DataTable>
@@ -182,7 +183,7 @@
                   <template #body="{ data }">
                     <div class="flex items-center gap-2">
                       <i class="pi pi-wallet text-slate-400"></i>
-                      <span class="font-bold text-slate-800">{{ data.credits_amount.toFixed(2) }}</span>
+                      <span class="font-bold text-slate-800">${{ data.credits_amount.toFixed(2) }}</span>
                     </div>
                   </template>
                 </Column>
@@ -261,7 +262,7 @@
                 
                 <Column field="total_credits" :header="$t('credits.totalCredits')" sortable>
                   <template #body="{ data }">
-                    <span class="font-bold text-slate-700">{{ data.total_credits.toFixed(2) }}</span>
+                    <span class="font-bold text-slate-700">${{ data.total_credits.toFixed(2) }}</span>
                   </template>
                 </Column>
                 
@@ -296,7 +297,6 @@
           <p class="font-semibold mb-1">{{ $t('credits.whatAreCreditsFor') }}</p>
           <ul class="list-disc pl-4 space-y-1 text-blue-800">
             <li><strong>{{ $t('credits.overageAccess') }}:</strong> {{ $t('credits.overageAccessDesc') }}</li>
-            <li><strong>{{ $t('credits.physicalCards') }}:</strong> {{ $t('credits.physicalCardsDesc') }}</li>
           </ul>
         </div>
       </div>
@@ -417,6 +417,19 @@ function formatTime(dateString: string) {
   })
 }
 
+function getAmountColor(data: { type: string; amount: number }) {
+  if (data.type === 'purchase') return 'text-emerald-600'
+  if (data.type === 'refund') return 'text-amber-600'
+  return 'text-red-500'
+}
+
+function formatTransactionAmount(data: { type: string; amount: number }) {
+  const absAmount = Math.abs(data.amount)
+  if (data.type === 'purchase') return `+$${absAmount.toFixed(2)}`
+  if (data.type === 'refund') return `-$${absAmount.toFixed(2)}`
+  return `-$${absAmount.toFixed(2)}`
+}
+
 function getTransactionTypeSeverity(type: string) {
   switch (type) {
     case 'purchase': return 'success'
@@ -443,9 +456,7 @@ function getConsumptionTypeLabel(type: string) {
 
 function getConsumptionTypeIcon(type: string) {
   switch(type) {
-    case 'batch_issuance': return 'pi-box'
     case 'subscription_overage_batch': return 'pi-users'
-    case 'physical_card_order': return 'pi-id-card'
     case 'translation': return 'pi-language'
     case 'digital_scan': return 'pi-qrcode'
     case 'single_card': return 'pi-credit-card'
@@ -455,9 +466,7 @@ function getConsumptionTypeIcon(type: string) {
 
 function getConsumptionTypeBg(type: string) {
   switch(type) {
-    case 'batch_issuance': return 'bg-emerald-100'
     case 'subscription_overage_batch': return 'bg-amber-100'
-    case 'physical_card_order': return 'bg-purple-100'
     case 'translation': return 'bg-blue-100'
     case 'digital_scan': return 'bg-cyan-100'
     case 'single_card': return 'bg-indigo-100'
@@ -467,9 +476,7 @@ function getConsumptionTypeBg(type: string) {
 
 function getConsumptionTypeText(type: string) {
   switch(type) {
-    case 'batch_issuance': return 'text-emerald-600'
     case 'subscription_overage_batch': return 'text-amber-600'
-    case 'physical_card_order': return 'text-purple-600'
     case 'translation': return 'text-blue-600'
     case 'digital_scan': return 'text-cyan-600'
     case 'single_card': return 'text-indigo-600'
@@ -479,9 +486,7 @@ function getConsumptionTypeText(type: string) {
 
 function getQuantityUnit(type: string) {
   switch(type) {
-    case 'batch_issuance': return t('credits.unit.cards')
     case 'subscription_overage_batch': return t('credits.unit.access')
-    case 'physical_card_order': return t('credits.unit.cards')
     case 'translation': return t('credits.unit.languages')
     case 'digital_scan': return t('credits.unit.scans')
     case 'single_card': return t('credits.unit.cards')
@@ -535,12 +540,6 @@ async function proceedToPayment() {
 </script>
 
 <style scoped>
-:deep(.p-datatable-thead > tr > th) {
-  background: #f8fafc;
-  font-weight: 600;
-  color: #475569;
-}
-
 /* Hide scrollbar for horizontal tab scroll */
 .scrollbar-hide {
   -ms-overflow-style: none;

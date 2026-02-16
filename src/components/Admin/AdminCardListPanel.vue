@@ -57,7 +57,7 @@
             >
               <i class="pi pi-qrcode text-cyan-500 text-xl"></i>
             </div>
-            <!-- Physical Card: Show image -->
+            <!-- Card with image -->
             <div
               v-else-if="card.image_url"
               class="w-16 h-24 flex-shrink-0 rounded-lg overflow-hidden bg-slate-100"
@@ -72,12 +72,9 @@
               <div class="flex items-center gap-2 mb-1 flex-wrap">
                 <p class="font-semibold text-slate-900 truncate">{{ card.name }}</p>
                 <span 
-                  class="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0"
-                  :class="card.billing_type === 'digital' 
-                    ? 'bg-cyan-100 text-cyan-700' 
-                    : 'bg-purple-100 text-purple-700'"
+                  class="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 bg-cyan-100 text-cyan-700"
                 >
-                  {{ card.billing_type === 'digital' ? $t('admin.digital') : $t('admin.physical') }}
+                  {{ $t('admin.digital') }}
                 </span>
                 <span 
                   class="text-[10px] px-1.5 py-0.5 rounded-full font-medium flex-shrink-0 bg-slate-100 text-slate-600"
@@ -86,15 +83,12 @@
                 </span>
               </div>
               <!-- Digital Access Stats -->
-              <div v-if="card.billing_type === 'digital'" class="flex items-center gap-3 text-xs text-slate-600 mb-1">
+              <div class="flex items-center gap-3 text-xs text-slate-600 mb-1">
                 <span class="flex items-center gap-1">
                   <i class="pi pi-eye text-[10px]"></i>
                   {{ card.total_sessions?.toLocaleString() || 0 }} {{ $t('admin.scans') }}
                 </span>
               </div>
-              <p v-else-if="card.description" class="text-xs text-slate-600 line-clamp-1">
-                {{ card.description }}
-              </p>
               <p class="text-[10px] text-slate-400 mt-1">
                 {{ formatDate(card.created_at) }}
               </p>
@@ -141,7 +135,7 @@ interface Card {
   name: string
   description: string | null
   image_url: string | null
-  billing_type: 'physical' | 'digital'
+  billing_type: 'digital'
   content_mode: 'single' | 'list' | 'grid' | 'cards'
   is_grouped?: boolean
   total_sessions?: number

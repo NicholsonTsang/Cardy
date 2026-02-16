@@ -15,7 +15,7 @@ export const ARCHIVE_VERSION = 1
 
 export type ContentMode = 'single' | 'list' | 'grid' | 'cards'
 export type GroupDisplay = 'expanded' | 'collapsed'
-export type BillingType = 'physical' | 'digital'
+export type BillingType = 'digital'
 export type QrPosition = 'TL' | 'TR' | 'BL' | 'BR'
 
 export interface ArchiveCard {
@@ -25,7 +25,6 @@ export interface ArchiveCard {
   content_mode: ContentMode
   is_grouped: boolean
   group_display: GroupDisplay
-  billing_type: BillingType
   default_daily_session_limit: number | null
   conversation_ai_enabled: boolean
   ai_instruction: string
@@ -37,6 +36,7 @@ export interface ArchiveCard {
   crop_parameters: CropParameters | null
   translations: Record<string, unknown> | null
   content_hash: string | null
+  metadata?: Record<string, unknown> | null
 }
 
 export interface ArchiveContentItem {
@@ -286,7 +286,6 @@ export async function exportProject(
       content_mode: (card.content_mode || 'list') as ContentMode,
       is_grouped: !!card.is_grouped,
       group_display: (card.group_display || 'expanded') as GroupDisplay,
-      billing_type: (card.billing_type || 'digital') as BillingType,
       default_daily_session_limit: card.default_daily_session_limit as number | null ?? null,
       conversation_ai_enabled: !!card.conversation_ai_enabled,
       ai_instruction: (card.ai_instruction || '') as string,
@@ -298,6 +297,7 @@ export async function exportProject(
       crop_parameters: cardCropParams,
       translations: cardTranslations,
       content_hash: (card.content_hash as string) || null,
+      metadata: (card.metadata as Record<string, unknown>) || null,
     },
     contentItems: archiveItems,
   }
@@ -343,7 +343,6 @@ export async function exportMultipleProjects(
 
 const VALID_CONTENT_MODES: ContentMode[] = ['single', 'list', 'grid', 'cards']
 const VALID_GROUP_DISPLAYS: GroupDisplay[] = ['expanded', 'collapsed']
-const VALID_BILLING_TYPES: BillingType[] = ['physical', 'digital']
 const VALID_QR_POSITIONS: QrPosition[] = ['TL', 'TR', 'BL', 'BR']
 
 function validateCardData(raw: Record<string, unknown>, warnings: string[]): ArchiveCard {
@@ -362,12 +361,6 @@ function validateCardData(raw: Record<string, unknown>, warnings: string[]): Arc
     groupDisplay = 'expanded'
   }
 
-  let billingType = (raw.billing_type || 'digital') as string
-  if (!VALID_BILLING_TYPES.includes(billingType as BillingType)) {
-    warnings.push(`Invalid billing_type "${billingType}", defaulting to "digital"`)
-    billingType = 'digital'
-  }
-
   let qrPosition = (raw.qr_code_position || 'BR') as string
   if (!VALID_QR_POSITIONS.includes(qrPosition as QrPosition)) {
     warnings.push(`Invalid qr_code_position "${qrPosition}", defaulting to "BR"`)
@@ -381,7 +374,6 @@ function validateCardData(raw: Record<string, unknown>, warnings: string[]): Arc
     content_mode: contentMode as ContentMode,
     is_grouped: !!raw.is_grouped,
     group_display: groupDisplay as GroupDisplay,
-    billing_type: billingType as BillingType,
     default_daily_session_limit: (raw.default_daily_session_limit as number) ?? null,
     conversation_ai_enabled: !!raw.conversation_ai_enabled,
     ai_instruction: (raw.ai_instruction || '') as string,
@@ -393,6 +385,7 @@ function validateCardData(raw: Record<string, unknown>, warnings: string[]): Arc
     crop_parameters: (raw.crop_parameters as CropParameters) || null,
     translations: (raw.translations as Record<string, unknown>) || null,
     content_hash: (raw.content_hash as string) || null,
+    metadata: (raw.metadata as Record<string, unknown>) || null,
   }
 }
 
@@ -411,6 +404,24 @@ export async function importProject(files: File | File[]): Promise<ImportResult>
 
       const projectJsonFile = zip.file('project.json')
       if (!projectJsonFile) {
+        // Check for nested ZIPs (multi-project export from exportMultipleProjects)
+        const nestedZipFiles = zip.file(/\.zip$/)
+        if (nestedZipFiles.length > 0) {
+          for (const nestedZipEntry of nestedZipFiles) {
+            try {
+              const nestedBlob = await nestedZipEntry.async('blob')
+              const nestedFile = new File([nestedBlob], nestedZipEntry.name, { type: 'application/zip' })
+              const nestedResult = await importProject(nestedFile)
+              result.cards.push(...nestedResult.cards)
+              result.errors.push(...nestedResult.errors)
+              result.warnings.push(...nestedResult.warnings)
+            } catch (nestedErr) {
+              const msg = nestedErr instanceof Error ? nestedErr.message : String(nestedErr)
+              result.errors.push(`${file.name}/${nestedZipEntry.name}: ${msg}`)
+            }
+          }
+          continue
+        }
         result.errors.push(`${file.name}: Missing project.json`)
         continue
       }

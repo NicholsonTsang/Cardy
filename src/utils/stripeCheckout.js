@@ -21,17 +21,7 @@ export const getStripe = async () => {
 }
 
 // ============================================================================
-// LEGACY BATCH PAYMENT FUNCTIONS REMOVED
-// ============================================================================
-// The following functions have been removed as they're no longer used:
-// - createCheckoutSession() - Replaced by credit-based batch issuance
-// - handleCheckoutSuccess() - Replaced by credit-based batch issuance
-// - calculatePaymentAmount() - Replaced by credit calculations
-// - calculateBatchCost() - Replaced by credit calculations
-// - formatAmount() - Still available below for credit system
-//
-// Current system: Users purchase credits first, then use credits to issue batches
-// See: CardIssuanceCheckout.vue and useCreditStore().issueBatchWithCredits()
+// CREDIT PURCHASE FUNCTIONS
 // ============================================================================
 
 /**

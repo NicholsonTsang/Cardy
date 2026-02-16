@@ -787,7 +787,6 @@ function getConsumptionTypeLabel(type: string) {
 function getConsumptionTypeIcon(type: string) {
   switch (type) {
     case 'subscription_overage_batch': return 'pi-bolt'
-    case 'batch_issuance': return 'pi-box'
     case 'translation': return 'pi-language'
     case 'single_card': return 'pi-id-card'
     case 'digital_scan': return 'pi-qrcode'
@@ -798,7 +797,6 @@ function getConsumptionTypeIcon(type: string) {
 function getConsumptionTypeSeverity(type: string) {
   switch (type) {
     case 'subscription_overage_batch': return 'warn'
-    case 'batch_issuance': return 'info'
     case 'translation': return 'success'
     case 'single_card': return 'info'
     case 'digital_scan': return 'secondary'
@@ -809,7 +807,6 @@ function getConsumptionTypeSeverity(type: string) {
 function getQuantityUnit(type: string) {
   switch (type) {
     case 'subscription_overage_batch': return t('credits.unit.access')
-    case 'batch_issuance': return t('credits.unit.cards')
     case 'translation': return t('credits.unit.languages')
     case 'single_card': return t('credits.unit.cards')
     case 'digital_scan': return t('credits.unit.scans')

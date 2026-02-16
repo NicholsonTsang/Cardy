@@ -6,7 +6,7 @@
 [![Express.js](https://img.shields.io/badge/Express.js-4.x-000000.svg)](https://expressjs.com/)
 [![Google Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4.svg)](https://cloud.google.com/run)
 
-ExperienceQR is a comprehensive **AI-powered content experience platform** that turns any information into structured, multilingual content with AI conversational assistants. The platform enables businesses, educators, and organizations to create interactive content experiences for products, venues, education, storytelling, knowledge bases, print materials, and more. Content is distributed via links, QR codes, or embeds, and visitors access it for free with optional AI-powered voice conversations. Optional physical souvenir cards add collectible value to the digital experience.
+ExperienceQR is a comprehensive **AI-powered content experience platform** that turns any information into structured, multilingual content with AI conversational assistants. The platform enables businesses, educators, and organizations to create interactive content experiences for products, venues, education, storytelling, knowledge bases, print materials, and more. Content is distributed via links, QR codes, or embeds, and visitors access it for free with optional AI-powered voice conversations.
 
 ## Project Overview
 
@@ -22,7 +22,6 @@ ExperienceQR is a comprehensive **AI-powered content experience platform** that 
     -   **Multilingual by Design**: AI-powered, one-click translation of content into multiple languages.
     -   **Flexible Distribution**: Share via links, QR codes, or embeds -- no app required.
     -   **Advanced AI Voice Conversations**: Real-time voice-based AI using OpenAI for natural conversations.
-    -   **Optional Physical Cards**: Collectible souvenirs that add premium keepsake value.
 
 ### Subscription & Pricing
 
@@ -298,16 +297,7 @@ All pricing values are configurable via environment variables. **No pricing is s
 - Database only stores subscription tier/status (no budget tracking)
 - AI status determined by existing `conversation_ai_enabled` field on cards
 
-### Access Modes
-
-ExperienceQR supports two access modes (selected first when creating, **cannot be changed after creation**):
-
-| Mode | Description | Mobile UX | Best For |
-|------|-------------|-----------|----------|
-| **Physical Card** | Printed souvenir cards | Card Overview → Content | Museums, exhibitions, events |
-| **Digital Access** | QR-code only (no physical card) | Welcome Page → Content | Link-in-bio, menus, campaigns |
-
-### Multi-QR Code Management (Digital Access)
+### Multi-QR Code Management
 
 Projects using Digital Access mode support **multiple QR codes** with independent settings:
 
@@ -459,44 +449,6 @@ Users are automatically redirected to their role-appropriate dashboard after log
 
 This applies to all login methods (email/password, Google OAuth) and when accessing `/cms` directly.
 
-#### Physical Card Mode
-- Unlimited scans after issuance
-- Card image and description displayed on overview page
-- Batch issuance with credit consumption (2 credits per card)
-- Designed for museums, exhibitions, events
-
-##### Print Request Workflow
-
-Physical card batches can be submitted for professional printing:
-
-1. **Create Batch**: Card issuer creates a batch (2 credits per card, minimum 100 cards)
-2. **Submit Print Request**: After batch is created, issuer submits print request with:
-   - Shipping address (required)
-   - Contact email or WhatsApp (at least one required)
-3. **Admin Processing**: Admin reviews and processes through status flow:
-   - `SUBMITTED` → `PROCESSING` → `SHIPPED` → `COMPLETED` (or `CANCELLED`)
-4. **Admin Communication**: Admin can add notes when updating status (stored as feedbacks)
-5. **Status Tracking**: Both admin and card issuer can view status and feedbacks
-
-**Key Tables**:
-- `print_requests`: Core print request data (batch_id, status, shipping_address, contact info)
-- `print_request_feedbacks`: Admin communication history (supports internal notes visible only to admins)
-- `PrintRequestStatus` enum: SUBMITTED, PROCESSING, SHIPPED, COMPLETED, CANCELLED
-- `PAYMENT_PENDING`: Reserved for future deferred payment models (currently unused)
-
-**Key Stored Procedures**:
-- `request_card_printing()`: Card issuer submits print request
-- `get_print_requests_for_batch()`: Get print requests for a batch
-- `get_print_request_feedbacks()`: Get admin feedbacks (non-internal for users)
-- `withdraw_print_request()`: Card issuer cancels (only when SUBMITTED)
-- `get_all_print_requests()`: Admin retrieves all requests with filtering
-- `admin_update_print_request_status()`: Admin updates status and adds feedback
-
-#### Digital Access Mode
-- Access counted against subscription tier limits
-- Welcome page with animated visual (no card image)
-- Designed for link-in-bio, digital menus, campaigns
-
 ### Content Modes
 
 Four content layouts are available, optionally combined with grouping:
@@ -546,7 +498,7 @@ Templates are linked to actual `cards` records in the database. This allows full
 - Filter by content mode (single, grouped, list, grid, inline)
 - **Multilingual Browse**: Select language to display templates in their translated version
 - **Multilingual Preview**: Template preview shows content in the selected language (name, description, AI fields, content items)
-- Import templates with custom name and billing type selection
+- Import templates with custom name
 - **Multilingual Import**: Select which language to import content in
 - Creates a complete project with all content items and AI configuration
 
@@ -627,10 +579,10 @@ The Admin Template Management page supports bulk operations:
 - **Activate/Deactivate** - Toggle `is_active` for multiple templates
 - **Feature/Unfeature** - Toggle `is_featured` for multiple templates
 - **Delete** - Remove multiple templates
-- **Export** - Export selected templates to Excel
+- **Export** - Export selected templates to ZIP
 
 The linked card contains all the project data:
-- Project info: name, description, content_mode, is_grouped, group_display, billing_type
+- Project info: name, description, content_mode, is_grouped, group_display, metadata
 - AI config: ai_instruction, ai_knowledge_base, ai_welcome_general, ai_welcome_item
 - Content items: stored in content_items table with hierarchical relationships (parent_id)
 
@@ -745,21 +697,14 @@ The Admin Portal includes a comprehensive **History Logs** page that tracks all 
 | `CARD_CREATION` | `Created` | `"Created {billing_type} card: {name}"` or `"Imported card with translations: {name}"` |
 | `CARD_UPDATE` | `Updated card:` | `"Updated card: {name}"` |
 | `CARD_DELETION` | `Deleted card:` | `"Deleted card: {name}"` |
-| `CARD_ACTIVATION` | `activated` | `"Toggled access for card {name}: enabled/disabled"` or `"Activated issued card"` |
-| `CARD_GENERATION` | `Generated` | `"Generated {count} cards for batch {name}"` |
+| `CARD_ACTIVATION` | `activated` | `"Toggled access for card {name}: enabled/disabled"` |
 | `CONTENT_ITEM_CREATION` | `Created content item:` | `"Created content item: {name}"` or `"Imported content item with translations: {name}"` |
 | `CONTENT_ITEM_UPDATE` | `Updated content item:` | `"Updated content item: {name}"` |
 | `CONTENT_ITEM_DELETION` | `Deleted content item:` | `"Deleted content item: {name}"` |
 | `CONTENT_ITEM_REORDER` | `Reordered content item` | `"Reordered content item to position {order}"` |
-| `BATCH_ISSUANCE` | `Issued batch` | `"Issued batch {name} with {count} cards using credits"` |
-| `BATCH_STATUS_CHANGE` | `abled batch` | `"Disabled batch {name}"` or `"Enabled batch {name}"` |
-| `FREE_BATCH_ISSUANCE` | `Admin issued free batch` | `"Admin issued free batch: {name} ({count} cards) for {email}"` |
 | `CREDIT_ADJUSTMENT` | `Admin adjusted credits` | `"Admin adjusted credits for user {email}: +/-{amount} credits - {reason}"` |
 | `CREDIT_PURCHASE` | `Credit purchase` | `"Created credit purchase: {amount} credits (${price} USD)"` |
 | `CREDIT_CONSUMPTION` | `Credit consumption` | `"Credit consumption: {amount} credits for {type}"` |
-| `PRINT_REQUEST_SUBMISSION` | `Submitted print request` | `"Submitted print request"` |
-| `PRINT_REQUEST_UPDATE` | `Updated print request` | `"Updated print request status to {status} for batch: {name}"` |
-| `PRINT_REQUEST_WITHDRAWAL` | `Withdrew print request` | `"Withdrew print request for batch {name}"` |
 
 **Key Files:**
 - **Frontend Store**: `src/stores/admin/auditLog.ts` - Action types and search keyword mappings

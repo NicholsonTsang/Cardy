@@ -19,7 +19,7 @@
       />
     </div>
 
-    <!-- Credits Insufficient State (for digital cards) -->
+    <!-- Credits Insufficient State -->
     <div v-else-if="cardData?.credits_insufficient" class="error-container credits-insufficient-container">
       <div class="error-icon-wrapper credits-icon">
         <i class="pi pi-wallet" />
@@ -29,7 +29,7 @@
       <p class="error-hint">{{ $t('mobile.try_again_later') }}</p>
     </div>
 
-    <!-- Monthly Limit Exceeded State (for digital cards) -->
+    <!-- Monthly Limit Exceeded State -->
     <div v-else-if="cardData?.monthly_limit_exceeded" class="error-container monthly-limit-container">
       <div class="error-icon-wrapper monthly-limit-icon">
         <i class="pi pi-clock" />
@@ -38,7 +38,7 @@
       <p class="error-message">{{ $t('mobile.monthly_limit_message') }}</p>
     </div>
 
-    <!-- Daily Limit Exceeded State (for digital cards - creator protection) -->
+    <!-- Daily Limit Exceeded State (creator protection) -->
     <div v-else-if="cardData?.daily_limit_exceeded" class="error-container daily-limit-container">
       <div class="error-icon-wrapper daily-limit-icon">
         <i class="pi pi-calendar" />
@@ -48,7 +48,7 @@
       <p class="error-hint">{{ $t('mobile.try_again_tomorrow') }}</p>
     </div>
 
-    <!-- Scan Limit Reached State (for digital cards - total limit) -->
+    <!-- Scan Limit Reached State (total limit) -->
     <div v-else-if="cardData?.scan_limit_reached" class="error-container scan-limit-container">
       <div class="error-icon-wrapper scan-limit-icon">
         <i class="pi pi-ban" />
@@ -57,7 +57,7 @@
       <p class="error-message">{{ $t('mobile.scan_limit_message') }}</p>
     </div>
 
-    <!-- Access Disabled State (for digital cards) -->
+    <!-- Access Disabled State -->
     <div v-else-if="cardData?.access_disabled" class="error-container access-disabled-container">
       <div class="error-icon-wrapper access-disabled-icon">
         <i class="pi pi-lock" />
@@ -82,7 +82,7 @@
       />
 
       <!-- Dynamic View Container (no transition to prevent flash) -->
-      <!-- Card/Welcome Overview (both physical and digital) -->
+      <!-- Card/Welcome Overview -->
       <CardOverview 
         v-if="isCardView"
         :card="cardData"
@@ -183,8 +183,7 @@ interface CardData {
   content_mode?: 'single' | 'grid' | 'list' | 'cards' // Content rendering mode (new: 4 layouts)
   is_grouped?: boolean // Whether content is organized into categories
   group_display?: 'expanded' | 'collapsed' // How grouped items display
-  billing_type?: 'physical' | 'digital' // Billing model
-  max_sessions?: number | null // Total scan limit for digital
+  max_sessions?: number | null // Total scan limit
   total_sessions?: number // Current total scan count
   daily_session_limit?: number | null // Daily scan limit for digital
   daily_sessions?: number // Today's scan count
@@ -375,7 +374,6 @@ async function fetchCardData() {
       content_mode: (firstRow.card_content_mode || 'list') as 'single' | 'grid' | 'list' | 'cards',
       is_grouped: firstRow.card_is_grouped || false,
       group_display: firstRow.card_group_display || 'expanded', // How grouped items display
-      billing_type: firstRow.card_billing_type || 'physical', // Billing model
       max_sessions: firstRow.card_max_sessions,
       total_sessions: firstRow.card_total_sessions,
       daily_session_limit: firstRow.card_daily_session_limit,
@@ -568,7 +566,7 @@ onMounted(() => {
   }
 })
 
-// Prevent body scroll when in card overview (no scrolling needed for either mode)
+// Prevent body scroll when in card overview
 watchEffect(() => {
   const shouldLockScroll = isCardView.value
   if (shouldLockScroll) {
@@ -688,7 +686,7 @@ watch(() => route.params.lang, (newLang) => {
   pointer-events: none; /* Don't interfere with touch events */
 }
 
-/* Card overview: Fill entire viewport (both physical and digital modes) */
+/* Card overview: Fill entire viewport */
 .mobile-card-container.card-overview-view {
   position: fixed;
   top: 0;
@@ -904,7 +902,7 @@ watch(() => route.params.lang, (newLang) => {
   background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
 }
 
-/* Card overview content wrapper (both physical and digital) */
+/* Card overview content wrapper */
 .card-overview-view .content-wrapper {
   position: absolute;
   top: 0;

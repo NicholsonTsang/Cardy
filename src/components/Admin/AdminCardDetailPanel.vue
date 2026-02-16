@@ -56,25 +56,8 @@
                 />
               </div>
               
-              <!-- Issuance Tab (Physical Cards Only) -->
-              <div v-if="getTabComponent(index) === 'issuance'">
-                <AdminCardIssuance
-                  :cardId="selectedCard.id"
-                  :batches="batches"
-                  :isLoading="isLoadingBatches"
-                />
-              </div>
-              
-              <!-- QR & Access Tab (Physical Cards - batch-based) -->
-              <div v-if="getTabComponent(index) === 'qr' && selectedCard.billing_type !== 'digital'">
-                <CardAccessQR
-                  :cardId="selectedCard.id"
-                  :cardName="selectedCard.name"
-                />
-              </div>
-              
-              <!-- QR & Access Tab (Digital Cards - single QR) -->
-              <div v-if="getTabComponent(index) === 'qr' && selectedCard.billing_type === 'digital'">
+              <!-- QR & Access Tab -->
+              <div v-if="getTabComponent(index) === 'qr'">
                 <DigitalAccessQR
                   :card="selectedCard"
                   :cardName="selectedCard.name"
@@ -106,8 +89,6 @@ import TabPanels from 'primevue/tabpanels'
 import TabPanel from 'primevue/tabpanel'
 import AdminCardGeneral from './AdminCardGeneral.vue'
 import AdminCardContent from './AdminCardContent.vue'
-import AdminCardIssuance from './AdminCardIssuance.vue'
-import CardAccessQR from '@/components/CardComponents/CardAccessQR.vue'
 import DigitalAccessQR from '@/components/DigitalAccess/DigitalAccessQR.vue'
 import MobilePreview from '@/components/CardComponents/MobilePreview.vue'
 
@@ -134,7 +115,6 @@ interface Card {
   content_mode: 'single' | 'grid' | 'list' | 'cards'
   is_grouped: boolean
   group_display: 'expanded' | 'collapsed'
-  billing_type: 'physical' | 'digital'
   default_daily_session_limit: number | null
   total_sessions: number
   monthly_sessions: number
@@ -154,22 +134,10 @@ interface ContentItem {
   ai_knowledge_base: string | null
 }
 
-interface Batch {
-  id: string
-  batch_name: string
-  batch_number: number
-  cards_count: number
-  payment_status: string
-  is_disabled: boolean
-  created_at: string
-}
-
 interface Props {
   selectedCard: Card | null
   content: ContentItem[]
-  batches: Batch[]
   isLoadingContent: boolean
-  isLoadingBatches: boolean
   activeTab: string
 }
 
@@ -179,44 +147,20 @@ const emit = defineEmits<{
   (e: 'update:activeTab', value: string): void
 }>()
 
-// Tabs are dynamic based on billing_type (access mode)
-const tabs = computed(() => {
-  const baseTabs = [
-    { label: t('dashboard.general'), icon: 'pi pi-info-circle' },
-    { label: t('dashboard.content'), icon: 'pi pi-list' }
-  ]
-  
-  // Physical cards have Issuance tab (for batch printing)
-  if (props.selectedCard?.billing_type !== 'digital') {
-    baseTabs.push({ label: t('dashboard.issuance'), icon: 'pi pi-box' })
-  }
-  
-  // Both have QR & Access tab
-  baseTabs.push({ label: t('dashboard.qr_access'), icon: 'pi pi-qrcode' })
-  
-  // Both have Preview tab
-  baseTabs.push({ label: t('dashboard.preview'), icon: 'pi pi-mobile' })
-  
-  return baseTabs
-})
+// Tabs: [General, Content, QR & Access, Preview]
+const tabs = computed(() => [
+  { label: t('dashboard.general'), icon: 'pi pi-info-circle' },
+  { label: t('dashboard.content'), icon: 'pi pi-list' },
+  { label: t('dashboard.qr_access'), icon: 'pi pi-qrcode' },
+  { label: t('dashboard.preview'), icon: 'pi pi-mobile' }
+])
 
-// Map tab index to component type based on billing_type
+// Map tab index to component type
 const getTabComponent = (index: number): string | null => {
-  const isDigital = props.selectedCard?.billing_type === 'digital'
-  
   if (index === 0) return 'general'
   if (index === 1) return 'content'
-  
-  if (isDigital) {
-    // Digital: [General, Content, QR, Preview]
-    if (index === 2) return 'qr'
-    if (index === 3) return 'preview'
-  } else {
-    // Physical: [General, Content, Issuance, QR, Preview]
-    if (index === 2) return 'issuance'
-    if (index === 3) return 'qr'
-    if (index === 4) return 'preview'
-  }
+  if (index === 2) return 'qr'
+  if (index === 3) return 'preview'
   return null
 }
 

@@ -124,18 +124,10 @@
                     activity.action_type === 'CONTENT_ITEM_UPDATE' ? 'bg-yellow-100 text-yellow-600' :
                     activity.action_type === 'CONTENT_ITEM_DELETION' ? 'bg-rose-100 text-rose-600' :
                     activity.action_type === 'CONTENT_ITEM_REORDER' ? 'bg-amber-100 text-amber-600' :
-                    // Batch Management
-                    activity.action_type === 'BATCH_ISSUANCE' ? 'bg-indigo-100 text-indigo-600' :
-                    activity.action_type === 'BATCH_STATUS_CHANGE' ? 'bg-orange-100 text-orange-600' :
-                    activity.action_type === 'FREE_BATCH_ISSUANCE' ? 'bg-violet-100 text-violet-600' :
                     // Credit Management
                     activity.action_type === 'CREDIT_ADJUSTMENT' ? 'bg-amber-100 text-amber-600' :
                     activity.action_type === 'CREDIT_PURCHASE' ? 'bg-green-100 text-green-600' :
                     activity.action_type === 'CREDIT_CONSUMPTION' ? 'bg-pink-100 text-pink-600' :
-                    // Print Requests
-                    activity.action_type === 'PRINT_REQUEST_SUBMISSION' ? 'bg-blue-100 text-blue-600' :
-                    activity.action_type === 'PRINT_REQUEST_UPDATE' ? 'bg-blue-100 text-blue-600' :
-                    activity.action_type === 'PRINT_REQUEST_WITHDRAWAL' ? 'bg-gray-100 text-gray-600' :
                     // Legacy
                     activity.action_type === 'PAYMENT_WAIVER' ? 'bg-yellow-100 text-yellow-600' :
                     'bg-slate-100 text-slate-600'
@@ -157,18 +149,10 @@
                       activity.action_type === 'CONTENT_ITEM_UPDATE' ? 'pi pi-file-edit' :
                       activity.action_type === 'CONTENT_ITEM_DELETION' ? 'pi pi-file-minus' :
                       activity.action_type === 'CONTENT_ITEM_REORDER' ? 'pi pi-sort-alt' :
-                      // Batch Management
-                      activity.action_type === 'BATCH_ISSUANCE' ? 'pi pi-box' :
-                      activity.action_type === 'BATCH_STATUS_CHANGE' ? 'pi pi-refresh' :
-                      activity.action_type === 'FREE_BATCH_ISSUANCE' ? 'pi pi-gift' :
                       // Credit Management
                       activity.action_type === 'CREDIT_ADJUSTMENT' ? 'pi pi-dollar' :
                       activity.action_type === 'CREDIT_PURCHASE' ? 'pi pi-shopping-cart' :
                       activity.action_type === 'CREDIT_CONSUMPTION' ? 'pi pi-wallet' :
-                      // Print Requests
-                      activity.action_type === 'PRINT_REQUEST_SUBMISSION' ? 'pi pi-send' :
-                      activity.action_type === 'PRINT_REQUEST_UPDATE' ? 'pi pi-print' :
-                      activity.action_type === 'PRINT_REQUEST_WITHDRAWAL' ? 'pi pi-times-circle' :
                       // Legacy
                       activity.action_type === 'PAYMENT_WAIVER' ? 'pi pi-credit-card' :
                       'pi pi-history'
@@ -274,18 +258,10 @@ const activityTypes = computed(() => [
   { label: t('admin.activity_types.content_item_updates'), value: ACTION_TYPES.CONTENT_ITEM_UPDATE },
   { label: t('admin.activity_types.content_item_deletions'), value: ACTION_TYPES.CONTENT_ITEM_DELETION },
   { label: t('admin.activity_types.content_item_reorder'), value: ACTION_TYPES.CONTENT_ITEM_REORDER },
-  // Batch Management
-  { label: t('admin.activity_types.batch_issuance'), value: ACTION_TYPES.BATCH_ISSUANCE },
-  { label: t('admin.activity_types.batch_status_changes'), value: ACTION_TYPES.BATCH_STATUS_CHANGE },
-  { label: t('admin.activity_types.free_batch_issuance'), value: ACTION_TYPES.FREE_BATCH_ISSUANCE },
   // Credit Management
   { label: t('admin.activity_types.credit_adjustments'), value: ACTION_TYPES.CREDIT_ADJUSTMENT },
   { label: t('admin.activity_types.credit_purchases'), value: ACTION_TYPES.CREDIT_PURCHASE },
   { label: t('admin.activity_types.credit_consumption'), value: ACTION_TYPES.CREDIT_CONSUMPTION },
-  // Print Requests
-  { label: t('admin.activity_types.print_request_submissions'), value: ACTION_TYPES.PRINT_REQUEST_SUBMISSION },
-  { label: t('admin.activity_types.print_request_updates'), value: ACTION_TYPES.PRINT_REQUEST_UPDATE },
-  { label: t('admin.activity_types.print_request_withdrawals'), value: ACTION_TYPES.PRINT_REQUEST_WITHDRAWAL }
 ])
 
 const recentActivity = ref([])

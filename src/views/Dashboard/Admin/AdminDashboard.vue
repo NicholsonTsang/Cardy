@@ -20,36 +20,6 @@
         </div>
         
         <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <!-- Physical card: Print requests quick action -->
-          <router-link v-if="isPhysicalCardsEnabled" :to="{ name: 'admin-batches' }" class="block">
-            <div class="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 hover:from-blue-100 hover:to-blue-200 transition-colors">
-              <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-blue-500 flex items-center justify-center">
-                  <i class="pi pi-print text-white text-sm"></i>
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-blue-800">{{ $t('admin.manage_print_requests') }}</p>
-                  <p class="text-xs text-blue-600">{{ stats.print_requests_submitted }} {{ $t('admin.submitted') }}</p>
-                </div>
-              </div>
-            </div>
-          </router-link>
-
-          <!-- Physical card: Batch management quick action -->
-          <router-link v-if="isPhysicalCardsEnabled" :to="{ name: 'admin-batches' }" class="block">
-            <div class="bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-xl p-4 hover:from-purple-100 hover:to-purple-200 transition-colors">
-              <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-purple-500 flex items-center justify-center">
-                  <i class="pi pi-box text-white text-sm"></i>
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-purple-800">{{ $t('admin.manage_batches') }}</p>
-                  <p class="text-xs text-purple-600">{{ $t('admin.view_all_batches') }}</p>
-                </div>
-              </div>
-            </div>
-          </router-link>
-
           <router-link :to="{ name: 'admin-history-logs' }" class="block">
             <div class="bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 rounded-xl p-4 hover:from-slate-100 hover:to-slate-200 transition-colors">
               <div class="flex items-center gap-3">
@@ -156,79 +126,6 @@
               </div>
               <div class="mt-1.5 sm:mt-2">
                 <span class="text-[10px] sm:text-xs text-slate-500 truncate block">{{ $t('admin.last_30_days') }}</span>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-
-      <!-- Print Request Management Section - Only show when physical cards enabled -->
-      <div v-if="isPhysicalCardsEnabled">
-        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-          <i class="pi pi-print text-blue-600"></i>
-          {{ $t('admin.print_request_pipeline') }}
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          <template v-if="isLoadingStats">
-            <div v-for="i in 3" :key="i" class="bg-white rounded-xl shadow-lg p-4 border border-slate-200 animate-pulse">
-              <div class="h-20"></div>
-            </div>
-          </template>
-          <template v-else>
-            <!-- Print Requests Submitted -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.print_submitted') }}</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.print_requests_submitted }}</h3>
-                </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-send text-white text-sm"></i>
-                </div>
-              </div>
-              <div class="mt-2">
-                <router-link :to="{ name: 'admin-batches' }" class="inline-flex items-center text-xs font-medium text-orange-600 hover:text-orange-700 transition-colors">
-                  {{ $t('admin.process') }}
-                  <i class="pi pi-arrow-right ml-1 text-xs"></i>
-                </router-link>
-              </div>
-            </div>
-
-            <!-- Print Requests Processing -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.print_processing') }}</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.print_requests_processing }}</h3>
-                </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-cog text-white text-sm"></i>
-                </div>
-              </div>
-              <div class="mt-2">
-                <router-link :to="{ name: 'admin-batches' }" class="inline-flex items-center text-xs font-medium text-blue-600 hover:text-blue-700 transition-colors">
-                  {{ $t('admin.track') }}
-                  <i class="pi pi-arrow-right ml-1 text-xs"></i>
-                </router-link>
-              </div>
-            </div>
-
-            <!-- Print Requests Shipping -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.print_shipping') }}</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.print_requests_shipping }}</h3>
-                </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-truck text-white text-sm"></i>
-                </div>
-              </div>
-              <div class="mt-2">
-                <router-link :to="{ name: 'admin-batches' }" class="inline-flex items-center text-xs font-medium text-green-600 hover:text-green-700 transition-colors">
-                  {{ $t('admin.monitor') }}
-                  <i class="pi pi-arrow-right ml-1 text-xs"></i>
-                </router-link>
               </div>
             </div>
           </template>
@@ -379,71 +276,7 @@
         </div>
       </div>
 
-      <!-- Card Issuance Trends Section -->
-      <div>
-        <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
-          <i class="pi pi-share-alt text-blue-600"></i>
-          {{ $t('admin.card_issuance_trends') }}
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          <template v-if="isLoadingStats">
-            <div v-for="i in 3" :key="i" class="bg-white rounded-xl shadow-lg p-4 border border-slate-200 animate-pulse">
-              <div class="h-20"></div>
-            </div>
-          </template>
-          <template v-else>
-            <!-- Daily Issued Cards -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.daily_issued_cards') }}</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.daily_issued_cards }}</h3>
-                </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-send text-white text-sm"></i>
-                </div>
-              </div>
-              <div class="mt-2">
-                <span class="text-xs text-slate-500">{{ $t('admin.today') }}</span>
-              </div>
-            </div>
-
-            <!-- Weekly Issued Cards -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.weekly_issued_cards') }}</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.weekly_issued_cards }}</h3>
-                </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-cyan-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-share-alt text-white text-sm"></i>
-                </div>
-              </div>
-              <div class="mt-2">
-                <span class="text-xs text-slate-500">{{ $t('admin.last_7_days') }}</span>
-              </div>
-            </div>
-
-            <!-- Monthly Issued Cards -->
-            <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.monthly_issued_cards') }}</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.monthly_issued_cards }}</h3>
-                </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-bolt text-white text-sm"></i>
-                </div>
-              </div>
-              <div class="mt-2">
-                <span class="text-xs text-slate-500">{{ $t('admin.last_30_days') }}</span>
-              </div>
-            </div>
-          </template>
-        </div>
-      </div>
-
-      <!-- Access Mode Distribution Section (NEW) -->
+      <!-- Access Mode Distribution Section -->
       <div>
         <h2 class="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
           <i class="pi pi-th-large text-blue-600"></i>
@@ -456,22 +289,6 @@
             </div>
           </template>
           <template v-else>
-            <!-- Physical Cards - Only show when physical cards enabled -->
-            <div v-if="isPhysicalCardsEnabled" class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.physical_cards') }}</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ stats.physical_cards_count }}</h3>
-                </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-credit-card text-white text-sm"></i>
-                </div>
-              </div>
-              <div class="mt-2">
-                <span class="text-xs text-slate-500">{{ $t('admin.per_card_billing') }}</span>
-              </div>
-            </div>
-
             <!-- Digital Access Cards -->
             <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
               <div class="flex items-center justify-between">
@@ -488,21 +305,6 @@
               </div>
             </div>
 
-            <!-- Digital Adoption Rate - Only show when physical cards enabled (compares digital vs physical) -->
-            <div v-if="isPhysicalCardsEnabled" class="bg-white rounded-xl shadow-lg border border-slate-200 p-4 hover:shadow-xl transition-shadow duration-200">
-              <div class="flex items-center justify-between">
-                <div class="min-w-0 flex-1">
-                  <p class="text-xs font-medium text-slate-600 mb-1 truncate">{{ $t('admin.digital_adoption_rate') }}</p>
-                  <h3 class="text-lg font-bold text-slate-900">{{ digitalAdoptionRate }}%</h3>
-                </div>
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center shadow-lg flex-shrink-0 ml-2">
-                  <i class="pi pi-chart-pie text-white text-sm"></i>
-                </div>
-              </div>
-              <div class="mt-2">
-                <span class="text-xs text-slate-500">{{ $t('admin.of_all_cards') }}</span>
-              </div>
-            </div>
           </template>
         </div>
       </div>
@@ -710,23 +512,15 @@ import PageWrapper from '@/components/Layout/PageWrapper.vue'
 import { useToast } from 'primevue/usetoast'
 import Button from 'primevue/button'
 import { useI18n } from 'vue-i18n'
-import { usePhysicalCards } from '@/composables/usePhysicalCards'
 
 const dashboardStore = useAdminDashboardStore()
 const toast = useToast()
 const { t } = useI18n()
-const { isPhysicalCardsEnabled } = usePhysicalCards()
 
 // Use dashboard store state directly
 const stats = computed(() => dashboardStore.dashboardStats || {
   total_users: 0,
   total_cards: 0,
-  total_batches: 0,
-  total_issued_cards: 0,
-  total_activated_cards: 0,
-  print_requests_submitted: 0,
-  print_requests_processing: 0,
-  print_requests_shipping: 0,
   daily_revenue_cents: 0,
   weekly_revenue_cents: 0,
   monthly_revenue_cents: 0,
@@ -737,11 +531,7 @@ const stats = computed(() => dashboardStore.dashboardStats || {
   daily_new_cards: 0,
   weekly_new_cards: 0,
   monthly_new_cards: 0,
-  daily_issued_cards: 0,
-  weekly_issued_cards: 0,
-  monthly_issued_cards: 0,
   // Access Mode metrics
-  physical_cards_count: 0,
   digital_cards_count: 0,
   // Digital Access metrics
   total_digital_scans: 0,
@@ -767,13 +557,6 @@ const stats = computed(() => dashboardStore.dashboardStats || {
   // QR Code metrics (Multi-QR system)
   total_qr_codes: 0,
   active_qr_codes: 0
-})
-
-// Computed helpers for display
-const digitalAdoptionRate = computed(() => {
-  const total = stats.value.physical_cards_count + stats.value.digital_cards_count
-  if (total === 0) return 0
-  return Math.round((stats.value.digital_cards_count / total) * 100)
 })
 
 // Use dashboard store loading states

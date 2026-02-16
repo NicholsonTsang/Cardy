@@ -6,14 +6,9 @@ This folder contains sample content templates for different venue types and cont
 
 Each template file follows the naming convention: `{venue_type}_{content_mode}.md`
 
-### Access Modes
+### Access Mode
 
-| Mode | Description | Billing |
-|------|-------------|---------|
-| **Physical Card** | Printed souvenir cards with QR codes | Per-card issuance |
-| **Digital Access** | QR-code-only (no physical card) | Session-based budget |
-
-> **Note:** All templates in this folder use **Digital Access** mode by default.
+All projects use **Digital Access** (QR-code-based, session-based budget billing).
 
 ### Content Modes
 
@@ -93,8 +88,8 @@ For list, grid, and cards modes, content can be grouped into categories:
 | `content_mode` | ✅ | single, grid, list, or cards |
 | `is_grouped` | ✅ | true or false - whether content has categories |
 | `group_display` | Grouped only | expanded or collapsed - how grouped items display |
-| `billing_type` | ✅ | physical or digital |
-| `image_url` | Physical only | Card artwork image |
+| `billing_type` | ✅ | digital |
+| `image_url` | Optional | Cover image |
 | `ai_instruction` | Optional | AI assistant role/personality (max 100 words) |
 | `ai_knowledge_base` | Optional | Background knowledge for AI (max 2000 words) |
 | `ai_welcome_general` | Optional | Custom welcome for General AI Assistant (200 char limit for voice mode) |

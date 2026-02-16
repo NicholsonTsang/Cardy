@@ -74,6 +74,23 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
       });
     }
 
+    // Validate baseUrl against allowed origins to prevent open redirect
+    const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173').split(',').map(s => s.trim());
+    try {
+      const parsedUrl = new URL(baseUrl);
+      if (!allowedOrigins.some(origin => parsedUrl.origin === new URL(origin).origin)) {
+        return res.status(400).json({
+          error: 'Validation error',
+          message: 'Invalid base URL'
+        });
+      }
+    } catch {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Invalid base URL format'
+      });
+    }
+
     if (!['starter', 'premium'].includes(tier)) {
       return res.status(400).json({
         error: 'Validation error',
@@ -328,7 +345,7 @@ router.post('/cancel', authenticateUser, async (req: Request, res: Response) => 
     // Update local record (webhook will also update, but do it here for immediate feedback)
     // Try RPC first, fallback to direct update if RPC fails
     // scheduled_tier defaults to 'free' when canceling to free plan
-    const { data: rpcResult, error: updateError } = await supabaseAdmin.rpc('cancel_subscription_server', {
+    const { error: updateError } = await supabaseAdmin.rpc('cancel_subscription_server', {
       p_stripe_subscription_id: subscription.stripe_subscription_id,
       p_cancel_at_period_end: !immediate,
       p_immediate: immediate,
@@ -337,72 +354,23 @@ router.post('/cancel', authenticateUser, async (req: Request, res: Response) => 
     });
 
     if (updateError) {
-      console.error('❌ RPC error, trying direct update:', updateError.message);
-      
-      // Fallback: Direct database update
-      if (immediate) {
-        const { error: directError } = await supabaseAdmin
-          .from('subscriptions')
-          .update({
-            tier: 'free',
-            status: 'canceled',
-            cancel_at_period_end: false,
-            canceled_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
-        
-        if (directError) {
-          console.error('❌ Direct update also failed:', directError.message);
-        } else {
-          console.log(`✅ Direct update: immediate cancellation for user ${userId}`);
-        }
-      } else {
-        const { error: directError } = await supabaseAdmin
-          .from('subscriptions')
-          .update({
-            cancel_at_period_end: true,
-            canceled_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
-        
-        if (directError) {
-          console.error('❌ Direct update also failed:', directError.message);
-        } else {
-          console.log(`✅ Direct update: cancel_at_period_end=true for user ${userId}`);
-        }
-      }
+      console.error('❌ RPC cancel_subscription_server error:', updateError.message);
+      // The Stripe cancellation succeeded, so the webhook will eventually update the DB.
+      // Log the error but don't fail the request.
     } else {
-      console.log(`✅ RPC success: cancel_at_period_end=${!immediate} for user ${userId}`, rpcResult);
+      console.log(`✅ RPC success: cancel_at_period_end=${!immediate} for user ${userId}`);
     }
 
     // Invalidate any Redis cache for this user
     await invalidateUserCache(userId);
     console.log(`🗑️ Invalidated Redis cache for user ${userId}`);
 
-    // Verify the update by reading back from database
-    const { data: verifyData, error: verifyError } = await supabaseAdmin
-      .from('subscriptions')
-      .select('cancel_at_period_end, canceled_at, tier, status')
-      .eq('user_id', userId)
-      .single();
-    
-    console.log(`🔍 Verification read:`, verifyData, verifyError?.message || 'no error');
-
     return res.json({
       success: true,
-      message: immediate 
-        ? 'Subscription canceled immediately' 
+      message: immediate
+        ? 'Subscription canceled immediately'
         : 'Subscription will be canceled at the end of the billing period',
-      immediate,
-      // Include verification data in response for debugging
-      debug: {
-        cancel_at_period_end: verifyData?.cancel_at_period_end,
-        canceled_at: verifyData?.canceled_at,
-        tier: verifyData?.tier,
-        status: verifyData?.status
-      }
+      immediate
     });
 
   } catch (error: any) {
@@ -761,6 +729,23 @@ router.post('/buy-credits', authenticateUser, async (req: Request, res: Response
       return res.status(400).json({
         error: 'Validation error',
         message: 'Base URL is required'
+      });
+    }
+
+    // Validate baseUrl against allowed origins to prevent open redirect
+    const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173').split(',').map(s => s.trim());
+    try {
+      const parsedUrl = new URL(baseUrl);
+      if (!allowedOrigins.some(origin => parsedUrl.origin === new URL(origin).origin)) {
+        return res.status(400).json({
+          error: 'Validation error',
+          message: 'Invalid base URL'
+        });
+      }
+    } catch {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Invalid base URL format'
       });
     }
 

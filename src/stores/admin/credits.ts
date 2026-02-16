@@ -22,8 +22,6 @@ interface AdminCreditConsumption {
   user_id: string
   user_email: string
   user_name: string
-  batch_id?: string
-  batch_name?: string
   card_id?: string
   card_name?: string
   consumption_type: string

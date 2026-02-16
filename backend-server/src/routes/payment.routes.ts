@@ -38,6 +38,23 @@ router.post('/create-credit-checkout', authenticateUser, async (req: Request, re
       });
     }
 
+    // Validate baseUrl against allowed origins to prevent open redirect
+    const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173').split(',').map(s => s.trim());
+    try {
+      const parsedUrl = new URL(baseUrl);
+      if (!allowedOrigins.some(origin => parsedUrl.origin === new URL(origin).origin)) {
+        return res.status(400).json({
+          error: 'Validation error',
+          message: 'Invalid base URL'
+        });
+      }
+    } catch {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Invalid base URL format'
+      });
+    }
+
     // Get Stripe key
     const stripeKey = process.env.STRIPE_SECRET_KEY;
     if (!stripeKey) {
@@ -66,7 +83,7 @@ router.post('/create-credit-checkout', authenticateUser, async (req: Request, re
             currency: 'usd',
             product_data: {
               name: 'FunTell Credits',
-              description: `Purchase ${creditAmount} credits for card issuance`,
+              description: `Purchase ${creditAmount} FunTell credits`,
               metadata: {
                 type: 'credit_purchase'
               }

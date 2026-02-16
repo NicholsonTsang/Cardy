@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Sun Feb 15 12:29:00 HKT 2026
+-- Generated: Mon Feb 16 19:56:01 HKT 2026
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -246,6 +246,7 @@ RETURNS TABLE (
     group_display TEXT,
     billing_type TEXT,
     default_daily_session_limit INTEGER,
+    metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
     monthly_sessions BIGINT,
@@ -281,6 +282,7 @@ BEGIN
         c.group_display,
         c.billing_type,
         c.default_daily_session_limit,
+        c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
         COALESCE(SUM(t.monthly_sessions), 0)::BIGINT AS monthly_sessions,
@@ -321,8 +323,9 @@ CREATE OR REPLACE FUNCTION create_card(
     p_content_mode TEXT DEFAULT 'list',  -- Content rendering mode: single, grid, list, cards
     p_is_grouped BOOLEAN DEFAULT FALSE,  -- Whether content is organized into categories
     p_group_display TEXT DEFAULT 'expanded',  -- How grouped items display: expanded or collapsed
-    p_billing_type TEXT DEFAULT 'physical',  -- Billing model: physical or digital
-    p_default_daily_session_limit INTEGER DEFAULT 500  -- Default daily session limit for new QR codes (default: 500)
+    p_billing_type TEXT DEFAULT 'digital',  -- Billing model: digital per-session subscription
+    p_default_daily_session_limit INTEGER DEFAULT 500,  -- Default daily session limit for new QR codes (default: 500)
+    p_metadata JSONB DEFAULT '{}'  -- Extensible metadata for future features
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -354,7 +357,8 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        default_daily_session_limit
+        default_daily_session_limit,
+        metadata
     ) VALUES (
         auth.uid(),
         p_name,
@@ -374,8 +378,9 @@ BEGIN
         COALESCE(p_content_mode, 'list'),
         COALESCE(p_is_grouped, FALSE),
         COALESCE(p_group_display, 'expanded'),
-        COALESCE(p_billing_type, 'physical'),
-        CASE WHEN p_billing_type = 'digital' THEN COALESCE(p_default_daily_session_limit, 500) ELSE NULL END
+        'digital',
+        COALESCE(p_default_daily_session_limit, 500),
+        COALESCE(p_metadata, '{}'::JSONB)
     )
     RETURNING id INTO v_card_id;
     
@@ -405,8 +410,7 @@ BEGIN
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER) TO authenticated;
--- Note: Last INTEGER parameter is p_default_daily_session_limit (was p_daily_session_limit)
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 -- Session stats are computed from card_access_tokens table
@@ -434,6 +438,7 @@ RETURNS TABLE (
     group_display TEXT,
     billing_type TEXT,
     default_daily_session_limit INTEGER,
+    metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
     monthly_sessions BIGINT,
@@ -468,13 +473,14 @@ BEGIN
         c.group_display,
         c.billing_type,
         c.default_daily_session_limit,
+        c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
         COALESCE(SUM(t.monthly_sessions), 0)::BIGINT AS monthly_sessions,
         COALESCE(SUM(t.daily_sessions), 0)::BIGINT AS daily_sessions,
         COALESCE(COUNT(t.id) FILTER (WHERE t.is_enabled), 0)::BIGINT AS active_qr_codes,
         COALESCE(COUNT(t.id), 0)::BIGINT AS total_qr_codes,
-        c.created_at, 
+        c.created_at,
         c.updated_at
     FROM cards c
     LEFT JOIN card_access_tokens t ON t.card_id = c.id
@@ -504,7 +510,8 @@ CREATE OR REPLACE FUNCTION update_card(
     p_is_grouped BOOLEAN DEFAULT NULL,
     p_group_display TEXT DEFAULT NULL,
     p_billing_type TEXT DEFAULT NULL,
-    p_default_daily_session_limit INTEGER DEFAULT NULL
+    p_default_daily_session_limit INTEGER DEFAULT NULL,
+    p_metadata JSONB DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_old_record RECORD;
@@ -531,6 +538,7 @@ BEGIN
         group_display,
         billing_type,
         default_daily_session_limit,
+        metadata,
         user_id,
         updated_at
     INTO v_old_record
@@ -625,7 +633,12 @@ BEGIN
         v_changes_made := v_changes_made || jsonb_build_object('default_daily_session_limit', jsonb_build_object('from', v_old_record.default_daily_session_limit, 'to', p_default_daily_session_limit));
         has_changes := TRUE;
     END IF;
-    
+
+    IF p_metadata IS NOT NULL AND p_metadata IS DISTINCT FROM v_old_record.metadata THEN
+        v_changes_made := v_changes_made || jsonb_build_object('metadata', 'updated');
+        has_changes := TRUE;
+    END IF;
+
     -- Only proceed if there are actual changes
     IF NOT has_changes THEN
         RETURN TRUE; -- No changes to make
@@ -651,7 +664,8 @@ BEGIN
         is_grouped = COALESCE(p_is_grouped, is_grouped),
         group_display = COALESCE(p_group_display, group_display),
         -- billing_type is immutable - not updated here
-        default_daily_session_limit = CASE WHEN billing_type = 'digital' THEN COALESCE(p_default_daily_session_limit, default_daily_session_limit) ELSE NULL END,
+        default_daily_session_limit = COALESCE(p_default_daily_session_limit, default_daily_session_limit),
+        metadata = COALESCE(p_metadata, metadata),
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
     
@@ -661,7 +675,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
@@ -735,6 +749,7 @@ CREATE OR REPLACE FUNCTION get_card_with_content(
   card_billing_type TEXT,
   card_default_daily_session_limit INT,
   card_qr_code_position TEXT,
+  card_metadata JSONB,
   -- Content items array
   content_items JSONB
 )
@@ -780,6 +795,7 @@ BEGIN
     c.billing_type,
     c.default_daily_session_limit,
     c.qr_code_position::TEXT,  -- Cast enum to TEXT
+    c.metadata,
     -- Aggregate content items into JSONB array
     COALESCE(
       (
@@ -1866,747 +1882,6 @@ $$;
 GRANT EXECUTE ON FUNCTION get_content_items_count(UUID) TO anon, authenticated;
 
 
--- File: 04_batch_management.sql
--- -----------------------------------------------------------------
-DROP FUNCTION IF EXISTS get_next_batch_number CASCADE;
-DROP FUNCTION IF EXISTS issue_card_batch_with_credits CASCADE;
-DROP FUNCTION IF EXISTS get_card_batches CASCADE;
-DROP FUNCTION IF EXISTS get_issued_cards_with_batch CASCADE;
-DROP FUNCTION IF EXISTS toggle_card_batch_disabled_status CASCADE;
-DROP FUNCTION IF EXISTS activate_issued_card CASCADE;
-DROP FUNCTION IF EXISTS get_card_issuance_stats CASCADE;
-DROP FUNCTION IF EXISTS delete_issued_card CASCADE;
-DROP FUNCTION IF EXISTS generate_batch_cards CASCADE;
-
--- =================================================================
--- PHYSICAL CARD BATCH MANAGEMENT FUNCTIONS
--- Functions for managing physical card batches and issued cards
--- =================================================================
-
--- Get next batch number for a card
-CREATE OR REPLACE FUNCTION get_next_batch_number(p_card_id UUID)
-RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_max_batch_number INTEGER;
-    v_user_id UUID;
-BEGIN
-    -- Check if the user owns the card
-    SELECT user_id INTO v_user_id FROM cards WHERE id = p_card_id;
-    
-    IF v_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to access this card';
-    END IF;
-    
-    -- Get the maximum batch number for this card
-    SELECT COALESCE(MAX(batch_number), 0) INTO v_max_batch_number
-    FROM card_batches
-    WHERE card_id = p_card_id;
-    
-    RETURN v_max_batch_number + 1;
-END;
-$$;
-
--- Issue card batch using credits
-CREATE OR REPLACE FUNCTION issue_card_batch_with_credits(
-    p_card_id UUID,
-    p_quantity INTEGER,
-    p_print_request BOOLEAN DEFAULT FALSE
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_batch_id UUID;
-    v_batch_number INTEGER;
-    v_batch_name TEXT;
-    v_project_owner_id UUID;
-    v_credits_per_card DECIMAL := 2.00;
-    v_total_credits DECIMAL;
-    v_current_balance DECIMAL;
-    v_consumption_result JSONB;
-    i INTEGER;
-BEGIN
-    -- Validate inputs
-    IF p_quantity <= 0 OR p_quantity > 1000 THEN
-        RAISE EXCEPTION 'Quantity must be between 1 and 1000';
-    END IF;
-    
-    -- Check if the user owns the card
-    SELECT user_id INTO v_project_owner_id
-    FROM cards
-    WHERE id = p_card_id;
-    
-    IF v_project_owner_id IS NULL THEN
-        RAISE EXCEPTION 'Project not found.';
-    END IF;
-
-    IF v_project_owner_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to issue cards for this card.';
-    END IF;
-    
-    v_total_credits := p_quantity * v_credits_per_card;
-    
-    -- Check credit balance (check_credit_balance returns the actual balance as DECIMAL)
-    v_current_balance := check_credit_balance(v_total_credits);
-    IF v_current_balance < v_total_credits THEN
-        RAISE EXCEPTION 'Insufficient credits. Required: %, Available: %. Please purchase more credits.', 
-            v_total_credits, v_current_balance;
-    END IF;
-    
-    -- Get next batch number
-    SELECT get_next_batch_number(p_card_id) INTO v_batch_number;
-    v_batch_name := 'batch-' || v_batch_number;
-    
-    -- Create the batch with credits payment
-    INSERT INTO card_batches (
-        card_id,
-        batch_name,
-        batch_number,
-        cards_count,
-        created_by,
-        payment_required,
-        payment_completed,
-        payment_amount_cents,
-        payment_waived,
-        cards_generated,
-        payment_method,
-        credit_cost
-    ) VALUES (
-        p_card_id,
-        v_batch_name,
-        v_batch_number,
-        p_quantity,
-        auth.uid(),
-        FALSE, -- No payment required (using credits)
-        TRUE,  -- Payment completed (via credits)
-        0,     -- No Stripe payment
-        FALSE, -- Not waived
-        TRUE,  -- Cards will be generated immediately
-        'credits',
-        v_total_credits
-    )
-    RETURNING id INTO v_batch_id;
-    
-    -- Consume credits
-    SELECT consume_credits_for_batch(v_batch_id, p_quantity) INTO v_consumption_result;
-    
-    IF NOT (v_consumption_result->>'success')::boolean THEN
-        -- Rollback batch creation if credit consumption fails
-        DELETE FROM card_batches WHERE id = v_batch_id;
-        RAISE EXCEPTION 'Failed to consume credits for batch';
-    END IF;
-    
-    -- Generate the issued cards immediately (since payment is done via credits)
-    FOR i IN 1..p_quantity LOOP
-        INSERT INTO issue_cards (
-            card_id,
-            batch_id,
-            active,
-            issue_at
-        ) VALUES (
-            p_card_id,
-            v_batch_id,
-            false,
-            NOW()
-        );
-    END LOOP;
-    
-    -- Update batch to mark cards as generated
-    UPDATE card_batches 
-    SET 
-        cards_generated_at = NOW(),
-        payment_completed_at = NOW()
-    WHERE id = v_batch_id;
-    
-    -- Create print request if requested
-    IF p_print_request THEN
-        INSERT INTO print_requests (
-            batch_id,
-            status,
-            created_by
-        ) VALUES (
-            v_batch_id,
-            'SUBMITTED',
-            auth.uid()
-        );
-    END IF;
-    
-    -- Log operation
-    PERFORM log_operation(format('Issued batch "%s" with %s cards using credits', v_batch_name, p_quantity));
-    
-    RETURN v_batch_id;
-END;
-$$;
-
--- Get physical card batches for a card
-CREATE OR REPLACE FUNCTION get_card_batches(p_card_id UUID)
-RETURNS TABLE (
-    id UUID,
-    card_id UUID,
-    batch_name TEXT,
-    batch_number INTEGER,
-    cards_count INTEGER,
-    active_cards_count BIGINT,
-    is_disabled BOOLEAN,
-    payment_required BOOLEAN,
-    payment_completed BOOLEAN,
-    payment_amount_cents INTEGER,
-    payment_completed_at TIMESTAMPTZ,
-    payment_waived BOOLEAN,
-    payment_waived_by UUID,
-    payment_waived_at TIMESTAMPTZ,
-    payment_waiver_reason TEXT,
-    cards_generated BOOLEAN,
-    cards_generated_at TIMESTAMPTZ,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_caller_role TEXT;
-BEGIN
-    -- Get caller's role
-    SELECT raw_user_meta_data->>'role' INTO v_caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-    
-    RETURN QUERY
-    SELECT 
-        cb.id,
-        cb.card_id,
-        cb.batch_name,
-        cb.batch_number,
-        cb.cards_count,
-        COUNT(ic.id) FILTER (WHERE ic.active = true) as active_cards_count,
-        cb.is_disabled,
-        cb.payment_required,
-        cb.payment_completed,
-        cb.payment_amount_cents,
-        cb.payment_completed_at,
-        cb.payment_waived,
-        cb.payment_waived_by,
-        cb.payment_waived_at,
-        cb.payment_waiver_reason,
-        cb.cards_generated,
-        cb.cards_generated_at,
-        cb.created_at,
-        cb.updated_at
-    FROM card_batches cb
-    LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
-    JOIN cards c ON cb.card_id = c.id
-    -- Allow access if user owns the card OR if user is admin
-    WHERE cb.card_id = p_card_id 
-      AND (c.user_id = auth.uid() OR v_caller_role = 'admin')
-    GROUP BY cb.id, cb.card_id, cb.batch_name, cb.batch_number, cb.cards_count, cb.is_disabled, 
-             cb.payment_required, cb.payment_completed, cb.payment_amount_cents, cb.payment_completed_at, 
-             cb.payment_waived, cb.payment_waived_by, cb.payment_waived_at, cb.payment_waiver_reason,
-             cb.cards_generated, cb.cards_generated_at, cb.created_at, cb.updated_at
-    ORDER BY cb.batch_number ASC;
-END;
-$$;
-
--- Get issued cards with batch information (including batch disabled status)
-CREATE OR REPLACE FUNCTION get_issued_cards_with_batch(p_card_id UUID)
-RETURNS TABLE (
-    id UUID,
-    card_id UUID,
-    active BOOLEAN,
-    issue_at TIMESTAMPTZ,
-    active_at TIMESTAMPTZ,
-    activated_by UUID,
-    batch_id UUID,
-    batch_name TEXT,
-    batch_number INTEGER,
-    batch_is_disabled BOOLEAN
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_caller_role TEXT;
-BEGIN
-    -- Get caller's role
-    SELECT raw_user_meta_data->>'role' INTO v_caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-    
-    RETURN QUERY
-    SELECT 
-        ic.id,
-        c.id as card_id,
-        ic.active,
-        ic.issue_at,
-        ic.active_at,
-        ic.activated_by,
-        cb.id as batch_id,
-        cb.batch_name,
-        cb.batch_number,
-        cb.is_disabled as batch_is_disabled
-    FROM issue_cards ic
-    JOIN card_batches cb ON ic.batch_id = cb.id
-    JOIN cards c ON ic.card_id = c.id
-    -- Allow access if user owns the card OR if user is admin
-    WHERE ic.card_id = p_card_id 
-      AND (c.user_id = auth.uid() OR v_caller_role = 'admin')
-    ORDER BY ic.issue_at DESC;
-END;
-$$;
-
--- Toggle disable status of a card batch
-CREATE OR REPLACE FUNCTION toggle_card_batch_disabled_status(p_batch_id UUID, p_disable_status BOOLEAN)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID;
-    v_card_id UUID;
-BEGIN
-    -- Check if the user owns the card that contains this batch
-    SELECT c.user_id, cb.card_id INTO v_user_id, v_card_id
-    FROM card_batches cb
-    JOIN cards c ON cb.card_id = c.id
-    WHERE cb.id = p_batch_id;
-    
-    IF v_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to modify this batch.';
-    END IF;
-
-    -- Check if there is an active print request for this batch if attempting to disable
-    IF p_disable_status = TRUE THEN
-        IF EXISTS (
-            SELECT 1 FROM print_requests pr
-            WHERE pr.batch_id = p_batch_id AND pr.status NOT IN ('COMPLETED', 'CANCELLED')
-        ) THEN
-            RAISE EXCEPTION 'Cannot disable a batch with an active print request. Please cancel or complete the print request first.';
-        END IF;
-    END IF;
-    
-    UPDATE card_batches
-    SET is_disabled = p_disable_status,
-        updated_at = now()
-    WHERE id = p_batch_id;
-    
-    -- Log operation
-    DECLARE
-        batch_name TEXT;
-    BEGIN
-        SELECT cb.batch_name INTO batch_name
-        FROM card_batches cb
-        WHERE cb.id = p_batch_id;
-        
-        PERFORM log_operation(
-            CASE 
-                WHEN p_disable_status THEN 'Disabled batch: ' || batch_name || ' (ID: ' || p_batch_id || ')'
-                ELSE 'Enabled batch: ' || batch_name || ' (ID: ' || p_batch_id || ')'
-            END
-        );
-    END;
-    
-    RETURN FOUND;
-END;
-$$;
-
--- Activate an issued card by ID (simplified without activation code)
-CREATE OR REPLACE FUNCTION activate_issued_card(p_card_id UUID)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-    UPDATE issue_cards
-    SET 
-        active = true,
-        active_at = NOW(),
-        activated_by = auth.uid()
-    WHERE id = p_card_id AND active = false;
-    
-    -- Log operation
-    PERFORM log_operation('Activated issued card');
-    
-    RETURN FOUND;
-END;
-$$;
-
--- Get card issuance statistics
-CREATE OR REPLACE FUNCTION get_card_issuance_stats(p_card_id UUID)
-RETURNS TABLE (
-    total_issued BIGINT,
-    total_activated BIGINT,
-    activation_rate NUMERIC,
-    total_batches BIGINT
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        COUNT(ic.id) as total_issued,
-        COUNT(ic.id) FILTER (WHERE ic.active = true) as total_activated,
-        CASE 
-            WHEN COUNT(ic.id) > 0 THEN 
-                ROUND((COUNT(ic.id) FILTER (WHERE ic.active = true) * 100.0 / COUNT(ic.id)), 2)
-            ELSE 0 
-        END as activation_rate,
-        COUNT(DISTINCT cb.id) as total_batches
-    FROM issue_cards ic
-    JOIN card_batches cb ON ic.batch_id = cb.id
-    JOIN cards c ON ic.card_id = c.id
-    WHERE ic.card_id = p_card_id AND c.user_id = auth.uid();
-END;
-$$;
-
--- Delete an issued card (secure replacement for direct table access)
-CREATE OR REPLACE FUNCTION delete_issued_card(p_issued_card_id UUID)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_project_owner_id UUID;
-BEGIN
-    -- Check if the user owns the card that contains this issued card
-    SELECT c.user_id INTO v_project_owner_id
-    FROM issue_cards ic
-    JOIN cards c ON ic.card_id = c.id
-    WHERE ic.id = p_issued_card_id;
-    
-    IF v_project_owner_id IS NULL THEN
-        RAISE EXCEPTION 'Issued card not found';
-    END IF;
-    
-    IF v_project_owner_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to delete this issued card';
-    END IF;
-    
-    -- Delete the issued card
-    DELETE FROM issue_cards WHERE id = p_issued_card_id;
-    
-    -- Log operation
-    PERFORM log_operation('Deleted issued card');
-    
-    RETURN FOUND;
-END;
-$$;
-
--- Generate cards for a paid or waived batch
-CREATE OR REPLACE FUNCTION generate_batch_cards(
-    p_batch_id UUID
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_batch_record RECORD;
-    v_batch_owner_id UUID;
-    i INTEGER;
-BEGIN
-    -- Get batch information and check ownership
-    SELECT cb.*, c.user_id as card_owner INTO v_batch_record
-    FROM card_batches cb
-    JOIN cards c ON cb.card_id = c.id
-    WHERE cb.id = p_batch_id;
-    
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Batch not found.';
-    END IF;
-    
-    -- Check if user owns the batch or is admin
-    IF v_batch_record.card_owner != auth.uid() THEN
-        -- Check if caller is admin
-        DECLARE
-            caller_role TEXT;
-        BEGIN
-            SELECT raw_user_meta_data->>'role' INTO caller_role
-            FROM auth.users
-            WHERE auth.users.id = auth.uid();
-            
-            IF caller_role != 'admin' THEN
-                RAISE EXCEPTION 'Not authorized to generate cards for this batch.';
-            END IF;
-        END;
-    END IF;
-    
-    -- Check if cards can be generated
-    IF v_batch_record.cards_generated = TRUE THEN
-        RAISE EXCEPTION 'Cards have already been generated for this batch.';
-    END IF;
-    
-    IF v_batch_record.payment_completed = FALSE AND v_batch_record.payment_waived = FALSE THEN
-        RAISE EXCEPTION 'Payment required or must be waived before generating cards.';
-    END IF;
-    
-    -- Generate the issued cards
-    FOR i IN 1..v_batch_record.cards_count LOOP
-        INSERT INTO issue_cards (
-            card_id,
-            batch_id,
-            active,
-            issue_at
-        ) VALUES (
-            v_batch_record.card_id,
-            p_batch_id,
-            false,
-            NOW()
-        );
-    END LOOP;
-    
-    -- Update batch to mark cards as generated
-    UPDATE card_batches 
-    SET 
-        cards_generated = TRUE,
-        cards_generated_at = NOW(),
-        updated_at = NOW()
-    WHERE id = p_batch_id;
-    
-    -- Log operation
-    PERFORM log_operation(format('Generated %s cards for batch "%s"', v_batch_record.cards_count, v_batch_record.batch_name));
-    
-    RETURN p_batch_id;
-END;
-$$; 
-
--- File: 06_print_requests.sql
--- -----------------------------------------------------------------
-DROP FUNCTION IF EXISTS request_card_printing CASCADE;
-DROP FUNCTION IF EXISTS get_print_requests_for_batch CASCADE;
-DROP FUNCTION IF EXISTS withdraw_print_request CASCADE;
-DROP FUNCTION IF EXISTS get_print_request_feedbacks CASCADE;
-
--- =================================================================
--- PRINT REQUEST FUNCTIONS
--- Functions for managing physical card printing requests
--- =================================================================
-
--- Request card printing for a batch
-CREATE OR REPLACE FUNCTION request_card_printing(
-    p_batch_id UUID, 
-    p_shipping_address TEXT,
-    p_contact_email TEXT DEFAULT NULL,
-    p_contact_whatsapp TEXT DEFAULT NULL
-)
-RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_print_request_id UUID;
-    v_user_id UUID;
-    v_batch_is_disabled BOOLEAN;
-    v_payment_completed BOOLEAN;
-    v_payment_waived BOOLEAN;
-    v_cards_generated BOOLEAN;
-    v_user_email TEXT;
-BEGIN
-    -- Check if the user owns the card associated with the batch and get payment status
-    SELECT c.user_id, cb.is_disabled, cb.payment_completed, cb.payment_waived, cb.cards_generated
-    INTO v_user_id, v_batch_is_disabled, v_payment_completed, v_payment_waived, v_cards_generated
-    FROM card_batches cb
-    JOIN cards c ON cb.card_id = c.id
-    WHERE cb.id = p_batch_id;
-
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Batch not found.';
-    END IF;
-
-    IF v_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to request printing for this batch.';
-    END IF;
-
-    IF v_batch_is_disabled THEN
-        RAISE EXCEPTION 'Cannot request printing for a disabled batch.';
-    END IF;
-
-    -- NEW: Validate payment status
-    IF NOT v_payment_completed AND NOT v_payment_waived THEN
-        RAISE EXCEPTION 'Payment must be completed or waived before requesting card printing.';
-    END IF;
-
-    -- NEW: Validate cards are generated
-    IF NOT v_cards_generated THEN
-        RAISE EXCEPTION 'Cards must be generated before requesting printing. Please contact support if payment was completed but cards are not generated.';
-    END IF;
-
-    -- Check if there is already an active print request for this batch
-    IF EXISTS (
-        SELECT 1 FROM print_requests pr
-        WHERE pr.batch_id = p_batch_id AND pr.status NOT IN ('COMPLETED', 'CANCELLED')
-    ) THEN
-        RAISE EXCEPTION 'An active print request already exists for this batch.';
-    END IF;
-
-    -- Get user email for fallback if no contact email provided
-    SELECT email INTO v_user_email 
-    FROM auth.users 
-    WHERE id = auth.uid();
-
-    -- Create print request with SUBMITTED status
-    -- Note: PAYMENT_PENDING is never used in the current credit-based payment model
-    -- because payment happens before print request creation (at batch issuance time)
-    INSERT INTO print_requests (
-        batch_id,
-        user_id,
-        shipping_address,
-        contact_email,
-        contact_whatsapp,
-        status
-    ) VALUES (
-        p_batch_id,
-        auth.uid(),
-        p_shipping_address,
-        COALESCE(p_contact_email, v_user_email),
-        p_contact_whatsapp,
-        'SUBMITTED'  -- Always SUBMITTED; PAYMENT_PENDING reserved for future payment models
-    )
-    RETURNING id INTO v_print_request_id;
-
-    -- Log operation
-    PERFORM log_operation('Submitted print request');
-
-    RETURN v_print_request_id;
-END;
-$$;
-
-
--- Get print requests for a batch
-CREATE OR REPLACE FUNCTION get_print_requests_for_batch(p_batch_id UUID)
-RETURNS TABLE (
-    id UUID,
-    batch_id UUID,
-    user_id UUID,
-    status TEXT, -- "PrintRequestStatus"
-    shipping_address TEXT,
-    contact_email TEXT,
-    contact_whatsapp TEXT,
-    cards_count INTEGER,
-    requested_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id_check UUID;
-BEGIN
-    -- Check if the user owns the card associated with the batch
-    SELECT c.user_id INTO v_user_id_check
-    FROM card_batches cb
-    JOIN cards c ON cb.card_id = c.id
-    WHERE cb.id = p_batch_id;
-
-    IF v_user_id_check IS NULL THEN
-        RAISE EXCEPTION 'Batch not found.';
-    END IF;
-
-    IF v_user_id_check != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to view print requests for this batch.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        pr.id,
-        pr.batch_id,
-        pr.user_id,
-        pr.status::TEXT, -- Cast ENUM to TEXT for broader client compatibility if needed
-        pr.shipping_address,
-        pr.contact_email,
-        pr.contact_whatsapp,
-        cb.cards_count,
-        pr.requested_at,
-        pr.updated_at
-    FROM print_requests pr
-    JOIN card_batches cb ON pr.batch_id = cb.id
-    WHERE pr.batch_id = p_batch_id
-    ORDER BY pr.requested_at DESC;
-END;
-$$;
-
--- Withdraw/Cancel a print request (card issuer only)
-CREATE OR REPLACE FUNCTION withdraw_print_request(
-    p_request_id UUID,
-    p_withdrawal_reason TEXT DEFAULT NULL
-)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID;
-    v_current_status "PrintRequestStatus";
-    v_batch_id UUID;
-    v_card_name TEXT;
-    v_batch_name TEXT;
-BEGIN
-    -- Get print request details and verify ownership
-    SELECT pr.user_id, pr.status, pr.batch_id, c.name, cb.batch_name
-    INTO v_user_id, v_current_status, v_batch_id, v_card_name, v_batch_name
-    FROM print_requests pr
-    JOIN card_batches cb ON pr.batch_id = cb.id
-    JOIN cards c ON cb.card_id = c.id
-    WHERE pr.id = p_request_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Print request not found.';
-    END IF;
-
-    -- Check authorization
-    IF v_user_id != auth.uid() THEN
-        RAISE EXCEPTION 'Not authorized to withdraw this print request.';
-    END IF;
-
-    -- Check if withdrawal is allowed based on current status
-    IF v_current_status != 'SUBMITTED' THEN
-        RAISE EXCEPTION 'Print request can only be withdrawn when status is SUBMITTED. Current status: %', v_current_status;
-    END IF;
-
-    -- Update the print request status to CANCELLED
-    UPDATE print_requests
-    SET 
-        status = 'CANCELLED',
-        updated_at = NOW()
-    WHERE id = p_request_id;
-
-    -- Log operation
-    PERFORM log_operation(format('Withdrew print request for batch "%s"', v_batch_name));
-    
-    RETURN TRUE;
-END;
-$$;
-
-
--- Get feedbacks for a print request (card issuer and admin)
--- Returns only non-internal feedbacks for card issuers
-CREATE OR REPLACE FUNCTION get_print_request_feedbacks(p_request_id UUID)
-RETURNS TABLE (
-    id UUID,
-    admin_email VARCHAR(255),
-    message TEXT,
-    is_internal BOOLEAN,
-    created_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID;
-    v_caller_role TEXT;
-    v_is_admin BOOLEAN;
-BEGIN
-    -- Get caller role
-    SELECT raw_user_meta_data->>'role' INTO v_caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-    
-    v_is_admin := v_caller_role = 'admin';
-
-    -- Check if the user owns the print request or is admin
-    SELECT pr.user_id INTO v_user_id
-    FROM print_requests pr
-    JOIN card_batches cb ON pr.batch_id = cb.id
-    JOIN cards c ON cb.card_id = c.id
-    WHERE pr.id = p_request_id;
-
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Print request not found.';
-    END IF;
-
-    IF v_user_id != auth.uid() AND NOT v_is_admin THEN
-        RAISE EXCEPTION 'Not authorized to view feedbacks for this print request.';
-    END IF;
-
-    -- Return feedbacks (admins see all, users see only non-internal)
-    RETURN QUERY
-    SELECT 
-        prf.id,
-        prf.admin_email,
-        prf.message,
-        prf.is_internal,
-        prf.created_at
-    FROM print_request_feedbacks prf
-    WHERE prf.print_request_id = p_request_id
-      AND (v_is_admin OR prf.is_internal = false)
-    ORDER BY prf.created_at DESC;
-END;
-$$;
-
--- =================================================================
--- GRANT STATEMENTS
--- =================================================================
--- Print request functions use SECURITY DEFINER for access control
--- Grant execute to authenticated users - authorization checked inside functions
-
-GRANT EXECUTE ON FUNCTION request_card_printing(UUID, TEXT, TEXT, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION get_print_requests_for_batch(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION withdraw_print_request(UUID, TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION get_print_request_feedbacks(UUID) TO authenticated; 
-
 -- File: 07_public_access.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS get_card_preview_access CASCADE;
@@ -2683,7 +1958,8 @@ RETURNS TABLE (
     card_content_mode TEXT, -- Content rendering mode (single, grid, list, cards)
     card_is_grouped BOOLEAN, -- Whether content is organized into categories
     card_group_display TEXT, -- How grouped items display: expanded or collapsed
-    card_billing_type TEXT, -- Billing model: physical or digital
+    card_billing_type TEXT, -- Billing model: digital
+    card_metadata JSONB, -- Extensible metadata
     -- Note: Session tracking is now per-QR-code in card_access_tokens (not needed for preview)
     content_item_id UUID,
     content_item_parent_id UUID,
@@ -2749,7 +2025,8 @@ BEGIN
         COALESCE(c.content_mode, 'list')::TEXT AS card_content_mode, -- Content rendering mode
         COALESCE(c.is_grouped, FALSE)::BOOLEAN AS card_is_grouped, -- Grouping mode
         COALESCE(c.group_display, 'expanded')::TEXT AS card_group_display, -- Group display
-        COALESCE(c.billing_type, 'physical')::TEXT AS card_billing_type, -- Billing model
+        COALESCE(c.billing_type, 'digital')::TEXT AS card_billing_type, -- Billing model
+        c.metadata AS card_metadata,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,
@@ -3065,7 +2342,6 @@ CREATE OR REPLACE FUNCTION public.import_content_template(
     p_user_id UUID,
     p_template_id UUID,
     p_card_name TEXT DEFAULT NULL,
-    p_billing_type TEXT DEFAULT NULL,
     p_import_language TEXT DEFAULT NULL  -- Language to import content in (uses translated version if available)
 )
 RETURNS TABLE (
@@ -3081,7 +2357,6 @@ DECLARE
     v_template RECORD;
     v_new_card_id UUID;
     v_final_name TEXT;
-    v_final_billing TEXT;
     v_final_language TEXT;
     v_check JSONB;
     v_use_translation BOOLEAN;
@@ -3123,9 +2398,6 @@ BEGIN
         v_template.name
     );
     
-    -- Use provided billing type or template card's billing type
-    v_final_billing := COALESCE(NULLIF(p_billing_type, ''), v_template.billing_type, 'digital');
-    
     -- Create the new card by copying the template's card
     -- If importing in a different language, use translated content and set original_language to that language
     -- DO NOT copy translations - user starts fresh without any translations
@@ -3157,7 +2429,7 @@ BEGIN
         v_template.content_mode,
         v_template.is_grouped,
         v_template.group_display,
-        v_final_billing,
+        'digital',
         v_template.default_daily_session_limit,
         v_template.conversation_ai_enabled,
         CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_instruction', v_template.ai_instruction) ELSE v_template.ai_instruction END,
@@ -3750,7 +3022,7 @@ GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEA
 GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT, TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.get_template_venue_types() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.import_content_template(UUID, UUID, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.import_content_template(UUID, UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_template_from_card(UUID, UUID, TEXT, TEXT, BOOLEAN, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_template_settings(UUID, UUID, TEXT, TEXT, BOOLEAN, BOOLEAN, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_content_template(UUID, UUID, BOOLEAN) TO authenticated;
@@ -3824,12 +3096,7 @@ GRANT EXECUTE ON FUNCTION public.get_demo_templates(INTEGER, VARCHAR) TO authent
 
 -- File: 11_admin_functions.sql
 -- -----------------------------------------------------------------
-DROP FUNCTION IF EXISTS admin_issue_free_batch CASCADE;
 DROP FUNCTION IF EXISTS admin_get_system_stats_enhanced CASCADE;
-DROP FUNCTION IF EXISTS admin_update_print_request_status CASCADE;
-DROP FUNCTION IF EXISTS get_admin_batches_requiring_attention CASCADE;
-DROP FUNCTION IF EXISTS get_admin_all_batches CASCADE;
-DROP FUNCTION IF EXISTS get_all_print_requests CASCADE;
 DROP FUNCTION IF EXISTS admin_get_all_users CASCADE;
 DROP FUNCTION IF EXISTS admin_update_user_subscription CASCADE;
 DROP FUNCTION IF EXISTS admin_get_subscription_stats CASCADE;
@@ -3837,8 +3104,6 @@ DROP FUNCTION IF EXISTS admin_update_user_role CASCADE;
 DROP FUNCTION IF EXISTS admin_get_user_by_email CASCADE;
 DROP FUNCTION IF EXISTS admin_get_user_cards CASCADE;
 DROP FUNCTION IF EXISTS admin_get_card_content CASCADE;
-DROP FUNCTION IF EXISTS admin_get_card_batches CASCADE;
-DROP FUNCTION IF EXISTS admin_get_batch_issued_cards CASCADE;
 DROP FUNCTION IF EXISTS get_admin_audit_logs CASCADE;
 
 -- =================================================================
@@ -3846,127 +3111,11 @@ DROP FUNCTION IF EXISTS get_admin_audit_logs CASCADE;
 -- Functions for admin-only operations and system management
 -- =================================================================
 
--- (Admin) Issue a free batch to a user
-CREATE OR REPLACE FUNCTION admin_issue_free_batch(
-    p_user_email TEXT,
-    p_card_id UUID,
-    p_cards_count INTEGER,
-    p_reason TEXT DEFAULT 'Admin issued batch'
-) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_user_id UUID;
-    v_card_record RECORD;
-    v_batch_id UUID;
-    v_batch_number INTEGER;
-    v_batch_name TEXT;
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can issue free batches.';
-    END IF;
-
-    -- Validate cards count
-    IF p_cards_count < 1 OR p_cards_count > 10000 THEN
-        RAISE EXCEPTION 'Cards count must be between 1 and 10,000.';
-    END IF;
-
-    -- Get user by email
-    SELECT id INTO v_user_id
-    FROM auth.users
-    WHERE email = p_user_email;
-    
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'User with email % not found.', p_user_email;
-    END IF;
-
-    -- Get card information and verify ownership
-    SELECT c.* INTO v_card_record
-    FROM cards c
-    WHERE c.id = p_card_id AND c.user_id = v_user_id;
-    
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Card not found or does not belong to user %.', p_user_email;
-    END IF;
-
-    -- Get next batch number for this card
-    SELECT COALESCE(MAX(batch_number), 0) + 1 INTO v_batch_number
-    FROM card_batches
-    WHERE card_id = p_card_id;
-
-    -- Auto-generate batch name
-    v_batch_name := 'Batch #' || v_batch_number || ' - Issued by Admin';
-
-    -- Generate new batch ID
-    v_batch_id := gen_random_uuid();
-
-    -- Create the batch with payment_required = FALSE (free batch)
-    INSERT INTO card_batches (
-        id,
-        card_id,
-        batch_name,
-        batch_number,
-        cards_count,
-        created_by,
-        payment_required,
-        payment_completed,
-        payment_waived,
-        payment_waived_by,
-        payment_waived_at,
-        payment_waiver_reason,
-        cards_generated,
-        created_at,
-        updated_at
-    ) VALUES (
-        v_batch_id,
-        p_card_id,
-        v_batch_name, -- Auto-generated name
-        v_batch_number,
-        p_cards_count,
-        v_user_id, -- Batch owned by the target user
-        FALSE, -- No payment required (free batch)
-        FALSE, -- Not paid
-        TRUE, -- Mark as waived so cards can be generated
-        auth.uid(), -- Admin who issued it
-        NOW(),
-        p_reason,
-        FALSE, -- Cards not yet generated
-        NOW(),
-        NOW()
-    );
-
-    -- Generate cards immediately
-    PERFORM generate_batch_cards(v_batch_id);
-
-    -- Log operation
-    PERFORM log_operation(
-        'Admin issued free batch: ' || v_batch_name || 
-        ' to user ' || p_user_email || 
-        ' (' || p_cards_count || ' cards) - Reason: ' || p_reason
-    );
-
-    RETURN v_batch_id;
-END;
-$$;
-
 -- Enhanced system statistics function
 CREATE OR REPLACE FUNCTION admin_get_system_stats_enhanced()
 RETURNS TABLE (
     total_users BIGINT,
     total_cards BIGINT,
-    total_batches BIGINT,
-    total_issued_cards BIGINT,
-    total_activated_cards BIGINT,
-    pending_payment_batches BIGINT,
-    paid_batches BIGINT,
-    waived_batches BIGINT,
-    print_requests_submitted BIGINT,
-    print_requests_processing BIGINT,
-    print_requests_shipping BIGINT,
     daily_revenue_cents BIGINT,
     weekly_revenue_cents BIGINT,
     monthly_revenue_cents BIGINT,
@@ -3977,18 +3126,14 @@ RETURNS TABLE (
     daily_new_cards BIGINT,
     weekly_new_cards BIGINT,
     monthly_new_cards BIGINT,
-    daily_issued_cards BIGINT,
-    weekly_issued_cards BIGINT,
-    monthly_issued_cards BIGINT,
     -- AUDIT METRICS
     total_audit_entries BIGINT,
     critical_actions_today BIGINT,
     high_severity_actions_week BIGINT,
     unique_admin_users_month BIGINT,
-    -- ACCESS MODE METRICS
-    physical_cards_count BIGINT,
+    -- CARDS COUNT
     digital_cards_count BIGINT,
-    -- DIGITAL ACCESS METRICS (from card_access_tokens and card_access_log)
+    -- ACCESS METRICS (from card_access_tokens and card_access_log)
     total_digital_scans BIGINT,
     daily_digital_scans BIGINT,
     weekly_digital_scans BIGINT,
@@ -4026,21 +3171,10 @@ BEGIN
     END IF;
 
     RETURN QUERY
-    SELECT 
+    SELECT
         -- User and content metrics
         (SELECT COUNT(*) FROM auth.users) as total_users,
         (SELECT COUNT(*) FROM cards) as total_cards,
-        (SELECT COUNT(*) FROM card_batches) as total_batches,
-        (SELECT COUNT(*) FROM issue_cards) as total_issued_cards,
-        (SELECT COUNT(*) FROM issue_cards WHERE active = true) as total_activated_cards,
-        -- Payment metrics
-        (SELECT COUNT(*) FROM card_batches WHERE payment_required = true AND payment_completed = false AND payment_waived = false) as pending_payment_batches,
-        (SELECT COUNT(*) FROM card_batches WHERE payment_completed = true) as paid_batches,
-        (SELECT COUNT(*) FROM card_batches WHERE payment_waived = true) as waived_batches,
-        -- Print request metrics
-        (SELECT COUNT(*) FROM print_requests WHERE status = 'SUBMITTED') as print_requests_submitted,
-        (SELECT COUNT(*) FROM print_requests WHERE status = 'PROCESSING') as print_requests_processing,
-        (SELECT COUNT(*) FROM print_requests WHERE status = 'SHIPPED') as print_requests_shipping,
         -- Revenue metrics (based on credit purchases + estimated MRR)
         -- Note: credit_purchases amount_usd is in dollars, so multiply by 100 to get cents
         (SELECT COALESCE(SUM(amount_usd * 100), 0)::BIGINT FROM credit_purchases WHERE status = 'completed' AND created_at >= CURRENT_DATE) as daily_revenue_cents,
@@ -4054,21 +3188,17 @@ BEGIN
         (SELECT COUNT(*) FROM cards WHERE created_at >= CURRENT_DATE) as daily_new_cards,
         (SELECT COUNT(*) FROM cards WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_new_cards,
         (SELECT COUNT(*) FROM cards WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_new_cards,
-        (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE) as daily_issued_cards,
-        (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_issued_cards,
-        (SELECT COUNT(*) FROM issue_cards WHERE created_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_issued_cards,
         -- Operations log metrics
         (SELECT COUNT(*) FROM operations_log) as total_audit_entries,
         (SELECT COUNT(*) FROM operations_log WHERE operation LIKE '%Waived payment%' AND created_at >= CURRENT_DATE) as payment_waivers_today,
         (SELECT COUNT(*) FROM operations_log WHERE operation LIKE '%Changed user role%' AND created_at >= CURRENT_DATE - INTERVAL '7 days') as role_changes_week,
         (SELECT COUNT(DISTINCT user_id) FROM operations_log WHERE user_role = 'admin' AND created_at >= CURRENT_DATE - INTERVAL '30 days') as unique_admin_users_month,
-        -- ACCESS MODE METRICS (Physical vs Digital cards)
-        (SELECT COUNT(*) FROM cards WHERE billing_type = 'physical') as physical_cards_count,
-        (SELECT COUNT(*) FROM cards WHERE billing_type = 'digital') as digital_cards_count,
-        -- DIGITAL ACCESS METRICS (from card_access_tokens and card_access_log)
+        -- CARDS COUNT
+        (SELECT COUNT(*) FROM cards) as digital_cards_count,
+        -- ACCESS METRICS (from card_access_tokens and card_access_log)
         -- Note: Session counters now live in card_access_tokens table (Multi-QR refactor Dec 2025)
-        (SELECT COALESCE(SUM(cat.total_sessions), 0)::BIGINT FROM card_access_tokens cat INNER JOIN cards c ON cat.card_id = c.id WHERE c.billing_type = 'digital') as total_digital_scans,
-        (SELECT COALESCE(SUM(cat.daily_sessions), 0)::BIGINT FROM card_access_tokens cat INNER JOIN cards c ON cat.card_id = c.id WHERE c.billing_type = 'digital' AND cat.last_session_date = CURRENT_DATE) as daily_digital_scans,
+        (SELECT COALESCE(SUM(cat.total_sessions), 0)::BIGINT FROM card_access_tokens cat) as total_digital_scans,
+        (SELECT COALESCE(SUM(cat.daily_sessions), 0)::BIGINT FROM card_access_tokens cat WHERE cat.last_session_date = CURRENT_DATE) as daily_digital_scans,
         -- Weekly/Monthly from card_access_log for consistency (source of truth for billing)
         (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= CURRENT_DATE - INTERVAL '7 days') as weekly_digital_scans,
         (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= CURRENT_DATE - INTERVAL '30 days') as monthly_digital_scans,
@@ -4101,267 +3231,6 @@ END;
 $$;
 
 -- =================================================================
--- PRINT REQUEST MANAGEMENT
--- =================================================================
-
--- (Admin) Update print request status
-CREATE OR REPLACE FUNCTION admin_update_print_request_status(
-    p_request_id UUID,
-    p_new_status "PrintRequestStatus",
-    p_admin_notes TEXT DEFAULT NULL
-)
-RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_request_record RECORD;
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can update print request status.';
-    END IF;
-
-    -- Get current request details
-    SELECT pr.*, c.name as card_name, cb.batch_name
-    INTO v_request_record
-    FROM print_requests pr
-    JOIN card_batches cb ON pr.batch_id = cb.id
-    JOIN cards c ON cb.card_id = c.id
-    WHERE pr.id = p_request_id;
-
-    IF NOT FOUND THEN
-        RAISE EXCEPTION 'Print request not found.';
-    END IF;
-
-    -- Update the print request (no more admin_notes field)
-    UPDATE print_requests
-    SET 
-        status = p_new_status,
-        updated_at = NOW()
-    WHERE id = p_request_id;
-
-    -- Create feedback entry if admin provided notes
-    IF p_admin_notes IS NOT NULL AND LENGTH(TRIM(p_admin_notes)) > 0 THEN
-        DECLARE
-            v_admin_email VARCHAR(255);
-        BEGIN
-            SELECT email INTO v_admin_email FROM auth.users WHERE auth.users.id = auth.uid();
-            
-            INSERT INTO print_request_feedbacks (
-                print_request_id,
-                admin_user_id,
-                admin_email,
-                message
-            ) VALUES (
-                p_request_id,
-                auth.uid(),
-                v_admin_email,
-                p_admin_notes
-            );
-        END;
-    END IF;
-
-    -- Log operation
-    PERFORM log_operation('Updated print request status to ' || p_new_status || ' for batch: ' || v_request_record.batch_name || ' (Request ID: ' || p_request_id || ')');
-    
-    RETURN FOUND;
-END;
-$$;
-
--- =================================================================
--- BATCH MANAGEMENT
--- =================================================================
-
--- (Admin) Get batches requiring attention
-CREATE OR REPLACE FUNCTION get_admin_batches_requiring_attention()
-RETURNS TABLE (
-    id UUID,
-    card_id UUID,
-    card_name TEXT,
-    batch_name TEXT,
-    batch_number INTEGER,
-    cards_count INTEGER,
-    created_by UUID,
-    user_email VARCHAR(255),
-    payment_required BOOLEAN,
-    payment_completed BOOLEAN,
-    payment_amount_cents INTEGER,
-    payment_waived BOOLEAN,
-    cards_generated BOOLEAN,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if caller is admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view batches requiring attention.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        cb.id,
-        cb.card_id,
-        c.name AS card_name,
-        cb.batch_name,
-        cb.batch_number,
-        cb.cards_count,
-        cb.created_by,
-        au.email AS user_email,
-        cb.payment_required,
-        cb.payment_completed,
-        cb.payment_amount_cents,
-        cb.payment_waived,
-        cb.cards_generated,
-        cb.created_at,
-        cb.updated_at
-    FROM public.card_batches cb
-    JOIN public.cards c ON cb.card_id = c.id
-    JOIN auth.users au ON cb.created_by = au.id
-    WHERE 
-        -- Batches that need payment
-        (cb.payment_required = true AND cb.payment_completed = false AND cb.payment_waived = false)
-        OR
-        -- Batches that are paid but cards not generated
-        ((cb.payment_completed = true OR cb.payment_waived = true) AND cb.cards_generated = false)
-        OR
-        -- Batches that have been inactive for more than 7 days
-        (cb.updated_at < NOW() - INTERVAL '7 days' AND cb.payment_completed = false AND cb.payment_waived = false)
-    ORDER BY cb.created_at DESC;
-END;
-$$;
-
--- (Admin) Get all batches with filtering
-CREATE OR REPLACE FUNCTION get_admin_all_batches(
-    p_email_search TEXT DEFAULT NULL,
-    p_payment_status TEXT DEFAULT NULL,
-    p_limit INTEGER DEFAULT 100,
-    p_offset INTEGER DEFAULT 0
-)
-RETURNS TABLE (
-    id UUID,
-    batch_number INTEGER,
-    user_email VARCHAR(255),
-    payment_status TEXT,
-    cards_count INTEGER,
-    created_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if caller is admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view all batches.';
-    END IF;
-
-    -- Simplified payment status for credit-based system:
-    -- PAID = user paid with credits (payment_completed = true)
-    -- FREE = admin-issued (payment_waived) or no payment required
-    RETURN QUERY
-    SELECT 
-        cb.id,
-        cb.batch_number,
-        au.email AS user_email,
-        CASE 
-            WHEN cb.payment_completed = true THEN 'PAID'
-            ELSE 'FREE'  -- Admin-issued (waived) or no payment required
-        END AS payment_status,
-        cb.cards_count,
-        cb.created_at
-    FROM public.card_batches cb
-    JOIN auth.users au ON cb.created_by = au.id
-    WHERE 
-        (p_email_search IS NULL OR au.email ILIKE '%' || p_email_search || '%')
-        AND
-        (p_payment_status IS NULL OR 
-         (p_payment_status = 'PAID' AND cb.payment_completed = true) OR
-         (p_payment_status = 'FREE' AND cb.payment_completed = false))
-    ORDER BY cb.created_at DESC
-    LIMIT p_limit OFFSET p_offset;
-END;
-$$;
-
--- (Admin) Get all print requests for review
-CREATE OR REPLACE FUNCTION get_all_print_requests(
-    p_status "PrintRequestStatus" DEFAULT NULL,
-    p_search_query TEXT DEFAULT NULL,
-    p_limit INTEGER DEFAULT 100,
-    p_offset INTEGER DEFAULT 0
-)
-RETURNS TABLE (
-    id UUID,
-    batch_id UUID,
-    user_id UUID,
-    user_email TEXT,
-    user_public_name TEXT,
-    card_name TEXT,
-    batch_name TEXT,
-    cards_count INTEGER,
-    status "PrintRequestStatus",
-    shipping_address TEXT,
-    contact_email TEXT,
-    contact_whatsapp TEXT,
-    requested_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    caller_role TEXT;
-BEGIN
-    -- Check if the caller is an admin
-    SELECT raw_user_meta_data->>'role' INTO caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-
-    IF caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Only admins can view all print requests.';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        pr.id,
-        pr.batch_id,
-        pr.user_id,
-        au.email::text AS user_email,
-        SPLIT_PART(au.email, '@', 1)::text AS user_public_name,
-        c.name AS card_name,
-        cb.batch_name,
-        cb.cards_count,
-        pr.status,
-        pr.shipping_address,
-        pr.contact_email,
-        pr.contact_whatsapp,
-        pr.requested_at,
-        pr.updated_at
-    FROM print_requests pr
-    JOIN card_batches cb ON pr.batch_id = cb.id
-    JOIN cards c ON cb.card_id = c.id
-    LEFT JOIN auth.users au ON pr.user_id = au.id
-    WHERE 
-        (p_status IS NULL OR pr.status = p_status)
-        AND (p_search_query IS NULL OR (
-            au.email ILIKE '%' || p_search_query || '%' OR
-            c.name ILIKE '%' || p_search_query || '%' OR
-            cb.batch_name ILIKE '%' || p_search_query || '%' OR
-            pr.shipping_address ILIKE '%' || p_search_query || '%'
-        ))
-    ORDER BY pr.requested_at DESC
-    LIMIT p_limit OFFSET p_offset;
-END;
-$$;
-
--- =================================================================
 -- USER MANAGEMENT FUNCTIONS
 -- =================================================================
 
@@ -4372,7 +3241,6 @@ RETURNS TABLE (
     user_email VARCHAR(255),
     role TEXT,
     cards_count INTEGER,
-    issued_cards_count INTEGER,
     created_at TIMESTAMP WITH TIME ZONE,
     last_sign_in_at TIMESTAMP WITH TIME ZONE,
     email_confirmed_at TIMESTAMP WITH TIME ZONE,
@@ -4398,12 +3266,11 @@ BEGIN
     END IF;
 
     RETURN QUERY
-    SELECT 
+    SELECT
         au.id as user_id,
         au.email as user_email,
         COALESCE(au.raw_user_meta_data->>'role', 'cardIssuer') as role,
         COUNT(DISTINCT c.id)::INTEGER as cards_count,
-        COUNT(DISTINCT ic.id)::INTEGER as issued_cards_count,
         au.created_at,
         au.last_sign_in_at,
         au.email_confirmed_at,
@@ -4416,11 +3283,9 @@ BEGIN
         COALESCE(s.cancel_at_period_end, false) as cancel_at_period_end
     FROM auth.users au
     LEFT JOIN cards c ON c.user_id = au.id
-    LEFT JOIN card_batches cb ON cb.created_by = au.id
-    LEFT JOIN issue_cards ic ON ic.batch_id = cb.id
     LEFT JOIN subscriptions s ON s.user_id = au.id
-    GROUP BY au.id, au.email, au.raw_user_meta_data, au.created_at, au.last_sign_in_at, 
-             au.email_confirmed_at, s.tier, s.status, s.stripe_subscription_id, 
+    GROUP BY au.id, au.email, au.raw_user_meta_data, au.created_at, au.last_sign_in_at,
+             au.email_confirmed_at, s.tier, s.status, s.stripe_subscription_id,
              s.current_period_start, s.current_period_end, s.cancel_at_period_end
     ORDER BY au.created_at DESC;
 END;
@@ -4724,8 +3589,8 @@ RETURNS TABLE (
     content_mode TEXT,
     is_grouped BOOLEAN,
     group_display TEXT,
-    billing_type TEXT,
     default_daily_session_limit INT,
+    metadata JSONB,
     -- Aggregated from access tokens
     total_sessions BIGINT,
     daily_sessions BIGINT,
@@ -4733,7 +3598,6 @@ RETURNS TABLE (
     total_qr_codes BIGINT,
     translations JSONB,
     original_language VARCHAR(10),
-    batches_count BIGINT,
     created_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
     user_email TEXT
@@ -4768,8 +3632,8 @@ BEGIN
         c.content_mode::TEXT,
         c.is_grouped,
         c.group_display::TEXT,
-        c.billing_type::TEXT,
         c.default_daily_session_limit,
+        c.metadata,
         -- Aggregate from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
         COALESCE(SUM(t.daily_sessions), 0)::BIGINT AS daily_sessions,
@@ -4777,7 +3641,6 @@ BEGIN
         COALESCE(COUNT(t.id), 0)::BIGINT AS total_qr_codes,
         c.translations,
         c.original_language,
-        (SELECT COUNT(*) FROM card_batches cb WHERE cb.card_id = c.id)::BIGINT AS batches_count,
         c.created_at,
         c.updated_at,
         au.email::TEXT AS user_email
@@ -4787,8 +3650,8 @@ BEGIN
     WHERE c.user_id = p_user_id
     GROUP BY c.id, c.name, c.description, c.image_url, c.original_image_url,
              c.crop_parameters, c.conversation_ai_enabled, c.ai_instruction, c.ai_knowledge_base,
-             c.ai_welcome_general, c.ai_welcome_item, c.qr_code_position, c.content_mode, 
-             c.is_grouped, c.group_display, c.billing_type, c.default_daily_session_limit,
+             c.ai_welcome_general, c.ai_welcome_item, c.qr_code_position, c.content_mode,
+             c.is_grouped, c.group_display, c.default_daily_session_limit, c.metadata,
              c.translations, c.original_language, c.created_at, c.updated_at, au.email
     ORDER BY c.created_at DESC;
 END;
@@ -4843,92 +3706,6 @@ BEGIN
         ci.parent_id NULLS FIRST,
         ci.sort_order ASC,
         ci.created_at ASC;
-END;
-$$;
-
--- Get card batches for admin viewing
-CREATE OR REPLACE FUNCTION admin_get_card_batches(p_card_id UUID)
-RETURNS TABLE (
-    id UUID,
-    card_id UUID,
-    batch_name TEXT,
-    batch_number INTEGER,
-    payment_status TEXT,
-    is_disabled BOOLEAN,
-    cards_count BIGINT,
-    created_at TIMESTAMPTZ,
-    updated_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_caller_role TEXT;
-BEGIN
-    -- Check if caller is admin
-    SELECT raw_user_meta_data->>'role' INTO v_caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-    
-    IF v_caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Admin access required';
-    END IF;
-
-    -- Simplified payment status for credit-based system
-    RETURN QUERY
-    SELECT 
-        cb.id,
-        cb.card_id,
-        cb.batch_name,
-        cb.batch_number,
-        CASE
-            WHEN cb.payment_completed THEN 'PAID'
-            ELSE 'FREE'  -- Admin-issued (waived) or no payment required
-        END AS payment_status,
-        cb.is_disabled,
-        COUNT(ic.id) AS cards_count,
-        cb.created_at,
-        cb.updated_at
-    FROM card_batches cb
-    LEFT JOIN issue_cards ic ON cb.id = ic.batch_id
-    WHERE cb.card_id = p_card_id
-    GROUP BY cb.id, cb.card_id, cb.batch_name, cb.batch_number, 
-             cb.payment_waived, cb.payment_completed, cb.payment_required, 
-             cb.is_disabled, cb.created_at, cb.updated_at
-    ORDER BY cb.created_at DESC;
-END;
-$$;
-
--- Get issued cards for a batch (admin view)
-CREATE OR REPLACE FUNCTION admin_get_batch_issued_cards(p_batch_id UUID)
-RETURNS TABLE (
-    id UUID,
-    batch_id UUID,
-    card_id UUID,
-    active BOOLEAN,
-    issue_at TIMESTAMPTZ,
-    active_at TIMESTAMPTZ
-) LANGUAGE plpgsql SECURITY DEFINER AS $$
-DECLARE
-    v_caller_role TEXT;
-BEGIN
-    -- Check if caller is admin
-    SELECT raw_user_meta_data->>'role' INTO v_caller_role
-    FROM auth.users
-    WHERE auth.users.id = auth.uid();
-    
-    IF v_caller_role != 'admin' THEN
-        RAISE EXCEPTION 'Admin access required';
-    END IF;
-
-    RETURN QUERY
-    SELECT 
-        ic.id,
-        ic.batch_id,
-        ic.card_id,
-        ic.active,
-        ic.issue_at,
-        ic.active_at
-    FROM issue_cards ic
-    WHERE ic.batch_id = p_batch_id
-    ORDER BY ic.issue_at DESC;
 END;
 $$;
 
@@ -4990,12 +3767,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- They must be callable by authenticated users, but actual admin check
 -- happens inside each function via auth.uid() role lookup
 
-GRANT EXECUTE ON FUNCTION admin_issue_free_batch(TEXT, UUID, INTEGER, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_system_stats_enhanced() TO authenticated;
-GRANT EXECUTE ON FUNCTION admin_update_print_request_status(UUID, "PrintRequestStatus", TEXT) TO authenticated;
-GRANT EXECUTE ON FUNCTION get_admin_batches_requiring_attention() TO authenticated;
-GRANT EXECUTE ON FUNCTION get_admin_all_batches(TEXT, TEXT, INTEGER, INTEGER) TO authenticated;
-GRANT EXECUTE ON FUNCTION get_all_print_requests("PrintRequestStatus", TEXT, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_all_users() TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_update_user_subscription(UUID, TEXT, TEXT, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_subscription_stats() TO authenticated;
@@ -5003,8 +3775,6 @@ GRANT EXECUTE ON FUNCTION admin_update_user_role(UUID, TEXT, TEXT) TO authentica
 GRANT EXECUTE ON FUNCTION admin_get_user_by_email(TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_user_cards(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION admin_get_card_content(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION admin_get_card_batches(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION admin_get_batch_issued_cards(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_admin_audit_logs(TEXT, UUID, INTEGER, INTEGER) TO authenticated;
 
 -- File: 12_subscription.sql
@@ -6501,8 +5271,6 @@ RETURNS TABLE (
     user_id UUID,
     user_email TEXT,
     user_name TEXT,
-    batch_id UUID,
-    batch_name TEXT,
     card_id UUID,
     card_name TEXT,
     consumption_type VARCHAR,
@@ -6531,13 +5299,11 @@ BEGIN
     END IF;
 
     RETURN QUERY
-    SELECT 
+    SELECT
         cc.id,
         cc.user_id,
         u.email::TEXT AS user_email,
         COALESCE(u.raw_user_meta_data->>'full_name', u.email)::TEXT AS user_name,
-        cc.batch_id,
-        b.batch_name AS batch_name,
         cc.card_id,
         c.name AS card_name,
         cc.consumption_type,
@@ -6548,7 +5314,6 @@ BEGIN
         cc.created_at
     FROM credit_consumptions cc
     JOIN auth.users u ON u.id = cc.user_id
-    LEFT JOIN card_batches b ON b.id = cc.batch_id
     LEFT JOIN cards c ON c.id = cc.card_id
     WHERE (p_user_id IS NULL OR cc.user_id = p_user_id)
         AND (p_date_from IS NULL OR cc.created_at >= p_date_from)
@@ -6871,14 +5636,12 @@ DROP FUNCTION IF EXISTS initialize_user_credits CASCADE;
 DROP FUNCTION IF EXISTS get_user_credits CASCADE;
 DROP FUNCTION IF EXISTS check_credit_balance CASCADE;
 DROP FUNCTION IF EXISTS consume_credits CASCADE;
-DROP FUNCTION IF EXISTS consume_credits_for_batch CASCADE;
 DROP FUNCTION IF EXISTS get_credit_transactions CASCADE;
 DROP FUNCTION IF EXISTS get_credit_purchases CASCADE;
 DROP FUNCTION IF EXISTS get_credit_consumptions CASCADE;
 DROP FUNCTION IF EXISTS create_credit_purchase CASCADE;
 DROP FUNCTION IF EXISTS get_credit_statistics CASCADE;
 DROP FUNCTION IF EXISTS consume_credit_for_digital_scan CASCADE;
-DROP FUNCTION IF EXISTS can_issue_batch CASCADE;
 
 -- Credit Management Stored Procedures
 -- Client-side functions for credit purchase, consumption, and management
@@ -7048,102 +5811,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Consume credits for batch issuance
-CREATE OR REPLACE FUNCTION consume_credits_for_batch(
-    p_batch_id UUID,
-    p_card_count INTEGER
-)
-RETURNS JSONB AS $$
-DECLARE
-    v_user_id UUID;
-    v_card_id UUID;
-    v_credits_per_card DECIMAL := 2.00; -- 2 credits per card
-    v_total_credits DECIMAL;
-    v_current_balance DECIMAL;
-    v_new_balance DECIMAL;
-    v_consumption_id UUID;
-    v_transaction_id UUID;
-BEGIN
-    v_user_id := auth.uid();
-    IF v_user_id IS NULL THEN
-        RAISE EXCEPTION 'Not authenticated';
-    END IF;
-
-    v_total_credits := p_card_count * v_credits_per_card;
-
-    -- Get card_id from the batch
-    SELECT card_id INTO v_card_id
-    FROM card_batches
-    WHERE id = p_batch_id;
-
-    IF v_card_id IS NULL THEN
-        RAISE EXCEPTION 'Batch not found: %', p_batch_id;
-    END IF;
-
-    -- Lock the user credits row for update
-    SELECT balance INTO v_current_balance
-    FROM user_credits
-    WHERE user_id = v_user_id
-    FOR UPDATE;
-
-    IF v_current_balance IS NULL OR v_current_balance < v_total_credits THEN
-        RAISE EXCEPTION 'Insufficient credits. Required: %, Available: %', 
-            v_total_credits, COALESCE(v_current_balance, 0);
-    END IF;
-
-    v_new_balance := v_current_balance - v_total_credits;
-
-    -- Update user credits
-    UPDATE user_credits
-    SET 
-        balance = v_new_balance,
-        total_consumed = total_consumed + v_total_credits,
-        updated_at = CURRENT_TIMESTAMP
-    WHERE user_id = v_user_id;
-
-    -- Record consumption (now includes card_id)
-    INSERT INTO credit_consumptions (
-        user_id, card_id, batch_id, consumption_type, quantity, 
-        credits_per_unit, total_credits, description
-    ) VALUES (
-        v_user_id, v_card_id, p_batch_id, 'batch_issuance', p_card_count,
-        v_credits_per_card, v_total_credits,
-        format('Batch issuance: %s cards', p_card_count)
-    ) RETURNING id INTO v_consumption_id;
-
-    -- Record transaction
-    INSERT INTO credit_transactions (
-        user_id, type, amount, balance_before, balance_after,
-        reference_type, reference_id, description
-    ) VALUES (
-        v_user_id, 'consumption', v_total_credits, v_current_balance, v_new_balance,
-        'batch_issuance', p_batch_id,
-        format('Batch issuance: %s cards @ %s credits each', p_card_count, v_credits_per_card)
-    ) RETURNING id INTO v_transaction_id;
-
-    -- Update batch with credit cost and payment method
-    UPDATE card_batches
-    SET 
-        credit_cost = v_total_credits,
-        payment_method = 'credits'
-    WHERE id = p_batch_id;
-
-    -- Log the operation
-    PERFORM log_operation(
-        format('Consumed %s credits for batch issuance: %s cards (Batch ID: %s)',
-            v_total_credits, p_card_count, p_batch_id)
-    );
-
-    RETURN jsonb_build_object(
-        'success', true,
-        'consumption_id', v_consumption_id,
-        'transaction_id', v_transaction_id,
-        'credits_consumed', v_total_credits,
-        'new_balance', v_new_balance
-    );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- Get credit transaction history
 CREATE OR REPLACE FUNCTION get_credit_transactions(
     p_limit INTEGER DEFAULT 50,
@@ -7239,7 +5906,6 @@ CREATE OR REPLACE FUNCTION get_credit_consumptions(
 )
 RETURNS TABLE (
     id UUID,
-    batch_id UUID,
     card_id UUID,
     consumption_type VARCHAR,
     quantity INTEGER,
@@ -7247,7 +5913,6 @@ RETURNS TABLE (
     total_credits DECIMAL,
     description TEXT,
     created_at TIMESTAMPTZ,
-    batch_name TEXT,
     card_name TEXT
 ) AS $$
 DECLARE
@@ -7259,9 +5924,8 @@ BEGIN
     END IF;
 
     RETURN QUERY
-    SELECT 
+    SELECT
         cc.id,
-        cc.batch_id,
         cc.card_id,
         cc.consumption_type,
         cc.quantity,
@@ -7269,10 +5933,8 @@ BEGIN
         cc.total_credits,
         cc.description,
         cc.created_at,
-        b.batch_name AS batch_name,
         c.name AS card_name
     FROM credit_consumptions cc
-    LEFT JOIN card_batches b ON b.id = cc.batch_id
     LEFT JOIN cards c ON c.id = cc.card_id
     WHERE cc.user_id = v_user_id
     ORDER BY cc.created_at DESC
@@ -7587,56 +6249,6 @@ COMMENT ON FUNCTION get_credit_statistics() IS
 COMMENT ON FUNCTION get_user_credits() IS 
   'CLIENT-ONLY: Uses auth.uid() from user JWT. Returns current credit balance for authenticated user.';
 
--- =================================================================
--- BATCH CREDIT CHECKING
--- =================================================================
-
--- Check if user has enough credits to issue a batch
-CREATE OR REPLACE FUNCTION can_issue_batch(p_quantity INTEGER)
-RETURNS JSONB AS $$
-DECLARE
-    v_user_id UUID;
-    v_balance DECIMAL;
-    v_cost_per_card DECIMAL := 1.00; -- Cost per physical card
-    v_total_cost DECIMAL;
-    v_can_issue BOOLEAN;
-BEGIN
-    v_user_id := auth.uid();
-    
-    IF v_user_id IS NULL THEN
-        RETURN jsonb_build_object(
-            'can_issue', false,
-            'reason', 'Not authenticated'
-        );
-    END IF;
-    
-    -- Get current balance
-    SELECT balance INTO v_balance
-    FROM user_credits
-    WHERE user_id = v_user_id;
-    
-    IF v_balance IS NULL THEN
-        v_balance := 0;
-    END IF;
-    
-    -- Calculate cost
-    v_total_cost := p_quantity * v_cost_per_card;
-    v_can_issue := v_balance >= v_total_cost;
-    
-    RETURN jsonb_build_object(
-        'can_issue', v_can_issue,
-        'current_balance', v_balance,
-        'required_credits', v_total_cost,
-        'quantity', p_quantity,
-        'cost_per_card', v_cost_per_card
-    );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
-GRANT EXECUTE ON FUNCTION can_issue_batch(INTEGER) TO authenticated;
-
-COMMENT ON FUNCTION can_issue_batch(INTEGER) IS 
-  'CLIENT-ONLY: Checks if authenticated user has enough credits to issue a batch of physical cards.';
 
 
 
@@ -7955,8 +6567,6 @@ REVOKE ALL ON FUNCTION get_token_daily_limit_server(UUID) FROM PUBLIC, authentic
 DROP FUNCTION IF EXISTS get_card_by_access_token_server CASCADE;
 DROP FUNCTION IF EXISTS get_card_content_server CASCADE;
 DROP FUNCTION IF EXISTS get_content_items_server CASCADE;
-DROP FUNCTION IF EXISTS get_issue_card_server CASCADE;
-DROP FUNCTION IF EXISTS activate_issue_card_server CASCADE;
 
 -- =================================================================
 -- CARD CONTENT - SERVER-SIDE STORED PROCEDURES
@@ -8046,6 +6656,7 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
+    metadata JSONB,
     subscription_tier TEXT
 ) AS $$
 BEGIN
@@ -8066,6 +6677,7 @@ BEGIN
         c.is_grouped,
         c.group_display::TEXT,
         c.billing_type::TEXT,
+        c.metadata,
         COALESCE(s.tier::TEXT, 'free') as subscription_tier
     FROM cards c
     LEFT JOIN subscriptions s ON s.user_id = c.user_id
@@ -8107,37 +6719,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Get issue card by ID (for physical card access)
-DROP FUNCTION IF EXISTS get_issue_card_server CASCADE;
-CREATE OR REPLACE FUNCTION get_issue_card_server(
-    p_issue_card_id UUID
-)
-RETURNS TABLE (
-    card_id UUID,
-    active BOOLEAN,
-    activated_at TIMESTAMPTZ
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT ic.card_id, ic.active, ic.activated_at
-    FROM issue_cards ic
-    WHERE ic.id = p_issue_card_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Activate issue card
-DROP FUNCTION IF EXISTS activate_issue_card_server CASCADE;
-CREATE OR REPLACE FUNCTION activate_issue_card_server(
-    p_issue_card_id UUID
-)
-RETURNS VOID AS $$
-BEGIN
-    UPDATE issue_cards
-    SET active = TRUE, activated_at = NOW()
-    WHERE id = p_issue_card_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- =================================================================
 -- GRANTS - Only service_role can execute these
 -- =================================================================
@@ -8149,12 +6730,6 @@ GRANT EXECUTE ON FUNCTION get_card_content_server TO service_role;
 
 REVOKE ALL ON FUNCTION get_content_items_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION get_content_items_server TO service_role;
-
-REVOKE ALL ON FUNCTION get_issue_card_server FROM PUBLIC, authenticated, anon;
-GRANT EXECUTE ON FUNCTION get_issue_card_server TO service_role;
-
-REVOKE ALL ON FUNCTION activate_issue_card_server FROM PUBLIC, authenticated, anon;
-GRANT EXECUTE ON FUNCTION activate_issue_card_server TO service_role;
 
 
 
@@ -8621,9 +7196,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Grant execution permissions to service_role only (called by webhooks/backend)
+-- =================================================================
+-- GRANTS - Only service_role can execute these
+-- =================================================================
+REVOKE ALL ON FUNCTION complete_credit_purchase(UUID, VARCHAR, VARCHAR, INTEGER, TEXT, JSONB) FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION complete_credit_purchase(UUID, VARCHAR, VARCHAR, INTEGER, TEXT, JSONB) TO service_role;
+
+REVOKE ALL ON FUNCTION refund_credit_purchase(UUID, UUID, DECIMAL, TEXT) FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION refund_credit_purchase(UUID, UUID, DECIMAL, TEXT) TO service_role;
+
+REVOKE ALL ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION create_credit_purchase_record(VARCHAR, DECIMAL, DECIMAL, JSONB, UUID) TO service_role;
 
 
@@ -9511,27 +8093,6 @@ CREATE TRIGGER update_cards_updated_at
 DROP TRIGGER IF EXISTS update_content_items_updated_at ON public.content_items;
 CREATE TRIGGER update_content_items_updated_at
     BEFORE UPDATE ON public.content_items
-    FOR EACH ROW
-    EXECUTE FUNCTION public.update_updated_at();
-
--- Card batches
-DROP TRIGGER IF EXISTS update_card_batches_updated_at ON public.card_batches;
-CREATE TRIGGER update_card_batches_updated_at
-    BEFORE UPDATE ON public.card_batches
-    FOR EACH ROW
-    EXECUTE FUNCTION public.update_updated_at();
-
--- Issued cards
-DROP TRIGGER IF EXISTS update_issue_cards_updated_at ON public.issue_cards;
-CREATE TRIGGER update_issue_cards_updated_at
-    BEFORE UPDATE ON public.issue_cards
-    FOR EACH ROW
-    EXECUTE FUNCTION public.update_updated_at();
-
--- Print requests
-DROP TRIGGER IF EXISTS update_print_requests_updated_at ON public.print_requests;
-CREATE TRIGGER update_print_requests_updated_at
-    BEFORE UPDATE ON public.print_requests
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at();
 

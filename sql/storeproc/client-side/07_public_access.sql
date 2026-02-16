@@ -69,7 +69,8 @@ RETURNS TABLE (
     card_content_mode TEXT, -- Content rendering mode (single, grid, list, cards)
     card_is_grouped BOOLEAN, -- Whether content is organized into categories
     card_group_display TEXT, -- How grouped items display: expanded or collapsed
-    card_billing_type TEXT, -- Billing model: physical or digital
+    card_billing_type TEXT, -- Billing model: digital
+    card_metadata JSONB, -- Extensible metadata
     -- Note: Session tracking is now per-QR-code in card_access_tokens (not needed for preview)
     content_item_id UUID,
     content_item_parent_id UUID,
@@ -135,7 +136,8 @@ BEGIN
         COALESCE(c.content_mode, 'list')::TEXT AS card_content_mode, -- Content rendering mode
         COALESCE(c.is_grouped, FALSE)::BOOLEAN AS card_is_grouped, -- Grouping mode
         COALESCE(c.group_display, 'expanded')::TEXT AS card_group_display, -- Group display
-        COALESCE(c.billing_type, 'physical')::TEXT AS card_billing_type, -- Billing model
+        COALESCE(c.billing_type, 'digital')::TEXT AS card_billing_type, -- Billing model
+        c.metadata AS card_metadata,
         ci.id AS content_item_id,
         ci.parent_id AS content_item_parent_id,
         COALESCE(ci.translations->p_language->>'name', ci.name)::TEXT AS content_item_name,

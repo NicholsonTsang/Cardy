@@ -19,27 +19,6 @@ CREATE TRIGGER update_content_items_updated_at
     FOR EACH ROW
     EXECUTE FUNCTION public.update_updated_at();
 
--- Card batches
-DROP TRIGGER IF EXISTS update_card_batches_updated_at ON public.card_batches;
-CREATE TRIGGER update_card_batches_updated_at
-    BEFORE UPDATE ON public.card_batches
-    FOR EACH ROW
-    EXECUTE FUNCTION public.update_updated_at();
-
--- Issued cards
-DROP TRIGGER IF EXISTS update_issue_cards_updated_at ON public.issue_cards;
-CREATE TRIGGER update_issue_cards_updated_at
-    BEFORE UPDATE ON public.issue_cards
-    FOR EACH ROW
-    EXECUTE FUNCTION public.update_updated_at();
-
--- Print requests
-DROP TRIGGER IF EXISTS update_print_requests_updated_at ON public.print_requests;
-CREATE TRIGGER update_print_requests_updated_at
-    BEFORE UPDATE ON public.print_requests
-    FOR EACH ROW
-    EXECUTE FUNCTION public.update_updated_at();
-
 -- User credits
 DROP TRIGGER IF EXISTS update_user_credits_updated_at ON public.user_credits;
 CREATE TRIGGER update_user_credits_updated_at

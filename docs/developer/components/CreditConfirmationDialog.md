@@ -81,21 +81,21 @@ Allows custom content in the credit usage summary section. If not provided, uses
 
 ## Usage Examples
 
-### Example 1: Batch Creation (Default Details)
+### Example 1: Credit Purchase (Default Details)
 
 ```vue
 <template>
   <CreditConfirmationDialog
     v-model:visible="showConfirmDialog"
-    :credits-to-consume="cardCount * 2"
+    :credits-to-consume="creditAmount"
     :current-balance="creditStore.balance"
-    :loading="isCreating"
-    :action-description="$t('batches.batch_creation_action_description')"
-    :item-count="cardCount"
-    :credits-per-item="2"
-    :item-label="$t('batches.cards_to_create')"
-    :confirm-label="$t('batches.confirm_and_create_batch')"
-    @confirm="createBatch"
+    :loading="isPurchasing"
+    action-description="Purchase additional session credits"
+    :item-count="creditAmount"
+    :credits-per-item="1"
+    item-label="Credits to purchase"
+    confirm-label="Confirm Purchase"
+    @confirm="purchaseCredits"
     @cancel="handleCancel"
   />
 </template>
@@ -107,16 +107,16 @@ import CreditConfirmationDialog from '@/components/CreditConfirmationDialog.vue'
 
 const creditStore = useCreditStore()
 const showConfirmDialog = ref(false)
-const cardCount = ref(50)
-const isCreating = ref(false)
+const creditAmount = ref(50)
+const isPurchasing = ref(false)
 
-const createBatch = async () => {
-  isCreating.value = true
+const purchaseCredits = async () => {
+  isPurchasing.value = true
   try {
-    await creditStore.issueBatchWithCredits(cardId, cardCount.value)
+    await creditStore.purchaseCredits(creditAmount.value)
     showConfirmDialog.value = false
   } finally {
-    isCreating.value = false
+    isPurchasing.value = false
   }
 }
 
@@ -273,7 +273,7 @@ When using this component, ensure these keys exist in your locale files:
 
 ```json
 {
-  "batches": {
+  "credits": {
     "confirm_credit_usage": "Confirm Credit Usage",
     "credit_confirmation_warning": "⚠️ Important: Credit Usage Confirmation",
     "credit_usage_irreversible": "Once credits are consumed, this action cannot be undone...",
