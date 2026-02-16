@@ -1,13 +1,20 @@
 <template>
-  <div class="layout-grid" :class="{ 'has-header': hasHeader, 'has-ai': card.conversation_ai_enabled }">
+  <div
+    class="layout-grid"
+    :class="{ 'has-header': hasHeader, 'has-ai': card.conversation_ai_enabled }"
+    role="main"
+    :aria-label="t('mobile.explore_content')"
+  >
     <!-- 2-Column Grid -->
-    <div class="grid-container">
+    <div class="grid-container" role="list">
       <button
         v-for="item in items"
         :key="item.content_item_id"
         @click="handleItemClick(item)"
         class="grid-item"
         :class="{ 'no-image': !item.content_item_image_url }"
+        role="listitem"
+        :aria-label="item.content_item_name"
       >
         <div v-if="item.content_item_image_url" class="item-image">
           <img
@@ -22,6 +29,14 @@
             {{ truncateText(item.content_item_content, 40) }}
           </span>
         </div>
+        <!-- Favorite button overlaid -->
+        <button
+          class="grid-fav-btn"
+          :aria-label="isFavorite(item.content_item_id) ? t('mobile.removeFromFavorites') : t('mobile.addToFavorites')"
+          @click.stop="toggleFavorite(item.content_item_id)"
+        >
+          <i :class="isFavorite(item.content_item_id) ? 'pi pi-heart-fill' : 'pi pi-heart'" />
+        </button>
       </button>
     </div>
 
@@ -40,11 +55,11 @@
     />
     
     <!-- AI Badge at bottom for easy access -->
-    <div v-if="card.conversation_ai_enabled" class="ai-section">
-      <button @click="openAssistant" class="ai-browse-badge">
-        <span class="ai-badge-icon">✨</span>
+    <div v-if="card.conversation_ai_enabled" class="ai-section" role="complementary" :aria-label="t('mobile.ask_ai')">
+      <button @click="openAssistant" class="ai-browse-badge" :aria-label="t('mobile.open_ai_assistant')">
+        <span class="ai-badge-icon" aria-hidden="true">&#10024;</span>
         <span class="ai-badge-text">{{ $t('mobile.tap_to_chat_with_ai') }}</span>
-        <i class="pi pi-chevron-right ai-badge-arrow" />
+        <i class="pi pi-chevron-right ai-badge-arrow" aria-hidden="true" />
       </button>
     </div>
   </div>
@@ -52,10 +67,17 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CardLevelAssistant } from './AIAssistant'
+import { useFavorites } from '@/composables/useFavorites'
 
 const { t } = useI18n()
+const route = useRoute()
+
+// Favorites composable
+const cardId = computed(() => (route.params.issue_card_id || route.params.card_id) as string)
+const { isFavorite, toggleFavorite } = useFavorites({ cardId: cardId.value })
 
 // Card Level Assistant ref
 const cardAssistantRef = ref<InstanceType<typeof CardLevelAssistant> | null>(null)
@@ -145,7 +167,8 @@ function handleItemClick(item: ContentItem) {
 }
 
 .layout-grid.has-header {
-  padding-top: calc(6.5rem + env(safe-area-inset-top));
+  /* Fixed header (4.5rem) + search bar (3.75rem) + gaps (0.75rem) + safe area */
+  padding-top: calc(9rem + env(safe-area-inset-top));
 }
 
 /* Extra bottom padding when AI assistant is present (fixed at bottom) */
@@ -190,6 +213,11 @@ function handleItemClick(item: ContentItem) {
   background: rgba(255, 255, 255, 0.15);
   transform: scale(0.96);
   border-color: rgba(255, 255, 255, 0.2);
+}
+
+.grid-item:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
 }
 
 .grid-item:active::after {
@@ -252,12 +280,54 @@ function handleItemClick(item: ContentItem) {
 
 .item-preview {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(255, 255, 255, 0.7); /* WCAG AA: improved from 0.55 for contrast */
   margin-top: 0.25rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   line-height: 1.4;
+}
+
+/* Grid favorite button */
+.grid-fav-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  width: 2rem;
+  height: 2rem;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  z-index: 2;
+}
+
+.grid-fav-btn:active {
+  transform: scale(0.85);
+}
+
+.grid-fav-btn:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+.grid-fav-btn i {
+  font-size: 0.875rem;
+}
+
+.grid-fav-btn .pi-heart-fill {
+  color: #f87171;
 }
 
 .empty-state {

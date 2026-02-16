@@ -601,6 +601,154 @@ export const useCardStore = defineStore('card', () => {
         }
     };
 
+    // Duplication progress tracking
+    const isDuplicating = ref(false);
+    const duplicateProgress = ref(0); // 0-100
+
+    /**
+     * Duplicate a card with all its content items.
+     * Uses get_card_with_content to fetch original, then creates a new card
+     * and uses bulk_create_content_items to clone content.
+     */
+    const duplicateCard = async (cardId: string, newName: string): Promise<string | null> => {
+        isDuplicating.value = true;
+        duplicateProgress.value = 0;
+        error.value = null;
+
+        try {
+            // Step 1: Fetch original card with all content (20%)
+            duplicateProgress.value = 10;
+            const { data: cardData, error: fetchError } = await supabase
+                .rpc('get_card_with_content', { p_card_id: cardId });
+
+            if (fetchError) throw fetchError;
+            if (!cardData || cardData.length === 0) throw new Error('Card not found');
+
+            const original = cardData[0];
+            duplicateProgress.value = 30;
+
+            // Step 2: Create new card with cloned metadata (50%)
+            const { data: newCardId, error: createError } = await supabase
+                .rpc('create_card', {
+                    p_name: newName,
+                    p_description: original.card_description || '',
+                    p_image_url: original.card_image_url,
+                    p_original_image_url: original.card_original_image_url,
+                    p_crop_parameters: original.card_crop_parameters || null,
+                    p_conversation_ai_enabled: original.card_conversation_ai_enabled,
+                    p_ai_instruction: original.card_ai_instruction || '',
+                    p_ai_knowledge_base: original.card_ai_knowledge_base || '',
+                    p_ai_welcome_general: original.card_ai_welcome_general || '',
+                    p_ai_welcome_item: original.card_ai_welcome_item || '',
+                    p_qr_code_position: original.card_qr_code_position || 'bottom-right',
+                    p_original_language: original.card_original_language || 'en',
+                    p_content_mode: original.card_content_mode || 'list',
+                    p_is_grouped: original.card_is_grouped || false,
+                    p_group_display: original.card_group_display || 'expanded',
+                    p_billing_type: original.card_billing_type || 'physical',
+                    p_default_daily_session_limit: original.card_default_daily_session_limit || null
+                });
+
+            if (createError) throw createError;
+            if (!newCardId) throw new Error('Failed to create duplicate card');
+
+            duplicateProgress.value = 60;
+
+            // Step 3: Clone content items if any (90%)
+            const contentItems = original.content_items;
+            if (contentItems && Array.isArray(contentItems) && contentItems.length > 0) {
+                // Build a mapping of old parent IDs to new ones for hierarchical content
+                // First, create parent items (items with no parent_id)
+                const parentItems = contentItems.filter((item: any) => !item.parent_id);
+                const childItems = contentItems.filter((item: any) => item.parent_id);
+
+                if (parentItems.length > 0) {
+                    // Create parents first
+                    const parentPayload = parentItems.map((item: any) => ({
+                        name: item.name || '',
+                        content: item.content || '',
+                        parent_id: null,
+                        image_url: item.image_url || null,
+                        ai_knowledge_base: item.ai_knowledge_base || '',
+                        sort_order: item.sort_order || 0
+                    }));
+
+                    const { data: parentResult, error: parentError } = await supabase
+                        .rpc('bulk_create_content_items', {
+                            p_card_id: newCardId,
+                            p_items: parentPayload
+                        });
+
+                    if (parentError) throw parentError;
+
+                    duplicateProgress.value = 75;
+
+                    // Map old parent IDs to new parent IDs
+                    if (childItems.length > 0 && parentResult?.items) {
+                        const parentIdMap: Record<string, string> = {};
+                        parentItems.forEach((oldParent: any, index: number) => {
+                            if (parentResult.items[index]) {
+                                parentIdMap[oldParent.id] = parentResult.items[index].id;
+                            }
+                        });
+
+                        // Create children with mapped parent IDs
+                        const childPayload = childItems.map((item: any) => ({
+                            name: item.name || '',
+                            content: item.content || '',
+                            parent_id: parentIdMap[item.parent_id] || null,
+                            image_url: item.image_url || null,
+                            ai_knowledge_base: item.ai_knowledge_base || '',
+                            sort_order: item.sort_order || 0
+                        }));
+
+                        const { error: childError } = await supabase
+                            .rpc('bulk_create_content_items', {
+                                p_card_id: newCardId,
+                                p_items: childPayload
+                            });
+
+                        if (childError) throw childError;
+                    }
+                } else {
+                    // All items are top-level (no hierarchy)
+                    const itemPayload = contentItems.map((item: any) => ({
+                        name: item.name || '',
+                        content: item.content || '',
+                        parent_id: null,
+                        image_url: item.image_url || null,
+                        ai_knowledge_base: item.ai_knowledge_base || '',
+                        sort_order: item.sort_order || 0
+                    }));
+
+                    const { error: bulkError } = await supabase
+                        .rpc('bulk_create_content_items', {
+                            p_card_id: newCardId,
+                            p_items: itemPayload
+                        });
+
+                    if (bulkError) throw bulkError;
+                }
+            }
+
+            duplicateProgress.value = 95;
+
+            // Step 4: Refresh cards list (100%)
+            await fetchCards();
+            duplicateProgress.value = 100;
+
+            return newCardId;
+        } catch (err: any) {
+            console.error('Error duplicating card:', err);
+            error.value = err.message || 'Failed to duplicate card';
+            return null;
+        } finally {
+            isDuplicating.value = false;
+            // Reset progress after a short delay for UI
+            setTimeout(() => { duplicateProgress.value = 0; }, 500);
+        }
+    };
+
     return {
         cards,
         isLoading,
@@ -610,6 +758,10 @@ export const useCardStore = defineStore('card', () => {
         getCardById,
         updateCard,
         deleteCard,
+        // Card duplication
+        isDuplicating,
+        duplicateProgress,
+        duplicateCard,
         // Access token management (per-QR-code operations)
         fetchAccessTokens,
         createAccessToken,

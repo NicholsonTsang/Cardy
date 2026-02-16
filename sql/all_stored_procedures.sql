@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Wed Dec 31 21:27:56 HKT 2025
+-- Generated: Sun Feb 15 12:29:00 HKT 2026
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -213,6 +213,7 @@ DROP FUNCTION IF EXISTS create_card CASCADE;
 DROP FUNCTION IF EXISTS get_card_by_id CASCADE;
 DROP FUNCTION IF EXISTS update_card CASCADE;
 DROP FUNCTION IF EXISTS delete_card CASCADE;
+DROP FUNCTION IF EXISTS get_card_with_content CASCADE;
 
 -- =================================================================
 -- CARD MANAGEMENT FUNCTIONS
@@ -700,9 +701,115 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION delete_card(UUID) TO authenticated;
 
--- NOTE: toggle_card_access and regenerate_access_token functions have been moved to 
+-- NOTE: toggle_card_access and regenerate_access_token functions have been moved to
 -- 13_access_tokens.sql as toggle_access_token and refresh_access_token since
 -- access control is now per-QR-code (access token) rather than per-card.
+
+-- =================================================================
+-- GET CARD WITH FULL CONTENT (P0 Features - Platform Optimization Roadmap)
+-- =================================================================
+
+-- Get card with all content items
+-- Purpose: Fetch complete card data with all content items for duplication
+-- Used by: Card duplication feature
+CREATE OR REPLACE FUNCTION get_card_with_content(
+  p_card_id UUID
+) RETURNS TABLE (
+  -- Card fields
+  card_id UUID,
+  card_name TEXT,
+  card_description TEXT,
+  card_image_url TEXT,
+  card_original_image_url TEXT,
+  card_crop_parameters JSONB,
+  card_conversation_ai_enabled BOOLEAN,
+  card_ai_instruction TEXT,
+  card_ai_knowledge_base TEXT,
+  card_ai_welcome_general TEXT,
+  card_ai_welcome_item TEXT,
+  card_original_language TEXT,
+  card_translations JSONB,
+  card_content_mode TEXT,
+  card_is_grouped BOOLEAN,
+  card_group_display TEXT,
+  card_billing_type TEXT,
+  card_default_daily_session_limit INT,
+  card_qr_code_position TEXT,
+  -- Content items array
+  content_items JSONB
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_user_id UUID;
+BEGIN
+  -- Get authenticated user
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Verify user owns this card
+  IF NOT EXISTS (
+    SELECT 1 FROM cards
+    WHERE id = p_card_id AND user_id = v_user_id
+  ) THEN
+    RAISE EXCEPTION 'Card not found or access denied';
+  END IF;
+
+  -- Return card with content items
+  RETURN QUERY
+  SELECT
+    c.id,
+    c.name,
+    c.description,
+    c.image_url,
+    c.original_image_url,
+    c.crop_parameters,
+    c.conversation_ai_enabled,
+    c.ai_instruction,
+    c.ai_knowledge_base,
+    c.ai_welcome_general,
+    c.ai_welcome_item,
+    c.original_language::TEXT,  -- Cast VARCHAR(10) to TEXT
+    c.translations,
+    c.content_mode,
+    c.is_grouped,
+    c.group_display,
+    c.billing_type,
+    c.default_daily_session_limit,
+    c.qr_code_position::TEXT,  -- Cast enum to TEXT
+    -- Aggregate content items into JSONB array
+    COALESCE(
+      (
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'id', ci.id,
+            'name', ci.name,
+            'content', ci.content,
+            'parent_id', ci.parent_id,
+            'image_url', ci.image_url,
+            'ai_knowledge_base', ci.ai_knowledge_base,
+            'sort_order', ci.sort_order,
+            'translations', ci.translations,
+            'crop_parameters', ci.crop_parameters
+          ) ORDER BY ci.sort_order
+        )
+        FROM content_items ci
+        WHERE ci.card_id = c.id
+      ),
+      '[]'::JSONB
+    ) as content_items
+  FROM cards c
+  WHERE c.id = p_card_id;
+
+  -- Log operation
+  PERFORM log_operation(format('Retrieved card with content for duplication: %s', (SELECT name FROM cards WHERE id = p_card_id)));
+
+END;
+$$;
+GRANT EXECUTE ON FUNCTION get_card_with_content(UUID) TO authenticated;
 
 -- File: 03_content_management.sql
 -- -----------------------------------------------------------------
@@ -712,6 +819,8 @@ DROP FUNCTION IF EXISTS create_content_item CASCADE;
 DROP FUNCTION IF EXISTS update_content_item CASCADE;
 DROP FUNCTION IF EXISTS update_content_item_order CASCADE;
 DROP FUNCTION IF EXISTS delete_content_item CASCADE;
+DROP FUNCTION IF EXISTS bulk_create_content_items CASCADE;
+DROP FUNCTION IF EXISTS bulk_delete_content_items CASCADE;
 
 -- =================================================================
 -- CONTENT ITEM MANAGEMENT FUNCTIONS
@@ -1019,13 +1128,184 @@ BEGIN
     
     -- Delete the content item (cascade will handle children)
     DELETE FROM content_items WHERE id = p_content_item_id;
-    
+
     -- Log operation
     PERFORM log_operation(format('Deleted content item: %s', v_item_name));
 
     RETURN TRUE;
 END;
 $$;
+
+-- =================================================================
+-- BULK OPERATIONS (P0 Features - Platform Optimization Roadmap)
+-- =================================================================
+
+-- Bulk create content items
+-- Purpose: Efficiently create multiple content items in a single transaction
+-- Used by: Card duplication
+CREATE OR REPLACE FUNCTION bulk_create_content_items(
+  p_card_id UUID,
+  p_items JSONB
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_item JSONB;
+  v_result JSONB := '[]'::JSONB;
+  v_new_id UUID;
+  v_user_id UUID;
+  v_max_sort_order INT;
+BEGIN
+  -- Get authenticated user
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Verify user owns this card
+  IF NOT EXISTS (
+    SELECT 1 FROM cards
+    WHERE id = p_card_id AND user_id = v_user_id
+  ) THEN
+    RAISE EXCEPTION 'Card not found or access denied';
+  END IF;
+
+  -- Get current max sort_order
+  SELECT COALESCE(MAX(sort_order), 0) INTO v_max_sort_order
+  FROM content_items
+  WHERE card_id = p_card_id;
+
+  -- Create each item
+  FOR v_item IN SELECT * FROM jsonb_array_elements(p_items)
+  LOOP
+    -- Increment sort order
+    v_max_sort_order := v_max_sort_order + 1;
+
+    INSERT INTO content_items (
+      card_id,
+      name,
+      content,
+      parent_id,
+      image_url,
+      ai_knowledge_base,
+      sort_order,
+      created_at,
+      updated_at
+    ) VALUES (
+      p_card_id,
+      v_item->>'name',
+      v_item->>'content',
+      CASE
+        WHEN v_item->>'parent_id' IS NOT NULL AND v_item->>'parent_id' != ''
+        THEN (v_item->>'parent_id')::UUID
+        ELSE NULL
+      END,
+      v_item->>'image_url',
+      v_item->>'ai_knowledge_base',
+      COALESCE((v_item->>'sort_order')::INT, v_max_sort_order),
+      NOW(),
+      NOW()
+    )
+    RETURNING id INTO v_new_id;
+
+    -- Add to result
+    v_result := v_result || jsonb_build_object(
+      'id', v_new_id,
+      'name', v_item->>'name',
+      'sort_order', v_max_sort_order
+    );
+  END LOOP;
+
+  -- Update card's last_content_update timestamp
+  UPDATE cards
+  SET updated_at = NOW(),
+      last_content_update = NOW()
+  WHERE id = p_card_id;
+
+  -- Log operation
+  PERFORM log_operation(format('Bulk created %s content items', jsonb_array_length(v_result)));
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'count', jsonb_array_length(v_result),
+    'items', v_result
+  );
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Bulk create failed: %', SQLERRM;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION bulk_create_content_items(UUID, JSONB) TO authenticated;
+
+-- Bulk delete content items
+-- Purpose: Delete multiple content items in a single transaction
+-- Used by: Bulk operations
+CREATE OR REPLACE FUNCTION bulk_delete_content_items(
+  p_item_ids UUID[]
+) RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_user_id UUID;
+  v_card_id UUID;
+  v_deleted_count INT := 0;
+  v_item_id UUID;
+BEGIN
+  -- Get authenticated user
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Verify all items belong to user's cards
+  FOR v_item_id IN SELECT UNNEST(p_item_ids)
+  LOOP
+    SELECT ci.card_id INTO v_card_id
+    FROM content_items ci
+    JOIN cards c ON c.id = ci.card_id
+    WHERE ci.id = v_item_id AND c.user_id = v_user_id;
+
+    IF v_card_id IS NULL THEN
+      RAISE EXCEPTION 'Content item % not found or access denied', v_item_id;
+    END IF;
+  END LOOP;
+
+  -- Delete all items (cascading will handle children if any)
+  DELETE FROM content_items
+  WHERE id = ANY(p_item_ids);
+
+  GET DIAGNOSTICS v_deleted_count = ROW_COUNT;
+
+  -- Update affected cards' last_content_update timestamp
+  UPDATE cards
+  SET updated_at = NOW(),
+      last_content_update = NOW()
+  WHERE id IN (
+    SELECT DISTINCT c.id
+    FROM cards c
+    WHERE EXISTS (
+      SELECT 1 FROM content_items ci
+      WHERE ci.card_id = c.id AND ci.id = ANY(p_item_ids)
+    )
+  );
+
+  -- Log operation
+  PERFORM log_operation(format('Bulk deleted %s content items', v_deleted_count));
+
+  RETURN jsonb_build_object(
+    'success', true,
+    'deleted_count', v_deleted_count
+  );
+
+EXCEPTION
+  WHEN OTHERS THEN
+    RAISE EXCEPTION 'Bulk delete failed: %', SQLERRM;
+END;
+$$;
+GRANT EXECUTE ON FUNCTION bulk_delete_content_items(UUID[]) TO authenticated;
 
 
 -- File: 03b_content_migration.sql

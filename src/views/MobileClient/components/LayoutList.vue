@@ -1,20 +1,30 @@
 <template>
-  <div 
-    class="layout-list" 
+  <div
+    class="layout-list"
     :class="{ 'has-header': hasHeader, 'has-ai': card.conversation_ai_enabled }"
     ref="scrollContainer"
     @scroll="handleScroll"
+    role="main"
+    :aria-label="$t('mobile.explore_content')"
   >
     <!-- Simple Vertical List -->
-    <div class="list-container">
+    <div class="list-container" role="list">
       <button
-        v-for="item in items"
+        v-for="(item, index) in items"
         :key="item.content_item_id"
         @click="handleItemClick(item)"
         class="list-item"
+        :style="{ animationDelay: `${Math.min(index * 0.04, 0.4)}s` }"
+        role="listitem"
+        :aria-label="item.content_item_name"
       >
         <div v-if="item.content_item_image_url" class="item-image">
-          <img :src="item.content_item_image_url" :alt="item.content_item_name" crossorigin="anonymous" />
+          <img
+            :src="item.content_item_image_url"
+            :alt="item.content_item_name"
+            crossorigin="anonymous"
+            loading="lazy"
+          />
         </div>
         <div v-else class="item-icon">
           <i :class="getIconForItem(item)" />
@@ -22,21 +32,25 @@
         <div class="item-info">
           <span class="item-name">{{ item.content_item_name }}</span>
           <span v-if="getItemPreview(item)" class="item-preview">
-            {{ truncateText(getItemPreview(item), 60) }}
+            {{ truncateText(getItemPreview(item), 80) }}
           </span>
         </div>
-        <i class="pi pi-chevron-right item-arrow" />
+        <div class="item-arrow-wrapper">
+          <i class="pi pi-chevron-right item-arrow" />
+        </div>
       </button>
-      
+
       <!-- Loading More Indicator -->
       <div v-if="isLoadingMore" class="loading-more">
         <i class="pi pi-spin pi-spinner" />
         <span>{{ $t('mobile.loading_more') }}</span>
       </div>
-      
+
       <!-- End of List Indicator -->
       <div v-else-if="!hasMore && items.length > 0" class="end-of-list">
+        <div class="end-of-list-line"></div>
         <span>{{ $t('mobile.end_of_list') }}</span>
+        <div class="end-of-list-line"></div>
       </div>
     </div>
 
@@ -55,11 +69,11 @@
     />
     
     <!-- AI Badge at bottom for easy access -->
-    <div v-if="card.conversation_ai_enabled" class="ai-section">
-      <button @click="openAssistant" class="ai-browse-badge">
-        <span class="ai-badge-icon">✨</span>
+    <div v-if="card.conversation_ai_enabled" class="ai-section" role="complementary" :aria-label="$t('mobile.ask_ai')">
+      <button @click="openAssistant" class="ai-browse-badge" :aria-label="$t('mobile.open_ai_assistant')">
+        <span class="ai-badge-icon" aria-hidden="true">&#10024;</span>
         <span class="ai-badge-text">{{ $t('mobile.tap_to_chat_with_ai') }}</span>
-        <i class="pi pi-chevron-right ai-badge-arrow" />
+        <i class="pi pi-chevron-right ai-badge-arrow" aria-hidden="true" />
       </button>
     </div>
   </div>
@@ -210,7 +224,7 @@ function handleItemClick(item: ContentItem) {
   display: flex;
   flex-direction: column;
   min-height: 0; /* Allow flex shrinking */
-  padding: 1.5rem 1.25rem;
+  padding: 1.5rem 1rem;
   padding-top: calc(1.5rem + env(safe-area-inset-top));
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
   /* Extend background to fill container when content is short */
@@ -218,7 +232,8 @@ function handleItemClick(item: ContentItem) {
 }
 
 .layout-list.has-header {
-  padding-top: calc(6.5rem + env(safe-area-inset-top));
+  /* Fixed header (4.5rem) + search bar (3.75rem) + gaps (0.75rem) + safe area */
+  padding-top: calc(9rem + env(safe-area-inset-top));
 }
 
 /* Extra bottom padding when AI assistant is present (fixed at bottom) */
@@ -230,7 +245,19 @@ function handleItemClick(item: ContentItem) {
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 0.625rem;
+  gap: 0.5rem;
+}
+
+/* Staggered entrance animation for list items */
+@keyframes listItemEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .list-item {
@@ -238,44 +265,58 @@ function handleItemClick(item: ContentItem) {
   align-items: center;
   gap: 0.875rem;
   width: 100%;
-  padding: 1rem 1.125rem;
-  background: rgba(255, 255, 255, 0.08);
+  padding: 0.875rem 1rem;
+  background: rgba(255, 255, 255, 0.07);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 0.875rem;
+  border-radius: 1rem;
   color: white;
   text-align: left;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: background-color 0.2s, transform 0.15s, border-color 0.2s;
   -webkit-tap-highlight-color: transparent;
-  min-height: 60px;
+  touch-action: manipulation;
+  min-height: 64px;
+  /* Staggered entrance */
+  animation: listItemEnter 0.35s ease-out both;
 }
 
 .list-item:active {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.14);
   transform: scale(0.98);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.list-item:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
 }
 
 .item-image {
-  width: 44px;
-  height: 44px;
-  border-radius: 0.625rem;
+  width: 52px;
+  height: 52px;
+  border-radius: 0.75rem;
   overflow: hidden;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .item-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.list-item:active .item-image img {
+  transform: scale(1.05);
 }
 
 .item-icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 0.625rem;
+  width: 52px;
+  height: 52px;
+  border-radius: 0.75rem;
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(147, 51, 234, 0.2));
   display: flex;
   align-items: center;
@@ -300,7 +341,7 @@ function handleItemClick(item: ContentItem) {
 
 .item-icon i {
   font-size: 1.25rem;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .item-info {
@@ -308,29 +349,47 @@ function handleItemClick(item: ContentItem) {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: 0.1875rem;
 }
 
 .item-name {
-  font-size: 1rem;
+  font-size: 0.9375rem;
   font-weight: 600;
-  white-space: nowrap;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .item-preview {
   font-size: 0.8125rem;
-  color: rgba(255, 255, 255, 0.5);
-  white-space: nowrap;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 0.25rem;
+}
+
+/* Chevron arrow with wrapper for better touch area */
+.item-arrow-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  flex-shrink: 0;
 }
 
 .item-arrow {
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 0.875rem;
-  flex-shrink: 0;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.75rem;
+  transition: transform 0.2s, color 0.2s;
+}
+
+.list-item:active .item-arrow {
+  transform: translateX(2px);
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .empty-state {
@@ -353,7 +412,7 @@ function handleItemClick(item: ContentItem) {
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 1rem 1.25rem;
+  padding: 1rem 1rem;
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
   background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.8) 70%, transparent 100%);
   backdrop-filter: blur(12px);
@@ -440,6 +499,7 @@ function handleItemClick(item: ContentItem) {
 
 .loading-more i {
   font-size: 1rem;
+  color: rgba(96, 165, 250, 0.8);
 }
 
 /* End of List Indicator */
@@ -447,9 +507,19 @@ function handleItemClick(item: ContentItem) {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 1rem;
-  color: rgba(255, 255, 255, 0.4);
+  gap: 0.75rem;
+  padding: 1.25rem 1rem;
+  color: rgba(255, 255, 255, 0.35);
   font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.end-of-list-line {
+  flex: 1;
+  max-width: 3rem;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgba(255, 255, 255, 0.15), transparent);
 }
 </style>
 

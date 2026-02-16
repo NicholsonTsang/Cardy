@@ -21,7 +21,7 @@
             <Tabs :value="activeTab" @update:value="$emit('update:activeTab', $event)" class="flex-1 flex flex-col">
                 <TabList class="flex-shrink-0 border-b border-slate-200 bg-white px-1 sm:px-3 lg:px-6 overflow-x-auto scrollbar-hide">
                     <Tab v-for="(tab, index) in tabs" :key="index" :value="index.toString()"
-                         class="px-1.5 sm:px-3 lg:px-4 py-2 sm:py-2.5 lg:py-3 font-medium text-xs sm:text-sm text-slate-600 hover:text-slate-900 transition-colors whitespace-nowrap flex-shrink-0"
+                         class="px-2 sm:px-3 lg:px-4 py-3 sm:py-2.5 lg:py-3 font-medium text-xs sm:text-sm text-slate-600 hover:text-slate-900 transition-colors whitespace-nowrap flex-shrink-0 min-h-[44px] flex items-center"
                          v-tooltip.bottom="tab.hint">
                         <i :class="tab.icon" class="mr-0.5 sm:mr-1 lg:mr-2 text-xs sm:text-sm"></i>
                         <span class="hidden sm:inline">{{ tab.label }}</span>

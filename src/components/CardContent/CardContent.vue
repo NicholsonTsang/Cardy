@@ -4,12 +4,22 @@
         <div class="xl:col-span-2 bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
             <!-- Header -->
             <div class="px-3 sm:px-4 py-2.5 border-b border-slate-200 bg-slate-50/80">
-                <!-- Header row: status + actions -->
-                <div class="flex items-center gap-2">
+                <!-- Normal header row: status + actions -->
+                <div v-if="!selectMode" class="flex items-center gap-2">
                     <i :class="[headerIcon, 'text-sm text-slate-500']"></i>
                     <span class="text-sm font-medium text-slate-700 truncate">{{ headerLabel }}</span>
                     <span v-if="headerCountText" class="text-xs text-slate-400 whitespace-nowrap">{{ headerCountText }}</span>
                     <div class="flex-1"></div>
+                    <!-- Select mode toggle (only show when items exist) -->
+                    <button
+                        v-if="allSelectableItemIds.length > 1"
+                        type="button"
+                        @click="enterSelectMode"
+                        class="flex items-center justify-center w-8 h-7 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+                        v-tooltip.bottom="$t('content.select_items')"
+                    >
+                        <i class="pi pi-check-square text-xs"></i>
+                    </button>
                     <!-- Mode selector button -->
                     <button
                         type="button"
@@ -33,11 +43,44 @@
                     </button>
                 </div>
 
+                <!-- Multi-select header row -->
+                <div v-else class="flex items-center gap-2">
+                    <button
+                        @click="exitSelectMode"
+                        class="flex items-center justify-center w-7 h-7 rounded-md hover:bg-slate-100 transition-colors"
+                    >
+                        <i class="pi pi-arrow-left text-slate-600 text-sm"></i>
+                    </button>
+                    <span class="text-sm font-medium text-slate-700 truncate">
+                        {{ selectedItemIds.size > 0 ? $t('content.n_items_selected', { count: selectedItemIds.size }) : $t('content.select_items') }}
+                    </span>
+                    <div class="flex-1"></div>
+                    <button
+                        @click="toggleSelectAll"
+                        class="text-xs font-medium text-blue-600 hover:text-blue-700 px-2 py-1 rounded-md hover:bg-blue-50 transition-colors"
+                    >
+                        {{ allSelectableSelected ? $t('dashboard.deselect_all') : $t('dashboard.select_all') }}
+                    </button>
+                    <button
+                        v-if="selectedItemIds.size > 0"
+                        @click="confirmBulkDelete"
+                        class="flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium text-red-600 hover:text-red-700 hover:bg-red-50 transition-colors"
+                    >
+                        <i class="pi pi-trash text-xs"></i>
+                        {{ $t('common.delete') }}
+                    </button>
+                </div>
+
                 <!-- Single mode hint -->
-                <p v-if="normalizedMode === 'single' && contentItems.length >= 1" class="text-xs text-slate-500 mt-1.5 flex items-center gap-1">
+                <p v-if="!selectMode && normalizedMode === 'single' && contentItems.length >= 1" class="text-xs text-slate-500 mt-1.5 flex items-center gap-1">
                     <i class="pi pi-info-circle text-xs"></i>
                     {{ $t('content.single_mode_hint') }}
                 </p>
+
+                <!-- Bulk delete progress bar -->
+                <div v-if="contentItemStore.isBulkDeleting" class="mt-2">
+                    <ProgressBar :value="contentItemStore.bulkDeleteProgress" :showValue="false" class="h-1.5" />
+                </div>
             </div>
 
             <!-- Mode Configuration Popover -->
@@ -411,13 +454,27 @@
                                         <template #item="{ element: child, index: childIndex }">
                                             <div
                                                 class="group/child relative rounded-md border bg-white transition-all duration-150 hover:shadow-sm"
-                                                :class="selectedContentItem === child.id
-                                                    ? 'border-blue-500 border-l-2 shadow-sm bg-blue-50/30'
-                                                    : 'border-slate-200 hover:border-slate-300'"
+                                                :class="[
+                                                    selectMode && selectedItemIds.has(child.id) ? 'border-indigo-400 bg-indigo-50/30' :
+                                                    selectedContentItem === child.id ? 'border-blue-500 border-l-2 shadow-sm bg-blue-50/30' :
+                                                    'border-slate-200 hover:border-slate-300'
+                                                ]"
+                                                @click="selectMode ? toggleItemSelection(child.id) : null"
                                             >
                                                 <div class="flex items-center gap-2 p-2">
+                                                    <!-- Selection checkbox (select mode) -->
+                                                    <div
+                                                        v-if="selectMode"
+                                                        class="flex-shrink-0 w-[16px] h-[16px] rounded-full border-2 flex items-center justify-center transition-all"
+                                                        :class="selectedItemIds.has(child.id)
+                                                            ? 'bg-indigo-600 border-indigo-600'
+                                                            : 'border-slate-300 hover:border-slate-400'"
+                                                        @click.stop="toggleItemSelection(child.id)"
+                                                    >
+                                                        <i v-if="selectedItemIds.has(child.id)" class="pi pi-check text-white text-[7px]"></i>
+                                                    </div>
                                                     <!-- Drag Handle -->
-                                                    <div class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move child-drag-handle opacity-30 group-hover/child:opacity-100 transition-opacity" @click.stop>
+                                                    <div v-else class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move child-drag-handle opacity-30 group-hover/child:opacity-100 transition-opacity" @click.stop>
                                                         <i class="pi pi-bars text-slate-400 text-[10px]"></i>
                                                     </div>
 
@@ -430,7 +487,7 @@
                                                     </div>
 
                                                     <!-- Item Info -->
-                                                    <div class="flex-1 min-w-0 cursor-pointer" @click="selectedContentItem = child.id">
+                                                    <div class="flex-1 min-w-0 cursor-pointer" @click="selectMode ? null : (selectedContentItem = child.id)">
                                                         <div class="font-medium text-slate-800 text-sm truncate">{{ child.name }}</div>
                                                         <div v-if="child.content" class="text-xs text-slate-400 truncate">
                                                             {{ stripMarkdown(child.content) }}
@@ -486,25 +543,40 @@
                 </draggable>
 
                 <!-- Content Items - Flat Mode (show all layer 2 items directly) -->
-                <draggable 
+                <draggable
                     v-else
-                    v-model="flatDisplayItems" 
+                    v-model="flatDisplayItems"
                     @end="onFlatItemDragEnd"
                     item-key="id"
                     handle=".flat-drag-handle"
+                    :disabled="selectMode"
                     class="space-y-2"
                 >
                     <template #item="{ element: item }">
-                        <div 
+                        <div
                             class="group/flat relative rounded-lg border transition-all duration-200 overflow-hidden bg-white hover:shadow-sm cursor-pointer"
-                            :class="selectedContentItem === item.id
-                                ? 'border-blue-500 border-l-[3px] shadow-sm bg-blue-50/30'
-                                : 'border-slate-200 hover:border-slate-300'"
-                            @click="selectedContentItem = item.id"
+                            :class="[
+                                selectMode && selectedItemIds.has(item.id) ? 'border-indigo-400 bg-indigo-50/30' :
+                                selectedContentItem === item.id ? 'border-blue-500 border-l-[3px] shadow-sm bg-blue-50/30' :
+                                'border-slate-200 hover:border-slate-300'
+                            ]"
+                            @click="selectMode ? toggleItemSelection(item.id) : (selectedContentItem = item.id)"
                         >
                             <div class="flex items-center gap-2.5 p-3">
-                                <!-- Drag Handle -->
+                                <!-- Selection checkbox (select mode) -->
                                 <div
+                                    v-if="selectMode"
+                                    class="flex-shrink-0 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center transition-all"
+                                    :class="selectedItemIds.has(item.id)
+                                        ? 'bg-indigo-600 border-indigo-600'
+                                        : 'border-slate-300 hover:border-slate-400'"
+                                    @click.stop="toggleItemSelection(item.id)"
+                                >
+                                    <i v-if="selectedItemIds.has(item.id)" class="pi pi-check text-white text-[8px]"></i>
+                                </div>
+                                <!-- Drag Handle (normal mode) -->
+                                <div
+                                    v-else
                                     class="flex-shrink-0 flex items-center justify-center w-5 h-5 rounded hover:bg-slate-100 cursor-move flat-drag-handle opacity-40 group-hover/flat:opacity-100 transition-opacity"
                                     @click.stop
                                 >
@@ -642,6 +714,7 @@
 import { ref, onMounted, watch, computed } from 'vue';
 import Button from 'primevue/button';
 import Popover from 'primevue/popover';
+import ProgressBar from 'primevue/progressbar';
 import ToggleSwitch from 'primevue/toggleswitch';
 import RadioButton from 'primevue/radiobutton';
 import ConfirmDialog from 'primevue/confirmdialog';
@@ -835,6 +908,114 @@ const isDragging = ref(false);
 const cardContentCreateFormRef = ref(null);
 const cardContentSubItemCreateFormRef = ref(null);
 const cardContentEditFormRef = ref(null);
+
+// ===== MULTI-SELECT MODE (Bulk Delete) =====
+const selectMode = ref(false);
+const selectedItemIds = ref(new Set());
+
+// Get all selectable item IDs (flat list of all items including children)
+const allSelectableItemIds = computed(() => {
+    const ids = [];
+    if (effectiveIsGrouped.value) {
+        // In grouped mode, select child items (leaf items)
+        contentItems.value.forEach(parent => {
+            if (parent.children && parent.children.length > 0) {
+                parent.children.forEach(child => ids.push(child.id));
+            } else {
+                // Categories with no children can also be selected
+                ids.push(parent.id);
+            }
+        });
+    } else {
+        // In flat mode, select the displayed items
+        displayItems.value.forEach(item => ids.push(item.id));
+    }
+    return ids;
+});
+
+const allSelectableSelected = computed(() => {
+    if (allSelectableItemIds.value.length === 0) return false;
+    return allSelectableItemIds.value.every(id => selectedItemIds.value.has(id));
+});
+
+const enterSelectMode = () => {
+    selectMode.value = true;
+    selectedItemIds.value = new Set();
+};
+
+const exitSelectMode = () => {
+    selectMode.value = false;
+    selectedItemIds.value = new Set();
+};
+
+const toggleItemSelection = (itemId) => {
+    const newSet = new Set(selectedItemIds.value);
+    if (newSet.has(itemId)) {
+        newSet.delete(itemId);
+    } else {
+        newSet.add(itemId);
+    }
+    selectedItemIds.value = newSet;
+};
+
+const toggleSelectAll = () => {
+    if (allSelectableSelected.value) {
+        selectedItemIds.value = new Set();
+    } else {
+        selectedItemIds.value = new Set(allSelectableItemIds.value);
+    }
+};
+
+const confirmBulkDelete = () => {
+    const count = selectedItemIds.value.size;
+    confirm.require({
+        group: 'deleteContentConfirmation',
+        message: t('content.bulk_delete_confirm', { count }),
+        header: t('content.bulk_delete_title'),
+        icon: 'pi pi-exclamation-triangle',
+        acceptLabel: t('content.delete_items', { count }),
+        rejectLabel: t('common.cancel'),
+        acceptClass: 'p-button-danger',
+        accept: async () => {
+            await executeBulkDelete();
+        }
+    });
+};
+
+const executeBulkDelete = async () => {
+    const itemIds = Array.from(selectedItemIds.value);
+    const result = await contentItemStore.bulkDeleteContentItems(itemIds, props.cardId);
+
+    if (result.success) {
+        toast.add({
+            severity: 'success',
+            summary: t('messages.success'),
+            detail: t('content.bulk_delete_success', { count: result.deletedCount }),
+            life: 3000
+        });
+
+        // Clear selection if deleted items include the currently selected item
+        if (selectedContentItem.value && selectedItemIds.value.has(selectedContentItem.value)) {
+            selectedContentItem.value = null;
+        }
+
+        // Reload content items
+        await loadContentItems();
+
+        // Refetch translation status
+        await translationStore.fetchTranslationStatus(props.cardId);
+
+        // Exit select mode
+        exitSelectMode();
+    } else {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: contentItemStore.error || t('content.bulk_delete_failed'),
+            life: 5000
+        });
+    }
+};
 
 // Computed property for the actual selected content item data object
 const currentSelectedItemData = computed(() => {

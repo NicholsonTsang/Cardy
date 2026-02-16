@@ -21,7 +21,7 @@
                                 {{ getContentModeLabel(cardProp.content_mode) }}
                             </span>
                             <!-- Action buttons (right-aligned) -->
-                            <div class="ml-auto flex items-center gap-0.5 shrink-0">
+                            <div class="ml-auto flex items-center gap-0.5 sm:gap-1 shrink-0 flex-wrap justify-end">
                                 <Button
                                     icon="pi pi-pencil"
                                     @click="editSection = 'details'; showEditDialog = true"
@@ -37,6 +37,14 @@
                                     text
                                     size="small"
                                     v-tooltip.bottom="$t('dashboard.preview')"
+                                />
+                                <Button
+                                    icon="pi pi-copy"
+                                    @click="showDuplicateDialog = true"
+                                    severity="secondary"
+                                    text
+                                    size="small"
+                                    v-tooltip.bottom="$t('dashboard.duplicate_card')"
                                 />
                                 <Button
                                     icon="pi pi-download"
@@ -97,6 +105,13 @@
                 @cancel="showExportDialog = false"
             />
         </Dialog>
+
+        <!-- Duplicate Card Dialog -->
+        <DuplicateCardDialog
+            v-model:visible="showDuplicateDialog"
+            :card="cardProp ? { id: cardProp.id, name: cardProp.name } : null"
+            @duplicated="handleDuplicated"
+        />
 
         <!-- Translation Dialog -->
         <TranslationDialog
@@ -440,6 +455,7 @@ import Dialog from 'primevue/dialog';
 import Dropdown from 'primevue/dropdown';
 import MyDialog from '@/components/MyDialog.vue';
 import CardExport from '@/components/Card/Export/CardExport.vue';
+import DuplicateCardDialog from '@/components/Card/DuplicateCardDialog.vue';
 import CardCreateEditForm from './CardCreateEditForm.vue';
 import TranslationDialog from '@/components/Card/TranslationDialog.vue';
 import MobilePreview from './MobilePreview.vue';
@@ -476,6 +492,7 @@ const emit = defineEmits(['edit', 'delete-requested', 'update-card', 'show-previ
 
 const showEditDialog = ref(false);
 const showExportDialog = ref(false);
+const showDuplicateDialog = ref(false);
 const showTranslationDialog = ref(false);
 const translationDialogMode = ref('translate');
 const preSelectedLanguages = ref([]);
@@ -689,6 +706,13 @@ const handleRequestDelete = () => {
     if (props.cardProp && props.cardProp.id) {
         emit('delete-requested', props.cardProp.id);
     }
+};
+
+// Handle successful card duplication
+const handleDuplicated = (newCardId) => {
+    showDuplicateDialog.value = false;
+    // The card store already refreshed, and the parent (MyCards) will react
+    // to the updated cards list. We emit navigate-tab to stay on general tab.
 };
 
 

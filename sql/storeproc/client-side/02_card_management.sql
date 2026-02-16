@@ -484,6 +484,112 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION delete_card(UUID) TO authenticated;
 
--- NOTE: toggle_card_access and regenerate_access_token functions have been moved to 
+-- NOTE: toggle_card_access and regenerate_access_token functions have been moved to
 -- 13_access_tokens.sql as toggle_access_token and refresh_access_token since
 -- access control is now per-QR-code (access token) rather than per-card.
+
+-- =================================================================
+-- GET CARD WITH FULL CONTENT (P0 Features - Platform Optimization Roadmap)
+-- =================================================================
+
+-- Get card with all content items
+-- Purpose: Fetch complete card data with all content items for duplication
+-- Used by: Card duplication feature
+CREATE OR REPLACE FUNCTION get_card_with_content(
+  p_card_id UUID
+) RETURNS TABLE (
+  -- Card fields
+  card_id UUID,
+  card_name TEXT,
+  card_description TEXT,
+  card_image_url TEXT,
+  card_original_image_url TEXT,
+  card_crop_parameters JSONB,
+  card_conversation_ai_enabled BOOLEAN,
+  card_ai_instruction TEXT,
+  card_ai_knowledge_base TEXT,
+  card_ai_welcome_general TEXT,
+  card_ai_welcome_item TEXT,
+  card_original_language TEXT,
+  card_translations JSONB,
+  card_content_mode TEXT,
+  card_is_grouped BOOLEAN,
+  card_group_display TEXT,
+  card_billing_type TEXT,
+  card_default_daily_session_limit INT,
+  card_qr_code_position TEXT,
+  -- Content items array
+  content_items JSONB
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_user_id UUID;
+BEGIN
+  -- Get authenticated user
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Verify user owns this card
+  IF NOT EXISTS (
+    SELECT 1 FROM cards
+    WHERE id = p_card_id AND user_id = v_user_id
+  ) THEN
+    RAISE EXCEPTION 'Card not found or access denied';
+  END IF;
+
+  -- Return card with content items
+  RETURN QUERY
+  SELECT
+    c.id,
+    c.name,
+    c.description,
+    c.image_url,
+    c.original_image_url,
+    c.crop_parameters,
+    c.conversation_ai_enabled,
+    c.ai_instruction,
+    c.ai_knowledge_base,
+    c.ai_welcome_general,
+    c.ai_welcome_item,
+    c.original_language::TEXT,  -- Cast VARCHAR(10) to TEXT
+    c.translations,
+    c.content_mode,
+    c.is_grouped,
+    c.group_display,
+    c.billing_type,
+    c.default_daily_session_limit,
+    c.qr_code_position::TEXT,  -- Cast enum to TEXT
+    -- Aggregate content items into JSONB array
+    COALESCE(
+      (
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'id', ci.id,
+            'name', ci.name,
+            'content', ci.content,
+            'parent_id', ci.parent_id,
+            'image_url', ci.image_url,
+            'ai_knowledge_base', ci.ai_knowledge_base,
+            'sort_order', ci.sort_order,
+            'translations', ci.translations,
+            'crop_parameters', ci.crop_parameters
+          ) ORDER BY ci.sort_order
+        )
+        FROM content_items ci
+        WHERE ci.card_id = c.id
+      ),
+      '[]'::JSONB
+    ) as content_items
+  FROM cards c
+  WHERE c.id = p_card_id;
+
+  -- Log operation
+  PERFORM log_operation(format('Retrieved card with content for duplication: %s', (SELECT name FROM cards WHERE id = p_card_id)));
+
+END;
+$$;
+GRANT EXECUTE ON FUNCTION get_card_with_content(UUID) TO authenticated;

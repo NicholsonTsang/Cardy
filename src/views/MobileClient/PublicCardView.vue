@@ -1,20 +1,21 @@
 <template>
   <div class="mobile-card-container" :class="{ 'card-overview-view': isCardView }">
     <!-- Loading State -->
-    <div v-if="isLoading" class="loading-container">
+    <div v-if="isLoading" class="loading-container" role="status" :aria-label="$t('mobile.loading_card')">
       <ProgressSpinner class="spinner" />
-      <p class="loading-text">{{ $t('mobile.loading_card') }}</p>
+      <p class="loading-text" aria-live="polite">{{ $t('mobile.loading_card') }}</p>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="error-container">
-      <i class="pi pi-exclamation-triangle error-icon" />
+    <div v-else-if="error" class="error-container" role="alert">
+      <i class="pi pi-exclamation-triangle error-icon" aria-hidden="true" />
       <h2 class="error-title">{{ $t('mobile.card_not_found') }}</h2>
       <p class="error-message">{{ error }}</p>
-      <Button 
-        :label="$t('common.try_again')" 
-        @click="handleRetry" 
+      <Button
+        :label="$t('common.try_again')"
+        @click="handleRetry"
         class="retry-button"
+        :aria-label="$t('common.try_again')"
       />
     </div>
 

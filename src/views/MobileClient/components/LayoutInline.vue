@@ -150,7 +150,8 @@ function handleItemClick(item: ContentItem) {
 }
 
 .layout-inline.has-header {
-  padding-top: calc(6.5rem + env(safe-area-inset-top));
+  /* Fixed header (4.5rem) + search bar (3.75rem) + gaps (0.75rem) + safe area */
+  padding-top: calc(9rem + env(safe-area-inset-top));
 }
 
 /* Extra bottom padding when AI assistant is present (fixed at bottom) */

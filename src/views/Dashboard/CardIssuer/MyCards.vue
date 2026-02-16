@@ -22,7 +22,11 @@
 
             <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-[calc(100vh-200px)]">
                 <!-- Card List Panel - Fixed width sidebar -->
-                <div class="w-full lg:w-[320px] lg:flex-shrink-0">
+                <!-- On mobile: hidden when a card is selected (show detail instead) -->
+                <div
+                    class="w-full lg:w-[320px] lg:flex-shrink-0"
+                    :class="{ 'hidden lg:block': selectedCardId && isMobileView }"
+                >
                     <CardListPanel
                         :cards="cards"
                         :loading="isLoading"
@@ -46,7 +50,21 @@
                 </div>
 
                 <!-- Card Detail Panel - Takes remaining space -->
-                <div class="flex-1 min-w-0">
+                <!-- On mobile: hidden when no card is selected -->
+                <div
+                    class="flex-1 min-w-0"
+                    :class="{ 'hidden lg:block': !selectedCardId && isMobileView }"
+                >
+                    <!-- Mobile back button -->
+                    <div v-if="selectedCardId && isMobileView" class="mb-3 lg:hidden">
+                        <button
+                            @click="handleMobileBack"
+                            class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors min-h-[44px]"
+                        >
+                            <i class="pi pi-arrow-left text-sm"></i>
+                            {{ $t('common.back') }}
+                        </button>
+                    </div>
                     <CardDetailPanel
                         :selectedCard="selectedCardObject"
                         :hasCards="cards.length > 0"
@@ -66,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useCardStore } from '@/stores/card.js';
 import { useErrorHandler } from '@/utils/errorHandler.js';
@@ -114,6 +132,19 @@ const selectedYear = ref(null);
 const selectedMonth = ref(null);
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
+
+// Mobile responsive - detect viewport width
+const windowWidth = ref(window.innerWidth);
+const isMobileView = computed(() => windowWidth.value < 1024); // matches lg breakpoint
+
+const handleResize = () => { windowWidth.value = window.innerWidth; };
+onMounted(() => { window.addEventListener('resize', handleResize); });
+onUnmounted(() => { window.removeEventListener('resize', handleResize); });
+
+const handleMobileBack = () => {
+    selectedCardId.value = null;
+    router.replace({ name: route.name, query: {} });
+};
 
 // Computed properties
 const selectedCardObject = computed(() => {
