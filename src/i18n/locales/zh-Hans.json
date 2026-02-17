@@ -627,6 +627,8 @@
     "never": "从未",
     "all_statuses": "所有状态",
     "premium_users": "付费用户",
+    "starter_users": "入门版用户",
+    "enterprise_users": "企业版用户",
     "estimated_mrr": "预估月营收 (MRR)",
     "recurring_revenue": "经常性营收",
     "logged_access": "记录访问",
@@ -1050,7 +1052,10 @@
       "ai_assistant": "AI 语音与文字助理",
       "ai_assistant_included": "包含 AI 助理",
       "lower_session_rates": "比入门版更优惠的会话费率",
-      "session_rate_savings": "AI 会话省 {percent}%"
+      "session_rate_savings": "AI 会话省 {percent}%",
+      "enterprise_projects": "最多 {limit} 个项目",
+      "custom_domain": "自定义域名（即将推出）",
+      "lowest_session_rates": "最优惠会话费率"
     },
     "usage": {
       "title": "使用量",
@@ -1080,7 +1085,15 @@
     },
     "messages": {
       "welcome_premium": "欢迎使用专业版！",
+      "welcome_starter": "欢迎使用入门版！",
+      "welcome_enterprise": "欢迎使用企业版！",
       "subscription_active": "您的订阅已启用。享受最多 35 个项目与翻译功能！",
+      "subscription_active_starter": "您的订阅已启用。享受最多 5 个项目与 2 种语言翻译！",
+      "subscription_active_enterprise": "您的企业版订阅已启用。享受最多 100 个项目与最低会话费率！",
+      "subscription_switched": "订阅已切换！",
+      "subscription_switched_to_premium": "您的订阅已升级为专业版。享受更强大的功能！",
+      "subscription_switched_to_starter": "您的订阅已变更为入门版。",
+      "subscription_switched_to_enterprise": "您的订阅已升级为企业版。享受更强大的功能！",
       "credits_purchased": "点数已购买！",
       "credits_added": "您的点数已加入账户。",
       "payment_canceled": "付款已取消",
@@ -1088,8 +1101,8 @@
       "subscription_canceled": "订阅已取消",
       "will_end": "您的订阅将在当前计费周期结束时终止。",
       "subscription_reactivated": "订阅已重新启用",
-      "will_continue": "您的专业版订阅将继续。",
-      "confirm_cancel": "您确定要取消专业版订阅吗？取消后，您将在当前计费周期结束时失去翻译功能以及较高的项目数量上限。"
+      "will_continue": "您的{tier}订阅将继续。",
+      "confirm_cancel": "您确定要取消{tier}订阅吗？取消后，您将在当前计费周期结束时失去进阶功能。"
     },
     "traffic": {
       "title": "每日流量",
