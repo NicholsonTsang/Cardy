@@ -1,5 +1,5 @@
 <template>
-  <div class="mobile-card-container" :class="{ 'card-overview-view': isCardView }">
+  <div class="mobile-card-container" :class="{ 'card-overview-view': isCardView }" :style="themeStyle">
     <!-- Loading State -->
     <div v-if="isLoading" class="loading-container" role="status" :aria-label="$t('mobile.loading_card')">
       <ProgressSpinner class="spinner" />
@@ -120,6 +120,8 @@ import { ref, computed, onMounted, onUnmounted, watch, watchEffect, provide } fr
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
+import { buildThemeStyleVars, resolveTheme } from '@/utils/themeConfig'
+import type { ThemeConfig } from '@/utils/themeConfig'
 import { useMobileLanguageStore, AVAILABLE_LANGUAGES } from '@/stores/language'
 import { isValidLanguage } from '@/router/languageRouting'
 import type { LanguageCode } from '@/stores/translation'
@@ -196,6 +198,7 @@ interface CardData {
   access_disabled?: boolean // TRUE if digital card access has been disabled by owner
   has_translation?: boolean // TRUE if card has translations available
   subscription_tier?: string // Owner's subscription tier
+  metadata?: Record<string, any> // Theme and other extensible metadata
 }
 
 interface ContentItem {
@@ -387,7 +390,8 @@ async function fetchCardData() {
       daily_limit_exceeded: firstRow.daily_limit_exceeded || false,
       credits_insufficient: firstRow.card_credits_insufficient || false,
       has_translation: firstRow.card_has_translation || false,
-      subscription_tier: firstRow.card_subscription_tier || 'free'
+      subscription_tier: firstRow.card_subscription_tier || 'free',
+      metadata: firstRow.card_metadata || {}
     }
 
     // Extract available languages for this card
@@ -446,6 +450,11 @@ async function fetchCardData() {
     isLoading.value = false
   }
 }
+
+// Theme CSS variables
+const themeStyle = computed(() => {
+  return buildThemeStyleVars(cardData.value?.metadata?.theme as Partial<ThemeConfig> | undefined)
+})
 
 // Refs
 const contentWrapperRef = ref<HTMLElement | null>(null)
@@ -537,34 +546,34 @@ function handleRetry() {
 // Track if this is the first load
 const isFirstLoad = ref(true)
 
+// Apply theme background to document-level elements
+function applyDocumentBackground(bgColor: string) {
+  document.body.style.setProperty('background-color', bgColor, 'important')
+  document.documentElement.style.setProperty('background-color', bgColor, 'important')
+
+  const appElement = document.getElementById('app')
+  if (appElement) appElement.style.setProperty('background-color', bgColor, 'important')
+
+  const appRoot = document.querySelector('.app-root') as HTMLElement
+  if (appRoot) appRoot.style.setProperty('background-color', bgColor, 'important')
+
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+  if (metaThemeColor) metaThemeColor.setAttribute('content', bgColor)
+}
+
 // Lifecycle
 onMounted(() => {
   fetchCardData()
-  
-  // Set dark background for mobile client (prevents white flash in browser chrome)
-  // Must set on all layers: html, body, #app (mount point), and .app-root (Vue wrapper)
-  const darkBg = '#0f172a'
-  document.body.style.setProperty('background-color', darkBg, 'important')
-  document.documentElement.style.setProperty('background-color', darkBg, 'important')
-  
-  // Override #app background (mount point in index.html)
-  const appElement = document.getElementById('app')
-  if (appElement) {
-    appElement.style.setProperty('background-color', darkBg, 'important')
-  }
-  
-  // Override .app-root background (Vue template wrapper with bg-slate-50)
-  const appRoot = document.querySelector('.app-root') as HTMLElement
-  if (appRoot) {
-    appRoot.style.setProperty('background-color', darkBg, 'important')
-  }
-  
-  // Update theme-color meta tag for mobile browser chrome
-  const metaThemeColor = document.querySelector('meta[name="theme-color"]')
-  if (metaThemeColor) {
-    metaThemeColor.setAttribute('content', darkBg)
-  }
+
+  // Set initial dark background (prevents white flash in browser chrome)
+  applyDocumentBackground('#0f172a')
 })
+
+// Update document background when theme changes (after card data loads)
+watch(() => cardData.value?.metadata?.theme, (themeConfig) => {
+  const theme = resolveTheme(themeConfig as Partial<ThemeConfig> | undefined)
+  applyDocumentBackground(theme.backgroundColor)
+}, { immediate: false })
 
 // Prevent body scroll when in card overview
 watchEffect(() => {
@@ -681,7 +690,7 @@ watch(() => route.params.lang, (newLang) => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
+  background: linear-gradient(to bottom right, var(--theme-bg, #0f172a), var(--theme-gradient-mid, #1e3a8a), var(--theme-gradient-end, #4338ca));
   z-index: -1; /* Behind all content but visible */
   pointer-events: none; /* Don't interfere with touch events */
 }
@@ -723,7 +732,7 @@ watch(() => route.params.lang, (newLang) => {
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(59, 130, 246, 0.2) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(var(--theme-primary-rgb, 59, 130, 246), 0.2) 0%, transparent 70%);
   animation: pulse-glow 2s ease-in-out infinite;
 }
 
@@ -740,7 +749,7 @@ watch(() => route.params.lang, (newLang) => {
 }
 
 .loading-text {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(var(--theme-text-rgb, 255, 255, 255), 0.9);
   font-size: 1rem;
   font-weight: 500;
   letter-spacing: 0.02em;
@@ -899,7 +908,7 @@ watch(() => route.params.lang, (newLang) => {
   min-height: var(--viewport-height, 100vh); /* Use dynamic viewport height */
   min-height: 100dvh;
   /* Dark background to prevent flash during view transitions */
-  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
+  background: linear-gradient(to bottom right, var(--theme-bg, #0f172a), var(--theme-gradient-mid, #1e3a8a), var(--theme-gradient-end, #4338ca));
 }
 
 /* Card overview content wrapper */
@@ -916,7 +925,7 @@ watch(() => route.params.lang, (newLang) => {
   display: flex;
   flex-direction: column;
   /* Dark background to prevent flash during view transitions */
-  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
+  background: linear-gradient(to bottom right, var(--theme-bg, #0f172a), var(--theme-gradient-mid, #1e3a8a), var(--theme-gradient-end, #4338ca));
 }
 
 /* Other pages content wrapper - allow scrolling */

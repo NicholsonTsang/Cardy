@@ -156,7 +156,8 @@ const emit = defineEmits<{
 
 // Branding visibility (Show for Free and Starter, hide for Premium)
 const showBranding = computed(() => {
-  return props.card.subscription_tier !== 'premium' && props.card.subscription_tier !== 'enterprise'
+  const tier = props.card.subscription_tier
+  return tier !== 'premium' && tier !== 'enterprise'
 })
 
 // Card data formatted for AI assistant
@@ -203,7 +204,7 @@ function openAIAssistant() {
   flex-direction: column;
   min-height: 0; /* Allow flex shrinking */
   /* Dark gradient background */
-  background: linear-gradient(180deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+  background: linear-gradient(180deg, var(--theme-bg, #0f172a) 0%, var(--theme-gradient-mid, #1e3a8a) 50%, var(--theme-gradient-end, #4338ca) 100%);
   position: relative;
   overflow: hidden;
   isolation: isolate;
@@ -247,17 +248,17 @@ function openAIAssistant() {
 }
 
 .gradient-1 {
-  background: radial-gradient(ellipse 150% 100% at 50% 0%, rgba(99, 102, 241, 0.4) 0%, transparent 60%);
+  background: radial-gradient(ellipse 150% 100% at 50% 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.4) 0%, transparent 60%);
   animation: gradientPulse1 8s ease-in-out infinite;
 }
 
 .gradient-2 {
-  background: radial-gradient(ellipse 100% 80% at 100% 100%, rgba(139, 92, 246, 0.3) 0%, transparent 50%);
+  background: radial-gradient(ellipse 100% 80% at 100% 100%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.3) 0%, transparent 50%);
   animation: gradientPulse2 10s ease-in-out infinite;
 }
 
 .gradient-3 {
-  background: radial-gradient(ellipse 80% 60% at 0% 50%, rgba(59, 130, 246, 0.25) 0%, transparent 50%);
+  background: radial-gradient(ellipse 80% 60% at 0% 50%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.25) 0%, transparent 50%);
   animation: gradientPulse3 12s ease-in-out infinite;
 }
 
@@ -284,8 +285,8 @@ function openAIAssistant() {
   right: -100%;
   height: 50%;
   background: 
-    linear-gradient(90deg, rgba(99, 102, 241, 0.08) 1px, transparent 1px),
-    linear-gradient(0deg, rgba(99, 102, 241, 0.08) 1px, transparent 1px);
+    linear-gradient(90deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.08) 1px, transparent 1px);
   background-size: 50px 50px;
   transform: perspective(500px) rotateX(65deg);
   transform-origin: bottom center;
@@ -311,7 +312,7 @@ function openAIAssistant() {
   height: 4px;
   background: rgba(255, 255, 255, 0.6);
   border-radius: 50%;
-  box-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+  box-shadow: 0 0 10px rgba(var(--theme-primary-rgb, 99, 102, 241), 0.5);
   animation: particleFloat 15s ease-in-out infinite;
 }
 
@@ -374,20 +375,20 @@ function openAIAssistant() {
 .icon-glow-ring {
   position: absolute;
   inset: -10px;
-  border: 1.5px solid rgba(99, 102, 241, 0.4);
+  border: 1.5px solid rgba(var(--theme-primary-rgb, 99, 102, 241), 0.4);
   border-radius: 50%;
   animation: ringPulse 3s ease-in-out infinite;
 }
 
 .icon-glow-ring-2 {
   inset: -24px;
-  border-color: rgba(139, 92, 246, 0.25);
+  border-color: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.25);
   animation-delay: -1s;
 }
 
 .icon-glow-ring-3 {
   inset: -38px;
-  border-color: rgba(99, 102, 241, 0.15);
+  border-color: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.15);
   animation-delay: -2s;
 }
 
@@ -408,13 +409,13 @@ function openAIAssistant() {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.3), rgba(139, 92, 246, 0.2));
+  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.3), rgba(var(--theme-primary-rgb, 99, 102, 241), 0.2));
   border: 2px solid rgba(255, 255, 255, 0.25);
   border-radius: 50%;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   box-shadow: 
-    0 10px 40px rgba(99, 102, 241, 0.4),
+    0 10px 40px rgba(var(--theme-primary-rgb, 99, 102, 241), 0.4),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
@@ -428,13 +429,13 @@ function openAIAssistant() {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 2px solid rgba(99, 102, 241, 0.5);
+  border: 2px solid rgba(var(--theme-primary-rgb, 99, 102, 241), 0.5);
   animation: pulseWave 2.5s ease-out infinite;
 }
 
 .icon-pulse-wave-2 {
   animation-delay: -1.25s;
-  border-color: rgba(139, 92, 246, 0.4);
+  border-color: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.4);
 }
 
 @keyframes pulseWave {
@@ -453,7 +454,7 @@ function openAIAssistant() {
   flex: 0 0 auto; /* Don't grow - take only needed space */
   display: flex;
   flex-direction: column;
-  background: linear-gradient(180deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.98) 100%);
+  background: linear-gradient(180deg, rgba(var(--theme-bg-rgb, 15, 23, 42), 0.98) 0%, rgba(var(--theme-bg-rgb, 15, 23, 42), 0.95) 100%);
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   padding: 1.25rem 1.125rem 1.25rem;
   padding-bottom: max(1.25rem, calc(env(safe-area-inset-bottom) + 0.625rem)); /* Account for home indicator */
@@ -552,7 +553,7 @@ function openAIAssistant() {
 .card-title {
   font-size: 1.25rem;
   font-weight: 700;
-  color: white;
+  color: var(--theme-text, #ffffff);
   margin: 0;
   line-height: 1.3;
   text-align: center;
@@ -719,7 +720,7 @@ function openAIAssistant() {
 .button-bg {
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(135deg, var(--theme-primary, #6366f1), var(--theme-gradient-end, #4338ca));
   transition: transform 0.3s ease;
 }
 
@@ -741,8 +742,8 @@ function openAIAssistant() {
   justify-content: space-between;
   width: 100%;
   padding: 0.625rem 0.875rem;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.15) 0%, rgba(59, 130, 246, 0.15) 100%);
-  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.15) 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.1) 100%);
+  border: 1px solid rgba(var(--theme-primary-rgb, 99, 102, 241), 0.3);
   border-radius: 0.875rem;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -753,8 +754,8 @@ function openAIAssistant() {
 }
 
 .ai-indicator-button:hover {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.2) 0%, rgba(59, 130, 246, 0.2) 100%);
-  border-color: rgba(139, 92, 246, 0.4);
+  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.2) 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.15) 100%);
+  border-color: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.4);
   transform: translateY(-1px);
 }
 
@@ -774,9 +775,9 @@ function openAIAssistant() {
   justify-content: center;
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%);
+  background: linear-gradient(135deg, var(--theme-primary, #6366f1) 0%, var(--theme-gradient-end, #4338ca) 100%);
   border-radius: 8px;
-  box-shadow: 0 2px 6px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 2px 6px rgba(var(--theme-primary-rgb, 99, 102, 241), 0.3);
 }
 
 .ai-indicator-icon i {
@@ -826,13 +827,13 @@ function openAIAssistant() {
 
 .powered-by {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--theme-text-rgb, 255, 255, 255), 0.8);
 }
 
 .brand-name {
   font-size: 0.875rem;
   font-weight: 600;
-  color: white;
+  color: var(--theme-text, #ffffff);
   letter-spacing: 0.02em;
 }
 

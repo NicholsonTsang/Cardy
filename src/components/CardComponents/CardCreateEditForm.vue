@@ -443,6 +443,126 @@
             </Transition>
         </div>
 
+        <!-- Section 4: Theme & Appearance -->
+        <div v-if="sections.includes('theme')" class="form-section">
+            <div class="section-header" @click="toggleSection('theme')">
+                <div class="section-header-left">
+                    <div v-if="!isSingleSection" class="section-number">4</div>
+                    <div class="section-title-group">
+                        <h3 class="section-title">{{ $t('dashboard.theme_appearance') }}</h3>
+                        <p class="section-subtitle">{{ $t('dashboard.customize_theme') }}</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-3">
+                    <i class="pi section-chevron" :class="expandedSections.theme ? 'pi-chevron-up' : 'pi-chevron-down'"></i>
+                </div>
+            </div>
+
+            <Transition name="slide">
+                <div v-show="expandedSections.theme" class="section-content">
+                    <!-- Upgrade Hint for Free/Starter -->
+                    <div v-if="!canCustomizeTheme" class="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 mb-4">
+                        <i class="pi pi-lock text-amber-500 mt-0.5 flex-shrink-0"></i>
+                        <p class="text-xs text-amber-700 m-0">{{ $t('dashboard.theme_upgrade_hint') }}</p>
+                    </div>
+
+                    <!-- Theme Color Pickers -->
+                    <div :class="{ 'opacity-40 pointer-events-none select-none': !canCustomizeTheme }">
+                        <p class="text-xs text-slate-400 mb-4">{{ $t('dashboard.theme_default_hint') }}</p>
+
+                        <!-- Color Pickers Grid -->
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                            <!-- Primary Color -->
+                            <div>
+                                <label class="text-sm font-medium text-slate-700 mb-1 block">{{ $t('dashboard.theme_primary_color') }}</label>
+                                <div class="flex items-center gap-2">
+                                    <input
+                                        type="color"
+                                        :value="formData.metadata?.theme?.primaryColor || DEFAULT_THEME.primaryColor"
+                                        @input="updateThemeColor('primaryColor', $event.target.value)"
+                                        class="w-10 h-10 rounded-lg border border-slate-300 cursor-pointer p-0.5"
+                                    />
+                                    <span class="text-xs text-slate-500 font-mono">{{ formData.metadata?.theme?.primaryColor || DEFAULT_THEME.primaryColor }}</span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.theme_primary_color_hint') }}</p>
+                            </div>
+
+                            <!-- Background Color -->
+                            <div>
+                                <label class="text-sm font-medium text-slate-700 mb-1 block">{{ $t('dashboard.theme_background_color') }}</label>
+                                <div class="flex items-center gap-2">
+                                    <input
+                                        type="color"
+                                        :value="formData.metadata?.theme?.backgroundColor || DEFAULT_THEME.backgroundColor"
+                                        @input="updateThemeColor('backgroundColor', $event.target.value)"
+                                        class="w-10 h-10 rounded-lg border border-slate-300 cursor-pointer p-0.5"
+                                    />
+                                    <span class="text-xs text-slate-500 font-mono">{{ formData.metadata?.theme?.backgroundColor || DEFAULT_THEME.backgroundColor }}</span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.theme_background_color_hint') }}</p>
+                            </div>
+
+                            <!-- Gradient End Color -->
+                            <div>
+                                <label class="text-sm font-medium text-slate-700 mb-1 block">{{ $t('dashboard.theme_gradient_end_color') }}</label>
+                                <div class="flex items-center gap-2">
+                                    <input
+                                        type="color"
+                                        :value="formData.metadata?.theme?.gradientEndColor || DEFAULT_THEME.gradientEndColor"
+                                        @input="updateThemeColor('gradientEndColor', $event.target.value)"
+                                        class="w-10 h-10 rounded-lg border border-slate-300 cursor-pointer p-0.5"
+                                    />
+                                    <span class="text-xs text-slate-500 font-mono">{{ formData.metadata?.theme?.gradientEndColor || DEFAULT_THEME.gradientEndColor }}</span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.theme_gradient_end_color_hint') }}</p>
+                            </div>
+
+                            <!-- Text Color -->
+                            <div>
+                                <label class="text-sm font-medium text-slate-700 mb-1 block">{{ $t('dashboard.theme_text_color') }}</label>
+                                <div class="flex items-center gap-2">
+                                    <input
+                                        type="color"
+                                        :value="formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor"
+                                        @input="updateThemeColor('textColor', $event.target.value)"
+                                        class="w-10 h-10 rounded-lg border border-slate-300 cursor-pointer p-0.5"
+                                    />
+                                    <span class="text-xs text-slate-500 font-mono">{{ formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }}</span>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.theme_text_color_hint') }}</p>
+                            </div>
+                        </div>
+
+                        <!-- Live Preview Strip -->
+                        <div class="mb-4">
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 block">{{ $t('dashboard.theme_preview') }}</label>
+                            <div class="rounded-xl overflow-hidden h-16 flex items-center px-4 gap-3"
+                                 :style="themePreviewStyle">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                                     :style="{ background: formData.metadata?.theme?.primaryColor || DEFAULT_THEME.primaryColor }">
+                                    <i class="pi pi-star text-xs" :style="{ color: formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-semibold m-0" :style="{ color: formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }">Sample Title</p>
+                                    <p class="text-xs m-0 opacity-70" :style="{ color: formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }">Preview text</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Reset Button -->
+                        <Button
+                            :label="$t('dashboard.theme_reset_default')"
+                            icon="pi pi-refresh"
+                            severity="secondary"
+                            outlined
+                            size="small"
+                            @click="resetThemeColors"
+                        />
+                    </div>
+                </div>
+            </Transition>
+        </div>
+
     </div>
 </template>
 
@@ -462,6 +582,8 @@ import { SUPPORTED_LANGUAGES } from '@/stores/translation';
 import { getLanguageFlag } from '@/utils/formatters';
 import { supabase } from '@/lib/supabase';
 import { useToast } from 'primevue/usetoast';
+import { useSubscriptionStore } from '@/stores/subscription';
+import { DEFAULT_THEME, isValidHexColor } from '@/utils/themeConfig';
 
 const props = defineProps({
     cardProp: {
@@ -482,7 +604,7 @@ const props = defineProps({
     },
     sections: {
         type: Array,
-        default: () => ['accessMode', 'details', 'ai']
+        default: () => ['accessMode', 'details', 'ai', 'theme']
     }
 });
 
@@ -514,7 +636,8 @@ const formData = reactive({
     is_grouped: false, // Whether content is organized into categories
     group_display: 'expanded', // How grouped items display: expanded or collapsed
     billing_type: 'digital',
-    default_daily_session_limit: 500 // Default daily limit for new QR codes
+    default_daily_session_limit: 500, // Default daily limit for new QR codes
+    metadata: {} // Extensible metadata (theme settings, etc.)
 });
 
 // Single-section mode (when opened from contextual edit buttons)
@@ -525,12 +648,20 @@ const isDirectContent = computed(() => isSingleSection.value && props.isInDialog
 const expandedSections = reactive({
     accessMode: true,
     details: true,
-    ai: false // AI section collapsed by default for cleaner form
+    ai: false, // AI section collapsed by default for cleaner form
+    theme: false // Theme section collapsed by default
 });
 
 // Advanced options visibility
 const showAdvancedAccess = ref(false);
 
+
+// Subscription store for tier-gated features
+const subscriptionStore = useSubscriptionStore();
+const canCustomizeTheme = computed(() => {
+    const tier = subscriptionStore.tier;
+    return tier === 'premium' || tier === 'enterprise';
+});
 
 // AI generation state
 const toast = useToast();
@@ -795,6 +926,29 @@ if (isDirectContent.value && props.sections.includes('ai')
 // Note: AI data is intentionally preserved when AI is disabled
 // This allows users to re-enable AI and have their data restored immediately
 
+// Theme helpers
+const updateThemeColor = (key, value) => {
+    if (!formData.metadata) formData.metadata = {};
+    if (!formData.metadata.theme) formData.metadata.theme = {};
+    if (isValidHexColor(value)) {
+        formData.metadata.theme[key] = value;
+    }
+};
+
+const resetThemeColors = () => {
+    if (!formData.metadata) formData.metadata = {};
+    formData.metadata.theme = {};
+};
+
+const themePreviewStyle = computed(() => {
+    const theme = formData.metadata?.theme || {};
+    const bg = theme.backgroundColor || DEFAULT_THEME.backgroundColor;
+    const end = theme.gradientEndColor || DEFAULT_THEME.gradientEndColor;
+    return {
+        background: `linear-gradient(135deg, ${bg} 0%, ${end} 100%)`
+    };
+});
+
 const initializeForm = () => {
     if (props.cardProp) {
         formData.id = props.cardProp.id;
@@ -814,6 +968,7 @@ const initializeForm = () => {
         formData.group_display = props.cardProp.group_display || 'expanded';
         formData.billing_type = 'digital';
         formData.default_daily_session_limit = props.cardProp.default_daily_session_limit ?? 500;
+        formData.metadata = props.cardProp.metadata ? JSON.parse(JSON.stringify(props.cardProp.metadata)) : {};
 
         // Set unlimited toggle based on default_daily_session_limit value
         isDailyLimitUnlimited.value = props.cardProp.default_daily_session_limit === null;
@@ -840,6 +995,7 @@ const resetForm = () => {
     formData.group_display = 'expanded';
     formData.billing_type = 'digital';
     formData.default_daily_session_limit = 500; // Reset to default daily limit
+    formData.metadata = {};
 };
 
 const getPayload = () => {

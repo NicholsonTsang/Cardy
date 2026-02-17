@@ -42,6 +42,7 @@ export interface MobileCardResponse {
       creditsInsufficient: boolean;
       accessDisabled?: boolean;
       metadata?: Record<string, any>;
+      subscriptionTier?: string;
     };
     contentItems: Array<{
       id: string;
@@ -270,6 +271,8 @@ export function transformCardResponse(response: MobileCardResponse): any {
       daily_limit_exceeded: card.dailyLimitExceeded,
       card_credits_insufficient: card.creditsInsufficient,
       card_access_disabled: card.accessDisabled || false,
+      card_subscription_tier: card.subscriptionTier || 'free',
+      card_metadata: card.metadata || {},
       is_activated: response.data.isActivated ?? true,
       is_preview: response.data.isPreview ?? false,
     },

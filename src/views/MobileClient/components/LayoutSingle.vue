@@ -150,7 +150,7 @@ const renderedContent = computed(() => {
   left: 0;
   width: 60px;
   height: 3px;
-  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  background: linear-gradient(90deg, var(--theme-primary, #6366f1), var(--theme-gradient-end, #4338ca));
   border-radius: 2px;
 }
 
@@ -158,7 +158,7 @@ const renderedContent = computed(() => {
   font-size: 1rem;
   color: rgba(255, 255, 255, 0.9);
   line-height: 1.8;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--theme-surface, rgba(255, 255, 255, 0.07));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -212,7 +212,7 @@ const renderedContent = computed(() => {
 }
 
 .content-body :deep(blockquote) {
-  border-left: 3px solid rgba(59, 130, 246, 0.5);
+  border-left: 3px solid rgba(var(--theme-primary-rgb, 99, 102, 241), 0.5);
   padding-left: 1rem;
   margin: 1rem 0;
   color: rgba(255, 255, 255, 0.8);

@@ -643,8 +643,8 @@ if (aiDisconnectRegistry) {
   max-width: 400px;
   margin: 0 auto;
   padding: 0.875rem 1.125rem;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
-  border: 1px solid rgba(139, 92, 246, 0.4);
+  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.25) 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.2) 100%);
+  border: 1px solid rgba(var(--theme-primary-rgb, 99, 102, 241), 0.4);
   border-radius: 1rem;
   color: white;
   font-size: 0.9375rem;
@@ -655,7 +655,7 @@ if (aiDisconnectRegistry) {
   touch-action: manipulation;
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 4px 12px rgba(var(--theme-primary-rgb, 99, 102, 241), 0.2);
 }
 
 /* Shimmer effect */
@@ -685,8 +685,8 @@ if (aiDisconnectRegistry) {
 }
 
 .ai-badge:hover {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35) 0%, rgba(59, 130, 246, 0.35) 100%);
-  border-color: rgba(139, 92, 246, 0.5);
+  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.35) 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.3) 100%);
+  border-color: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.5);
 }
 
 .ai-badge:active {

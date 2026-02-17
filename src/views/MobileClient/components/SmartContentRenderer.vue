@@ -436,7 +436,7 @@ onMounted(() => {
   flex-direction: column;
   min-height: 0; /* Allow flex shrinking */
   /* Dark background to prevent flash during view transitions */
-  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
+  background: linear-gradient(to bottom right, var(--theme-bg, #0f172a), var(--theme-gradient-mid, #1e3a8a), var(--theme-gradient-end, #4338ca));
 }
 
 /* Search/Filter Bar - fixed below header */
@@ -488,7 +488,7 @@ onMounted(() => {
 .search-input {
   width: 100%;
   padding: 0.625rem 2.25rem 0.625rem 2.5rem;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--theme-surface, rgba(255, 255, 255, 0.07));
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0.875rem;
   color: white;

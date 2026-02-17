@@ -249,7 +249,7 @@ onMounted(() => {
   padding-bottom: max(2rem, env(safe-area-inset-bottom));
   -webkit-text-size-adjust: 100%; /* Prevent text scaling */
   /* Dark background to prevent flash during view transitions */
-  background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
+  background: linear-gradient(to bottom right, var(--theme-bg, #0f172a), var(--theme-gradient-mid, #1e3a8a), var(--theme-gradient-end, #4338ca));
 }
 
 /* Extra bottom padding when AI assistant is present (fixed at bottom) */
@@ -377,7 +377,7 @@ onMounted(() => {
 
 /* Content Info */
 .content-info {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--theme-surface, rgba(255, 255, 255, 0.07));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -393,7 +393,7 @@ onMounted(() => {
 .content-title {
   font-size: 1.5rem;
   font-weight: 800;
-  color: white;
+  color: var(--theme-text, #ffffff);
   margin: 0;
   margin-bottom: 1rem;
   word-break: break-word;
@@ -484,7 +484,7 @@ onMounted(() => {
 }
 
 .content-description :deep(blockquote) {
-  border-left: 3px solid rgba(139, 92, 246, 0.5);
+  border-left: 3px solid rgba(var(--theme-primary-rgb, 99, 102, 241), 0.5);
   padding-left: 0.875em;
   margin: 0.875em 0;
   font-style: italic;
@@ -505,7 +505,7 @@ onMounted(() => {
   right: 0;
   padding: 1rem 1.25rem;
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
-  background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.8) 70%, transparent 100%);
+  background: linear-gradient(to top, rgba(var(--theme-bg-rgb, 15, 23, 42), 0.95) 0%, rgba(var(--theme-bg-rgb, 15, 23, 42), 0.8) 70%, transparent 100%);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   z-index: 100;
@@ -545,7 +545,7 @@ onMounted(() => {
   content: '';
   width: 4px;
   height: 18px;
-  background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+  background: linear-gradient(to bottom, var(--theme-primary, #6366f1), var(--theme-gradient-end, #4338ca));
   border-radius: 2px;
 }
 
@@ -559,7 +559,7 @@ onMounted(() => {
 .sub-item-card {
   display: flex;
   gap: 0.875rem;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--theme-surface, rgba(255, 255, 255, 0.07));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);

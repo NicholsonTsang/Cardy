@@ -591,7 +591,7 @@ if (aiDisconnectRegistry) {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  border: 2px solid rgba(139, 92, 246, 0.5);
+  border: 2px solid rgba(var(--theme-primary-rgb, 99, 102, 241), 0.5);
   animation: attentionPulse 2.5s ease-out infinite;
   pointer-events: none;
 }
@@ -617,7 +617,7 @@ if (aiDisconnectRegistry) {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem 0.75rem 0.875rem;
-  background: linear-gradient(135deg, #8b5cf6 0%, #6366f1 50%, #3b82f6 100%);
+  background: linear-gradient(135deg, var(--theme-primary, #6366f1) 0%, var(--theme-gradient-end, #4338ca) 50%, var(--theme-primary, #6366f1) 100%);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   color: white;
@@ -626,7 +626,7 @@ if (aiDisconnectRegistry) {
   cursor: pointer;
   transition: all 0.3s ease;
   box-shadow: 
-    0 4px 15px rgba(139, 92, 246, 0.4),
+    0 4px 15px rgba(var(--theme-primary-rgb, 99, 102, 241), 0.4),
     0 2px 6px rgba(0, 0, 0, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
   -webkit-tap-highlight-color: transparent;
@@ -636,7 +636,7 @@ if (aiDisconnectRegistry) {
 .floating-ai-button:hover {
   transform: translateY(-2px);
   box-shadow: 
-    0 6px 20px rgba(139, 92, 246, 0.5),
+    0 6px 20px rgba(var(--theme-primary-rgb, 99, 102, 241), 0.5),
     0 4px 10px rgba(0, 0, 0, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
@@ -644,7 +644,7 @@ if (aiDisconnectRegistry) {
 .floating-ai-button:active {
   transform: scale(0.95);
   box-shadow: 
-    0 2px 10px rgba(139, 92, 246, 0.3),
+    0 2px 10px rgba(var(--theme-primary-rgb, 99, 102, 241), 0.3),
     0 1px 4px rgba(0, 0, 0, 0.1);
 }
 

@@ -413,6 +413,47 @@
 
         </template>
 
+        <!-- Theme & Appearance Section -->
+        <template v-if="cardProp">
+            <div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
+                <div class="flex items-center gap-3 px-4 py-3 border-b border-slate-100">
+                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-100 to-indigo-100 flex items-center justify-center shrink-0">
+                        <i class="pi pi-palette text-sm text-violet-600"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-sm font-semibold text-slate-800 m-0">{{ $t('dashboard.theme_appearance') }}</h3>
+                        <p class="text-xs text-slate-400 m-0">{{ $t('dashboard.customize_theme') }}</p>
+                    </div>
+                    <button
+                        type="button"
+                        @click="editSection = 'theme'; showEditDialog = true"
+                        class="flex items-center justify-center w-8 h-7 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-all"
+                        v-tooltip.bottom="$t('dashboard.configure')"
+                    >
+                        <i class="pi pi-pencil text-xs"></i>
+                    </button>
+                </div>
+                <!-- Theme preview strip -->
+                <div class="px-4 py-3">
+                    <div v-if="cardProp.metadata?.theme && Object.keys(cardProp.metadata.theme).length > 0"
+                         class="flex items-center gap-3">
+                        <div class="flex gap-1.5">
+                            <div v-for="(color, key) in cardProp.metadata.theme" :key="key"
+                                 class="w-7 h-7 rounded-full border border-slate-200 shadow-sm"
+                                 :style="{ backgroundColor: color }"
+                                 v-tooltip.bottom="key">
+                            </div>
+                        </div>
+                        <span class="text-xs text-slate-500">{{ $t('dashboard.customize_theme') }}</span>
+                    </div>
+                    <div v-else class="flex items-center gap-2">
+                        <i class="pi pi-info-circle text-xs text-slate-300"></i>
+                        <span class="text-xs text-slate-400">{{ $t('dashboard.theme_default_hint') }}</span>
+                    </div>
+                </div>
+            </div>
+        </template>
+
         </div><!-- end Left Column -->
 
         <!-- Right Column: Compact Mobile Preview (xl: only) -->
@@ -505,12 +546,14 @@ const editSection = ref(null); // 'details' | 'artwork' | 'ai'
 const editFormSections = computed(() => {
     if (editSection.value === 'details') return ['details'];
     if (editSection.value === 'ai') return ['ai'];
-    return ['details', 'ai'];
+    if (editSection.value === 'theme') return ['theme'];
+    return ['details', 'ai', 'theme'];
 });
 
 const editDialogHeader = computed(() => {
     if (editSection.value === 'details') return t('dashboard.project_details');
     if (editSection.value === 'ai') return t('dashboard.ai_assistant_configuration');
+    if (editSection.value === 'theme') return t('dashboard.theme_appearance');
     return t('dashboard.edit_card');
 });
 

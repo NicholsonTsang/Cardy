@@ -224,7 +224,7 @@ function handleItemClick(item: ContentItem) {
   content: '';
   width: 4px;
   height: 16px;
-  background: linear-gradient(to bottom, #3b82f6, #8b5cf6);
+  background: linear-gradient(to bottom, var(--theme-primary, #6366f1), var(--theme-gradient-end, #4338ca));
   border-radius: 2px;
 }
 
@@ -240,7 +240,7 @@ function handleItemClick(item: ContentItem) {
   gap: 0.875rem;
   width: 100%;
   padding: 0.875rem 1rem;
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--theme-surface, rgba(255, 255, 255, 0.07));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -261,7 +261,7 @@ function handleItemClick(item: ContentItem) {
   top: 0;
   bottom: 0;
   width: 0;
-  background: linear-gradient(90deg, rgba(59, 130, 246, 0.15), transparent);
+  background: linear-gradient(90deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.15), transparent);
   transition: width 0.3s;
 }
 
@@ -342,7 +342,7 @@ function handleItemClick(item: ContentItem) {
   right: 0;
   padding: 1rem 1.25rem;
   padding-bottom: max(1rem, env(safe-area-inset-bottom));
-  background: linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.8) 70%, transparent 100%);
+  background: linear-gradient(to top, rgba(var(--theme-bg-rgb, 15, 23, 42), 0.95) 0%, rgba(var(--theme-bg-rgb, 15, 23, 42), 0.8) 70%, transparent 100%);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   z-index: 100;
@@ -370,8 +370,8 @@ function handleItemClick(item: ContentItem) {
   max-width: 400px;
   margin: 0 auto;
   padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.25) 0%, rgba(59, 130, 246, 0.25) 100%);
-  border: 1px solid rgba(139, 92, 246, 0.4);
+  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.25) 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.2) 100%);
+  border: 1px solid rgba(var(--theme-primary-rgb, 99, 102, 241), 0.4);
   border-radius: 0.875rem;
   color: white;
   font-size: 0.875rem;
@@ -380,13 +380,13 @@ function handleItemClick(item: ContentItem) {
   transition: all 0.3s ease;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
-  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.2);
+  box-shadow: 0 4px 10px rgba(var(--theme-primary-rgb, 99, 102, 241), 0.2);
   min-height: 48px;
 }
 
 .ai-browse-badge:hover {
-  background: linear-gradient(135deg, rgba(139, 92, 246, 0.35) 0%, rgba(59, 130, 246, 0.35) 100%);
-  border-color: rgba(139, 92, 246, 0.5);
+  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.35) 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.3) 100%);
+  border-color: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.5);
 }
 
 .ai-browse-badge:active {
