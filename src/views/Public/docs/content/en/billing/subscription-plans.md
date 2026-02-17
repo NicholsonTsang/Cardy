@@ -4,15 +4,16 @@ FunTell offers flexible subscription plans to fit your needs, from free personal
 
 ## Plan Comparison
 
-| Feature | Free | Starter ($40/mo) | Premium ($280/mo) |
-|---------|------|------------------|-------------------|
-| Projects | Up to 3 | Up to 5 | Up to 35 |
-| Monthly Budget | 50 sessions | $40 session budget | $280 session budget |
-| AI Sessions | ✅ Included | $0.05/session (~800) | $0.04/session (~7,000) |
-| Non-AI Sessions | ✅ Included | $0.025/session (~1,600) | $0.02/session (~14,000) |
-| Translations | ❌ None | Max 2 languages | Unlimited |
-| Branding | Powered by FunTell | Powered by FunTell | White-label (no branding) |
-| Overage Credits | ❌ | ✅ $5 per top-up | ✅ $5 per top-up |
+| Feature | Free | Starter ($40/mo) | Premium ($280/mo) | Enterprise ($1,000/mo) |
+|---------|------|------------------|-------------------|------------------------|
+| Projects | Up to 3 | Up to 5 | Up to 35 | Up to 100 |
+| Monthly Budget | 50 sessions | $40 session budget | $280 session budget | $1,000 session budget |
+| AI Sessions | ✅ Included | $0.05/session (~800) | $0.04/session (~7,000) | $0.02/session (~50,000) |
+| Non-AI Sessions | ✅ Included | $0.025/session (~1,600) | $0.02/session (~14,000) | $0.01/session (~100,000) |
+| Translations | ❌ None | Max 2 languages | Unlimited | Unlimited |
+| Branding | Powered by FunTell | Powered by FunTell | White-label (no branding) | White-label (no branding) |
+| Overage Credits | ❌ | ✅ $5 per top-up | ✅ $5 per top-up | ✅ $5 per top-up |
+| Custom Domain | ❌ | ❌ | ❌ | Coming Soon |
 
 ### Free Tier
 
@@ -68,6 +69,27 @@ For high-traffic projects requiring maximum flexibility.
 - icon: "pi pi-bolt" title: "Lower Rates" desc: "20% lower session costs than Starter" color: "amber"
 :::
 
+### Enterprise Tier - $1,000/month
+
+For high-volume enterprise deployments requiring maximum capacity.
+
+**Included:**
+- Up to 100 projects
+- $1,000 monthly session budget
+- AI sessions at $0.02 each (~50,000 AI sessions)
+- Non-AI sessions at $0.01 each (~100,000 non-AI sessions)
+- **Unlimited translations** to all 10 languages
+- White-label experience (no FunTell branding)
+- Overage credits available when budget depletes
+- Custom domain (coming soon)
+
+:::features
+- icon: "pi pi-building" title: "100 Projects" desc: "Scale to 100 projects for enterprise needs" color: "green"
+- icon: "pi pi-dollar" title: "Lowest Rates" desc: "$0.02 AI / $0.01 non-AI - up to 60% lower than Starter" color: "blue"
+- icon: "pi pi-globe" title: "Custom Domain" desc: "Use your own domain for content (coming soon)" color: "purple"
+- icon: "pi pi-bolt" title: "50K+ Sessions" desc: "Up to 50,000 AI or 100,000 non-AI sessions per month" color: "amber"
+:::
+
 ## Session-Based Billing
 
 Starter and Premium plans use session-based billing where you pay per visitor session from your monthly budget.
@@ -78,10 +100,10 @@ A **session** is counted when a unique user scans your QR code and accesses your
 
 ### AI vs Non-AI Sessions
 
-| Session Type | Description | Starter Cost | Premium Cost |
-|--------------|-------------|--------------|--------------|
-| **AI Session** | Project has AI assistant enabled | $0.05 | $0.04 |
-| **Non-AI Session** | Project has AI assistant disabled | $0.025 | $0.02 |
+| Session Type | Description | Starter Cost | Premium Cost | Enterprise Cost |
+|--------------|-------------|--------------|--------------|-----------------|
+| **AI Session** | Project has AI assistant enabled | $0.05 | $0.04 | $0.02 |
+| **Non-AI Session** | Project has AI assistant disabled | $0.025 | $0.02 | $0.01 |
 
 :::tip Save on Sessions
 If your project doesn't need the AI voice assistant, disable it in project settings to pay the lower non-AI session rate.
@@ -116,9 +138,23 @@ When your monthly budget is depleted, you can purchase additional credits:
 **Credit rates follow your plan's session costs:**
 - Starter: $5 = ~100 AI sessions or ~200 non-AI sessions
 - Premium: $5 = ~125 AI sessions or ~250 non-AI sessions
+- Enterprise: $5 = ~250 AI sessions or ~500 non-AI sessions
 
 :::info Credits Don't Expire
 Purchased credits remain in your account until used. They don't expire and carry over across billing cycles.
+:::
+
+## Voice Credits
+
+In addition to session-based billing, **real-time voice conversations** use a separate **voice credit** system:
+
+- **1 credit = 1 voice call** with a time limit per call
+- Voice credits are purchased separately via Stripe
+- Available for all users (including Free tier)
+- Credits never expire
+
+:::info Voice Credits are Separate
+Voice credits are independent from your monthly session budget. Session budget covers content access; voice credits cover real-time voice calls.
 :::
 
 ## Daily Access Limits
@@ -135,13 +171,13 @@ Configure daily limits in each project's QR Code settings.
 To upgrade:
 
 1. Navigate to **Plan & Usage** in your dashboard
-2. Click "Upgrade to Starter" or "Upgrade to Premium"
+2. Click "Upgrade to Starter", "Upgrade to Premium", or "Upgrade to Enterprise"
 3. Complete payment via Stripe
 4. Access new features immediately
 
 :::warning Switching Between Paid Plans
-**Upgrading** (Starter → Premium): Takes effect immediately. Old subscription cancelled.
-**Downgrading** (Premium → Starter): Takes effect at next billing cycle. Keep Premium access until then.
+**Upgrading** (e.g. Starter → Premium → Enterprise): Takes effect immediately. Old subscription cancelled.
+**Downgrading** (e.g. Enterprise → Premium → Starter): Takes effect at next billing cycle. Keep current access until then.
 :::
 
 ## Billing Cycle

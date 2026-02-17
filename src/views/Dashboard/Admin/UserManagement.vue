@@ -200,7 +200,7 @@
                 class="whitespace-nowrap"
               >
                 <template #icon>
-                  <i :class="data.subscription_tier === 'premium' ? 'pi pi-star-fill mr-1' : 'pi pi-user mr-1'" style="font-size: 0.7rem;"></i>
+                  <i :class="data.subscription_tier === 'enterprise' ? 'pi pi-building mr-1' : data.subscription_tier === 'premium' ? 'pi pi-star-fill mr-1' : 'pi pi-user mr-1'" style="font-size: 0.7rem;"></i>
                 </template>
               </Tag>
             </template>
@@ -275,7 +275,7 @@
                   icon="pi pi-star"
                   size="small"
                   outlined
-                  :severity="data.subscription_tier === 'premium' ? 'warning' : 'info'"
+                  :severity="data.subscription_tier === 'enterprise' ? 'contrast' : data.subscription_tier === 'premium' ? 'warning' : 'info'"
                   @click="manageUserSubscription(data)"
                   v-tooltip.top="$t('admin.manage_subscription') || 'Manage Subscription'"
                 />
@@ -363,7 +363,7 @@
                   size="small"
                 >
                   <template #icon>
-                    <i :class="selectedUser.subscription_tier === 'premium' ? 'pi pi-star-fill mr-1' : 'pi pi-user mr-1'" style="font-size: 0.65rem;"></i>
+                    <i :class="selectedUser.subscription_tier === 'enterprise' ? 'pi pi-building mr-1' : selectedUser.subscription_tier === 'premium' ? 'pi pi-star-fill mr-1' : 'pi pi-user mr-1'" style="font-size: 0.65rem;"></i>
                   </template>
                 </Tag>
                 <Tag 
@@ -433,7 +433,7 @@
                   <span class="font-semibold text-slate-900 text-sm">{{ $t('subscription.free_plan') || 'Free' }}</span>
                 </div>
                 <ul class="text-[10px] text-slate-600 space-y-0.5 leading-tight">
-                  <li>• {{ SubscriptionConfig.free.experienceLimit }} {{ $t('admin.projects_label') || 'projects' }}</li>
+                  <li>• {{ SubscriptionConfig.free.projectLimit }} {{ $t('admin.projects_label') || 'projects' }}</li>
                   <li>• {{ SubscriptionConfig.free.monthlyAccessLimit }} {{ $t('admin.access') || 'access' }}</li>
                 </ul>
               </div>
@@ -452,17 +452,17 @@
                   <span class="font-semibold text-slate-900 text-sm">{{ $t('subscription.starter_plan') || 'Starter' }}</span>
                 </div>
                 <ul class="text-[10px] text-slate-600 space-y-0.5 leading-tight">
-                  <li>• {{ SubscriptionConfig.starter.experienceLimit }} {{ $t('admin.projects_label') || 'projects' }}</li>
+                  <li>• {{ SubscriptionConfig.starter.projectLimit }} {{ $t('admin.projects_label') || 'projects' }}</li>
                   <li>• ${{ SubscriptionConfig.starter.monthlyBudgetUsd }} {{ $t('admin.budget') || 'budget' }}</li>
                 </ul>
               </div>
 
-              <div 
+              <div
                 @click="newSubscriptionTier = 'premium'"
                 :class="[
                   'p-3 border-2 rounded-xl cursor-pointer transition-all duration-200',
-                  newSubscriptionTier === 'premium' 
-                    ? 'border-amber-500 bg-amber-50' 
+                  newSubscriptionTier === 'premium'
+                    ? 'border-amber-500 bg-amber-50'
                     : 'border-slate-200 hover:border-amber-200'
                 ]"
               >
@@ -471,15 +471,34 @@
                   <span class="font-semibold text-slate-900 text-sm">{{ $t('subscription.premium_plan') || 'Premium' }}</span>
                 </div>
                 <ul class="text-[10px] text-slate-600 space-y-0.5 leading-tight">
-                  <li>• {{ SubscriptionConfig.premium.experienceLimit }} {{ $t('admin.projects_label') || 'projects' }}</li>
+                  <li>• {{ SubscriptionConfig.premium.projectLimit }} {{ $t('admin.projects_label') || 'projects' }}</li>
                   <li>• ${{ SubscriptionConfig.premium.monthlyBudgetUsd }} {{ $t('admin.budget') || 'budget' }}</li>
+                </ul>
+              </div>
+
+              <div
+                @click="newSubscriptionTier = 'enterprise'"
+                :class="[
+                  'p-3 border-2 rounded-xl cursor-pointer transition-all duration-200',
+                  newSubscriptionTier === 'enterprise'
+                    ? 'border-violet-500 bg-violet-50'
+                    : 'border-slate-200 hover:border-violet-200'
+                ]"
+              >
+                <div class="flex items-center gap-1.5 mb-1.5">
+                  <i class="pi pi-building text-violet-500 text-sm"></i>
+                  <span class="font-semibold text-slate-900 text-sm">{{ $t('subscription.enterprise_plan') || 'Enterprise' }}</span>
+                </div>
+                <ul class="text-[10px] text-slate-600 space-y-0.5 leading-tight">
+                  <li>• {{ SubscriptionConfig.enterprise.projectLimit }} {{ $t('admin.projects_label') || 'projects' }}</li>
+                  <li>• ${{ SubscriptionConfig.enterprise.monthlyBudgetUsd }} {{ $t('admin.budget') || 'budget' }}</li>
                 </ul>
               </div>
             </div>
           </div>
 
           <!-- Duration Selection (only for paid tiers) -->
-          <div v-if="newSubscriptionTier === 'starter' || newSubscriptionTier === 'premium'">
+          <div v-if="newSubscriptionTier === 'starter' || newSubscriptionTier === 'premium' || newSubscriptionTier === 'enterprise'">
             <label class="block text-sm font-medium text-slate-700 mb-2">
               {{ $t('admin.subscription_duration') || 'Subscription Duration' }}
             </label>
@@ -590,13 +609,13 @@
           <Button :label="$t('common.cancel')" text severity="secondary" @click="closeSubscriptionDialog" />
           <Button 
             :label="$t('admin.update_subscription') || 'Update Subscription'" 
-            :severity="newSubscriptionTier === 'premium' ? 'warning' : 'primary'"
+            :severity="newSubscriptionTier === 'enterprise' ? 'contrast' : newSubscriptionTier === 'premium' ? 'warning' : 'primary'"
             @click="updateUserSubscription"
             :disabled="!newSubscriptionTier || !subscriptionChangeReason || (newSubscriptionTier === 'free' && selectedUser?.subscription_tier === 'free') || selectedUser?.stripe_subscription_id"
             :loading="isUpdatingSubscription"
           >
             <template #icon>
-              <i :class="newSubscriptionTier === 'premium' ? 'pi pi-star-fill mr-2' : 'pi pi-user mr-2'"></i>
+              <i :class="newSubscriptionTier === 'enterprise' ? 'pi pi-building mr-2' : newSubscriptionTier === 'premium' ? 'pi pi-star-fill mr-2' : 'pi pi-user mr-2'"></i>
             </template>
           </Button>
         </template>
@@ -666,7 +685,8 @@ const userStats = computed(() => {
   const admins = allUsers.value.filter(u => u.role === 'admin').length
   const premiumUsers = allUsers.value.filter(u => u.subscription_tier === 'premium').length
   const starterUsers = allUsers.value.filter(u => u.subscription_tier === 'starter').length
-  const freeUsers = total - premiumUsers - starterUsers
+  const enterpriseUsers = allUsers.value.filter(u => u.subscription_tier === 'enterprise').length
+  const freeUsers = total - premiumUsers - starterUsers - enterpriseUsers
 
   return {
     total,
@@ -674,6 +694,7 @@ const userStats = computed(() => {
     admins,
     premiumUsers,
     starterUsers,
+    enterpriseUsers,
     freeUsers
   }
 })
@@ -704,6 +725,7 @@ const roleChangeOptions = computed(() => [
 
 const tierOptions = computed(() => [
   { label: t('admin.all_tiers') || 'All Tiers', value: null },
+  { label: t('subscription.enterprise_plan') || 'Enterprise', value: 'enterprise' },
   { label: t('subscription.premium_plan') || 'Premium', value: 'premium' },
   { label: t('subscription.starter_plan') || 'Starter', value: 'starter' },
   { label: t('subscription.free_plan') || 'Free', value: 'free' }
@@ -942,12 +964,14 @@ const getRoleSeverity = (role) => {
 }
 
 const getTierLabel = (tier) => {
+  if (tier === 'enterprise') return t('subscription.enterprise_plan') || 'Enterprise'
   if (tier === 'premium') return t('subscription.premium_plan') || 'Premium'
   if (tier === 'starter') return t('subscription.starter_plan') || 'Starter'
   return t('subscription.free_plan') || 'Free'
 }
 
 const getTierSeverity = (tier) => {
+  if (tier === 'enterprise') return 'contrast'
   if (tier === 'premium') return 'warning'
   if (tier === 'starter') return 'success'
   return 'secondary'

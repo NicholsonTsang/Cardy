@@ -6,16 +6,17 @@ This guide covers subscription plans, pricing, billing, and managing your accoun
 
 ### Plan Comparison
 
-| Feature | Free | Starter | Premium |
-|---------|------|---------|---------|
-| **Monthly Price** | $0 | $40 | $280 |
-| **Projects** | 3 | 5 | 35 |
-| **Monthly Budget** | 50 sessions | $40 | $280 |
-| **AI Sessions** | 50 total | ~800 | ~7,000 |
-| **Non-AI Sessions** | 50 total | ~1,600 | ~14,000 |
-| **Translations** | ❌ | 2 languages | Unlimited |
-| **Overage Purchase** | ❌ | ✅ | ✅ |
-| **Branding** | FunTell | FunTell | White label |
+| Feature | Free | Starter | Premium | Enterprise |
+|---------|------|---------|---------|------------|
+| **Monthly Price** | $0 | $40 | $280 | $1,000 |
+| **Projects** | 3 | 5 | 35 | 100 |
+| **Monthly Budget** | 50 sessions | $40 | $280 | $1,000 |
+| **AI Sessions** | 50 total | ~800 | ~7,000 | ~50,000 |
+| **Non-AI Sessions** | 50 total | ~1,600 | ~14,000 | ~100,000 |
+| **Translations** | ❌ | 2 languages | Unlimited | Unlimited |
+| **Overage Purchase** | ❌ | ✅ | ✅ | ✅ |
+| **Branding** | FunTell | FunTell | White label | White label |
+| **Custom Domain** | ❌ | ❌ | ❌ | Coming Soon |
 
 ### Free Plan
 
@@ -56,7 +57,6 @@ Perfect for:
 - Large organizations and brands
 - Multi-project portfolios
 - High-traffic operations
-- Enterprise needs
 
 **Includes:**
 - 35 projects
@@ -67,6 +67,25 @@ Perfect for:
 - White label (no FunTell branding)
 - Overage credits available
 - Priority support
+
+### Enterprise Plan ($1,000/month)
+
+Perfect for:
+- High-volume enterprise deployments
+- Organizations with 50+ projects
+- Maximum session capacity needs
+- Custom branding requirements
+
+**Includes:**
+- 100 projects
+- $1,000 monthly session budget
+- AI sessions: $0.02 each (~50,000 included)
+- Non-AI sessions: $0.01 each (~100,000 included)
+- Unlimited translation languages
+- White label (no FunTell branding)
+- Overage credits available ($5 per top-up: ~250 AI or ~500 non-AI sessions)
+- Priority support
+- Custom domain (coming soon)
 
 ## Understanding Sessions
 
@@ -80,10 +99,10 @@ A **session** is counted when a visitor accesses your project. Sessions are:
 
 ### AI vs Non-AI Sessions
 
-| Project Type | Starter Cost | Premium Cost |
-|--------------|--------------|--------------|
-| AI Enabled | $0.05 | $0.04 |
-| AI Disabled | $0.025 | $0.02 |
+| Project Type | Starter Cost | Premium Cost | Enterprise Cost |
+|--------------|--------------|--------------|-----------------|
+| AI Enabled | $0.05 | $0.04 | $0.02 |
+| AI Disabled | $0.025 | $0.02 | $0.01 |
 
 **Tip:** Disable AI on projects that don't need it to reduce session costs.
 
@@ -119,7 +138,7 @@ To prevent abuse, the same visitor scanning multiple times within 30 minutes cou
 
 1. Go to **Subscription**
 2. Click **Upgrade**
-3. Select new plan (Starter or Premium)
+3. Select new plan (Starter, Premium, or Enterprise)
 4. Complete payment through Stripe
 5. New plan activates immediately
 
@@ -213,9 +232,39 @@ When your monthly session budget runs out, you can purchase additional credits t
 - Or 2,500 non-AI sessions ($0.02 each)
 - Credits used only after monthly budget depleted
 
-### Auto Top-Up (Coming Soon)
+### Auto Top-Up
 
-Automatic credit purchase when budget runs low.
+Automatically purchase credits when your session budget runs low. Configure a threshold and top-up amount in your Subscription settings. When your remaining budget drops below the threshold, additional credits are purchased automatically using your saved payment method.
+
+## Voice Credits
+
+### What Are Voice Credits?
+
+Voice credits are a **separate purchase** from your subscription session budget. They are required for real-time voice calls (live AI conversations) and are **not included** in any subscription plan.
+
+- **1 voice credit = 1 voice call**
+- Each call has a hard time limit of **180 seconds** (3 minutes)
+- Voice credits do not expire
+
+### Purchasing Voice Credits
+
+1. Go to **Subscription** or **Credit Management**
+2. Click **Buy Voice Credits**
+3. Select the number of packages (each package contains 35 credits for $5)
+4. Credits are deducted from your session credit balance instantly
+
+### Voice Credits vs Session Credits
+
+| Aspect | Session Credits | Voice Credits |
+|--------|----------------|---------------|
+| **Included in plan** | Yes (monthly budget) | No (purchased separately) |
+| **Used for** | Visitor page access | Real-time voice calls |
+| **Cost** | Varies by plan/AI setting | $5 per 35 credits |
+| **Expiration** | Resets monthly (budget) / Never (overage) | Never |
+
+### Enabling Voice on Projects
+
+Creators must toggle **`realtime_voice_enabled`** on each project where they want to offer real-time voice conversations. Voice credits are consumed from the **project owner's** balance when a visitor starts a call.
 
 ## Usage Tracking
 
@@ -252,7 +301,7 @@ Get notified when:
 ### Upgrade Path
 
 ```
-Free → Starter → Premium
+Free → Starter → Premium → Enterprise
 ```
 
 **Upgrades:**
@@ -263,7 +312,7 @@ Free → Starter → Premium
 ### Downgrade Path
 
 ```
-Premium → Starter → Free
+Enterprise → Premium → Starter → Free
 ```
 
 **Downgrades:**
@@ -279,16 +328,17 @@ Check:
 - [ ] Translation languages within limit
 - [ ] Expected sessions within new budget
 
-## Enterprise & Custom Plans
+## Enterprise Plan
 
-For organizations needing:
-- More than 35 projects
-- Custom session volumes
-- Dedicated support
-- Custom integrations
-- SLA guarantees
+The Enterprise plan ($1,000/month) is designed for high-volume organizations needing:
+- Up to 100 projects
+- $1,000 monthly session budget (~50,000 AI or ~100,000 non-AI sessions)
+- Lowest session costs ($0.02 AI, $0.01 non-AI)
+- Unlimited translations
+- White-label branding
+- Custom domain (coming soon)
 
-**Contact:** Reach out through your dashboard for enterprise pricing.
+For organizations needing custom session volumes, dedicated support, custom integrations, or SLA guarantees beyond the Enterprise plan, contact us through your dashboard.
 
 ## FAQ
 

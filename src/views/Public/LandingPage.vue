@@ -876,7 +876,7 @@
         </div>
 
         <!-- Subscription Tiers -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-12 max-w-6xl mx-auto">
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-12 max-w-7xl mx-auto">
           <!-- Free Tier -->
           <div class="bg-gradient-to-br from-slate-500/10 to-slate-600/10 backdrop-blur-xl rounded-3xl border border-slate-400/30 overflow-hidden hover:border-slate-400/50 transition-all duration-300">
             <div class="bg-gradient-to-r from-slate-600/20 to-slate-700/20 p-6 border-b border-white/10">
@@ -978,6 +978,40 @@
                 class="w-full py-3 px-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 {{ $t('landing.pricing.premium_tier.cta') }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Enterprise Tier -->
+          <div class="bg-gradient-to-br from-violet-500/10 to-purple-500/10 backdrop-blur-xl rounded-3xl border border-violet-400/30 overflow-hidden hover:border-violet-400/50 transition-all duration-300">
+            <div class="bg-gradient-to-r from-violet-600/20 to-purple-600/20 p-6 border-b border-white/10">
+              <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <i class="pi pi-building text-white text-lg"></i>
+                </div>
+                <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.enterprise_tier.title') }}</h3>
+              </div>
+              <div class="flex items-baseline gap-1">
+                <span class="text-2xl font-bold text-white/90">US$</span>
+                <span class="text-5xl font-black text-white whitespace-nowrap">{{ $t('landing.pricing.enterprise_tier.price', pricingVars) }}</span>
+                <span class="text-xl text-violet-200 whitespace-nowrap ml-1">{{ $t('landing.pricing.enterprise_tier.per') }}</span>
+              </div>
+              <p class="text-violet-200 mt-2 text-sm">{{ $t('landing.pricing.enterprise_tier.desc') }}</p>
+            </div>
+            <div class="p-6">
+              <ul class="space-y-3 mb-6">
+                <li v-for="(feature, idx) in enterpriseTierFeatures" :key="idx" class="flex items-center gap-3 text-violet-100">
+                  <div class="w-5 h-5 bg-violet-500/20 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i class="pi pi-check text-violet-400 text-xs"></i>
+                  </div>
+                  <span class="text-sm">{{ feature }}</span>
+                </li>
+              </ul>
+              <button
+                @click="handleGetStarted"
+                class="w-full py-3 px-6 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+              >
+                {{ $t('landing.pricing.enterprise_tier.cta') }}
               </button>
             </div>
           </div>
@@ -1573,7 +1607,15 @@ const pricingVars = computed(() => ({
   starterAiSessions: Math.floor(SubscriptionConfig.starter.monthlyBudgetUsd / SubscriptionConfig.starter.aiEnabledSessionCostUsd),
   starterNonAiSessions: Math.floor(SubscriptionConfig.starter.monthlyBudgetUsd / SubscriptionConfig.starter.aiDisabledSessionCostUsd),
   starterMaxLanguages: SubscriptionConfig.starter.maxLanguages,
-  
+
+  // Enterprise
+  enterpriseFee: SubscriptionConfig.enterprise.monthlyFeeUsd,
+  enterpriseBudget: SubscriptionConfig.enterprise.monthlyBudgetUsd,
+  enterpriseAiCost: SubscriptionConfig.enterprise.aiEnabledSessionCostUsd,
+  enterpriseNonAiCost: SubscriptionConfig.enterprise.aiDisabledSessionCostUsd,
+  enterpriseAiSessions: Math.floor(SubscriptionConfig.enterprise.monthlyBudgetUsd / SubscriptionConfig.enterprise.aiEnabledSessionCostUsd),
+  enterpriseNonAiSessions: Math.floor(SubscriptionConfig.enterprise.monthlyBudgetUsd / SubscriptionConfig.enterprise.aiDisabledSessionCostUsd),
+
   // Overage
   topupCost: SubscriptionConfig.overage.creditsPerBatch,
   // Premium Overage
@@ -1582,7 +1624,10 @@ const pricingVars = computed(() => ({
   // Starter Overage
   starterAiTopupSessions: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.starter.aiEnabledSessionCostUsd),
   starterNonAiTopupSessions: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.starter.aiDisabledSessionCostUsd),
-  
+  // Enterprise Overage
+  enterpriseAiTopupSessions: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.enterprise.aiEnabledSessionCostUsd),
+  enterpriseNonAiTopupSessions: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.enterprise.aiDisabledSessionCostUsd),
+
   freeSessions: SubscriptionConfig.free.monthlySessionLimit,
 }))
 
@@ -1611,7 +1656,17 @@ const interpolateFeature = (feature) => {
     .replace(/\{starterAiTopupSessions\}/g, String(vars.starterAiTopupSessions))
     .replace(/\{starterNonAiTopupSessions\}/g, String(vars.starterNonAiTopupSessions))
     .replace(/\{starterMaxLanguages\}/g, String(vars.starterMaxLanguages))
-    
+
+    // Enterprise
+    .replace(/\{enterpriseFee\}/g, String(vars.enterpriseFee))
+    .replace(/\{enterpriseBudget\}/g, String(vars.enterpriseBudget))
+    .replace(/\{enterpriseAiCost\}/g, String(vars.enterpriseAiCost))
+    .replace(/\{enterpriseNonAiCost\}/g, String(vars.enterpriseNonAiCost))
+    .replace(/\{enterpriseAiSessions\}/g, String(vars.enterpriseAiSessions))
+    .replace(/\{enterpriseNonAiSessions\}/g, String(vars.enterpriseNonAiSessions))
+    .replace(/\{enterpriseAiTopupSessions\}/g, String(vars.enterpriseAiTopupSessions))
+    .replace(/\{enterpriseNonAiTopupSessions\}/g, String(vars.enterpriseNonAiTopupSessions))
+
     // Common
     .replace(/\{topupCost\}/g, String(vars.topupCost))
     .replace(/\{freeSessions\}/g, String(vars.freeSessions))
@@ -1629,6 +1684,11 @@ const starterTierFeatures = computed(() => {
 
 const premiumTierFeatures = computed(() => {
   const features = tm('landing.pricing.premium_tier.features')
+  return Array.isArray(features) ? features.map(interpolateFeature) : []
+})
+
+const enterpriseTierFeatures = computed(() => {
+  const features = tm('landing.pricing.enterprise_tier.features')
   return Array.isArray(features) ? features.map(interpolateFeature) : []
 })
 
@@ -1652,7 +1712,7 @@ const faqs = computed(() => [
   {
     question: t('landing.faq.q5'),
     answer: t('landing.faq.a5', {
-      freeExperiences: SubscriptionConfig.free.experienceLimit,
+      freeProjects: SubscriptionConfig.free.projectLimit,
       freeSessions: SubscriptionConfig.free.monthlySessionLimit,
       monthlyBudget: SubscriptionConfig.premium.monthlyBudgetUsd,
       aiSessions: SubscriptionConfig.calculated.defaultAiEnabledSessions,

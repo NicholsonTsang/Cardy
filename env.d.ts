@@ -47,15 +47,26 @@ interface ImportMetaEnv {
   readonly VITE_INFINITE_SCROLL_THRESHOLD: string
   
   // Subscription Business Parameters
-  readonly VITE_FREE_TIER_EXPERIENCE_LIMIT: string
-  readonly VITE_FREE_TIER_MONTHLY_ACCESS_LIMIT: string
-  readonly VITE_PREMIUM_EXPERIENCE_LIMIT: string
+  readonly VITE_FREE_TIER_PROJECT_LIMIT: string
+  readonly VITE_FREE_TIER_MONTHLY_SESSION_LIMIT: string
+  readonly VITE_STARTER_PROJECT_LIMIT: string
+  readonly VITE_STARTER_MONTHLY_FEE_USD: string
+  readonly VITE_STARTER_MONTHLY_BUDGET_USD: string
+  readonly VITE_STARTER_AI_ENABLED_SESSION_COST_USD: string
+  readonly VITE_STARTER_AI_DISABLED_SESSION_COST_USD: string
+  readonly VITE_PREMIUM_PROJECT_LIMIT: string
   readonly VITE_PREMIUM_MONTHLY_FEE_USD: string
-  readonly VITE_PREMIUM_MONTHLY_ACCESS_LIMIT: string
-  
-  // Overage Batch Pricing (Premium users only)
+  readonly VITE_PREMIUM_MONTHLY_BUDGET_USD: string
+  readonly VITE_PREMIUM_AI_ENABLED_SESSION_COST_USD: string
+  readonly VITE_PREMIUM_AI_DISABLED_SESSION_COST_USD: string
+  readonly VITE_ENTERPRISE_PROJECT_LIMIT: string
+  readonly VITE_ENTERPRISE_MONTHLY_FEE_USD: string
+  readonly VITE_ENTERPRISE_MONTHLY_BUDGET_USD: string
+  readonly VITE_ENTERPRISE_AI_ENABLED_SESSION_COST_USD: string
+  readonly VITE_ENTERPRISE_AI_DISABLED_SESSION_COST_USD: string
+
+  // Overage Batch Pricing (Paid users)
   readonly VITE_OVERAGE_CREDITS_PER_BATCH: string
-  readonly VITE_OVERAGE_ACCESS_PER_BATCH: string
 }
 
 interface ImportMeta {

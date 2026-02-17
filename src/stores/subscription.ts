@@ -21,25 +21,26 @@ export interface SubscriptionPricing {
 }
 
 export interface SubscriptionDetails {
-  tier: 'free' | 'starter' | 'premium';
+  tier: 'free' | 'starter' | 'premium' | 'enterprise';
   status: string;
   is_premium: boolean;
-  
+  is_enterprise: boolean;
+
   // Stripe info
   stripe_subscription_id: string | null;
   current_period_start: string | null;
   current_period_end: string | null;
   cancel_at_period_end: boolean;
-  scheduled_tier: 'free' | 'starter' | 'premium' | null;  // Tier to switch to after period ends (for downgrades)
+  scheduled_tier: 'free' | 'starter' | 'premium' | 'enterprise' | null;  // Tier to switch to after period ends (for downgrades)
   
   // Usage
   monthly_access_limit: number | null;
   monthly_access_used: number;
   monthly_access_remaining: number | null;
   
-  // Experience limits
-  experience_count: number;
-  experience_limit: number | null;
+  // Project limits
+  project_count: number;
+  project_limit: number | null;
   
   // Features
   features: SubscriptionFeatures;
@@ -51,9 +52,9 @@ export interface SubscriptionDetails {
 export interface UsageStats {
   tier: string;
   is_premium: boolean;
-  experience_count: number;
-  experience_limit: number | null;
-  can_create_experience: boolean;
+  project_count: number;
+  project_limit: number | null;
+  can_create_project: boolean;
   monthly_access_used: number;
   monthly_access_limit: number | null;
   monthly_access_remaining: number | null;
@@ -113,23 +114,25 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   
   // Computed
   const tier = computed(() => subscription.value?.tier ?? 'free');
-  const isPaid = computed(() => tier.value === 'starter' || tier.value === 'premium');
+  const isPaid = computed(() => tier.value === 'starter' || tier.value === 'premium' || tier.value === 'enterprise');
   const isStarter = computed(() => tier.value === 'starter');
   const isPremium = computed(() => tier.value === 'premium');
+  const isEnterprise = computed(() => tier.value === 'enterprise');
   
   const canTranslate = computed(() => subscription.value?.features?.translations_enabled ?? false);
-  const canCreateExperience = computed(() => {
+  const canCreateProject = computed(() => {
     if (!subscription.value) return true; // Allow by default if not loaded
-    const limit = subscription.value.experience_limit ?? 
-      (tier.value === 'premium' ? SubscriptionConfig.premium.experienceLimit : 
-       tier.value === 'starter' ? SubscriptionConfig.starter.experienceLimit : 
-       SubscriptionConfig.free.experienceLimit);
-    return (subscription.value.experience_count ?? 0) < limit;
+    const limit = subscription.value.project_limit ??
+      (tier.value === 'enterprise' ? SubscriptionConfig.enterprise.projectLimit :
+       tier.value === 'premium' ? SubscriptionConfig.premium.projectLimit :
+       tier.value === 'starter' ? SubscriptionConfig.starter.projectLimit :
+       SubscriptionConfig.free.projectLimit);
+    return (subscription.value.project_count ?? 0) < limit;
   });
-  
-  const experienceCount = computed(() => subscription.value?.experience_count ?? 0);
-  const experienceLimit = computed(() => 
-    subscription.value?.experience_limit ?? SubscriptionConfig.free.experienceLimit
+
+  const projectCount = computed(() => subscription.value?.project_count ?? 0);
+  const projectLimit = computed(() =>
+    subscription.value?.project_limit ?? SubscriptionConfig.free.projectLimit
   );
   const monthlyAccessUsed = computed(() => subscription.value?.monthly_access_used ?? 0);
   const monthlyAccessLimit = computed(() => {
@@ -137,6 +140,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       return subscription.value.monthly_access_limit;
     }
     // Default based on tier
+    if (tier.value === 'enterprise') return SubscriptionConfig.calculated.enterpriseDefaultAiEnabledSessions;
     if (tier.value === 'premium') return SubscriptionConfig.calculated.defaultAiEnabledSessions;
     if (tier.value === 'starter') return SubscriptionConfig.calculated.starterDefaultAiEnabledSessions;
     return SubscriptionConfig.free.monthlySessionLimit;
@@ -146,24 +150,29 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   const overageCreditsPerBatch = computed(() => SubscriptionConfig.overage.creditsPerBatch);
   // Sessions per overage batch (using AI-enabled cost as reference)
   const overageAccessPerBatch = computed(() => {
+    if (tier.value === 'enterprise') return Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.enterprise.aiEnabledSessionCostUsd);
     if (tier.value === 'starter') return Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.starter.aiEnabledSessionCostUsd);
     return SubscriptionConfig.calculated.aiEnabledSessionsPerBatch;
   });
   const monthlyFee = computed(() => {
+    if (tier.value === 'enterprise') return SubscriptionConfig.enterprise.monthlyFeeUsd;
     if (tier.value === 'starter') return SubscriptionConfig.starter.monthlyFeeUsd;
     return SubscriptionConfig.premium.monthlyFeeUsd;
   });
   
   // New budget-based computed values
   const monthlyBudgetUsd = computed(() => {
+    if (tier.value === 'enterprise') return SubscriptionConfig.enterprise.monthlyBudgetUsd;
     if (tier.value === 'starter') return SubscriptionConfig.starter.monthlyBudgetUsd;
     return SubscriptionConfig.premium.monthlyBudgetUsd;
   });
   const aiEnabledSessionCost = computed(() => {
+    if (tier.value === 'enterprise') return SubscriptionConfig.enterprise.aiEnabledSessionCostUsd;
     if (tier.value === 'starter') return SubscriptionConfig.starter.aiEnabledSessionCostUsd;
     return SubscriptionConfig.premium.aiEnabledSessionCostUsd;
   });
   const aiDisabledSessionCost = computed(() => {
+    if (tier.value === 'enterprise') return SubscriptionConfig.enterprise.aiDisabledSessionCostUsd;
     if (tier.value === 'starter') return SubscriptionConfig.starter.aiDisabledSessionCostUsd;
     return SubscriptionConfig.premium.aiDisabledSessionCostUsd;
   });
@@ -262,7 +271,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     }
   }
   
-  async function createCheckout(tier: 'starter' | 'premium' = 'premium'): Promise<{ url: string } | null> {
+  async function createCheckout(tier: 'starter' | 'premium' | 'enterprise' = 'premium'): Promise<{ url: string } | null> {
     if (!authStore.session?.access_token) return null;
 
     actionLoading.value = true;
@@ -447,12 +456,13 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     isPaid,
     isStarter,
     isPremium,
+    isEnterprise,
     tier,
     canTranslate,
-    canCreateExperience,
+    canCreateProject,
     canBuyOverage,
-    experienceCount,
-    experienceLimit,
+    projectCount,
+    projectLimit,
     monthlyAccessUsed,
     monthlyAccessLimit,
     monthlyAccessRemaining,

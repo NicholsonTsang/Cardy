@@ -104,8 +104,8 @@ DECLARE
     v_tier "SubscriptionTier";
 BEGIN
     -- Validate and cast tier
-    IF p_tier NOT IN ('starter', 'premium') THEN
-        RAISE EXCEPTION 'Invalid tier. Must be: starter or premium.';
+    IF p_tier NOT IN ('starter', 'premium', 'enterprise') THEN
+        RAISE EXCEPTION 'Invalid tier. Must be: starter, premium, or enterprise.';
     END IF;
     v_tier := p_tier::"SubscriptionTier";
     
@@ -186,7 +186,7 @@ BEGIN
     END IF;
     
     -- Parse scheduled tier (default to 'free' if not specified)
-    IF p_scheduled_tier IS NOT NULL AND p_scheduled_tier IN ('free', 'starter', 'premium') THEN
+    IF p_scheduled_tier IS NOT NULL AND p_scheduled_tier IN ('free', 'starter', 'premium', 'enterprise') THEN
         v_scheduled := p_scheduled_tier::"SubscriptionTier";
     ELSE
         v_scheduled := 'free'::"SubscriptionTier";

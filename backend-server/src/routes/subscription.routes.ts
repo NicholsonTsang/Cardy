@@ -26,9 +26,9 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
     // Pass business parameters from config to stored procedure (session-based model)
     const { data, error } = await supabaseAdmin.rpc('get_subscription_details', {
       p_user_id: userId,
-      p_free_experience_limit: SubscriptionConfig.free.experienceLimit,
-      p_starter_experience_limit: SubscriptionConfig.starter.experienceLimit,
-      p_premium_experience_limit: SubscriptionConfig.premium.experienceLimit,
+      p_free_project_limit: SubscriptionConfig.free.projectLimit,
+      p_starter_project_limit: SubscriptionConfig.starter.projectLimit,
+      p_premium_project_limit: SubscriptionConfig.premium.projectLimit,
       p_free_monthly_sessions: SubscriptionConfig.free.monthlySessionLimit,
       p_starter_monthly_budget: SubscriptionConfig.starter.monthlyBudgetUsd,
       p_premium_monthly_budget: SubscriptionConfig.premium.monthlyBudgetUsd,
@@ -36,6 +36,10 @@ router.get('/', authenticateUser, async (req: Request, res: Response) => {
       p_starter_non_ai_session_cost: SubscriptionConfig.starter.aiDisabledSessionCostUsd,
       p_premium_ai_session_cost: SubscriptionConfig.premium.aiEnabledSessionCostUsd,
       p_premium_non_ai_session_cost: SubscriptionConfig.premium.aiDisabledSessionCostUsd,
+      p_enterprise_project_limit: SubscriptionConfig.enterprise.projectLimit,
+      p_enterprise_monthly_budget: SubscriptionConfig.enterprise.monthlyBudgetUsd,
+      p_enterprise_ai_session_cost: SubscriptionConfig.enterprise.aiEnabledSessionCostUsd,
+      p_enterprise_non_ai_session_cost: SubscriptionConfig.enterprise.aiDisabledSessionCostUsd,
       p_overage_credits_per_batch: SubscriptionConfig.overage.creditsPerBatch
     });
 
@@ -82,21 +86,24 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
       });
     }
 
-    if (!['starter', 'premium'].includes(tier)) {
+    if (!['starter', 'premium', 'enterprise'].includes(tier)) {
       return res.status(400).json({
         error: 'Validation error',
         message: 'Invalid tier selected'
       });
     }
 
+    const tierNames: Record<string, string> = { starter: 'Starter', premium: 'Premium', enterprise: 'Enterprise' };
     const stripePriceId = tier === 'starter'
       ? process.env.STRIPE_STARTER_PRICE_ID
-      : process.env.STRIPE_PREMIUM_PRICE_ID;
+      : tier === 'enterprise'
+        ? process.env.STRIPE_ENTERPRISE_PRICE_ID
+        : process.env.STRIPE_PREMIUM_PRICE_ID;
 
     if (!stripePriceId) {
       return res.status(500).json({
         error: 'Configuration error',
-        message: `${tier === 'starter' ? 'Starter' : 'Premium'} subscription price ID not configured`
+        message: `${tierNames[tier]} subscription price ID not configured`
       });
     }
 
@@ -112,12 +119,12 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
     if (currentSub?.tier === tier && currentSub?.status === 'active' && !currentSub?.cancel_at_period_end) {
       return res.status(400).json({
         error: 'Already subscribed',
-        message: `You already have an active ${tier === 'starter' ? 'Starter' : 'Premium'} subscription`
+        message: `You already have an active ${tierNames[tier]} subscription`
       });
     }
 
     // Determine if this is an upgrade or downgrade
-    const tierOrder = { free: 0, starter: 1, premium: 2 };
+    const tierOrder = { free: 0, starter: 1, premium: 2, enterprise: 3 };
     const currentTierLevel = tierOrder[currentSub?.tier as keyof typeof tierOrder] || 0;
     const newTierLevel = tierOrder[tier as keyof typeof tierOrder];
     const isUpgrade = newTierLevel > currentTierLevel;
@@ -278,10 +285,10 @@ router.post('/cancel', authenticateUser, async (req: Request, res: Response) => 
       });
     }
 
-    if (!['starter', 'premium'].includes(subscription.tier)) {
+    if (!['starter', 'premium', 'enterprise'].includes(subscription.tier)) {
       return res.status(400).json({
         error: 'Invalid request',
-        message: 'Only paid subscriptions (Starter or Premium) can be canceled'
+        message: 'Only paid subscriptions can be canceled'
       });
     }
 
@@ -475,9 +482,9 @@ router.get('/usage', authenticateUser, async (req: Request, res: Response) => {
     );
     const subscription = subscriptionRows?.[0];
 
-    // Count experiences
-    const { data: experienceCount } = await supabaseAdmin.rpc(
-      'count_user_experiences_server',
+    // Count projects
+    const { data: projectCount } = await supabaseAdmin.rpc(
+      'count_user_projects_server',
       { p_user_id: userId }
     );
 
@@ -487,19 +494,19 @@ router.get('/usage', authenticateUser, async (req: Request, res: Response) => {
       { p_user_id: userId, p_limit: 10 }
     );
 
-    const tier = usageStats.tier as 'free' | 'starter' | 'premium';
-    const isPaid = tier === 'starter' || tier === 'premium';
-    const isPremium = tier === 'premium';
+    const tier = usageStats.tier as 'free' | 'starter' | 'premium' | 'enterprise';
+    const isPaid = tier === 'starter' || tier === 'premium' || tier === 'enterprise';
+    const isPremium = tier === 'premium' || tier === 'enterprise';
     const tierDetails = getTierDetails(tier);
 
     return res.json({
       tier,
       is_premium: isPremium,
       
-      // Experience limits
-      experience_count: experienceCount || 0,
-      experience_limit: tierDetails.experienceLimit,
-      can_create_experience: isPremium || (experienceCount || 0) < (tierDetails.experienceLimit || Infinity),
+      // Project limits
+      project_count: projectCount || 0,
+      project_limit: tierDetails.projectLimit,
+      can_create_project: isPremium || (projectCount || 0) < (tierDetails.projectLimit || Infinity),
       
       // Access usage from Redis (source of truth)
       monthly_access_used: usageStats.budgetConsumed,

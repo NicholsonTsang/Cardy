@@ -5,10 +5,10 @@
             <div v-if="!multiSelectMode" class="flex items-center gap-2">
                 <i class="pi pi-id-card text-sm text-slate-500"></i>
                 <span class="text-sm font-medium text-slate-700 truncate">{{ $t('dashboard.my_cards') }}</span>
-                <span v-if="experienceLimit > 0"
+                <span v-if="projectLimit > 0"
                     class="text-xs whitespace-nowrap"
-                    :class="experienceCount >= experienceLimit ? 'text-amber-600' : 'text-slate-400'"
-                >{{ experienceCount }}/{{ experienceLimit }}</span>
+                    :class="projectCount >= projectLimit ? 'text-amber-600' : 'text-slate-400'"
+                >{{ projectCount }}/{{ projectLimit }}</span>
                 <div class="flex-1"></div>
                 <button
                     type="button"
@@ -313,11 +313,11 @@ const props = defineProps({
         type: Boolean,
         default: false
     },
-    experienceCount: {
+    projectCount: {
         type: Number,
         default: 0
     },
-    experienceLimit: {
+    projectLimit: {
         type: Number,
         default: 0
     }

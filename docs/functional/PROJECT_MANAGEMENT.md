@@ -91,7 +91,7 @@ Enable **Grouped Content** to organize items into categories:
 | **Basic Info** | Name, description, cover image |
 | **Content** | Add, edit, reorder, delete items |
 | **Display** | Mode, grouping, layout options |
-| **AI Assistant** | Enable/disable, instructions, knowledge |
+| **AI Assistant** | Enable/disable, instructions, knowledge, real-time voice toggle |
 | **QR Codes** | Generate, manage multiple codes |
 | **Translations** | Add languages, manage translations |
 
@@ -202,6 +202,7 @@ Checklist:
 - [ ] Images display correctly
 - [ ] Links work properly
 - [ ] AI assistant tested (if enabled)
+- [ ] Real-time voice toggle set (`realtime_voice_enabled`) if offering voice calls
 - [ ] Translations verified (if applicable)
 - [ ] QR code scanned and tested
 

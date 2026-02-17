@@ -73,6 +73,9 @@ GRANT EXECUTE ON FUNCTION my_server_function(UUID, UUID, ...) TO service_role;
 ### Subscriptions
 - `subscription_management.sql` - Subscription management operations
 
+### Voice
+- `voice_credit_operations.sql` - Voice credit balance, deduction, and purchase operations
+
 ### Translations
 - `translation_credit_consumption.sql` - Translation credit consumption
 - `translation_operations.sql` - Translation operations
@@ -294,9 +297,6 @@ const { data, error } = await supabase.rpc('function_name', {
 ## 📚 See Also
 
 - `../client-side/README.md` - Client-side pattern guide
-- `/FOLDER_STRUCTURE_DECISION.md` - Why separate folders?
-- `/CLIENT_VS_SERVER_SIDE_EXPLAINED.md` - Pattern comparison
-- `/SERVER_SIDE_SECURITY_GUIDE.md` - Security deep dive
 - `/CLAUDE.md` - Project documentation
 
 ---

@@ -1632,6 +1632,23 @@
         ],
         "cta": "Upgrade to Premium"
       },
+      "enterprise_tier": {
+        "title": "Enterprise",
+        "price": "{enterpriseFee}",
+        "per": "per month",
+        "desc": "For high-volume operations with custom domain",
+        "features": [
+          "Up to 100 projects",
+          "US${enterpriseBudget} monthly credit included",
+          "AI sessions: US${enterpriseAiCost}/session",
+          "Standard sessions: US${enterpriseNonAiCost}/session",
+          "Auto-refill: US${topupCost} adds {enterpriseAiTopupSessions} AI or {enterpriseNonAiTopupSessions} Standard sessions",
+          "Unlimited translation languages",
+          "White label (No branding)",
+          "Custom domain (Coming soon)"
+        ],
+        "cta": "Contact Sales"
+      },
       "session_info": {
         "title": "How Session Billing Works",
         "ai_enabled": "AI-Enabled Projects",
@@ -1670,7 +1687,7 @@
       "q4": "What languages are supported?",
       "a4": "Content and AI conversations are available in 10+ languages: English, Mandarin, Cantonese, Japanese, Korean, Thai, Arabic, Spanish, French, Russian, and more.",
       "q5": "What's included in the price?",
-      "a5": "Three tiers: Free ({freeExperiences} projects, {freeSessions} sessions), Starter ({starterBudget}/month, {starterAiSessions} AI sessions, max 2 languages), Premium ({monthlyBudget}/month, {aiSessions} AI sessions, unlimited languages, white label). Paid plans include auto top-up when budget runs out. All plans include AI voice, dashboard, QR codes, and hosting.",
+      "a5": "Three tiers: Free ({freeProjects} projects, {freeSessions} sessions), Starter ({starterBudget}/month, {starterAiSessions} AI sessions, max 2 languages), Premium ({monthlyBudget}/month, {aiSessions} AI sessions, unlimited languages, white label). Paid plans include auto top-up when budget runs out. All plans include AI voice, dashboard, QR codes, and hosting.",
       "q6": "How quickly can we get started?",
       "a6": "Projects can launch within minutes. Connect an AI tool like Claude Code, import your document, and AI builds your entire project automatically — content, categories, AI assistant, and QR codes.",
       "q7": "Can we customize the content and AI?",
@@ -1799,9 +1816,11 @@
     "free_plan": "Free Plan",
     "starter_plan": "Starter Plan",
     "premium_plan": "Premium Plan",
+    "enterprise_plan": "Enterprise Plan",
     "current_plan": "Current Plan",
     "upgrade": "Upgrade to Premium",
     "upgrade_to_premium": "Upgrade to Premium",
+    "upgrade_to_enterprise": "Upgrade to Enterprise",
     "best_value": "Best Value",
     "cancel": "Cancel Subscription",
     "reactivate": "Reactivate Subscription",
@@ -1822,14 +1841,14 @@
     "voice_package_info": "Each package: {size} voice calls for ${price}",
     "voice_insufficient_balance": "Insufficient credit balance. Please purchase more credits first.",
     "features": {
-      "unlimited_experiences": "Up to {limit} projects",
+      "unlimited_projects": "Up to {limit} projects",
       "translations": "Multi-language translations",
       "unlimited_translations": "Unlimited languages",
       "monthly_access": "${monthlyBudget} monthly session budget",
       "overage": "${cost} top-up = ~{sessions} sessions",
       "overage_available": "Top-up available when budget runs out",
-      "experience_limit": "Up to {limit} projects",
-      "starter_experiences": "Up to {limit} projects",
+      "project_limit": "Up to {limit} projects",
+      "starter_projects": "Up to {limit} projects",
       "starter_translations": "Max {count} languages",
       "monthly_pool": "{count} monthly sessions",
       "no_translations": "No translations",
@@ -1918,6 +1937,7 @@
       "downgrading": "Switching to {tier}",
       "starter_active": "Starter Active",
       "premium_active": "Premium Active",
+      "enterprise_active": "Enterprise Active",
       "loading_details": "Loading subscription details..."
     },
     "upgrade_cta": {

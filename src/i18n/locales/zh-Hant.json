@@ -1598,6 +1598,23 @@
         ],
         "cta": "升級至專業版"
       },
+      "enterprise_tier": {
+        "title": "企業版",
+        "price": "{enterpriseFee}",
+        "per": "每月",
+        "desc": "適合大量營運，支援自訂網域",
+        "features": [
+          "最多 100 個項目",
+          "每月 US${enterpriseBudget} 會話額度",
+          "AI 會話：US${enterpriseAiCost}/次",
+          "一般會話：US${enterpriseNonAiCost}/次",
+          "自動加值：US${topupCost} 增加 {enterpriseAiTopupSessions} 次 AI 或 {enterpriseNonAiTopupSessions} 次一般會話",
+          "無限翻譯語言",
+          "白標服務（無品牌標示）",
+          "自訂網域（即將推出）"
+        ],
+        "cta": "聯繫業務"
+      },
       "included_title": "所有方案皆包含",
       "features": {
         "ai_voice": "AI 語音對話",
@@ -1624,7 +1641,7 @@
       "q4": "有哪些語言？",
       "a4": "內容和 AI 對話支援 10+ 種語言：英文、國語、粵語、日文、韓文、泰文、阿拉伯文、西班牙文、法文、俄文等。",
       "q5": "費用包含什麼？",
-      "a5": "免費版可建立 {freeExperiences} 個項目、每月 {freeSessions} 次會話。入門版（${starterFee}/月）含 {starterBudget} 會話預算：{starterAiSessions} 次 AI 或 {starterNonAiSessions} 次非 AI 會話。專業版（${premiumFee}/月）含 {monthlyBudget} 會話預算：{aiSessions} 次 AI 或 {nonAiSessions} 次非 AI 會話。預算用盡時自動加值 ${topupCost} 獲得額外會話。所有方案皆含 AI 語音、內容管理、QR 碼、數據分析和雲端託管。",
+      "a5": "免費版可建立 {freeProjects} 個項目、每月 {freeSessions} 次會話。入門版（${starterFee}/月）含 {starterBudget} 會話預算：{starterAiSessions} 次 AI 或 {starterNonAiSessions} 次非 AI 會話。專業版（${premiumFee}/月）含 {monthlyBudget} 會話預算：{aiSessions} 次 AI 或 {nonAiSessions} 次非 AI 會話。預算用盡時自動加值 ${topupCost} 獲得額外會話。所有方案皆含 AI 語音、內容管理、QR 碼、數據分析和雲端託管。",
       "q6": "多久能開始用？",
       "a6": "幾分鐘內即可上線。連接 Claude Code 等 AI 工具，匯入文件，AI 自動建立整個專案 — 內容、分類、AI 助理和 QR 碼全部搞定。",
       "q7": "能客製化嗎？",
@@ -1753,9 +1770,11 @@
     "free_plan": "免費方案",
     "starter_plan": "入門方案",
     "premium_plan": "專業方案",
+    "enterprise_plan": "企業方案",
     "current_plan": "目前方案",
     "upgrade": "升級至專業版",
     "upgrade_to_premium": "升級至專業版",
+    "upgrade_to_enterprise": "升級至企業版",
     "best_value": "最超值",
     "cancel": "取消訂閱",
     "reactivate": "重新啟用訂閱",
@@ -1776,14 +1795,14 @@
     "voice_package_info": "每份套餐：{size} 次語音通話，${price}",
     "voice_insufficient_balance": "點數餘額不足，請先購買更多點數。",
     "features": {
-      "unlimited_experiences": "最多 {limit} 個項目",
+      "unlimited_projects": "最多 {limit} 個項目",
       "translations": "多語言翻譯",
       "unlimited_translations": "無限語言翻譯",
       "monthly_access": "每月 ${monthlyBudget} 會話預算",
       "overage": "${cost} 加值 = 約 {sessions} 次會話",
       "overage_available": "預算用完時可加值",
-      "experience_limit": "最多 {limit} 個項目",
-      "starter_experiences": "最多 {limit} 個項目",
+      "project_limit": "最多 {limit} 個項目",
+      "starter_projects": "最多 {limit} 個項目",
       "starter_translations": "最多 {count} 種語言",
       "no_overage": "無法加值擴充",
       "monthly_pool": "{count} 次每月會話",
@@ -1872,6 +1891,7 @@
       "downgrading": "將切換至 {tier}",
       "starter_active": "入門版使用中",
       "premium_active": "專業版啟用中",
+      "enterprise_active": "企業版啟用中",
       "loading_details": "正在載入訂閱詳情..."
     },
     "upgrade_cta": {

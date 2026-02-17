@@ -4,7 +4,7 @@ This document lists all backend API endpoints.
 
 ## Base URL
 
-- **Local**: `http://localhost:3001`
+- **Local**: `http://localhost:8080`
 - **Production**: Configured via `VITE_BACKEND_URL`
 
 ## Authentication
@@ -166,7 +166,7 @@ Create checkout for additional session credits.
 
 ### POST /api/ai/chat/stream
 
-Stream AI chat response (SSE).
+Stream AI chat response (SSE). Uses Google Gemini (gemini-2.5-flash-lite) as the backend model.
 
 **Auth**: Required
 
@@ -209,22 +209,102 @@ Generate text-to-speech audio.
 
 ### POST /api/ai/realtime-token
 
-Get ephemeral token for OpenAI realtime API.
+Get ephemeral token for OpenAI realtime API. Requires voice credits and `realtime_voice_enabled` on the card.
 
 **Auth**: Required
 
 **Body**:
 ```json
 {
-  "cardId": "uuid"
+  "cardId": "uuid",
+  "sessionConfig": {
+    "voice": "alloy"
+  }
+}
+```
+
+**Response** (200):
+```json
+{
+  "success": true,
+  "client_secret": "eph_abc123...",
+  "expires_at": 1704067200,
+  "hardLimitSeconds": 180,
+  "remainingCredits": 5,
+  "sessionId": "session-uuid"
+}
+```
+
+**Error Responses**:
+- `402`: Insufficient voice credits
+- `403`: Voice not enabled on this card (`realtime_voice_enabled` is false)
+
+### POST /api/ai/realtime-end
+
+Record the end of a real-time voice call for billing and logging.
+
+**Auth**: Required
+
+**Body**:
+```json
+{
+  "sessionId": "session-uuid",
+  "cardId": "uuid",
+  "durationSeconds": 120
 }
 ```
 
 **Response**:
 ```json
 {
-  "token": "ephemeral-token",
-  "expiresAt": "2024-01-15T10:35:00Z"
+  "success": true
+}
+```
+
+---
+
+## Voice Credits
+
+### GET /api/subscriptions/voice-credits
+
+Get current user's voice credit balance.
+
+**Auth**: Required
+
+**Response**:
+```json
+{
+  "balance": 10,
+  "transactions": [
+    {
+      "id": "uuid",
+      "amount": 5,
+      "type": "purchase",
+      "created_at": "2024-01-15T10:30:00Z"
+    }
+  ]
+}
+```
+
+### POST /api/payments/purchase-voice-credits
+
+Create Stripe checkout session for voice credit purchase.
+
+**Auth**: Required
+
+**Body**:
+```json
+{
+  "quantity": 5,
+  "successUrl": "https://...",
+  "cancelUrl": "https://..."
+}
+```
+
+**Response**:
+```json
+{
+  "checkoutUrl": "https://checkout.stripe.com/..."
 }
 ```
 

@@ -255,10 +255,10 @@ async function handleImport() {
     // Check subscription limit before importing
     await subscriptionStore.fetchSubscription()
     
-    if (!subscriptionStore.canCreateExperience) {
+    if (!subscriptionStore.canCreateProject) {
       errorMessage.value = t('subscription.upgrade_to_create_more', {
-        limit: subscriptionStore.experienceLimit,
-        current: subscriptionStore.experienceCount
+        limit: subscriptionStore.projectLimit,
+        current: subscriptionStore.projectCount
       })
       isImporting.value = false
       return

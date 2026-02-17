@@ -405,9 +405,10 @@ COMMENT ON COLUMN content_templates.card_id IS 'Reference to the actual card rec
 -- =================================================================
 DROP TYPE IF EXISTS public."SubscriptionTier" CASCADE;
 CREATE TYPE public."SubscriptionTier" AS ENUM (
-    'free',      -- Free tier: limited experiences, monthly session pool, no translations
-    'starter',   -- Starter: $40/month, more experiences, session budget, max 2 languages, FunTell branding
-    'premium'    -- Premium: $280/month, most experiences, larger budget, unlimited languages, white-label
+    'free',        -- Free tier: limited projects, monthly session pool, no translations
+    'starter',     -- Starter: $40/month, more projects, session budget, max 2 languages, FunTell branding
+    'premium',     -- Premium: $280/month, more projects, larger budget, unlimited languages, white-label
+    'enterprise'   -- Enterprise: $1000/month, 100 projects, lowest session rates, white-label, custom domain
 );
 
 DROP TYPE IF EXISTS public.subscription_status CASCADE;

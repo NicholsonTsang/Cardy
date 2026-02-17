@@ -17,7 +17,8 @@ backend-server/
 │   │   └── webhook.routes.ts# Stripe webhooks
 │   ├── services/            # Business logic
 │   ├── config/              # Configuration
-│   │   └── redis.ts         # Redis client setup
+│   │   ├── redis.ts         # Redis client setup
+│   │   └── stripe.ts        # Stripe client and shared config
 │   └── types/               # TypeScript types
 ├── ENVIRONMENT_VARIABLES.md # Environment documentation
 └── REALTIME_JOB_PROCESSOR.md # Job processor docs
@@ -27,10 +28,10 @@ backend-server/
 
 | Module | Path | Purpose |
 |--------|------|---------|
-| `ai.routes.ts` | `/api/ai/*` | Chat streaming, TTS, realtime tokens |
+| `ai.routes.ts` | `/api/ai/*` | Chat streaming (Gemini), TTS, realtime tokens, voice call end |
 | `mobile.routes.ts` | `/api/mobile/*` | Card data for mobile client |
-| `payment.routes.ts` | `/api/payments/*` | Credit purchases |
-| `subscription.routes.ts` | `/api/subscriptions/*` | Subscription management |
+| `payment.routes.ts` | `/api/payments/*` | Session credit and voice credit purchases |
+| `subscription.routes.ts` | `/api/subscriptions/*` | Subscription management, voice credit balance |
 | `translation.routes.direct.ts` | `/api/translations/*` | Content translation |
 | `webhook.routes.ts` | `/api/webhooks/*` | Stripe webhook handling |
 
@@ -114,20 +115,26 @@ if (isNew) {
 
 ## External Services
 
-### OpenAI Integration
+### Google Gemini Integration (Chat)
+
+```typescript
+// src/services/gemini-client.ts
+import { GoogleGenerativeAI } from '@google/generative-ai'
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
+
+// Chat streaming
+const stream = await geminiClient.streamChat(messages)
+```
+
+### OpenAI Integration (TTS & Realtime Voice)
 
 ```typescript
 import OpenAI from 'openai'
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY
-})
-
-// Chat streaming
-const stream = await openai.chat.completions.create({
-  model: 'gpt-4o',
-  messages: [...],
-  stream: true
 })
 
 // Text-to-speech
@@ -156,12 +163,9 @@ const session = await stripe.checkout.sessions.create({
 
 ### Google Gemini (Translations)
 
+Translations also use Gemini (same client as chat):
+
 ```typescript
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY)
-const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' })
-
 const result = await model.generateContent(translationPrompt)
 ```
 
@@ -212,15 +216,11 @@ app.post('/api/ai/chat/stream', async (req, res) => {
   res.setHeader('Cache-Control', 'no-cache')
   res.setHeader('Connection', 'keep-alive')
 
-  const stream = await openai.chat.completions.create({
-    model: 'gpt-4o',
-    messages: req.body.messages,
-    stream: true
-  })
+  // Uses Google Gemini via gemini-client.ts
+  const stream = await geminiClient.streamChat(req.body.messages)
 
   for await (const chunk of stream) {
-    const content = chunk.choices[0]?.delta?.content || ''
-    res.write(`data: ${JSON.stringify({ content })}\n\n`)
+    res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`)
   }
 
   res.write('data: [DONE]\n\n')
@@ -284,7 +284,7 @@ Key variables:
 
 ```env
 # Server
-PORT=3001
+PORT=8080
 
 # Supabase
 SUPABASE_URL=
@@ -313,16 +313,16 @@ Use curl or Postman:
 
 ```bash
 # Health check
-curl http://localhost:3001/health
+curl http://localhost:8080/health
 
 # Authenticated request
 curl -H "Authorization: Bearer $TOKEN" \
-  http://localhost:3001/api/subscriptions
+  http://localhost:8080/api/subscriptions
 ```
 
 ### Webhook Testing (Stripe)
 
 ```bash
 # Forward Stripe webhooks locally
-stripe listen --forward-to localhost:3001/api/webhooks/stripe
+stripe listen --forward-to localhost:8080/api/webhooks/stripe
 ```

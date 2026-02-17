@@ -126,6 +126,7 @@ async function reloadChart() {
 const isPaid = computed(() => subscriptionStore.isPaid);
 const isStarter = computed(() => subscriptionStore.isStarter);
 const isPremium = computed(() => subscriptionStore.isPremium);
+const isEnterprise = computed(() => subscriptionStore.isEnterprise);
 const subscription = computed(() => subscriptionStore.subscription);
 const loading = computed(() => subscriptionStore.loading || creditStore.loading);
 const actionLoading = computed(() => subscriptionStore.actionLoading);
@@ -138,7 +139,7 @@ const pricingVars = computed(() => ({
   nonAiCost: config.value.premium.aiDisabledSessionCostUsd,
   aiSessions: config.value.calculated.defaultAiEnabledSessions,
   nonAiSessions: config.value.calculated.defaultAiDisabledSessions,
-  experienceLimit: config.value.premium.experienceLimit,
+  projectLimit: config.value.premium.projectLimit,
   monthlyFee: config.value.premium.monthlyFeeUsd,
 }));
 
@@ -149,7 +150,7 @@ const starterPricingVars = computed(() => ({
   nonAiCost: config.value.starter.aiDisabledSessionCostUsd,
   aiSessions: config.value.calculated.starterDefaultAiEnabledSessions,
   nonAiSessions: config.value.calculated.starterDefaultAiDisabledSessions,
-  experienceLimit: config.value.starter.experienceLimit,
+  projectLimit: config.value.starter.projectLimit,
   monthlyFee: config.value.starter.monthlyFeeUsd,
 }));
 
@@ -163,6 +164,7 @@ const sessionRateSavings = computed(() => {
 
 // Budget spend tracking for paid users
 const currentBudget = computed(() => {
+  if (isEnterprise.value) return config.value.enterprise.monthlyBudgetUsd;
   if (isStarter.value) return config.value.starter.monthlyBudgetUsd;
   if (isPremium.value) return config.value.premium.monthlyBudgetUsd;
   return 0;
@@ -189,9 +191,9 @@ function buyCredits() {
   router.push('/cms/credits');
 }
 
-const experienceUsagePercent = computed(() => {
-  const used = subscriptionStore.experienceCount;
-  const limit = subscriptionStore.experienceLimit;
+const projectUsagePercent = computed(() => {
+  const used = subscriptionStore.projectCount;
+  const limit = subscriptionStore.projectLimit;
   if (!limit) return 0;
   return Math.min(100, Math.round((used / limit) * 100));
 });
@@ -223,7 +225,7 @@ function formatChartDate(dateStr: string) {
 }
 
 // Actions
-async function upgradeToPremium(tier: 'starter' | 'premium' = 'premium') {
+async function upgradeToPremium(tier: 'starter' | 'premium' | 'enterprise' = 'premium') {
   // If called without arguments from template (event object), default to premium
   if (typeof tier !== 'string') tier = 'premium';
   
@@ -349,7 +351,7 @@ async function openPortal() {
       <div v-if="isPaid" class="flex gap-2 flex-wrap">
         <Tag v-if="subscriptionStore.isDowngrading" severity="info" :value="$t('subscription.status.downgrading', { tier: subscriptionStore.scheduledTier })" icon="pi pi-arrow-down" rounded />
         <Tag v-else-if="subscriptionStore.isCancelingToFree" severity="warning" :value="$t('subscription.status.cancellation_scheduled')" icon="pi pi-exclamation-circle" rounded />
-        <Tag v-else severity="success" :value="isStarter ? $t('subscription.status.starter_active') : $t('subscription.status.premium_active')" icon="pi pi-check-circle" rounded />
+        <Tag v-else severity="success" :value="subscriptionStore.isEnterprise ? $t('subscription.status.enterprise_active') : isStarter ? $t('subscription.status.starter_active') : $t('subscription.status.premium_active')" icon="pi pi-check-circle" rounded />
       </div>
     </div>
     
@@ -370,9 +372,9 @@ async function openPortal() {
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
             <div class="flex justify-between items-center mb-3">
               <span class="text-slate-600 font-medium">{{ $t('subscription.usage.experiences') }}</span>
-              <span class="text-slate-800 font-bold">{{ subscriptionStore.experienceCount }} / {{ subscriptionStore.experienceLimit }}</span>
+              <span class="text-slate-800 font-bold">{{ subscriptionStore.projectCount }} / {{ subscriptionStore.projectLimit }}</span>
             </div>
-            <ProgressBar :value="experienceUsagePercent" :showValue="false" class="h-2" :class="experienceUsagePercent >= 100 ? 'progress-danger' : ''" />
+            <ProgressBar :value="projectUsagePercent" :showValue="false" class="h-2" :class="projectUsagePercent >= 100 ? 'progress-danger' : ''" />
           </div>
           <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
             <div class="flex justify-between items-center mb-3">
@@ -401,7 +403,7 @@ async function openPortal() {
             <ul class="space-y-4 text-sm flex-1">
               <li class="flex items-center gap-3">
                 <i class="pi pi-check text-slate-600"></i>
-                <span class="text-slate-700">{{ $t('subscription.features.experience_limit', { limit: config.free.experienceLimit }) }}</span>
+                <span class="text-slate-700">{{ $t('subscription.features.project_limit', { limit: config.free.projectLimit }) }}</span>
               </li>
               <li class="flex items-center gap-3">
                 <i class="pi pi-check text-slate-600"></i>
@@ -438,7 +440,7 @@ async function openPortal() {
             <ul class="space-y-3 text-sm mb-8 flex-1">
               <li class="flex items-center gap-3">
                 <div class="bg-emerald-100 p-1 rounded-full"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
-                <span class="text-slate-700">{{ $t('subscription.features.starter_experiences', { limit: config.starter.experienceLimit }) }}</span>
+                <span class="text-slate-700">{{ $t('subscription.features.starter_projects', { limit: config.starter.projectLimit }) }}</span>
               </li>
               <li class="flex items-start gap-3">
                 <div class="bg-emerald-100 p-1 rounded-full mt-0.5"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
@@ -491,7 +493,7 @@ async function openPortal() {
             <ul class="space-y-3 text-sm mb-8 flex-1">
               <li class="flex items-center gap-3">
                 <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
-                <span class="text-slate-100">{{ $t('subscription.features.unlimited_experiences', { limit: config.premium.experienceLimit }) }}</span>
+                <span class="text-slate-100">{{ $t('subscription.features.unlimited_projects', { limit: config.premium.projectLimit }) }}</span>
               </li>
               <li class="flex items-start gap-3">
                 <div class="bg-emerald-500/20 p-1 rounded-full mt-0.5"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
@@ -635,14 +637,14 @@ async function openPortal() {
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
               <div class="flex justify-between items-start mb-6">
                 <div class="flex items-center gap-4">
-                  <div 
+                  <div
                     class="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md"
-                    :class="isStarter ? 'bg-gradient-to-br from-emerald-400 to-cyan-600' : 'bg-gradient-to-br from-amber-400 to-amber-600'"
+                    :class="isEnterprise ? 'bg-gradient-to-br from-violet-500 to-purple-700' : isStarter ? 'bg-gradient-to-br from-emerald-400 to-cyan-600' : 'bg-gradient-to-br from-amber-400 to-amber-600'"
                   >
-                    <i class="pi text-2xl text-white" :class="isStarter ? 'pi-sparkles' : 'pi-star-fill'"></i>
+                    <i class="pi text-2xl text-white" :class="isEnterprise ? 'pi-building' : isStarter ? 'pi-sparkles' : 'pi-star-fill'"></i>
                   </div>
                   <div>
-                    <h2 class="text-xl font-bold text-slate-800">{{ isStarter ? $t('subscription.starter_plan') : $t('subscription.premium_plan') }}</h2>
+                    <h2 class="text-xl font-bold text-slate-800">{{ isEnterprise ? $t('subscription.enterprise_plan') : isStarter ? $t('subscription.starter_plan') : $t('subscription.premium_plan') }}</h2>
                     <div class="text-sm text-slate-500 mt-1" v-if="periodEndFormatted">
                       <span v-if="subscriptionStore.isScheduledForCancellation" class="text-amber-600 font-medium">{{ $t('subscription.billing.access_until') }} {{ periodEndFormatted }}</span>
                       <span v-else>{{ $t('subscription.billing.next_billing') }} {{ periodEndFormatted }}</span>
@@ -675,13 +677,20 @@ async function openPortal() {
                     @click="openPortal" 
                     class="flex-1 sm:flex-none"
                   />
-                  <!-- Upgrade Button for Starter -->
-                  <Button 
+                  <!-- Upgrade Button for Starter/Premium -->
+                  <Button
                     v-if="isStarter"
-                    :label="$t('subscription.upgrade_to_premium')" 
-                    icon="pi pi-arrow-up" 
+                    :label="$t('subscription.upgrade_to_premium')"
+                    icon="pi pi-arrow-up"
                     class="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-orange-500 border-0 hover:from-amber-600 hover:to-orange-600"
-                    @click="() => upgradeToPremium('premium')" 
+                    @click="() => upgradeToPremium('premium')"
+                  />
+                  <Button
+                    v-if="isStarter || isPremium"
+                    :label="$t('subscription.upgrade_to_enterprise')"
+                    icon="pi pi-arrow-up"
+                    class="flex-1 sm:flex-none bg-gradient-to-r from-violet-500 to-purple-600 border-0 hover:from-violet-600 hover:to-purple-700 text-white"
+                    @click="() => upgradeToPremium('enterprise')"
                   />
                   <Button 
                     :label="$t('common.cancel')" 
@@ -700,19 +709,19 @@ async function openPortal() {
                   <div class="bg-blue-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-wallet text-blue-500 text-xs"></i></div>
                   <div>
                     <div class="text-slate-700 font-medium">{{ $t('subscription.usage.monthly_budget_title') }}</div>
-                    <div class="text-slate-500 text-xs mt-0.5">${{ isStarter ? config.starter.monthlyBudgetUsd : config.premium.monthlyBudgetUsd }} / {{ $t('common.month') }}</div>
+                    <div class="text-slate-500 text-xs mt-0.5">${{ isEnterprise ? config.enterprise.monthlyBudgetUsd : isStarter ? config.starter.monthlyBudgetUsd : config.premium.monthlyBudgetUsd }} / {{ $t('common.month') }}</div>
                   </div>
                 </div>
                 <div class="flex items-start gap-3">
                   <div class="bg-purple-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-tags text-purple-500 text-xs"></i></div>
                   <div>
-                    <div class="text-slate-700 font-medium">{{ $t('subscription.features.session_cost_breakdown', { 
-                      aiCost: isStarter ? config.starter.aiEnabledSessionCostUsd : config.premium.aiEnabledSessionCostUsd, 
-                      nonAiCost: isStarter ? config.starter.aiDisabledSessionCostUsd : config.premium.aiDisabledSessionCostUsd 
+                    <div class="text-slate-700 font-medium">{{ $t('subscription.features.session_cost_breakdown', {
+                      aiCost: isEnterprise ? config.enterprise.aiEnabledSessionCostUsd : isStarter ? config.starter.aiEnabledSessionCostUsd : config.premium.aiEnabledSessionCostUsd,
+                      nonAiCost: isEnterprise ? config.enterprise.aiDisabledSessionCostUsd : isStarter ? config.starter.aiDisabledSessionCostUsd : config.premium.aiDisabledSessionCostUsd
                     }) }}</div>
-                    <div class="text-slate-500 text-xs mt-0.5">{{ $t('subscription.features.estimated_sessions', { 
-                      ai: isStarter ? starterPricingVars.aiSessions : pricingVars.aiSessions, 
-                      nonAi: isStarter ? starterPricingVars.nonAiSessions : pricingVars.nonAiSessions 
+                    <div class="text-slate-500 text-xs mt-0.5">{{ $t('subscription.features.estimated_sessions', {
+                      ai: isEnterprise ? Math.floor(config.enterprise.monthlyBudgetUsd / config.enterprise.aiEnabledSessionCostUsd) : isStarter ? starterPricingVars.aiSessions : pricingVars.aiSessions,
+                      nonAi: isEnterprise ? Math.floor(config.enterprise.monthlyBudgetUsd / config.enterprise.aiDisabledSessionCostUsd) : isStarter ? starterPricingVars.nonAiSessions : pricingVars.nonAiSessions
                     }) }}</div>
                   </div>
                 </div>
@@ -720,13 +729,13 @@ async function openPortal() {
                   <div class="bg-emerald-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-globe text-emerald-500 text-xs"></i></div>
                   <div>
                     <div class="text-slate-700 font-medium">{{ $t('subscription.features.translations') }}</div>
-                    <div class="text-slate-500 text-xs mt-0.5">{{ isStarter ? $t('subscription.features.starter_translations', { count: config.starter.maxLanguages }) : $t('subscription.features.translations') }}</div>
+                    <div class="text-slate-500 text-xs mt-0.5">{{ isStarter ? $t('subscription.features.starter_translations', { count: config.starter.maxLanguages }) : $t('subscription.features.unlimited_translations') }}</div>
                   </div>
                 </div>
                 <div class="flex items-start gap-3">
                   <div class="bg-amber-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-star text-amber-500 text-xs"></i></div>
                   <div>
-                    <div class="text-slate-700 font-medium">{{ isStarter ? $t('subscription.features.branding_included') : $t('subscription.features.white_label') }}</div>
+                    <div class="text-slate-700 font-medium">{{ isStarter ? $t('subscription.features.branding_included') : (isEnterprise || isPremium) ? $t('subscription.features.white_label') : '' }}</div>
                     <div class="text-slate-500 text-xs mt-0.5">FunTell</div>
                   </div>
                 </div>
@@ -789,13 +798,13 @@ async function openPortal() {
                   <div class="flex justify-between items-end mb-2">
                     <div>
                       <div class="text-sm font-medium text-slate-600">{{ $t('subscription.usage.experiences') }}</div>
-                      <div class="text-2xl font-bold text-slate-800">{{ subscriptionStore.experienceCount }} <span class="text-sm font-normal text-slate-400">/ {{ subscriptionStore.experienceLimit }}</span></div>
+                      <div class="text-2xl font-bold text-slate-800">{{ subscriptionStore.projectCount }} <span class="text-sm font-normal text-slate-400">/ {{ subscriptionStore.projectLimit }}</span></div>
                     </div>
                     <div class="text-right">
-                      <div class="text-sm font-bold" :class="experienceUsagePercent >= 100 ? 'text-amber-600' : 'text-emerald-600'">{{ experienceUsagePercent }}%</div>
+                      <div class="text-sm font-bold" :class="projectUsagePercent >= 100 ? 'text-amber-600' : 'text-emerald-600'">{{ projectUsagePercent }}%</div>
                     </div>
                   </div>
-                  <ProgressBar :value="experienceUsagePercent" :showValue="false" class="h-3 rounded-full bg-slate-100" :class="experienceUsagePercent >= 100 ? 'progress-warning' : 'progress-success'" />
+                  <ProgressBar :value="projectUsagePercent" :showValue="false" class="h-3 rounded-full bg-slate-100" :class="projectUsagePercent >= 100 ? 'progress-warning' : 'progress-success'" />
                 </div>
               </div>
               

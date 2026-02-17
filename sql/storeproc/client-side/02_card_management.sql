@@ -126,7 +126,7 @@ DECLARE
     v_check JSONB;
 BEGIN
     -- Check subscription limit
-    v_check := can_create_experience(auth.uid());
+    v_check := can_create_project(auth.uid());
     IF NOT (v_check->>'can_create')::BOOLEAN THEN
         RAISE EXCEPTION '%', (v_check->>'message');
     END IF;

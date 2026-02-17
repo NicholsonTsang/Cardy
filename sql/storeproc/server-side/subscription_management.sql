@@ -111,9 +111,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Count user experiences
-DROP FUNCTION IF EXISTS count_user_experiences_server CASCADE;
-CREATE OR REPLACE FUNCTION count_user_experiences_server(
+-- Count user projects
+DROP FUNCTION IF EXISTS count_user_projects_server CASCADE;
+CREATE OR REPLACE FUNCTION count_user_projects_server(
     p_user_id UUID
 )
 RETURNS INTEGER AS $$
@@ -155,8 +155,8 @@ BEGIN
     FROM subscriptions
     WHERE user_id = p_user_id;
     
-    -- Both Starter and Premium can access translations
-    RETURN v_tier IN ('starter', 'premium');
+    -- Starter, Premium, and Enterprise can access translations
+    RETURN v_tier IN ('starter', 'premium', 'enterprise');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -178,8 +178,8 @@ GRANT EXECUTE ON FUNCTION update_subscription_status_server TO service_role;
 REVOKE ALL ON FUNCTION update_subscription_period_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION update_subscription_period_server TO service_role;
 
-REVOKE ALL ON FUNCTION count_user_experiences_server FROM PUBLIC, authenticated, anon;
-GRANT EXECUTE ON FUNCTION count_user_experiences_server TO service_role;
+REVOKE ALL ON FUNCTION count_user_projects_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION count_user_projects_server TO service_role;
 
 REVOKE ALL ON FUNCTION check_premium_subscription_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION check_premium_subscription_server TO service_role;

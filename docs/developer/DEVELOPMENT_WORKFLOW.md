@@ -30,7 +30,7 @@ cd ..
 
 **Frontend** (`.env`):
 ```env
-VITE_BACKEND_URL=http://localhost:3001
+VITE_BACKEND_URL=http://localhost:8080
 VITE_SUPABASE_URL=<your-supabase-url>
 VITE_SUPABASE_ANON_KEY=<your-supabase-anon-key>
 VITE_STRIPE_PUBLISHABLE_KEY=<your-stripe-publishable-key>
@@ -38,7 +38,7 @@ VITE_STRIPE_PUBLISHABLE_KEY=<your-stripe-publishable-key>
 
 **Backend** (`backend-server/.env`):
 ```env
-PORT=3001
+PORT=8080
 SUPABASE_URL=<your-supabase-url>
 SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
 OPENAI_API_KEY=<your-openai-key>
@@ -63,7 +63,7 @@ cd backend-server
 npm run dev
 ```
 
-Frontend runs at `http://localhost:5173`, backend at `http://localhost:3001`.
+Frontend runs at `http://localhost:5173`, backend at `http://localhost:8080`.
 
 ## Common Development Tasks
 

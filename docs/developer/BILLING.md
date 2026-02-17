@@ -6,24 +6,25 @@ This document covers the subscription tiers, session-based pricing, Stripe integ
 
 ### Tier Comparison
 
-| Feature | Free | Starter | Premium |
-|---------|------|---------|---------|
-| **Price** | $0/month | $40/month | $280/month |
-| **Projects** | 3 | 5 | 35 |
-| **Session Budget** | 50 sessions | $40/month | $280/month |
-| **AI Session Cost** | N/A | $0.05 | $0.04 |
-| **Non-AI Session Cost** | N/A | $0.025 | $0.02 |
-| **Included AI Sessions** | 50 total | ~800 | ~7,000 |
-| **Included Non-AI Sessions** | 50 total | ~1,600 | ~14,000 |
-| **Translations** | No | 2 languages | Unlimited |
-| **Overage Purchase** | No | Yes | Yes |
-| **Branding** | FunTell | FunTell | White label |
+| Feature | Free | Starter | Premium | Enterprise |
+|---------|------|---------|---------|------------|
+| **Price** | $0/month | $40/month | $280/month | $1,000/month |
+| **Projects** | 3 | 5 | 35 | 100 |
+| **Session Budget** | 50 sessions | $40/month | $280/month | $1,000/month |
+| **AI Session Cost** | N/A | $0.05 | $0.04 | $0.02 |
+| **Non-AI Session Cost** | N/A | $0.025 | $0.02 | $0.01 |
+| **Included AI Sessions** | 50 total | ~800 | ~7,000 | ~50,000 |
+| **Included Non-AI Sessions** | 50 total | ~1,600 | ~14,000 | ~100,000 |
+| **Translations** | No | 2 languages | Unlimited | Unlimited |
+| **Overage Purchase** | No | Yes | Yes | Yes |
+| **Branding** | FunTell | FunTell | White label | White label |
+| **Custom Domain** | No | No | No | Coming Soon |
 
 ### Session-Based Pricing Model
 
 Paid tiers use a **budget-based** model rather than fixed session counts:
 
-1. User has monthly USD budget ($40 Starter, $280 Premium)
+1. User has monthly USD budget ($40 Starter, $280 Premium, $1,000 Enterprise)
 2. Each visitor session deducts from budget based on project type:
    - **AI-enabled projects**: Higher cost per session
    - **Non-AI projects**: Lower cost per session
@@ -65,6 +66,15 @@ export const SubscriptionConfig = {
     translationsEnabled: true,
     maxLanguages: -1, // Unlimited
   },
+  enterprise: {
+    monthlyFeeUsd: 1000,
+    experienceLimit: 100,
+    aiEnabledSessionCostUsd: 0.02,
+    aiDisabledSessionCostUsd: 0.01,
+    monthlyBudgetUsd: 1000,
+    translationsEnabled: true,
+    maxLanguages: -1, // Unlimited
+  },
   overage: {
     creditsPerBatch: 5, // $5 per top-up
   },
@@ -93,6 +103,13 @@ PREMIUM_EXPERIENCE_LIMIT=35
 PREMIUM_AI_ENABLED_SESSION_COST_USD=0.04
 PREMIUM_AI_DISABLED_SESSION_COST_USD=0.02
 PREMIUM_MONTHLY_BUDGET_USD=280
+
+# Enterprise tier
+ENTERPRISE_MONTHLY_FEE_USD=1000
+ENTERPRISE_EXPERIENCE_LIMIT=100
+ENTERPRISE_AI_ENABLED_SESSION_COST_USD=0.02
+ENTERPRISE_AI_DISABLED_SESSION_COST_USD=0.01
+ENTERPRISE_MONTHLY_BUDGET_USD=1000
 
 # Overage
 OVERAGE_CREDITS_PER_BATCH=5
@@ -178,15 +195,15 @@ Handled at `POST /api/webhooks/stripe`:
 User → Checkout → Stripe → Webhook → Create subscription record → Set Redis tier
 ```
 
-**Upgrade (Starter → Premium):**
+**Upgrade (Starter → Premium → Enterprise):**
 ```
 User → Checkout → Stripe cancels old immediately → New sub starts → Webhook updates tier
 ```
 
-**Downgrade (Premium → Starter):**
+**Downgrade (Enterprise → Premium → Starter):**
 ```
 User → Checkout → Old sub set to cancel at period end → New sub starts with trial
-→ User keeps Premium until period end → Then switches to Starter
+→ User keeps current tier until period end → Then switches to new tier
 ```
 
 **Cancellation:**
@@ -256,6 +273,65 @@ if (credits >= sessionCost) {
 }
 ```
 
+## Voice Credits
+
+Voice credits are a separate billing system from session credits, used exclusively for real-time voice conversations via OpenAI Realtime API.
+
+### How Voice Credits Work
+
+| Aspect | Detail |
+|--------|--------|
+| **Unit** | 1 credit = 1 voice call |
+| **Hard Time Limit** | 180 seconds per call (default, configurable) |
+| **Purchase** | Via Stripe one-time payment |
+| **Card Toggle** | `realtime_voice_enabled` must be true on the card |
+
+### Voice Credits vs Session Credits
+
+| | Session Credits | Voice Credits |
+|---|---|---|
+| **Purpose** | Card access (AI and non-AI) | Real-time voice calls only |
+| **Billing** | Budget-based (USD per session) | Unit-based (1 credit = 1 call) |
+| **Included in subscription** | Yes (monthly budget) | No (purchased separately) |
+| **Tracking** | Redis (source of truth) | Database (voice_credits table) |
+
+### Purchase Flow
+
+```
+User → POST /api/payments/purchase-voice-credits
+→ Stripe checkout session created
+→ User completes payment
+→ Stripe webhook fires
+→ Backend credits voice_credits balance
+```
+
+### Consumption Flow
+
+```
+Visitor → Request voice session (POST /api/ai/realtime-token)
+→ Backend checks voice_credits balance
+→ If insufficient: 402 error
+→ If card voice disabled: 403 error
+→ Returns token + hardLimitSeconds + sessionId
+→ useHardTimer enforces 180s limit on frontend
+→ On call end: POST /api/ai/realtime-end
+→ Backend logs call, deducts 1 credit
+```
+
+### Database Tables
+
+- **`voice_credits`**: Balance per user
+- **`voice_credit_transactions`**: Purchase/consumption history
+- **`voice_call_log`**: Individual call records with duration
+
+### Stored Procedures
+
+Server-side (backend only):
+
+| Procedure | Purpose |
+|-----------|---------|
+| `voice_credit_operations.sql` | Credit balance checks, purchases, consumption, call logging |
+
 ## Frontend Store
 
 The `useSubscriptionStore` (`src/stores/subscription.ts`) manages:
@@ -269,7 +345,7 @@ The `useSubscriptionStore` (`src/stores/subscription.ts`) manages:
 
 ```typescript
 const tier = computed(() => subscription.value?.tier ?? 'free')
-const isPaid = computed(() => tier.value === 'starter' || tier.value === 'premium')
+const isPaid = computed(() => tier.value === 'starter' || tier.value === 'premium' || tier.value === 'enterprise')
 const canTranslate = computed(() => subscription.value?.features?.translations_enabled)
 const canBuyOverage = computed(() => isPaid.value)
 const monthlyAccessRemaining = computed(() => subscription.value?.monthly_access_remaining ?? 0)
@@ -344,7 +420,7 @@ const stats = await getStatsFromDatabase()
 
 ```bash
 # Forward webhooks locally
-stripe listen --forward-to localhost:3001/api/webhooks/stripe
+stripe listen --forward-to localhost:8080/api/webhooks/stripe
 
 # Trigger test events
 stripe trigger checkout.session.completed

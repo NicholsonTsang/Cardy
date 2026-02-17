@@ -4,13 +4,13 @@ This document covers the AI-powered features: chat, text-to-speech, and real-tim
 
 ## Overview
 
-FunTell uses OpenAI for AI features:
+FunTell uses Google Gemini for text chat and OpenAI for voice features:
 
-| Feature | Model | Purpose |
-|---------|-------|---------|
-| Chat | GPT-4o-mini | Text conversations with visitors |
-| TTS | tts-1 | Convert AI responses to audio |
-| Realtime | gpt-realtime-mini | Live voice conversations |
+| Feature | Provider | Model | Purpose |
+|---------|----------|-------|---------|
+| Chat | Google Gemini | gemini-2.5-flash-lite | Text conversations with visitors |
+| TTS | OpenAI | tts-1 | Convert AI responses to audio |
+| Realtime Voice | OpenAI | gpt-realtime-mini | Live voice conversations |
 
 ## Architecture
 
@@ -30,10 +30,10 @@ FunTell uses OpenAI for AI features:
 └─────────────────────────────────────────────────────────────────┘
           │                 │                     │
           ▼                 ▼                     ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                       OpenAI API                                 │
-│  Chat Completions API    Audio Speech API     Realtime API      │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────┐  ┌──────────────────────────────────────────┐
+│  Google Gemini   │  │              OpenAI API                   │
+│  generateContent │  │  Audio Speech API     Realtime API       │
+└──────────────────┘  └──────────────────────────────────────────┘
 ```
 
 ## AI Assistants
@@ -102,7 +102,7 @@ data: [DONE]
 ### Backend Implementation
 
 ```typescript
-// ai.routes.ts
+// ai.routes.ts - uses Google Gemini via gemini-client.ts
 router.post('/chat/stream', optionalAuth, async (req, res) => {
   // Set SSE headers
   res.setHeader('Content-Type', 'text/event-stream')
@@ -115,28 +115,12 @@ router.post('/chat/stream', optionalAuth, async (req, res) => {
     ...validMessages
   ]
 
-  // Stream from OpenAI
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${OPENAI_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'gpt-4o-mini',
-      messages: fullMessages,
-      max_tokens: 3500,
-      stream: true
-    })
-  })
+  // Stream from Google Gemini (gemini-2.5-flash-lite)
+  const stream = await geminiClient.streamChat(fullMessages)
 
   // Forward chunks to client
-  const reader = response.body.getReader()
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    // Parse and forward content chunks
-    res.write(`data: ${JSON.stringify({ content })}\n\n`)
+  for await (const chunk of stream) {
+    res.write(`data: ${JSON.stringify({ content: chunk })}\n\n`)
   }
   res.write('data: [DONE]\n\n')
   res.end()
@@ -329,12 +313,11 @@ pc.ontrack = (event) => {
 ## Environment Variables
 
 ```env
-# OpenAI API
-OPENAI_API_KEY=sk-...
+# Google Gemini (Chat)
+GEMINI_API_KEY=...
 
-# Chat model
-OPENAI_TEXT_MODEL=gpt-4o-mini
-OPENAI_MAX_TOKENS=3500
+# OpenAI API (TTS & Realtime Voice)
+OPENAI_API_KEY=sk-...
 
 # TTS model
 OPENAI_TTS_MODEL=tts-1
@@ -345,15 +328,66 @@ OPENAI_AUDIO_FORMAT=wav
 OPENAI_REALTIME_MODEL=gpt-realtime-mini-2025-12-15
 ```
 
+## Content Directory
+
+The prompt builder includes a `buildContentDirectory()` function (in `promptBuilder.ts`) that generates a structured summary of all content items in a project. This directory is included in system prompts so the AI assistant can reference and navigate between items intelligently.
+
+## Voice Credits System
+
+Voice credits are a separate currency from session credits, used specifically for real-time voice conversations.
+
+### Overview
+
+| Aspect | Detail |
+|--------|--------|
+| **Unit** | 1 credit = 1 voice call |
+| **Hard Time Limit** | 180 seconds per call (default) |
+| **Purchase** | Via Stripe one-time payment |
+| **Toggle** | `realtime_voice_enabled` per card |
+| **Timer** | `useHardTimer` composable enforces time limit |
+
+### Database Tables
+
+- **`voice_credits`**: Tracks credit balance per user
+- **`voice_credit_transactions`**: Purchase and consumption history
+- **`voice_call_log`**: Records individual voice calls with duration
+
+### Flow
+
+1. Creator enables `realtime_voice_enabled` on a card
+2. Visitor requests a voice session via `/api/ai/realtime-token`
+3. Backend checks voice credit balance (returns 402 if insufficient)
+4. Backend returns ephemeral token + `hardLimitSeconds` + `remainingCredits` + `sessionId`
+5. Frontend `useHardTimer` composable enforces the hard time limit (180s default)
+6. On call end, frontend calls `/api/ai/realtime-end` with session details
+7. Backend logs the call and deducts credits
+
+### Purchase Flow
+
+Voice credits are purchased via Stripe checkout:
+
+```
+POST /api/payments/purchase-voice-credits
+→ Creates Stripe checkout session
+→ On completion, webhook credits the user's voice_credits balance
+```
+
+### Frontend Store
+
+The `useVoiceCreditsStore` (`src/stores/voiceCredits.ts`) manages:
+- Credit balance fetching
+- Purchase checkout flow
+- Real-time balance updates after calls
+
 ## Cost Considerations
 
 ### Per-Request Costs (Approximate)
 
 | Feature | Cost |
 |---------|------|
-| Chat (GPT-4o-mini) | ~$0.001-0.005 per conversation |
+| Chat (Gemini 2.5 Flash-Lite) | ~$0.001-0.003 per conversation |
 | TTS | ~$0.015 per 1,000 characters |
-| Realtime | ~$0.06 per minute |
+| Realtime Voice | ~$0.06 per minute |
 
 ### Session Billing
 
@@ -436,9 +470,11 @@ watch([language, cardData, instructions], () => {
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| 401 | Invalid API key | Check `OPENAI_API_KEY` |
+| 401 | Invalid API key | Check `GEMINI_API_KEY` or `OPENAI_API_KEY` |
+| 402 | No voice credits | Purchase voice credits |
+| 403 | Voice not enabled | Enable `realtime_voice_enabled` on card |
 | 429 | Rate limited | Implement backoff, upgrade plan |
-| 500 | OpenAI service error | Retry with exponential backoff |
+| 500 | AI service error | Retry with exponential backoff |
 
 ### Frontend Error Handling
 

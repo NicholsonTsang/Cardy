@@ -38,7 +38,8 @@ sql/
         ├── mobile_access.sql
         ├── subscription_management.sql
         ├── translation_credit_consumption.sql
-        └── translation_operations.sql
+        ├── translation_operations.sql
+        └── voice_credit_operations.sql
 ```
 
 ## Core Tables
@@ -58,6 +59,7 @@ Main project/card table:
 | `content_mode` | TEXT | Rendering mode (single/grid/list/cards) |
 | `is_grouped` | BOOLEAN | Enable category grouping |
 | `conversation_ai_enabled` | BOOLEAN | Enable AI assistant |
+| `realtime_voice_enabled` | BOOLEAN | Enable real-time voice conversations |
 | `ai_instruction` | TEXT | AI role/personality (max 100 words) |
 | `ai_knowledge_base` | TEXT | AI context (max 2000 words) |
 | `translations` | JSONB | Translated content by language |
@@ -94,6 +96,43 @@ QR codes for digital access:
 | `daily_session_limit` | INTEGER | Daily limit (NULL = unlimited) |
 | `total_sessions` | INTEGER | All-time count |
 | `daily_sessions` | INTEGER | Today's count |
+
+### `voice_credits`
+
+Voice credit balance per user:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `user_id` | UUID | Owner (references auth.users) |
+| `balance` | INTEGER | Current credit balance |
+| `updated_at` | TIMESTAMPTZ | Last balance update |
+
+### `voice_credit_transactions`
+
+Voice credit purchase and consumption history:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `user_id` | UUID | Owner |
+| `amount` | INTEGER | Credits added or consumed |
+| `type` | TEXT | Transaction type (purchase, consumption) |
+| `stripe_session_id` | TEXT | Stripe checkout session (for purchases) |
+| `created_at` | TIMESTAMPTZ | Transaction timestamp |
+
+### `voice_call_log`
+
+Individual voice call records:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | UUID | Primary key |
+| `user_id` | UUID | Card owner |
+| `card_id` | UUID | Card used for the call |
+| `session_id` | TEXT | Unique session identifier |
+| `duration_seconds` | INTEGER | Call duration |
+| `created_at` | TIMESTAMPTZ | Call timestamp |
 
 ## Enums
 

@@ -476,7 +476,7 @@
       "q4": "¿Qué idiomas se soportan?",
       "a4": "El contenido y las conversaciones IA están disponibles en más de 10 idiomas: Inglés, Mandarín, Cantonés, Japonés, Coreano, Tailandés, Árabe, Español, Francés, Ruso, y más.",
       "q5": "¿Qué incluye el precio?",
-      "a5": "Tres niveles: Gratis ({freeExperiences} proyectos, {freeSessions} sesiones), Inicial ({starterBudget}/mes, {starterAiSessions} sesiones IA, máx 2 idiomas), Premium ({monthlyBudget}/mes, {aiSessions} sesiones IA, idiomas ilimitados, marca blanca). Los planes pagos incluyen recarga automática cuando se agota el presupuesto. Todos los planes incluyen voz IA, panel, códigos QR y alojamiento.",
+      "a5": "Tres niveles: Gratis ({freeProjects} proyectos, {freeSessions} sesiones), Inicial ({starterBudget}/mes, {starterAiSessions} sesiones IA, máx 2 idiomas), Premium ({monthlyBudget}/mes, {aiSessions} sesiones IA, idiomas ilimitados, marca blanca). Los planes pagos incluyen recarga automática cuando se agota el presupuesto. Todos los planes incluyen voz IA, panel, códigos QR y alojamiento.",
       "q6": "¿Qué tan rápido podemos empezar?",
       "a6": "Los proyectos pueden lanzarse en minutos. Conecta una herramienta de IA como Claude Code, importa tu documento y la IA construye todo el proyecto automáticamente — contenido, categorías, asistente IA y códigos QR.",
       "q7": "¿Podemos personalizar el contenido y la IA?",

@@ -10,13 +10,13 @@ These variables **must** be set for the server to function:
 ```bash
 OPENAI_API_KEY=your_openai_api_key_here
 ```
-Your OpenAI API key for accessing GPT models, TTS, Realtime API, and other OpenAI services (used for AI chat, TTS, etc. - NOT for translations).
+Your OpenAI API key for accessing TTS, Realtime API, and other OpenAI services (used for voice TTS and real-time voice calls - NOT for text chat or translations).
 
 ### Google Gemini Configuration
 ```bash
 GOOGLE_APPLICATION_CREDENTIALS=gemini-service-account.json
 ```
-Path to Google service account JSON file for Gemini API authentication (used for translations).
+Path to Google service account JSON file for Gemini API authentication (used for text chat AI and translations).
 
 ### Supabase Configuration
 ```bash
@@ -32,6 +32,7 @@ STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret_here
 STRIPE_API_VERSION=2025-08-27.basil
 STRIPE_PREMIUM_PRICE_ID=price_premium_id_here
 STRIPE_STARTER_PRICE_ID=price_starter_id_here
+STRIPE_ENTERPRISE_PRICE_ID=price_your_enterprise_price_id_here
 ```
 Stripe API credentials for payment processing and webhook signature verification.
 
@@ -92,12 +93,18 @@ Maximum number of requests allowed per IP within the time window.
 
 ### Subscription & Pricing
 
-These variables control the pricing and limits for the three tiers.
+These variables control the pricing and limits for the four tiers.
+
+#### Free Tier
+```bash
+FREE_TIER_PROJECT_LIMIT=3
+FREE_TIER_MONTHLY_SESSION_LIMIT=50
+```
 
 #### Starter Tier
 ```bash
 STARTER_MONTHLY_FEE_USD=40
-STARTER_EXPERIENCE_LIMIT=5
+STARTER_PROJECT_LIMIT=5
 STARTER_MONTHLY_BUDGET_USD=40
 STARTER_AI_ENABLED_SESSION_COST_USD=0.05
 STARTER_AI_DISABLED_SESSION_COST_USD=0.025
@@ -106,16 +113,19 @@ STARTER_AI_DISABLED_SESSION_COST_USD=0.025
 #### Premium Tier
 ```bash
 PREMIUM_MONTHLY_FEE_USD=280
-PREMIUM_EXPERIENCE_LIMIT=35
+PREMIUM_PROJECT_LIMIT=35
 PREMIUM_MONTHLY_BUDGET_USD=280
 PREMIUM_AI_ENABLED_SESSION_COST_USD=0.04
 PREMIUM_AI_DISABLED_SESSION_COST_USD=0.02
 ```
 
-#### Free Tier
+#### Enterprise Tier
 ```bash
-FREE_TIER_EXPERIENCE_LIMIT=3
-FREE_TIER_MONTHLY_SESSION_LIMIT=50
+ENTERPRISE_MONTHLY_FEE_USD=1000
+ENTERPRISE_PROJECT_LIMIT=100
+ENTERPRISE_MONTHLY_BUDGET_USD=1000
+ENTERPRISE_AI_ENABLED_SESSION_COST_USD=0.02
+ENTERPRISE_AI_DISABLED_SESSION_COST_USD=0.01
 ```
 
 #### Overage
@@ -123,21 +133,38 @@ FREE_TIER_MONTHLY_SESSION_LIMIT=50
 OVERAGE_CREDITS_PER_BATCH=5
 ```
 
+#### Voice Credits
+```bash
+VOICE_CREDIT_PACKAGE_SIZE=35        # Credits per package (default: 35)
+VOICE_CREDIT_PACKAGE_PRICE_USD=5    # USD cost per package (default: 5)
+VOICE_CALL_HARD_LIMIT_SECONDS=180   # Max call duration in seconds (default: 180)
+```
+
 ---
 
-### OpenAI Configuration
+### Gemini Chat Configuration
 
-#### OPENAI_TEXT_MODEL
-```bash
-OPENAI_TEXT_MODEL=gpt-4o-mini  # Default: gpt-4o-mini
-```
-OpenAI model for general text generation (AI chat).
+These variables control the Gemini API for visitor-facing AI text chat.
 
-#### OPENAI_MAX_TOKENS
+#### GEMINI_CHAT_MODEL
 ```bash
-OPENAI_MAX_TOKENS=3500  # Default: 3500
+GEMINI_CHAT_MODEL=gemini-2.5-flash-lite  # Default: gemini-2.5-flash-lite
 ```
-Maximum tokens for general OpenAI API calls.
+Google Gemini model for AI text chat (visitor-facing assistant).
+
+#### GEMINI_CHAT_MAX_TOKENS
+```bash
+GEMINI_CHAT_MAX_TOKENS=3500  # Default: 3500
+```
+Maximum output tokens for chat responses.
+
+#### GEMINI_CHAT_TEMPERATURE
+```bash
+GEMINI_CHAT_TEMPERATURE=0.7  # Default: 0.7
+```
+Temperature for chat responses (0.0 - 2.0). Higher values produce more creative responses.
+
+### OpenAI Configuration (Voice Only)
 
 #### OPENAI_TTS_MODEL
 ```bash
@@ -211,21 +238,21 @@ Temperature setting for translation API calls (0.0 - 2.0).
 
 ## Translation System Architecture
 
-The translation system uses **synchronous processing with Socket.IO** for real-time progress updates:
+The translation system uses **synchronous processing with SSE (Server-Sent Events)** for real-time progress updates:
 
 1. **Client** sends translation request via API
 2. **Backend** processes translations immediately
-3. **Socket.IO** sends real-time progress updates to client
+3. **SSE** sends real-time progress updates to client
 4. **Languages** are processed concurrently (max 3 at once)
 5. **Content batches** are processed sequentially (10 items per batch)
 6. **Credits** are consumed after each successful language translation
 
 This approach provides:
-- ✅ Real-time progress feedback (<100ms updates)
-- ✅ Instant completion (no job queue delays)
-- ✅ Partial success handling (failed languages don't affect successful ones)
-- ✅ Per-language credit accounting
-- ✅ Simpler architecture (no background workers)
+- Real-time progress feedback (<100ms updates)
+- Instant completion (no job queue delays)
+- Partial success handling (failed languages don't affect successful ones)
+- Per-language credit accounting
+- Simpler architecture (no background workers or WebSocket dependencies)
 
 ---
 
@@ -297,7 +324,7 @@ Before deploying, ensure:
 3. **System Resources:**
    - Memory usage during concurrent translations
    - CPU usage
-   - Socket.IO connection count
+   - Active SSE connections
    - API response times
 
 ### Adjustment Triggers
@@ -312,9 +339,9 @@ Before deploying, ensure:
 - Add retry logic with exponential backoff
 - Contact Google to increase quota
 
-**If Socket.IO issues occur:**
+**If SSE connection issues occur:**
 - Check connection stability
-- Monitor WebSocket connection count
+- Monitor active SSE connections
 - Verify CORS configuration
 
 ---
@@ -333,14 +360,14 @@ Before deploying, ensure:
 - Verify network connectivity to Google APIs
 - Consider reducing batch size if translating very large cards
 
-#### Socket.IO connection issues
+#### SSE connection issues
 - Verify CORS configuration includes all client origins
-- Check WebSocket support in deployment environment
+- Check that the deployment environment supports long-lived HTTP connections
 - Ensure ports are properly configured
 
 #### High memory usage
 - Monitor concurrent translation requests
-- Check for memory leaks in Socket.IO connections
+- Check for memory leaks in long-lived connections
 - Adjust rate limiting if needed
 
 ---

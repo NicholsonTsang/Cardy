@@ -12,24 +12,17 @@ Technical documentation for developers working on the FunTell codebase.
 | [Database](DATABASE.md) | Schema, stored procedures, security |
 | [API Reference](API_REFERENCE.md) | Backend API endpoints |
 | [Development Workflow](DEVELOPMENT_WORKFLOW.md) | Setup, git workflow, deployment |
-| [Billing](BILLING.md) | Subscription tiers, Stripe, credits, session tracking |
-| [AI Integration](AI_INTEGRATION.md) | Chat, TTS, realtime voice, OpenAI |
+| [Billing](BILLING.md) | Subscription tiers, Stripe, credits, voice credits, session tracking |
+| [AI Integration](AI_INTEGRATION.md) | Chat (Gemini), realtime voice (OpenAI), TTS, voice credits |
 | [AI Instruction Composition](AI_INSTRUCTION_COMPOSITION.md) | Prompt structure, optimization, best practices |
-
-## Component Documentation
-
-| Component | Description |
-|-----------|-------------|
-| [CreditConfirmationDialog](components/CreditConfirmationDialog.md) | Credit consumption confirmation dialog |
 
 ## Related Documentation
 
 | Document | Location | Description |
 |----------|----------|-------------|
-| Project Overview | [/README.md](/README.md) | Comprehensive project documentation |
+| Project Overview | [/README.md](/README.md) | Project overview and quick start |
 | AI Assistant Guide | [/CLAUDE.md](/CLAUDE.md) | Quick reference for AI assistants |
 | Environment Variables | [/backend-server/ENVIRONMENT_VARIABLES.md](/backend-server/ENVIRONMENT_VARIABLES.md) | Backend environment configuration |
-| Realtime Job Processor | [/backend-server/REALTIME_JOB_PROCESSOR.md](/backend-server/REALTIME_JOB_PROCESSOR.md) | Job processor architecture |
 
 ## Getting Started
 

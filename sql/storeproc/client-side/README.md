@@ -234,8 +234,6 @@ const { data, error } = await supabase.rpc('function_name', {
 ## 📚 See Also
 
 - `../server-side/README.md` - Server-side pattern guide
-- `/FOLDER_STRUCTURE_DECISION.md` - Why separate folders?
-- `/CLIENT_VS_SERVER_SIDE_EXPLAINED.md` - Pattern comparison
 - `/CLAUDE.md` - Project documentation
 
 ---

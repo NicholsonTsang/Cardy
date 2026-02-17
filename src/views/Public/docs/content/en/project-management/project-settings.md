@@ -97,14 +97,15 @@ All QR code scans across all projects count toward your monthly budget.
 
 Configure the AI assistant for your project:
 
-- **Enable AI Assistant** - Toggle voice/text AI conversations
+- **Enable AI Assistant** - Toggle text chat AI conversations
+- **Enable Real-time Voice** - Toggle real-time voice conversations (requires voice credits)
 - **AI Instructions** - Define behavior, tone, and focus areas
 - **Knowledge Base** - Background information for the AI
 - **General Welcome Message** - Greeting for the project-level assistant
 - **Item Welcome Message** - Template for content-item assistants
 
 :::info Session Costs
-Projects with AI enabled are charged at the AI session rate. Disable AI to use the lower non-AI session rate.
+Projects with AI enabled are charged at the AI session rate. Disable AI to use the lower non-AI session rate. Real-time voice calls consume separate voice credits.
 :::
 
 See the [AI Configuration](/docs?category=project_management&article=ai_config) guide for detailed setup.

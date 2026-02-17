@@ -579,8 +579,8 @@ async function executeImport() {
   // Check subscription limit
   await subscriptionStore.fetchSubscription()
   const cardsToCreate = importPreview.value.cards.length
-  const currentCount = subscriptionStore.experienceCount
-  const limit = subscriptionStore.experienceLimit
+  const currentCount = subscriptionStore.projectCount
+  const limit = subscriptionStore.projectLimit
 
   if (currentCount + cardsToCreate > limit) {
     const canCreate = Math.max(0, limit - currentCount)

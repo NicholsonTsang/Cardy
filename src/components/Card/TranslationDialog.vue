@@ -549,7 +549,7 @@ watch(() => props.visible, (isVisible) => {
 // Computed
 const maxLanguages = computed(() => {
   // Use config directly for consistency
-  if (subscriptionStore.tier === 'premium') return -1; // Unlimited
+  if (subscriptionStore.tier === 'enterprise' || subscriptionStore.tier === 'premium') return -1; // Unlimited
   if (subscriptionStore.tier === 'starter') return SubscriptionConfig.starter.maxLanguages;
   return 0; // Free tier (shouldn't be here normally)
 });

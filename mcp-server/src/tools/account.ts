@@ -6,7 +6,7 @@ export function registerAccountTools(server: McpServer): void {
   // Get subscription info
   server.tool(
     "get_subscription",
-    "Get the current user's subscription tier (free/starter/premium), project limits, and session budget. Use this to check what actions are available before creating projects.",
+    "Get the current user's subscription tier (free/starter/premium/enterprise), project limits, and session budget. Use this to check what actions are available before creating projects.",
     {},
     async () => {
       const loginErr = requireAuth(); if (loginErr) return loginErr;

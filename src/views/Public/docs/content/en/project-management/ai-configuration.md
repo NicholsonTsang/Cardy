@@ -160,6 +160,18 @@ Both AI assistants support:
 
 The AI automatically responds in the audience's selected language when translations are available.
 
+### Real-time Voice Settings
+
+Real-time voice conversations can be enabled per project:
+
+1. Go to **Project Settings**
+2. Toggle **Real-time Voice** on
+3. Visitors will need **voice credits** to start voice calls (each credit = one call with a time limit)
+
+:::info Voice Credits Required
+Real-time voice calls consume voice credits, purchased separately from your subscription. See [Credit Management](/docs?category=billing&article=credit_management) for details.
+:::
+
 ## AI in Different Content Modes
 
 The AI adapts its behavior based on your content display mode:

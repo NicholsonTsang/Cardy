@@ -37,10 +37,11 @@ RETURNS TABLE (
     content_mode_grid BIGINT,
     content_mode_cards BIGINT,
     is_grouped_count BIGINT,
-    -- SUBSCRIPTION METRICS (3 tiers: free, starter, premium)
+    -- SUBSCRIPTION METRICS (4 tiers: free, starter, premium, enterprise)
     total_free_users BIGINT,
     total_starter_users BIGINT,
     total_premium_users BIGINT,
+    total_enterprise_users BIGINT,
     active_subscriptions BIGINT,
     estimated_mrr_cents BIGINT,
     -- ACCESS LOG METRICS
@@ -102,16 +103,18 @@ BEGIN
         (SELECT COUNT(*) FROM cards WHERE content_mode = 'grid') as content_mode_grid,
         (SELECT COUNT(*) FROM cards WHERE content_mode = 'cards') as content_mode_cards,
         (SELECT COUNT(*) FROM cards WHERE is_grouped = true) as is_grouped_count,
-        -- SUBSCRIPTION METRICS (3 tiers: free, starter, premium)
+        -- SUBSCRIPTION METRICS (4 tiers: free, starter, premium, enterprise)
         -- Free = users with no subscription record OR tier = 'free'
-        (SELECT COUNT(*) FROM auth.users u WHERE NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND s.tier IN ('starter', 'premium'))) as total_free_users,
+        (SELECT COUNT(*) FROM auth.users u WHERE NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND s.tier IN ('starter', 'premium', 'enterprise'))) as total_free_users,
         (SELECT COUNT(*) FROM subscriptions WHERE tier = 'starter') as total_starter_users,
         (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as total_premium_users,
-        (SELECT COUNT(*) FROM subscriptions WHERE tier IN ('starter', 'premium') AND status = 'active') as active_subscriptions,
-        -- MRR: Starter=$40/month (4000 cents) + Premium=$280/month (28000 cents)
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'enterprise') as total_enterprise_users,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier IN ('starter', 'premium', 'enterprise') AND status = 'active') as active_subscriptions,
+        -- MRR: Starter=$40/month (4000 cents) + Premium=$280/month (28000 cents) + Enterprise=$1000/month (100000 cents)
         (
             (SELECT COUNT(*) * 4000 FROM subscriptions WHERE tier = 'starter' AND status = 'active') +
-            (SELECT COUNT(*) * 28000 FROM subscriptions WHERE tier = 'premium' AND status = 'active')
+            (SELECT COUNT(*) * 28000 FROM subscriptions WHERE tier = 'premium' AND status = 'active') +
+            (SELECT COUNT(*) * 100000 FROM subscriptions WHERE tier = 'enterprise' AND status = 'active')
         )::BIGINT as estimated_mrr_cents,
         -- ACCESS LOG METRICS
         (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= date_trunc('month', CURRENT_DATE)) as monthly_total_accesses,
@@ -211,8 +214,8 @@ BEGIN
     END IF;
 
     -- Validate new tier
-    IF p_new_tier NOT IN ('free', 'starter', 'premium') THEN
-        RAISE EXCEPTION 'Invalid tier. Must be: free, starter, or premium.';
+    IF p_new_tier NOT IN ('free', 'starter', 'premium', 'enterprise') THEN
+        RAISE EXCEPTION 'Invalid tier. Must be: free, starter, premium, or enterprise.';
     END IF;
 
     -- Validate duration (must be positive if provided)
@@ -273,11 +276,11 @@ BEGIN
             status = 'active'::subscription_status,
             -- stripe_subscription_id stays NULL (admin-managed only)
             current_period_start = CASE 
-                WHEN p_new_tier IN ('starter', 'premium') THEN NOW()
+                WHEN p_new_tier IN ('starter', 'premium', 'enterprise') THEN NOW()
                 ELSE NULL
             END,
             current_period_end = CASE 
-                WHEN p_new_tier IN ('starter', 'premium') THEN v_period_end
+                WHEN p_new_tier IN ('starter', 'premium', 'enterprise') THEN v_period_end
                 ELSE NULL
             END,
             cancel_at_period_end = false,
@@ -295,8 +298,8 @@ BEGIN
             p_user_id,
             p_new_tier::"SubscriptionTier",
             'active'::subscription_status,
-            CASE WHEN p_new_tier IN ('starter', 'premium') THEN NOW() ELSE NULL END,
-            CASE WHEN p_new_tier IN ('starter', 'premium') THEN v_period_end ELSE NULL END,
+            CASE WHEN p_new_tier IN ('starter', 'premium', 'enterprise') THEN NOW() ELSE NULL END,
+            CASE WHEN p_new_tier IN ('starter', 'premium', 'enterprise') THEN v_period_end ELSE NULL END,
             false
         );
     END IF;

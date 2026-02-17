@@ -19,7 +19,8 @@ FunTell is a **digital-only, AI-powered content experience platform** that turns
 | **Backend** | Express.js, TypeScript | API, payments, AI features, translations |
 | **Database** | Supabase PostgreSQL | Data storage via stored procedures only |
 | **Cache** | Upstash Redis | Session tracking, rate limiting, content caching |
-| **Services** | Stripe, OpenAI, Google Gemini | Payments, AI voice, translations |
+| **AI** | OpenAI (Realtime Voice, TTS), Google Gemini (Chat, Translations) | AI assistants |
+| **Payments** | Stripe | Subscriptions, credits, voice credit purchases |
 
 ## Key Files & Directories
 
@@ -34,8 +35,8 @@ FunTell is a **digital-only, AI-powered content experience platform** that turns
 │   └── i18n/locales/             # Translation files (en, zh-Hant, zh-Hans, etc.)
 ├── backend-server/               # Express.js backend
 │   ├── src/routes/               # API routes
-│   ├── src/services/             # Business logic
-│   └── src/config/redis.ts       # Redis configuration
+│   ├── src/services/             # Business logic (gemini-client, usage-tracker)
+│   └── src/config/               # Redis, Stripe, subscription config
 ├── sql/                          # Database
 │   ├── schema.sql                # Tables, enums, indexes (cards table includes metadata JSONB)
 │   ├── all_stored_procedures.sql # GENERATED - don't edit directly
@@ -92,10 +93,13 @@ const { data } = await supabaseAdmin.rpc('get_subscription_by_user_server', { p_
 | **Free** | $0 | 3 | 50/month | ❌ |
 | **Starter** | $40/mo | 5 | $40 budget | Max 2 languages |
 | **Premium** | $280/mo | 35 | $280 budget | Unlimited |
+| **Enterprise** | $1,000/mo | 100 | $1,000 budget | Unlimited |
 
 **Session Costs:**
-- AI-enabled: $0.05 (Starter), $0.04 (Premium)
-- Non-AI: $0.025 (Starter), $0.02 (Premium)
+- AI-enabled: $0.05 (Starter), $0.04 (Premium), $0.02 (Enterprise)
+- Non-AI: $0.025 (Starter), $0.02 (Premium), $0.01 (Enterprise)
+
+**Voice Credits:** Separate from session billing. 1 credit = 1 voice call with hard time limit (180s). Purchased via Stripe. Tables: `voice_credits`, `voice_credit_transactions`, `voice_call_log`.
 
 **Architecture:** Redis is source of truth for usage tracking. Database stores subscription metadata only.
 
@@ -140,7 +144,7 @@ All routes include language prefix: `/:lang/...`
 - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 - `OPENAI_API_KEY`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
 - `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN`
-- Pricing config: `STARTER_*`, `PREMIUM_*`, `FREE_TIER_*`
+- Pricing config: `STARTER_*`, `PREMIUM_*`, `ENTERPRISE_*`, `FREE_TIER_*`
 
 **Frontend (`.env`):**
 - `VITE_BACKEND_URL`, `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`

@@ -38,8 +38,8 @@
                         v-model:selectedMonth="selectedMonth"
                         :currentPage="currentPage"
                         :itemsPerPage="itemsPerPage"
-                        :experienceCount="subscriptionStore.experienceCount"
-                        :experienceLimit="isAdmin ? 0 : subscriptionStore.experienceLimit"
+                        :projectCount="subscriptionStore.projectCount"
+                        :projectLimit="isAdmin ? 0 : subscriptionStore.projectLimit"
                         @create-card="handleCreateCardClick"
                         @select-card="handleSelectCard"
                         @clear-filters="clearFilters"
@@ -314,13 +314,13 @@ const handleCreateCardClick = async () => {
     // Fetch latest subscription status
     await subscriptionStore.fetchSubscription();
     
-    if (!subscriptionStore.canCreateExperience) {
+    if (!subscriptionStore.canCreateProject) {
         toast.add({
             severity: 'warn',
             summary: t('subscription.limit_reached'),
             detail: t('subscription.upgrade_to_create_more', {
-                limit: subscriptionStore.experienceLimit,
-                current: subscriptionStore.experienceCount
+                limit: subscriptionStore.projectLimit,
+                current: subscriptionStore.projectCount
             }),
             life: 5000
         });

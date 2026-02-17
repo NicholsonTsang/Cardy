@@ -1007,9 +1007,11 @@
     "free_plan": "免费版",
     "starter_plan": "入门版",
     "premium_plan": "专业版",
+    "enterprise_plan": "企业版",
     "current_plan": "当前方案",
     "upgrade": "升级至专业版",
     "upgrade_to_premium": "升级至专业版",
+    "upgrade_to_enterprise": "升级至企业版",
     "best_value": "最超值",
     "cancel": "取消订阅",
     "reactivate": "重新启用订阅",
@@ -1029,14 +1031,14 @@
     "voice_package_info": "每份套餐：{size} 次语音通话，${price}",
     "voice_insufficient_balance": "点数余额不足，请先购买更多点数。",
     "features": {
-      "unlimited_experiences": "最多 {limit} 个项目",
+      "unlimited_projects": "最多 {limit} 个项目",
       "translations": "多语言翻译",
       "unlimited_translations": "无限语言翻译",
       "monthly_access": "每月 ${monthlyBudget} 会话预算",
       "overage": "${cost} 充值 = 约 {sessions} 次会话",
       "overage_available": "预算用完时可充值",
-      "experience_limit": "最多 {limit} 个项目",
-      "starter_experiences": "最多 {limit} 个项目",
+      "project_limit": "最多 {limit} 个项目",
+      "starter_projects": "最多 {limit} 个项目",
       "starter_translations": "最多 {count} 种语言",
       "no_overage": "无法充值扩充",
       "monthly_pool": "{count} 次每月会话",
@@ -1115,6 +1117,7 @@
       "downgrading": "将切换至 {tier}",
       "starter_active": "入门版有效",
       "premium_active": "专业版有效",
+      "enterprise_active": "企业版有效",
       "loading_details": "正在加载订阅详情..."
     },
     "upgrade_cta": {
@@ -1443,6 +1446,23 @@
         ],
         "cta": "升级至专业版"
       },
+      "enterprise_tier": {
+        "title": "企业版",
+        "price": "{enterpriseFee}",
+        "per": "每月",
+        "desc": "适合大量运营，支持自定义域名",
+        "features": [
+          "最多 100 个项目",
+          "每月 US${enterpriseBudget} 会话额度",
+          "AI 会话：US${enterpriseAiCost}/次",
+          "一般会话：US${enterpriseNonAiCost}/次",
+          "自动充值：US${topupCost} 增加 {enterpriseAiTopupSessions} 次 AI 或 {enterpriseNonAiTopupSessions} 次一般会话",
+          "无限翻译语言",
+          "白标服务（无品牌标识）",
+          "自定义域名（即将推出）"
+        ],
+        "cta": "联系销售"
+      },
       "included_title": "所有方案皆包含",
       "features": {
         "ai_voice": "AI 语音对话",
@@ -1469,7 +1489,7 @@
       "q4": "有哪些语言？",
       "a4": "内容和 AI 对话支持 10+ 种语言：英文、普通话、粤语、日文、韩文、泰文、阿拉伯文、西班牙文、法文、俄文等。",
       "q5": "费用包含什么？",
-      "a5": "免费版可创建 {freeExperiences} 个项目、每月 {freeSessions} 次会话。入门版（${starterFee}/月）含 {starterBudget} 会话预算：{starterAiSessions} 次 AI 或 {starterNonAiSessions} 次非 AI 会话。专业版（${premiumFee}/月）含 {monthlyBudget} 会话预算：{aiSessions} 次 AI 或 {nonAiSessions} 次非 AI 会话。预算用尽时自动充值 ${topupCost} 获得额外会话。所有方案皆含 AI 语音、内容管理、QR 码、数据分析和云端托管。",
+      "a5": "免费版可创建 {freeProjects} 个项目、每月 {freeSessions} 次会话。入门版（${starterFee}/月）含 {starterBudget} 会话预算：{starterAiSessions} 次 AI 或 {starterNonAiSessions} 次非 AI 会话。专业版（${premiumFee}/月）含 {monthlyBudget} 会话预算：{aiSessions} 次 AI 或 {nonAiSessions} 次非 AI 会话。预算用尽时自动充值 ${topupCost} 获得额外会话。所有方案皆含 AI 语音、内容管理、QR 码、数据分析和云端托管。",
       "q6": "多久能开始用？",
       "a6": "几分钟内即可上线。连接 Claude Code 等 AI 工具，导入文档，AI 自动创建整个项目 — 内容、分类、AI 助理和 QR 码全部搞定。",
       "q7": "能定制吗？",

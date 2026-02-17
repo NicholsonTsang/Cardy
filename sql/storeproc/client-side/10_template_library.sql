@@ -293,7 +293,7 @@ DECLARE
     v_lang_data JSONB;
 BEGIN
     -- Check subscription limit
-    v_check := can_create_experience(p_user_id);
+    v_check := can_create_project(p_user_id);
     IF NOT (v_check->>'can_create')::BOOLEAN THEN
         RETURN QUERY SELECT FALSE, NULL::UUID, (v_check->>'message')::TEXT;
         RETURN;

@@ -166,6 +166,11 @@ Live conversation mode:
 - Microphone permission
 - Stable internet connection
 - Supported browser
+- **Voice credits** - Each real-time voice call consumes 1 voice credit (purchased separately from session credits; see [Subscriptions](SUBSCRIPTIONS.md#voice-credits))
+- **Real-time voice enabled** - The project creator must toggle `realtime_voice_enabled` on for the project
+
+**Call Time Limit:**
+Each voice call has a hard time limit of **180 seconds** (3 minutes). The call automatically ends when the limit is reached. This protects both the visitor experience and the creator's costs.
 
 ### Voice Settings
 

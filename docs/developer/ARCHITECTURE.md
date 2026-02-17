@@ -49,8 +49,7 @@ FunTell is an AI-powered content experience platform connecting creators (B2B), 
 | Cache | Upstash Redis | Session tracking, rate limiting, content caching |
 | Auth | Supabase Auth | Authentication and authorization |
 | Payments | Stripe | Subscriptions and credit purchases |
-| AI | OpenAI (GPT-4o, Whisper, TTS) | Chat, voice transcription, text-to-speech |
-| Translations | Google Gemini 2.5 Flash-Lite | Content translation |
+| AI | OpenAI (Realtime Voice, TTS), Google Gemini (Chat, Translations) | Voice conversations, text-to-speech, chat, translations |
 
 ## Data Flow Patterns
 
@@ -73,7 +72,7 @@ FunTell is an AI-powered content experience platform connecting creators (B2B), 
 1. User initiates chat or voice in mobile client
 2. Frontend calls backend `/api/ai/chat/stream`
 3. Backend validates session, checks usage limits
-4. Streams response from OpenAI via SSE
+4. Streams response from Google Gemini via SSE
 
 ## Key Design Decisions
 

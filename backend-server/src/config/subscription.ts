@@ -3,30 +3,37 @@
  * Centralized business parameters for the subscription system
  * All values can be overridden via environment variables
  * 
- * THREE-TIER PRICING MODEL (Session-Based):
- * 
+ * FOUR-TIER PRICING MODEL (Session-Based):
+ *
  * FREE:
  * - 3 projects, 50 sessions/month, no translations
- * 
+ *
  * STARTER ($40/month):
  * - 5 projects, $40 session budget
  * - AI sessions: $0.05 (~800 included), Non-AI: $0.025 (~1600 included)
  * - Max 2 translation languages
  * - "Powered by FunTell" branding
- * 
+ *
  * PREMIUM ($280/month):
  * - 35 projects, $280 session budget
  * - AI sessions: $0.04 (~7000 included), Non-AI: $0.02 (~14000 included)
  * - Unlimited translation languages
  * - White label (no branding)
- * 
+ *
+ * ENTERPRISE ($1000/month):
+ * - 100 projects, $1000 session budget
+ * - AI sessions: $0.02 (~50000 included), Non-AI: $0.01 (~100000 included)
+ * - Unlimited translation languages
+ * - White label (no branding)
+ * - Custom domain (coming soon)
+ *
  * Auto top-up: $5 credit when budget runs out
  */
 
 export const SubscriptionConfig = {
   // Free tier limits (no access to premium features, limited for trial)
   free: {
-    experienceLimit: parseInt(process.env.FREE_TIER_EXPERIENCE_LIMIT || '3'),
+    projectLimit: parseInt(process.env.FREE_TIER_PROJECT_LIMIT || '3'),
     // Free tier: limited sessions for trial purposes
     monthlySessionLimit: parseInt(process.env.FREE_TIER_MONTHLY_SESSION_LIMIT || '50'),
     translationsEnabled: false,
@@ -35,7 +42,7 @@ export const SubscriptionConfig = {
   // Starter tier limits and pricing
   starter: {
     monthlyFeeUsd: parseFloat(process.env.STARTER_MONTHLY_FEE_USD || '40'),
-    experienceLimit: parseInt(process.env.STARTER_EXPERIENCE_LIMIT || '5'),
+    projectLimit: parseInt(process.env.STARTER_PROJECT_LIMIT || '5'),
     translationsEnabled: true,
     maxLanguages: 2, // Max 2 languages based on user select
     
@@ -57,7 +64,7 @@ export const SubscriptionConfig = {
   premium: {
     // Monthly subscription fee
     monthlyFeeUsd: parseFloat(process.env.PREMIUM_MONTHLY_FEE_USD || '280'),
-    experienceLimit: parseInt(process.env.PREMIUM_EXPERIENCE_LIMIT || '35'),
+    projectLimit: parseInt(process.env.PREMIUM_PROJECT_LIMIT || '35'),
     translationsEnabled: true,
     maxLanguages: -1, // Unlimited
     
@@ -77,6 +84,27 @@ export const SubscriptionConfig = {
     },
   },
   
+  // Enterprise tier limits and pricing
+  enterprise: {
+    monthlyFeeUsd: parseFloat(process.env.ENTERPRISE_MONTHLY_FEE_USD || '1000'),
+    projectLimit: parseInt(process.env.ENTERPRISE_PROJECT_LIMIT || '100'),
+    translationsEnabled: true,
+    maxLanguages: -1, // Unlimited
+
+    // Session-based pricing (lowest rates)
+    aiEnabledSessionCostUsd: parseFloat(process.env.ENTERPRISE_AI_ENABLED_SESSION_COST_USD || '0.02'),
+    aiDisabledSessionCostUsd: parseFloat(process.env.ENTERPRISE_AI_DISABLED_SESSION_COST_USD || '0.01'),
+
+    monthlyBudgetUsd: parseFloat(process.env.ENTERPRISE_MONTHLY_BUDGET_USD || '1000'),
+
+    get defaultAiEnabledSessions() {
+      return Math.floor(this.monthlyBudgetUsd / this.aiEnabledSessionCostUsd);
+    },
+    get defaultAiDisabledSessions() {
+      return Math.floor(this.monthlyBudgetUsd / this.aiDisabledSessionCostUsd);
+    },
+  },
+
   // Overage/Top-up configuration
   // When budget is exhausted, auto top-up with credits
   overage: {
@@ -112,7 +140,8 @@ export const SubscriptionConfig = {
   stripe: {
     starterPriceId: process.env.STRIPE_STARTER_PRICE_ID || '',
     premiumPriceId: process.env.STRIPE_PREMIUM_PRICE_ID || '',
-    creditPriceId: process.env.STRIPE_CREDIT_PRICE_ID || '',
+    enterprisePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || '',
+
   }
 };
 
@@ -122,22 +151,27 @@ export type SessionType = 'ai_enabled' | 'ai_disabled';
 /**
  * Get session cost based on AI enabled status and tier
  */
-export function getSessionCost(isAiEnabled: boolean, tier: 'free' | 'starter' | 'premium' = 'premium'): number {
+export function getSessionCost(isAiEnabled: boolean, tier: 'free' | 'starter' | 'premium' | 'enterprise' = 'premium'): number {
   if (tier === 'starter') {
-    return isAiEnabled 
-      ? SubscriptionConfig.starter.aiEnabledSessionCostUsd 
+    return isAiEnabled
+      ? SubscriptionConfig.starter.aiEnabledSessionCostUsd
       : SubscriptionConfig.starter.aiDisabledSessionCostUsd;
   }
+  if (tier === 'enterprise') {
+    return isAiEnabled
+      ? SubscriptionConfig.enterprise.aiEnabledSessionCostUsd
+      : SubscriptionConfig.enterprise.aiDisabledSessionCostUsd;
+  }
   // Premium (default)
-  return isAiEnabled 
-    ? SubscriptionConfig.premium.aiEnabledSessionCostUsd 
+  return isAiEnabled
+    ? SubscriptionConfig.premium.aiEnabledSessionCostUsd
     : SubscriptionConfig.premium.aiDisabledSessionCostUsd;
 }
 
 /**
  * Calculate sessions remaining from budget
  */
-export function calculateSessionsFromBudget(budgetUsd: number, isAiEnabled: boolean, tier: 'free' | 'starter' | 'premium' = 'premium'): number {
+export function calculateSessionsFromBudget(budgetUsd: number, isAiEnabled: boolean, tier: 'free' | 'starter' | 'premium' | 'enterprise' = 'premium'): number {
   const costPerSession = getSessionCost(isAiEnabled, tier);
   return Math.floor(budgetUsd / costPerSession);
 }
@@ -145,7 +179,7 @@ export function calculateSessionsFromBudget(budgetUsd: number, isAiEnabled: bool
 /**
  * Calculate budget consumed from sessions
  */
-export function calculateBudgetFromSessions(sessions: number, isAiEnabled: boolean, tier: 'free' | 'starter' | 'premium' = 'premium'): number {
+export function calculateBudgetFromSessions(sessions: number, isAiEnabled: boolean, tier: 'free' | 'starter' | 'premium' | 'enterprise' = 'premium'): number {
   const costPerSession = getSessionCost(isAiEnabled, tier);
   return sessions * costPerSession;
 }
@@ -153,11 +187,31 @@ export function calculateBudgetFromSessions(sessions: number, isAiEnabled: boole
 /**
  * Get subscription tier details
  */
-export function getTierDetails(tier: 'free' | 'starter' | 'premium') {
+export function getTierDetails(tier: 'free' | 'starter' | 'premium' | 'enterprise') {
+  if (tier === 'enterprise') {
+    return {
+      tier: 'enterprise',
+      projectLimit: SubscriptionConfig.enterprise.projectLimit,
+      monthlyBudgetUsd: SubscriptionConfig.enterprise.monthlyBudgetUsd,
+      aiEnabledSessionCost: SubscriptionConfig.enterprise.aiEnabledSessionCostUsd,
+      aiDisabledSessionCost: SubscriptionConfig.enterprise.aiDisabledSessionCostUsd,
+      defaultAiEnabledSessions: SubscriptionConfig.enterprise.defaultAiEnabledSessions,
+      defaultAiDisabledSessions: SubscriptionConfig.enterprise.defaultAiDisabledSessions,
+      translationsEnabled: SubscriptionConfig.enterprise.translationsEnabled,
+      maxLanguages: SubscriptionConfig.enterprise.maxLanguages,
+      monthlyFeeUsd: SubscriptionConfig.enterprise.monthlyFeeUsd,
+      overage: {
+        creditsPerBatch: SubscriptionConfig.overage.creditsPerBatch,
+        aiEnabledSessionsPerBatch: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.enterprise.aiEnabledSessionCostUsd),
+        aiDisabledSessionsPerBatch: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.enterprise.aiDisabledSessionCostUsd),
+      },
+    };
+  }
+
   if (tier === 'premium') {
     return {
       tier: 'premium',
-      experienceLimit: SubscriptionConfig.premium.experienceLimit,
+      projectLimit: SubscriptionConfig.premium.projectLimit,
       monthlyBudgetUsd: SubscriptionConfig.premium.monthlyBudgetUsd,
       aiEnabledSessionCost: SubscriptionConfig.premium.aiEnabledSessionCostUsd,
       aiDisabledSessionCost: SubscriptionConfig.premium.aiDisabledSessionCostUsd,
@@ -177,7 +231,7 @@ export function getTierDetails(tier: 'free' | 'starter' | 'premium') {
   if (tier === 'starter') {
     return {
       tier: 'starter',
-      experienceLimit: SubscriptionConfig.starter.experienceLimit,
+      projectLimit: SubscriptionConfig.starter.projectLimit,
       monthlyBudgetUsd: SubscriptionConfig.starter.monthlyBudgetUsd,
       aiEnabledSessionCost: SubscriptionConfig.starter.aiEnabledSessionCostUsd,
       aiDisabledSessionCost: SubscriptionConfig.starter.aiDisabledSessionCostUsd,
@@ -196,7 +250,7 @@ export function getTierDetails(tier: 'free' | 'starter' | 'premium') {
   
   return {
     tier: 'free',
-    experienceLimit: SubscriptionConfig.free.experienceLimit,
+    projectLimit: SubscriptionConfig.free.projectLimit,
     monthlySessionLimit: SubscriptionConfig.free.monthlySessionLimit,
     translationsEnabled: SubscriptionConfig.free.translationsEnabled,
     maxLanguages: 0,
@@ -213,12 +267,12 @@ export function getPricingInfo() {
     free: {
       name: 'Free',
       price: 0,
-      experienceLimit: SubscriptionConfig.free.experienceLimit,
+      projectLimit: SubscriptionConfig.free.projectLimit,
       monthlySessionLimit: SubscriptionConfig.free.monthlySessionLimit,
       translationsEnabled: false,
       canBuyOverage: false,
       features: [
-        `Up to ${SubscriptionConfig.free.experienceLimit} projects`,
+        `Up to ${SubscriptionConfig.free.projectLimit} projects`,
         `${SubscriptionConfig.free.monthlySessionLimit} monthly sessions`,
         'No translations',
         'No overage purchase'
@@ -227,7 +281,7 @@ export function getPricingInfo() {
     starter: {
       name: 'Starter',
       price: SubscriptionConfig.starter.monthlyFeeUsd,
-      experienceLimit: SubscriptionConfig.starter.experienceLimit,
+      projectLimit: SubscriptionConfig.starter.projectLimit,
       monthlyBudgetUsd: SubscriptionConfig.starter.monthlyBudgetUsd,
       sessionCosts: {
         aiEnabled: SubscriptionConfig.starter.aiEnabledSessionCostUsd,
@@ -246,7 +300,7 @@ export function getPricingInfo() {
       maxLanguages: SubscriptionConfig.starter.maxLanguages,
       canBuyOverage: true,
       features: [
-        `Up to ${SubscriptionConfig.starter.experienceLimit} projects`,
+        `Up to ${SubscriptionConfig.starter.projectLimit} projects`,
         `$${SubscriptionConfig.starter.monthlyBudgetUsd} monthly session budget`,
         `AI projects: $${SubscriptionConfig.starter.aiEnabledSessionCostUsd}/session (${SubscriptionConfig.starter.defaultAiEnabledSessions} included)`,
         `Non-AI projects: $${SubscriptionConfig.starter.aiDisabledSessionCostUsd}/session (${SubscriptionConfig.starter.defaultAiDisabledSessions} included)`,
@@ -257,7 +311,7 @@ export function getPricingInfo() {
     premium: {
       name: 'Premium',
       price: SubscriptionConfig.premium.monthlyFeeUsd,
-      experienceLimit: SubscriptionConfig.premium.experienceLimit,
+      projectLimit: SubscriptionConfig.premium.projectLimit,
       monthlyBudgetUsd: SubscriptionConfig.premium.monthlyBudgetUsd,
       sessionCosts: {
         aiEnabled: SubscriptionConfig.premium.aiEnabledSessionCostUsd,
@@ -276,13 +330,45 @@ export function getPricingInfo() {
       maxLanguages: -1,
       canBuyOverage: true,
       features: [
-        `Up to ${SubscriptionConfig.premium.experienceLimit} projects`,
+        `Up to ${SubscriptionConfig.premium.projectLimit} projects`,
         `$${SubscriptionConfig.premium.monthlyBudgetUsd} monthly session budget`,
         `AI projects: $${SubscriptionConfig.premium.aiEnabledSessionCostUsd}/session (${SubscriptionConfig.premium.defaultAiEnabledSessions} included)`,
         `Non-AI projects: $${SubscriptionConfig.premium.aiDisabledSessionCostUsd}/session (${SubscriptionConfig.premium.defaultAiDisabledSessions} included)`,
         `Auto top-up: $${SubscriptionConfig.overage.creditsPerBatch} = ${SubscriptionConfig.overage.aiEnabledSessionsPerBatch} AI sessions`,
         'Unlimited translations',
         'White label (No branding)'
+      ]
+    },
+    enterprise: {
+      name: 'Enterprise',
+      price: SubscriptionConfig.enterprise.monthlyFeeUsd,
+      projectLimit: SubscriptionConfig.enterprise.projectLimit,
+      monthlyBudgetUsd: SubscriptionConfig.enterprise.monthlyBudgetUsd,
+      sessionCosts: {
+        aiEnabled: SubscriptionConfig.enterprise.aiEnabledSessionCostUsd,
+        aiDisabled: SubscriptionConfig.enterprise.aiDisabledSessionCostUsd,
+      },
+      defaultSessions: {
+        aiEnabled: SubscriptionConfig.enterprise.defaultAiEnabledSessions,
+        aiDisabled: SubscriptionConfig.enterprise.defaultAiDisabledSessions,
+      },
+      overage: {
+        creditsPerBatch: SubscriptionConfig.overage.creditsPerBatch,
+        aiEnabledSessionsPerBatch: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.enterprise.aiEnabledSessionCostUsd),
+        aiDisabledSessionsPerBatch: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.enterprise.aiDisabledSessionCostUsd),
+      },
+      translationsEnabled: true,
+      maxLanguages: -1,
+      canBuyOverage: true,
+      features: [
+        `Up to ${SubscriptionConfig.enterprise.projectLimit} projects`,
+        `$${SubscriptionConfig.enterprise.monthlyBudgetUsd} monthly session budget`,
+        `AI projects: $${SubscriptionConfig.enterprise.aiEnabledSessionCostUsd}/session (${SubscriptionConfig.enterprise.defaultAiEnabledSessions} included)`,
+        `Non-AI projects: $${SubscriptionConfig.enterprise.aiDisabledSessionCostUsd}/session (${SubscriptionConfig.enterprise.defaultAiDisabledSessions} included)`,
+        `Auto top-up: $${SubscriptionConfig.overage.creditsPerBatch} = ${Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.enterprise.aiEnabledSessionCostUsd)} AI sessions`,
+        'Unlimited translations',
+        'White label (No branding)',
+        'Custom domain (Coming soon)'
       ]
     }
   };

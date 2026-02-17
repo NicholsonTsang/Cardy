@@ -78,12 +78,15 @@ router.post('/stripe', async (req: Request, res: Response) => {
           // Determine tier based on price ID
           const starterPriceId = process.env.STRIPE_STARTER_PRICE_ID;
           const premiumPriceId = process.env.STRIPE_PREMIUM_PRICE_ID;
-          let tier: 'starter' | 'premium' = 'premium'; // Default to premium
-          
+          const enterprisePriceId = process.env.STRIPE_ENTERPRISE_PRICE_ID;
+          let tier: 'starter' | 'premium' | 'enterprise' = 'premium'; // Default to premium
+
           if (priceId === starterPriceId) {
             tier = 'starter';
           } else if (priceId === premiumPriceId) {
             tier = 'premium';
+          } else if (priceId === enterprisePriceId) {
+            tier = 'enterprise';
           } else {
             console.warn(`⚠️ Unknown price ID: ${priceId}. Defaulting to premium tier.`);
           }

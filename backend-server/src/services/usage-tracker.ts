@@ -60,7 +60,7 @@ interface SessionCheckResult {
   allowed: boolean;
   isNewSession: boolean;
   sessionCost: number;
-  tier: 'free' | 'starter' | 'premium';
+  tier: 'free' | 'starter' | 'premium' | 'enterprise';
   isAiEnabled: boolean;
   budgetRemaining: number;
   needsOverage: boolean;
@@ -141,8 +141,8 @@ async function getCardAiEnabledFromDb(cardId: string): Promise<boolean> {
  * Get or initialize user's subscription info in Redis
  * Redis tracks AVAILABLE budget (remaining), not consumed
  */
-async function getOrInitUserInfo(userId: string): Promise<{ 
-  tier: 'free' | 'starter' | 'premium'; 
+async function getOrInitUserInfo(userId: string): Promise<{
+  tier: 'free' | 'starter' | 'premium' | 'enterprise';
   budgetAvailable: number;  // Available budget (source of truth in Redis)
 }> {
   const month = getCurrentMonth();
@@ -161,7 +161,7 @@ async function getOrInitUserInfo(userId: string): Promise<{
 
   if (tierStr && budgetStr !== null) {
     return {
-      tier: tierStr as 'free' | 'starter' | 'premium',
+      tier: tierStr as 'free' | 'starter' | 'premium' | 'enterprise',
       budgetAvailable: parseFloat(budgetStr || '0')
     };
   }
@@ -183,7 +183,7 @@ async function getOrInitUserInfo(userId: string): Promise<{
  * All pricing values come from environment variables
  */
 async function getSubscriptionFromDb(userId: string): Promise<{
-  tier: 'free' | 'starter' | 'premium';
+  tier: 'free' | 'starter' | 'premium' | 'enterprise';
   budgetAvailable: number;
 }> {
   const { data: rows, error } = await supabaseAdmin.rpc(
@@ -201,11 +201,13 @@ async function getSubscriptionFromDb(userId: string): Promise<{
     };
   }
 
-  const tier = data.tier as 'free' | 'starter' | 'premium';
+  const tier = data.tier as 'free' | 'starter' | 'premium' | 'enterprise';
   // Initialize available budget from config (all pricing from env vars)
   let budgetAvailable = 0;
-  
-  if (tier === 'premium') {
+
+  if (tier === 'enterprise') {
+    budgetAvailable = SubscriptionConfig.enterprise.monthlyBudgetUsd;
+  } else if (tier === 'premium') {
     budgetAvailable = SubscriptionConfig.premium.monthlyBudgetUsd;
   } else if (tier === 'starter') {
     budgetAvailable = SubscriptionConfig.starter.monthlyBudgetUsd;
@@ -456,7 +458,7 @@ export async function recordSession(
 
   try {
     // Handle overage if needed
-    if (sessionCheck.needsOverage && sessionCheck.tier === 'premium') {
+    if (sessionCheck.needsOverage && (sessionCheck.tier === 'premium' || sessionCheck.tier === 'enterprise' || sessionCheck.tier === 'starter')) {
       const overageResult = await processSessionOverage(userId, sessionCheck.sessionCost);
       
       if (!overageResult.allowed) {
@@ -581,7 +583,7 @@ export async function checkAndIncrementUsage(
   allowed: boolean;
   currentUsage: number;
   limit: number;
-  tier: 'free' | 'starter' | 'premium';
+  tier: 'free' | 'starter' | 'premium' | 'enterprise';
   isOverage: boolean;
   needsDbCheck: boolean;
   reason: string;
@@ -676,7 +678,7 @@ export async function logAccess(
 ): Promise<void> {
   // Determine AI-enabled and cost if not provided
   const effectiveIsAiEnabled = isAiEnabled ?? await getCardAiEnabled(cardId);
-  const effectiveCost = sessionCostUsd ?? (isOwnerAccess ? 0 : getSessionCost(effectiveIsAiEnabled, tier as 'free' | 'starter' | 'premium'));
+  const effectiveCost = sessionCostUsd ?? (isOwnerAccess ? 0 : getSessionCost(effectiveIsAiEnabled, tier as 'free' | 'starter' | 'premium' | 'enterprise'));
   const effectiveSessionId = sessionId || visitorHash;
 
   if (!isRedisConfigured()) {
@@ -841,7 +843,9 @@ export async function getUsageStats(userId: string): Promise<{
   
   // Total budget from config
   let monthlyBudget = 0;
-  if (tier === 'premium') {
+  if (tier === 'enterprise') {
+    monthlyBudget = SubscriptionConfig.enterprise.monthlyBudgetUsd;
+  } else if (tier === 'premium') {
     monthlyBudget = SubscriptionConfig.premium.monthlyBudgetUsd;
   } else if (tier === 'starter') {
     monthlyBudget = SubscriptionConfig.starter.monthlyBudgetUsd;
@@ -878,7 +882,9 @@ export async function resetUsage(userId: string): Promise<void> {
   
   // Set available budget to full monthly budget (from config)
   let fullBudget = 0;
-  if (tier === 'premium') {
+  if (tier === 'enterprise') {
+    fullBudget = SubscriptionConfig.enterprise.monthlyBudgetUsd;
+  } else if (tier === 'premium') {
     fullBudget = SubscriptionConfig.premium.monthlyBudgetUsd;
   } else if (tier === 'starter') {
     fullBudget = SubscriptionConfig.starter.monthlyBudgetUsd;
@@ -896,15 +902,17 @@ export async function resetUsage(userId: string): Promise<void> {
 /**
  * Update user's tier in Redis (called when subscription changes)
  */
-export async function updateUserTier(userId: string, newTier: 'free' | 'starter' | 'premium'): Promise<void> {
+export async function updateUserTier(userId: string, newTier: 'free' | 'starter' | 'premium' | 'enterprise'): Promise<void> {
   if (!isRedisConfigured()) return;
 
   const month = getCurrentMonth();
   let newBudget = 0;
-  
-  if (newTier === 'premium') {
+
+  if (newTier === 'enterprise') {
+    newBudget = SubscriptionConfig.enterprise.monthlyBudgetUsd;
+  } else if (newTier === 'premium') {
     newBudget = SubscriptionConfig.premium.monthlyBudgetUsd;
-  } else if (newTier === 'starter') { 
+  } else if (newTier === 'starter') {
     newBudget = SubscriptionConfig.starter.monthlyBudgetUsd;
   }
 

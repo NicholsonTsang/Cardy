@@ -108,6 +108,28 @@ Monitor your usage regularly in the Plan & Usage dashboard. The system shows you
 | Peak season | Monitor daily, top up as needed |
 | Post-peak | Review analytics, plan for next peak |
 
+## Voice Credits
+
+Voice credits are a **separate** credit system for real-time voice conversations:
+
+- **1 voice credit = 1 voice call** (with a per-call time limit)
+- Purchased separately from session overage credits
+- Available for all users, including Free tier
+- Never expire
+
+### Purchasing Voice Credits
+
+1. Go to **Plan & Usage** in your dashboard
+2. Click **Buy Voice Credits**
+3. Select a credit package
+4. Complete payment via Stripe
+5. Credits available immediately
+
+:::tip Two Types of Credits
+- **Session credits** — extra session budget when monthly allowance runs out (paid plans only)
+- **Voice credits** — for real-time AI voice calls (available to all users)
+:::
+
 ## Credit FAQ
 
 ### Do credits expire?

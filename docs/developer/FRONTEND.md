@@ -62,7 +62,8 @@ Located in `src/stores/`:
 | Card | `card.ts` | Project/card data management |
 | ContentItem | `contentItem.ts` | Content items within cards |
 | Subscription | `subscription.ts` | User subscription status |
-| Credits | `credits.ts` | Credit balance and transactions |
+| Credits | `credits.ts` | Session credit balance and transactions |
+| VoiceCredits | `voiceCredits.ts` | Voice credit balance, purchase, and consumption |
 | Translation | `translation.ts` | Content translation state |
 | Language | `language.ts` | UI language preferences |
 | Admin | `admin.ts` | Admin-only operations |
@@ -104,6 +105,22 @@ export const useExampleStore = defineStore('example', () => {
   return { items, loading, error, itemCount, fetchItems }
 })
 ```
+
+### Key Composables
+
+| Composable | File | Purpose |
+|------------|------|---------|
+| `useHardTimer` | `views/MobileClient/components/AIAssistant/composables/useHardTimer.ts` | Enforces hard time limit (180s default) on voice calls |
+| `useWebRTCConnection` | `views/MobileClient/components/AIAssistant/composables/useWebRTCConnection.ts` | Manages WebRTC peer connection for realtime voice |
+
+### Key Utilities
+
+| Utility | File | Purpose |
+|---------|------|---------|
+| `stripeCheckout.ts` | `src/utils/stripeCheckout.ts` | Loads Stripe.js from CDN (replaces `@stripe/stripe-js` npm package) |
+| `promptBuilder.ts` | `views/MobileClient/components/AIAssistant/utils/promptBuilder.ts` | Builds AI system prompts, includes `buildContentDirectory()` |
+
+> **Note**: The `@stripe/stripe-js` npm package was removed. Stripe.js is now loaded dynamically from the CDN via `stripeCheckout.ts` using `loadStripe()`.
 
 ## Component Patterns
 

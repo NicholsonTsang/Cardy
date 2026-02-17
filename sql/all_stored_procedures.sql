@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Wed Feb 18 00:23:27 HKT 2026
+-- Generated: Wed Feb 18 00:46:49 HKT 2026
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -343,7 +343,7 @@ DECLARE
     v_check JSONB;
 BEGIN
     -- Check subscription limit
-    v_check := can_create_experience(auth.uid());
+    v_check := can_create_project(auth.uid());
     IF NOT (v_check->>'can_create')::BOOLEAN THEN
         RAISE EXCEPTION '%', (v_check->>'message');
     END IF;
@@ -2394,7 +2394,7 @@ DECLARE
     v_lang_data JSONB;
 BEGIN
     -- Check subscription limit
-    v_check := can_create_experience(p_user_id);
+    v_check := can_create_project(p_user_id);
     IF NOT (v_check->>'can_create')::BOOLEAN THEN
         RETURN QUERY SELECT FALSE, NULL::UUID, (v_check->>'message')::TEXT;
         RETURN;
@@ -3177,10 +3177,11 @@ RETURNS TABLE (
     content_mode_grid BIGINT,
     content_mode_cards BIGINT,
     is_grouped_count BIGINT,
-    -- SUBSCRIPTION METRICS (3 tiers: free, starter, premium)
+    -- SUBSCRIPTION METRICS (4 tiers: free, starter, premium, enterprise)
     total_free_users BIGINT,
     total_starter_users BIGINT,
     total_premium_users BIGINT,
+    total_enterprise_users BIGINT,
     active_subscriptions BIGINT,
     estimated_mrr_cents BIGINT,
     -- ACCESS LOG METRICS
@@ -3242,16 +3243,18 @@ BEGIN
         (SELECT COUNT(*) FROM cards WHERE content_mode = 'grid') as content_mode_grid,
         (SELECT COUNT(*) FROM cards WHERE content_mode = 'cards') as content_mode_cards,
         (SELECT COUNT(*) FROM cards WHERE is_grouped = true) as is_grouped_count,
-        -- SUBSCRIPTION METRICS (3 tiers: free, starter, premium)
+        -- SUBSCRIPTION METRICS (4 tiers: free, starter, premium, enterprise)
         -- Free = users with no subscription record OR tier = 'free'
-        (SELECT COUNT(*) FROM auth.users u WHERE NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND s.tier IN ('starter', 'premium'))) as total_free_users,
+        (SELECT COUNT(*) FROM auth.users u WHERE NOT EXISTS (SELECT 1 FROM subscriptions s WHERE s.user_id = u.id AND s.tier IN ('starter', 'premium', 'enterprise'))) as total_free_users,
         (SELECT COUNT(*) FROM subscriptions WHERE tier = 'starter') as total_starter_users,
         (SELECT COUNT(*) FROM subscriptions WHERE tier = 'premium') as total_premium_users,
-        (SELECT COUNT(*) FROM subscriptions WHERE tier IN ('starter', 'premium') AND status = 'active') as active_subscriptions,
-        -- MRR: Starter=$40/month (4000 cents) + Premium=$280/month (28000 cents)
+        (SELECT COUNT(*) FROM subscriptions WHERE tier = 'enterprise') as total_enterprise_users,
+        (SELECT COUNT(*) FROM subscriptions WHERE tier IN ('starter', 'premium', 'enterprise') AND status = 'active') as active_subscriptions,
+        -- MRR: Starter=$40/month (4000 cents) + Premium=$280/month (28000 cents) + Enterprise=$1000/month (100000 cents)
         (
             (SELECT COUNT(*) * 4000 FROM subscriptions WHERE tier = 'starter' AND status = 'active') +
-            (SELECT COUNT(*) * 28000 FROM subscriptions WHERE tier = 'premium' AND status = 'active')
+            (SELECT COUNT(*) * 28000 FROM subscriptions WHERE tier = 'premium' AND status = 'active') +
+            (SELECT COUNT(*) * 100000 FROM subscriptions WHERE tier = 'enterprise' AND status = 'active')
         )::BIGINT as estimated_mrr_cents,
         -- ACCESS LOG METRICS
         (SELECT COUNT(*) FROM card_access_log WHERE accessed_at >= date_trunc('month', CURRENT_DATE)) as monthly_total_accesses,
@@ -3351,8 +3354,8 @@ BEGIN
     END IF;
 
     -- Validate new tier
-    IF p_new_tier NOT IN ('free', 'starter', 'premium') THEN
-        RAISE EXCEPTION 'Invalid tier. Must be: free, starter, or premium.';
+    IF p_new_tier NOT IN ('free', 'starter', 'premium', 'enterprise') THEN
+        RAISE EXCEPTION 'Invalid tier. Must be: free, starter, premium, or enterprise.';
     END IF;
 
     -- Validate duration (must be positive if provided)
@@ -3413,11 +3416,11 @@ BEGIN
             status = 'active'::subscription_status,
             -- stripe_subscription_id stays NULL (admin-managed only)
             current_period_start = CASE 
-                WHEN p_new_tier IN ('starter', 'premium') THEN NOW()
+                WHEN p_new_tier IN ('starter', 'premium', 'enterprise') THEN NOW()
                 ELSE NULL
             END,
             current_period_end = CASE 
-                WHEN p_new_tier IN ('starter', 'premium') THEN v_period_end
+                WHEN p_new_tier IN ('starter', 'premium', 'enterprise') THEN v_period_end
                 ELSE NULL
             END,
             cancel_at_period_end = false,
@@ -3435,8 +3438,8 @@ BEGIN
             p_user_id,
             p_new_tier::"SubscriptionTier",
             'active'::subscription_status,
-            CASE WHEN p_new_tier IN ('starter', 'premium') THEN NOW() ELSE NULL END,
-            CASE WHEN p_new_tier IN ('starter', 'premium') THEN v_period_end ELSE NULL END,
+            CASE WHEN p_new_tier IN ('starter', 'premium', 'enterprise') THEN NOW() ELSE NULL END,
+            CASE WHEN p_new_tier IN ('starter', 'premium', 'enterprise') THEN v_period_end ELSE NULL END,
             false
         );
     END IF;
@@ -3812,7 +3815,7 @@ GRANT EXECUTE ON FUNCTION get_admin_audit_logs(TEXT, UUID, INTEGER, INTEGER) TO 
 -- File: 12_subscription.sql
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS get_or_create_subscription CASCADE;
-DROP FUNCTION IF EXISTS can_create_experience CASCADE;
+DROP FUNCTION IF EXISTS can_create_project CASCADE;
 DROP FUNCTION IF EXISTS can_use_translations CASCADE;
 DROP FUNCTION IF EXISTS get_subscription_details CASCADE;
 
@@ -3862,26 +3865,27 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- =================================================================
 -- FUNCTION: Can create project
 -- Business parameters passed from calling application
--- Supports Free, Starter, and Premium tiers
+-- Supports Free, Starter, Premium, and Enterprise tiers
 -- =================================================================
-CREATE OR REPLACE FUNCTION can_create_experience(
+CREATE OR REPLACE FUNCTION can_create_project(
     p_user_id UUID DEFAULT NULL,
     p_free_limit INTEGER DEFAULT 3,
     p_starter_limit INTEGER DEFAULT 5,
-    p_premium_limit INTEGER DEFAULT 35
+    p_premium_limit INTEGER DEFAULT 35,
+    p_enterprise_limit INTEGER DEFAULT 100
 )
 RETURNS JSONB AS $$
 DECLARE
     v_user_id UUID := COALESCE(p_user_id, auth.uid());
     v_subscription subscriptions%ROWTYPE;
-    v_experience_count INTEGER;
+    v_project_count INTEGER;
     v_limit INTEGER;
     v_user_role TEXT;
 BEGIN
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
-    
+
     -- Check if user is admin
     v_user_role := get_user_role(v_user_id);
     IF v_user_role = 'admin' THEN
@@ -3893,31 +3897,34 @@ BEGIN
             'message', 'Admin bypass'
         );
     END IF;
-    
+
     -- Get subscription
     v_subscription := get_or_create_subscription(v_user_id);
-    
-    -- Count existing experiences
-    SELECT COUNT(*) INTO v_experience_count FROM cards WHERE user_id = v_user_id;
-    
-    -- Determine limit based on tier (Free, Starter, Premium)
-    IF v_subscription.tier = 'premium' THEN
+
+    -- Count existing projects
+    SELECT COUNT(*) INTO v_project_count FROM cards WHERE user_id = v_user_id;
+
+    -- Determine limit based on tier (Free, Starter, Premium, Enterprise)
+    IF v_subscription.tier = 'enterprise' THEN
+        v_limit := p_enterprise_limit;
+    ELSIF v_subscription.tier = 'premium' THEN
         v_limit := p_premium_limit;
     ELSIF v_subscription.tier = 'starter' THEN
         v_limit := p_starter_limit;
     ELSE
         v_limit := p_free_limit;
     END IF;
-    
+
     RETURN jsonb_build_object(
-        'can_create', v_experience_count < v_limit,
-        'current_count', v_experience_count,
+        'can_create', v_project_count < v_limit,
+        'current_count', v_project_count,
         'limit', v_limit,
         'tier', v_subscription.tier::TEXT,
-        'message', CASE 
-            WHEN v_experience_count < v_limit THEN 'OK'
+        'message', CASE
+            WHEN v_project_count < v_limit THEN 'OK'
             WHEN v_subscription.tier = 'free' THEN 'Upgrade to Starter or Premium to create more projects'
             WHEN v_subscription.tier = 'starter' THEN 'Upgrade to Premium to create more projects'
+            WHEN v_subscription.tier = 'premium' THEN 'Upgrade to Enterprise to create more projects'
             ELSE 'Project limit reached'
         END
     );
@@ -3926,8 +3933,8 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =================================================================
 -- FUNCTION: Can use translations
--- Starter and Premium tiers can use translations
--- Starter: max 2 languages, Premium: unlimited
+-- Starter, Premium, and Enterprise tiers can use translations
+-- Starter: max 2 languages, Premium/Enterprise: unlimited
 -- =================================================================
 CREATE OR REPLACE FUNCTION can_use_translations(
     p_user_id UUID DEFAULT NULL,
@@ -3942,7 +3949,7 @@ BEGIN
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
-    
+
     -- Check if user is admin (admins always have translation access)
     v_user_role := get_user_role(v_user_id);
     IF v_user_role = 'admin' THEN
@@ -3953,20 +3960,20 @@ BEGIN
             'message', 'Admin bypass - unlimited translations'
         );
     END IF;
-    
+
     -- Get subscription
     v_subscription := get_or_create_subscription(v_user_id);
-    
+
     RETURN jsonb_build_object(
-        'can_translate', v_subscription.tier IN ('starter', 'premium'),
+        'can_translate', v_subscription.tier IN ('starter', 'premium', 'enterprise'),
         'tier', v_subscription.tier::TEXT,
         'max_languages', CASE
-            WHEN v_subscription.tier = 'premium' THEN -1
+            WHEN v_subscription.tier IN ('premium', 'enterprise') THEN -1
             WHEN v_subscription.tier = 'starter' THEN p_starter_max_languages
             ELSE 0
         END,
-        'message', CASE 
-            WHEN v_subscription.tier = 'premium' THEN 'Unlimited translations available'
+        'message', CASE
+            WHEN v_subscription.tier IN ('premium', 'enterprise') THEN 'Unlimited translations available'
             WHEN v_subscription.tier = 'starter' THEN 'Max ' || p_starter_max_languages || ' language translations available'
             ELSE 'Upgrade to Starter or Premium to access multi-language translations'
         END
@@ -3978,27 +3985,31 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- FUNCTION: Get subscription details
 -- All pricing/budget values come from parameters (environment variables)
 -- NOTE: Usage stats come from Redis (source of truth), not from DB
--- Supports Free, Starter, and Premium tiers
+-- Supports Free, Starter, Premium, and Enterprise tiers
 -- =================================================================
 CREATE OR REPLACE FUNCTION get_subscription_details(
     p_user_id UUID DEFAULT NULL,
-    p_free_experience_limit INTEGER DEFAULT 3,
-    p_starter_experience_limit INTEGER DEFAULT 5,
-    p_premium_experience_limit INTEGER DEFAULT 35,
+    p_free_project_limit INTEGER DEFAULT 3,
+    p_starter_project_limit INTEGER DEFAULT 5,
+    p_premium_project_limit INTEGER DEFAULT 35,
+    p_enterprise_project_limit INTEGER DEFAULT 100,
     p_free_monthly_sessions INTEGER DEFAULT 50,  -- Free tier session limit
     p_starter_monthly_budget DECIMAL DEFAULT 40.00,  -- Starter monthly budget USD
     p_premium_monthly_budget DECIMAL DEFAULT 280.00,  -- Premium monthly budget USD
+    p_enterprise_monthly_budget DECIMAL DEFAULT 1000.00,  -- Enterprise monthly budget USD
     p_starter_ai_session_cost DECIMAL DEFAULT 0.05,  -- Starter AI session cost
     p_starter_non_ai_session_cost DECIMAL DEFAULT 0.025,  -- Starter non-AI session cost
     p_premium_ai_session_cost DECIMAL DEFAULT 0.04,  -- Premium AI session cost
     p_premium_non_ai_session_cost DECIMAL DEFAULT 0.02,  -- Premium non-AI session cost
+    p_enterprise_ai_session_cost DECIMAL DEFAULT 0.02,  -- Enterprise AI session cost
+    p_enterprise_non_ai_session_cost DECIMAL DEFAULT 0.01,  -- Enterprise non-AI session cost
     p_overage_credits_per_batch INTEGER DEFAULT 5  -- Credits per auto top-up
 )
 RETURNS JSONB AS $$
 DECLARE
     v_user_id UUID := COALESCE(p_user_id, auth.uid());
     v_subscription subscriptions%ROWTYPE;
-    v_experience_count INTEGER;
+    v_project_count INTEGER;
     v_monthly_budget DECIMAL;
     v_ai_session_cost DECIMAL;
     v_non_ai_session_cost DECIMAL;
@@ -4006,15 +4017,19 @@ BEGIN
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
-    
+
     -- Get subscription
     v_subscription := get_or_create_subscription(v_user_id);
-    
-    -- Count experiences
-    SELECT COUNT(*) INTO v_experience_count FROM cards WHERE user_id = v_user_id;
-    
+
+    -- Count projects
+    SELECT COUNT(*) INTO v_project_count FROM cards WHERE user_id = v_user_id;
+
     -- Set tier-specific values
-    IF v_subscription.tier = 'premium' THEN
+    IF v_subscription.tier = 'enterprise' THEN
+        v_monthly_budget := p_enterprise_monthly_budget;
+        v_ai_session_cost := p_enterprise_ai_session_cost;
+        v_non_ai_session_cost := p_enterprise_non_ai_session_cost;
+    ELSIF v_subscription.tier = 'premium' THEN
         v_monthly_budget := p_premium_monthly_budget;
         v_ai_session_cost := p_premium_ai_session_cost;
         v_non_ai_session_cost := p_premium_non_ai_session_cost;
@@ -4027,71 +4042,74 @@ BEGIN
         v_ai_session_cost := 0;
         v_non_ai_session_cost := 0;
     END IF;
-    
+
     RETURN jsonb_build_object(
         'tier', v_subscription.tier::TEXT,
         'status', v_subscription.status,
-        'is_premium', v_subscription.tier = 'premium',
+        'is_premium', v_subscription.tier IN ('premium', 'enterprise'),
         'is_starter', v_subscription.tier = 'starter',
-        'is_paid', v_subscription.tier IN ('starter', 'premium'),
-        
+        'is_enterprise', v_subscription.tier = 'enterprise',
+        'is_paid', v_subscription.tier IN ('starter', 'premium', 'enterprise'),
+
         -- Stripe info
         'stripe_subscription_id', v_subscription.stripe_subscription_id,
         'current_period_start', v_subscription.current_period_start,
         'current_period_end', v_subscription.current_period_end,
         'cancel_at_period_end', v_subscription.cancel_at_period_end,
         'scheduled_tier', v_subscription.scheduled_tier::TEXT,  -- Tier to switch to after period ends
-        
+
         -- Session-based billing (from parameters/env vars)
         -- NOTE: Actual budget tracking is in Redis, these are just for display
         'monthly_budget_usd', v_monthly_budget,
         'budget_consumed_usd', 0,  -- Redis is source of truth, backend fills this
         'budget_remaining_usd', v_monthly_budget,
-        
+
         -- Session costs (tier-specific)
         'ai_session_cost_usd', v_ai_session_cost,
         'non_ai_session_cost_usd', v_non_ai_session_cost,
-        
+
         -- Calculated session limits
-        'ai_sessions_included', CASE 
-            WHEN v_subscription.tier IN ('starter', 'premium') THEN FLOOR(v_monthly_budget / v_ai_session_cost) 
-            ELSE 0 
+        'ai_sessions_included', CASE
+            WHEN v_subscription.tier IN ('starter', 'premium', 'enterprise') THEN FLOOR(v_monthly_budget / v_ai_session_cost)
+            ELSE 0
         END,
-        'non_ai_sessions_included', CASE 
-            WHEN v_subscription.tier IN ('starter', 'premium') THEN FLOOR(v_monthly_budget / v_non_ai_session_cost) 
-            ELSE 0 
+        'non_ai_sessions_included', CASE
+            WHEN v_subscription.tier IN ('starter', 'premium', 'enterprise') THEN FLOOR(v_monthly_budget / v_non_ai_session_cost)
+            ELSE 0
         END,
-        
+
         -- Free tier (session count based)
         'monthly_session_limit', CASE WHEN v_subscription.tier = 'free' THEN p_free_monthly_sessions ELSE NULL END,
-        
-        -- Experience limits
-        'experience_count', v_experience_count,
-        'experience_limit', CASE 
-            WHEN v_subscription.tier = 'premium' THEN p_premium_experience_limit
-            WHEN v_subscription.tier = 'starter' THEN p_starter_experience_limit
-            ELSE p_free_experience_limit 
+
+        -- Project limits
+        'project_count', v_project_count,
+        'project_limit', CASE
+            WHEN v_subscription.tier = 'enterprise' THEN p_enterprise_project_limit
+            WHEN v_subscription.tier = 'premium' THEN p_premium_project_limit
+            WHEN v_subscription.tier = 'starter' THEN p_starter_project_limit
+            ELSE p_free_project_limit
         END,
-        
+
         -- Features
         'features', jsonb_build_object(
-            'translations_enabled', v_subscription.tier IN ('starter', 'premium'),
+            'translations_enabled', v_subscription.tier IN ('starter', 'premium', 'enterprise'),
             'max_languages', CASE
-                WHEN v_subscription.tier = 'premium' THEN -1
+                WHEN v_subscription.tier IN ('premium', 'enterprise') THEN -1
                 WHEN v_subscription.tier = 'starter' THEN 2
                 ELSE 0
             END,
-            'can_buy_overage', v_subscription.tier IN ('starter', 'premium'),
-            'white_label', v_subscription.tier = 'premium'
+            'can_buy_overage', v_subscription.tier IN ('starter', 'premium', 'enterprise'),
+            'white_label', v_subscription.tier IN ('premium', 'enterprise'),
+            'custom_domain', v_subscription.tier = 'enterprise'
         ),
-        
+
         -- Pricing info (all from parameters/env vars)
         'pricing', jsonb_build_object(
             'monthly_fee_usd', v_monthly_budget,
             'ai_session_cost_usd', v_ai_session_cost,
             'non_ai_session_cost_usd', v_non_ai_session_cost,
-            'ai_sessions_included', CASE WHEN v_subscription.tier IN ('starter', 'premium') THEN FLOOR(v_monthly_budget / v_ai_session_cost) ELSE 0 END,
-            'non_ai_sessions_included', CASE WHEN v_subscription.tier IN ('starter', 'premium') THEN FLOOR(v_monthly_budget / v_non_ai_session_cost) ELSE 0 END,
+            'ai_sessions_included', CASE WHEN v_subscription.tier IN ('starter', 'premium', 'enterprise') THEN FLOOR(v_monthly_budget / v_ai_session_cost) ELSE 0 END,
+            'non_ai_sessions_included', CASE WHEN v_subscription.tier IN ('starter', 'premium', 'enterprise') THEN FLOOR(v_monthly_budget / v_non_ai_session_cost) ELSE 0 END,
             'overage_credits_per_batch', p_overage_credits_per_batch,
             'overage_ai_sessions_per_batch', CASE WHEN v_ai_session_cost > 0 THEN FLOOR(p_overage_credits_per_batch / v_ai_session_cost) ELSE 0 END,
             'overage_non_ai_sessions_per_batch', CASE WHEN v_non_ai_session_cost > 0 THEN FLOOR(p_overage_credits_per_batch / v_non_ai_session_cost) ELSE 0 END
@@ -4104,9 +4122,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- GRANTS
 -- =================================================================
 GRANT EXECUTE ON FUNCTION get_or_create_subscription(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION can_create_experience(UUID, INTEGER, INTEGER, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION can_create_project(UUID, INTEGER, INTEGER, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION can_use_translations(UUID, INTEGER) TO authenticated;
-GRANT EXECUTE ON FUNCTION get_subscription_details(UUID, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION get_subscription_details(UUID, INTEGER, INTEGER, INTEGER, INTEGER, INTEGER, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, DECIMAL, INTEGER) TO authenticated;
 
 
 -- File: 12_translation_management.sql
@@ -7365,8 +7383,8 @@ DECLARE
     v_tier "SubscriptionTier";
 BEGIN
     -- Validate and cast tier
-    IF p_tier NOT IN ('starter', 'premium') THEN
-        RAISE EXCEPTION 'Invalid tier. Must be: starter or premium.';
+    IF p_tier NOT IN ('starter', 'premium', 'enterprise') THEN
+        RAISE EXCEPTION 'Invalid tier. Must be: starter, premium, or enterprise.';
     END IF;
     v_tier := p_tier::"SubscriptionTier";
     
@@ -7447,7 +7465,7 @@ BEGIN
     END IF;
     
     -- Parse scheduled tier (default to 'free' if not specified)
-    IF p_scheduled_tier IS NOT NULL AND p_scheduled_tier IN ('free', 'starter', 'premium') THEN
+    IF p_scheduled_tier IS NOT NULL AND p_scheduled_tier IN ('free', 'starter', 'premium', 'enterprise') THEN
         v_scheduled := p_scheduled_tier::"SubscriptionTier";
     ELSE
         v_scheduled := 'free'::"SubscriptionTier";
@@ -7564,7 +7582,7 @@ DROP FUNCTION IF EXISTS get_subscription_stripe_customer_server CASCADE;
 DROP FUNCTION IF EXISTS update_subscription_cancel_status_server CASCADE;
 DROP FUNCTION IF EXISTS update_subscription_status_server CASCADE;
 DROP FUNCTION IF EXISTS update_subscription_period_server CASCADE;
-DROP FUNCTION IF EXISTS count_user_experiences_server CASCADE;
+DROP FUNCTION IF EXISTS count_user_projects_server CASCADE;
 DROP FUNCTION IF EXISTS check_premium_subscription_server CASCADE;
 
 -- =================================================================
@@ -7680,9 +7698,9 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Count user experiences
-DROP FUNCTION IF EXISTS count_user_experiences_server CASCADE;
-CREATE OR REPLACE FUNCTION count_user_experiences_server(
+-- Count user projects
+DROP FUNCTION IF EXISTS count_user_projects_server CASCADE;
+CREATE OR REPLACE FUNCTION count_user_projects_server(
     p_user_id UUID
 )
 RETURNS INTEGER AS $$
@@ -7724,8 +7742,8 @@ BEGIN
     FROM subscriptions
     WHERE user_id = p_user_id;
     
-    -- Both Starter and Premium can access translations
-    RETURN v_tier IN ('starter', 'premium');
+    -- Starter, Premium, and Enterprise can access translations
+    RETURN v_tier IN ('starter', 'premium', 'enterprise');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
@@ -7747,8 +7765,8 @@ GRANT EXECUTE ON FUNCTION update_subscription_status_server TO service_role;
 REVOKE ALL ON FUNCTION update_subscription_period_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION update_subscription_period_server TO service_role;
 
-REVOKE ALL ON FUNCTION count_user_experiences_server FROM PUBLIC, authenticated, anon;
-GRANT EXECUTE ON FUNCTION count_user_experiences_server TO service_role;
+REVOKE ALL ON FUNCTION count_user_projects_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION count_user_projects_server TO service_role;
 
 REVOKE ALL ON FUNCTION check_premium_subscription_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION check_premium_subscription_server TO service_role;

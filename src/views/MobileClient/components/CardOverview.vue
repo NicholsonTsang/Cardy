@@ -156,7 +156,7 @@ const emit = defineEmits<{
 
 // Branding visibility (Show for Free and Starter, hide for Premium)
 const showBranding = computed(() => {
-  return props.card.subscription_tier !== 'premium'
+  return props.card.subscription_tier !== 'premium' && props.card.subscription_tier !== 'enterprise'
 })
 
 // Card data formatted for AI assistant
