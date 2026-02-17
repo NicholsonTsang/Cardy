@@ -298,7 +298,8 @@
       "scroll_to_explore": "スクロールして探索",
       "no_templates": "テンプレートが見つかりません",
       "live_badge": "ライブ",
-      "open_button": "開く"
+      "open_button": "開く",
+      "featured_badge": "おすすめ"
     },
     "content_modes": {
       "title": "柔軟な",

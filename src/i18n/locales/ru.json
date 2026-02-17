@@ -298,7 +298,8 @@
       "scroll_to_explore": "Прокрутите для изучения",
       "no_templates": "Шаблоны не найдены",
       "live_badge": "Живое",
-      "open_button": "Открыть"
+      "open_button": "Открыть",
+      "featured_badge": "Рекомендуемое"
     },
     "content_modes": {
       "title": "Гибкие",

@@ -372,12 +372,18 @@
                       <i :class="getVenueIcon(template.venue_type)" class="text-sm sm:text-base"></i>
                     </div>
                     <div class="min-w-0 flex-1">
-                      <h4 
-                        class="font-semibold text-sm sm:text-base truncate transition-colors"
-                        :class="selectedTemplate?.id === template.id ? 'text-blue-900' : 'text-slate-800 group-hover:text-slate-900'"
-                      >
-                        {{ template.name }}
-                      </h4>
+                      <div class="flex items-center gap-1.5">
+                        <h4
+                          class="font-semibold text-sm sm:text-base truncate transition-colors"
+                          :class="selectedTemplate?.id === template.id ? 'text-blue-900' : 'text-slate-800 group-hover:text-slate-900'"
+                        >
+                          {{ template.name }}
+                        </h4>
+                        <span v-if="template.is_featured" class="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-semibold rounded">
+                          <i class="pi pi-star-fill text-[8px]"></i>
+                          {{ $t('landing.demo_templates.featured_badge') }}
+                        </span>
+                      </div>
                       <p class="text-[10px] sm:text-xs text-slate-500 truncate mt-0.5">{{ formatVenueType(template.venue_type) }}</p>
                     </div>
                     <div 
@@ -1418,7 +1424,7 @@ const fetchDemoTemplates = async () => {
     }
     
     if (data?.length === 0) {
-      console.warn('[LandingPage] No demo templates found. Check that templates have is_featured=true, is_active=true, and linked cards have at least one enabled QR code (access token) in card_access_tokens.')
+      console.warn('[LandingPage] No demo templates found. Check that templates have is_active=true and linked cards have at least one enabled QR code (access token) in card_access_tokens.')
     }
     
     demoTemplates.value = data || []

@@ -298,7 +298,8 @@
       "scroll_to_explore": "Faites défiler pour explorer",
       "no_templates": "Aucun modèle trouvé",
       "live_badge": "En Direct",
-      "open_button": "Ouvrir"
+      "open_button": "Ouvrir",
+      "featured_badge": "En vedette"
     },
     "content_modes": {
       "title": "Mises en Page",

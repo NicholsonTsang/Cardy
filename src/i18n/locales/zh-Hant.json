@@ -1459,7 +1459,8 @@
       "scroll_to_explore": "滾動瀏覽更多",
       "no_templates": "找不到範本",
       "live_badge": "即時",
-      "open_button": "開啟"
+      "open_button": "開啟",
+      "featured_badge": "精選"
     },
     "content_modes": {
       "title": "靈活",

@@ -298,7 +298,8 @@
       "scroll_to_explore": "เลื่อนเพื่อสำรวจ",
       "no_templates": "ไม่พบเทมเพลต",
       "live_badge": "สด",
-      "open_button": "เปิด"
+      "open_button": "เปิด",
+      "featured_badge": "แนะนำ"
     },
     "content_modes": {
       "title": "เลย์เอาต์",

@@ -1304,7 +1304,8 @@
       "scroll_to_explore": "滚动浏览更多",
       "no_templates": "找不到范本",
       "live_badge": "即时",
-      "open_button": "打开"
+      "open_button": "打开",
+      "featured_badge": "精选"
     },
     "content_modes": {
       "title": "灵活",

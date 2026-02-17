@@ -980,7 +980,8 @@ RETURNS TABLE (
     thumbnail_url TEXT,
     content_mode TEXT,
     item_count BIGINT,
-    access_url TEXT
+    access_url TEXT,
+    is_featured BOOLEAN
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -988,7 +989,7 @@ SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         ct.id,
         ct.slug,
         -- Use translation if available, fallback to original
@@ -1005,17 +1006,17 @@ BEGIN
             WHERE t.card_id = c.id AND t.is_enabled = true
             ORDER BY t.created_at ASC
             LIMIT 1
-        )::TEXT AS access_url
+        )::TEXT AS access_url,
+        ct.is_featured
     FROM content_templates ct
     JOIN cards c ON ct.card_id = c.id
     WHERE ct.is_active = true
-      AND ct.is_featured = true
       -- Only include templates that have at least one enabled access token
       AND EXISTS (
-          SELECT 1 FROM card_access_tokens t 
+          SELECT 1 FROM card_access_tokens t
           WHERE t.card_id = c.id AND t.is_enabled = true
       )
-    ORDER BY ct.sort_order ASC, c.name ASC
+    ORDER BY ct.is_featured DESC, ct.sort_order ASC, c.name ASC
     LIMIT p_limit;
 END;
 $$;

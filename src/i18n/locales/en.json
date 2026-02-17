@@ -1493,7 +1493,8 @@
       "scroll_to_explore": "Scroll to explore",
       "no_templates": "No templates found",
       "live_badge": "Live",
-      "open_button": "Open"
+      "open_button": "Open",
+      "featured_badge": "Featured"
     },
     "content_modes": {
       "title": "Flexible",

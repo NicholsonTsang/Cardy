@@ -298,7 +298,8 @@
       "scroll_to_explore": "مرر للاستكشاف",
       "no_templates": "لم يتم العثور على قوالب",
       "live_badge": "مباشر",
-      "open_button": "افتح"
+      "open_button": "افتح",
+      "featured_badge": "مميز"
     },
     "content_modes": {
       "title": "تخطيطات",

@@ -298,7 +298,8 @@
       "scroll_to_explore": "Desplázate para explorar",
       "no_templates": "No se encontraron plantillas",
       "live_badge": "En Vivo",
-      "open_button": "Abrir"
+      "open_button": "Abrir",
+      "featured_badge": "Destacado"
     },
     "content_modes": {
       "title": "Diseños de",
