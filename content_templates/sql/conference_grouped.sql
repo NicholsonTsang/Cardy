@@ -79,7 +79,7 @@ BEGIN
     (v_card_id, v_day3, 'TechSummit Awards & Closing', E'**🏆 Celebrating Excellence in Tech**\n\n📍 Main Hall | ⏰ 4:00 PM - 5:00 PM\n\nJoin us as we recognize outstanding achievements and innovations from the past year.\n\n---\n\n**Award Categories:**\n- Startup of the Year\n- Best Open Source Project\n- Diversity & Inclusion Champion\n- Breakthrough Innovation\n- Community Impact Award\n\n**Hackathon Winners:** Announced during ceremony\n\n🏷️ **Track:** All Attendees\n🍾 **Reception follows**', NULL, 'Award finalists announced via app day before. Past winners include now-famous startups like DataBridge and AIAssist. Hackathon prizes total $50,000. Closing reception 5-7pm with open bar and networking. Photo booth with speakers available. Swag bag pickup at exit.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('conference', v_card_id, 'events', true, true, 9);
 
     RAISE NOTICE 'Successfully created Conference template with card ID: %', v_card_id;

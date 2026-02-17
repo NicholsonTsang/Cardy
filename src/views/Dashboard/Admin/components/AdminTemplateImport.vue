@@ -71,10 +71,10 @@
           </template>
         </Column>
 
-        <Column field="venue_type" :header="$t('templates.admin.venue_type')" style="width: 140px">
+        <Column field="scenario_category" :header="$t('templates.admin.scenario_category')" style="width: 140px">
           <template #body="{ data }">
-            <div v-if="data.venue_type" class="flex items-center gap-2">
-              <Tag :value="data.venue_type" severity="secondary" class="capitalize" />
+            <div v-if="data.scenario_category" class="flex items-center gap-2">
+              <Tag :value="data.scenario_category" severity="secondary" class="capitalize" />
             </div>
             <span v-else class="text-slate-400">—</span>
           </template>
@@ -240,7 +240,7 @@ interface PreviewTemplate {
   name: string
   slug: string
   description: string
-  venue_type: string | null
+  scenario_category: string | null
   content_mode: string
   is_grouped: boolean
   group_display: string
@@ -359,7 +359,7 @@ function convertToPreviewTemplate(imported: ImportedCard): PreviewTemplate {
     name: card.name || 'Untitled',
     slug,
     description: card.description || '',
-    venue_type: null, // Admin can set after import
+    scenario_category: null, // Admin can set after import
     content_mode: card.content_mode || 'list',
     is_grouped: card.is_grouped || false,
     group_display: card.group_display || 'expanded',
@@ -448,7 +448,7 @@ async function handleBulkImport() {
         const result = await templateStore.bulkImportTemplate(
           cardWithItems,
           template.slug,
-          template.venue_type
+          template.scenario_category
         )
 
         if (result.success) {

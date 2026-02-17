@@ -86,7 +86,7 @@ BEGIN
     (v_card_id, v_cat_services, 'Parking & Transportation', E'**Getting Here & Getting Around**\n\n🚗 **Parking Garage:**\n- 3 hours free with store validation\n- $3/hour after (max $15/day)\n- Electric charging stations Level P1\n\n🚌 **Public Transit:**\n- Bus routes 12, 15, 22 stop at mall\n- Metro Red Line: Central Plaza station (2 blocks)\n\n🚕 **Rideshare:**\n- Pickup zone at East Entrance\n- Designated Uber/Lyft area', NULL, 'Parking garage has 3,500 spaces across 4 levels. Busiest on weekends - try Level P3 for faster spots. Electric charging is ChargePoint network. Valet parking available $20 at Main Entrance.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('shopping-mall', v_card_id, 'retail', true, true, 16);
 
     RAISE NOTICE 'Successfully created Shopping Mall template with card ID: %', v_card_id;

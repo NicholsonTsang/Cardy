@@ -115,10 +115,10 @@
         <InputText v-model="searchQuery" :placeholder="$t('common.search')" class="w-full sm:w-64" />
       </IconField>
 
-      <!-- Venue Type -->
+      <!-- Scenario Category -->
       <Select
-        v-model="selectedVenueType"
-        :options="venueTypeOptions"
+        v-model="selectedScenarioCategory"
+        :options="scenarioCategoryOptions"
         optionLabel="label"
         optionValue="value"
         :placeholder="$t('templates.admin.filter_by_type')"
@@ -158,9 +158,9 @@
     <div v-else-if="filteredTemplates.length === 0" class="empty-state">
       <i class="pi pi-folder-open"></i>
       <h4>{{ $t('templates.admin.no_templates') }}</h4>
-      <p>{{ searchQuery || selectedVenueType || selectedStatus !== null ? $t('templates.admin.no_templates_for_filter') : $t('templates.admin.no_templates_desc') }}</p>
+      <p>{{ searchQuery || selectedScenarioCategory || selectedStatus !== null ? $t('templates.admin.no_templates_for_filter') : $t('templates.admin.no_templates_desc') }}</p>
       <Button 
-        v-if="!searchQuery && !selectedVenueType && selectedStatus === null"
+        v-if="!searchQuery && !selectedScenarioCategory && selectedStatus === null"
         :label="$t('templates.admin.create_first_template')"
         icon="pi pi-plus"
         class="mt-4 bg-blue-600 hover:bg-blue-700 text-white border-0"
@@ -228,12 +228,12 @@
         </template>
       </Column>
       
-      <!-- Venue Type Column -->
-      <Column field="venue_type" :header="$t('templates.admin.venue_type')" sortable style="min-width: 140px">
+      <!-- Scenario Category Column -->
+      <Column field="scenario_category" :header="$t('templates.admin.scenario_category')" sortable style="min-width: 140px">
         <template #body="{ data }">
-          <div v-if="data.venue_type" class="flex items-center gap-2">
-            <i :class="getVenueIcon(data.venue_type)" class="text-slate-400 text-sm"></i>
-            <span class="capitalize">{{ formatVenueType(data.venue_type) }}</span>
+          <div v-if="data.scenario_category" class="flex items-center gap-2">
+            <i :class="getScenarioCategoryIcon(data.scenario_category)" class="text-slate-400 text-sm"></i>
+            <span class="capitalize">{{ formatScenarioCategory(data.scenario_category) }}</span>
           </div>
           <span v-else class="text-slate-400">—</span>
         </template>
@@ -362,17 +362,17 @@
           </p>
         </div>
         
-        <!-- Venue Type -->
+        <!-- Scenario Category -->
         <div class="field">
           <label class="block text-sm font-medium text-slate-700 mb-1">
-            {{ $t('templates.admin.venue_type') }}
+            {{ $t('templates.admin.scenario_category') }}
           </label>
-          <Select 
-            v-model="createData.venue_type" 
-            :options="venueTypeOptions.filter(v => v.value)"
+          <Select
+            v-model="createData.scenario_category"
+            :options="scenarioCategoryOptions.filter(v => v.value)"
             optionLabel="label"
             optionValue="value"
-            :placeholder="$t('templates.admin.select_venue_type')"
+            :placeholder="$t('templates.admin.select_scenario_category')"
             showClear
             class="w-full"
           >
@@ -384,10 +384,10 @@
             </template>
             <template #value="slotProps">
                <div v-if="slotProps.value" class="flex items-center gap-2">
-                <i v-if="getVenueTypeIcon(slotProps.value)" :class="getVenueTypeIcon(slotProps.value)" class="text-slate-500"></i>
-                <span>{{ getVenueTypeLabel(slotProps.value) }}</span>
+                <i v-if="getScenarioCategoryIcon(slotProps.value)" :class="getScenarioCategoryIcon(slotProps.value)" class="text-slate-500"></i>
+                <span>{{ getScenarioCategoryLabel(slotProps.value) }}</span>
               </div>
-              <span v-else class="text-slate-400">{{ $t('templates.admin.select_venue_type') }}</span>
+              <span v-else class="text-slate-400">{{ $t('templates.admin.select_scenario_category') }}</span>
             </template>
           </Select>
         </div>
@@ -436,17 +436,17 @@
           </div>
         </div>
         
-        <!-- Venue Type -->
+        <!-- Scenario Category -->
         <div class="field">
           <label class="block text-sm font-medium text-slate-700 mb-1">
-            {{ $t('templates.admin.venue_type') }}
+            {{ $t('templates.admin.scenario_category') }}
           </label>
-          <Select 
-            v-model="editSettings.venue_type" 
-            :options="venueTypeOptions.filter(v => v.value)"
+          <Select
+            v-model="editSettings.scenario_category"
+            :options="scenarioCategoryOptions.filter(v => v.value)"
             optionLabel="label"
             optionValue="value"
-            :placeholder="$t('templates.admin.select_venue_type')"
+            :placeholder="$t('templates.admin.select_scenario_category')"
             showClear
             class="w-full"
           >
@@ -458,10 +458,10 @@
             </template>
             <template #value="slotProps">
                <div v-if="slotProps.value" class="flex items-center gap-2">
-                <i v-if="getVenueTypeIcon(slotProps.value)" :class="getVenueTypeIcon(slotProps.value)" class="text-slate-500"></i>
-                <span>{{ getVenueTypeLabel(slotProps.value) }}</span>
+                <i v-if="getScenarioCategoryIcon(slotProps.value)" :class="getScenarioCategoryIcon(slotProps.value)" class="text-slate-500"></i>
+                <span>{{ getScenarioCategoryLabel(slotProps.value) }}</span>
               </div>
-              <span v-else class="text-slate-400">{{ $t('templates.admin.select_venue_type') }}</span>
+              <span v-else class="text-slate-400">{{ $t('templates.admin.select_scenario_category') }}</span>
             </template>
           </Select>
         </div>
@@ -537,10 +537,10 @@ const templateStore = useTemplateLibraryStore()
 const { adminTemplates: templates, adminCards, isLoading } = storeToRefs(templateStore)
 
 // Filter state
-const selectedVenueType = ref<string | null>(null)
+const selectedScenarioCategory = ref<string | null>(null)
 const selectedStatus = ref<boolean | null>(null) // null = all, true = active, false = inactive
 const searchQuery = ref<string>('')
-const canReorder = computed(() => !selectedVenueType.value && !searchQuery.value && selectedStatus.value === null)
+const canReorder = computed(() => !selectedScenarioCategory.value && !searchQuery.value && selectedStatus.value === null)
 
 // Action Menu state
 const menu = ref()
@@ -614,7 +614,7 @@ const isCreating = ref(false)
 const createData = ref({
   card_id: null as string | null,
   slug: '',
-  venue_type: null as string | null,
+  scenario_category: null as string | null,
   is_featured: false
 })
 
@@ -628,7 +628,7 @@ const editSettings = ref({
   template_id: '',
   card_id: '',
   slug: '',
-  venue_type: null as string | null,
+  scenario_category: null as string | null,
   is_featured: false,
   is_active: true
 })
@@ -638,8 +638,8 @@ const isSelectedCardAlreadyTemplate = computed(() => {
   return !!adminCards.value.find(c => c.card_id === createData.value.card_id)?.is_template
 })
 
-// Venue type options with icons (consolidated categories)
-const venueTypeOptions = computed(() => [
+// Scenario category options with icons (consolidated categories)
+const scenarioCategoryOptions = computed(() => [
   { label: t('templates.admin.all_types'), value: null, icon: 'pi pi-th-large' },
   { label: t('templates.admin.cultural'), value: 'cultural', icon: 'pi pi-building' },
   { label: t('templates.admin.food'), value: 'food', icon: 'pi pi-star' },
@@ -660,9 +660,9 @@ const statusOptions = computed(() => [
 const filteredTemplates = computed(() => {
   let result = templates.value
 
-  // Venue Type Filter
-  if (selectedVenueType.value) {
-    result = result.filter(t => t.venue_type === selectedVenueType.value)
+  // Scenario Category Filter
+  if (selectedScenarioCategory.value) {
+    result = result.filter(t => t.scenario_category === selectedScenarioCategory.value)
   }
 
   // Status Filter
@@ -702,30 +702,26 @@ async function fetchAdminCards() {
 }
 
 function clearFilters() {
-  selectedVenueType.value = null
+  selectedScenarioCategory.value = null
   selectedStatus.value = null
   searchQuery.value = ''
 }
 
-function formatVenueType(type: string): string {
+function formatScenarioCategory(type: string): string {
   if (!type) return ''
-  const option = venueTypeOptions.value.find(v => v.value === type)
+  const option = scenarioCategoryOptions.value.find(v => v.value === type)
   return option ? option.label : type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ')
 }
 
-function getVenueIcon(type: string): string {
-  const option = venueTypeOptions.value.find(v => v.value === type)
+function getScenarioCategoryIcon(value: string): string {
+  if (!value) return ''
+  const option = scenarioCategoryOptions.value.find(v => v.value === value)
   return option ? option.icon : 'pi pi-box'
 }
 
-function getVenueTypeIcon(value: string): string {
+function getScenarioCategoryLabel(value: string): string {
   if (!value) return ''
-  return venueTypeOptions.value.find(o => o.value === value)?.icon || ''
-}
-
-function getVenueTypeLabel(value: string): string {
-  if (!value) return ''
-  return venueTypeOptions.value.find(o => o.value === value)?.label || value
+  return scenarioCategoryOptions.value.find(o => o.value === value)?.label || value
 }
 
 function formatContentMode(mode: string): string {
@@ -768,7 +764,7 @@ function openSettingsDialog(template: AdminContentTemplate) {
     template_id: template.id,
     card_id: template.card_id,
     slug: template.slug,
-    venue_type: template.venue_type,
+    scenario_category: template.scenario_category,
     is_featured: template.is_featured,
     is_active: template.is_active
   }
@@ -784,7 +780,7 @@ async function handleCreateTemplate() {
     const result = await templateStore.createTemplateFromCard(
       createData.value.card_id,
       createData.value.slug,
-      createData.value.venue_type,
+      createData.value.scenario_category,
       createData.value.is_featured,
       templates.value.length // Add at end
     )
@@ -796,7 +792,7 @@ async function handleCreateTemplate() {
         life: 3000
       })
       showCreateDialog.value = false
-      createData.value = { card_id: null, slug: '', venue_type: null, is_featured: false }
+      createData.value = { card_id: null, slug: '', scenario_category: null, is_featured: false }
       await fetchAdminCards() // Refresh available cards
     } else {
       toast.add({
@@ -817,7 +813,7 @@ async function handleSaveSettings() {
   try {
     const result = await templateStore.updateTemplateSettings(editSettings.value.template_id, {
       slug: editSettings.value.slug,
-      venue_type: editSettings.value.venue_type,
+      scenario_category: editSettings.value.scenario_category,
       is_featured: editSettings.value.is_featured,
       is_active: editSettings.value.is_active
     })

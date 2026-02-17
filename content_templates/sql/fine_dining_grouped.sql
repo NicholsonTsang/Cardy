@@ -125,7 +125,7 @@ BEGIN
     (v_card_id, v_cat_petitfours, 'Chef''s Selection', E'**Handcrafted confections to conclude your meal**\n\nA selection of house-made petit fours served with coffee or tea:\n\n- Dark chocolate truffles with sea salt\n- Lavender shortbread\n- Candied citrus peel\n- Housemade marshmallow\n\n---\n\n☕ **Recommended:** Double espresso or chamomile tea\n🥃 **Digestif:** House limoncello or aged grappa', NULL, 'All petit fours made in-house daily. Truffles use same Valrhona chocolate as soufflé. Lavender from Provence. Citrus peel candied over 3 days. Marshmallow flavored with rose water. Coffee is single-origin from Intelligentsia. Complimentary with tasting menu.', 1);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('fine-dining', v_card_id, 'food', true, true, 6);
 
     RAISE NOTICE 'Successfully created Fine Dining template with card ID: %', v_card_id;

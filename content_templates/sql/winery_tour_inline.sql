@@ -57,7 +57,7 @@ BEGIN
     (v_card_id, v_cat_wines, 'Winery Tour Experience', E'**Behind the Scenes**\n\nJoin us for an intimate tour of our estate and discover the art and science of winemaking.\n\n---\n\n📍 **Includes**\n- Vineyard walk among the vines\n- Historic barrel cellar tour\n- Production facility overview\n- Library wine tasting\n\n⏰ **Schedule**\nDaily at 11 AM and 2 PM\nDuration: 90 minutes\n\n👥 **Group Size**\nMaximum 12 guests\n\n💰 **$65** per person\n*(Includes 5-wine tasting)*\n\n**Reservations required**', NULL, 'Tours book up weeks ahead on weekends - reserve early. Morning tour great for photography (soft light in vineyard). Afternoon tour often led by family member. Barrel cellar dates to 1920s - original stone construction. Library tasting includes wines not normally available. Wear comfortable shoes for vineyard walk. Private tours available for groups of 6+.', 6);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('winery-tour', v_card_id, 'food', true, true, 8);
 
     RAISE NOTICE 'Successfully created Winery Tour template with card ID: %', v_card_id;

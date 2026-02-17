@@ -103,7 +103,7 @@ BEGIN
     (v_card_id, v_cat_rum, 'Hemingway Daiquiri', E'**The writer''s favorite, perfected**\n\n*White rum · lime · grapefruit · Luxardo Maraschino*\n\n---\n\nErnest Hemingway supposedly drank these by the pitcher at El Floridita in Havana. Our version honors the original: white rum, fresh lime, pink grapefruit, and just enough Maraschino for complexity.\n\nDouble-strained into a chilled coupe, served bone-dry as Hemingway preferred.\n\n---\n\n🥃 **Spirit:** White Rum\n📊 **Strength:** Medium\n🍬 **Profile:** Tart, complex, refreshing\n\n**$15**\n\n*"A daiquiri for people who think daiquiris are too sweet."*\n\n🩸 Also called "Papa Doble" (double) because Hemingway drank them large', NULL, 'Hemingway was diabetic—he asked for daiquiris without sugar, double rum, extra lime. Constantino Ribalaigua at El Floridita added grapefruit and Maraschino to balance. Our version uses fresh Ruby Red grapefruit. Served "bone-dry" means no added sugar—the Maraschino provides enough sweetness. Luxardo Maraschino is made from whole cherries including pit—dry, not sweet like cherry liqueur. Often surprises guests expecting a sweet frozen drink. We''ve successfully converted many daiquiri skeptics.', 3);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('cocktail-bar', v_card_id, 'food', true, true, 7);
 
     RAISE NOTICE 'Successfully created Cocktail Bar template with card ID: %', v_card_id;

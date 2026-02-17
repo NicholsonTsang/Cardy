@@ -93,7 +93,7 @@ BEGIN
     (v_card_id, v_cat_australian, 'Koala', E'**Sleepy Eucalyptus Lover** 🐨\n\n**Scientific Name:** *Phascolarctos cinereus*\n**Conservation Status:** Vulnerable\n\nBindi and Bluey are our resident koalas, sleeping up to 22 hours a day. They''re not actually bears - they''re marsupials who carry their babies in pouches!\n\n**Did you know?** Koalas have fingerprints nearly identical to human fingerprints!\n\n⏰ **Most Active:** Early morning (around opening time)', NULL, 'Bindi (female, 7) and Bluey (male, 5) both from Australian breeding program. Koalas sleep so much because eucalyptus is low in nutrition and takes lots of energy to digest. They have special bacteria in their gut to process eucalyptus toxins. Australian bushfires in 2019-2020 killed 30% of population. We grow 5 species of eucalyptus on-site for their diet.', 1);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('zoo', v_card_id, 'cultural', true, true, 5);
 
     RAISE NOTICE 'Successfully created Zoo template with card ID: %', v_card_id;

@@ -105,11 +105,11 @@ BEGIN
         RAISE WARNING 'Could not find card "Modern Visions: Contemporary Art Collection" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('art-gallery-grid', v_card_id, 'museum', false, true, 1)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         
@@ -227,11 +227,11 @@ BEGIN
         RAISE WARNING 'Could not find card "Heritage Auction House: Spring Collection 2024" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('auction-house-grouped', v_card_id, 'retail', false, true, 2)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         
@@ -329,11 +329,11 @@ BEGIN
         RAISE WARNING 'Could not find card "The Velvet Room Cocktail Bar" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('cocktail-bar-inline', v_card_id, 'restaurant', false, true, 3)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         
@@ -445,11 +445,11 @@ BEGIN
         RAISE WARNING 'Could not find card "TechForward Summit 2024" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('conference-grouped', v_card_id, 'event', false, true, 4)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         
@@ -571,11 +571,11 @@ BEGIN
         RAISE WARNING 'Could not find card "Avant-Garde: Spring/Summer 2025 Collection" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('fashion-show-grouped', v_card_id, 'event', false, true, 5)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         
@@ -733,11 +733,11 @@ BEGIN
         RAISE WARNING 'Could not find card "Le Jardin: A Culinary Journey" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('fine-dining-grouped', v_card_id, 'restaurant', false, true, 6)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         
@@ -817,11 +817,11 @@ BEGIN
         RAISE WARNING 'Could not find card "City United vs Royal Athletic" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('football-match-single', v_card_id, 'event', false, true, 7)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         
@@ -960,11 +960,11 @@ BEGIN
         RAISE WARNING 'Could not find card "National History Museum: Journey Through Time" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('history-museum-grouped', v_card_id, 'museum', false, true, 8)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         
@@ -1093,11 +1093,11 @@ BEGIN
         RAISE WARNING 'Could not find card "The Grand Plaza Hotel" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('hotel-services-list', v_card_id, 'hospitality', false, true, 9)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         
@@ -1197,11 +1197,11 @@ BEGIN
         RAISE WARNING 'Could not find card "Sarah Chen: Digital Dreamscapes" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('illustrator-portfolio-grid', v_card_id, 'retail', false, true, 10)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         
@@ -1307,11 +1307,11 @@ BEGIN
         RAISE WARNING 'Could not find card "Metropolitan Shopping Center" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('shopping-mall-list', v_card_id, 'retail', false, true, 11)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         
@@ -1405,11 +1405,11 @@ BEGIN
         RAISE WARNING 'Could not find card "Historic Old Town Walking Tour" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('tourist-landmark-inline', v_card_id, 'tourism', false, true, 12)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         
@@ -1534,11 +1534,11 @@ BEGIN
         RAISE WARNING 'Could not find card "Wildwood Safari Park" for template registration';
     ELSE
         -- Register or update the template
-        INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+        INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
         VALUES ('zoo-grid', v_card_id, 'tourism', false, true, 13)
         ON CONFLICT (slug) DO UPDATE SET
             card_id = EXCLUDED.card_id,
-            venue_type = EXCLUDED.venue_type,
+            scenario_category = EXCLUDED.scenario_category,
             sort_order = EXCLUDED.sort_order,
             updated_at = NOW();
         

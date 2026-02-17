@@ -73,7 +73,7 @@ BEGIN
     (v_card_id, v_cat_venue_guide, 'Before the Show', E'**Plan Your Visit**\n\n📍 **Location**\n250 Broadway, Downtown\n\n🚇 **Getting Here**\n- Subway: Blue Line, Theatre District\n- Parking: City Garage ($25 event rate)\n- Drop-off: Front entrance on Broadway\n\n🍽 **Dining Partners**\nShow your ticket for prix fixe specials:\n- Bistro Laurent (French) - $55\n- Trattoria Bella (Italian) - $45\n- The Grill Room (American) - $65\n\n⏰ **Arrival**\n- Doors open 45 minutes before\n- Latecomers seated at suitable break\n- Coat check available ($3)', NULL, 'Arrive 30 minutes early for best experience. Pre-show drinks at lobby bars. Partner restaurants 5-10 minute walk - make reservations. Garage fills up on weekends - arrive early or use subway. No re-entry once show starts. Photos in lobby allowed, not in auditorium. Gift shop has show merchandise.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('entertainment-venue', v_card_id, 'events', true, true, 12);
 
     RAISE NOTICE 'Successfully created Entertainment Venue template with card ID: %', v_card_id;

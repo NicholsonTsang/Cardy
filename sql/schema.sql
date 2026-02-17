@@ -376,9 +376,8 @@ CREATE TABLE IF NOT EXISTS content_templates (
     card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
     
     -- Admin management fields only
-    -- Venue types: museum, restaurant, event, retail, hospitality, gallery, conference, tour,
-    --              auction, spa, entertainment, education, winery, sports, realestate, automotive, general
-    venue_type TEXT, -- Optional category for filtering
+    -- Scenario categories: cultural, food, events, hospitality, retail, tours, general
+    scenario_category TEXT, -- Optional category for filtering
     is_featured BOOLEAN DEFAULT false, -- Show in featured section
     is_active BOOLEAN DEFAULT true, -- Can be imported by users
     sort_order INTEGER DEFAULT 0, -- Display order
@@ -391,7 +390,7 @@ CREATE TABLE IF NOT EXISTS content_templates (
 -- Indexes for efficient querying
 CREATE INDEX IF NOT EXISTS idx_content_templates_slug ON content_templates(slug);
 CREATE INDEX IF NOT EXISTS idx_content_templates_card_id ON content_templates(card_id);
-CREATE INDEX IF NOT EXISTS idx_content_templates_venue_type ON content_templates(venue_type);
+CREATE INDEX IF NOT EXISTS idx_content_templates_scenario_category ON content_templates(scenario_category);
 CREATE INDEX IF NOT EXISTS idx_content_templates_is_featured ON content_templates(is_featured);
 CREATE INDEX IF NOT EXISTS idx_content_templates_is_active ON content_templates(is_active);
 CREATE INDEX IF NOT EXISTS idx_content_templates_sort_order ON content_templates(sort_order);

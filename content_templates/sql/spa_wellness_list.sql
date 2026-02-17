@@ -57,7 +57,7 @@ BEGIN
     (v_card_id, v_cat_services, 'Detox Body Wrap', E'**75 minutes | $175**\n\nPurify and tone with our signature body wrap. Begins with full-body exfoliation, followed by warm mineral mud application. Wrapped in thermal blankets, you''ll deeply relax while toxins are drawn out.\n\n---\n\n✓ Full-body exfoliation\n✓ Mineral-rich mud mask\n✓ Scalp massage during wrap\n✓ Moisturizing finish\n\n*Best for: Detoxification, skin smoothing, water retention*', NULL, 'Uses Dead Sea mud and seaweed extracts. Helps with skin texture and temporary inch loss (water weight). Exfoliation removes dead skin cells. Will feel warm during wrap portion. Great prep before vacation or event. Avoid if claustrophobic.', 6);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('spa-wellness', v_card_id, 'hospitality', true, true, 15);
 
     RAISE NOTICE 'Successfully created Spa & Wellness template with card ID: %', v_card_id;

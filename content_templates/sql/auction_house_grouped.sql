@@ -88,7 +88,7 @@ BEGIN
     (v_card_id, v_cat_jewelry, 'Lot 162 - Patek Philippe Ref. 5170', E'**Patek Philippe Reference 5170G-010**\n\nManual-winding chronograph\nGeneva, 2015\n\n18k white gold case, 39.4mm\nSilvered dial with applied Breguet numerals\nCaliber CH 29-535 PS\n\n---\n\n**Accompanied by:**\n- Original box and papers\n- Patek Philippe Certificate of Origin\n- Extract from the Archives\n\n**Estimate:** $60,000 - $80,000\n\n🔨 **Session 2** | April 16, ~3:30 PM', NULL, 'Reference 5170 introduced 2010, first in-house manual chronograph movement. Caliber CH 29-535 PS has column wheel, horizontal clutch. White gold with silver dial is classic configuration. Full set with box/papers commands 15-20% premium. Condition appears unworn. 5170 series discontinued, values appreciating. Extract from Archives confirms authenticity and original sale date.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('auction-house', v_card_id, 'cultural', true, true, 3);
 
     RAISE NOTICE 'Successfully created Auction House template with card ID: %', v_card_id;

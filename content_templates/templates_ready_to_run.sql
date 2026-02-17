@@ -119,7 +119,7 @@ BEGIN
     (v_card_id, v_cat_installations, 'Urban Echoes', E'**Artist:** Marcus Webb (b. 1979, Detroit)\n**Year:** 2024\n**Medium:** Found objects, motion sensors, generative sound\n**Dimensions:** Variable (approx. 10 × 8 meters)\n\n---\n\nAn installation using objects found on city streets—shopping carts, traffic cones, discarded furniture—arranged to create an immersive urban soundscape. Sensors detect visitor movement, triggering sounds associated with each object.\n\nAll objects were collected within 5 miles of the gallery over 6 months. Each carries traces of its previous life.\n\n*"Cities throw away more than objects. They throw away stories."* — Marcus Webb\n\n---\n\n🔊 **Interactive:** Your movement triggers different sounds\n📍 **Objects:** All found within 5 miles of gallery\n🗑️ **Note:** Nothing was cleaned—wear marks tell stories', NULL, 'Marcus Webb works with found materials to critique consumer culture and urban displacement. Detroit native, experienced city''s decline firsthand. Objects include: shopping cart from closed grocery store, traffic cones from demolished construction site, furniture from evicted homes. Sound design creates "symphony" from urban noise—car alarms, construction, voices. Motion sensors create unique composition based on how visitors move through space. Webb employs formerly homeless individuals to help collect materials, paying living wage. Part of sales proceeds support Detroit housing justice organizations. Previous version won the Whitney Biennial jury prize.', 3);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('art-gallery-grid', v_card_id, 'cultural', true, true, 1);
 
     RAISE NOTICE 'Successfully created Art Gallery template with card ID: %', v_card_id;
@@ -218,7 +218,7 @@ BEGIN
     (v_card_id, v_cat_jewelry, 'Lot 162 - Patek Philippe Ref. 5170', E'**Patek Philippe Reference 5170G-010**\n\nManual-winding chronograph\nGeneva, 2015\n\n18k white gold case, 39.4mm\nSilvered dial with applied Breguet numerals\nCaliber CH 29-535 PS\n\n---\n\n**Accompanied by:**\n- Original box and papers\n- Patek Philippe Certificate of Origin\n- Extract from the Archives\n\n**Estimate:** $60,000 - $80,000\n\n🔨 **Session 2** | April 16, ~3:30 PM', NULL, 'Reference 5170 introduced 2010, first in-house manual chronograph movement. Caliber CH 29-535 PS has column wheel, horizontal clutch. White gold with silver dial is classic configuration. Full set with box/papers commands 15-20% premium. Condition appears unworn. 5170 series discontinued, values appreciating. Extract from Archives confirms authenticity and original sale date.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('auction-house', v_card_id, 'cultural', true, true, 3);
 
     RAISE NOTICE 'Successfully created Auction House template with card ID: %', v_card_id;
@@ -292,7 +292,7 @@ BEGIN
     (v_card_id, v_cat_vehicles, 'Service Center', E'**Factory-Trained Care**\n\nOur technicians know your vehicle inside and out. Genuine parts, advanced diagnostics, and transparent pricing.\n\n---\n\n🔧 **Services**\n- Maintenance (oil, tires, brakes)\n- Warranty repairs\n- Recall service\n- Performance upgrades\n- Collision repair\n\n⏰ **Hours**\nMon-Fri 7 AM - 6 PM\nSaturday 8 AM - 3 PM\n\n🚗 **Amenities**\n- Complimentary loaner cars\n- Wi-Fi lounge\n- Shuttle service\n- Express service lane\n\n📞 **Schedule: (555) SERVICE**', NULL, 'Factory-trained technicians only. Loaner cars for service over 2 hours - same brand vehicles. Express lane for oil changes and simple maintenance (no appointment, under 1 hour). Price match guarantee on tires. First maintenance visit complimentary for new car purchases. Shuttle runs to downtown and mall. Customer lounge has coffee, snacks, work stations.', 7);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('car-dealership', v_card_id, 'retail', true, true, 17);
 
     RAISE NOTICE 'Successfully created Car Dealership template with card ID: %', v_card_id;
@@ -410,7 +410,7 @@ BEGIN
     (v_card_id, v_cat_rum, 'Hemingway Daiquiri', E'**The writer''s favorite, perfected**\n\n*White rum · lime · grapefruit · Luxardo Maraschino*\n\n---\n\nErnest Hemingway supposedly drank these by the pitcher at El Floridita in Havana. Our version honors the original: white rum, fresh lime, pink grapefruit, and just enough Maraschino for complexity.\n\nDouble-strained into a chilled coupe, served bone-dry as Hemingway preferred.\n\n---\n\n🥃 **Spirit:** White Rum\n📊 **Strength:** Medium\n🍬 **Profile:** Tart, complex, refreshing\n\n**$15**\n\n*"A daiquiri for people who think daiquiris are too sweet."*\n\n🩸 Also called "Papa Doble" (double) because Hemingway drank them large', NULL, 'Hemingway was diabetic—he asked for daiquiris without sugar, double rum, extra lime. Constantino Ribalaigua at El Floridita added grapefruit and Maraschino to balance. Our version uses fresh Ruby Red grapefruit. Served "bone-dry" means no added sugar—the Maraschino provides enough sweetness. Luxardo Maraschino is made from whole cherries including pit—dry, not sweet like cherry liqueur. Often surprises guests expecting a sweet frozen drink. We''ve successfully converted many daiquiri skeptics.', 3);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('cocktail-bar', v_card_id, 'food', true, true, 7);
 
     RAISE NOTICE 'Successfully created Cocktail Bar template with card ID: %', v_card_id;
@@ -503,7 +503,7 @@ BEGIN
     (v_card_id, v_day3, 'TechSummit Awards & Closing', E'**🏆 Celebrating Excellence in Tech**\n\n📍 Main Hall | ⏰ 4:00 PM - 5:00 PM\n\nJoin us as we recognize outstanding achievements and innovations from the past year.\n\n---\n\n**Award Categories:**\n- Startup of the Year\n- Best Open Source Project\n- Diversity & Inclusion Champion\n- Breakthrough Innovation\n- Community Impact Award\n\n**Hackathon Winners:** Announced during ceremony\n\n🏷️ **Track:** All Attendees\n🍾 **Reception follows**', NULL, 'Award finalists announced via app day before. Past winners include now-famous startups like DataBridge and AIAssist. Hackathon prizes total $50,000. Closing reception 5-7pm with open bar and networking. Photo booth with speakers available. Swag bag pickup at exit.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('conference', v_card_id, 'events', true, true, 9);
 
     RAISE NOTICE 'Successfully created Conference template with card ID: %', v_card_id;
@@ -591,7 +591,7 @@ BEGIN
     (v_card_id, v_cat_venue_guide, 'Before the Show', E'**Plan Your Visit**\n\n📍 **Location**\n250 Broadway, Downtown\n\n🚇 **Getting Here**\n- Subway: Blue Line, Theatre District\n- Parking: City Garage ($25 event rate)\n- Drop-off: Front entrance on Broadway\n\n🍽 **Dining Partners**\nShow your ticket for prix fixe specials:\n- Bistro Laurent (French) - $55\n- Trattoria Bella (Italian) - $45\n- The Grill Room (American) - $65\n\n⏰ **Arrival**\n- Doors open 45 minutes before\n- Latecomers seated at suitable break\n- Coat check available ($3)', NULL, 'Arrive 30 minutes early for best experience. Pre-show drinks at lobby bars. Partner restaurants 5-10 minute walk - make reservations. Garage fills up on weekends - arrive early or use subway. No re-entry once show starts. Photos in lobby allowed, not in auditorium. Gift shop has show merchandise.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('entertainment-venue', v_card_id, 'events', true, true, 12);
 
     RAISE NOTICE 'Successfully created Entertainment Venue template with card ID: %', v_card_id;
@@ -695,7 +695,7 @@ BEGIN
     (v_card_id, v_seg_finale, 'Look 45 - Finale', E'**Designer Bow**\n\n*Élise Dubois*\n\n---\n\nCreative Director Élise Dubois takes her bow accompanied by the full cast of models in the finale walk.\n\nÉlise wears: Black silk shirt, tailored trousers, bare feet—her signature bow look. A single monarch butterfly pin on her collar.\n\n---\n\n🦋 *"Fashion is metamorphosis. We are all becoming."*\n— Élise Dubois', NULL, 'Élise always takes her bow barefoot - she says it keeps her grounded after months of work. The monarch pin was a gift from her first atelier teacher. This is her 15th collection for the house. Standing ovation lasted 3 minutes. Anna Wintour, Carine Roitfeld, and Edward Enninful all in attendance.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('fashion-show', v_card_id, 'events', true, true, 11);
 
     RAISE NOTICE 'Successfully created Fashion Show template with card ID: %', v_card_id;
@@ -835,7 +835,7 @@ BEGIN
     (v_card_id, v_cat_petitfours, 'Chef''s Selection', E'**Handcrafted confections to conclude your meal**\n\nA selection of house-made petit fours served with coffee or tea:\n\n- Dark chocolate truffles with sea salt\n- Lavender shortbread\n- Candied citrus peel\n- Housemade marshmallow\n\n---\n\n☕ **Recommended:** Double espresso or chamomile tea\n🥃 **Digestif:** House limoncello or aged grappa', NULL, 'All petit fours made in-house daily. Truffles use same Valrhona chocolate as soufflé. Lavender from Provence. Citrus peel candied over 3 days. Marshmallow flavored with rose water. Coffee is single-origin from Intelligentsia. Complimentary with tasting menu.', 1);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('fine-dining', v_card_id, 'food', true, true, 6);
 
     RAISE NOTICE 'Successfully created Fine Dining template with card ID: %', v_card_id;
@@ -909,7 +909,7 @@ BEGIN
     (v_card_id, v_cat_classes, 'Recovery & Stretch', E'**Active Recovery**\n\n🧘‍♀️ 45 minutes | Restore & recover\n\nGentle stretching, foam rolling, and mobility work. Essential for preventing injury and improving performance.\n\n---\n\n🎯 **Benefits**\n- Muscle recovery\n- Injury prevention\n- Improved mobility\n- Relaxation\n\n👤 **Intensity:** ●○○○○\n\n📅 *Sun 11 AM, 4 PM | Wed 8 PM*\n\n*Foam rollers and massage balls provided*', NULL, 'Often overlooked but crucial class. Targets fascia and tight muscles from intense workouts. Foam rolling can be uncomfortable on tight spots - that''s normal. Great after leg day or long run. Wednesday night slot perfect for mid-week reset. Therapist designed the sequences. Free for unlimited members.', 7);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('fitness-studio', v_card_id, 'events', true, true, 13);
 
     RAISE NOTICE 'Successfully created Fitness Studio template with card ID: %', v_card_id;
@@ -971,7 +971,7 @@ BEGIN
     (v_card_id, v_default_category, 'Match Day Guide', E'# City FC vs Manchester United\n## Premier League · Matchday 15\n\n---\n\n## ⏰ Schedule\n\n| Time | Event |\n|------|-------|\n| 1:00 PM | Gates open |\n| 1:30 PM | Fan Zone entertainment begins |\n| 2:30 PM | Teams warm-up |\n| 2:45 PM | Team announcements |\n| 2:55 PM | National anthem |\n| **3:00 PM** | **KICKOFF** |\n| 3:45 PM | Half-time (15 minutes) |\n| ~4:45 PM | Full-time |\n\n---\n\n## 🏟️ Stadium Map\n\n**Your Section:** Check your ticket for block, row, and seat number\n\n### Entry Gates\n- **North Gate** → Blocks 101-120 (Home supporters)\n- **South Gate** → Blocks 201-220 (Away supporters)\n- **East Gate** → Blocks 301-340\n- **West Gate** → Blocks 401-440\n\n### Key Locations\n- 🍔 **Food & Drink** → Every concourse level\n- 🚻 **Restrooms** → Behind every section\n- 🏥 **First Aid** → Gates N1, S1, E1, W1\n- 👕 **Team Shop** → North Concourse\n- 📸 **Photo Opportunity** → West Concourse (giant shirt display)\n\n---\n\n## ⚽ Team Lineups\n\n### City FC (Home - Blue)\n\n**Manager:** Antonio García\n\n| # | Position | Player |\n|---|----------|--------|\n| 1 | GK | David Martinez |\n| 2 | RB | James Wilson |\n| 5 | CB | Michael Brown |\n| 6 | CB | Carlos Silva |\n| 3 | LB | Ahmed Hassan |\n| 8 | CM | Thomas Mueller |\n| 10 | CM | Paolo Rossi |\n| 7 | RW | Marcus Sterling |\n| 11 | LW | Yuki Tanaka |\n| 9 | ST | **Emmanuel Okonkwo** (C) |\n| 20 | ST | Lucas Fernandez |\n\n**Bench:** 13-Rodriguez, 4-Chen, 14-O''Brien, 16-Kowalski, 17-Nguyen, 19-Anderson, 21-Petrov\n\n### Manchester United (Away - Red)\n\n**Manager:** Roberto Mancini\n\n| # | Position | Player |\n|---|----------|--------|\n| 1 | GK | Peter Schmeichel Jr. |\n| 2 | RB | Kyle Walker-Peters |\n| 4 | CB | Virgil van Berg |\n| 5 | CB | Harry Stone |\n| 3 | LB | Luke Shaw Jr. |\n| 6 | DM | Declan Rice |\n| 8 | CM | Bruno Fernandes Jr. |\n| 7 | RW | Jadon Sancho Jr. |\n| 11 | LW | Marcus Rashford Jr. |\n| 10 | AM | **Mason Mount Jr.** (C) |\n| 9 | ST | Erling Larsen |\n\n**Bench:** 22-Henderson, 15-Maguire Jr., 17-Fred Jr., 18-Eriksen, 19-Antony Jr., 20-Pellistri, 21-Garnacho Jr.\n\n---\n\n## 📊 Head to Head\n\n| Stat | City FC | Man Utd |\n|------|---------|--------|\n| League Position | 2nd | 4th |\n| Points | 32 | 28 |\n| Last 5 Games | W W D W L | W D W L W |\n| Goals Scored | 34 | 29 |\n| Goals Conceded | 12 | 15 |\n\n**Last Meeting:** City FC 2-1 Man Utd (April 2025)\n\n**All-Time Record:**\n- City FC wins: 54\n- Man Utd wins: 61\n- Draws: 38\n\n---\n\n## 🍔 Food & Drink\n\n### Concourse Options\n- **Stadium Burger** - Classic burgers and hot dogs\n- **Pizza Corner** - Slices and whole pies\n- **The Noodle Bar** - Asian street food\n- **Fish & Chips** - Traditional British\n- **Vegan Kitchen** - Plant-based options\n- **Coffee Station** - Hot drinks and pastries\n\n### Prices\n- Beer (pint): £6.50\n- Burger meal: £12.00\n- Hot dog: £6.00\n- Pizza slice: £5.00\n- Coffee: £3.50\n- Water bottle: £2.50\n\n**📱 Mobile ordering available - skip the queue!**\nDownload the City FC app and order to your seat (Blocks 101-140 only)\n\n---\n\n## 📍 Getting Home\n\n### Public Transport\n- **Stadium Station** → Blue Line services every 5 minutes\n- **Special match buses** → City Centre (£3 fare)\n- Allow 20-30 minutes to reach station after final whistle\n\n### Driving\n- Exit via your designated gate to reduce congestion\n- **Lot A & B** → North exit (Highway 1)\n- **Lot C & D** → South exit (Highway 2)\n- Expected clear time: 45-60 minutes post-match\n\n### Rideshare\n- **Pickup zone** → East Gate car park\n- Surge pricing likely for 30 min after match\n\n---\n\n## 📱 Stay Connected\n\n- **WiFi:** `CityStadium_Guest` (free, no password)\n- **Official App:** Live stats, replays, mobile ordering\n- **Social:** @CityFC on all platforms\n- **Match Hashtag:** #CityVsUnited\n\n---\n\n## ⚠️ Important Information\n\n### Prohibited Items\n❌ Outside food & drinks\n❌ Bags larger than A4 size\n❌ Umbrellas\n❌ Professional cameras (lens > 20cm)\n❌ Drones\n❌ Weapons of any kind\n\n### Emergency\n- **Emergency services:** Dial 999\n- **Stadium security:** Text 66777\n- **Lost children:** Report to nearest steward\n- **Medical emergency:** Nearest first aid point\n\n---\n\n## 🎉 Enjoy the Match!\n\nThank you for supporting City FC. Sing loud, respect fellow fans, and may the best team win!\n\n*This card is your souvenir of today''s match. Collect the whole season!*', NULL, E'Key players to watch:\n- Emmanuel Okonkwo (City): 12 goals this season, top scorer\n- Erling Larsen (United): Hat-trick last match\n\nTactical preview: City likely to press high, United may counter-attack\n\nWeather forecast: 12°C, partly cloudy, 10% chance of rain\n\nReferee: Michael Oliver - tends to let game flow, averages 3.2 yellows/match\n\nVAR: Howard Webb - controversial offside decisions recently\n\nStadium records: Largest crowd 59,847 vs Liverpool 2023\n\nClub history: City FC founded 1892, 3 league titles, 2 FA Cups\nManchester United: Founded 1878, 20 league titles, 12 FA Cups', 1);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('football-match', v_card_id, 'events', true, true, 10);
 
     RAISE NOTICE 'Successfully created Football Match template with card ID: %', v_card_id;
@@ -1092,7 +1092,7 @@ BEGIN
     (v_card_id, v_cat_modern, 'Original Apple Macintosh (1984)', E'**Origin:** Cupertino, California, USA\n**Date:** January 1984\n**Material:** Plastic housing, CRT monitor, electronics\n\nThe Apple Macintosh introduced millions to personal computing with its revolutionary graphical user interface and mouse. Steve Jobs'' vision of "a computer for the rest of us" transformed how humans interact with technology.\n\nThis unit is one of the first 1,000 produced, still in working condition.', NULL, 'Serial number indicates production in January 1984, first month of manufacture. Cost $2,495 - equivalent to about $7,500 today. 128KB RAM, 9-inch black & white screen. Came with MacWrite and MacPaint software. The "1984" Super Bowl commercial is considered one of the greatest ads ever made. Donated by the original owner in 2010.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('history-museum', v_card_id, 'cultural', true, true, 2);
 
     RAISE NOTICE 'Successfully created History Museum template with card ID: %', v_card_id;
@@ -1204,7 +1204,7 @@ BEGIN
     (v_card_id, v_cat_information, 'Emergency Information', E'**Safety First**\n\n🚨 **Emergency:** Dial 911\n\n🏥 **Hotel Security:** Dial 0 (24 hours)\n\n---\n\n**Fire Safety:**\n- Fire exits marked on back of room door\n- Do not use elevators during fire\n- Meet at designated assembly point (front of hotel)\n\n**Medical:**\n- First aid available at front desk\n- Nearest hospital: City General (10 min by car)\n- 24-hour pharmacy: CVS, 2 blocks east\n\n**Lost & Found:**\n- Items found in hotel: Front desk\n- Items left after checkout: Call (555) 123-4567\n\n**Safe Deposit:**\nIn-room safe included. Front desk safe for valuables.', NULL, 'Hotel has full sprinkler system and smoke detectors in all rooms. AED machines on every floor. Security team includes former police officers. Doctor on call 24 hours (house call $150). Wheelchair accessible throughout. Service animals welcome. In-room safes hold standard laptop size.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('hotel-services', v_card_id, 'hospitality', true, true, 14);
 
     RAISE NOTICE 'Successfully created Hotel Services template with card ID: %', v_card_id;
@@ -1302,7 +1302,7 @@ BEGIN
     (v_card_id, v_cat_personal, 'Wild Things', E'**Personal Project / Prints**\n\nA series celebrating the weird and wonderful creatures of the natural world.\n\n---\n\nEach illustration reimagines a real animal through a surreal, colorful lens while staying true to their fascinating biology.\n\n**Medium:** Risograph prints\n**Size:** 11×14 inches\n**Edition:** 100 each\n\n🛒 *Available in my shop*', NULL, 'Passion project combining my love of nature documentaries with illustration. Animals featured: axolotl, pangolin, mantis shrimp, deep sea anglerfish, peacock spider, star-nosed mole. Limited edition of 100 per design.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('illustrator-portfolio', v_card_id, 'cultural', true, true, 4);
 
     RAISE NOTICE 'Successfully created Illustrator Portfolio template with card ID: %', v_card_id;
@@ -1373,7 +1373,7 @@ BEGIN
     (v_card_id, v_cat_units, 'Building Amenities', E'**Exceptional Living**\n\nResort-caliber amenities for residents and guests.\n\n---\n\n🏊 **Wellness**\n- Rooftop infinity pool\n- State-of-the-art fitness center\n- Yoga/meditation studio\n- Spa treatment room\n\n🎉 **Social**\n- Residents'' lounge with kitchen\n- Private dining room\n- Rooftop terrace with grill\n- Wine cellar with lockers\n\n🚗 **Services**\n- 24/7 concierge\n- Valet parking\n- Package room\n- Pet spa', NULL, '$15M amenity package - among best in the city. Pool open May-October, heated. Fitness center 24/7 access with Pelotons. Wine cellar lockers $500/year - climate controlled. Pet spa includes grooming station and dog wash. Residents'' lounge bookable for private events. Valet parking $500/month additional. Guest suite available for out-of-town visitors.', 6);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('real-estate-showroom', v_card_id, 'retail', true, true, 18);
 
     RAISE NOTICE 'Successfully created Real Estate Showroom template with card ID: %', v_card_id;
@@ -1474,7 +1474,7 @@ BEGIN
     (v_card_id, v_cat_services, 'Parking & Transportation', E'**Getting Here & Getting Around**\n\n🚗 **Parking Garage:**\n- 3 hours free with store validation\n- $3/hour after (max $15/day)\n- Electric charging stations Level P1\n\n🚌 **Public Transit:**\n- Bus routes 12, 15, 22 stop at mall\n- Metro Red Line: Central Plaza station (2 blocks)\n\n🚕 **Rideshare:**\n- Pickup zone at East Entrance\n- Designated Uber/Lyft area', NULL, 'Parking garage has 3,500 spaces across 4 levels. Busiest on weekends - try Level P3 for faster spots. Electric charging is ChargePoint network. Valet parking available $20 at Main Entrance.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('shopping-mall', v_card_id, 'retail', true, true, 16);
 
     RAISE NOTICE 'Successfully created Shopping Mall template with card ID: %', v_card_id;
@@ -1545,7 +1545,7 @@ BEGIN
     (v_card_id, v_cat_services, 'Detox Body Wrap', E'**75 minutes | $175**\n\nPurify and tone with our signature body wrap. Begins with full-body exfoliation, followed by warm mineral mud application. Wrapped in thermal blankets, you''ll deeply relax while toxins are drawn out.\n\n---\n\n✓ Full-body exfoliation\n✓ Mineral-rich mud mask\n✓ Scalp massage during wrap\n✓ Moisturizing finish\n\n*Best for: Detoxification, skin smoothing, water retention*', NULL, 'Uses Dead Sea mud and seaweed extracts. Helps with skin texture and temporary inch loss (water weight). Exfoliation removes dead skin cells. Will feel warm during wrap portion. Great prep before vacation or event. Avoid if claustrophobic.', 6);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('spa-wellness', v_card_id, 'hospitality', true, true, 15);
 
     RAISE NOTICE 'Successfully created Spa & Wellness template with card ID: %', v_card_id;
@@ -1635,7 +1635,7 @@ BEGIN
     (v_card_id, v_cat_waterfront, 'Harbor View Park & Memorial', E'**Reflection and Remembrance** 🌅\n\n---\n\nEnd your tour at this peaceful waterfront park, where benches face the harbor and the memorial honors those who shaped this community''s history.\n\n**The Memorial:**\nBronze sculptures depict a whaler, a captain, a lighthouse keeper, and a fisherman''s wife—representing the people who built this town.\n\n**The View:**\nOn clear days, you can see 15 miles out to sea. Watch for seals on the outer rocks (bring binoculars).\n\n---\n\n⏰ **Park hours:** Dawn to dusk\n🎟️ **Admission:** Free\n🪑 **Benches throughout park**', NULL, 'Park created 1956 on site of old rope walk factory. Memorial dedicated 1976 for Bicentennial. Best sunset watching is late June. Ice cream shop Flanagan''s open since 1889.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('tourist-landmark', v_card_id, 'tours', true, true, 19);
 
     RAISE NOTICE 'Successfully created Tourist Landmark template with card ID: %', v_card_id;
@@ -1726,7 +1726,7 @@ BEGIN
     (v_card_id, v_cat_admissions, 'Financial Aid', E'**Making Westfield Affordable**\n\n98% of students receive financial aid. We meet 100% of demonstrated need.\n\n---\n\n💰 **Cost of Attendance 2025-26**\n- Tuition: $58,000\n- Room & Board: $16,500\n- Fees & Books: $2,500\n- Total: $77,000\n\n🎓 **Aid Types**\n- Need-based grants (no repayment)\n- Merit scholarships\n- Work-study opportunities\n- Federal/state aid\n\n📊 **Average Package: $42,000**\n\n*Net cost calculator at westfield.edu/financial-aid*', NULL, 'Sticker price looks scary but most families pay much less. Average net cost around $35,000. Merit scholarships $10K-$30K based on application - no separate application. Need-based aid requires FAFSA and CSS Profile. Meet 100% of demonstrated need with grants, not loans. Appeal process if circumstances change. Payment plans available. Work-study jobs on campus 10-15 hrs/week.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('university-campus', v_card_id, 'tours', true, true, 20);
 
     RAISE NOTICE 'Successfully created University Campus template with card ID: %', v_card_id;
@@ -1798,7 +1798,7 @@ BEGIN
     (v_card_id, v_cat_wines, 'Winery Tour Experience', E'**Behind the Scenes**\n\nJoin us for an intimate tour of our estate and discover the art and science of winemaking.\n\n---\n\n📍 **Includes**\n- Vineyard walk among the vines\n- Historic barrel cellar tour\n- Production facility overview\n- Library wine tasting\n\n⏰ **Schedule**\nDaily at 11 AM and 2 PM\nDuration: 90 minutes\n\n👥 **Group Size**\nMaximum 12 guests\n\n💰 **$65** per person\n*(Includes 5-wine tasting)*\n\n**Reservations required**', NULL, 'Tours book up weeks ahead on weekends - reserve early. Morning tour great for photography (soft light in vineyard). Afternoon tour often led by family member. Barrel cellar dates to 1920s - original stone construction. Library tasting includes wines not normally available. Wear comfortable shoes for vineyard walk. Private tours available for groups of 6+.', 6);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('winery-tour', v_card_id, 'food', true, true, 8);
 
     RAISE NOTICE 'Successfully created Winery Tour template with card ID: %', v_card_id;
@@ -1906,7 +1906,7 @@ BEGIN
     (v_card_id, v_cat_australian, 'Koala', E'**Sleepy Eucalyptus Lover** 🐨\n\n**Scientific Name:** *Phascolarctos cinereus*\n**Conservation Status:** Vulnerable\n\nBindi and Bluey are our resident koalas, sleeping up to 22 hours a day. They''re not actually bears - they''re marsupials who carry their babies in pouches!\n\n**Did you know?** Koalas have fingerprints nearly identical to human fingerprints!\n\n⏰ **Most Active:** Early morning (around opening time)', NULL, 'Bindi (female, 7) and Bluey (male, 5) both from Australian breeding program. Koalas sleep so much because eucalyptus is low in nutrition and takes lots of energy to digest. They have special bacteria in their gut to process eucalyptus toxins. Australian bushfires in 2019-2020 killed 30% of population. We grow 5 species of eucalyptus on-site for their diet.', 1);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('zoo', v_card_id, 'cultural', true, true, 5);
 
     RAISE NOTICE 'Successfully created Zoo template with card ID: %', v_card_id;

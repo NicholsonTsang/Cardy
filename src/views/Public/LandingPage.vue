@@ -282,12 +282,12 @@
                 <div class="flex-1 min-w-0">
                   <div class="flex items-center gap-2 sm:gap-3">
                     <div class="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 shadow-sm">
-                      <i :class="getVenueIcon(selectedTemplate.venue_type)" class="text-white text-xs sm:text-sm"></i>
+                      <i :class="getScenarioCategoryIcon(selectedTemplate.scenario_category)" class="text-white text-xs sm:text-sm"></i>
                     </div>
                     <div class="min-w-0 flex-1">
                       <h3 class="font-semibold text-slate-900 text-sm sm:text-base leading-tight mb-1">{{ selectedTemplate.name }}</h3>
                       <div class="flex items-center gap-2">
-                        <p class="text-xs text-slate-500">{{ formatVenueType(selectedTemplate.venue_type) }}</p>
+                        <p class="text-xs text-slate-500">{{ formatScenarioCategory(selectedTemplate.scenario_category) }}</p>
                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-100 text-green-700 text-[9px] sm:text-[10px] font-medium rounded">
                           <span class="w-1 h-1 bg-green-500 rounded-full animate-pulse"></span>
                           {{ $t('landing.demo_templates.live_badge') }}
@@ -324,26 +324,26 @@
             <div class="template-browser-container bg-white/70 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-lg shadow-slate-200/50 p-3 sm:p-4">
               <!-- Filter Tabs -->
               <div class="mb-3 sm:mb-4">
-                <div ref="venueFilterScroll" class="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <div ref="categoryFilterScroll" class="flex gap-1.5 sm:gap-2 overflow-x-auto pb-2 scrollbar-hide">
                   <button 
                     class="flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-full transition-all"
-                    :class="selectedVenueType === null 
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-500/25' 
+                    :class="selectedScenarioCategory === null
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-500/25'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                    @click="selectVenueType(null)"
+                    @click="selectScenarioCategory(null)"
                   >
                     {{ $t('landing.demo_templates.all_types') }}
                   </button>
                   <button 
-                    v-for="venueType in availableVenueTypes"
-                    :key="venueType"
+                    v-for="category in availableScenarioCategories"
+                    :key="category"
                     class="flex-shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-full transition-all whitespace-nowrap"
-                    :class="selectedVenueType === venueType 
-                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-500/25' 
+                    :class="selectedScenarioCategory === category
+                      ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-md shadow-blue-500/25'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'"
-                    @click="selectVenueType(venueType)"
+                    @click="selectScenarioCategory(category)"
                   >
-                    {{ formatVenueType(venueType) }}
+                    {{ formatScenarioCategory(category) }}
                   </button>
                 </div>
               </div>
@@ -369,7 +369,7 @@
                         ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white shadow-md shadow-purple-500/30' 
                         : 'bg-slate-200/80 text-slate-500 group-hover:bg-slate-300/80'"
                     >
-                      <i :class="getVenueIcon(template.venue_type)" class="text-sm sm:text-base"></i>
+                      <i :class="getScenarioCategoryIcon(template.scenario_category)" class="text-sm sm:text-base"></i>
                     </div>
                     <div class="min-w-0 flex-1">
                       <div class="flex items-center gap-1.5">
@@ -384,7 +384,7 @@
                           {{ $t('landing.demo_templates.featured_badge') }}
                         </span>
                       </div>
-                      <p class="text-[10px] sm:text-xs text-slate-500 truncate mt-0.5">{{ formatVenueType(template.venue_type) }}</p>
+                      <p class="text-[10px] sm:text-xs text-slate-500 truncate mt-0.5">{{ formatScenarioCategory(template.scenario_category) }}</p>
                     </div>
                     <div 
                       class="flex-shrink-0 w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center transition-all"
@@ -1177,31 +1177,31 @@ const showFloatingCta = ref(false)
 // Demo Templates state
 const demoTemplates = ref([])
 const isLoadingTemplates = ref(false)
-const selectedVenueType = ref(null)
+const selectedScenarioCategory = ref(null)
 const selectedTemplate = ref(null) // Template shown in phone preview
 const phonePreviewRef = ref(null) // Reference to phone preview component
 
-// Venue filter scroll ref
-const venueFilterScroll = ref(null)
+// Category filter scroll ref
+const categoryFilterScroll = ref(null)
 
-// Extract unique venue types from templates
-const availableVenueTypes = computed(() => {
+// Extract unique scenario categories from templates
+const availableScenarioCategories = computed(() => {
   const types = new Set()
   demoTemplates.value.forEach(t => {
-    if (t.venue_type) types.add(t.venue_type)
+    if (t.scenario_category) types.add(t.scenario_category)
   })
   return Array.from(types).sort()
 })
 
-// Filter templates by selected venue type
+// Filter templates by selected scenario category
 const filteredTemplates = computed(() => {
-  if (!selectedVenueType.value) return demoTemplates.value
-  return demoTemplates.value.filter(t => t.venue_type === selectedVenueType.value)
+  if (!selectedScenarioCategory.value) return demoTemplates.value
+  return demoTemplates.value.filter(t => t.scenario_category === selectedScenarioCategory.value)
 })
 
-// Select venue type filter
-const selectVenueType = (type) => {
-  selectedVenueType.value = type
+// Select scenario category filter
+const selectScenarioCategory = (type) => {
+  selectedScenarioCategory.value = type
   // Auto-select first template of filtered results
   nextTick(() => {
     if (filteredTemplates.value.length > 0) {
@@ -1486,7 +1486,7 @@ const openTemplate = (template) => {
   }
 }
 
-const getVenueIcon = (venueType) => {
+const getScenarioCategoryIcon = (category) => {
   const icons = {
     'cultural': 'pi pi-building',
     'food': 'pi pi-star',
@@ -1496,13 +1496,13 @@ const getVenueIcon = (venueType) => {
     'tours': 'pi pi-map',
     'general': 'pi pi-box'
   }
-  return icons[venueType] || 'pi pi-tag'
+  return icons[category] || 'pi pi-tag'
 }
 
-const formatVenueType = (type) => {
+const formatScenarioCategory = (type) => {
   if (!type) return ''
-  // Use i18n translations for venue types
-  const key = `landing.demo_templates.venue_types.${type}`
+  // Use i18n translations for scenario categories
+  const key = `landing.demo_templates.scenario_categories.${type}`
   const translated = t(key)
   // Fall back to formatted type name if translation key doesn't exist
   if (translated === key) {

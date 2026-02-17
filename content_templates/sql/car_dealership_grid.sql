@@ -59,7 +59,7 @@ BEGIN
     (v_card_id, v_cat_vehicles, 'Service Center', E'**Factory-Trained Care**\n\nOur technicians know your vehicle inside and out. Genuine parts, advanced diagnostics, and transparent pricing.\n\n---\n\n🔧 **Services**\n- Maintenance (oil, tires, brakes)\n- Warranty repairs\n- Recall service\n- Performance upgrades\n- Collision repair\n\n⏰ **Hours**\nMon-Fri 7 AM - 6 PM\nSaturday 8 AM - 3 PM\n\n🚗 **Amenities**\n- Complimentary loaner cars\n- Wi-Fi lounge\n- Shuttle service\n- Express service lane\n\n📞 **Schedule: (555) SERVICE**', NULL, 'Factory-trained technicians only. Loaner cars for service over 2 hours - same brand vehicles. Express lane for oil changes and simple maintenance (no appointment, under 1 hour). Price match guarantee on tires. First maintenance visit complimentary for new car purchases. Shuttle runs to downtown and mall. Customer lounge has coffee, snacks, work stations.', 7);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('car-dealership', v_card_id, 'retail', true, true, 17);
 
     RAISE NOTICE 'Successfully created Car Dealership template with card ID: %', v_card_id;

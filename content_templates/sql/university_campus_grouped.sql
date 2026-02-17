@@ -77,7 +77,7 @@ BEGIN
     (v_card_id, v_cat_admissions, 'Financial Aid', E'**Making Westfield Affordable**\n\n98% of students receive financial aid. We meet 100% of demonstrated need.\n\n---\n\n💰 **Cost of Attendance 2025-26**\n- Tuition: $58,000\n- Room & Board: $16,500\n- Fees & Books: $2,500\n- Total: $77,000\n\n🎓 **Aid Types**\n- Need-based grants (no repayment)\n- Merit scholarships\n- Work-study opportunities\n- Federal/state aid\n\n📊 **Average Package: $42,000**\n\n*Net cost calculator at westfield.edu/financial-aid*', NULL, 'Sticker price looks scary but most families pay much less. Average net cost around $35,000. Merit scholarships $10K-$30K based on application - no separate application. Need-based aid requires FAFSA and CSS Profile. Meet 100% of demonstrated need with grants, not loans. Appeal process if circumstances change. Payment plans available. Work-study jobs on campus 10-15 hrs/week.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('university-campus', v_card_id, 'tours', true, true, 20);
 
     RAISE NOTICE 'Successfully created University Campus template with card ID: %', v_card_id;
