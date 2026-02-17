@@ -91,38 +91,6 @@ All codes for a project appear in the QR Codes tab:
 | **Medium** (400px) | Table tents, posters |
 | **Large** (800px) | Banners, large displays |
 
-## Physical Cards (Batch Printing)
-
-### What Are Physical Cards?
-
-Physical cards are printed materials with QR codes that you can distribute to visitors as souvenirs or keepsakes.
-
-### Creating a Batch
-
-1. Go to the **Physical Cards** section
-2. Click **Create Batch**
-3. Enter quantity
-4. Confirm credit cost
-5. Download print files
-
-### Batch Properties
-
-| Property | Description |
-|----------|-------------|
-| **Quantity** | Number of unique cards |
-| **Credits** | Cost in credits (2 per card) |
-| **Design** | Uses project cover image |
-| **QR Position** | Where code appears on card |
-
-### Physical vs Digital Access
-
-| Aspect | Physical Cards | Digital QR Codes |
-|--------|----------------|------------------|
-| **Cost** | 2 credits per card | Free to generate |
-| **Uniqueness** | Each card is unique | Reusable code |
-| **Tracking** | Track individual cards | Track by access point |
-| **Best for** | Souvenirs, collectibles | General access |
-
 ## Access Control
 
 ### Enabling/Disabling Codes
@@ -149,7 +117,7 @@ Limit sessions per QR code per day:
 
 **Example uses:**
 - Prevent abuse (set reasonable limit)
-- Capacity management (match physical capacity)
+- Capacity management (match venue capacity)
 - Budget control (limit high-traffic locations)
 
 ### What Visitors See

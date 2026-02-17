@@ -1,6 +1,6 @@
 # Content Management
 
-This guide covers adding, organizing, and managing content within your ExperienceQR projects.
+This guide covers adding, organizing, and managing content within your FunTell projects.
 
 ## Understanding Content Items
 
@@ -219,42 +219,54 @@ Templates provide pre-structured content for common use cases:
 
 ## Importing Content
 
-### From Spreadsheet
+### From ZIP Archive
 
 For bulk content import:
 
-1. Download the template spreadsheet
-2. Fill in your content
-3. Upload the completed file
-4. Review and confirm import
+1. Go to **My Projects**
+2. Click **Import**
+3. Upload one or more `.zip` archive files
+4. Review the import preview (content structure, images, settings)
+5. Confirm and import
 
-### Import Format
+### Archive Format
 
-| Column | Description |
-|--------|-------------|
-| title | Item title |
-| description | Content text |
-| image_url | Image URL (optional) |
-| link_url | External link (optional) |
-| position | Order number |
+Each ZIP archive contains:
+
+| File | Description |
+|------|-------------|
+| `project.json` | Project settings and content item metadata |
+| `images/card.*` | Cover image (full quality) |
+| `images/content/*.* ` | Content item images (full quality) |
+
+The importer validates the archive, displays a preview of the project structure (including categories and sub-items), and highlights any warnings or errors before you confirm.
+
+### Multi-Project Import
+
+You can import multiple projects at once by either:
+
+- Uploading multiple `.zip` files simultaneously
+- Uploading a single `.zip` that contains nested project archives (created by the multi-project export feature)
 
 ## Exporting Content
 
-### Export to Excel
+### Export to ZIP Archive
 
-Download your project content:
+Download your project as a portable archive:
 
-1. Open project settings
+1. Open the project
 2. Click **Export**
-3. Choose format (Excel with images)
-4. Download file
+3. Wait for the archive to generate (images are downloaded at full quality)
+4. The `.zip` file downloads automatically
 
 ### Export Includes
 
-- All content items
-- Embedded images
-- Metadata (dates, positions)
+- Project settings (display mode, grouping, AI configuration)
+- All content items with hierarchy (categories and sub-items)
+- Full-quality images (cover image and content item images)
+- Crop parameters for image positioning
 - Translations (if applicable)
+- Content integrity hashes for verification
 
 ## Content for AI Assistant
 

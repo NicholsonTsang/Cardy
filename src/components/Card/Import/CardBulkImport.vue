@@ -166,8 +166,8 @@
                   <i class="pi pi-sitemap"></i> {{ $t('templates.grouped') }}
                 </span>
                 <span class="settings-badge badge-billing">
-                  <i :class="currentImported.card.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-id-card'"></i>
-                  {{ currentImported.card.billing_type === 'digital' ? $t('templates.billing_digital') : $t('templates.billing_physical') }}
+                  <i class="pi pi-qrcode"></i>
+                  {{ $t('templates.billing_digital') }}
                 </span>
                 <span v-if="currentImported.card.original_language && currentImported.card.original_language !== 'en'" class="settings-badge badge-language">
                   {{ getLanguageFlag(currentImported.card.original_language) }}
@@ -595,6 +595,35 @@ async function executeImport() {
     return
   }
 
+  // Check for duplicate card names
+  const { data: existingCards, error: cardsError } = await supabase.rpc('get_user_cards')
+  if (cardsError) {
+    showFeedback('error', t('import.import_failed'), cardsError.message, false)
+    return
+  }
+
+  const existingCardNames = new Set((existingCards || []).map((c: any) => c.name.toLowerCase()))
+  const duplicates = importPreview.value.cards.filter(c =>
+    existingCardNames.has(c.card.name.toLowerCase())
+  )
+
+  if (duplicates.length > 0) {
+    const duplicateNames = duplicates.map(c => c.card.name).join(', ')
+    showFeedback('warn', t('import.duplicate_cards_detected'),
+      t('import.duplicate_cards_detail', { names: duplicateNames, count: duplicates.length }), false)
+    toast.add({
+      severity: 'warn',
+      summary: t('import.duplicate_cards_warning'),
+      detail: t('import.duplicate_cards_will_be_renamed'),
+      life: 8000,
+    })
+    // Auto-rename duplicates by appending timestamp
+    duplicates.forEach(dup => {
+      const timestamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, '').replace('T', '_')
+      dup.card.name = `${dup.card.name} (${timestamp})`
+    })
+  }
+
   importing.value = true
   importProgress.value = 0
   importStatus.value = t('import.starting_import')
@@ -652,6 +681,7 @@ async function executeImport() {
           p_group_display: imported.card.group_display,
           p_billing_type: imported.card.billing_type,
           p_default_daily_session_limit: imported.card.default_daily_session_limit ?? 500,
+          p_metadata: imported.card.metadata || {},
         })
 
         if (cardErr) throw cardErr

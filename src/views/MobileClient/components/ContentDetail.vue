@@ -1,5 +1,10 @@
 <template>
-  <div class="content-detail" :class="{ 'has-ai': card.conversation_ai_enabled }">
+  <div
+    class="content-detail"
+    :class="{ 'has-ai': card.conversation_ai_enabled }"
+    role="main"
+    :aria-label="content.content_item_name"
+  >
     <!-- Main Content -->
     <div class="main-content">
       <!-- Hero Image (only shown if image exists) -->
@@ -10,14 +15,52 @@
           class="image"
           crossorigin="anonymous"
         />
+
+        <!-- Action Buttons overlay on hero image -->
+        <div class="hero-actions" role="toolbar" :aria-label="t('common.actions')">
+          <button
+            class="hero-action-btn"
+            :aria-label="favorited ? t('mobile.removeFromFavorites') : t('mobile.addToFavorites')"
+            @click.stop="handleToggleFavorite"
+          >
+            <i :class="favorited ? 'pi pi-heart-fill' : 'pi pi-heart'" />
+          </button>
+          <button
+            class="hero-action-btn"
+            :aria-label="t('mobile.share')"
+            :disabled="isSharing"
+            @click.stop="handleShare"
+          >
+            <i class="pi pi-share-alt" />
+          </button>
+        </div>
       </div>
 
       <!-- Content Info -->
       <div class="content-info" :class="{ 'no-image': !content.content_item_image_url }">
+        <!-- Action row when no hero image -->
+        <div v-if="!content.content_item_image_url" class="inline-actions" role="toolbar" :aria-label="t('common.actions')">
+          <button
+            class="inline-action-btn"
+            :aria-label="favorited ? t('mobile.removeFromFavorites') : t('mobile.addToFavorites')"
+            @click.stop="handleToggleFavorite"
+          >
+            <i :class="favorited ? 'pi pi-heart-fill' : 'pi pi-heart'" />
+          </button>
+          <button
+            class="inline-action-btn"
+            :aria-label="t('mobile.share')"
+            :disabled="isSharing"
+            @click.stop="handleShare"
+          >
+            <i class="pi pi-share-alt" />
+          </button>
+        </div>
+
         <h2 class="content-title">{{ content.content_item_name }}</h2>
-        
+
         <!-- Description - show full content -->
-        <div 
+        <div
           class="content-description"
           v-html="renderMarkdown(content.content_item_content || '')"
         ></div>
@@ -25,15 +68,19 @@
     </div>
 
     <!-- Sub Items -->
-    <div v-if="subItems.length > 0" class="sub-items">
+    <nav v-if="subItems.length > 0" class="sub-items" :aria-label="t('mobile.related_content')">
       <h3 class="sub-items-title">{{ $t('mobile.related_content') }}</h3>
-      <div class="sub-items-list">
+      <div class="sub-items-list" role="list">
         <div
           v-for="subItem in subItems"
           :key="subItem.content_item_id"
+          role="listitem"
           @click="handleSelect(subItem)"
+          @keydown.enter="handleSelect(subItem)"
+          tabindex="0"
           class="sub-item-card"
           :class="{ 'no-image': !subItem.content_item_image_url }"
+          :aria-label="subItem.content_item_name"
         >
           <!-- Thumbnail (only shown if image exists) -->
           <div v-if="subItem.content_item_image_url" class="sub-item-image">
@@ -48,11 +95,11 @@
           <!-- Info -->
           <div class="sub-item-info">
             <h4 class="sub-item-title">{{ subItem.content_item_name }}</h4>
-            <p class="sub-item-description">{{ subItem.content_item_content }}</p>
+            <p class="sub-item-description">{{ truncatePreview(subItem.content_item_content || subItem.content_preview || '') }}</p>
           </div>
         </div>
       </div>
-    </div>
+    </nav>
     
     <!-- Note: Card-Level Assistant is NOT shown on ContentDetail page 
          because the contextual "Ask about this item" button is more relevant here.
@@ -75,12 +122,22 @@
 
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { MobileAIAssistant } from './AIAssistant'
 import { getContentAspectRatio } from '@/utils/cardConfig'
 import { renderMarkdown } from '@/utils/markdownRenderer'
+import { useShare } from '@/composables/useShare'
+import { useFavorites } from '@/composables/useFavorites'
 
 const { t } = useI18n()
+const route = useRoute()
+
+// Share composable
+const { share, buildContentShareData, isSharing } = useShare()
+
+// Favorites composable (card ID from route)
+const { isFavorite, toggleFavorite } = useFavorites({ cardId: (route.params.issue_card_id as string) || '' })
 
 
 interface ContentItem {
@@ -98,10 +155,12 @@ interface ContentItem {
 }
 
 interface CardData {
+  card_id?: string
   card_name: string
   card_description: string
   card_image_url: string
   conversation_ai_enabled: boolean
+  realtime_voice_enabled?: boolean
   ai_instruction: string
   ai_knowledge_base: string
   ai_welcome_general?: string
@@ -118,6 +177,9 @@ interface Props {
 
 const props = defineProps<Props>()
 
+// Whether the current content item is favorited
+const favorited = computed(() => isFavorite(props.content.content_item_id))
+
 // Compute parent knowledge base (empty if this is a top-level item)
 const parentKnowledgeBase = computed(() => {
   return props.parentItem?.content_item_ai_knowledge_base || ''
@@ -128,10 +190,12 @@ const emit = defineEmits<{
 
 // Prepare card data for AI Assistant (matching CardData interface)
 const cardDataForAssistant = computed(() => ({
+  card_id: props.card.card_id,
   card_name: props.card.card_name,
   card_description: props.card.card_description,
   card_image_url: props.card.card_image_url,
   conversation_ai_enabled: props.card.conversation_ai_enabled,
+  realtime_voice_enabled: props.card.realtime_voice_enabled,
   ai_instruction: props.card.ai_instruction,
   ai_knowledge_base: props.card.ai_knowledge_base,
   ai_welcome_general: props.card.ai_welcome_general || '',
@@ -141,6 +205,28 @@ const cardDataForAssistant = computed(() => ({
 
 function handleSelect(item: ContentItem) {
   emit('select', item)
+}
+
+function truncatePreview(text: string, maxLength = 80): string {
+  if (!text) return ''
+  const plain = text.replace(/<[^>]*>/g, '').replace(/[#*_`]/g, '')
+  return plain.length > maxLength ? plain.slice(0, maxLength) + '...' : plain
+}
+
+function handleToggleFavorite() {
+  toggleFavorite(props.content.content_item_id)
+}
+
+function handleShare() {
+  const lang = route.params.lang as string
+  const shareData = buildContentShareData(
+    cardId.value,
+    props.content.content_item_id,
+    props.content.content_item_name,
+    props.content.content_item_content || null,
+    lang
+  )
+  share(shareData)
 }
 
 // Set up CSS custom property for content aspect ratio
@@ -195,6 +281,99 @@ onMounted(() => {
   object-fit: contain;
 }
 
+/* Hero action buttons (overlaid on image) */
+.hero-actions {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: flex;
+  gap: 0.5rem;
+  z-index: 2;
+}
+
+.hero-action-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.hero-action-btn:active {
+  transform: scale(0.9);
+  background: rgba(0, 0, 0, 0.7);
+}
+
+.hero-action-btn:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+.hero-action-btn i {
+  font-size: 1.125rem;
+}
+
+/* Filled heart state */
+.hero-action-btn .pi-heart-fill {
+  color: #f87171;
+}
+
+/* Inline action buttons (when no hero image) */
+.inline-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-bottom: 0.75rem;
+}
+
+.inline-action-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.inline-action-btn:active {
+  transform: scale(0.9);
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.inline-action-btn:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+.inline-action-btn i {
+  font-size: 1.125rem;
+}
+
+/* Filled heart state */
+.inline-action-btn .pi-heart-fill {
+  color: #f87171;
+}
 
 /* Content Info */
 .content-info {
@@ -410,6 +589,11 @@ onMounted(() => {
   border-color: rgba(255, 255, 255, 0.15);
 }
 
+.sub-item-card:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
 .sub-item-card:active::before {
   opacity: 1;
 }
@@ -458,7 +642,7 @@ onMounted(() => {
 
 .sub-item-description {
   font-size: 0.875rem; /* 14px */
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.75); /* WCAG AA: improved from 0.7 for readability */
   margin: 0;
   margin-bottom: 0.5rem;
   overflow: hidden;

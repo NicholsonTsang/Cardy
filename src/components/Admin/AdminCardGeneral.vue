@@ -1,27 +1,16 @@
 <template>
   <div class="space-y-6">
     <!-- Hero Header with Gradient -->
-    <div 
-      class="rounded-xl p-4 sm:p-6"
-      :class="card.billing_type === 'digital' 
-        ? 'bg-gradient-to-r from-cyan-500 to-blue-600' 
-        : 'bg-gradient-to-r from-purple-500 to-indigo-600'"
-    >
+    <div class="rounded-xl p-4 sm:p-6 bg-gradient-to-r from-cyan-500 to-blue-600">
       <div class="flex items-center gap-4">
-        <div 
-          class="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg"
-          :class="card.billing_type === 'digital' ? 'bg-white/20' : 'bg-white/20'"
-        >
-          <i 
-            :class="card.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-credit-card'" 
-            class="text-2xl text-white"
-          ></i>
+        <div class="w-14 h-14 rounded-xl flex items-center justify-center shadow-lg bg-white/20">
+          <i class="pi pi-qrcode text-2xl text-white"></i>
         </div>
         <div class="flex-1 min-w-0">
           <h2 class="text-xl font-bold text-white truncate">{{ card.name }}</h2>
           <div class="flex items-center gap-2 mt-1 flex-wrap">
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white">
-              {{ card.billing_type === 'digital' ? $t('dashboard.digital_access') : $t('dashboard.physical_card') }}
+              {{ $t('dashboard.digital_access') }}
             </span>
             <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-white/20 text-white">
               <i :class="getContentModeIcon(card.content_mode)" class="text-[10px]"></i>
@@ -32,8 +21,8 @@
       </div>
     </div>
 
-    <!-- Quick Stats Row - Digital Only -->
-    <div v-if="card.billing_type === 'digital'" class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+    <!-- Quick Stats Row -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
       <!-- Total Scans -->
       <div class="bg-white rounded-lg border border-slate-200 p-3 hover:shadow-md transition-shadow">
         <div class="flex items-center gap-2">
@@ -88,29 +77,9 @@
       </div>
     </div>
 
-    <div class="grid grid-cols-1 gap-6" :class="{ 'lg:grid-cols-3': card.billing_type !== 'digital' }">
-      <!-- Card Image - Only for Physical Cards -->
-      <div v-if="card.billing_type !== 'digital'" class="lg:col-span-1">
-        <div class="bg-white rounded-xl border border-slate-200 p-4">
-          <label class="block text-sm font-medium text-slate-700 mb-3">{{ $t('dashboard.card_image') }}</label>
-          <div v-if="card.image_url" class="relative" style="aspect-ratio: 2/3;">
-            <img
-              :src="card.image_url"
-              :alt="card.name"
-              class="w-full h-full object-cover rounded-lg border border-slate-300 shadow-sm"
-            />
-          </div>
-          <div v-else class="aspect-[2/3] bg-slate-100 rounded-lg border-2 border-dashed border-slate-300 flex items-center justify-center">
-            <div class="text-center">
-              <i class="pi pi-image text-4xl text-slate-400 mb-2"></i>
-              <p class="text-slate-500 text-sm">{{ $t('dashboard.no_image') }}</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div>
       <!-- Card Details -->
-      <div :class="card.billing_type !== 'digital' ? 'lg:col-span-2' : ''">
+      <div>
         <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-4">
           <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">{{ $t('common.description') }}</label>
@@ -138,12 +107,9 @@
 
             <div>
               <label class="block text-xs font-medium text-slate-500 mb-1">{{ $t('dashboard.access_mode') }}</label>
-              <span 
-                class="inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-medium"
-                :class="card.billing_type === 'digital' ? 'bg-cyan-100 text-cyan-700' : 'bg-purple-100 text-purple-700'"
-              >
-                <i :class="card.billing_type === 'digital' ? 'pi pi-qrcode' : 'pi pi-credit-card'" class="text-xs"></i>
-                {{ card.billing_type === 'digital' ? $t('dashboard.digital_access') : $t('dashboard.physical_card') }}
+              <span class="inline-flex items-center gap-1 px-2 py-1 rounded text-sm font-medium bg-cyan-100 text-cyan-700">
+                <i class="pi pi-qrcode text-xs"></i>
+                {{ $t('dashboard.digital_access') }}
               </span>
             </div>
           </div>
@@ -244,7 +210,6 @@ interface Card {
   id: string
   name: string
   description: string | null
-  image_url: string | null
   conversation_ai_enabled: boolean
   ai_instruction: string | null
   ai_knowledge_base: string | null
@@ -254,7 +219,6 @@ interface Card {
   content_mode: 'single' | 'grid' | 'list' | 'cards'
   is_grouped: boolean
   group_display: 'expanded' | 'collapsed'
-  billing_type: 'physical' | 'digital'
   default_daily_session_limit: number | null
   total_sessions: number
   monthly_sessions: number

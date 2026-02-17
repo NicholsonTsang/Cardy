@@ -53,7 +53,6 @@ router.get('/', (_req, res) => {
         },
         mobile: {
           digitalCard: 'GET /api/mobile/card/digital/:accessToken',
-          physicalCard: 'GET /api/mobile/card/physical/:issueCardId',
           invalidateCache: 'POST /api/mobile/card/:cardId/invalidate-cache',
         },
       },

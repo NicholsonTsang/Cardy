@@ -1,6 +1,6 @@
 ## Subscription Plans
 
-ExperienceQR offers flexible subscription plans to fit your needs, from free personal use to high-volume professional solutions.
+FunTell offers flexible subscription plans to fit your needs, from free personal use to high-volume professional solutions.
 
 ## Plan Comparison
 

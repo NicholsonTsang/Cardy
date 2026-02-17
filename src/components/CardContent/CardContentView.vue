@@ -7,7 +7,7 @@
                 {{ itemTypeBadge.label }}
             </span>
             <!-- Language Preview Selector -->
-            <Dropdown
+            <Select
                 v-if="availableTranslations.length > 0"
                 v-model="selectedPreviewLanguage"
                 :options="languageOptions"
@@ -30,7 +30,7 @@
                         <span>{{ slotProps.option.label }}</span>
                     </div>
                 </template>
-            </Dropdown>
+            </Select>
         </div>
 
         <!-- ========== LIST MODE: Link Preview ========== -->
@@ -139,7 +139,7 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import { getContentAspectRatio } from '@/utils/cardConfig';
 import { renderMarkdown } from '@/utils/markdownRenderer';
 import { getLanguageFlag } from '@/utils/formatters';

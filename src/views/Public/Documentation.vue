@@ -226,6 +226,7 @@ import SubscriptionPlans from './docs/SubscriptionPlans.vue'
 import CreditManagement from './docs/CreditManagement.vue'
 import BulkImport from './docs/BulkImport.vue'
 import TemplateLibrary from './docs/TemplateLibrary.vue'
+import MCPProjectSetup from './docs/MCPProjectSetup.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -286,6 +287,13 @@ const categories: Category[] = [
     articles: [
       { id: 'subscription', component: SubscriptionPlans },
       { id: 'credits', component: CreditManagement },
+    ]
+  },
+  {
+    id: 'automation',
+    icon: 'pi pi-bolt',
+    articles: [
+      { id: 'mcp_setup', component: MCPProjectSetup },
     ]
   }
 ]

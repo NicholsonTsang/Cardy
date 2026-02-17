@@ -35,6 +35,7 @@ export interface Card {
     original_image_url: string | null; // Original uploaded image (raw, uncropped)
     crop_parameters?: any; // JSON object containing crop parameters
     conversation_ai_enabled: boolean;
+    realtime_voice_enabled: boolean; // Per-project toggle for realtime voice conversations
     ai_instruction: string; // AI role and guidelines (max 100 words)
     ai_knowledge_base: string; // Background knowledge for AI (max 2000 words)
     ai_welcome_general: string; // Custom welcome message for General AI Assistant (card-level)
@@ -46,8 +47,9 @@ export interface Card {
     content_mode: ContentMode; // Content rendering mode: single, grid, list, cards
     is_grouped: boolean; // Whether content is organized into categories
     group_display: GroupDisplay; // How grouped items display: expanded or collapsed
-    billing_type: 'physical' | 'digital'; // Billing model: physical = per-card, digital = per-session subscription
+    billing_type: 'digital'; // Billing model: per-session subscription
     default_daily_session_limit: number | null; // Default daily limit for new QR codes (NULL = unlimited)
+    metadata?: Record<string, any>; // Extensible JSONB metadata for future features
     // Computed from access_tokens (aggregated stats)
     total_sessions: number; // Sum of all tokens' all-time sessions
     monthly_sessions: number; // Sum of all tokens' monthly sessions
@@ -72,6 +74,7 @@ export interface CardFormData {
     original_image_url?: string; // Original image URL
     cropParameters?: any; // JSON object containing crop parameters for dynamic image cropping
     conversation_ai_enabled: boolean;
+    realtime_voice_enabled?: boolean; // Per-project toggle for realtime voice conversations
     ai_instruction: string; // AI role and guidelines (max 100 words)
     ai_knowledge_base: string; // Background knowledge for AI (max 2000 words)
     ai_welcome_general?: string; // Custom welcome message for General AI Assistant
@@ -81,8 +84,9 @@ export interface CardFormData {
     content_mode?: ContentMode; // Content rendering mode
     is_grouped?: boolean; // Whether content is organized into categories
     group_display?: GroupDisplay; // How grouped items display
-    billing_type?: 'physical' | 'digital'; // Billing model
+    billing_type?: 'digital'; // Billing model
     default_daily_session_limit?: number | null; // Default daily limit for new QR codes (default: 500)
+    metadata?: Record<string, any>; // Extensible JSONB metadata
     id?: string; // Optional for updates
 }
 
@@ -201,6 +205,7 @@ export const useCardStore = defineStore('card', () => {
                     p_original_image_url: originalImageUrl,
                     p_crop_parameters: cardData.cropParameters || null,
                     p_conversation_ai_enabled: cardData.conversation_ai_enabled,
+                    p_realtime_voice_enabled: cardData.realtime_voice_enabled || false,
                     p_ai_instruction: cardData.ai_instruction,
                     p_ai_knowledge_base: cardData.ai_knowledge_base,
                     p_ai_welcome_general: cardData.ai_welcome_general || '',
@@ -210,8 +215,9 @@ export const useCardStore = defineStore('card', () => {
                     p_content_mode: cardData.content_mode || 'list',
                     p_is_grouped: cardData.is_grouped || false,
                     p_group_display: cardData.group_display || 'expanded',
-                    p_billing_type: cardData.billing_type || 'physical',
-                    p_default_daily_session_limit: cardData.billing_type === 'digital' ? (cardData.default_daily_session_limit ?? defaultDailyLimit) : null
+                    p_billing_type: cardData.billing_type || 'digital',
+                    p_default_daily_session_limit: cardData.default_daily_session_limit ?? defaultDailyLimit,
+                    p_metadata: cardData.metadata || {}
                 });
                 
             if (createError) throw createError;
@@ -311,6 +317,7 @@ export const useCardStore = defineStore('card', () => {
                 p_original_image_url: originalImageUrl || null,
                 p_crop_parameters: updateData.cropParameters || null,
                 p_conversation_ai_enabled: updateData.conversation_ai_enabled,
+                p_realtime_voice_enabled: updateData.realtime_voice_enabled ?? null,
                 p_ai_instruction: updateData.ai_instruction,
                 p_ai_knowledge_base: updateData.ai_knowledge_base,
                 p_ai_welcome_general: updateData.ai_welcome_general || null,
@@ -321,7 +328,8 @@ export const useCardStore = defineStore('card', () => {
                 p_is_grouped: updateData.is_grouped ?? null,
                 p_group_display: updateData.group_display || null,
                 p_billing_type: updateData.billing_type || null,
-                p_default_daily_session_limit: updateData.billing_type === 'digital' ? (updateData.default_daily_session_limit || null) : null
+                p_default_daily_session_limit: updateData.default_daily_session_limit || null,
+                p_metadata: updateData.metadata || null
             };
             
             const { data, error: updateError } = await supabase
@@ -601,6 +609,156 @@ export const useCardStore = defineStore('card', () => {
         }
     };
 
+    // Duplication progress tracking
+    const isDuplicating = ref(false);
+    const duplicateProgress = ref(0); // 0-100
+
+    /**
+     * Duplicate a card with all its content items.
+     * Uses get_card_with_content to fetch original, then creates a new card
+     * and uses bulk_create_content_items to clone content.
+     */
+    const duplicateCard = async (cardId: string, newName: string): Promise<string | null> => {
+        isDuplicating.value = true;
+        duplicateProgress.value = 0;
+        error.value = null;
+
+        try {
+            // Step 1: Fetch original card with all content (20%)
+            duplicateProgress.value = 10;
+            const { data: cardData, error: fetchError } = await supabase
+                .rpc('get_card_with_content', { p_card_id: cardId });
+
+            if (fetchError) throw fetchError;
+            if (!cardData || cardData.length === 0) throw new Error('Card not found');
+
+            const original = cardData[0];
+            duplicateProgress.value = 30;
+
+            // Step 2: Create new card with cloned metadata (50%)
+            const { data: newCardId, error: createError } = await supabase
+                .rpc('create_card', {
+                    p_name: newName,
+                    p_description: original.card_description || '',
+                    p_image_url: original.card_image_url,
+                    p_original_image_url: original.card_original_image_url,
+                    p_crop_parameters: original.card_crop_parameters || null,
+                    p_conversation_ai_enabled: original.card_conversation_ai_enabled,
+                    p_realtime_voice_enabled: original.card_realtime_voice_enabled || false,
+                    p_ai_instruction: original.card_ai_instruction || '',
+                    p_ai_knowledge_base: original.card_ai_knowledge_base || '',
+                    p_ai_welcome_general: original.card_ai_welcome_general || '',
+                    p_ai_welcome_item: original.card_ai_welcome_item || '',
+                    p_qr_code_position: original.card_qr_code_position || 'bottom-right',
+                    p_original_language: original.card_original_language || 'en',
+                    p_content_mode: original.card_content_mode || 'list',
+                    p_is_grouped: original.card_is_grouped || false,
+                    p_group_display: original.card_group_display || 'expanded',
+                    p_billing_type: original.card_billing_type || 'digital',
+                    p_default_daily_session_limit: original.card_default_daily_session_limit || null,
+                    p_metadata: original.card_metadata || {}
+                });
+
+            if (createError) throw createError;
+            if (!newCardId) throw new Error('Failed to create duplicate card');
+
+            duplicateProgress.value = 60;
+
+            // Step 3: Clone content items if any (90%)
+            const contentItems = original.content_items;
+            if (contentItems && Array.isArray(contentItems) && contentItems.length > 0) {
+                // Build a mapping of old parent IDs to new ones for hierarchical content
+                // First, create parent items (items with no parent_id)
+                const parentItems = contentItems.filter((item: any) => !item.parent_id);
+                const childItems = contentItems.filter((item: any) => item.parent_id);
+
+                if (parentItems.length > 0) {
+                    // Create parents first
+                    const parentPayload = parentItems.map((item: any) => ({
+                        name: item.name || '',
+                        content: item.content || '',
+                        parent_id: null,
+                        image_url: item.image_url || null,
+                        ai_knowledge_base: item.ai_knowledge_base || '',
+                        sort_order: item.sort_order || 0
+                    }));
+
+                    const { data: parentResult, error: parentError } = await supabase
+                        .rpc('bulk_create_content_items', {
+                            p_card_id: newCardId,
+                            p_items: parentPayload
+                        });
+
+                    if (parentError) throw parentError;
+
+                    duplicateProgress.value = 75;
+
+                    // Map old parent IDs to new parent IDs
+                    if (childItems.length > 0 && parentResult?.items) {
+                        const parentIdMap: Record<string, string> = {};
+                        parentItems.forEach((oldParent: any, index: number) => {
+                            if (parentResult.items[index]) {
+                                parentIdMap[oldParent.id] = parentResult.items[index].id;
+                            }
+                        });
+
+                        // Create children with mapped parent IDs
+                        const childPayload = childItems.map((item: any) => ({
+                            name: item.name || '',
+                            content: item.content || '',
+                            parent_id: parentIdMap[item.parent_id] || null,
+                            image_url: item.image_url || null,
+                            ai_knowledge_base: item.ai_knowledge_base || '',
+                            sort_order: item.sort_order || 0
+                        }));
+
+                        const { error: childError } = await supabase
+                            .rpc('bulk_create_content_items', {
+                                p_card_id: newCardId,
+                                p_items: childPayload
+                            });
+
+                        if (childError) throw childError;
+                    }
+                } else {
+                    // All items are top-level (no hierarchy)
+                    const itemPayload = contentItems.map((item: any) => ({
+                        name: item.name || '',
+                        content: item.content || '',
+                        parent_id: null,
+                        image_url: item.image_url || null,
+                        ai_knowledge_base: item.ai_knowledge_base || '',
+                        sort_order: item.sort_order || 0
+                    }));
+
+                    const { error: bulkError } = await supabase
+                        .rpc('bulk_create_content_items', {
+                            p_card_id: newCardId,
+                            p_items: itemPayload
+                        });
+
+                    if (bulkError) throw bulkError;
+                }
+            }
+
+            duplicateProgress.value = 95;
+
+            // Step 4: Refresh cards list (100%)
+            await fetchCards();
+            duplicateProgress.value = 100;
+
+            return newCardId;
+        } catch (err: any) {
+            console.error('Error duplicating card:', err);
+            error.value = err.message || 'Failed to duplicate card';
+            return null;
+        } finally {
+            isDuplicating.value = false;
+            // Reset progress after a short delay for UI
+            setTimeout(() => { duplicateProgress.value = 0; }, 500);
+        }
+    };
+
     return {
         cards,
         isLoading,
@@ -610,6 +768,10 @@ export const useCardStore = defineStore('card', () => {
         getCardById,
         updateCard,
         deleteCard,
+        // Card duplication
+        isDuplicating,
+        duplicateProgress,
+        duplicateCard,
         // Access token management (per-QR-code operations)
         fetchAccessTokens,
         createAccessToken,

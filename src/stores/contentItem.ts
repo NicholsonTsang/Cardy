@@ -544,6 +544,50 @@ export const useContentItemStore = defineStore('contentItem', () => {
     }
   };
 
+  // Bulk delete progress tracking
+  const isBulkDeleting = ref(false);
+  const bulkDeleteProgress = ref(0); // 0-100
+
+  /**
+   * Bulk delete multiple content items in a single operation.
+   * Uses the bulk_delete_content_items RPC for efficient batch deletion.
+   */
+  const bulkDeleteContentItems = async (itemIds: string[], cardId: string): Promise<{ success: boolean; deletedCount: number }> => {
+    isBulkDeleting.value = true;
+    bulkDeleteProgress.value = 0;
+    error.value = null;
+
+    try {
+      bulkDeleteProgress.value = 20;
+
+      const { data, error: deleteError } = await supabase
+        .rpc('bulk_delete_content_items', {
+          p_item_ids: itemIds
+        });
+
+      if (deleteError) throw deleteError;
+
+      bulkDeleteProgress.value = 70;
+
+      // Refresh content items for the card
+      await getContentItems(cardId);
+
+      bulkDeleteProgress.value = 100;
+
+      return {
+        success: data?.success || false,
+        deletedCount: data?.deleted_count || 0
+      };
+    } catch (err: any) {
+      console.error('Error bulk deleting content items:', err);
+      error.value = err.message || 'Failed to bulk delete content items';
+      return { success: false, deletedCount: 0 };
+    } finally {
+      isBulkDeleting.value = false;
+      setTimeout(() => { bulkDeleteProgress.value = 0; }, 500);
+    }
+  };
+
   return {
     // State
     contentItems,
@@ -551,7 +595,7 @@ export const useContentItemStore = defineStore('contentItem', () => {
     isLoading,
     error,
     pagination,
-    
+
     // Full data methods (backward compatible)
     getContentItems,
     getContentItemById,
@@ -560,14 +604,19 @@ export const useContentItemStore = defineStore('contentItem', () => {
     deleteContentItem,
     uploadContentItemImage,
     updateContentItemOrder,
-    
+
     // Pagination & lazy loading methods
     resetPagination,
     getContentItemsPaginated,
     loadMoreContentItems,
     getContentItemFull,
     getContentItemsCount,
-    
+
+    // Bulk operations
+    isBulkDeleting,
+    bulkDeleteProgress,
+    bulkDeleteContentItems,
+
     // Migration methods
     migrateToGrouped,
     migrateToFlat,

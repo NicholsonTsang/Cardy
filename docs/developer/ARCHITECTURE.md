@@ -1,10 +1,10 @@
 # System Architecture
 
-This document describes the high-level architecture of ExperienceQR.
+This document describes the high-level architecture of FunTell.
 
 ## Overview
 
-ExperienceQR is an AI-powered content experience platform connecting creators (B2B), administrators, and visitors (B2C). Creators turn any information into multilingual, AI-enhanced experiences that audiences access via QR codes, links, or embeds.
+FunTell is an AI-powered content experience platform connecting creators (B2B), administrators, and visitors (B2C). Creators turn any information into multilingual, AI-enhanced experiences that audiences access via QR codes, links, or embeds.
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐

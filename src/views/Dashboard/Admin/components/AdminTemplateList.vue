@@ -116,7 +116,7 @@
       </IconField>
 
       <!-- Venue Type -->
-      <Dropdown
+      <Select
         v-model="selectedVenueType"
         :options="venueTypeOptions"
         optionLabel="label"
@@ -131,10 +131,10 @@
              <span>{{ slotProps.option.label }}</span>
            </div>
         </template>
-      </Dropdown>
+      </Select>
 
       <!-- Status Filter -->
-      <Dropdown
+      <Select
         v-model="selectedStatus"
         :options="statusOptions"
         optionLabel="label"
@@ -308,7 +308,7 @@
             {{ $t('templates.admin.select_card') }} *
             <span class="text-slate-400 font-normal ml-1">({{ adminCards.length }} total)</span>
           </label>
-          <Dropdown 
+          <Select 
             v-model="createData.card_id" 
             :options="adminCards"
             optionLabel="card_name"
@@ -341,7 +341,7 @@
               </span>
               <span v-else class="text-slate-400">{{ $t('templates.admin.select_card_placeholder') }}</span>
             </template>
-          </Dropdown>
+          </Select>
         </div>
         
         <!-- Slug -->
@@ -367,7 +367,7 @@
           <label class="block text-sm font-medium text-slate-700 mb-1">
             {{ $t('templates.admin.venue_type') }}
           </label>
-          <Dropdown 
+          <Select 
             v-model="createData.venue_type" 
             :options="venueTypeOptions.filter(v => v.value)"
             optionLabel="label"
@@ -389,7 +389,7 @@
               </div>
               <span v-else class="text-slate-400">{{ $t('templates.admin.select_venue_type') }}</span>
             </template>
-          </Dropdown>
+          </Select>
         </div>
         
         <!-- Options -->
@@ -441,7 +441,7 @@
           <label class="block text-sm font-medium text-slate-700 mb-1">
             {{ $t('templates.admin.venue_type') }}
           </label>
-          <Dropdown 
+          <Select 
             v-model="editSettings.venue_type" 
             :options="venueTypeOptions.filter(v => v.value)"
             optionLabel="label"
@@ -463,7 +463,7 @@
               </div>
               <span v-else class="text-slate-400">{{ $t('templates.admin.select_venue_type') }}</span>
             </template>
-          </Dropdown>
+          </Select>
         </div>
         
         <!-- Options -->
@@ -515,7 +515,7 @@ import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Tag from 'primevue/tag'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import ProgressSpinner from 'primevue/progressspinner'
 import ConfirmDialog from 'primevue/confirmdialog'
 import Dialog from 'primevue/dialog'
@@ -1278,17 +1278,6 @@ async function bulkDelete() {
   @apply space-y-4;
 }
 
-.list-header {
-  @apply flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-4 bg-white rounded-lg border border-slate-200;
-}
-
-.header-left h3 {
-  @apply font-semibold text-slate-900;
-}
-
-.header-actions {
-  @apply flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto;
-}
 
 .loading-state {
   @apply flex items-center justify-center py-12;
@@ -1330,11 +1319,4 @@ async function bulkDelete() {
   @apply font-medium text-blue-600 bg-blue-50 px-2 py-1 rounded-full text-xs;
 }
 
-.action-buttons {
-  @apply flex gap-1;
-}
-
-/* Make action buttons visible on hover only for cleaner look, optional */
-/* .templates-table :deep(tr:hover) .action-buttons { opacity: 1; } */
-/* .action-buttons { opacity: 0.6; transition: opacity 0.2s; } */
 </style>

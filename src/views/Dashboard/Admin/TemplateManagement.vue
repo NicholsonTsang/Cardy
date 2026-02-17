@@ -1,13 +1,9 @@
 <template>
-  <div class="template-management min-h-screen bg-slate-50 pb-12">
-    <PageWrapper :title="$t('templates.admin.management_title')" :description="$t('templates.admin.management_description')">
-      <div class="management-content max-w-7xl mx-auto">
-        <!-- Main Content Area -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-          <AdminTemplateList @open-import="showImportDialog = true" />
-        </div>
-      </div>
-    </PageWrapper>
+  <PageWrapper :title="$t('templates.admin.management_title')" :description="$t('templates.admin.management_description')">
+    <!-- Main Content Area -->
+    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+      <AdminTemplateList @open-import="showImportDialog = true" />
+    </div>
 
     <!-- Import Dialog -->
     <Dialog 
@@ -19,7 +15,7 @@
     >
       <AdminTemplateImport @imported="handleImportComplete" />
     </Dialog>
-  </div>
+  </PageWrapper>
 </template>
 
 <script setup lang="ts">

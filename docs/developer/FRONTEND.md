@@ -269,7 +269,7 @@ Located at `src/services/mobileApi.ts`:
 ```typescript
 // Key methods
 mobileApi.getCardByAccessToken(token)      // Fetch card data
-mobileApi.getCardByIssueCardId(id)         // Fetch by physical card ID
+mobileApi.getCardByIssueCardId(id)         // Fetch by issue card ID
 mobileApi.invalidateCache(cardId)          // Clear content cache
 ```
 

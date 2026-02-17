@@ -59,7 +59,6 @@
     "optional": "Optional",
     "use": "Использовать"
   },
-  
   "auth": {
     "sign_in": "Sign In",
     "sign_up": "Sign Up",
@@ -98,7 +97,6 @@
     "cms_account_subtitle": "Sign in to your FunTell CMS account",
     "join_funtell": "Join FunTell CMS to start creating digital cards"
   },
-
   "dashboard": {
     "dashboard": "Dashboard",
     "my_cards": "My Cards",
@@ -108,7 +106,6 @@
     "general": "General",
     "content": "Content",
     "qr_access": "QR & Access",
-    "issuance": "Issuance",
     "mobile_preview": "Mobile Preview",
     "card_name": "Card Name",
     "card_description": "Card Description",
@@ -131,7 +128,6 @@
     "get_started_creating": "Get started by creating your first card",
     "select_card_to_view": "Select a card to view details"
   },
-
   "content": {
     "content_management": "Content Management",
     "content_items": "Content Items",
@@ -149,52 +145,26 @@
     "drag_to_reorder": "Drag to reorder",
     "reorder_tip": "Drag items to rearrange their display order"
   },
-
-  "batches": {
-    "card_batches": "Card Batches",
-    "issue_batch": "Issue Batch",
-    "batch_name": "Batch Name",
-    "quantity": "Quantity",
-    "payment_status": "Payment Status",
-    "batch_status": "Batch Status",
-    "payment_completed": "Payment Completed",
-    "payment_pending": "Payment Pending",
-    "admin_issued": "Admin Issued",
-    "cards_issued": "Cards Issued",
-    "view_cards": "View Cards",
-    "request_print": "Request Print",
-    "view_details": "View Details",
-    "no_batches_yet": "No batches issued yet",
-    "issue_first_batch": "Issue your first batch of cards"
-  },
-
   "admin": {
     "admin_dashboard": "Admin Dashboard",
     "user_management": "User Management",
-    "print_requests": "Print Requests",
     "operations_log": "Operations Log",
     "user_cards": "User Cards",
     "system_stats": "System Statistics",
     "total_users": "Total Users",
     "total_cards": "Total Cards",
-    "total_batches": "Total Batches",
-    "pending_print_requests": "Pending Print Requests",
     "search_by_email": "Search by email...",
     "user_email": "User Email",
     "user_role": "User Role",
     "change_role": "Change Role",
-    "issue_free_batch": "Issue Free Batch",
-    "print_status": "Print Status",
     "update_status": "Update Status",
     "operation_type": "Operation Type",
     "operation_user": "User",
     "operation_time": "Time",
     "operation_description": "Description",
     "no_users_found": "No users found",
-    "no_print_requests": "No print requests",
     "no_operations_logged": "No operations logged"
   },
-
   "mobile": {
     "scan_qr": "Scan QR Code",
     "card_overview": "Card Overview",
@@ -215,7 +185,6 @@
     "connected": "Connected",
     "disconnected": "Disconnected"
   },
-
   "validation": {
     "required_field": "This field is required",
     "invalid_email": "Invalid email address",
@@ -226,7 +195,6 @@
     "invalid_file_type": "Invalid file type",
     "max_words_exceeded": "Maximum {max} words allowed"
   },
-
   "messages": {
     "save_success": "Saved successfully",
     "delete_success": "Deleted successfully",
@@ -238,7 +206,6 @@
     "loading_data": "Loading data...",
     "network_error": "Network error. Please try again."
   },
-
   "landing": {
     "nav": {
       "about": "О нас",
@@ -258,9 +225,9 @@
       "title_line1": "Превратите любое место в",
       "title_line2": "Интерактивный",
       "title_line3": "ИИ-гид",
-      "subtitle_part1": "Платформа цифрового опыта на базе ИИ с",
-      "subtitle_highlight": "голосовыми разговорами",
-      "subtitle_part2": "— мгновенно. Без приложения. Идеально для музеев, ресторанов, торговых центров и любых мест.",
+      "subtitle_part1": "Импортируйте документ, и ИИ создаст ваш интерактивный опыт —",
+      "subtitle_highlight": "многоязычные разговоры",
+      "subtitle_part2": " включены. Делитесь через ссылки, QR-коды или встраивание. Идеально для продуктов, мест, образования и любого контента.",
       "cta_pilot": "Свяжитесь для пилота",
       "cta_learn": "Смотреть демо",
       "cta_demo": "Смотреть демо",
@@ -281,15 +248,7 @@
       "project_features": "Ключевые функции",
       "experience_features": "Ключевые функции",
       "mode_toggle": {
-        "physical_card": "Физическая карта",
         "digital_access": "Цифровой доступ"
-      },
-      "physical_card": {
-        "title": "Физическая карта",
-        "desc": "Коллекционный сувенир с QR-кодом",
-        "hint": "Посетители сначала видят изображение карты, затем изучают контент",
-        "caption": "Пример печатной физической карты с QR-кодом",
-        "full_desc": "Физические карты — это коллекционные сувениры со встроенным QR-кодом. Посетители сканируют, чтобы сначала увидеть страницу обзора карты (изображение и описание), затем изучить интерактивный контент. Идеально для музеев, мероприятий и мест, желающих предложить премиальные сувениры."
       },
       "digital_access": {
         "title": "Цифровой доступ",
@@ -339,7 +298,8 @@
       "scroll_to_explore": "Прокрутите для изучения",
       "no_templates": "Шаблоны не найдены",
       "live_badge": "Живое",
-      "open_button": "Открыть"
+      "open_button": "Открыть",
+      "featured_badge": "Рекомендуемое"
     },
     "content_modes": {
       "title": "Гибкие",
@@ -378,8 +338,8 @@
         "ai_item": "Специализированный гид для конкретного избранного элемента"
       },
       "best_for": "Лучше всего для",
-      "easy_setup": "Простая настройка",
-      "setup_desc": "Настройте за секунды из панели CMS. Без программирования.",
+      "easy_setup": "ИИ-настройка",
+      "setup_desc": "Импортируйте документ, и ИИ настроит всё автоматически — или используйте дашборд вручную.",
       "mobile_optimized": "Оптимизировано для мобильных",
       "mobile_desc": "Адаптивный дизайн, идеально выглядящий на любом устройстве.",
       "grouping_option": "Опциональная группировка",
@@ -394,10 +354,10 @@
     "how_it_works": {
       "title": "Простой",
       "title_highlight": "Трехшаговый процесс",
-      "subtitle": "Запустите свой ИИ-опыт за минуты — без технических навыков.",
+      "subtitle": "Запустите свой контентный ИИ-опыт за минуты — просто передайте ИИ ваш документ, и он сделает всё остальное.",
       "steps": {
-        "create_title": "Создайте",
-        "create_desc": "Создайте проект и добавьте контент через наш интуитивный дашборд.",
+        "create_title": "Создайте с ИИ",
+        "create_desc": "Передайте документ ИИ-агенту, и он автоматически создаст ваш проект — контент, категории и ИИ-ассистент включены.",
         "share_title": "Поделитесь",
         "share_desc": "Разместите QR-код на вывесках, меню или маркетинговых материалах.",
         "engage_title": "Вовлеките",
@@ -414,8 +374,8 @@
         "ai_guide_desc": "Разговоры в реальном времени с контекстным пониманием и уточняющими вопросами.",
         "no_app_title": "Без приложения",
         "no_app_desc": "Мгновенный доступ через любую камеру смартфона. Без загрузок, без трений.",
-        "portal_config_title": "Простое управление контентом",
-        "portal_config_desc": "Настраивайте и обновляйте контент через интуитивный веб-портал в любое время.",
+        "portal_config_title": "Настройка на базе ИИ",
+        "portal_config_desc": "Импортируйте документ или опишите проект — ИИ создаст всё за вас за секунды.",
         "multilingual_title": "Многоязычная поддержка",
         "multilingual_desc": "Контент и разговоры на 10+ языках из одной загрузки.",
         "no_hardware_title": "Без оборудования",
@@ -489,23 +449,10 @@
         "auto_topup_title": "Авто-пополнение",
         "auto_topup_desc": "Когда бюджет заканчивается, автоматически списывается US$${topupCost} за дополнительные сессии"
       },
-      "physical_cards": {
-        "title": "Физические карты",
-        "subtitle": "Опциональное дополнение",
-        "price": "US$ 2",
-        "per": "за карту",
-        "desc": "Коллекционные сувенирные карты для ваших посетителей",
-        "features": [
-          "Премиальные печатные карты",
-          "Безлимитные сканирования на карту",
-          "Заказ партией (мин 100)",
-          "Идеально для музеев и мероприятий"
-        ],
-        "cta": "Узнать больше"
-      },
       "included_title": "Включено во все планы",
       "features": {
         "ai_voice": "Голосовые разговоры с ИИ",
+        "ai_setup": "Настройка проекта на базе ИИ",
         "qr_access": "Мгновенный QR-доступ",
         "design_dashboard": "Дизайн-панель",
         "content_management": "Управление контентом",
@@ -521,9 +468,9 @@
       "title": "Часто задаваемые",
       "title_highlight": "вопросы",
       "q1": "Что такое FunTell?",
-      "a1": "FunTell — это платформа цифрового опыта на базе ИИ, которая превращает любое место в интерактивный гид. Посетители сканируют QR-код для доступа к многоязычному контенту и разговорным ИИ-ассистентам — без приложения. Физические карты доступны как опциональные коллекционные сувениры.",
+      "a1": "FunTell — это платформа контентного опыта на базе ИИ, которая превращает любой документ в интерактивный многоязычный опыт со встроенным разговорным ИИ. Импортируйте PDF или опишите проект — ИИ создаст всё автоматически. Делитесь через ссылки, QR-коды или встраивание. Без приложения.",
       "q2": "Как это работает?",
-      "a2": "1) Разместите QR-коды в вашем месте (или используйте физические карты)\n2) Посетители сканируют смартфоном\n3) Мгновенный доступ к ИИ-ассистенту и цифровому контенту\n4) Опционально: Карты становятся коллекционными сувенирами",
+      "a2": "1) Импортируйте документ или опишите проект ИИ-агенту — всё создаётся автоматически\n2) Делитесь через ссылку, QR-код или встраивание\n3) Посетители мгновенно получают доступ к многоязычному ИИ-контенту на любом устройстве",
       "q3": "Нужно ли посетителям скачивать приложение?",
       "a3": "Нет. FunTell работает через любой браузер смартфона. Просто сканируйте QR-код — ничего скачивать или устанавливать не нужно.",
       "q4": "Какие языки поддерживаются?",
@@ -531,7 +478,7 @@
       "q5": "Что включено в цену?",
       "a5": "Три уровня: Бесплатный ({freeExperiences} проекта, {freeSessions} сессий), Стартовый ({starterBudget}/месяц, {starterAiSessions} ИИ сессий, макс 2 языка), Премиум ({monthlyBudget}/месяц, {aiSessions} ИИ сессий, безлимитные языки, white label). Платные планы включают авто-пополнение при исчерпании бюджета. Все планы включают ИИ голос, панель, QR-коды и хостинг.",
       "q6": "Как быстро можно начать?",
-      "a6": "Цифровые QR-проекты могут быть запущены за минуты. Зарегистрируйтесь, создайте проект и сразу поделитесь QR-кодом. Физические карты занимают 2-3 недели на печать и доставку.",
+      "a6": "Проекты могут быть запущены за минуты. Подключите ИИ-инструмент вроде Claude Code, импортируйте документ, и ИИ автоматически создаст весь проект — контент, категории, ИИ-ассистент и QR-коды.",
       "q7": "Можно ли настроить контент и ИИ?",
       "a7": "Да. Полная настройка через нашу панель самообслуживания. Управляйте контентом, настраивайте поведение ИИ-ассистента, устанавливайте приветственные сообщения и обновляйте в любое время.",
       "q8": "Какой срок производства карт?",
@@ -551,6 +498,7 @@
       "contact_title": "Контакты",
       "phone": "Телефон",
       "whatsapp_chat": "WhatsApp чат",
+      "ai_setup_guide": "Руководство по настройке с ИИ",
       "copyright": "© 2025 FunTell. Все права защищены.",
       "privacy": "Политика конфиденциальности",
       "terms": "Условия использования",
@@ -559,4 +507,3 @@
     "floating_cta": "Начать"
   }
 }
-

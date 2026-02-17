@@ -29,8 +29,9 @@ export interface AdminUserCard {
   content_mode: 'single' | 'list' | 'grid' | 'cards'
   is_grouped: boolean
   group_display: 'expanded' | 'collapsed'
-  billing_type: 'physical' | 'digital'
+  billing_type: 'digital'
   default_daily_session_limit: number | null // Default for new QR codes
+  metadata?: Record<string, any>
   // Aggregated from access tokens
   total_sessions: number
   daily_sessions: number
@@ -38,7 +39,6 @@ export interface AdminUserCard {
   total_qr_codes: number
   translations: Record<string, any> | null
   original_language: string | null
-  batches_count: number
   created_at: string
   updated_at: string
   user_email: string
@@ -59,38 +59,14 @@ export interface AdminCardContent {
   updated_at: string
 }
 
-export interface AdminCardBatch {
-  id: string
-  card_id: string
-  batch_name: string
-  batch_number: number
-  payment_status: 'PAID' | 'FREE'  // PAID = credits, FREE = admin-issued
-  is_disabled: boolean
-  cards_count: number
-  created_at: string
-  updated_at: string
-}
-
-export interface AdminBatchIssuedCard {
-  id: string
-  batch_id: string
-  card_id: string
-  active: boolean
-  issue_at: string
-  active_at: string | null
-}
-
 export const useAdminUserCardsStore = defineStore('adminUserCards', () => {
   // State
   const currentUser = ref<AdminUserInfo | null>(null)
   const userCards = ref<AdminUserCard[]>([])
   const selectedCardContent = ref<AdminCardContent[]>([])
-  const selectedCardBatches = ref<AdminCardBatch[]>([])
-  const batchIssuedCards = ref<Map<string, AdminBatchIssuedCard[]>>(new Map())
   const isLoading = ref(false)
   const isLoadingCards = ref(false)
   const isLoadingContent = ref(false)
-  const isLoadingBatches = ref(false)
   const error = ref<string | null>(null)
 
   // Actions
@@ -171,59 +147,15 @@ export const useAdminUserCardsStore = defineStore('adminUserCards', () => {
     }
   }
 
-  const fetchCardBatches = async (cardId: string): Promise<AdminCardBatch[]> => {
-    isLoadingBatches.value = true
-    error.value = null
-    
-    try {
-      const { data, error: fetchError } = await supabase.rpc('admin_get_card_batches', {
-        p_card_id: cardId
-      })
-
-      if (fetchError) throw fetchError
-
-      selectedCardBatches.value = data || []
-      return selectedCardBatches.value
-    } catch (err: any) {
-      console.error('Error fetching card batches:', err)
-      error.value = err.message || 'Failed to fetch card batches'
-      selectedCardBatches.value = []
-      throw err
-    } finally {
-      isLoadingBatches.value = false
-    }
-  }
-
-  const fetchBatchIssuedCards = async (batchId: string): Promise<AdminBatchIssuedCard[]> => {
-    try {
-      const { data, error: fetchError } = await supabase.rpc('admin_get_batch_issued_cards', {
-        p_batch_id: batchId
-      })
-
-      if (fetchError) throw fetchError
-
-      const cards = data || []
-      batchIssuedCards.value.set(batchId, cards)
-      return cards
-    } catch (err: any) {
-      console.error('Error fetching batch issued cards:', err)
-      throw err
-    }
-  }
-
   const clearCurrentUser = () => {
     currentUser.value = null
     userCards.value = []
     selectedCardContent.value = []
-    selectedCardBatches.value = []
-    batchIssuedCards.value.clear()
     error.value = null
   }
 
   const clearSelectedCard = () => {
     selectedCardContent.value = []
-    selectedCardBatches.value = []
-    batchIssuedCards.value.clear()
   }
 
   return {
@@ -231,19 +163,14 @@ export const useAdminUserCardsStore = defineStore('adminUserCards', () => {
     currentUser,
     userCards,
     selectedCardContent,
-    selectedCardBatches,
-    batchIssuedCards,
     isLoading,
     isLoadingCards,
     isLoadingContent,
-    isLoadingBatches,
     error,
     // Actions
     searchUserByEmail,
     fetchUserCards,
     fetchCardContent,
-    fetchCardBatches,
-    fetchBatchIssuedCards,
     clearCurrentUser,
     clearSelectedCard
   }

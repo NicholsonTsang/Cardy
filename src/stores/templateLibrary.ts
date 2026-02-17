@@ -19,7 +19,7 @@ export interface ContentTemplate {
     content_mode: 'single' | 'grouped' | 'list' | 'grid' | 'inline' | 'cards';
     is_grouped: boolean;
     group_display: 'expanded' | 'collapsed';
-    billing_type: 'physical' | 'digital';
+    billing_type: 'digital';
     // Default daily session limit for new QR codes
     default_daily_session_limit: number | null;
     original_language: string;
@@ -188,9 +188,9 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
     // Import template to create a new card (copies the linked card and content items)
     // importLanguage: If specified, imports content in that language (using translations if available)
     const importTemplate = async (
-        templateId: string, 
+        templateId: string,
         customName?: string,
-        billingType?: 'physical' | 'digital',
+        billingType?: 'digital',
         importLanguage?: string  // Language code to import content in
     ): Promise<TemplateImportResult> => {
         isLoading.value = true;

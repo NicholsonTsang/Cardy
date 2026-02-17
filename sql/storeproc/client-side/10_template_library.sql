@@ -272,7 +272,6 @@ CREATE OR REPLACE FUNCTION public.import_content_template(
     p_user_id UUID,
     p_template_id UUID,
     p_card_name TEXT DEFAULT NULL,
-    p_billing_type TEXT DEFAULT NULL,
     p_import_language TEXT DEFAULT NULL  -- Language to import content in (uses translated version if available)
 )
 RETURNS TABLE (
@@ -288,7 +287,6 @@ DECLARE
     v_template RECORD;
     v_new_card_id UUID;
     v_final_name TEXT;
-    v_final_billing TEXT;
     v_final_language TEXT;
     v_check JSONB;
     v_use_translation BOOLEAN;
@@ -330,9 +328,6 @@ BEGIN
         v_template.name
     );
     
-    -- Use provided billing type or template card's billing type
-    v_final_billing := COALESCE(NULLIF(p_billing_type, ''), v_template.billing_type, 'digital');
-    
     -- Create the new card by copying the template's card
     -- If importing in a different language, use translated content and set original_language to that language
     -- DO NOT copy translations - user starts fresh without any translations
@@ -364,7 +359,7 @@ BEGIN
         v_template.content_mode,
         v_template.is_grouped,
         v_template.group_display,
-        v_final_billing,
+        'digital',
         v_template.default_daily_session_limit,
         v_template.conversation_ai_enabled,
         CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_instruction', v_template.ai_instruction) ELSE v_template.ai_instruction END,
@@ -957,7 +952,7 @@ GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEA
 GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT, TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.get_template_venue_types() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.import_content_template(UUID, UUID, TEXT, TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.import_content_template(UUID, UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_template_from_card(UUID, UUID, TEXT, TEXT, BOOLEAN, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_template_settings(UUID, UUID, TEXT, TEXT, BOOLEAN, BOOLEAN, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.delete_content_template(UUID, UUID, BOOLEAN) TO authenticated;
@@ -985,7 +980,8 @@ RETURNS TABLE (
     thumbnail_url TEXT,
     content_mode TEXT,
     item_count BIGINT,
-    access_url TEXT
+    access_url TEXT,
+    is_featured BOOLEAN
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -993,7 +989,7 @@ SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         ct.id,
         ct.slug,
         -- Use translation if available, fallback to original
@@ -1010,17 +1006,17 @@ BEGIN
             WHERE t.card_id = c.id AND t.is_enabled = true
             ORDER BY t.created_at ASC
             LIMIT 1
-        )::TEXT AS access_url
+        )::TEXT AS access_url,
+        ct.is_featured
     FROM content_templates ct
     JOIN cards c ON ct.card_id = c.id
     WHERE ct.is_active = true
-      AND ct.is_featured = true
       -- Only include templates that have at least one enabled access token
       AND EXISTS (
-          SELECT 1 FROM card_access_tokens t 
+          SELECT 1 FROM card_access_tokens t
           WHERE t.card_id = c.id AND t.is_enabled = true
       )
-    ORDER BY ct.sort_order ASC, c.name ASC
+    ORDER BY ct.is_featured DESC, ct.sort_order ASC, c.name ASC
     LIMIT p_limit;
 END;
 $$;

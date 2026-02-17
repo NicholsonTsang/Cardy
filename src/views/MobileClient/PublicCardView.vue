@@ -1,25 +1,26 @@
 <template>
   <div class="mobile-card-container" :class="{ 'card-overview-view': isCardView }">
     <!-- Loading State -->
-    <div v-if="isLoading" class="loading-container">
+    <div v-if="isLoading" class="loading-container" role="status" :aria-label="$t('mobile.loading_card')">
       <ProgressSpinner class="spinner" />
-      <p class="loading-text">{{ $t('mobile.loading_card') }}</p>
+      <p class="loading-text" aria-live="polite">{{ $t('mobile.loading_card') }}</p>
     </div>
 
     <!-- Error State -->
-    <div v-else-if="error" class="error-container">
-      <i class="pi pi-exclamation-triangle error-icon" />
+    <div v-else-if="error" class="error-container" role="alert">
+      <i class="pi pi-exclamation-triangle error-icon" aria-hidden="true" />
       <h2 class="error-title">{{ $t('mobile.card_not_found') }}</h2>
       <p class="error-message">{{ error }}</p>
-      <Button 
-        :label="$t('common.try_again')" 
-        @click="handleRetry" 
+      <Button
+        :label="$t('common.try_again')"
+        @click="handleRetry"
         class="retry-button"
+        :aria-label="$t('common.try_again')"
       />
     </div>
 
-    <!-- Credits Insufficient State (for digital cards) -->
-    <div v-else-if="cardData?.credits_insufficient" class="error-container credits-insufficient-container">
+    <!-- Credits Insufficient State -->
+    <div v-else-if="cardData?.credits_insufficient" class="error-container credits-insufficient-container" role="alert">
       <div class="error-icon-wrapper credits-icon">
         <i class="pi pi-wallet" />
       </div>
@@ -28,8 +29,8 @@
       <p class="error-hint">{{ $t('mobile.try_again_later') }}</p>
     </div>
 
-    <!-- Monthly Limit Exceeded State (for digital cards) -->
-    <div v-else-if="cardData?.monthly_limit_exceeded" class="error-container monthly-limit-container">
+    <!-- Monthly Limit Exceeded State -->
+    <div v-else-if="cardData?.monthly_limit_exceeded" class="error-container monthly-limit-container" role="alert">
       <div class="error-icon-wrapper monthly-limit-icon">
         <i class="pi pi-clock" />
       </div>
@@ -37,8 +38,8 @@
       <p class="error-message">{{ $t('mobile.monthly_limit_message') }}</p>
     </div>
 
-    <!-- Daily Limit Exceeded State (for digital cards - creator protection) -->
-    <div v-else-if="cardData?.daily_limit_exceeded" class="error-container daily-limit-container">
+    <!-- Daily Limit Exceeded State (creator protection) -->
+    <div v-else-if="cardData?.daily_limit_exceeded" class="error-container daily-limit-container" role="alert">
       <div class="error-icon-wrapper daily-limit-icon">
         <i class="pi pi-calendar" />
       </div>
@@ -47,8 +48,8 @@
       <p class="error-hint">{{ $t('mobile.try_again_tomorrow') }}</p>
     </div>
 
-    <!-- Scan Limit Reached State (for digital cards - total limit) -->
-    <div v-else-if="cardData?.scan_limit_reached" class="error-container scan-limit-container">
+    <!-- Scan Limit Reached State (total limit) -->
+    <div v-else-if="cardData?.scan_limit_reached" class="error-container scan-limit-container" role="alert">
       <div class="error-icon-wrapper scan-limit-icon">
         <i class="pi pi-ban" />
       </div>
@@ -56,8 +57,8 @@
       <p class="error-message">{{ $t('mobile.scan_limit_message') }}</p>
     </div>
 
-    <!-- Access Disabled State (for digital cards) -->
-    <div v-else-if="cardData?.access_disabled" class="error-container access-disabled-container">
+    <!-- Access Disabled State -->
+    <div v-else-if="cardData?.access_disabled" class="error-container access-disabled-container" role="alert">
       <div class="error-icon-wrapper access-disabled-icon">
         <i class="pi pi-lock" />
       </div>
@@ -66,8 +67,8 @@
     </div>
 
     <!-- Main Content -->
-    <div 
-      v-else-if="cardData && !cardData.scan_limit_reached && !cardData.monthly_limit_exceeded && !cardData.daily_limit_exceeded && !cardData.credits_insufficient && !cardData.access_disabled" 
+    <div
+      v-else-if="cardData"
       class="content-wrapper"
       ref="contentWrapperRef"
     >
@@ -81,7 +82,7 @@
       />
 
       <!-- Dynamic View Container (no transition to prevent flash) -->
-      <!-- Card/Welcome Overview (both physical and digital) -->
+      <!-- Card/Welcome Overview -->
       <CardOverview 
         v-if="isCardView"
         :card="cardData"
@@ -167,11 +168,13 @@ import ContentDetail from './components/ContentDetail.vue'
 
 // Types
 interface CardData {
+  card_id?: string
   card_name: string
   card_description: string
   card_image_url: string
   crop_parameters?: any
   conversation_ai_enabled: boolean
+  realtime_voice_enabled?: boolean
   ai_instruction: string
   ai_knowledge_base: string
   ai_prompt: string  // For backward compatibility with AI Assistant
@@ -182,8 +185,7 @@ interface CardData {
   content_mode?: 'single' | 'grid' | 'list' | 'cards' // Content rendering mode (new: 4 layouts)
   is_grouped?: boolean // Whether content is organized into categories
   group_display?: 'expanded' | 'collapsed' // How grouped items display
-  billing_type?: 'physical' | 'digital' // Billing model
-  max_sessions?: number | null // Total scan limit for digital
+  max_sessions?: number | null // Total scan limit
   total_sessions?: number // Current total scan count
   daily_session_limit?: number | null // Daily scan limit for digital
   daily_sessions?: number // Today's scan count
@@ -359,11 +361,13 @@ async function fetchCardData() {
     }
 
     cardData.value = {
+      card_id: route.params.issue_card_id as string || firstRow.card_id || '',
       card_name: firstRow.card_name,
       card_description: firstRow.card_description,
       card_image_url: firstRow.card_image_url,
       crop_parameters: firstRow.card_crop_parameters,
       conversation_ai_enabled: firstRow.card_conversation_ai_enabled,
+      realtime_voice_enabled: firstRow.card_realtime_voice_enabled || false,
       ai_instruction: firstRow.card_ai_instruction,
       ai_knowledge_base: firstRow.card_ai_knowledge_base,
       ai_prompt: firstRow.card_ai_instruction, // For backward compatibility with AI Assistant
@@ -374,7 +378,6 @@ async function fetchCardData() {
       content_mode: (firstRow.card_content_mode || 'list') as 'single' | 'grid' | 'list' | 'cards',
       is_grouped: firstRow.card_is_grouped || false,
       group_display: firstRow.card_group_display || 'expanded', // How grouped items display
-      billing_type: firstRow.card_billing_type || 'physical', // Billing model
       max_sessions: firstRow.card_max_sessions,
       total_sessions: firstRow.card_total_sessions,
       daily_session_limit: firstRow.card_daily_session_limit,
@@ -509,10 +512,6 @@ watch(() => route.path, () => {
   } else if (path.endsWith('/list')) {
     currentView.value = 'content-list'
     selectedContent.value = null
-    // Scroll to top when entering list view (optional, maybe keep position?)
-    // User requested "click to content item -> show top", so detail needs scroll top.
-    // List view might benefit from keeping position if going back. 
-    // Vue router's scrollBehavior usually handles "savedPosition" on popstate (back button).
   } else {
     currentView.value = 'card'
     selectedContent.value = null
@@ -567,7 +566,7 @@ onMounted(() => {
   }
 })
 
-// Prevent body scroll when in card overview (no scrolling needed for either mode)
+// Prevent body scroll when in card overview
 watchEffect(() => {
   const shouldLockScroll = isCardView.value
   if (shouldLockScroll) {
@@ -687,7 +686,7 @@ watch(() => route.params.lang, (newLang) => {
   pointer-events: none; /* Don't interfere with touch events */
 }
 
-/* Card overview: Fill entire viewport (both physical and digital modes) */
+/* Card overview: Fill entire viewport */
 .mobile-card-container.card-overview-view {
   position: fixed;
   top: 0;
@@ -903,7 +902,7 @@ watch(() => route.params.lang, (newLang) => {
   background: linear-gradient(to bottom right, #0f172a, #1e3a8a, #4338ca);
 }
 
-/* Card overview content wrapper (both physical and digital) */
+/* Card overview content wrapper */
 .card-overview-view .content-wrapper {
   position: absolute;
   top: 0;

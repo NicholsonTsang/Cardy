@@ -84,15 +84,7 @@
           <div class="flex items-center gap-3 sm:gap-4">
             <div class="text-center px-3 py-1.5 bg-white rounded-lg border border-slate-200 shadow-sm">
               <p class="text-lg font-bold text-slate-900">{{ userCards.length }}</p>
-              <p class="text-[10px] text-slate-500 uppercase">{{ $t('batches.cards') }}</p>
-            </div>
-            <div class="text-center px-3 py-1.5 bg-white rounded-lg border border-purple-200 shadow-sm">
-              <p class="text-lg font-bold text-purple-600">{{ physicalCardsCount }}</p>
-              <p class="text-[10px] text-slate-500 uppercase">{{ $t('admin.physical') }}</p>
-            </div>
-            <div class="text-center px-3 py-1.5 bg-white rounded-lg border border-cyan-200 shadow-sm">
-              <p class="text-lg font-bold text-cyan-600">{{ digitalCardsCount }}</p>
-              <p class="text-[10px] text-slate-500 uppercase">{{ $t('admin.digital') }}</p>
+              <p class="text-[10px] text-slate-500 uppercase">{{ $t('admin.projects') }}</p>
             </div>
             <div class="hidden sm:flex items-center gap-1 text-xs text-slate-400 ml-2">
               <i class="pi pi-eye"></i>
@@ -128,9 +120,7 @@
         <AdminCardDetailPanel
           :selectedCard="selectedCard as any"
           :content="selectedCardContent as any"
-          :batches="selectedCardBatches"
           :isLoadingContent="isLoadingContent"
-          :isLoadingBatches="isLoadingBatches"
           v-model:activeTab="activeTabString"
         />
       </div>
@@ -166,11 +156,9 @@ const {
   currentUser,
   userCards,
   selectedCardContent,
-  selectedCardBatches,
   isLoading,
   isLoadingCards,
   isLoadingContent,
-  isLoadingBatches,
   error
 } = storeToRefs(adminUserCardsStore)
 
@@ -196,14 +184,6 @@ const selectedCard = computed(() => {
     ai_instruction: card.ai_instruction || '',
     ai_knowledge_base: card.ai_knowledge_base || ''
   }
-})
-
-const physicalCardsCount = computed(() => {
-  return userCards.value.filter(c => c.billing_type === 'physical').length
-})
-
-const digitalCardsCount = computed(() => {
-  return userCards.value.filter(c => c.billing_type === 'digital').length
 })
 
 const activeTabString = computed({
@@ -259,10 +239,7 @@ const handleSelectCard = async (cardId: string) => {
   activeTab.value = 0
   
   try {
-    await Promise.all([
-      adminUserCardsStore.fetchCardContent(cardId),
-      adminUserCardsStore.fetchCardBatches(cardId)
-    ])
+    await adminUserCardsStore.fetchCardContent(cardId)
   } catch (err: any) {
     toast.add({
       severity: 'error',

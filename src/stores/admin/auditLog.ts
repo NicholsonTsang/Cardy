@@ -43,21 +43,11 @@ export const ACTION_TYPES = {
   CONTENT_ITEM_UPDATE: 'CONTENT_ITEM_UPDATE',
   CONTENT_ITEM_DELETION: 'CONTENT_ITEM_DELETION',
   CONTENT_ITEM_REORDER: 'CONTENT_ITEM_REORDER',
-  
-  // Batch Management
-  BATCH_ISSUANCE: 'BATCH_ISSUANCE',
-  BATCH_STATUS_CHANGE: 'BATCH_STATUS_CHANGE',
-  FREE_BATCH_ISSUANCE: 'FREE_BATCH_ISSUANCE',
-  
+
   // Credit Management
   CREDIT_ADJUSTMENT: 'CREDIT_ADJUSTMENT',
   CREDIT_PURCHASE: 'CREDIT_PURCHASE',
-  CREDIT_CONSUMPTION: 'CREDIT_CONSUMPTION',
-  
-  // Print Requests
-  PRINT_REQUEST_SUBMISSION: 'PRINT_REQUEST_SUBMISSION',
-  PRINT_REQUEST_UPDATE: 'PRINT_REQUEST_UPDATE',
-  PRINT_REQUEST_WITHDRAWAL: 'PRINT_REQUEST_WITHDRAWAL'
+  CREDIT_CONSUMPTION: 'CREDIT_CONSUMPTION'
 } as const
 
 // Map ACTION_TYPES to actual search keywords in operation logs
@@ -69,32 +59,22 @@ export const ACTION_TYPE_SEARCH_KEYWORDS: Record<string, string> = {
   SUBSCRIPTION_CHANGE: 'Admin changed subscription tier',  // Matches "Admin changed subscription tier from X to Y"
   
   // Card Management
-  CARD_CREATION: 'Created',  // Matches "Created physical card:" and "Created digital card:" and "Imported card"
+  CARD_CREATION: 'Created',  // Matches "Created digital card:" and "Imported card" (legacy: "Created physical card:")
   CARD_UPDATE: 'Updated card:',
   CARD_DELETION: 'Deleted card:',
-  CARD_ACTIVATION: 'activated',  // Matches "Activated issued card" and "Card auto-activated"
-  CARD_GENERATION: 'Generated',  // Matches "Generated X cards for batch"
+  CARD_ACTIVATION: 'activated',  // Legacy: matches "Activated issued card" and "Card auto-activated"
+  CARD_GENERATION: 'Generated',  // Legacy: matches "Generated X cards for batch"
   
   // Content Management
   CONTENT_ITEM_CREATION: 'Created content item:',
   CONTENT_ITEM_UPDATE: 'Updated content item:',
   CONTENT_ITEM_DELETION: 'Deleted content item:',
   CONTENT_ITEM_REORDER: 'Reordered content item',
-  
-  // Batch Management
-  BATCH_ISSUANCE: 'Issued batch',
-  BATCH_STATUS_CHANGE: 'abled batch',  // Matches "Disabled batch" and "Enabled batch"
-  FREE_BATCH_ISSUANCE: 'Admin issued free batch',
-  
+
   // Credit Management
   CREDIT_ADJUSTMENT: 'Admin adjusted credits',
   CREDIT_PURCHASE: 'Credit purchase',
-  CREDIT_CONSUMPTION: 'Credit consumption',
-  
-  // Print Requests
-  PRINT_REQUEST_SUBMISSION: 'Submitted print request',
-  PRINT_REQUEST_UPDATE: 'Updated print request',
-  PRINT_REQUEST_WITHDRAWAL: 'Withdrew print request'
+  CREDIT_CONSUMPTION: 'Credit consumption'
 }
 
 export const useAuditLogStore = defineStore('auditLog', () => {
@@ -212,8 +192,7 @@ export const useAuditLogStore = defineStore('auditLog', () => {
     const labels: Record<string, string> = {
       'USER_REGISTRATION': 'User Registration',
       'ROLE_CHANGE': 'Role Change',
-      'SUBSCRIPTION_CHANGE': 'Subscription Change',
-      'PRINT_REQUEST_UPDATE': 'Print Request Update'
+      'SUBSCRIPTION_CHANGE': 'Subscription Change'
     }
     return labels[actionType] || actionType.replace('_', ' ')
   }
@@ -222,8 +201,7 @@ export const useAuditLogStore = defineStore('auditLog', () => {
     const colors: Record<string, string> = {
       'USER_REGISTRATION': 'bg-green-500',
       'ROLE_CHANGE': 'bg-yellow-500',
-      'SUBSCRIPTION_CHANGE': 'bg-purple-500',
-      'PRINT_REQUEST_UPDATE': 'bg-blue-500'
+      'SUBSCRIPTION_CHANGE': 'bg-purple-500'
     }
     return colors[actionType] || 'bg-slate-500'
   }

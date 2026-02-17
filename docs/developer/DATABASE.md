@@ -14,11 +14,12 @@ sql/
 ├── all_stored_procedures.sql     # GENERATED - combined procedures
 └── storeproc/
     ├── client-side/              # Frontend-accessible
+    │   ├── 00_logging.sql
     │   ├── 01_auth_functions.sql
     │   ├── 02_card_management.sql
     │   ├── 03_content_management.sql
-    │   ├── 04_batch_management.sql
-    │   ├── 06_print_requests.sql
+    │   ├── 03b_content_migration.sql
+    │   ├── 03c_content_pagination.sql
     │   ├── 07_public_access.sql
     │   ├── 10_template_library.sql
     │   ├── 11_admin_functions.sql
@@ -60,7 +61,8 @@ Main project/card table:
 | `ai_instruction` | TEXT | AI role/personality (max 100 words) |
 | `ai_knowledge_base` | TEXT | AI context (max 2000 words) |
 | `translations` | JSONB | Translated content by language |
-| `billing_type` | TEXT | physical/digital billing |
+| `billing_type` | TEXT | Billing type (digital) |
+| `metadata` | JSONB | Extensible metadata for future features (default `{}`) |
 
 ### `content_items`
 
@@ -93,38 +95,11 @@ QR codes for digital access:
 | `total_sessions` | INTEGER | All-time count |
 | `daily_sessions` | INTEGER | Today's count |
 
-### `card_batches`
-
-Physical card batches:
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID | Primary key |
-| `card_id` | UUID | Parent card |
-| `quantity` | INTEGER | Cards in batch |
-| `credits_consumed` | INTEGER | Credits used |
-
-### `issue_cards`
-
-Individual physical cards:
-
-| Column | Type | Description |
-|--------|------|-------------|
-| `id` | UUID | Primary key |
-| `batch_id` | UUID | Parent batch |
-| `issue_card_id` | TEXT | Unique card identifier |
-
 ## Enums
 
 ```sql
 -- QR code position on image
 CREATE TYPE "QRCodePosition" AS ENUM ('TL', 'TR', 'BL', 'BR');
-
--- Print request workflow status
-CREATE TYPE "PrintRequestStatus" AS ENUM (
-    'SUBMITTED', 'PAYMENT_PENDING', 'PROCESSING',
-    'SHIPPED', 'COMPLETED', 'CANCELLED'
-);
 
 -- User roles
 CREATE TYPE "UserRole" AS ENUM ('user', 'cardIssuer', 'admin');

@@ -3,7 +3,7 @@
     v-model:visible="isVisible" 
     modal 
     :header="$t('batches.confirm_credit_usage')" 
-    :style="{ width: '500px' }"
+    :style="{ width: '90vw', maxWidth: '500px' }"
     class="standardized-dialog"
     appendTo="body"
     @update:visible="handleVisibilityChange"
@@ -37,19 +37,7 @@
           <h4 class="font-medium text-slate-900 mb-3">{{ $t('batches.credit_usage_summary') }}</h4>
           <div class="space-y-3">
             <!-- Custom Details Slot -->
-            <slot name="details">
-              <!-- Default details if no slot provided -->
-              <div v-if="itemCount && creditsPerItem" class="space-y-3">
-                <div class="flex justify-between items-center">
-                  <span class="text-slate-600">{{ itemLabel }}:</span>
-                  <span class="font-semibold text-slate-900">{{ itemCount }}</span>
-                </div>
-                <div class="flex justify-between items-center">
-                  <span class="text-slate-600">{{ $t('batches.credits_per_card') }}:</span>
-                  <span class="font-semibold text-slate-900">{{ creditsPerItem }} {{ $t('batches.credits') }}</span>
-                </div>
-              </div>
-            </slot>
+            <slot name="details"></slot>
             
             <!-- Total Credits (always shown) -->
             <div class="border-t border-slate-300 pt-3 flex justify-between items-center">
@@ -117,7 +105,7 @@
 </template>
 
 <script setup>
-import { computed, watch } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Dialog from 'primevue/dialog'
 import Button from 'primevue/button'
@@ -157,19 +145,6 @@ const props = defineProps({
   cancelLabel: {
     type: String,
     default: ''
-  },
-  // Optional props for default details display
-  itemCount: {
-    type: Number,
-    default: null
-  },
-  creditsPerItem: {
-    type: Number,
-    default: null
-  },
-  itemLabel: {
-    type: String,
-    default: 'Items'
   },
   lowBalanceThreshold: {
     type: Number,
@@ -228,7 +203,4 @@ const handleVisibilityChange = (value) => {
 }
 </script>
 
-<style scoped>
-/* Component-specific styles if needed */
-</style>
 

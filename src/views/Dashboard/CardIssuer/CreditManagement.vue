@@ -14,22 +14,22 @@
     <div class="space-y-6">
 
       <!-- Balance Overview Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
         <!-- Current Balance -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group hover:shadow-md transition-all">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 relative overflow-hidden group hover:shadow-md transition-all">
           <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <i class="pi pi-wallet text-6xl text-blue-500"></i>
+            <i class="pi pi-wallet text-5xl sm:text-6xl text-blue-500"></i>
           </div>
           <div class="relative z-10">
-            <div class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('credits.currentBalance') }}</div>
-            <div class="text-3xl font-bold text-slate-900 mb-2">{{ creditStore.formattedBalance }}</div>
+            <div class="text-xs sm:text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('credits.currentBalance') }}</div>
+            <div class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">${{ creditStore.formattedBalance }}</div>
             <div class="text-sm text-slate-600 flex items-center gap-1">
               <i class="pi pi-check-circle text-emerald-500"></i>
               {{ $t('credits.availableCredits') }}
             </div>
-            
+
             <!-- Low Balance Warning -->
-            <div v-if="parseFloat(creditStore.formattedBalance) < 50" class="mt-4 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium border border-amber-100">
+            <div v-if="parseFloat(creditStore.formattedBalance) < 50" class="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 text-amber-700 text-xs font-medium border border-amber-100">
               <i class="pi pi-exclamation-triangle"></i>
               {{ $t('credits.lowBalance') }}
             </div>
@@ -37,36 +37,70 @@
         </div>
 
         <!-- Total Purchased -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group hover:shadow-md transition-all">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 relative overflow-hidden group hover:shadow-md transition-all">
           <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <i class="pi pi-arrow-circle-up text-6xl text-emerald-500"></i>
+            <i class="pi pi-arrow-circle-up text-5xl sm:text-6xl text-emerald-500"></i>
           </div>
           <div class="relative z-10">
-            <div class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('credits.totalPurchased') }}</div>
-            <div class="text-3xl font-bold text-slate-900 mb-2">{{ statistics?.total_purchased?.toFixed(2) || '0.00' }}</div>
+            <div class="text-xs sm:text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('credits.totalPurchased') }}</div>
+            <div class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">${{ statistics?.total_purchased?.toFixed(2) || '0.00' }}</div>
             <div class="text-sm text-slate-600">
-              <span class="font-medium text-emerald-600">+{{ statistics?.monthly_purchases?.toFixed(2) || '0.00' }}</span> {{ $t('credits.thisMonth') }}
+              <span class="font-medium text-emerald-600">+${{ statistics?.monthly_purchases?.toFixed(2) || '0.00' }}</span> {{ $t('credits.thisMonth') }}
             </div>
           </div>
         </div>
 
         <!-- Total Consumed -->
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 relative overflow-hidden group hover:shadow-md transition-all">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6 relative overflow-hidden group hover:shadow-md transition-all">
           <div class="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-            <i class="pi pi-arrow-circle-down text-6xl text-orange-500"></i>
+            <i class="pi pi-arrow-circle-down text-5xl sm:text-6xl text-orange-500"></i>
           </div>
           <div class="relative z-10">
-            <div class="text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('credits.totalConsumed') }}</div>
-            <div class="text-3xl font-bold text-slate-900 mb-2">{{ statistics?.total_consumed?.toFixed(2) || '0.00' }}</div>
+            <div class="text-xs sm:text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('credits.totalConsumed') }}</div>
+            <div class="text-2xl sm:text-3xl font-bold text-slate-900 mb-2">${{ statistics?.total_consumed?.toFixed(2) || '0.00' }}</div>
             <div class="text-sm text-slate-600">
-              <span class="font-medium text-orange-600">-{{ statistics?.monthly_consumption?.toFixed(2) || '0.00' }}</span> {{ $t('credits.thisMonth') }}
+              <span class="font-medium text-orange-600">-${{ statistics?.monthly_consumption?.toFixed(2) || '0.00' }}</span> {{ $t('credits.thisMonth') }}
             </div>
           </div>
         </div>
       </div>
 
+      <!-- Voice Credits Section -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+              <i class="pi pi-phone text-indigo-600"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-slate-800">{{ $t('subscription.voice_credits') }}</h3>
+              <p class="text-sm text-slate-500">{{ $t('subscription.voice_credits_description') }}</p>
+            </div>
+          </div>
+          <Button
+            :label="$t('subscription.buy_voice_credits')"
+            icon="pi pi-plus"
+            severity="help"
+            size="small"
+            @click="selectedVoicePackages = 1; showVoiceCreditConfirmDialog = true"
+          />
+        </div>
+        <div class="flex items-center gap-6">
+          <div>
+            <div class="text-xs sm:text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('subscription.voice_credits_remaining') }}</div>
+            <div class="text-2xl sm:text-3xl font-bold" :class="voiceCreditStore.hasCredits ? 'text-indigo-600' : 'text-red-500'">
+              {{ voiceCreditStore.balance }}
+              <span class="text-base font-normal text-slate-500">{{ $t('subscription.voice_credits_balance').toLowerCase() }}</span>
+            </div>
+          </div>
+          <div class="text-sm text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+            {{ $t('subscription.voice_credits_package', { count: voiceCreditStore.packageSize, price: voiceCreditStore.packagePriceUsd }) }}
+          </div>
+        </div>
+      </div>
+
       <!-- History Tables -->
-      <div class="bg-white rounded-xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
         <Tabs :value="activeTab" @update:value="(value) => activeTab = String(value)" class="flex-1 flex flex-col">
           <TabList class="flex-shrink-0 border-b border-slate-200 bg-white px-2 sm:px-4 overflow-x-auto scrollbar-hide">
             <Tab value="0" class="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-6 py-3 sm:py-4 font-medium text-slate-600 data-[p-active=true]:text-blue-600 data-[p-active=true]:border-b-2 data-[p-active=true]:border-blue-600 transition-all whitespace-nowrap text-sm sm:text-base">
@@ -89,16 +123,17 @@
           <TabPanels class="flex-1 bg-slate-50/50 p-0">
             <!-- Transactions Tab -->
             <TabPanel value="0" class="p-0">
-              <DataTable 
-                :value="creditStore.transactions" 
+              <DataTable
+                :value="creditStore.transactions"
                 :loading="creditStore.loading"
-                paginator 
-                :rows="10" 
+                paginator
+                :rows="10"
                 :rowsPerPageOptions="[10, 20, 50]"
                 :showGridlines="false"
                 stripedRows
+                scrollable
+                scrollHeight="flex"
                 class="p-datatable-sm border-0"
-                tableStyle="min-width: 50rem"
               >
                 <template #empty>
                   <div class="text-center py-16">
@@ -136,17 +171,17 @@
                   </template>
                 </Column>
                 
-                <Column field="amount" :header="$t('credits.amount')" sortable alignFrozen="right" frozen style="width: 120px">
+                <Column field="amount" :header="$t('credits.amount')" sortable style="width: 130px">
                   <template #body="{ data }">
-                    <div class="font-bold font-mono" :class="data.type === 'purchase' ? 'text-emerald-600' : 'text-slate-700'">
-                      {{ data.type === 'purchase' ? '+' : '' }}{{ data.amount.toFixed(2) }}
+                    <div class="font-bold font-mono" :class="getAmountColor(data)">
+                      {{ formatTransactionAmount(data) }}
                     </div>
                   </template>
                 </Column>
-                
-                <Column field="balance_after" :header="$t('credits.balanceAfter')" sortable alignFrozen="right" frozen style="width: 120px">
+
+                <Column field="balance_after" :header="$t('credits.balanceAfter')" sortable style="width: 120px">
                   <template #body="{ data }">
-                    <span class="text-sm font-medium text-slate-600">{{ data.balance_after.toFixed(2) }}</span>
+                    <span class="text-sm font-medium text-slate-600">${{ data.balance_after.toFixed(2) }}</span>
                   </template>
                 </Column>
               </DataTable>
@@ -182,7 +217,7 @@
                   <template #body="{ data }">
                     <div class="flex items-center gap-2">
                       <i class="pi pi-wallet text-slate-400"></i>
-                      <span class="font-bold text-slate-800">{{ data.credits_amount.toFixed(2) }}</span>
+                      <span class="font-bold text-slate-800">${{ data.credits_amount.toFixed(2) }}</span>
                     </div>
                   </template>
                 </Column>
@@ -261,7 +296,7 @@
                 
                 <Column field="total_credits" :header="$t('credits.totalCredits')" sortable>
                   <template #body="{ data }">
-                    <span class="font-bold text-slate-700">{{ data.total_credits.toFixed(2) }}</span>
+                    <span class="font-bold text-slate-700">${{ data.total_credits.toFixed(2) }}</span>
                   </template>
                 </Column>
                 
@@ -296,7 +331,6 @@
           <p class="font-semibold mb-1">{{ $t('credits.whatAreCreditsFor') }}</p>
           <ul class="list-disc pl-4 space-y-1 text-blue-800">
             <li><strong>{{ $t('credits.overageAccess') }}:</strong> {{ $t('credits.overageAccessDesc') }}</li>
-            <li><strong>{{ $t('credits.physicalCards') }}:</strong> {{ $t('credits.physicalCardsDesc') }}</li>
           </ul>
         </div>
       </div>
@@ -363,14 +397,118 @@
       </div>
     </div>
   </Dialog>
+
+  <!-- Voice Credit Purchase Confirmation Dialog -->
+  <CreditConfirmationDialog
+    :visible="showVoiceCreditConfirmDialog"
+    @update:visible="showVoiceCreditConfirmDialog = $event"
+    :creditsToConsume="totalVoiceCost"
+    :currentBalance="creditStore.balance"
+    :loading="voicePurchaseLoading"
+    :confirmLabel="$t('subscription.buy_voice_credits')"
+    :confirmationQuestion="$t('subscription.voice_credits_confirm_question')"
+    @confirm="confirmVoiceCreditPurchase"
+    @cancel="showVoiceCreditConfirmDialog = false"
+  >
+    <template #embedded-content>
+      <!-- Package Card with Quantity Stepper -->
+      <div class="bg-gradient-to-br from-indigo-50 to-slate-50 rounded-xl p-5 border border-indigo-200">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
+            <i class="pi pi-phone text-indigo-600"></i>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-900">{{ $t('subscription.voice_credits') }}</div>
+            <div class="text-xs text-slate-500">{{ $t('subscription.voice_package_info', { size: voiceCreditStore.packageSize, price: voiceCreditStore.packagePriceUsd }) }}</div>
+          </div>
+        </div>
+
+        <!-- Quantity Stepper -->
+        <div class="flex items-center justify-between bg-white rounded-lg p-3 border border-slate-200">
+          <span class="text-sm font-medium text-slate-700">{{ $t('subscription.voice_select_package') }}</span>
+          <div class="flex items-center gap-1">
+            <button
+              @click="selectedVoicePackages = Math.max(1, selectedVoicePackages - 1)"
+              :disabled="selectedVoicePackages <= 1"
+              class="w-8 h-8 rounded-lg flex items-center justify-center text-lg font-bold transition-all"
+              :class="selectedVoicePackages <= 1
+                ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 active:bg-slate-300'"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              :value="selectedVoicePackages"
+              @change="handleVoiceQtyInput($event)"
+              min="1"
+              max="10"
+              class="w-12 h-8 text-center text-lg font-bold text-indigo-700 border-0 bg-transparent focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <button
+              @click="selectedVoicePackages = Math.min(10, selectedVoicePackages + 1)"
+              :disabled="selectedVoicePackages >= 10"
+              class="w-8 h-8 rounded-lg flex items-center justify-center text-lg font-bold transition-all"
+              :class="selectedVoicePackages >= 10
+                ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200 active:bg-indigo-300'"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <!-- Computed Result -->
+        <div class="mt-3 flex items-center justify-between text-sm">
+          <span class="text-slate-600">{{ totalVoiceCredits }} {{ $t('subscription.voice_credits_balance') }}</span>
+          <span class="text-lg font-bold text-indigo-700">${{ totalVoiceCost.toFixed(2) }}</span>
+        </div>
+      </div>
+
+      <!-- Balance Impact -->
+      <div class="rounded-xl border border-slate-200 overflow-hidden">
+        <div class="flex">
+          <div class="flex-1 p-3 text-center border-r border-slate-200">
+            <div class="text-xs text-slate-500 mb-1">{{ $t('batches.current_balance') }}</div>
+            <div class="text-base font-bold text-slate-900">${{ creditStore.balance.toFixed(2) }}</div>
+          </div>
+          <div class="flex-none px-3 flex items-center text-slate-400">
+            <i class="pi pi-arrow-right text-xs"></i>
+          </div>
+          <div class="flex-1 p-3 text-center">
+            <div class="text-xs text-slate-500 mb-1">{{ $t('batches.after_consumption') }}</div>
+            <div class="text-base font-bold" :class="creditStore.balance - totalVoiceCost < 0 ? 'text-red-600' : creditStore.balance - totalVoiceCost < 20 ? 'text-orange-600' : 'text-green-600'">
+              ${{ (creditStore.balance - totalVoiceCost).toFixed(2) }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Insufficient / Low Balance Warning -->
+      <div v-if="creditStore.balance - totalVoiceCost < 0" class="bg-red-50 border border-red-300 rounded-lg p-3">
+        <div class="flex items-center gap-2">
+          <i class="pi pi-exclamation-circle text-red-600"></i>
+          <span class="text-sm text-red-800">{{ $t('subscription.voice_insufficient_balance') }}</span>
+        </div>
+      </div>
+      <div v-else-if="creditStore.balance - totalVoiceCost < 20" class="bg-yellow-50 border border-yellow-300 rounded-lg p-3">
+        <div class="flex items-center gap-2">
+          <i class="pi pi-info-circle text-yellow-600"></i>
+          <span class="text-sm text-yellow-800">{{ $t('batches.low_balance_warning') }}</span>
+        </div>
+      </div>
+    </template>
+  </CreditConfirmationDialog>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useCreditStore } from '@/stores/credits'
+import { useVoiceCreditStore } from '@/stores/voiceCredits'
 import { useToast } from 'primevue/usetoast'
 import { createCreditPurchaseCheckout } from '@/utils/stripeCheckout'
+
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -384,17 +522,35 @@ import Tag from 'primevue/tag'
 import InputNumber from 'primevue/inputnumber'
 import Divider from 'primevue/divider'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
+import CreditConfirmationDialog from '@/components/CreditConfirmationDialog.vue'
 import { formatDate } from '@/utils/formatters'
 
 const { t } = useI18n()
 const toast = useToast()
 const creditStore = useCreditStore()
+const voiceCreditStore = useVoiceCreditStore()
 
 const activeTab = ref('0')
 const showPurchaseDialog = ref(false)
 const selectedAmount = ref(0)
 const customAmount = ref<number | null>(null)
 const purchaseLoading = ref(false)
+const showVoiceCreditConfirmDialog = ref(false)
+const voicePurchaseLoading = ref(false)
+const selectedVoicePackages = ref(1)
+
+const totalVoiceCredits = computed(() => selectedVoicePackages.value * voiceCreditStore.packageSize)
+const totalVoiceCost = computed(() => selectedVoicePackages.value * voiceCreditStore.packagePriceUsd)
+
+function handleVoiceQtyInput(event: Event) {
+  const value = parseInt((event.target as HTMLInputElement).value)
+  if (!isNaN(value) && value >= 1 && value <= 10) {
+    selectedVoicePackages.value = value
+  } else {
+    // Reset to valid value
+    (event.target as HTMLInputElement).value = String(selectedVoicePackages.value)
+  }
+}
 
 const creditAmounts = [50, 100, 200, 500, 1000]
 
@@ -406,7 +562,8 @@ onMounted(async () => {
     creditStore.fetchCreditStatistics(),
     creditStore.fetchTransactions(),
     creditStore.fetchPurchases(),
-    creditStore.fetchConsumptions()
+    creditStore.fetchConsumptions(),
+    voiceCreditStore.fetchBalance()
   ])
 })
 
@@ -415,6 +572,19 @@ function formatTime(dateString: string) {
     hour: '2-digit',
     minute: '2-digit'
   })
+}
+
+function getAmountColor(data: { type: string; amount: number }) {
+  if (data.type === 'purchase') return 'text-emerald-600'
+  if (data.type === 'refund') return 'text-amber-600'
+  return 'text-red-500'
+}
+
+function formatTransactionAmount(data: { type: string; amount: number }) {
+  const absAmount = Math.abs(data.amount)
+  if (data.type === 'purchase') return `+$${absAmount.toFixed(2)}`
+  if (data.type === 'refund') return `-$${absAmount.toFixed(2)}`
+  return `-$${absAmount.toFixed(2)}`
 }
 
 function getTransactionTypeSeverity(type: string) {
@@ -443,9 +613,7 @@ function getConsumptionTypeLabel(type: string) {
 
 function getConsumptionTypeIcon(type: string) {
   switch(type) {
-    case 'batch_issuance': return 'pi-box'
     case 'subscription_overage_batch': return 'pi-users'
-    case 'physical_card_order': return 'pi-id-card'
     case 'translation': return 'pi-language'
     case 'digital_scan': return 'pi-qrcode'
     case 'single_card': return 'pi-credit-card'
@@ -455,9 +623,7 @@ function getConsumptionTypeIcon(type: string) {
 
 function getConsumptionTypeBg(type: string) {
   switch(type) {
-    case 'batch_issuance': return 'bg-emerald-100'
     case 'subscription_overage_batch': return 'bg-amber-100'
-    case 'physical_card_order': return 'bg-purple-100'
     case 'translation': return 'bg-blue-100'
     case 'digital_scan': return 'bg-cyan-100'
     case 'single_card': return 'bg-indigo-100'
@@ -467,9 +633,7 @@ function getConsumptionTypeBg(type: string) {
 
 function getConsumptionTypeText(type: string) {
   switch(type) {
-    case 'batch_issuance': return 'text-emerald-600'
     case 'subscription_overage_batch': return 'text-amber-600'
-    case 'physical_card_order': return 'text-purple-600'
     case 'translation': return 'text-blue-600'
     case 'digital_scan': return 'text-cyan-600'
     case 'single_card': return 'text-indigo-600'
@@ -479,9 +643,7 @@ function getConsumptionTypeText(type: string) {
 
 function getQuantityUnit(type: string) {
   switch(type) {
-    case 'batch_issuance': return t('credits.unit.cards')
     case 'subscription_overage_batch': return t('credits.unit.access')
-    case 'physical_card_order': return t('credits.unit.cards')
     case 'translation': return t('credits.unit.languages')
     case 'digital_scan': return t('credits.unit.scans')
     case 'single_card': return t('credits.unit.cards')
@@ -506,6 +668,44 @@ function handleCustomAmountInput(event: { value: number | string | undefined | n
 
 function openReceipt(url: string) {
   window.open(url, '_blank')
+}
+
+async function confirmVoiceCreditPurchase() {
+  voicePurchaseLoading.value = true
+  try {
+    const success = await voiceCreditStore.purchaseCredits(selectedVoicePackages.value)
+    if (success) {
+      showVoiceCreditConfirmDialog.value = false
+      toast.add({
+        severity: 'success',
+        summary: t('common.success'),
+        detail: t('subscription.voice_credits_purchase_success'),
+        life: 3000
+      })
+      // Refresh general credit balance and consumptions since credits were deducted
+      await Promise.all([
+        creditStore.fetchCreditBalance(),
+        creditStore.fetchConsumptions(),
+        creditStore.fetchTransactions()
+      ])
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: t('common.error'),
+        detail: voiceCreditStore.error || t('subscription.voice_credits_purchase_error'),
+        life: 5000
+      })
+    }
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: error.message || t('subscription.voice_credits_purchase_error'),
+      life: 5000
+    })
+  } finally {
+    voicePurchaseLoading.value = false
+  }
 }
 
 async function proceedToPayment() {
@@ -535,12 +735,6 @@ async function proceedToPayment() {
 </script>
 
 <style scoped>
-:deep(.p-datatable-thead > tr > th) {
-  background: #f8fafc;
-  font-weight: 600;
-  color: #475569;
-}
-
 /* Hide scrollbar for horizontal tab scroll */
 .scrollbar-hide {
   -ms-overflow-style: none;

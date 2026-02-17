@@ -1,5 +1,5 @@
 <template>
-  <div class="layout-grouped" :class="{ 'has-header': hasHeader, 'has-ai': card.conversation_ai_enabled }">
+  <div class="layout-grouped" :class="{ 'has-header': hasHeader, 'has-ai': card.conversation_ai_enabled, 'has-categories': hasCategories }">
     <!-- Grouped Content: Categories with sub-items -->
     <div class="categories-container">
       <div 
@@ -19,7 +19,7 @@
             class="item-button"
           >
             <div v-if="item.content_item_image_url" class="item-image">
-              <img :src="item.content_item_image_url" :alt="item.content_item_name" crossorigin="anonymous" />
+              <img :src="item.content_item_image_url" :alt="item.content_item_name" crossorigin="anonymous" loading="lazy" />
             </div>
             <div class="item-info">
               <span class="item-name">{{ item.content_item_name }}</span>
@@ -48,11 +48,11 @@
     />
     
     <!-- AI Badge at bottom for easy access -->
-    <div v-if="card.conversation_ai_enabled" class="ai-section">
-      <button @click="openAssistant" class="ai-browse-badge">
-        <span class="ai-badge-icon">✨</span>
+    <div v-if="card.conversation_ai_enabled" class="ai-section" role="complementary" :aria-label="$t('mobile.ask_ai')">
+      <button @click="openAssistant" class="ai-browse-badge" :aria-label="$t('mobile.tap_to_chat_with_ai')">
+        <span class="ai-badge-icon" aria-hidden="true">✨</span>
         <span class="ai-badge-text">{{ $t('mobile.tap_to_chat_with_ai') }}</span>
-        <i class="pi pi-chevron-right ai-badge-arrow" />
+        <i class="pi pi-chevron-right ai-badge-arrow" aria-hidden="true" />
       </button>
     </div>
   </div>
@@ -60,10 +60,9 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { CardLevelAssistant } from './AIAssistant'
-
-const { t } = useI18n()
+import { buildContentDirectory } from './AIAssistant/utils/promptBuilder'
+import { truncateText } from '@/utils/formatters'
 
 // Card Level Assistant ref
 const cardAssistantRef = ref<InstanceType<typeof CardLevelAssistant> | null>(null)
@@ -82,10 +81,12 @@ interface ContentItem {
 
 interface Props {
   card: {
+    card_id?: string
     card_name: string
     card_description: string
     card_image_url: string
     conversation_ai_enabled: boolean
+    realtime_voice_enabled?: boolean
     ai_instruction?: string
     ai_knowledge_base?: string
     ai_welcome_general?: string
@@ -96,10 +97,14 @@ interface Props {
   allItems: ContentItem[] // All items including children
   availableLanguages?: string[]
   hasHeader?: boolean
+  hasCategories?: boolean // Whether category chips are shown above this layout
+  matchingChildIds?: Set<string> // When search is active, only show matching children
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  hasHeader: false
+  hasHeader: false,
+  hasCategories: false,
+  matchingChildIds: undefined
 })
 
 const emit = defineEmits<{
@@ -108,14 +113,17 @@ const emit = defineEmits<{
 
 // Card data formatted for General AI assistant
 const cardDataForAssistant = computed(() => ({
+  card_id: props.card.card_id,
   card_name: props.card.card_name,
   card_description: props.card.card_description,
   card_image_url: props.card.card_image_url,
   conversation_ai_enabled: props.card.conversation_ai_enabled,
+  realtime_voice_enabled: props.card.realtime_voice_enabled,
   ai_instruction: props.card.ai_instruction || '',
   ai_knowledge_base: props.card.ai_knowledge_base || '',
   ai_welcome_general: props.card.ai_welcome_general || '',
   ai_welcome_item: props.card.ai_welcome_item || '',
+  content_directory: props.allItems.length > 0 ? buildContentDirectory(props.items, props.allItems) : undefined,
   is_activated: props.card.is_activated
 }))
 
@@ -125,20 +133,19 @@ function openAssistant() {
 }
 
 // Get child items for a category
+// When matchingChildIds is provided (search active), only show matching children
 function getChildItems(parentId: string): ContentItem[] {
   return (props.allItems || [])
-    .filter(item => item.content_item_parent_id === parentId)
+    .filter(item => {
+      if (item.content_item_parent_id !== parentId) return false
+      if (props.matchingChildIds && props.matchingChildIds.size > 0) {
+        return props.matchingChildIds.has(item.content_item_id)
+      }
+      return true
+    })
     .sort((a, b) => a.content_item_sort_order - b.content_item_sort_order)
 }
 
-function truncateText(text: string, maxLength: number): string {
-  if (!text) return ''
-  // Strip HTML/markdown
-  const plainText = text.replace(/<[^>]*>/g, '').replace(/[#*_`]/g, '')
-  return plainText.length > maxLength 
-    ? plainText.slice(0, maxLength) + '...'
-    : plainText
-}
 
 function handleItemClick(item: ContentItem) {
   emit('select', item)
@@ -160,7 +167,18 @@ function handleItemClick(item: ContentItem) {
 }
 
 .layout-grouped.has-header {
-  padding-top: calc(6.5rem + env(safe-area-inset-top));
+  /* Fixed header (4.5rem) + search bar (3.75rem) + gaps (0.75rem) + safe area */
+  padding-top: calc(9rem + env(safe-area-inset-top));
+}
+
+.layout-grouped.has-header.has-categories {
+  /* Add extra space for category filter chips (~3.5rem) + result count indicator (~1rem) */
+  padding-top: calc(13.5rem + env(safe-area-inset-top));
+}
+
+.layout-grouped.has-categories:not(.has-header) {
+  /* Category chips without header */
+  padding-top: calc(5rem + env(safe-area-inset-top));
 }
 
 /* Extra bottom padding when AI assistant is present (fixed at bottom) */

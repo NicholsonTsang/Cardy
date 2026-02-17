@@ -1,6 +1,14 @@
 -- Admin Credit Management Stored Procedures
 -- Admin functions for credit system auditing and management
 
+-- Drop functions first to allow return type changes
+DROP FUNCTION IF EXISTS admin_get_credit_purchases(INTEGER, INTEGER, UUID, VARCHAR) CASCADE;
+DROP FUNCTION IF EXISTS admin_get_credit_consumptions(INTEGER, INTEGER, UUID, TIMESTAMPTZ, TIMESTAMPTZ) CASCADE;
+DROP FUNCTION IF EXISTS admin_get_credit_transactions(INTEGER, INTEGER, UUID, VARCHAR) CASCADE;
+DROP FUNCTION IF EXISTS admin_get_user_credits(INTEGER, INTEGER, TEXT, TEXT, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS admin_adjust_user_credits(UUID, DECIMAL, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS admin_get_credit_statistics() CASCADE;
+
 -- Admin: Get all credit purchases
 CREATE OR REPLACE FUNCTION admin_get_credit_purchases(
     p_limit INTEGER DEFAULT 50,
@@ -77,8 +85,6 @@ RETURNS TABLE (
     user_id UUID,
     user_email TEXT,
     user_name TEXT,
-    batch_id UUID,
-    batch_name TEXT,
     card_id UUID,
     card_name TEXT,
     consumption_type VARCHAR,
@@ -107,13 +113,11 @@ BEGIN
     END IF;
 
     RETURN QUERY
-    SELECT 
+    SELECT
         cc.id,
         cc.user_id,
         u.email::TEXT AS user_email,
         COALESCE(u.raw_user_meta_data->>'full_name', u.email)::TEXT AS user_name,
-        cc.batch_id,
-        b.batch_name AS batch_name,
         cc.card_id,
         c.name AS card_name,
         cc.consumption_type,
@@ -124,7 +128,6 @@ BEGIN
         cc.created_at
     FROM credit_consumptions cc
     JOIN auth.users u ON u.id = cc.user_id
-    LEFT JOIN card_batches b ON b.id = cc.batch_id
     LEFT JOIN cards c ON c.id = cc.card_id
     WHERE (p_user_id IS NULL OR cc.user_id = p_user_id)
         AND (p_date_from IS NULL OR cc.created_at >= p_date_from)

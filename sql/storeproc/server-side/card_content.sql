@@ -76,6 +76,7 @@ RETURNS TABLE (
     image_url TEXT,
     crop_parameters JSONB,
     conversation_ai_enabled BOOLEAN,
+    realtime_voice_enabled BOOLEAN,
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
     ai_welcome_general TEXT,
@@ -86,6 +87,7 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
+    metadata JSONB,
     subscription_tier TEXT
 ) AS $$
 BEGIN
@@ -96,6 +98,7 @@ BEGIN
         c.image_url,
         c.crop_parameters,
         c.conversation_ai_enabled,
+        c.realtime_voice_enabled,
         c.ai_instruction,
         c.ai_knowledge_base,
         c.ai_welcome_general,
@@ -106,6 +109,7 @@ BEGIN
         c.is_grouped,
         c.group_display::TEXT,
         c.billing_type::TEXT,
+        c.metadata,
         COALESCE(s.tier::TEXT, 'free') as subscription_tier
     FROM cards c
     LEFT JOIN subscriptions s ON s.user_id = c.user_id
@@ -147,37 +151,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Get issue card by ID (for physical card access)
-DROP FUNCTION IF EXISTS get_issue_card_server CASCADE;
-CREATE OR REPLACE FUNCTION get_issue_card_server(
-    p_issue_card_id UUID
-)
-RETURNS TABLE (
-    card_id UUID,
-    active BOOLEAN,
-    activated_at TIMESTAMPTZ
-) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT ic.card_id, ic.active, ic.activated_at
-    FROM issue_cards ic
-    WHERE ic.id = p_issue_card_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- Activate issue card
-DROP FUNCTION IF EXISTS activate_issue_card_server CASCADE;
-CREATE OR REPLACE FUNCTION activate_issue_card_server(
-    p_issue_card_id UUID
-)
-RETURNS VOID AS $$
-BEGIN
-    UPDATE issue_cards
-    SET active = TRUE, activated_at = NOW()
-    WHERE id = p_issue_card_id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
 -- =================================================================
 -- GRANTS - Only service_role can execute these
 -- =================================================================
@@ -189,10 +162,4 @@ GRANT EXECUTE ON FUNCTION get_card_content_server TO service_role;
 
 REVOKE ALL ON FUNCTION get_content_items_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION get_content_items_server TO service_role;
-
-REVOKE ALL ON FUNCTION get_issue_card_server FROM PUBLIC, authenticated, anon;
-GRANT EXECUTE ON FUNCTION get_issue_card_server TO service_role;
-
-REVOKE ALL ON FUNCTION activate_issue_card_server FROM PUBLIC, authenticated, anon;
-GRANT EXECUTE ON FUNCTION activate_issue_card_server TO service_role;
 

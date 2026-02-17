@@ -4,7 +4,7 @@ This file provides guidance for AI assistants working on this repository. For de
 
 ## Project Overview
 
-ExperienceQR is an **AI-powered content experience platform** that turns any information into structured, multilingual content with AI conversational assistants. Creators build interactive content experiences for products, venues, education, storytelling, knowledge bases, print materials, and more. Content is distributed via links, QR codes, or embeds, and visitors access it for free with optional AI-powered voice conversations.
+FunTell is a **digital-only, AI-powered content experience platform** that turns any information into structured, multilingual content with AI conversational assistants. Creators build interactive content experiences for products, venues, education, storytelling, knowledge bases, and more. Content is distributed via links, QR codes, or embeds, and visitors access it for free with optional AI-powered voice conversations.
 
 **Three-Tier Ecosystem:**
 1. **Creators** (B2B) - Businesses, educators, and organizations creating interactive content experiences
@@ -29,19 +29,26 @@ ExperienceQR is an **AI-powered content experience platform** that turns any inf
 │   ├── views/                    # Page components
 │   ├── stores/                   # Pinia stores
 │   ├── services/mobileApi.ts     # Mobile client API service
+│   ├── router/index.ts           # Vue Router (lang-prefixed routes, /:lang/c/:issue_card_id public access)
+│   ├── utils/projectArchive.ts   # ZIP-based project import/export
 │   └── i18n/locales/             # Translation files (en, zh-Hant, zh-Hans, etc.)
 ├── backend-server/               # Express.js backend
 │   ├── src/routes/               # API routes
 │   ├── src/services/             # Business logic
 │   └── src/config/redis.ts       # Redis configuration
 ├── sql/                          # Database
-│   ├── schema.sql                # Tables, enums, indexes
+│   ├── schema.sql                # Tables, enums, indexes (cards table includes metadata JSONB)
 │   ├── all_stored_procedures.sql # GENERATED - don't edit directly
 │   └── storeproc/
 │       ├── client-side/          # Frontend-accessible procedures
 │       └── server-side/          # Backend-only procedures (service role)
 └── scripts/                      # Deployment scripts
 ```
+
+**Removed files (physical card feature deleted -- platform is digital-only):**
+- `sql/storeproc/client-side/04_batch_management.sql`, `06_print_requests.sql`
+- `src/composables/usePhysicalCards.ts`
+- `src/stores/admin/batches.ts`, `src/stores/admin/printRequests.ts`
 
 ## Coding Standards
 
@@ -72,7 +79,7 @@ const { data } = await supabaseAdmin.rpc('get_subscription_by_user_server', { p_
 
 **Always update raw SQL files, NOT migration scripts:**
 
-1. **Schema changes** → `sql/schema.sql`
+1. **Schema changes** → `sql/schema.sql` (note: `cards` table has `metadata JSONB DEFAULT '{}'::JSONB`)
 2. **Client-side procedures** → `sql/storeproc/client-side/`
 3. **Server-side procedures** → `sql/storeproc/server-side/`
 4. Run `scripts/combine-stored-procedures.sh` to regenerate combined file
@@ -125,6 +132,7 @@ All routes include language prefix: `/:lang/...`
 - Landing & Mobile: 10 languages
 - Dashboard: 2 languages (en, zh-Hant)
 - Default: `/en` with localStorage preference override
+- **Public card access:** `/:lang/c/:issue_card_id` with children `/list` and `/item/:content_item_id`
 
 ## Environment Variables
 
@@ -140,6 +148,11 @@ All routes include language prefix: `/:lang/...`
 - Display pricing: `VITE_*` versions of pricing config
 
 ## Common Tasks
+
+### Project Import/Export
+- Uses ZIP archive format (`src/utils/projectArchive.ts`)
+- Multi-project exports produce nested ZIPs (one ZIP per project inside an outer ZIP)
+- Import handles both single-project and nested multi-project ZIPs
 
 ### Adding i18n Translations
 Update files in `src/i18n/locales/`: en.json, zh-Hant.json, zh-Hans.json (minimum)

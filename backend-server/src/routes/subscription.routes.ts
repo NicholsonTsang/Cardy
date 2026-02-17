@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import { authenticateUser } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
 import { SubscriptionConfig, getPricingInfo, getTierDetails } from '../config/subscription';
-import { getUsageStats, flushAccessLogBuffer, invalidateUserCache, updateUserTier } from '../services/usage-tracker';
+import { getUsageStats, flushAccessLogBuffer, invalidateUserCache, updateUserTier, getVoiceCreditBalance } from '../services/usage-tracker';
+import { getStripe, validateRedirectUrl } from '../config/stripe';
 
 const router = Router();
 
@@ -74,6 +75,13 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
       });
     }
 
+    if (!validateRedirectUrl(baseUrl)) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Invalid base URL'
+      });
+    }
+
     if (!['starter', 'premium'].includes(tier)) {
       return res.status(400).json({
         error: 'Validation error',
@@ -81,18 +89,9 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
       });
     }
 
-    // Get Stripe configuration
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    const stripePriceId = tier === 'starter' 
-      ? process.env.STRIPE_STARTER_PRICE_ID 
+    const stripePriceId = tier === 'starter'
+      ? process.env.STRIPE_STARTER_PRICE_ID
       : process.env.STRIPE_PREMIUM_PRICE_ID;
-
-    if (!stripeKey) {
-      return res.status(500).json({
-        error: 'Configuration error',
-        message: 'Stripe secret key not configured'
-      });
-    }
 
     if (!stripePriceId) {
       return res.status(500).json({
@@ -101,12 +100,7 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
       });
     }
 
-    // Import Stripe
-    const Stripe = (await import('stripe')).default;
-    const stripeApiVersion = process.env.STRIPE_API_VERSION || '2025-08-27.basil';
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: stripeApiVersion as any,
-    });
+    const stripe = getStripe();
 
     // Check if user has existing subscription
     const { data: currentSubRows } = await supabaseAdmin.rpc('get_subscription_by_user_server', {
@@ -225,7 +219,6 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
     // Create Stripe Checkout session for subscription
     const session = await stripe.checkout.sessions.create({
       customer: customerId as string,
-      payment_method_types: ['card'],
       line_items: [
         {
           price: stripePriceId,
@@ -299,19 +292,7 @@ router.post('/cancel', authenticateUser, async (req: Request, res: Response) => 
       });
     }
 
-    // Get Stripe
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) {
-      return res.status(500).json({
-        error: 'Configuration error',
-        message: 'Stripe not configured'
-      });
-    }
-
-    const Stripe = (await import('stripe')).default;
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: (process.env.STRIPE_API_VERSION || '2025-08-27.basil') as any,
-    });
+    const stripe = getStripe();
 
     if (immediate) {
       // Cancel immediately
@@ -328,7 +309,7 @@ router.post('/cancel', authenticateUser, async (req: Request, res: Response) => 
     // Update local record (webhook will also update, but do it here for immediate feedback)
     // Try RPC first, fallback to direct update if RPC fails
     // scheduled_tier defaults to 'free' when canceling to free plan
-    const { data: rpcResult, error: updateError } = await supabaseAdmin.rpc('cancel_subscription_server', {
+    const { error: updateError } = await supabaseAdmin.rpc('cancel_subscription_server', {
       p_stripe_subscription_id: subscription.stripe_subscription_id,
       p_cancel_at_period_end: !immediate,
       p_immediate: immediate,
@@ -337,72 +318,23 @@ router.post('/cancel', authenticateUser, async (req: Request, res: Response) => 
     });
 
     if (updateError) {
-      console.error('❌ RPC error, trying direct update:', updateError.message);
-      
-      // Fallback: Direct database update
-      if (immediate) {
-        const { error: directError } = await supabaseAdmin
-          .from('subscriptions')
-          .update({
-            tier: 'free',
-            status: 'canceled',
-            cancel_at_period_end: false,
-            canceled_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
-        
-        if (directError) {
-          console.error('❌ Direct update also failed:', directError.message);
-        } else {
-          console.log(`✅ Direct update: immediate cancellation for user ${userId}`);
-        }
-      } else {
-        const { error: directError } = await supabaseAdmin
-          .from('subscriptions')
-          .update({
-            cancel_at_period_end: true,
-            canceled_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          })
-          .eq('user_id', userId);
-        
-        if (directError) {
-          console.error('❌ Direct update also failed:', directError.message);
-        } else {
-          console.log(`✅ Direct update: cancel_at_period_end=true for user ${userId}`);
-        }
-      }
+      console.error('❌ RPC cancel_subscription_server error:', updateError.message);
+      // The Stripe cancellation succeeded, so the webhook will eventually update the DB.
+      // Log the error but don't fail the request.
     } else {
-      console.log(`✅ RPC success: cancel_at_period_end=${!immediate} for user ${userId}`, rpcResult);
+      console.log(`✅ RPC success: cancel_at_period_end=${!immediate} for user ${userId}`);
     }
 
     // Invalidate any Redis cache for this user
     await invalidateUserCache(userId);
     console.log(`🗑️ Invalidated Redis cache for user ${userId}`);
 
-    // Verify the update by reading back from database
-    const { data: verifyData, error: verifyError } = await supabaseAdmin
-      .from('subscriptions')
-      .select('cancel_at_period_end, canceled_at, tier, status')
-      .eq('user_id', userId)
-      .single();
-    
-    console.log(`🔍 Verification read:`, verifyData, verifyError?.message || 'no error');
-
     return res.json({
       success: true,
-      message: immediate 
-        ? 'Subscription canceled immediately' 
+      message: immediate
+        ? 'Subscription canceled immediately'
         : 'Subscription will be canceled at the end of the billing period',
-      immediate,
-      // Include verification data in response for debugging
-      debug: {
-        cancel_at_period_end: verifyData?.cancel_at_period_end,
-        canceled_at: verifyData?.canceled_at,
-        tier: verifyData?.tier,
-        status: verifyData?.status
-      }
+      immediate
     });
 
   } catch (error: any) {
@@ -444,12 +376,7 @@ router.post('/reactivate', authenticateUser, async (req: Request, res: Response)
       });
     }
 
-    // Get Stripe
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    const Stripe = (await import('stripe')).default;
-    const stripe = new Stripe(stripeKey!, {
-      apiVersion: (process.env.STRIPE_API_VERSION || '2025-08-27.basil') as any,
-    });
+    const stripe = getStripe();
 
     // Reactivate subscription
     await stripe.subscriptions.update(subscription.stripe_subscription_id!, {
@@ -488,6 +415,14 @@ router.get('/portal', authenticateUser, async (req: Request, res: Response) => {
     const userId = req.user!.id;
     const returnUrl = req.query.returnUrl as string || process.env.FRONTEND_URL || 'http://localhost:5173';
 
+    // Validate returnUrl to prevent open redirect
+    if (!validateRedirectUrl(returnUrl)) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Invalid return URL'
+      });
+    }
+
     // Get subscription with Stripe customer ID
     const { data: stripeCustomerId, error: subError } = await supabaseAdmin.rpc(
       'get_subscription_stripe_customer_server',
@@ -501,12 +436,7 @@ router.get('/portal', authenticateUser, async (req: Request, res: Response) => {
       });
     }
 
-    // Get Stripe
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    const Stripe = (await import('stripe')).default;
-    const stripe = new Stripe(stripeKey!, {
-      apiVersion: (process.env.STRIPE_API_VERSION || '2025-08-27.basil') as any,
-    });
+    const stripe = getStripe();
 
     // Create portal session
     const portalSession = await stripe.billingPortal.sessions.create({
@@ -764,26 +694,35 @@ router.post('/buy-credits', authenticateUser, async (req: Request, res: Response
       });
     }
 
-    // Get Stripe
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) {
-      return res.status(500).json({
-        error: 'Configuration error',
-        message: 'Stripe not configured'
+    if (!validateRedirectUrl(baseUrl)) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Invalid base URL'
       });
     }
 
-    const Stripe = (await import('stripe')).default;
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: (process.env.STRIPE_API_VERSION || '2025-08-27.basil') as any,
-    });
+    const stripe = getStripe();
+
+    // Get or create Stripe customer for this user
+    let customerId: string | null = await supabaseAdmin.rpc(
+      'get_subscription_stripe_customer_server',
+      { p_user_id: userId }
+    ).then(res => res.data ?? null);
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: req.user!.email,
+        metadata: { user_id: userId }
+      });
+      customerId = customer.id;
+    }
 
     // Convert credits to cents (1 credit = $1)
     const amountCents = Math.round(amount * 100);
 
     // Create checkout session for one-time payment
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+      customer: customerId,
       line_items: [
         {
           price_data: {
@@ -827,6 +766,26 @@ router.post('/buy-credits', authenticateUser, async (req: Request, res: Response
     console.error('❌ Error creating credit checkout:', error);
     return res.status(500).json({
       error: 'Payment error',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/subscriptions/voice-credits
+ * Get current user's voice credit balance
+ */
+router.get('/voice-credits', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+
+    const balance = await getVoiceCreditBalance(userId);
+
+    return res.json({ balance });
+  } catch (error: any) {
+    console.error('❌ Error fetching voice credit balance:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
       message: error.message
     });
   }

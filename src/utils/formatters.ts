@@ -66,3 +66,14 @@ export function formatNumber(num: number): string {
   if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
   return num.toLocaleString();
 }
+
+/**
+ * Truncate text by stripping HTML/markdown and limiting to maxLength characters.
+ */
+export function truncateText(text: string | undefined | null, maxLength: number): string {
+  if (!text) return '';
+  const plainText = text.replace(/<[^>]*>/g, '').replace(/[#*_`]/g, '');
+  return plainText.length > maxLength
+    ? plainText.slice(0, maxLength) + '...'
+    : plainText;
+}

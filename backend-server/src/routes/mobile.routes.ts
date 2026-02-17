@@ -52,6 +52,7 @@ interface CardContentResponse {
     imageUrl: string | null;
     cropParameters: any;
     conversationAiEnabled: boolean; // Primary field: enables AI voice assistant in frontend
+    realtimeVoiceEnabled: boolean; // Whether realtime voice conversations are enabled
     aiEnabled: boolean; // Alias for billing (same value as conversationAiEnabled, kept for backward compatibility)
     aiInstruction: string | null;
     aiKnowledgeBase: string | null;
@@ -80,6 +81,7 @@ interface CardContentResponse {
     sessionCost: number;
     isNewSession: boolean;
     subscriptionTier?: string;
+    metadata?: Record<string, any>;
   };
   contentItems: Array<{
     id: string;
@@ -407,6 +409,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           imageUrl: cardData.image_url,
           cropParameters: cardData.crop_parameters,
           conversationAiEnabled: cardData.conversation_ai_enabled,
+          realtimeVoiceEnabled: cardData.realtime_voice_enabled ?? false,
           aiEnabled: cardData.conversation_ai_enabled ?? false,
           aiInstruction: langData.ai_instruction || cardData.ai_instruction,
           aiKnowledgeBase: langData.ai_knowledge_base || cardData.ai_knowledge_base,
@@ -432,6 +435,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           sessionCost: sessionResult.sessionCost,
           isNewSession: sessionResult.isNewSession,
           subscriptionTier: cardData.subscription_tier,
+          metadata: cardData.metadata || {},
         },
         contentItems: (contentItems || []).map((item: any) => {
           const itemTranslations = item.translations || {};
@@ -484,153 +488,6 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
     
   } catch (error) {
     console.error('[Mobile] Digital card error:', error);
-    return res.status(500).json({ 
-      error: 'Internal server error',
-      message: 'Failed to fetch card content'
-    });
-  }
-});
-
-/**
- * GET /api/mobile/card/physical/:issueCardId
- * 
- * Get physical card content by issue card ID.
- * Physical cards have unlimited access (no session billing).
- */
-router.get('/card/physical/:issueCardId', async (req: Request, res: Response) => {
-  try {
-    const { issueCardId } = req.params;
-    const language = (req.query.language as string) || 'en';
-    
-    if (!issueCardId) {
-      return res.status(400).json({ error: 'Issue card ID is required' });
-    }
-    
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(issueCardId)) {
-      return res.status(400).json({ error: 'Invalid issue card ID format' });
-    }
-    
-    const supabase = supabaseAdmin;
-    
-    // Try cache first
-    const cacheKey = CacheKeys.physicalCardContent(issueCardId, language);
-    const cachedContent = await cacheGet<CardContentResponse>(cacheKey);
-    
-    if (cachedContent) {
-      console.log(`[Mobile] Cache HIT for physical card ${issueCardId}`);
-      return res.json({
-        success: true,
-        data: cachedContent,
-        cached: true,
-      });
-    }
-    
-    // Fetch issue card info via stored procedure
-    const { data: issueCardRows, error: issueError } = await supabase.rpc(
-      'get_issue_card_server',
-      { p_issue_card_id: issueCardId }
-    );
-    
-    const issueCard = issueCardRows?.[0];
-    
-    if (issueError || !issueCard) {
-      return res.status(404).json({ 
-        error: 'Card not found',
-        message: 'Invalid issue card ID'
-      });
-    }
-    
-    // Auto-activate if not active
-    if (!issueCard.active) {
-      await supabase.rpc('activate_issue_card_server', { p_issue_card_id: issueCardId });
-    }
-    
-    // Fetch card content via stored procedure
-    const { data: cardDataRows, error: fetchError } = await supabase.rpc(
-      'get_card_content_server',
-      { p_card_id: issueCard.card_id }
-    );
-    
-    const cardData = cardDataRows?.[0];
-    
-    if (fetchError || !cardData) {
-      return res.status(500).json({ error: 'Failed to fetch card content' });
-    }
-    
-    // Fetch content items via stored procedure
-    const { data: contentItems } = await supabase.rpc(
-      'get_content_items_server',
-      { p_card_id: issueCard.card_id }
-    );
-    
-    // Build response
-    const translations = cardData.translations || {};
-    const hasTranslation = Object.keys(translations).length > 0;
-    const langData = translations[language] || {};
-    
-    const content: CardContentResponse = {
-      card: {
-        name: langData.name || cardData.name,
-        description: langData.description || cardData.description,
-        imageUrl: cardData.image_url,
-        cropParameters: cardData.crop_parameters,
-        conversationAiEnabled: cardData.conversation_ai_enabled ?? false,
-        aiEnabled: cardData.conversation_ai_enabled ?? false,
-        aiInstruction: langData.ai_instruction || cardData.ai_instruction,
-        aiKnowledgeBase: langData.ai_knowledge_base || cardData.ai_knowledge_base,
-        aiWelcomeGeneral: langData.ai_welcome_general || cardData.ai_welcome_general,
-        aiWelcomeItem: langData.ai_welcome_item || cardData.ai_welcome_item,
-        originalLanguage: cardData.original_language,
-        hasTranslation,
-        availableLanguages: [cardData.original_language, ...Object.keys(translations)],
-        contentMode: cardData.content_mode || 'list',
-        isGrouped: cardData.is_grouped || false,
-        groupDisplay: cardData.group_display || 'expanded',
-        billingType: cardData.billing_type || 'physical',
-        // Physical cards don't use token-based tracking
-        tokenId: '',
-        tokenName: '',
-        totalSessions: 0,
-        dailySessionLimit: null,
-        dailySessions: 0,
-        monthlySessions: 0,
-        budgetExhausted: false,
-        dailyLimitExceeded: false,
-        creditsInsufficient: false,
-        sessionCost: 0, // Physical cards are free
-        isNewSession: false,
-      },
-      contentItems: (contentItems || []).map((item: any) => {
-        const itemTranslations = item.translations || {};
-        const itemLangData = itemTranslations[language] || {};
-        
-        return {
-          id: item.id,
-          parentId: item.parent_id,
-          name: itemLangData.name || item.name,
-          content: itemLangData.content || item.content,
-          imageUrl: item.image_url,
-          aiKnowledgeBase: itemLangData.ai_knowledge_base || item.ai_knowledge_base,
-          sortOrder: item.sort_order,
-          cropParameters: item.crop_parameters,
-        };
-      }),
-      isActivated: true,
-    };
-    
-    // Cache the content
-    await cacheSet(cacheKey, content, CacheTTL.cardContent);
-    
-    return res.json({
-      success: true,
-      data: content,
-      cached: false,
-    });
-    
-  } catch (error) {
-    console.error('[Mobile] Physical card error:', error);
     return res.status(500).json({ 
       error: 'Internal server error',
       message: 'Failed to fetch card content'

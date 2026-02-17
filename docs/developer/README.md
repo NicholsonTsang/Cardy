@@ -1,6 +1,6 @@
 # Developer Documentation
 
-Technical documentation for developers working on the ExperienceQR codebase.
+Technical documentation for developers working on the FunTell codebase.
 
 ## Quick Links
 

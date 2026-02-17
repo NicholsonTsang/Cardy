@@ -59,7 +59,6 @@
     "optional": "Optional",
     "use": "Usar"
   },
-  
   "auth": {
     "sign_in": "Sign In",
     "sign_up": "Sign Up",
@@ -98,7 +97,6 @@
     "cms_account_subtitle": "Sign in to your FunTell CMS account",
     "join_funtell": "Join FunTell CMS to start creating digital cards"
   },
-
   "dashboard": {
     "dashboard": "Dashboard",
     "my_cards": "My Cards",
@@ -108,7 +106,6 @@
     "general": "General",
     "content": "Content",
     "qr_access": "QR & Access",
-    "issuance": "Issuance",
     "mobile_preview": "Mobile Preview",
     "card_name": "Card Name",
     "card_description": "Card Description",
@@ -131,7 +128,6 @@
     "get_started_creating": "Get started by creating your first card",
     "select_card_to_view": "Select a card to view details"
   },
-
   "content": {
     "content_management": "Content Management",
     "content_items": "Content Items",
@@ -149,52 +145,26 @@
     "drag_to_reorder": "Drag to reorder",
     "reorder_tip": "Drag items to rearrange their display order"
   },
-
-  "batches": {
-    "card_batches": "Card Batches",
-    "issue_batch": "Issue Batch",
-    "batch_name": "Batch Name",
-    "quantity": "Quantity",
-    "payment_status": "Payment Status",
-    "batch_status": "Batch Status",
-    "payment_completed": "Payment Completed",
-    "payment_pending": "Payment Pending",
-    "admin_issued": "Admin Issued",
-    "cards_issued": "Cards Issued",
-    "view_cards": "View Cards",
-    "request_print": "Request Print",
-    "view_details": "View Details",
-    "no_batches_yet": "No batches issued yet",
-    "issue_first_batch": "Issue your first batch of cards"
-  },
-
   "admin": {
     "admin_dashboard": "Admin Dashboard",
     "user_management": "User Management",
-    "print_requests": "Print Requests",
     "operations_log": "Operations Log",
     "user_cards": "User Cards",
     "system_stats": "System Statistics",
     "total_users": "Total Users",
     "total_cards": "Total Cards",
-    "total_batches": "Total Batches",
-    "pending_print_requests": "Pending Print Requests",
     "search_by_email": "Search by email...",
     "user_email": "User Email",
     "user_role": "User Role",
     "change_role": "Change Role",
-    "issue_free_batch": "Issue Free Batch",
-    "print_status": "Print Status",
     "update_status": "Update Status",
     "operation_type": "Operation Type",
     "operation_user": "User",
     "operation_time": "Time",
     "operation_description": "Description",
     "no_users_found": "No users found",
-    "no_print_requests": "No print requests",
     "no_operations_logged": "No operations logged"
   },
-
   "mobile": {
     "scan_qr": "Scan QR Code",
     "card_overview": "Card Overview",
@@ -215,7 +185,6 @@
     "connected": "Connected",
     "disconnected": "Disconnected"
   },
-
   "validation": {
     "required_field": "This field is required",
     "invalid_email": "Invalid email address",
@@ -226,7 +195,6 @@
     "invalid_file_type": "Invalid file type",
     "max_words_exceeded": "Maximum {max} words allowed"
   },
-
   "messages": {
     "save_success": "Saved successfully",
     "delete_success": "Deleted successfully",
@@ -238,7 +206,6 @@
     "loading_data": "Loading data...",
     "network_error": "Network error. Please try again."
   },
-
   "landing": {
     "nav": {
       "about": "Acerca de",
@@ -258,9 +225,9 @@
       "title_line1": "Transforma Cualquier Lugar en",
       "title_line2": "Una Guía",
       "title_line3": "Interactiva con IA",
-      "subtitle_part1": "Plataforma de experiencia digital con IA -",
-      "subtitle_highlight": "conversaciones de voz",
-      "subtitle_part2": "— instantáneamente. Sin app necesaria. Perfecto para museos, restaurantes, centros comerciales y cualquier lugar.",
+      "subtitle_part1": "Importa un documento y la IA construye tu experiencia interactiva —",
+      "subtitle_highlight": "conversaciones multilingües",
+      "subtitle_part2": " incluidas. Comparte vía enlaces, códigos QR o embeds. Perfecto para productos, lugares, educación y cualquier contenido.",
       "cta_pilot": "Contáctanos para un Piloto",
       "cta_learn": "Ver Demo",
       "cta_demo": "Ver Demo",
@@ -281,15 +248,7 @@
       "project_features": "Características Principales",
       "experience_features": "Características Principales",
       "mode_toggle": {
-        "physical_card": "Tarjeta Física",
         "digital_access": "Acceso Digital"
-      },
-      "physical_card": {
-        "title": "Tarjeta Física",
-        "desc": "Recuerdo coleccionable impreso con código QR",
-        "hint": "Los visitantes ven la imagen de la tarjeta primero, luego exploran el contenido",
-        "caption": "Ejemplo de tarjeta física impresa con código QR",
-        "full_desc": "Las tarjetas físicas son recuerdos coleccionables con un código QR integrado. Los visitantes escanean para ver primero la página de descripción de la tarjeta (imagen y descripción), luego exploran el contenido interactivo. Perfecto para museos, eventos y lugares que desean ofrecer recuerdos premium."
       },
       "digital_access": {
         "title": "Acceso Digital",
@@ -339,7 +298,8 @@
       "scroll_to_explore": "Desplázate para explorar",
       "no_templates": "No se encontraron plantillas",
       "live_badge": "En Vivo",
-      "open_button": "Abrir"
+      "open_button": "Abrir",
+      "featured_badge": "Destacado"
     },
     "content_modes": {
       "title": "Diseños de",
@@ -378,8 +338,8 @@
         "ai_item": "Guía especializada para el elemento destacado específico"
       },
       "best_for": "Ideal Para",
-      "easy_setup": "Fácil Configuración",
-      "setup_desc": "Configura en segundos desde el panel CMS. Sin necesidad de código.",
+      "easy_setup": "Configuración IA",
+      "setup_desc": "Importa un documento y la IA configura todo — o usa el panel manualmente.",
       "mobile_optimized": "Optimizado para Móvil",
       "mobile_desc": "Diseño responsivo que luce perfecto en cualquier dispositivo.",
       "grouping_option": "Agrupación Opcional",
@@ -394,10 +354,10 @@
     "how_it_works": {
       "title": "Proceso Simple de",
       "title_highlight": "Tres Pasos",
-      "subtitle": "Lanza tu experiencia digital con IA en minutos—sin necesidad de habilidades técnicas.",
+      "subtitle": "Lanza tu experiencia de contenido con IA en minutos — dale tu documento a la IA y ella se encarga del resto.",
       "steps": {
-        "create_title": "Crear",
-        "create_desc": "Construye tu proyecto y añade contenido a través de nuestro panel intuitivo.",
+        "create_title": "Crear con IA",
+        "create_desc": "Dale tu documento a un agente de IA y construye tu proyecto automáticamente — contenido, categorías y asistente IA incluidos.",
         "share_title": "Compartir",
         "share_desc": "Muestra el código QR en señalización, menús o materiales de marketing.",
         "engage_title": "Conectar",
@@ -414,8 +374,8 @@
         "ai_guide_desc": "Conversaciones en tiempo real con conciencia contextual y preguntas de seguimiento.",
         "no_app_title": "Sin App Necesaria",
         "no_app_desc": "Acceso instantáneo con cualquier cámara de smartphone. Sin descargas, sin fricción.",
-        "portal_config_title": "Fácil Gestión de Contenido",
-        "portal_config_desc": "Configura y actualiza contenido a través del portal web intuitivo en cualquier momento.",
+        "portal_config_title": "Configuración con IA",
+        "portal_config_desc": "Importa un documento o describe tu proyecto — la IA crea todo por ti en segundos.",
         "multilingual_title": "Soporte Multilingüe",
         "multilingual_desc": "Contenido y conversaciones en más de 10 idiomas desde una sola carga.",
         "no_hardware_title": "Sin Hardware Necesario",
@@ -489,23 +449,10 @@
         "auto_topup_title": "Recarga Automática",
         "auto_topup_desc": "Cuando se agota el presupuesto, se cobra automáticamente US$${topupCost} por sesiones adicionales"
       },
-      "physical_cards": {
-        "title": "Tarjetas Físicas",
-        "subtitle": "Complemento Opcional",
-        "price": "US$ 2",
-        "per": "por tarjeta",
-        "desc": "Tarjetas souvenir coleccionables para tus visitantes",
-        "features": [
-          "Tarjetas impresas premium",
-          "Escaneos ilimitados por tarjeta",
-          "Pedidos por lote (mín 100)",
-          "Perfecto para museos y eventos"
-        ],
-        "cta": "Más Información"
-      },
       "included_title": "Incluido en Todos los Planes",
       "features": {
         "ai_voice": "Conversaciones de voz con IA",
+        "ai_setup": "Configuración de proyectos con IA",
         "qr_access": "Acceso QR instantáneo",
         "design_dashboard": "Panel de diseño",
         "content_management": "Gestión de contenido",
@@ -521,9 +468,9 @@
       "title": "Preguntas",
       "title_highlight": "Frecuentes",
       "q1": "¿Qué es FunTell?",
-      "a1": "FunTell es una plataforma de experiencia digital con IA que transforma cualquier lugar en una guía interactiva. Los visitantes escanean un código QR para acceder a contenido multilingüe y asistentes IA conversacionales—sin app necesaria. Tarjetas físicas disponibles como recuerdos coleccionables opcionales.",
+      "a1": "FunTell es una plataforma de experiencia de contenido con IA que convierte cualquier documento en una experiencia interactiva y multilingüe con IA conversacional integrada. Importa un PDF o describe tu proyecto — la IA construye todo automáticamente. Comparte vía enlaces, códigos QR o embeds. Sin app necesaria.",
       "q2": "¿Cómo funciona?",
-      "a2": "1) Coloca códigos QR en tu lugar (o usa tarjetas físicas)\n2) Los visitantes escanean con su smartphone\n3) Acceden instantáneamente al asistente IA y contenido digital\n4) Opcional: Las tarjetas se convierten en recuerdos coleccionables",
+      "a2": "1) Importa tu documento o describe tu proyecto a un agente de IA — crea todo automáticamente\n2) Comparte vía enlace, código QR o embed\n3) Los visitantes acceden instantáneamente a contenido multilingüe con IA en cualquier dispositivo",
       "q3": "¿Los visitantes necesitan descargar una app?",
       "a3": "No. FunTell funciona a través de cualquier navegador de smartphone. Simplemente escanea el código QR—nada que descargar o instalar.",
       "q4": "¿Qué idiomas se soportan?",
@@ -531,7 +478,7 @@
       "q5": "¿Qué incluye el precio?",
       "a5": "Tres niveles: Gratis ({freeExperiences} proyectos, {freeSessions} sesiones), Inicial ({starterBudget}/mes, {starterAiSessions} sesiones IA, máx 2 idiomas), Premium ({monthlyBudget}/mes, {aiSessions} sesiones IA, idiomas ilimitados, marca blanca). Los planes pagos incluyen recarga automática cuando se agota el presupuesto. Todos los planes incluyen voz IA, panel, códigos QR y alojamiento.",
       "q6": "¿Qué tan rápido podemos empezar?",
-      "a6": "Los proyectos QR digitales pueden lanzarse en minutos. Regístrate, crea tu proyecto y comparte tu código QR instantáneamente. Las tarjetas físicas tardan 2-3 semanas para impresión y envío.",
+      "a6": "Los proyectos pueden lanzarse en minutos. Conecta una herramienta de IA como Claude Code, importa tu documento y la IA construye todo el proyecto automáticamente — contenido, categorías, asistente IA y códigos QR.",
       "q7": "¿Podemos personalizar el contenido y la IA?",
       "a7": "Sí. Personalización completa usando nuestro panel de autoservicio. Gestiona contenido, configura el comportamiento del asistente IA, establece mensajes de bienvenida, y actualiza en cualquier momento.",
       "q8": "¿Cuál es el tiempo de producción de las tarjetas?",
@@ -551,6 +498,7 @@
       "contact_title": "Contacto",
       "phone": "Teléfono",
       "whatsapp_chat": "Chat de WhatsApp",
+      "ai_setup_guide": "Guía de configuración con IA",
       "copyright": "© 2025 FunTell. Todos los derechos reservados.",
       "privacy": "Política de Privacidad",
       "terms": "Términos de Servicio",
@@ -559,4 +507,3 @@
     "floating_cta": "Comenzar"
   }
 }
-

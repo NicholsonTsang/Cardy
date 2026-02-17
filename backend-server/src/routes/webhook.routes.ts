@@ -1,37 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { supabaseAdmin } from '../config/supabase';
 import { resetUsage, updateUserTier } from '../services/usage-tracker';
+import { getStripe } from '../config/stripe';
 
 const router = Router();
-
-/**
- * Helper: Get Stripe instance
- */
-async function getStripe() {
-  const stripeKey = process.env.STRIPE_SECRET_KEY;
-  if (!stripeKey) throw new Error('Stripe secret key not configured');
-  
-  const Stripe = (await import('stripe')).default;
-  return new Stripe(stripeKey, {
-    apiVersion: (process.env.STRIPE_API_VERSION || '2025-08-27.basil') as any,
-  });
-}
-
-/**
- * Helper: Verify webhook signature
- */
-async function verifyWebhook(req: Request, webhookSecret: string) {
-  const signature = req.headers['stripe-signature'];
-  if (!signature) throw new Error('No stripe-signature header');
-  
-  const rawBody = req.body;
-  if (!Buffer.isBuffer(rawBody)) {
-    throw new Error('Webhook must receive raw body for signature verification');
-  }
-  
-  const stripe = await getStripe();
-  return stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
-}
 
 /**
  * POST /api/webhooks/stripe
@@ -45,17 +17,30 @@ router.post('/stripe', async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Webhook secret not configured' });
     }
 
+    const signature = req.headers['stripe-signature'];
+    if (!signature) {
+      return res.status(400).json({ error: 'No stripe-signature header' });
+    }
+
+    const rawBody = req.body;
+    if (!Buffer.isBuffer(rawBody)) {
+      return res.status(400).json({ error: 'Webhook must receive raw body for signature verification' });
+    }
+
+    const stripe = getStripe();
     let event: any;
     try {
-      event = await verifyWebhook(req, webhookSecret);
+      event = stripe.webhooks.constructEvent(rawBody, signature, webhookSecret);
     } catch (err: any) {
       console.error('❌ Webhook signature verification failed:', err.message);
       return res.status(400).json({ error: 'Invalid signature', message: err.message });
     }
 
     console.log(`📨 Webhook received: ${event.type}`);
-    const stripe = await getStripe();
 
+    // Once signature is verified, always return 200 to prevent Stripe retries
+    // on processing errors (which would fail the same way on retry)
+    try {
     switch (event.type) {
       // =================================================================
       // SUBSCRIPTION EVENTS
@@ -319,6 +304,11 @@ router.post('/stripe', async (req: Request, res: Response) => {
 
       default:
         console.log(`Unhandled event type: ${event.type}`);
+    }
+    } catch (processingError: any) {
+      // Log but don't return error - signature was valid, so returning 500
+      // would cause Stripe to retry an event we already received
+      console.error(`❌ Webhook processing error for ${event.type}:`, processingError);
     }
 
     return res.status(200).json({ received: true });

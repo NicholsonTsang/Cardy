@@ -59,7 +59,6 @@
     "optional": "Optional",
     "use": "استخدام"
   },
-  
   "auth": {
     "sign_in": "Sign In",
     "sign_up": "Sign Up",
@@ -98,7 +97,6 @@
     "cms_account_subtitle": "Sign in to your FunTell CMS account",
     "join_funtell": "Join FunTell CMS to start creating digital cards"
   },
-
   "dashboard": {
     "dashboard": "Dashboard",
     "my_cards": "My Cards",
@@ -108,7 +106,6 @@
     "general": "General",
     "content": "Content",
     "qr_access": "QR & Access",
-    "issuance": "Issuance",
     "mobile_preview": "Mobile Preview",
     "card_name": "Card Name",
     "card_description": "Card Description",
@@ -131,7 +128,6 @@
     "get_started_creating": "Get started by creating your first card",
     "select_card_to_view": "Select a card to view details"
   },
-
   "content": {
     "content_management": "Content Management",
     "content_items": "Content Items",
@@ -149,52 +145,26 @@
     "drag_to_reorder": "Drag to reorder",
     "reorder_tip": "Drag items to rearrange their display order"
   },
-
-  "batches": {
-    "card_batches": "Card Batches",
-    "issue_batch": "Issue Batch",
-    "batch_name": "Batch Name",
-    "quantity": "Quantity",
-    "payment_status": "Payment Status",
-    "batch_status": "Batch Status",
-    "payment_completed": "Payment Completed",
-    "payment_pending": "Payment Pending",
-    "admin_issued": "Admin Issued",
-    "cards_issued": "Cards Issued",
-    "view_cards": "View Cards",
-    "request_print": "Request Print",
-    "view_details": "View Details",
-    "no_batches_yet": "No batches issued yet",
-    "issue_first_batch": "Issue your first batch of cards"
-  },
-
   "admin": {
     "admin_dashboard": "Admin Dashboard",
     "user_management": "User Management",
-    "print_requests": "Print Requests",
     "operations_log": "Operations Log",
     "user_cards": "User Cards",
     "system_stats": "System Statistics",
     "total_users": "Total Users",
     "total_cards": "Total Cards",
-    "total_batches": "Total Batches",
-    "pending_print_requests": "Pending Print Requests",
     "search_by_email": "Search by email...",
     "user_email": "User Email",
     "user_role": "User Role",
     "change_role": "Change Role",
-    "issue_free_batch": "Issue Free Batch",
-    "print_status": "Print Status",
     "update_status": "Update Status",
     "operation_type": "Operation Type",
     "operation_user": "User",
     "operation_time": "Time",
     "operation_description": "Description",
     "no_users_found": "No users found",
-    "no_print_requests": "No print requests",
     "no_operations_logged": "No operations logged"
   },
-
   "mobile": {
     "scan_qr": "Scan QR Code",
     "card_overview": "Card Overview",
@@ -215,7 +185,6 @@
     "connected": "Connected",
     "disconnected": "Disconnected"
   },
-
   "validation": {
     "required_field": "This field is required",
     "invalid_email": "Invalid email address",
@@ -226,7 +195,6 @@
     "invalid_file_type": "Invalid file type",
     "max_words_exceeded": "Maximum {max} words allowed"
   },
-
   "messages": {
     "save_success": "Saved successfully",
     "delete_success": "Deleted successfully",
@@ -238,7 +206,6 @@
     "loading_data": "Loading data...",
     "network_error": "Network error. Please try again."
   },
-
   "landing": {
     "nav": {
       "about": "حول",
@@ -258,9 +225,9 @@
       "title_line1": "حوّل أي مكان إلى",
       "title_line2": "دليل",
       "title_line3": "تفاعلي بالذكاء الاصطناعي",
-      "subtitle_part1": "منصة تجربة رقمية مدعومة بالذكاء الاصطناعي مع",
-      "subtitle_highlight": "محادثات صوتية",
-      "subtitle_part2": "— فوراً. لا حاجة لتطبيق. مثالي للمتاحف والمطاعم ومراكز التسوق وأي مكان.",
+      "subtitle_part1": "استورد مستنداً والذكاء الاصطناعي يبني تجربتك التفاعلية —",
+      "subtitle_highlight": "محادثات متعددة اللغات",
+      "subtitle_part2": " مضمّنة. شارك عبر الروابط أو رموز QR أو التضمين. مثالي للمنتجات والأماكن والتعليم وأي محتوى.",
       "cta_pilot": "اتصل بنا للتجربة",
       "cta_learn": "شاهد العرض",
       "cta_demo": "شاهد العرض",
@@ -281,15 +248,7 @@
       "project_features": "المميزات الرئيسية",
       "experience_features": "المميزات الرئيسية",
       "mode_toggle": {
-        "physical_card": "بطاقة فعلية",
         "digital_access": "وصول رقمي"
-      },
-      "physical_card": {
-        "title": "بطاقة فعلية",
-        "desc": "تذكار قابل للتجميع مطبوع مع رمز QR",
-        "hint": "يرى الزوار صورة البطاقة أولاً ثم يستكشفون المحتوى",
-        "caption": "مثال على بطاقة فعلية مطبوعة مع رمز QR",
-        "full_desc": "البطاقات الفعلية هي تذكارات قابلة للتجميع مع رمز QR مدمج. يمسح الزوار لرؤية صفحة نظرة عامة على البطاقة أولاً (عرض الصورة والوصف)، ثم استكشاف المحتوى التفاعلي. مثالي للمتاحف والفعاليات والأماكن التي ترغب في تقديم تذكارات مميزة."
       },
       "digital_access": {
         "title": "وصول رقمي",
@@ -339,7 +298,8 @@
       "scroll_to_explore": "مرر للاستكشاف",
       "no_templates": "لم يتم العثور على قوالب",
       "live_badge": "مباشر",
-      "open_button": "افتح"
+      "open_button": "افتح",
+      "featured_badge": "مميز"
     },
     "content_modes": {
       "title": "تخطيطات",
@@ -378,8 +338,8 @@
         "ai_item": "دليل متخصص للعنصر المميز المحدد"
       },
       "best_for": "الأفضل لـ",
-      "easy_setup": "إعداد سهل",
-      "setup_desc": "قم بالتهيئة في ثوانٍ من لوحة CMS. لا حاجة للبرمجة.",
+      "easy_setup": "إعداد بالذكاء الاصطناعي",
+      "setup_desc": "استورد مستنداً والذكاء الاصطناعي يهيّئ كل شيء — أو استخدم لوحة التحكم يدوياً.",
       "mobile_optimized": "محسّن للجوال",
       "mobile_desc": "تصميم متجاوب يبدو مثالياً على أي جهاز.",
       "grouping_option": "تجميع اختياري",
@@ -394,10 +354,10 @@
     "how_it_works": {
       "title": "عملية بسيطة من",
       "title_highlight": "ثلاث خطوات",
-      "subtitle": "أطلق تجربتك الرقمية بالذكاء الاصطناعي في دقائق—لا حاجة لمهارات تقنية.",
+      "subtitle": "أطلق تجربة المحتوى بالذكاء الاصطناعي في دقائق — فقط أعطِ الذكاء الاصطناعي مستندك وسيتولى الباقي.",
       "steps": {
-        "create_title": "أنشئ",
-        "create_desc": "ابنِ مشروعك وأضف محتوى من خلال لوحة التحكم السهلة.",
+        "create_title": "أنشئ بالذكاء الاصطناعي",
+        "create_desc": "أعطِ مستندك لوكيل الذكاء الاصطناعي وسيبني مشروعك تلقائياً — المحتوى والفئات ومساعد الذكاء الاصطناعي مضمنة.",
         "share_title": "شارك",
         "share_desc": "اعرض رمز QR على اللافتات أو القوائم أو المواد التسويقية.",
         "engage_title": "تفاعل",
@@ -414,8 +374,8 @@
         "ai_guide_desc": "محادثات في الوقت الفعلي مع وعي بالسياق وأسئلة متابعة.",
         "no_app_title": "لا حاجة لتطبيق",
         "no_app_desc": "وصول فوري عبر أي كاميرا هاتف ذكي. لا تنزيلات، لا عوائق.",
-        "portal_config_title": "إدارة محتوى سهلة",
-        "portal_config_desc": "قم بتهيئة وتحديث المحتوى عبر بوابة الويب السهلة في أي وقت.",
+        "portal_config_title": "إعداد بالذكاء الاصطناعي",
+        "portal_config_desc": "استورد مستنداً أو صِف مشروعك — الذكاء الاصطناعي ينشئ كل شيء لك في ثوانٍ.",
         "multilingual_title": "دعم متعدد اللغات",
         "multilingual_desc": "محتوى ومحادثات بأكثر من 10 لغات من رفع واحد.",
         "no_hardware_title": "لا حاجة لأجهزة",
@@ -489,23 +449,10 @@
         "auto_topup_title": "تعبئة تلقائية",
         "auto_topup_desc": "عند نفاد الرصيد، يتم خصم US$${topupCost} تلقائياً لجلسات إضافية"
       },
-      "physical_cards": {
-        "title": "بطاقات فعلية",
-        "subtitle": "إضافة اختيارية",
-        "price": "US$ 2",
-        "per": "للبطاقة",
-        "desc": "بطاقات تذكارية قابلة للتجميع لزوارك",
-        "features": [
-          "بطاقات مطبوعة مميزة",
-          "مسح غير محدود للبطاقة",
-          "طلب بالجملة (حد أدنى 100)",
-          "مثالي للمتاحف والفعاليات"
-        ],
-        "cta": "اعرف المزيد"
-      },
       "included_title": "مضمن في جميع الخطط",
       "features": {
         "ai_voice": "محادثات صوتية بالذكاء الاصطناعي",
+        "ai_setup": "إعداد المشروع بالذكاء الاصطناعي",
         "qr_access": "وصول QR فوري",
         "design_dashboard": "لوحة التصميم",
         "content_management": "إدارة المحتوى",
@@ -521,9 +468,9 @@
       "title": "الأسئلة",
       "title_highlight": "الشائعة",
       "q1": "ما هو FunTell؟",
-      "a1": "FunTell هي منصة تجربة رقمية مدعومة بالذكاء الاصطناعي تحوّل أي مكان إلى دليل تفاعلي. يمسح الزوار رمز QR للوصول إلى محتوى متعدد اللغات ومساعدي ذكاء اصطناعي محادثين—لا حاجة لتطبيق. البطاقات الفعلية متوفرة كتذكارات قابلة للتجميع اختيارية.",
+      "a1": "FunTell هي منصة تجربة محتوى مدعومة بالذكاء الاصطناعي تحوّل أي مستند إلى تجربة تفاعلية متعددة اللغات مع ذكاء اصطناعي محادث مدمج. استورد ملف PDF أو صِف مشروعك — الذكاء الاصطناعي يبني كل شيء تلقائياً. شارك عبر الروابط أو رموز QR أو التضمين. لا حاجة لتطبيق.",
       "q2": "كيف يعمل؟",
-      "a2": "1) ضع رموز QR في مكانك (أو استخدم بطاقات فعلية)\n2) يمسح الزوار بهواتفهم الذكية\n3) وصول فوري لمساعد الذكاء الاصطناعي والمحتوى الرقمي\n4) اختياري: تصبح البطاقات تذكارات قابلة للتجميع",
+      "a2": "1) استورد مستندك أو صِف مشروعك لوكيل الذكاء الاصطناعي — يُنشئ كل شيء تلقائياً\n2) شارك عبر رابط أو رمز QR أو تضمين\n3) يصل الزوار فوراً إلى محتوى متعدد اللغات مدعوم بالذكاء الاصطناعي على أي جهاز",
       "q3": "هل يحتاج الزوار لتنزيل تطبيق؟",
       "a3": "لا. FunTell يعمل عبر أي متصفح هاتف ذكي. فقط امسح رمز QR—لا شيء للتنزيل أو التثبيت.",
       "q4": "ما هي اللغات المدعومة؟",
@@ -531,7 +478,7 @@
       "q5": "ما المضمن في السعر؟",
       "a5": "ثلاث فئات: مجاني ({freeExperiences} مشاريع، {freeSessions} جلسة)، مبتدئ ({starterBudget}/شهر، {starterAiSessions} جلسة ذكاء اصطناعي، حد أقصى 2 لغة)، مميز ({monthlyBudget}/شهر، {aiSessions} جلسة ذكاء اصطناعي، لغات غير محدودة، علامة بيضاء). الخطط المدفوعة تشمل تعبئة تلقائية عند نفاد الرصيد. جميع الخطط تشمل صوت الذكاء الاصطناعي، لوحة التحكم، رموز QR، والاستضافة.",
       "q6": "ما مدى سرعة البدء؟",
-      "a6": "مشاريع QR الرقمية يمكن إطلاقها في دقائق. سجّل، أنشئ مشروعك، وشارك رمز QR فوراً. البطاقات الفعلية تستغرق 2-3 أسابيع للطباعة والشحن.",
+      "a6": "يمكن إطلاق المشاريع في دقائق. اربط أداة ذكاء اصطناعي مثل Claude Code، واستورد مستندك، والذكاء الاصطناعي يبني مشروعك بالكامل تلقائياً — المحتوى والفئات ومساعد الذكاء الاصطناعي ورموز QR.",
       "q7": "هل يمكننا تخصيص المحتوى والذكاء الاصطناعي؟",
       "a7": "نعم. تخصيص كامل باستخدام لوحة الخدمة الذاتية. أدِر المحتوى، هيّئ سلوك مساعد الذكاء الاصطناعي، عيّن رسائل الترحيب، وحدّث في أي وقت.",
       "q8": "ما هو الجدول الزمني لإنتاج البطاقات؟",
@@ -551,6 +498,7 @@
       "contact_title": "اتصل بنا",
       "phone": "الهاتف",
       "whatsapp_chat": "دردشة واتساب",
+      "ai_setup_guide": "دليل الإعداد بالذكاء الاصطناعي",
       "copyright": "© 2025 FunTell. جميع الحقوق محفوظة.",
       "privacy": "سياسة الخصوصية",
       "terms": "شروط الخدمة",
@@ -559,4 +507,3 @@
     "floating_cta": "ابدأ الآن"
   }
 }
-

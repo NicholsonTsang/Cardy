@@ -1,15 +1,20 @@
 <template>
-  <div class="content-list">
-    <div class="content-grid">
+  <div class="content-list" role="main" :aria-label="t('mobile.explore_content')">
+    <div class="content-grid" role="list">
       <div
         v-for="item in items"
         :key="item.content_item_id"
-        @click="handleSelect(item)"
+        role="listitem"
         class="content-card"
         :class="{ 'no-image': !item.content_item_image_url }"
+        :aria-label="item.content_item_name"
       >
         <!-- Image (only shown if exists) -->
-        <div v-if="item.content_item_image_url" class="card-image">
+        <div
+          v-if="item.content_item_image_url"
+          class="card-image"
+          @click="handleSelect(item)"
+        >
           <img
             :src="item.content_item_image_url"
             :alt="item.content_item_name"
@@ -24,7 +29,7 @@
         </div>
 
         <!-- Content -->
-        <div class="card-content">
+        <div class="card-content" @click="handleSelect(item)">
           <!-- Sub-items Badge for no-image cards -->
           <div v-if="!item.content_item_image_url && getSubItemsCount(item) > 0" class="badge-inline">
             {{ getSubItemsCount(item) }} {{ $t('mobile.items') }}
@@ -32,17 +37,47 @@
           <h3 class="item-title">{{ item.content_item_name }}</h3>
           <p class="item-description">{{ item.content_item_content }}</p>
         </div>
+
+        <!-- Card Actions -->
+        <div class="card-actions" role="toolbar" :aria-label="t('common.actions')">
+          <button
+            class="card-action-btn"
+            :aria-label="isFavorite(item.content_item_id) ? t('mobile.removeFromFavorites') : t('mobile.addToFavorites')"
+            @click.stop="toggleFavorite(item.content_item_id)"
+          >
+            <i :class="isFavorite(item.content_item_id) ? 'pi pi-heart-fill' : 'pi pi-heart'" />
+          </button>
+          <button
+            class="card-action-btn"
+            :aria-label="t('mobile.share')"
+            :disabled="isSharing"
+            @click.stop="handleShareItem(item)"
+          >
+            <i class="pi pi-share-alt" />
+          </button>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { getContentAspectRatio } from '@/utils/cardConfig'
+import { useShare } from '@/composables/useShare'
+import { useFavorites } from '@/composables/useFavorites'
 
 const { t } = useI18n()
+const route = useRoute()
+
+// Share composable
+const { share, buildContentShareData, isSharing } = useShare()
+
+// Favorites composable
+const cardId = computed(() => route.params.card_id as string)
+const { isFavorite, toggleFavorite } = useFavorites({ cardId: cardId.value })
 
 interface ContentItem {
   content_item_id: string
@@ -78,6 +113,18 @@ function getSubItemsCount(item: ContentItem): number {
 
 function handleSelect(item: ContentItem) {
   emit('select', item)
+}
+
+function handleShareItem(item: ContentItem) {
+  const lang = route.params.lang as string
+  const shareData = buildContentShareData(
+    cardId.value,
+    item.content_item_id,
+    item.content_item_name,
+    item.content_item_content || null,
+    lang
+  )
+  share(shareData)
 }
 
 // Set up CSS custom property for content aspect ratio
@@ -199,7 +246,6 @@ onMounted(() => {
   font-size: 0.9375rem; /* 15px */
   color: rgba(255, 255, 255, 0.8);
   margin: 0;
-  margin-bottom: 1rem;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -209,6 +255,50 @@ onMounted(() => {
   word-break: break-word;
 }
 
+/* Card Actions */
+.card-actions {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0 1.25rem 1rem;
+  justify-content: flex-end;
+}
+
+.card-action-btn {
+  width: 2.25rem;
+  height: 2.25rem;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.card-action-btn:active {
+  transform: scale(0.9);
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.card-action-btn:focus-visible {
+  outline: 2px solid #60a5fa;
+  outline-offset: 2px;
+}
+
+.card-action-btn i {
+  font-size: 1rem;
+}
+
+/* Filled heart state */
+.card-action-btn .pi-heart-fill {
+  color: #f87171;
+}
 
 /* Responsive */
 @media (min-width: 640px) {

@@ -4,7 +4,7 @@ This document covers the AI-powered features: chat, text-to-speech, and real-tim
 
 ## Overview
 
-ExperienceQR uses OpenAI for AI features:
+FunTell uses OpenAI for AI features:
 
 | Feature | Model | Purpose |
 |---------|-------|---------|

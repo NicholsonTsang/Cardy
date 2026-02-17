@@ -10,11 +10,12 @@
       >
         <!-- Card Image (full width) -->
         <div class="card-image">
-          <img 
+          <img
             v-if="item.content_item_image_url"
-            :src="item.content_item_image_url" 
-            :alt="item.content_item_name" 
+            :src="item.content_item_image_url"
+            :alt="item.content_item_name"
             crossorigin="anonymous"
+            loading="lazy"
           />
           <div v-else class="image-placeholder">
             <i class="pi pi-image" />
@@ -46,11 +47,11 @@
     />
     
     <!-- AI Badge at bottom for easy access -->
-    <div v-if="card.conversation_ai_enabled" class="ai-section">
-      <button @click="openAssistant" class="ai-browse-badge">
-        <span class="ai-badge-icon">✨</span>
+    <div v-if="card.conversation_ai_enabled" class="ai-section" role="complementary" :aria-label="$t('mobile.ask_ai')">
+      <button @click="openAssistant" class="ai-browse-badge" :aria-label="$t('mobile.tap_to_chat_with_ai')">
+        <span class="ai-badge-icon" aria-hidden="true">✨</span>
         <span class="ai-badge-text">{{ $t('mobile.tap_to_chat_with_ai') }}</span>
-        <i class="pi pi-chevron-right ai-badge-arrow" />
+        <i class="pi pi-chevron-right ai-badge-arrow" aria-hidden="true" />
       </button>
     </div>
   </div>
@@ -58,10 +59,9 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { CardLevelAssistant } from './AIAssistant'
-
-const { t } = useI18n()
+import { buildContentDirectory } from './AIAssistant/utils/promptBuilder'
+import { truncateText } from '@/utils/formatters'
 
 // Card Level Assistant ref
 const cardAssistantRef = ref<InstanceType<typeof CardLevelAssistant> | null>(null)
@@ -80,10 +80,12 @@ interface ContentItem {
 
 interface Props {
   card: {
+    card_id?: string
     card_name: string
     card_description: string
     card_image_url: string
     conversation_ai_enabled: boolean
+    realtime_voice_enabled?: boolean
     ai_instruction?: string
     ai_knowledge_base?: string
     ai_welcome_general?: string
@@ -106,28 +108,23 @@ const emit = defineEmits<{
 
 // Card data formatted for General AI assistant
 const cardDataForAssistant = computed(() => ({
+  card_id: props.card.card_id,
   card_name: props.card.card_name,
   card_description: props.card.card_description,
   card_image_url: props.card.card_image_url,
   conversation_ai_enabled: props.card.conversation_ai_enabled,
+  realtime_voice_enabled: props.card.realtime_voice_enabled,
   ai_instruction: props.card.ai_instruction || '',
   ai_knowledge_base: props.card.ai_knowledge_base || '',
   ai_welcome_general: props.card.ai_welcome_general || '',
   ai_welcome_item: props.card.ai_welcome_item || '',
+  content_directory: props.items.length > 0 ? buildContentDirectory(props.items, props.allItems) : undefined,
   is_activated: props.card.is_activated
 }))
 
 // Open the General Assistant
 function openAssistant() {
   cardAssistantRef.value?.openModal()
-}
-
-function truncateText(text: string, maxLength: number): string {
-  if (!text) return ''
-  const plainText = text.replace(/<[^>]*>/g, '').replace(/[#*_`]/g, '')
-  return plainText.length > maxLength 
-    ? plainText.slice(0, maxLength) + '...'
-    : plainText
 }
 
 function handleItemClick(item: ContentItem) {
@@ -150,7 +147,8 @@ function handleItemClick(item: ContentItem) {
 }
 
 .layout-inline.has-header {
-  padding-top: calc(6.5rem + env(safe-area-inset-top));
+  /* Fixed header (4.5rem) + search bar (3.75rem) + gaps (0.75rem) + safe area */
+  padding-top: calc(9rem + env(safe-area-inset-top));
 }
 
 /* Extra bottom padding when AI assistant is present (fixed at bottom) */

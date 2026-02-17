@@ -22,7 +22,11 @@
 
             <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-[calc(100vh-200px)]">
                 <!-- Card List Panel - Fixed width sidebar -->
-                <div class="w-full lg:w-[320px] lg:flex-shrink-0">
+                <!-- On mobile: hidden when a card is selected (show detail instead) -->
+                <div
+                    class="w-full lg:w-[320px] lg:flex-shrink-0"
+                    :class="{ 'hidden lg:block': selectedCardId && isMobileView }"
+                >
                     <CardListPanel
                         :cards="cards"
                         :loading="isLoading"
@@ -46,18 +50,30 @@
                 </div>
 
                 <!-- Card Detail Panel - Takes remaining space -->
-                <div class="flex-1 min-w-0">
+                <!-- On mobile: hidden when no card is selected -->
+                <div
+                    class="flex-1 min-w-0"
+                    :class="{ 'hidden lg:block': !selectedCardId && isMobileView }"
+                >
+                    <!-- Mobile back button -->
+                    <div v-if="selectedCardId && isMobileView" class="mb-3 lg:hidden">
+                        <button
+                            @click="handleMobileBack"
+                            class="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors min-h-[44px]"
+                        >
+                            <i class="pi pi-arrow-left text-sm"></i>
+                            {{ $t('common.back') }}
+                        </button>
+                    </div>
                     <CardDetailPanel
                         :selectedCard="selectedCardObject"
                         :hasCards="cards.length > 0"
                         :loading="isLoading"
                         :updateCardFn="handleCardUpdate"
                         v-model:activeTab="activeTabString"
-                        :selectedBatchId="selectedBatchId"
                         @update-card="handleCardUpdate"
                         @delete-card="triggerDeleteConfirmation"
                         @card-imported="handleCardImported"
-                        @batch-changed="handleBatchChange"
                     />
                 </div>
             </div>
@@ -66,7 +82,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue';
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useCardStore } from '@/stores/card.js';
 import { useErrorHandler } from '@/utils/errorHandler.js';
@@ -103,8 +119,13 @@ const router = useRouter();
 
 // Component state
 const search = ref('');
+const debouncedSearch = ref('');
+let searchDebounceTimer = null;
+watch(search, (val) => {
+    clearTimeout(searchDebounceTimer);
+    searchDebounceTimer = setTimeout(() => { debouncedSearch.value = val; }, 250);
+});
 const selectedCardId = ref(null);
-const selectedBatchId = ref(null);
 const showAddCardDialog = ref(false);
 const cardCreateEditRef = ref(null);
 const activeTab = ref(0);
@@ -114,6 +135,27 @@ const selectedYear = ref(null);
 const selectedMonth = ref(null);
 const currentPage = ref(1);
 const itemsPerPage = ref(10);
+
+// Mobile responsive - detect viewport width (debounced)
+const windowWidth = ref(window.innerWidth);
+const isMobileView = computed(() => windowWidth.value < 1024); // matches lg breakpoint
+
+let resizeTimer = null;
+const handleResize = () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { windowWidth.value = window.innerWidth; }, 150);
+};
+onMounted(() => { window.addEventListener('resize', handleResize); });
+onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
+    clearTimeout(resizeTimer);
+    clearTimeout(searchDebounceTimer);
+});
+
+const handleMobileBack = () => {
+    selectedCardId.value = null;
+    router.replace({ name: route.name, query: {} });
+};
 
 // Computed properties
 const selectedCardObject = computed(() => {
@@ -126,11 +168,12 @@ const selectedCardObject = computed(() => {
 const filteredCards = computed(() => {
     let tempCards = cards.value || [];
 
-    // Filter by search text
-    if (search.value) {
-        tempCards = tempCards.filter(card => 
-            card.name.toLowerCase().includes(search.value.toLowerCase()) ||
-            (card.description && card.description.toLowerCase().includes(search.value.toLowerCase()))
+    // Filter by search text (uses debounced value to avoid recompute on every keystroke)
+    if (debouncedSearch.value) {
+        const query = debouncedSearch.value.toLowerCase();
+        tempCards = tempCards.filter(card =>
+            card.name.toLowerCase().includes(query) ||
+            (card.description && card.description.toLowerCase().includes(query))
         );
     }
 
@@ -156,28 +199,30 @@ const activeTabString = computed({
     set: (value) => {
         const tabIndex = parseInt(value);
         activeTab.value = tabIndex;
-        updateURL(null, tabIndex, null);
+        updateURL(null, tabIndex);
     }
 });
 
-// Watchers
-watch([search, selectedYear, selectedMonth], () => {
+// Reset pagination when filters change
+watch([debouncedSearch, selectedYear, selectedMonth], () => {
     currentPage.value = 1;
 });
 
-watch([selectedCardId, cards], () => {
+// Watch card list length + selectedCardId to detect if selected card was removed
+// Avoids deep watching the entire cards array on every property change
+watch([selectedCardId, () => cards.value?.length], () => {
     if (selectedCardId.value !== null && (!cards.value || !cards.value.find(card => card.id === selectedCardId.value))) {
         selectedCardId.value = null;
         if (route.query.cardId || route.query.tab) {
             router.replace({ name: route.name, query: {} });
         }
     }
-}, { deep: true });
+});
 
 watch(
     () => route.query,
     (newQuery, oldQuery) => {
-        if (newQuery.cardId !== oldQuery.cardId || newQuery.tab !== oldQuery.tab || newQuery.batchId !== oldQuery.batchId) {
+        if (newQuery.cardId !== oldQuery.cardId || newQuery.tab !== oldQuery.tab) {
             initializeFromURL();
         }
     }
@@ -195,16 +240,9 @@ watch(
 // Methods
 const handleSelectCard = (cardId) => {
     selectedCardId.value = cardId;
-    // Clear batch selection when switching cards
-    selectedBatchId.value = null;
     // Reset to General tab (tab 0) when switching cards
     activeTab.value = 0;
-    updateURL(cardId, 0, null);
-};
-
-const handleBatchChange = (batchId) => {
-    selectedBatchId.value = batchId;
-    updateURL(null, activeTab.value, batchId);
+    updateURL(cardId, 0);
 };
 
 const handlePageChange = (event) => {
@@ -216,39 +254,33 @@ const clearFilters = () => {
     selectedMonth.value = null;
 };
 
-const updateURL = (cardId = null, tab = 0, batchId = null) => {
+const updateURL = (cardId = null, tab = 0) => {
     const currentCardId = cardId || (selectedCardId.value !== null ? selectedCardId.value : null);
-    const currentBatchId = batchId !== null ? batchId : selectedBatchId.value;
     const query = {};
-    
+
     if (currentCardId) {
         query.cardId = currentCardId;
     }
-    
+
     if (tab > 0) {
         query.tab = getTabName(tab);
     }
-    
-    // Only include batchId if we're on the access tab
-    if (currentBatchId && tab === 3) {
-        query.batchId = currentBatchId;
-    }
-    
-    if (route.query.cardId !== query.cardId || route.query.tab !== query.tab || route.query.batchId !== query.batchId) {
-        router.replace({ 
-            name: route.name, 
-            query: query 
+
+    if (route.query.cardId !== query.cardId || route.query.tab !== query.tab) {
+        router.replace({
+            name: route.name,
+            query: query
         });
     }
 };
 
 const getTabName = (tabIndex) => {
-    const tabNames = ['general', 'content', 'issuance', 'access', 'preview', 'import-export'];
+    const tabNames = ['general', 'content', 'control-settings', 'qr-access'];
     return tabNames[tabIndex] || 'general';
 };
 
 const getTabIndex = (tabName) => {
-    const tabNames = ['general', 'content', 'issuance', 'access', 'preview', 'import-export'];
+    const tabNames = ['general', 'content', 'control-settings', 'qr-access'];
     const index = tabNames.indexOf(tabName);
     return index !== -1 ? index : 0;
 };
@@ -267,11 +299,6 @@ const initializeFromURL = () => {
                 router.replace({ name: route.name, query: {} });
             }
         }
-    }
-    
-    // Initialize batchId from URL if on access tab
-    if (route.query.batchId && activeTab.value === 3) {
-        selectedBatchId.value = route.query.batchId;
     }
 };
 

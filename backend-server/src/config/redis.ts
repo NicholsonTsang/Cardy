@@ -152,10 +152,6 @@ export const CacheKeys = {
   cardContent: (accessToken: string, language: string) => 
     `card:content:${accessToken}:${language}`,
   
-  // Physical card content cache key
-  physicalCardContent: (issueCardId: string, language: string) =>
-    `card:physical:${issueCardId}:${language}`,
-  
   // Scan deduplication key (visitor-specific)
   scanDedup: (cardId: string, visitorHash: string) => 
     `scan:dedup:${cardId}:${visitorHash}`,

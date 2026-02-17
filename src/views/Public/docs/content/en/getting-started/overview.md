@@ -1,9 +1,9 @@
-## Welcome to ExperienceQR
+## Welcome to FunTell
 
-ExperienceQR is an AI-powered content experience platform that turns any information into an interactive, multilingual digital experience. Whether you are showcasing products, guiding visitors through a venue, building educational content, telling stories, or creating a knowledge base, our platform helps you engage your audience like never before.
+FunTell is an AI-powered content experience platform that turns any information into an interactive, multilingual digital experience. Whether you are showcasing products, guiding visitors through a venue, building educational content, telling stories, or creating a knowledge base, our platform helps you engage your audience like never before.
 
-:::info What is ExperienceQR?
-ExperienceQR combines QR codes with AI-powered voice assistants to create immersive, multilingual content experiences. Anyone simply scans a QR code to access rich content and have natural conversations with AI assistants - no app download required.
+:::info What is FunTell?
+FunTell combines QR codes with AI-powered voice assistants to create immersive, multilingual content experiences. Anyone simply scans a QR code to access rich content and have natural conversations with AI assistants - no app download required.
 :::
 
 ## Key Features
@@ -17,7 +17,7 @@ ExperienceQR combines QR codes with AI-powered voice assistants to create immers
 
 ## How It Works
 
-Getting started with ExperienceQR is simple. Follow these three steps to create your first interactive experience:
+Getting started with FunTell is simple. Follow these three steps to create your first interactive experience:
 
 1. **Create** - Build your project and add content through our intuitive dashboard
 2. **Share** - Display the QR code on packaging, signage, documents, websites, or marketing materials
@@ -54,7 +54,7 @@ Plus optional **content grouping** to organize items into categories.
 
 ## Supported Languages
 
-ExperienceQR supports 10 languages for both the user interface and content translation:
+FunTell supports 10 languages for both the user interface and content translation:
 
 | | | |
 |---|---|---|

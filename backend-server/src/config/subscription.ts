@@ -288,4 +288,10 @@ export function getPricingInfo() {
   };
 }
 
+export const VOICE_CREDIT_CONFIG = {
+  PACKAGE_SIZE: parseInt(process.env.VOICE_CREDIT_PACKAGE_SIZE || '35'),
+  PACKAGE_PRICE_USD: parseFloat(process.env.VOICE_CREDIT_PACKAGE_PRICE_USD || '5'),
+  HARD_LIMIT_SECONDS: parseInt(process.env.VOICE_CALL_HARD_LIMIT_SECONDS || '180'),
+}
+
 export default SubscriptionConfig;

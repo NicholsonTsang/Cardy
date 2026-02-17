@@ -22,7 +22,7 @@
         <!-- Right Side: Dashboard Controls -->
         <div class="flex items-center space-x-2 sm:space-x-4">
           <!-- Credit Balance Display (for Card Issuers) -->
-          <div v-if="isAuthenticated && userRole === 'cardIssuer'" class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-100 rounded-lg">
+          <div v-if="isAuthenticated && userRole === 'cardIssuer'" class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-slate-100 rounded-lg">
             <i class="pi pi-wallet text-blue-600 text-xs sm:text-sm"></i>
             <span class="hidden sm:inline text-sm font-medium text-gray-700">{{ $t('credits.balance') }}:</span>
             <span class="text-xs sm:text-sm font-bold text-blue-600">{{ creditBalance }}</span>
@@ -182,7 +182,6 @@ import { useToast } from 'primevue/usetoast'
 import DashboardLanguageSelector from '@/components/DashboardLanguageSelector.vue'
 import LandingLanguageSelector from '@/components/LandingLanguageSelector.vue'
 import LogoAnimation from '@/components/Landing/LogoAnimation.vue'
-import { usePhysicalCards } from '@/composables/usePhysicalCards'
 
 const props = defineProps({
   mode: {
@@ -200,7 +199,6 @@ const route = useRoute()
 const authStore = useAuthStore()
 const creditStore = useCreditStore()
 const toast = useToast()
-const { isPhysicalCardsEnabled } = usePhysicalCards()
 
 // Refs
 const mainMenu = ref()
@@ -325,12 +323,6 @@ const adminMenuItems = computed(() => {
       icon: 'pi pi-users',
       command: () => router.push('/cms/admin/users')
     },
-    // Physical cards: batch management
-    ...(isPhysicalCardsEnabled.value ? [{
-      label: t('header.batch_management'),
-      icon: 'pi pi-box',
-      command: () => router.push('/cms/admin/batches')
-    }] : []),
     {
       label: t('templates.admin.management_title'),
       icon: 'pi pi-copy',
@@ -341,23 +333,11 @@ const adminMenuItems = computed(() => {
       icon: 'pi pi-wallet',
       command: () => router.push('/cms/admin/credits')
     },
-    // Physical cards: print requests
-    ...(isPhysicalCardsEnabled.value ? [{
-      label: t('admin.print_requests'),
-      icon: 'pi pi-print',
-      command: () => router.push('/cms/admin/print-requests')
-    }] : []),
     {
       label: t('admin.user_cards_viewer'),
       icon: 'pi pi-id-card',
       command: () => router.push('/cms/admin/user-projects')
     },
-    // Physical cards: issue free batch
-    ...(isPhysicalCardsEnabled.value ? [{
-      label: t('header.issue_free_batch'),
-      icon: 'pi pi-gift',
-      command: () => router.push('/cms/admin/issue-batch')
-    }] : []),
     {
       label: t('header.history_logs'),
       icon: 'pi pi-history',

@@ -36,7 +36,6 @@ interface CreditPurchase {
 
 interface CreditConsumption {
   id: string
-  batch_id?: string
   card_id?: string
   consumption_type: string
   quantity: number
@@ -44,7 +43,6 @@ interface CreditConsumption {
   total_credits: number
   description?: string
   created_at: string
-  batch_name?: string
   card_name?: string
 }
 
@@ -173,20 +171,6 @@ export const useCreditStore = defineStore('credits', () => {
     }
   }
 
-  // Check if user can issue batch
-  async function canIssueBatch(quantity: number) {
-    try {
-      const { data, error: err } = await supabase.rpc('can_issue_batch', {
-        p_quantity: quantity
-      })
-      if (err) throw err
-      return data
-    } catch (err: any) {
-      console.error('Error checking batch issuance ability:', err)
-      return null
-    }
-  }
-
   // Create credit purchase record (before Stripe checkout)
   async function createCreditPurchase(
     stripeSessionId: string,
@@ -205,26 +189,6 @@ export const useCreditStore = defineStore('credits', () => {
       return data
     } catch (err: any) {
       console.error('Error creating credit purchase:', err)
-      throw err
-    }
-  }
-
-  // Issue batch with credits
-  async function issueBatchWithCredits(cardId: string, quantity: number, printRequest = false) {
-    try {
-      const { data, error: err } = await supabase.rpc('issue_card_batch_with_credits', {
-        p_card_id: cardId,
-        p_quantity: quantity,
-        p_print_request: printRequest
-      })
-      if (err) throw err
-      
-      // Refresh balance after issuance
-      await fetchCreditBalance()
-      
-      return data
-    } catch (err: any) {
-      console.error('Error issuing batch with credits:', err)
       throw err
     }
   }
@@ -260,9 +224,7 @@ export const useCreditStore = defineStore('credits', () => {
     fetchPurchases,
     fetchConsumptions,
     checkCreditBalance,
-    canIssueBatch,
     createCreditPurchase,
-    issueBatchWithCredits,
     clearStore
   }
 })

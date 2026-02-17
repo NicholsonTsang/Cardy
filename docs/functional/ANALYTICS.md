@@ -4,7 +4,7 @@ This guide covers tracking visitor engagement, understanding usage metrics, and 
 
 ## Analytics Overview
 
-ExperienceQR provides analytics to help you understand:
+FunTell provides analytics to help you understand:
 
 - How many visitors access your content
 - Which QR codes are most popular

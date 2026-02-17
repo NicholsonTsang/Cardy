@@ -12,23 +12,6 @@ EXCEPTION
     WHEN insufficient_privilege THEN NULL;
 END $$;
 
-DO $$ BEGIN
-    -- Print Request Status enum
-    -- Note: PAYMENT_PENDING is defined but not used in the current credit-based payment model.
-    -- Payment happens at batch creation time, so all print requests start with SUBMITTED status.
-    -- PAYMENT_PENDING is reserved for potential future payment models (invoicing, pay-on-delivery, etc.)
-    CREATE TYPE public."PrintRequestStatus" AS ENUM (
-        'SUBMITTED',      -- Print request received, pending admin review
-        'PAYMENT_PENDING', -- [UNUSED] Reserved for future invoice/deferred payment models
-        'PROCESSING',     -- Admin is printing/preparing cards
-        'SHIPPED',        -- Cards have been shipped to customer
-        'COMPLETED',      -- Cards delivered successfully
-        'CANCELLED'       -- Request cancelled or withdrawn
-    );
-EXCEPTION
-    WHEN duplicate_object THEN NULL;
-    WHEN insufficient_privilege THEN NULL;
-END $$;
 
 DO $$ BEGIN
     CREATE TYPE public."UserRole" AS ENUM (
@@ -48,10 +31,6 @@ END $$;
 
 -- Drop tables if they exist (in dependency order)
 DROP TABLE IF EXISTS content_templates CASCADE;
-DROP TABLE IF EXISTS print_request_feedbacks CASCADE;
-DROP TABLE IF EXISTS print_requests CASCADE;
-DROP TABLE IF EXISTS issue_cards CASCADE;
-DROP TABLE IF EXISTS card_batches CASCADE;
 DROP TABLE IF EXISTS content_items CASCADE;
 DROP TABLE IF EXISTS cards CASCADE;
 DROP TABLE IF EXISTS operations_log CASCADE;
@@ -67,6 +46,7 @@ CREATE TABLE cards (
     original_image_url TEXT, -- Original uploaded image (raw, uncropped)
     crop_parameters JSONB, -- JSON object containing crop parameters for dynamic image cropping (position, zoom, dimensions, etc.)
     conversation_ai_enabled BOOLEAN DEFAULT false,
+    realtime_voice_enabled BOOLEAN DEFAULT FALSE, -- Whether realtime voice conversations are enabled (requires voice credits)
     ai_instruction TEXT DEFAULT '' NOT NULL, -- AI role and guidelines (max 100 words) - defines AI's role, personality, and restrictions
     ai_knowledge_base TEXT DEFAULT '' NOT NULL, -- Background knowledge for AI conversations (max 2000 words) - detailed domain knowledge, facts, specifications
     ai_welcome_general TEXT DEFAULT '' NOT NULL, -- Custom welcome message for General AI Assistant (card-level)
@@ -78,7 +58,7 @@ CREATE TABLE cards (
     -- Digital Access Configuration
     -- Note: conversation_ai_enabled (above) determines session billing rate (AI vs non-AI)
     -- Billing: Monthly subscription budget per user (tracked in Redis), not per-project limits
-    billing_type TEXT DEFAULT 'physical' CHECK (billing_type IN ('physical', 'digital')), -- physical = per-card credits, digital = per-session subscription
+    billing_type TEXT DEFAULT 'digital' CHECK (billing_type = 'digital'), -- digital = per-session subscription
     -- Default daily limit for new QR codes created under this project
     default_daily_session_limit INTEGER DEFAULT 500, -- Default daily session limit for new QR codes (NULL = unlimited)
     -- Note: Session tracking is now per-QR-code in card_access_tokens table
@@ -100,6 +80,7 @@ CREATE TABLE cards (
     original_language VARCHAR(10) DEFAULT 'en', -- ISO 639-1 language code
     content_hash TEXT, -- MD5 hash for detecting content changes
     last_content_update TIMESTAMPTZ DEFAULT NOW(), -- Last update to translatable fields
+    metadata JSONB DEFAULT '{}'::JSONB, -- Extensible metadata for future features (avoids schema changes)
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -182,83 +163,6 @@ CREATE INDEX IF NOT EXISTS idx_content_items_crop_parameters ON content_items US
 -- Add GIN index for translations JSONB column
 CREATE INDEX IF NOT EXISTS idx_content_items_translations ON content_items USING GIN (translations);
 
--- Card batches table
-CREATE TABLE card_batches (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
-    batch_name TEXT NOT NULL,
-    batch_number INTEGER NOT NULL,
-    cards_count INTEGER NOT NULL DEFAULT 0,
-    is_disabled BOOLEAN DEFAULT FALSE NOT NULL,
-    created_by UUID NOT NULL, -- REFERENCES auth.users(id)
-    -- Payment tracking fields
-    payment_required BOOLEAN DEFAULT TRUE NOT NULL,
-    payment_completed BOOLEAN DEFAULT FALSE NOT NULL,
-    payment_amount_cents INTEGER, -- Total payment amount in cents ($2 per card = 200 cents per card)
-    payment_completed_at TIMESTAMP WITH TIME ZONE,
-    -- Admin fee waiver fields
-    payment_waived BOOLEAN DEFAULT FALSE NOT NULL,
-    payment_waived_by UUID, -- REFERENCES auth.users(id) - admin who waived the fee
-    payment_waived_at TIMESTAMP WITH TIME ZONE,
-    payment_waiver_reason TEXT, -- Reason for waiving the payment
-    -- Cards generation status
-    cards_generated BOOLEAN DEFAULT FALSE NOT NULL,
-    cards_generated_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    CONSTRAINT unique_batch_name_per_card UNIQUE (card_id, batch_name),
-    CONSTRAINT unique_batch_number_per_card UNIQUE (card_id, batch_number)
-);
-
-CREATE INDEX IF NOT EXISTS idx_card_batches_card_id ON card_batches(card_id);
-CREATE INDEX IF NOT EXISTS idx_card_batches_created_by ON card_batches(created_by);
-CREATE INDEX IF NOT EXISTS idx_card_batches_batch_number ON card_batches(card_id, batch_number);
-CREATE INDEX IF NOT EXISTS idx_card_batches_is_disabled ON card_batches(is_disabled);
-CREATE INDEX IF NOT EXISTS idx_card_batches_payment_status ON card_batches(payment_completed);
-CREATE INDEX IF NOT EXISTS idx_card_batches_payment_waived ON card_batches(payment_waived);
-CREATE INDEX IF NOT EXISTS idx_card_batches_waived_by ON card_batches(payment_waived_by);
-CREATE INDEX IF NOT EXISTS idx_card_batches_cards_generated ON card_batches(cards_generated);
-
--- Issued cards table
-CREATE TABLE issue_cards (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
-    batch_id UUID NOT NULL REFERENCES card_batches(id) ON DELETE CASCADE,
-    active BOOLEAN DEFAULT false,
-    issue_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    active_at TIMESTAMP WITH TIME ZONE,
-    activated_by UUID, -- REFERENCES auth.users(id)
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_issue_cards_card_id ON issue_cards(card_id);
-CREATE INDEX IF NOT EXISTS idx_issue_cards_batch_id ON issue_cards(batch_id);
-CREATE INDEX IF NOT EXISTS idx_issue_cards_active ON issue_cards(active);
-
--- Print requests table
-CREATE TABLE print_requests (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    batch_id UUID NOT NULL REFERENCES card_batches(id) ON DELETE CASCADE,
-    user_id UUID NOT NULL, -- REFERENCES auth.users(id)
-    status "PrintRequestStatus" DEFAULT 'SUBMITTED' NOT NULL,
-    shipping_address TEXT,
-    contact_email TEXT,
-    contact_whatsapp TEXT,
-    requested_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE INDEX IF NOT EXISTS idx_print_requests_batch_id ON print_requests(batch_id);
-CREATE INDEX IF NOT EXISTS idx_print_requests_user_id ON print_requests(user_id);
-CREATE INDEX IF NOT EXISTS idx_print_requests_status ON print_requests(status);
-
--- Create partial unique index for active print requests only
--- This allows multiple CANCELLED and COMPLETED requests per batch
-DROP INDEX IF EXISTS unique_active_print_request_per_batch;
-CREATE UNIQUE INDEX unique_active_print_request_per_batch 
-ON print_requests(batch_id) 
-WHERE status NOT IN ('COMPLETED', 'CANCELLED');
 
 -- Create function for updating timestamps
 CREATE OR REPLACE FUNCTION public.update_updated_at()
@@ -272,23 +176,6 @@ $$ LANGUAGE plpgsql;
 -- Create triggers for updating the updated_at timestamp
 -- MOVED TO sql/triggers.sql
 
--- Print request feedbacks table
-CREATE TABLE print_request_feedbacks (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    print_request_id UUID NOT NULL REFERENCES print_requests(id) ON DELETE CASCADE,
-    admin_user_id UUID NOT NULL, -- REFERENCES auth.users(id)
-    admin_email VARCHAR(255), -- Denormalized for performance
-    message TEXT NOT NULL,
-    is_internal BOOLEAN DEFAULT FALSE, -- Internal notes vs user-visible feedback
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Indexes for print request feedbacks
-CREATE INDEX IF NOT EXISTS idx_print_feedbacks_request ON print_request_feedbacks(print_request_id);
-CREATE INDEX IF NOT EXISTS idx_print_feedbacks_admin ON print_request_feedbacks(admin_user_id);
-CREATE INDEX IF NOT EXISTS idx_print_feedbacks_created ON print_request_feedbacks(created_at DESC);
-
--- No triggers or views needed - emails handled directly in stored procedures
 
 -- Operations Log table - Simple unified logging for all write operations
 CREATE TABLE operations_log (
@@ -328,11 +215,12 @@ CREATE TABLE IF NOT EXISTS credit_transactions (
     amount DECIMAL(10, 2) NOT NULL,
     balance_before DECIMAL(10, 2) NOT NULL,
     balance_after DECIMAL(10, 2) NOT NULL,
-    reference_type VARCHAR(50), -- 'stripe_purchase', 'batch_issuance', 'admin_adjustment', etc.
-    reference_id UUID, -- ID of the related record (purchase_id, batch_id, etc.)
+    reference_type VARCHAR(50), -- 'stripe_purchase', 'session_budget_topup', 'admin_adjustment', etc.
+    reference_id UUID, -- ID of the related record (purchase_id, etc.)
     description TEXT,
     metadata JSONB,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Credit Purchases Table (Stripe payment records)
@@ -357,14 +245,14 @@ CREATE TABLE IF NOT EXISTS credit_purchases (
 CREATE TABLE IF NOT EXISTS credit_consumptions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    batch_id UUID REFERENCES card_batches(id) ON DELETE SET NULL,
     card_id UUID REFERENCES cards(id) ON DELETE SET NULL,
-    consumption_type VARCHAR(50) NOT NULL DEFAULT 'batch_issuance', -- 'batch_issuance', 'single_card', 'translation', 'session_budget_topup'
-    quantity INTEGER NOT NULL DEFAULT 1, -- Number of cards or languages
-    credits_per_unit DECIMAL(10, 2) NOT NULL DEFAULT 2.00, -- Credits per card (2.00) or per language (1.00)
+    consumption_type VARCHAR(50) NOT NULL DEFAULT 'session_budget_topup', -- 'translation', 'session_budget_topup', 'digital_scan'
+    quantity INTEGER NOT NULL DEFAULT 1, -- Number of languages or sessions
+    credits_per_unit DECIMAL(10, 2) NOT NULL DEFAULT 1.00, -- Credits per unit
     total_credits DECIMAL(10, 2) NOT NULL,
     description TEXT,
-    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Translation History Table (Track AI-powered translations)
@@ -380,13 +268,6 @@ CREATE TABLE IF NOT EXISTS translation_history (
     metadata JSONB DEFAULT '{}'::JSONB -- Additional metadata (model used, token count, etc.)
 );
 
--- Add credit cost columns to card_batches table (if not exists)
-ALTER TABLE card_batches ADD COLUMN IF NOT EXISTS credit_cost DECIMAL(10, 2);
-ALTER TABLE card_batches ADD COLUMN IF NOT EXISTS payment_method VARCHAR(20) DEFAULT 'stripe' CHECK (payment_method IN ('stripe', 'credits'));
-
--- Update existing batches to mark them as stripe payments
-UPDATE card_batches SET payment_method = 'stripe' WHERE payment_method IS NULL;
-
 -- Indexes for credit system (DROP first to ensure updates)
 DROP INDEX IF EXISTS idx_user_credits_user_id;
 DROP INDEX IF EXISTS idx_credit_transactions_user_id;
@@ -396,7 +277,6 @@ DROP INDEX IF EXISTS idx_credit_purchases_user_id;
 DROP INDEX IF EXISTS idx_credit_purchases_status;
 DROP INDEX IF EXISTS idx_credit_purchases_created_at;
 DROP INDEX IF EXISTS idx_credit_consumptions_user_id;
-DROP INDEX IF EXISTS idx_credit_consumptions_batch_id;
 DROP INDEX IF EXISTS idx_credit_consumptions_created_at;
 DROP INDEX IF EXISTS idx_translation_history_card_id;
 DROP INDEX IF EXISTS idx_translation_history_user_id;
@@ -411,12 +291,74 @@ CREATE INDEX idx_credit_purchases_user_id ON credit_purchases(user_id);
 CREATE INDEX idx_credit_purchases_status ON credit_purchases(status);
 CREATE INDEX idx_credit_purchases_created_at ON credit_purchases(created_at DESC);
 CREATE INDEX idx_credit_consumptions_user_id ON credit_consumptions(user_id);
-CREATE INDEX idx_credit_consumptions_batch_id ON credit_consumptions(batch_id);
 CREATE INDEX idx_credit_consumptions_created_at ON credit_consumptions(created_at DESC);
 CREATE INDEX idx_translation_history_card_id ON translation_history(card_id);
 CREATE INDEX idx_translation_history_user_id ON translation_history(translated_by);
 CREATE INDEX idx_translation_history_created_at ON translation_history(translated_at DESC);
 CREATE INDEX idx_translation_history_status ON translation_history(status);
+
+-- =================================================================
+-- VOICE CREDIT SYSTEM TABLES
+-- =================================================================
+
+-- Voice credit balance per user (integer-based, not decimal like general credits)
+CREATE TABLE IF NOT EXISTS voice_credits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    balance INTEGER NOT NULL DEFAULT 0,  -- number of voice calls remaining
+    total_purchased INTEGER NOT NULL DEFAULT 0,
+    total_consumed INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id)
+);
+
+-- Voice credit transaction log
+CREATE TABLE IF NOT EXISTS voice_credit_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    amount INTEGER NOT NULL,  -- positive = purchase, negative = usage
+    balance_before INTEGER NOT NULL,
+    balance_after INTEGER NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('purchase', 'usage', 'refund', 'admin_adjustment')),
+    description TEXT,
+    stripe_session_id TEXT,  -- for purchases
+    card_id UUID REFERENCES cards(id) ON DELETE SET NULL,  -- for usage
+    session_id TEXT,  -- visitor session for usage tracking
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Voice call log for analytics
+CREATE TABLE IF NOT EXISTS voice_call_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,  -- card owner
+    session_id TEXT,  -- visitor session
+    started_at TIMESTAMPTZ DEFAULT NOW(),
+    ended_at TIMESTAMPTZ,
+    duration_seconds INTEGER,
+    credit_deducted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS policies (all access via stored procedures with service_role)
+ALTER TABLE voice_credits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE voice_credit_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE voice_call_log ENABLE ROW LEVEL SECURITY;
+
+-- Indexes for voice credit system
+CREATE INDEX IF NOT EXISTS idx_voice_credits_user_id ON voice_credits(user_id);
+CREATE INDEX IF NOT EXISTS idx_voice_credit_transactions_user_id ON voice_credit_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_voice_credit_transactions_created_at ON voice_credit_transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_voice_credit_transactions_type ON voice_credit_transactions(type);
+CREATE INDEX IF NOT EXISTS idx_voice_call_log_card_id ON voice_call_log(card_id);
+CREATE INDEX IF NOT EXISTS idx_voice_call_log_user_id ON voice_call_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_voice_call_log_session_id ON voice_call_log(session_id);
+CREATE INDEX IF NOT EXISTS idx_voice_call_log_started_at ON voice_call_log(started_at DESC);
+
+COMMENT ON TABLE voice_credits IS 'Voice call credit balance per user (integer-based, 1 credit = 1 voice call)';
+COMMENT ON TABLE voice_credit_transactions IS 'Audit log of all voice credit movements';
+COMMENT ON TABLE voice_call_log IS 'Log of all voice calls for analytics and billing';
 
 -- =================================================================
 -- CONTENT TEMPLATES LIBRARY
@@ -536,7 +478,7 @@ CREATE TABLE card_access_log (
     subscription_tier TEXT, -- 'free', 'starter', or 'premium' at time of access
     
     -- Session-based billing info
-    session_id TEXT, -- Cloudflare session ID or visitor fingerprint
+    session_id TEXT, -- Visitor session ID for deduplication
     session_cost_usd DECIMAL(10, 4) DEFAULT 0, -- Actual cost charged for this session
     is_ai_enabled BOOLEAN DEFAULT FALSE, -- Whether the card had AI enabled at access time
     
@@ -554,6 +496,6 @@ CREATE INDEX IF NOT EXISTS idx_access_log_session ON card_access_log(session_id)
 
 COMMENT ON TABLE card_access_log IS 'Detailed log of all card accesses for analytics and billing';
 COMMENT ON COLUMN card_access_log.visitor_hash IS 'Hash of visitor fingerprint for deduplication';
-COMMENT ON COLUMN card_access_log.session_id IS 'Cloudflare session ID or derived visitor fingerprint';
+COMMENT ON COLUMN card_access_log.session_id IS 'Visitor session ID for deduplication';
 COMMENT ON COLUMN card_access_log.session_cost_usd IS 'Actual USD cost charged for this session';
 COMMENT ON COLUMN card_access_log.was_overage IS 'True if access exceeded monthly limit and used credits';

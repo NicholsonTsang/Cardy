@@ -1,12 +1,16 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { optionalAuth, authenticateUser } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
+import { geminiClient } from '../services/gemini-client';
+import { checkVoiceCallAllowed, startVoiceCall, endVoiceCall } from '../services/usage-tracker';
+import { VOICE_CREDIT_CONFIG } from '../config/subscription';
 
 const router = Router();
 
 /**
  * POST /api/ai/chat/stream
- * Stream AI chat responses using SSE
+ * Stream AI chat responses using SSE (powered by Google Gemini)
  * Optional authentication (works for both public and authenticated users)
  */
 router.post('/chat/stream', optionalAuth, async (req: Request, res: Response) => {
@@ -29,7 +33,7 @@ router.post('/chat/stream', optionalAuth, async (req: Request, res: Response) =>
     }
 
     // Filter valid messages
-    const validMessages = messages.filter(m => m && m.content != null && m.content !== '');
+    const validMessages = messages.filter((m: any) => m && m.content != null && m.content !== '');
     if (validMessages.length === 0) {
       return res.status(400).json({
         error: 'Validation error',
@@ -37,54 +41,20 @@ router.post('/chat/stream', optionalAuth, async (req: Request, res: Response) =>
       });
     }
 
-    // Get OpenAI API key
-    const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-    if (!OPENAI_API_KEY) {
-      return res.status(500).json({
-        error: 'Configuration error',
-        message: 'OpenAI API key not configured'
-      });
-    }
-
-    // Build messages with system prompt
-    // OPTIMIZATION: OpenAI automatically caches static system prompts for cost reduction
-    // To maximize caching benefits:
-    // 1. System prompt should be consistent across requests for the same card
-    // 2. System prompt should be placed first in the messages array
-    // 3. Frontend should avoid regenerating prompts unnecessarily
-    // With caching: ~40% cost reduction on repeated system prompts (after 1st message)
+    // Build system instruction and Gemini contents from OpenAI-style messages
     const systemMessage = systemPrompt || systemInstructions || 'You are a helpful assistant.';
-    const fullMessages = [
-      { role: 'system', content: systemMessage },
-      ...validMessages
-    ];
 
-    // Call OpenAI streaming API with prompt caching
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${OPENAI_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_TEXT_MODEL || 'gpt-4o-mini',
-        messages: fullMessages,
-        max_tokens: parseInt(process.env.OPENAI_MAX_TOKENS || '3500'),
-        temperature: 0.7,
-        stream: true,
-        // OpenAI automatically applies prompt caching to repeated content
-        // No explicit parameter needed - caching happens server-side
-      })
-    });
+    // Map OpenAI roles to Gemini roles: user → user, assistant → model
+    const geminiContents = validMessages.map((m: any) => ({
+      role: (m.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
+      parts: [{ text: String(m.content) }]
+    }));
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('❌ OpenAI API error:', errorText);
-      return res.status(response.status).json({
-        error: 'OpenAI API error',
-        message: errorText
-      });
-    }
+    // Call Gemini streaming API
+    const geminiResponse = await geminiClient.streamGenerateContent(
+      systemMessage,
+      geminiContents
+    );
 
     // Set up SSE headers
     res.setHeader('Content-Type', 'text/event-stream');
@@ -92,8 +62,8 @@ router.post('/chat/stream', optionalAuth, async (req: Request, res: Response) =>
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('Access-Control-Allow-Origin', '*');
 
-    // Stream the response
-    const reader = response.body?.getReader();
+    // Stream the Gemini response, transforming to our SSE format
+    const reader = geminiResponse.body?.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
 
@@ -117,16 +87,17 @@ router.post('/chat/stream', optionalAuth, async (req: Request, res: Response) =>
 
         for (const line of lines) {
           if (line.startsWith('data: ')) {
-            const data = line.slice(6);
+            const data = line.slice(6).trim();
 
-            if (data === '[DONE]') continue;
+            if (!data) continue;
 
             try {
               const parsed = JSON.parse(data);
-              const content = parsed.choices[0]?.delta?.content;
+              // Gemini SSE format: candidates[0].content.parts[0].text
+              const text = parsed.candidates?.[0]?.content?.parts?.[0]?.text;
 
-              if (content) {
-                const event = `data: ${JSON.stringify({ content })}\n\n`;
+              if (text) {
+                const event = `data: ${JSON.stringify({ content: text })}\n\n`;
                 res.write(event);
               }
             } catch (e) {
@@ -240,11 +211,19 @@ router.post('/generate-tts', optionalAuth, async (req: Request, res: Response) =
 /**
  * POST /api/ai/realtime-token
  * Generate ephemeral token for OpenAI Realtime API
+ * Requires cardId for voice credit billing
  * Optional authentication
  */
 router.post('/realtime-token', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const { sessionConfig } = req.body;
+    const { sessionConfig, cardId } = req.body;
+
+    if (!cardId) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'cardId is required'
+      });
+    }
 
     // Get OpenAI API key
     const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -255,12 +234,45 @@ router.post('/realtime-token', optionalAuth, async (req: Request, res: Response)
       });
     }
 
+    // Check voice credit billing
+    const voiceCheck = await checkVoiceCallAllowed(cardId);
+
+    if (!voiceCheck.allowed) {
+      if (voiceCheck.reason === 'Voice not enabled for this project') {
+        return res.status(403).json({
+          error: 'Voice not enabled',
+          message: voiceCheck.reason
+        });
+      }
+      // Credits-related denial (no credits remaining, card not found, etc.)
+      return res.status(402).json({
+        error: 'Insufficient voice credits',
+        message: voiceCheck.reason
+      });
+    }
+
+    // Generate a unique session ID for this voice call
+    const sessionId = crypto.randomUUID();
+
+    // Deduct 1 voice credit and mark call as active
+    const startResult = await startVoiceCall(cardId, voiceCheck.ownerId!, sessionId);
+
+    if (!startResult.success) {
+      return res.status(402).json({
+        error: 'Voice credit error',
+        message: startResult.error
+      });
+    }
+
     // Get Realtime model
     const REALTIME_MODEL = process.env.OPENAI_REALTIME_MODEL || 'gpt-realtime-mini-2025-12-15';
 
     console.log('🎤 Generating ephemeral token:', {
       model: REALTIME_MODEL,
       voice: sessionConfig?.voice || 'alloy',
+      cardId: cardId.slice(0, 8) + '...',
+      sessionId: sessionId.slice(0, 8) + '...',
+      remainingCredits: startResult.remainingCredits,
       authenticated: !!req.user
     });
 
@@ -294,10 +306,39 @@ router.post('/realtime-token', optionalAuth, async (req: Request, res: Response)
       success: true,
       client_secret: data.client_secret.value,
       expires_at: data.client_secret.expires_at,
+      sessionId,
+      hardLimitSeconds: VOICE_CREDIT_CONFIG.HARD_LIMIT_SECONDS,
+      remainingCredits: startResult.remainingCredits,
     });
 
   } catch (error: any) {
     console.error('❌ Error generating ephemeral token:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/ai/realtime-end
+ * Called by frontend when a voice call ends to log duration
+ */
+router.post('/realtime-end', optionalAuth, async (req: Request, res: Response) => {
+  try {
+    const { cardId, sessionId, durationSeconds } = req.body;
+
+    if (!cardId || !sessionId) {
+      return res.status(400).json({ error: 'cardId and sessionId required' });
+    }
+
+    const duration = Math.min(Math.max(0, parseInt(durationSeconds) || 0), 600);
+
+    await endVoiceCall(cardId, sessionId, duration);
+
+    return res.json({ success: true });
+  } catch (error: any) {
+    console.error('❌ Error ending voice call:', error);
     return res.status(500).json({
       error: 'Internal server error',
       message: error.message
@@ -319,8 +360,7 @@ router.post('/generate-ai-settings', authenticateUser, async (req: Request, res:
       cardDescription,
       originalLanguage,
       contentMode,
-      isGrouped,
-      billingType
+      isGrouped
     } = req.body;
 
     if (!cardName || typeof cardName !== 'string' || !cardName.trim()) {
@@ -394,7 +434,7 @@ ${cardDescription ? `Description: ${cardDescription}` : ''}
 Original Language: ${langName}
 Content Display Mode: ${contentMode || 'list'}
 Content Structure: ${isGrouped ? 'Grouped into categories' : 'Flat list'}
-Access Type: ${billingType || 'digital'}${contentItemsContext}`;
+Access Type: digital${contentItemsContext}`;
 
     console.log('🤖 Generating AI settings:', {
       cardName,

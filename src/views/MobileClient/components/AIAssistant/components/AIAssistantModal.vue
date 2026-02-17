@@ -27,9 +27,10 @@
               <div class="language-badge-compact" :title="indicatorLanguage">
                 <span class="language-flag">{{ languageStore.selectedLanguage.flag }}</span>
               </div>
-              <!-- Mode Switch Button -->
-              <button 
-                @click="$emit('toggle-mode')" 
+              <!-- Mode Switch Button (hidden when voice is not enabled) -->
+              <button
+                v-if="showVoiceToggle"
+                @click="$emit('toggle-mode')"
                 class="action-button"
                 :class="{ 'active': conversationMode === 'realtime' }"
                 :title="conversationMode === 'realtime' ? $t('mobile.switch_to_chat') : $t('mobile.switch_to_live_call')"
@@ -62,7 +63,7 @@ import type { ConversationMode, Language, AssistantMode } from '../types'
 const languageStore = useMobileLanguageStore()
 const { t } = useI18n()
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   isOpen: boolean
   showLanguageSelection: boolean
   conversationMode: ConversationMode
@@ -70,7 +71,10 @@ const props = defineProps<{
   contentItemName?: string // For content-item mode
   assistantMode?: AssistantMode // 'card-level' or 'content-item'
   title?: string // Custom title for card-level mode
-}>()
+  showVoiceToggle?: boolean // Whether to show the voice mode toggle button
+}>(), {
+  showVoiceToggle: true
+})
 
 // Computed properties for mode-based styling
 const isCardLevel = computed(() => props.assistantMode === 'card-level')
@@ -114,8 +118,6 @@ defineEmits<{
   (e: 'toggle-mode'): void
 }>()
 
-const visualViewportHeight = ref<number | null>(null)
-
 // Computed properties for language indicator
 const isVoiceMode = computed(() => {
   return props.conversationMode === 'realtime' || props.inputMode === 'voice'
@@ -143,7 +145,6 @@ function updateVisualViewport() {
   // Use Visual Viewport API to get actual visible height (excluding keyboard)
   if (window.visualViewport) {
     const height = window.visualViewport.height
-    visualViewportHeight.value = height
     document.documentElement.style.setProperty('--visual-viewport-height', `${height}px`)
   }
 }
@@ -342,10 +343,6 @@ onUnmounted(() => {
   border-radius: 10px;
   cursor: default;
   transition: all 0.2s;
-}
-
-.language-badge-compact:hover {
-  background: rgba(255, 255, 255, 0.12);
 }
 
 .language-badge-compact .language-flag {

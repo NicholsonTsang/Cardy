@@ -2,7 +2,7 @@
 
 ## Overview
 
-This folder contains stored procedures that are called **from Edge Functions using service_role credentials** or **from webhooks** that require privileged database operations.
+This folder contains stored procedures that are called **from the Express.js backend using service_role credentials** or **from webhooks** that require privileged database operations.
 
 ---
 
@@ -59,8 +59,23 @@ GRANT EXECUTE ON FUNCTION my_server_function(UUID, UUID, ...) TO service_role;
 - `credit_purchase_completion.sql` - Stripe webhook credit completion
   - `complete_credit_purchase()` - Process successful credit purchase
   - `refund_credit_purchase()` - Handle credit refunds
+- `credit_operations.sql` - Credit operations (consumption, adjustments)
 
-### Content Management
+### Content & Mobile
+- `card_content.sql` - Card content retrieval for mobile API (includes metadata JSONB field)
+- `mobile_access.sql` - Mobile access management, subscription cancellation
+- `card_session.sql` - Card session management
+
+### Access & Tokens
+- `access_logging.sql` - Access logging operations
+- `access_token_operations.sql` - Access token operations (server-side)
+
+### Subscriptions
+- `subscription_management.sql` - Subscription management operations
+
+### Translations
+- `translation_credit_consumption.sql` - Translation credit consumption
+- `translation_operations.sql` - Translation operations
 - ~~`translation_management.sql`~~ - Removed, translations now saved via direct Supabase updates
   - ~~`store_card_translations()`~~ - Removed, see `backend-server/src/routes/translation.routes.direct.ts`
 
@@ -70,9 +85,9 @@ GRANT EXECUTE ON FUNCTION my_server_function(UUID, UUID, ...) TO service_role;
 
 Put functions in this folder when:
 
-1. **Edge Function uses SERVICE_ROLE_KEY**
+1. **Express.js backend uses SERVICE_ROLE_KEY**
    ```typescript
-   // Edge Function with SERVICE_ROLE
+   // Express.js backend with SERVICE_ROLE
    const supabaseAdmin = createClient(
      SUPABASE_URL,
      SUPABASE_SERVICE_ROLE_KEY  // ← Service role
@@ -119,7 +134,7 @@ Don't put functions here when:
 1. **Called from frontend with user JWT**
    - → Use `client-side/` folder instead
 
-2. **Edge Function uses ANON_KEY**
+2. **Express.js backend uses ANON_KEY**
    - → Use `client-side/` folder instead
 
 3. **Function uses `auth.uid()`**
@@ -155,7 +170,7 @@ Every server-side function MUST:
 -- Function Name
 -- =====================================================================
 -- Description: What this function does
--- Called by: Edge Function with SERVICE_ROLE_KEY
+-- Called by: Express.js backend with SERVICE_ROLE_KEY
 -- Security: Validates user explicitly, bypasses RLS
 -- =====================================================================
 
@@ -227,21 +242,21 @@ REVOKE ALL ON FUNCTION function_name(UUID, TYPE, TYPE) FROM PUBLIC, authenticate
 
 -- Add documentation
 COMMENT ON FUNCTION function_name IS 
-    'SERVER-SIDE ONLY: Called by Edge Functions with service_role. Accepts explicit p_user_id.';
+    'SERVER-SIDE ONLY: Called by Express.js backends with service_role. Accepts explicit p_user_id.';
 ```
 
 ---
 
 ## 🧪 Testing
 
-### Test from Edge Function
+### Test from Express.js backend
 ```typescript
-// In Edge Function
+// In Express.js backend
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseAdmin = createClient(
-  Deno.env.get('SUPABASE_URL')!,
-  Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 // Validate user from JWT
@@ -333,7 +348,7 @@ GRANT EXECUTE ON FUNCTION server_function(...) TO authenticated;
 
 ### ✅ DO: Grant ONLY to service_role
 ```sql
--- ✅ CORRECT! Only Edge Functions can call
+-- ✅ CORRECT! Only Express.js backends can call
 GRANT EXECUTE ON FUNCTION server_function(...) TO service_role;
 ```
 
@@ -397,7 +412,7 @@ $$ LANGUAGE plpgsql;
 
 ---
 
-**Pattern**: Server-Side (Edge Functions/Service Role)  
+**Pattern**: Server-Side (Express.js backends/Service Role)  
 **Folder**: `sql/storeproc/server-side/`  
 **Grant**: `TO service_role`  
 **Auth**: `p_user_id UUID` parameter

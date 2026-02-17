@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useSubscriptionStore, type DailyAccessData } from '@/stores/subscription';
 import { useCreditStore } from '@/stores/credits';
+import { useVoiceCreditStore } from '@/stores/voiceCredits';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
@@ -13,14 +14,33 @@ import Divider from 'primevue/divider';
 import ConfirmDialog from 'primevue/confirmdialog';
 import { useConfirm } from 'primevue/useconfirm';
 import Select from 'primevue/select';
+import CreditConfirmationDialog from '@/components/CreditConfirmationDialog.vue';
 
 const { t } = useI18n();
 const route = useRoute();
-const router = useRouter(); // Initialize router
+const router = useRouter();
 const toast = useToast();
 const confirm = useConfirm();
 const subscriptionStore = useSubscriptionStore();
-const creditStore = useCreditStore(); // Initialize credit store
+const creditStore = useCreditStore();
+const voiceCreditStore = useVoiceCreditStore();
+
+// Voice credit confirmation dialog state
+const showVoiceCreditConfirmDialog = ref(false);
+const voicePurchaseLoading = ref(false);
+const selectedVoicePackages = ref(1);
+
+const totalVoiceCredits = computed(() => selectedVoicePackages.value * voiceCreditStore.packageSize);
+const totalVoiceCost = computed(() => selectedVoicePackages.value * voiceCreditStore.packagePriceUsd);
+
+function handleVoiceQtyInput(event: Event) {
+  const value = parseInt((event.target as HTMLInputElement).value);
+  if (!isNaN(value) && value >= 1 && value <= 10) {
+    selectedVoicePackages.value = value;
+  } else {
+    (event.target as HTMLInputElement).value = String(selectedVoicePackages.value);
+  }
+}
 
 // Chart state
 const chartDays = ref(30);
@@ -32,21 +52,9 @@ const chartDaysOptions = computed(() => [
 
 // Interactive chart state
 const hoveredDay = ref<DailyAccessData | null>(null);
-const tooltipStyle = ref({ top: '0px', left: '0px' });
 
-function showTooltip(day: DailyAccessData, event: MouseEvent) {
+function showTooltip(day: DailyAccessData) {
   hoveredDay.value = day;
-  const target = event.currentTarget as HTMLElement;
-  const rect = target.getBoundingClientRect();
-  const parentRect = target.parentElement?.parentElement?.getBoundingClientRect();
-  
-  if (parentRect) {
-    // Position relative to the chart container
-    tooltipStyle.value = {
-      top: '-45px', // Fixed height above bar
-      left: `${(target.offsetLeft + target.offsetWidth / 2)}px` // Centered on bar
-    };
-  }
 }
 
 function hideTooltip() {
@@ -100,14 +108,13 @@ onMounted(async () => {
     window.history.replaceState({}, '', route.path);
   }
   
-  // Fetch subscription data
-  await subscriptionStore.fetchSubscription();
-  
-  // Fetch credit balance
-  await creditStore.fetchCreditBalance();
-  
-  // Fetch daily stats for chart
-  await subscriptionStore.fetchDailyStats(chartDays.value);
+  // Fetch all data in parallel (independent API calls)
+  await Promise.all([
+    subscriptionStore.fetchSubscription(),
+    creditStore.fetchCreditBalance(),
+    voiceCreditStore.fetchBalance(),
+    subscriptionStore.fetchDailyStats(chartDays.value)
+  ]);
 });
 
 // Reload chart when days change
@@ -121,9 +128,8 @@ const isStarter = computed(() => subscriptionStore.isStarter);
 const isPremium = computed(() => subscriptionStore.isPremium);
 const subscription = computed(() => subscriptionStore.subscription);
 const loading = computed(() => subscriptionStore.loading || creditStore.loading);
+const actionLoading = computed(() => subscriptionStore.actionLoading);
 const config = computed(() => subscriptionStore.config);
-const creditBalance = computed(() => creditStore.balance); // Added credit balance
-
 // Pricing variables for translations
 const pricingVars = computed(() => ({
   monthlyBudget: config.value.premium.monthlyBudgetUsd,
@@ -193,10 +199,10 @@ const experienceUsagePercent = computed(() => {
 const periodEndFormatted = computed(() => {
   const date = subscriptionStore.periodEndDate;
   if (!date) return null;
-  return date.toLocaleDateString('en-US', { 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
+  return date.toLocaleDateString(undefined, {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
   });
 });
 
@@ -214,11 +220,6 @@ const maxDailyAccess = computed(() => {
 function formatChartDate(dateStr: string) {
   const date = new Date(dateStr);
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-}
-
-function formatChartDay(dateStr: string) {
-  const date = new Date(dateStr);
-  return date.toLocaleDateString(undefined, { day: 'numeric' });
 }
 
 // Actions
@@ -282,6 +283,40 @@ async function reactivate() {
       detail: subscriptionStore.error || t('subscription.messages.reactivate_failed'),
       life: 5000
     });
+  }
+}
+
+async function confirmVoiceCreditPurchase() {
+  voicePurchaseLoading.value = true
+  try {
+    const success = await voiceCreditStore.purchaseCredits(selectedVoicePackages.value)
+    if (success) {
+      showVoiceCreditConfirmDialog.value = false
+      toast.add({
+        severity: 'success',
+        summary: t('common.success'),
+        detail: t('subscription.voice_credits_purchase_success'),
+        life: 3000
+      })
+      // Refresh general credit balance since credits were deducted
+      await creditStore.fetchCreditBalance()
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: t('common.error'),
+        detail: voiceCreditStore.error || t('subscription.voice_credits_purchase_error'),
+        life: 5000
+      })
+    }
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: error.message || t('subscription.voice_credits_purchase_error'),
+      life: 5000
+    })
+  } finally {
+    voicePurchaseLoading.value = false
   }
 }
 
@@ -433,11 +468,11 @@ async function openPortal() {
                 <span class="text-slate-700">{{ $t('subscription.features.branding_included') }}</span>
               </li>
             </ul>
-            <Button 
-              :label="$t('subscription.upgrade')" 
+            <Button
+              :label="$t('subscription.upgrade')"
               class="w-full bg-emerald-500 text-white border-0 hover:bg-emerald-600 font-bold"
-              @click="upgradeToPremium('starter')" 
-              :loading="loading"
+              @click="upgradeToPremium('starter')"
+              :loading="actionLoading"
             />
           </div>
           
@@ -490,11 +525,11 @@ async function openPortal() {
                 <span class="text-slate-100">{{ $t('subscription.features.white_label') }}</span>
               </li>
             </ul>
-            <Button 
-              :label="$t('subscription.upgrade_to_premium')" 
+            <Button
+              :label="$t('subscription.upgrade_to_premium')"
               class="w-full bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 border-0 hover:from-amber-500 hover:to-orange-600 font-bold"
               @click="() => upgradeToPremium('premium')"
-              :loading="loading"
+              :loading="actionLoading"
             />
           </div>
           
@@ -540,7 +575,7 @@ async function openPortal() {
                   v-for="day in chartData" 
                   :key="day.date" 
                   class="flex-1 flex flex-col justify-end h-full relative group"
-                  @mouseenter="(e) => showTooltip(day, e)"
+                  @mouseenter="showTooltip(day)"
                   @mouseleave="hideTooltip"
                 >
                   <!-- Bar Container -->
@@ -593,7 +628,7 @@ async function openPortal() {
       <!-- ============ PAID USER VIEW (Starter & Premium) ============ -->
       <div v-else class="space-y-8">
         
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
           <!-- Left Col: Plan & Usage -->
           <div class="space-y-8">
             <!-- Paid Plan Status -->
@@ -622,12 +657,12 @@ async function openPortal() {
               
               <div class="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
                 <template v-if="subscriptionStore.isScheduledForCancellation">
-                  <Button 
-                    :label="$t('subscription.reactivate')" 
-                    icon="pi pi-refresh" 
-                    severity="success" 
-                    @click="reactivate" 
-                    :loading="loading" 
+                  <Button
+                    :label="$t('subscription.reactivate')"
+                    icon="pi pi-refresh"
+                    severity="success"
+                    @click="reactivate"
+                    :loading="actionLoading"
                     class="flex-1 sm:flex-none"
                   />
                 </template>
@@ -692,7 +727,7 @@ async function openPortal() {
                   <div class="bg-amber-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-star text-amber-500 text-xs"></i></div>
                   <div>
                     <div class="text-slate-700 font-medium">{{ isStarter ? $t('subscription.features.branding_included') : $t('subscription.features.white_label') }}</div>
-                    <div class="text-slate-500 text-xs mt-0.5">{{ isStarter ? 'FunTell' : 'ExperienceQR' }}</div>
+                    <div class="text-slate-500 text-xs mt-0.5">FunTell</div>
                   </div>
                 </div>
               </div>
@@ -770,17 +805,42 @@ async function openPortal() {
                   <div>
                     <div class="font-bold text-slate-800">{{ $t('subscription.overage_cta.need_more') }}</div>
                     <div class="text-sm text-slate-500">
-                      {{ $t('subscription.overage_cta.balance') }} <span class="font-bold text-amber-600">{{ creditBalance }} {{ $t('subscription.credits') }}</span>
+                      {{ $t('subscription.overage_cta.balance') }} <span class="font-bold text-amber-600">${{ creditStore.balance.toFixed(2) }} {{ $t('subscription.credits') }}</span>
                       <span class="mx-2 text-slate-300">|</span>
                       {{ $t('subscription.overage_cta.buy_visits', { count: subscriptionStore.overageAccessPerBatch, credits: subscriptionStore.overageCreditsPerBatch }) }}
                     </div>
                   </div>
-                  <Button 
-                    :label="$t('subscription.buy_credits')" 
-                    icon="pi pi-plus" 
-                    severity="warning" 
-                    @click="buyCredits" 
-                    :loading="loading" 
+                  <Button
+                    :label="$t('subscription.buy_credits')"
+                    icon="pi pi-plus"
+                    severity="warning"
+                    @click="buyCredits"
+                    :loading="actionLoading"
+                    size="small"
+                  />
+                </div>
+              </div>
+
+              <!-- Voice Credits -->
+              <div class="mt-6 pt-6 border-t border-slate-100">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
+                      <i class="pi pi-phone text-indigo-600 text-sm"></i>
+                    </div>
+                    <div>
+                      <div class="font-bold text-slate-800">{{ $t('subscription.voice_credits') }}</div>
+                      <div class="text-sm text-slate-500">
+                        <span class="font-bold" :class="voiceCreditStore.hasCredits ? 'text-indigo-600' : 'text-red-500'">{{ voiceCreditStore.balance }}</span>
+                        {{ $t('subscription.voice_credits_remaining') }}
+                      </div>
+                    </div>
+                  </div>
+                  <Button
+                    :label="$t('subscription.buy_voice_credits')"
+                    icon="pi pi-plus"
+                    severity="help"
+                    @click="selectedVoicePackages = 1; showVoiceCreditConfirmDialog = true"
                     size="small"
                   />
                 </div>
@@ -789,7 +849,7 @@ async function openPortal() {
           </div>
           
           <!-- Right Col: Daily Chart -->
-          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 flex flex-col h-full">
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
             <div class="flex items-center justify-between mb-6">
               <div>
                 <h3 class="text-lg font-bold text-slate-800">{{ $t('subscription.traffic.title') }}</h3>
@@ -835,7 +895,7 @@ async function openPortal() {
                 </div>
                 
                 <!-- Chart -->
-                <div class="flex-1 min-h-[300px] relative">
+                <div class="h-[250px] relative">
                   <div v-if="chartData.length" class="absolute inset-0 flex flex-col">
                     <!-- Grid -->
                     <div class="flex-1 relative border-l border-b border-slate-200 ml-8 mb-6">
@@ -854,7 +914,7 @@ async function openPortal() {
                           v-for="day in chartData" 
                           :key="day.date" 
                           class="h-full flex-1 flex items-end justify-center px-[2px] group relative"
-                          @mouseenter="(e) => showTooltip(day, e)"
+                          @mouseenter="showTooltip(day)"
                           @mouseleave="hideTooltip"
                         >
                           <div class="w-full max-w-[24px] bg-slate-100 rounded-t-sm flex flex-col justify-end h-full relative transition-all duration-200 group-hover:bg-slate-200 overflow-hidden">
@@ -899,6 +959,108 @@ async function openPortal() {
       
     </div>
   </div>
+
+  <!-- Voice Credit Purchase Confirmation Dialog -->
+  <CreditConfirmationDialog
+    :visible="showVoiceCreditConfirmDialog"
+    @update:visible="showVoiceCreditConfirmDialog = $event"
+    :creditsToConsume="totalVoiceCost"
+    :currentBalance="creditStore.balance"
+    :loading="voicePurchaseLoading"
+    :confirmLabel="$t('subscription.buy_voice_credits')"
+    :confirmationQuestion="$t('subscription.voice_credits_confirm_question')"
+    @confirm="confirmVoiceCreditPurchase"
+    @cancel="showVoiceCreditConfirmDialog = false"
+  >
+    <template #embedded-content>
+      <!-- Package Card with Quantity Stepper -->
+      <div class="bg-gradient-to-br from-indigo-50 to-slate-50 rounded-xl p-5 border border-indigo-200">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
+            <i class="pi pi-phone text-indigo-600"></i>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-900">{{ $t('subscription.voice_credits') }}</div>
+            <div class="text-xs text-slate-500">{{ $t('subscription.voice_package_info', { size: voiceCreditStore.packageSize, price: voiceCreditStore.packagePriceUsd }) }}</div>
+          </div>
+        </div>
+
+        <!-- Quantity Stepper -->
+        <div class="flex items-center justify-between bg-white rounded-lg p-3 border border-slate-200">
+          <span class="text-sm font-medium text-slate-700">{{ $t('subscription.voice_select_package') }}</span>
+          <div class="flex items-center gap-1">
+            <button
+              @click="selectedVoicePackages = Math.max(1, selectedVoicePackages - 1)"
+              :disabled="selectedVoicePackages <= 1"
+              class="w-8 h-8 rounded-lg flex items-center justify-center text-lg font-bold transition-all"
+              :class="selectedVoicePackages <= 1
+                ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 active:bg-slate-300'"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              :value="selectedVoicePackages"
+              @change="handleVoiceQtyInput($event)"
+              min="1"
+              max="10"
+              class="w-12 h-8 text-center text-lg font-bold text-indigo-700 border-0 bg-transparent focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <button
+              @click="selectedVoicePackages = Math.min(10, selectedVoicePackages + 1)"
+              :disabled="selectedVoicePackages >= 10"
+              class="w-8 h-8 rounded-lg flex items-center justify-center text-lg font-bold transition-all"
+              :class="selectedVoicePackages >= 10
+                ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200 active:bg-indigo-300'"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <!-- Computed Result -->
+        <div class="mt-3 flex items-center justify-between text-sm">
+          <span class="text-slate-600">{{ totalVoiceCredits }} {{ $t('subscription.voice_credits_balance') }}</span>
+          <span class="text-lg font-bold text-indigo-700">${{ totalVoiceCost.toFixed(2) }}</span>
+        </div>
+      </div>
+
+      <!-- Balance Impact -->
+      <div class="rounded-xl border border-slate-200 overflow-hidden">
+        <div class="flex">
+          <div class="flex-1 p-3 text-center border-r border-slate-200">
+            <div class="text-xs text-slate-500 mb-1">{{ $t('batches.current_balance') }}</div>
+            <div class="text-base font-bold text-slate-900">${{ creditStore.balance.toFixed(2) }}</div>
+          </div>
+          <div class="flex-none px-3 flex items-center text-slate-400">
+            <i class="pi pi-arrow-right text-xs"></i>
+          </div>
+          <div class="flex-1 p-3 text-center">
+            <div class="text-xs text-slate-500 mb-1">{{ $t('batches.after_consumption') }}</div>
+            <div class="text-base font-bold" :class="creditStore.balance - totalVoiceCost < 0 ? 'text-red-600' : creditStore.balance - totalVoiceCost < 20 ? 'text-orange-600' : 'text-green-600'">
+              ${{ (creditStore.balance - totalVoiceCost).toFixed(2) }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Insufficient / Low Balance Warning -->
+      <div v-if="creditStore.balance - totalVoiceCost < 0" class="bg-red-50 border border-red-300 rounded-lg p-3">
+        <div class="flex items-center gap-2">
+          <i class="pi pi-exclamation-circle text-red-600"></i>
+          <span class="text-sm text-red-800">{{ $t('subscription.voice_insufficient_balance') }}</span>
+        </div>
+      </div>
+      <div v-else-if="creditStore.balance - totalVoiceCost < 20" class="bg-yellow-50 border border-yellow-300 rounded-lg p-3">
+        <div class="flex items-center gap-2">
+          <i class="pi pi-info-circle text-yellow-600"></i>
+          <span class="text-sm text-yellow-800">{{ $t('batches.low_balance_warning') }}</span>
+        </div>
+      </div>
+    </template>
+  </CreditConfirmationDialog>
 </template>
 
 <style scoped>

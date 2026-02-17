@@ -59,7 +59,6 @@
     "optional": "Optional",
     "use": "ใช้"
   },
-  
   "auth": {
     "sign_in": "Sign In",
     "sign_up": "Sign Up",
@@ -98,7 +97,6 @@
     "cms_account_subtitle": "Sign in to your FunTell CMS account",
     "join_funtell": "Join FunTell CMS to start creating digital cards"
   },
-
   "dashboard": {
     "dashboard": "Dashboard",
     "my_cards": "My Cards",
@@ -108,7 +106,6 @@
     "general": "General",
     "content": "Content",
     "qr_access": "QR & Access",
-    "issuance": "Issuance",
     "mobile_preview": "Mobile Preview",
     "card_name": "Card Name",
     "card_description": "Card Description",
@@ -131,7 +128,6 @@
     "get_started_creating": "Get started by creating your first card",
     "select_card_to_view": "Select a card to view details"
   },
-
   "content": {
     "content_management": "Content Management",
     "content_items": "Content Items",
@@ -149,52 +145,26 @@
     "drag_to_reorder": "Drag to reorder",
     "reorder_tip": "Drag items to rearrange their display order"
   },
-
-  "batches": {
-    "card_batches": "Card Batches",
-    "issue_batch": "Issue Batch",
-    "batch_name": "Batch Name",
-    "quantity": "Quantity",
-    "payment_status": "Payment Status",
-    "batch_status": "Batch Status",
-    "payment_completed": "Payment Completed",
-    "payment_pending": "Payment Pending",
-    "admin_issued": "Admin Issued",
-    "cards_issued": "Cards Issued",
-    "view_cards": "View Cards",
-    "request_print": "Request Print",
-    "view_details": "View Details",
-    "no_batches_yet": "No batches issued yet",
-    "issue_first_batch": "Issue your first batch of cards"
-  },
-
   "admin": {
     "admin_dashboard": "Admin Dashboard",
     "user_management": "User Management",
-    "print_requests": "Print Requests",
     "operations_log": "Operations Log",
     "user_cards": "User Cards",
     "system_stats": "System Statistics",
     "total_users": "Total Users",
     "total_cards": "Total Cards",
-    "total_batches": "Total Batches",
-    "pending_print_requests": "Pending Print Requests",
     "search_by_email": "Search by email...",
     "user_email": "User Email",
     "user_role": "User Role",
     "change_role": "Change Role",
-    "issue_free_batch": "Issue Free Batch",
-    "print_status": "Print Status",
     "update_status": "Update Status",
     "operation_type": "Operation Type",
     "operation_user": "User",
     "operation_time": "Time",
     "operation_description": "Description",
     "no_users_found": "No users found",
-    "no_print_requests": "No print requests",
     "no_operations_logged": "No operations logged"
   },
-
   "mobile": {
     "scan_qr": "Scan QR Code",
     "card_overview": "Card Overview",
@@ -215,7 +185,6 @@
     "connected": "Connected",
     "disconnected": "Disconnected"
   },
-
   "validation": {
     "required_field": "This field is required",
     "invalid_email": "Invalid email address",
@@ -226,7 +195,6 @@
     "invalid_file_type": "Invalid file type",
     "max_words_exceeded": "Maximum {max} words allowed"
   },
-
   "messages": {
     "save_success": "Saved successfully",
     "delete_success": "Deleted successfully",
@@ -238,7 +206,6 @@
     "loading_data": "Loading data...",
     "network_error": "Network error. Please try again."
   },
-
   "landing": {
     "nav": {
       "about": "เกี่ยวกับ",
@@ -258,9 +225,9 @@
       "title_line1": "เปลี่ยนทุกสถานที่เป็น",
       "title_line2": "ไกด์",
       "title_line3": "แบบโต้ตอบด้วย AI",
-      "subtitle_part1": "แพลตฟอร์มประสบการณ์ดิจิทัลขับเคลื่อนด้วย AI พร้อม",
-      "subtitle_highlight": "การสนทนาด้วยเสียง",
-      "subtitle_part2": "— ทันที ไม่ต้องดาวน์โหลดแอป เหมาะสำหรับพิพิธภัณฑ์ ร้านอาหาร ห้างสรรพสินค้า และทุกสถานที่",
+      "subtitle_part1": "นำเข้าเอกสาร แล้ว AI จะสร้างประสบการณ์แบบโต้ตอบให้คุณ —",
+      "subtitle_highlight": "การสนทนาหลายภาษา",
+      "subtitle_part2": " รวมอยู่ด้วย แชร์ผ่านลิงก์ QR Code หรือฝังตัว เหมาะสำหรับผลิตภัณฑ์ สถานที่ การศึกษา และเนื้อหาทุกประเภท",
       "cta_pilot": "ติดต่อเพื่อทดลองใช้",
       "cta_learn": "ดูการสาธิต",
       "cta_demo": "ดูการสาธิต",
@@ -281,15 +248,7 @@
       "project_features": "คุณสมบัติหลัก",
       "experience_features": "คุณสมบัติหลัก",
       "mode_toggle": {
-        "physical_card": "การ์ดจริง",
         "digital_access": "การเข้าถึงดิจิทัล"
-      },
-      "physical_card": {
-        "title": "การ์ดจริง",
-        "desc": "ของที่ระลึกสะสมพิมพ์พร้อม QR Code",
-        "hint": "ผู้เยี่ยมชมจะเห็นรูปการ์ดก่อน แล้วจึงสำรวจเนื้อหา",
-        "caption": "ตัวอย่างการ์ดจริงพิมพ์พร้อม QR Code",
-        "full_desc": "การ์ดจริงเป็นของที่ระลึกสะสมพร้อม QR Code ฝัง ผู้เยี่ยมชมสแกนเพื่อดูหน้าภาพรวมการ์ดก่อน (แสดงรูปและคำอธิบาย) แล้วจึงสำรวจเนื้อหาแบบโต้ตอบ เหมาะสำหรับพิพิธภัณฑ์ อีเวนต์ และสถานที่ที่ต้องการมอบของที่ระลึกพรีเมียม"
       },
       "digital_access": {
         "title": "การเข้าถึงดิจิทัล",
@@ -339,7 +298,8 @@
       "scroll_to_explore": "เลื่อนเพื่อสำรวจ",
       "no_templates": "ไม่พบเทมเพลต",
       "live_badge": "สด",
-      "open_button": "เปิด"
+      "open_button": "เปิด",
+      "featured_badge": "แนะนำ"
     },
     "content_modes": {
       "title": "เลย์เอาต์",
@@ -378,8 +338,8 @@
         "ai_item": "ไกด์เฉพาะทางสำหรับรายการเด่นที่เลือก"
       },
       "best_for": "เหมาะสำหรับ",
-      "easy_setup": "ตั้งค่าง่าย",
-      "setup_desc": "กำหนดค่าในวินาทีจากแดชบอร์ด CMS ไม่ต้องเขียนโค้ด",
+      "easy_setup": "ตั้งค่าด้วย AI",
+      "setup_desc": "นำเข้าเอกสารแล้ว AI ตั้งค่าทุกอย่างอัตโนมัติ — หรือใช้แดชบอร์ดตั้งค่าเอง",
       "mobile_optimized": "ปรับแต่งสำหรับมือถือ",
       "mobile_desc": "ดีไซน์ตอบสนองที่ดูสมบูรณ์แบบบนทุกอุปกรณ์",
       "grouping_option": "การจัดกลุ่มเสริม",
@@ -394,10 +354,10 @@
     "how_it_works": {
       "title": "กระบวนการง่ายๆ",
       "title_highlight": "สามขั้นตอน",
-      "subtitle": "เปิดตัวประสบการณ์ดิจิทัล AI ของคุณในไม่กี่นาที—ไม่ต้องมีทักษะเทคนิค",
+      "subtitle": "เปิดตัวประสบการณ์เนื้อหา AI ของคุณในไม่กี่นาที — แค่ส่งเอกสารให้ AI แล้ว AI จะจัดการส่วนที่เหลือ",
       "steps": {
-        "create_title": "สร้าง",
-        "create_desc": "สร้างโปรเจกต์และเพิ่มเนื้อหาผ่านแดชบอร์ดที่ใช้งานง่าย",
+        "create_title": "สร้างด้วย AI",
+        "create_desc": "ส่งเอกสารให้ตัวแทน AI แล้วมันจะสร้างโปรเจกต์ให้อัตโนมัติ — เนื้อหา หมวดหมู่ และผู้ช่วย AI รวมอยู่ด้วย",
         "share_title": "แชร์",
         "share_desc": "แสดง QR Code บนป้าย เมนู หรือสื่อการตลาด",
         "engage_title": "มีส่วนร่วม",
@@ -414,8 +374,8 @@
         "ai_guide_desc": "สนทนาแบบเรียลไทม์พร้อมความเข้าใจบริบทและคำถามติดตาม",
         "no_app_title": "ไม่ต้องใช้แอป",
         "no_app_desc": "เข้าถึงทันทีผ่านกล้องสมาร์ทโฟนใดก็ได้ ไม่ต้องดาวน์โหลด ไม่มีอุปสรรค",
-        "portal_config_title": "จัดการเนื้อหาง่าย",
-        "portal_config_desc": "กำหนดค่าและอัปเดตเนื้อหาผ่านพอร์ทัลเว็บที่ใช้งานง่ายได้ทุกเมื่อ",
+        "portal_config_title": "ตั้งค่าด้วย AI",
+        "portal_config_desc": "นำเข้าเอกสารหรืออธิบายโปรเจกต์ — AI สร้างทุกอย่างให้คุณในไม่กี่วินาที",
         "multilingual_title": "รองรับหลายภาษา",
         "multilingual_desc": "เนื้อหาและการสนทนาใน 10+ ภาษาจากการอัปโหลดครั้งเดียว",
         "no_hardware_title": "ไม่ต้องมีฮาร์ดแวร์",
@@ -489,23 +449,10 @@
         "auto_topup_title": "เติมอัตโนมัติ",
         "auto_topup_desc": "เมื่อเครดิตหมด จะเรียกเก็บ US$${topupCost} อัตโนมัติสำหรับเซสชันเพิ่มเติม"
       },
-      "physical_cards": {
-        "title": "การ์ดจริง",
-        "subtitle": "ส่วนเสริมเลือกได้",
-        "price": "US$ 2",
-        "per": "ต่อการ์ด",
-        "desc": "การ์ดที่ระลึกสะสมสำหรับผู้เยี่ยมชม",
-        "features": [
-          "การ์ดพิมพ์พรีเมียม",
-          "สแกนไม่จำกัดต่อการ์ด",
-          "สั่งเป็นชุด (ขั้นต่ำ 100)",
-          "เหมาะสำหรับพิพิธภัณฑ์และอีเวนต์"
-        ],
-        "cta": "เรียนรู้เพิ่มเติม"
-      },
       "included_title": "รวมในทุกแผน",
       "features": {
         "ai_voice": "การสนทนาเสียง AI",
+        "ai_setup": "การตั้งค่าโปรเจกต์ด้วย AI",
         "qr_access": "เข้าถึง QR ทันที",
         "design_dashboard": "แดชบอร์ดออกแบบ",
         "content_management": "จัดการเนื้อหา",
@@ -521,9 +468,9 @@
       "title": "คำถาม",
       "title_highlight": "ที่พบบ่อย",
       "q1": "FunTell คืออะไร?",
-      "a1": "FunTell เป็นแพลตฟอร์มประสบการณ์ดิจิทัลขับเคลื่อนด้วย AI ที่เปลี่ยนทุกสถานที่เป็นไกด์แบบโต้ตอบ ผู้เยี่ยมชมสแกน QR Code เพื่อเข้าถึงเนื้อหาหลายภาษาและผู้ช่วย AI สนทนา—ไม่ต้องใช้แอป การ์ดจริงมีให้เป็นของที่ระลึกสะสมเสริม",
+      "a1": "FunTell เป็นแพลตฟอร์มประสบการณ์เนื้อหาขับเคลื่อนด้วย AI ที่เปลี่ยนเอกสารใดก็ได้เป็นประสบการณ์แบบโต้ตอบหลายภาษาพร้อม AI สนทนาในตัว นำเข้า PDF หรืออธิบายโปรเจกต์ — AI สร้างทุกอย่างอัตโนมัติ แชร์ผ่านลิงก์ QR Code หรือฝังตัว ไม่ต้องใช้แอป",
       "q2": "ทำงานอย่างไร?",
-      "a2": "1) วาง QR Code ในสถานที่ (หรือใช้การ์ดจริง)\n2) ผู้เยี่ยมชมสแกนด้วยสมาร์ทโฟน\n3) เข้าถึงผู้ช่วย AI และเนื้อหาดิจิทัลทันที\n4) เสริม: การ์ดกลายเป็นของที่ระลึกสะสม",
+      "a2": "1) นำเข้าเอกสารหรืออธิบายโปรเจกต์ให้ตัวแทน AI — สร้างทุกอย่างอัตโนมัติ\n2) แชร์ผ่านลิงก์ QR Code หรือฝังตัว\n3) ผู้เยี่ยมชมเข้าถึงเนื้อหาหลายภาษาขับเคลื่อนด้วย AI ทันทีบนทุกอุปกรณ์",
       "q3": "ผู้เยี่ยมชมต้องดาวน์โหลดแอปไหม?",
       "a3": "ไม่ FunTell ทำงานผ่านเบราว์เซอร์สมาร์ทโฟนใดก็ได้ แค่สแกน QR Code—ไม่ต้องดาวน์โหลดหรือติดตั้ง",
       "q4": "รองรับภาษาอะไรบ้าง?",
@@ -531,7 +478,7 @@
       "q5": "รวมอะไรบ้างในราคา?",
       "a5": "สามระดับ: ฟรี ({freeExperiences} โปรเจกต์, {freeSessions} เซสชัน), สตาร์ทเตอร์ ({starterBudget}/เดือน, {starterAiSessions} เซสชัน AI, สูงสุด 2 ภาษา), พรีเมียม ({monthlyBudget}/เดือน, {aiSessions} เซสชัน AI, ภาษาไม่จำกัด, white label) แผนเสียเงินรวมเติมอัตโนมัติเมื่อเครดิตหมด ทุกแผนรวมเสียง AI, แดชบอร์ด, QR Code และโฮสติ้ง",
       "q6": "เริ่มได้เร็วแค่ไหน?",
-      "a6": "โปรเจกต์ QR ดิจิทัลเปิดตัวได้ในไม่กี่นาที สมัคร สร้างโปรเจกต์ และแชร์ QR Code ทันที การ์ดจริงใช้เวลา 2-3 สัปดาห์สำหรับพิมพ์และจัดส่ง",
+      "a6": "โปรเจกต์เปิดตัวได้ในไม่กี่นาที เชื่อมต่อเครื่องมือ AI เช่น Claude Code นำเข้าเอกสาร แล้ว AI จะสร้างโปรเจกต์ทั้งหมดอัตโนมัติ — เนื้อหา หมวดหมู่ ผู้ช่วย AI และ QR Code",
       "q7": "ปรับแต่งเนื้อหาและ AI ได้ไหม?",
       "a7": "ได้ ปรับแต่งเต็มที่ผ่านแดชบอร์ดบริการตัวเอง จัดการเนื้อหา กำหนดค่าพฤติกรรมผู้ช่วย AI ตั้งข้อความต้อนรับ และอัปเดตได้ทุกเมื่อ",
       "q8": "กำหนดการผลิตการ์ดเป็นอย่างไร?",
@@ -554,9 +501,9 @@
       "copyright": "© 2025 FunTell. สงวนลิขสิทธิ์",
       "privacy": "นโยบายความเป็นส่วนตัว",
       "terms": "เงื่อนไขการให้บริการ",
-      "contact_link": "ติดต่อ"
+      "contact_link": "ติดต่อ",
+      "ai_setup_guide": "คู่มือตั้งค่าด้วย AI"
     },
     "floating_cta": "เริ่มต้นใช้งาน"
   }
 }
-

@@ -150,42 +150,9 @@
         </div>
         
         <div class="max-w-5xl mx-auto">
-          <!-- Demo Mode Toggle - Only show when physical cards enabled -->
-          <div v-if="isPhysicalCardsEnabled" class="flex justify-center mt-12 mb-4">
-            <div class="bg-white/10 backdrop-blur-sm rounded-2xl p-1.5 inline-flex gap-1">
-              <button
-                @click="demoMode = 'digital'"
-                :class="[
-                  'flex items-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-300',
-                  demoMode === 'digital'
-                    ? 'bg-gradient-to-r from-emerald-600 to-cyan-600 text-white shadow-lg'
-                    : 'text-white/70 hover:text-white hover:bg-white/10'
-                ]"
-              >
-                <i class="pi pi-qrcode"></i>
-                <span>{{ $t('landing.demo.mode_toggle.digital_access') }}</span>
-              </button>
-              <button
-                @click="demoMode = 'physical'"
-                :class="[
-                  'flex items-center gap-2 px-5 py-3 rounded-xl font-semibold transition-all duration-300',
-                  demoMode === 'physical'
-                    ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg'
-                    : 'text-white/70 hover:text-white hover:bg-white/10'
-                ]"
-              >
-                <i class="pi pi-id-card"></i>
-                <span>{{ $t('landing.demo.mode_toggle.physical_card') }}</span>
-              </button>
-            </div>
-          </div>
-          
           <!-- Access Mode Description -->
           <div class="text-center mb-8 max-w-2xl mx-auto">
-            <p v-if="demoMode === 'physical'" class="text-blue-100/80 text-sm sm:text-base">
-              {{ $t('landing.demo.physical_card.full_desc') }}
-            </p>
-            <p v-else class="text-emerald-100/80 text-sm sm:text-base">
+            <p class="text-emerald-100/80 text-sm sm:text-base">
               {{ $t('landing.demo.digital_access.full_desc') }}
             </p>
           </div>
@@ -195,49 +162,10 @@
             <!-- Left Column: Demo Card (2/5 width) -->
             <div class="md:col-span-2 relative w-full animate-on-scroll">
               <!-- Ambient glow -->
-              <div :class="[
-                'absolute inset-0 rounded-3xl blur-3xl opacity-50 transition-all duration-500',
-                demoMode === 'physical' ? 'bg-gradient-to-r from-blue-600 to-purple-600' : 'bg-gradient-to-r from-emerald-600 to-cyan-600'
-              ]"></div>
-              
-              <!-- Physical Card Demo -->
-              <div v-if="demoMode === 'physical'" class="relative bg-white rounded-3xl p-4 shadow-2xl hover:shadow-[0_20px_60px_rgba(59,130,246,0.3)] transition-all duration-500">
-                <div :style="{ aspectRatio: cardAspectRatio }" class="bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 rounded-2xl overflow-hidden relative group">
-                  <img 
-                    :src="demoCardImageUrl" 
-                    :alt="$t('landing.demo.card_title')"
-                    class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                  />
-                  <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
-                  
-                  <div class="absolute bottom-4 left-4 right-4 text-white">
-                    <h3 class="text-2xl font-bold mb-2">{{ demoCardTitle }}</h3>
-                    <p class="text-sm opacity-90 whitespace-pre-line">{{ demoCardSubtitle }}</p>
-                  </div>
-                  
-                  <!-- Functional QR Code -->
-                  <div class="absolute top-4 right-4">
-                    <div class="relative group/qr">
-                      <div class="absolute inset-0 bg-white/60 rounded-lg blur-md"></div>
-                      <div class="relative bg-white rounded-lg p-1.5 shadow-lg ring-1 ring-white/20 transition-all duration-300 group-hover/qr:scale-105 group-hover/qr:shadow-xl">
-                        <QrCode 
-                          :value="sampleQrUrl" 
-                          :size="56"
-                          level="M"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <!-- Physical Card Info Caption -->
-                <div class="mt-4 text-center">
-                  <p class="text-sm text-slate-500 italic">{{ $t('landing.demo.physical_card.caption') }}</p>
-                </div>
-              </div>
+              <div class="absolute inset-0 rounded-3xl blur-3xl opacity-50 transition-all duration-500 bg-gradient-to-r from-emerald-600 to-cyan-600"></div>
 
               <!-- Digital Access Demo -->
-              <div v-else class="relative bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-6 shadow-2xl hover:shadow-[0_20px_60px_rgba(16,185,129,0.3)] transition-all duration-500 border border-emerald-500/20">
+              <div class="relative bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-6 shadow-2xl hover:shadow-[0_20px_60px_rgba(16,185,129,0.3)] transition-all duration-500 border border-emerald-500/20">
                 <div class="text-center">
                   <!-- Title -->
                   <div class="mb-6">
@@ -269,27 +197,17 @@
             <div class="md:col-span-3 space-y-8 animate-on-scroll" style="animation-delay: 200ms">
               <!-- Visual Guide - Desktop Only -->
               <div class="hidden lg:block">
-                <div :class="[
-                  'backdrop-blur-sm border rounded-2xl p-6 transition-all duration-300',
-                  demoMode === 'physical' 
-                    ? 'bg-white/5 border-white/10' 
-                    : 'bg-emerald-500/5 border-emerald-500/20'
-                ]">
+                <div class="backdrop-blur-sm border rounded-2xl p-6 transition-all duration-300 bg-emerald-500/5 border-emerald-500/20">
                   <div class="flex items-start gap-4">
-                    <div :class="[
-                      'flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300',
-                      demoMode === 'physical'
-                        ? 'bg-gradient-to-br from-blue-500 to-purple-600'
-                        : 'bg-gradient-to-br from-emerald-500 to-cyan-600'
-                    ]">
-                      <i :class="['pi text-white text-xl', demoMode === 'physical' ? 'pi-id-card' : 'pi-qrcode']"></i>
+                    <div class="flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transition-all duration-300 bg-gradient-to-br from-emerald-500 to-cyan-600">
+                      <i class="pi pi-qrcode text-white text-xl"></i>
                     </div>
                     <div>
                       <h4 class="text-lg font-bold text-white mb-1">
-                        {{ demoMode === 'physical' ? $t('landing.demo.physical_card.title') : $t('landing.demo.digital_access.title') }}
+                        {{ $t('landing.demo.digital_access.title') }}
                       </h4>
                       <p class="text-sm text-white/70">
-                        {{ demoMode === 'physical' ? $t('landing.demo.physical_card.desc') : $t('landing.demo.digital_access.desc') }}
+                        {{ $t('landing.demo.digital_access.desc') }}
                       </p>
                     </div>
                   </div>
@@ -299,16 +217,8 @@
               <h3 class="text-3xl font-bold text-white">{{ $t('landing.demo.experience_features') }}</h3>
               
               <div v-for="(feature, index) in demoFeatures" :key="index" class="flex gap-4">
-                <div :class="[
-                  'w-12 h-12 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300',
-                  demoMode === 'physical'
-                    ? 'bg-gradient-to-br from-blue-600/20 to-purple-600/20'
-                    : 'bg-gradient-to-br from-emerald-600/20 to-cyan-600/20'
-                ]">
-                  <i :class="[
-                    `pi ${feature.icon} text-xl`,
-                    demoMode === 'physical' ? 'text-blue-400' : 'text-emerald-400'
-                  ]"></i>
+                <div class="w-12 h-12 backdrop-blur-sm rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-300 bg-gradient-to-br from-emerald-600/20 to-cyan-600/20">
+                  <i :class="`pi ${feature.icon} text-xl text-emerald-400`"></i>
                 </div>
                 <div>
                   <h4 class="text-lg font-semibold text-white mb-1">{{ feature.title }}</h4>
@@ -462,12 +372,18 @@
                       <i :class="getVenueIcon(template.venue_type)" class="text-sm sm:text-base"></i>
                     </div>
                     <div class="min-w-0 flex-1">
-                      <h4 
-                        class="font-semibold text-sm sm:text-base truncate transition-colors"
-                        :class="selectedTemplate?.id === template.id ? 'text-blue-900' : 'text-slate-800 group-hover:text-slate-900'"
-                      >
-                        {{ template.name }}
-                      </h4>
+                      <div class="flex items-center gap-1.5">
+                        <h4
+                          class="font-semibold text-sm sm:text-base truncate transition-colors"
+                          :class="selectedTemplate?.id === template.id ? 'text-blue-900' : 'text-slate-800 group-hover:text-slate-900'"
+                        >
+                          {{ template.name }}
+                        </h4>
+                        <span v-if="template.is_featured" class="flex-shrink-0 inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-amber-100 text-amber-700 text-[9px] font-semibold rounded">
+                          <i class="pi pi-star-fill text-[8px]"></i>
+                          {{ $t('landing.demo_templates.featured_badge') }}
+                        </span>
+                      </div>
                       <p class="text-[10px] sm:text-xs text-slate-500 truncate mt-0.5">{{ formatVenueType(template.venue_type) }}</p>
                     </div>
                     <div 
@@ -1067,34 +983,6 @@
           </div>
         </div>
 
-        <!-- Physical Cards Add-on - Only show when physical cards enabled -->
-        <div v-if="isPhysicalCardsEnabled" class="bg-gradient-to-br from-amber-500/10 to-orange-500/10 backdrop-blur-xl rounded-3xl border border-amber-400/30 p-6 sm:p-8 mb-8 max-w-4xl mx-auto">
-          <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6">
-            <div class="flex items-center gap-4">
-              <div class="w-14 h-14 bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center shadow-lg">
-                <i class="pi pi-id-card text-white text-2xl"></i>
-              </div>
-              <div>
-                <div class="flex items-center gap-2">
-                  <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.physical_cards.title') }}</h3>
-                  <span class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full">{{ $t('landing.pricing.physical_cards.subtitle') }}</span>
-                </div>
-                <p class="text-amber-200 text-sm mt-1">{{ $t('landing.pricing.physical_cards.desc') }}</p>
-              </div>
-            </div>
-            <div class="flex items-baseline gap-2 sm:ml-auto">
-              <span class="text-4xl font-black text-white">{{ $t('landing.pricing.physical_cards.price') }}</span>
-              <span class="text-lg text-amber-200">{{ $t('landing.pricing.physical_cards.per') }}</span>
-            </div>
-          </div>
-          <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-6">
-            <div v-for="(feature, idx) in physicalCardFeatures" :key="idx" class="flex items-center gap-2 text-amber-100 text-sm">
-              <i class="pi pi-check text-amber-400 text-xs"></i>
-              <span>{{ feature }}</span>
-            </div>
-          </div>
-        </div>
-
         <!-- Everything Included Section -->
         <div class="bg-white/5 backdrop-blur-xl rounded-3xl border border-white/10 p-6 sm:p-8 mb-8 max-w-4xl mx-auto">
           <h3 class="text-2xl font-bold text-white mb-6 text-center">{{ $t('landing.pricing.included_title') }}</h3>
@@ -1178,6 +1066,7 @@
               <li><a @click="scrollToSection('features')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.features') }}</a></li>
               <li><a @click="scrollToSection('demo-templates')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.demo') }}</a></li>
               <li><a @click="scrollToSection('pricing')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.pricing') }}</a></li>
+              <li><router-link :to="`/${locale}/docs?category=automation&article=mcp_setup`" class="text-slate-400 hover:text-white transition-colors">{{ $t('landing.footer.ai_setup_guide') }}</router-link></li>
             </ul>
           </div>
 
@@ -1239,18 +1128,14 @@ import { supabase } from '@/lib/supabase'
 import { SubscriptionConfig } from '@/config/subscription'
 import Button from 'primevue/button'
 import QrCode from 'qrcode.vue'
-import { getCardAspectRatio } from '@/utils/cardConfig'
 import UnifiedHeader from '@/components/Layout/UnifiedHeader.vue'
 import PhoneIframePreview from '@/components/common/PhoneIframePreview.vue'
 import HeroAnimation from '@/components/Landing/HeroAnimation.vue'
 import LogoAnimation from '@/components/Landing/LogoAnimation.vue'
-import { usePhysicalCards } from '@/composables/usePhysicalCards'
-
 const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 const { updateSEO } = useSEO()
-const { isPhysicalCardsEnabled } = usePhysicalCards()
 
 // Navigation state
 const showFloatingCta = ref(false)
@@ -1321,15 +1206,6 @@ const retryIframeLoad = () => {
   }
 }
 
-// Demo mode toggle (physical card vs digital access) - defaults to digital
-const demoMode = ref('digital')
-
-// Physical Card Demo configuration (illustrative only)
-const demoCardTitle = import.meta.env.VITE_DEMO_CARD_TITLE || 'Museum'
-const demoCardSubtitle = import.meta.env.VITE_DEMO_CARD_SUBTITLE || 'Scan to explore the exhibits\nActivate your interactive AI guide\nAvailable in multiple languages'
-const demoCardImageUrl = import.meta.env.VITE_DEFAULT_CARD_IMAGE_URL || '/Image/DemoCard.jpg'
-const cardAspectRatio = computed(() => getCardAspectRatio())
-
 // Digital Access Demo configuration (illustrative only)
 const digitalAccessDemoTitle = import.meta.env.VITE_DIGITAL_ACCESS_DEMO_TITLE || 'Digital Menu'
 const digitalAccessDemoSubtitle = import.meta.env.VITE_DIGITAL_ACCESS_DEMO_SUBTITLE || 'Scan for instant access'
@@ -1355,8 +1231,6 @@ const sampleQrUrl = computed(() => {
 const contactEmail = import.meta.env.VITE_CONTACT_EMAIL || 'inquiry@funtell.ai'
 const contactWhatsApp = import.meta.env.VITE_CONTACT_WHATSAPP_URL || 'https://wa.me/85255992159'
 const contactWhatsAppDisplay = import.meta.env.VITE_CONTACT_PHONE || '+852 5599 2159'
-const minBatchQuantity = import.meta.env.VITE_BATCH_MIN_QUANTITY || 100
-
 // FAQ functionality
 const openFaqIndex = ref(-1)
 const toggleFaq = (index) => {
@@ -1550,7 +1424,7 @@ const fetchDemoTemplates = async () => {
     }
     
     if (data?.length === 0) {
-      console.warn('[LandingPage] No demo templates found. Check that templates have is_featured=true, is_active=true, and linked cards have at least one enabled QR code (access token) in card_access_tokens.')
+      console.warn('[LandingPage] No demo templates found. Check that templates have is_active=true and linked cards have at least one enabled QR code (access token) in card_access_tokens.')
     }
     
     demoTemplates.value = data || []
@@ -1630,7 +1504,7 @@ const demoFeatures = computed(() => [
 
 const howItWorksSteps = computed(() => [
   {
-    icon: 'pi-pencil',
+    icon: 'pi-file-import',
     title: t('landing.how_it_works.steps.create_title'),
     description: t('landing.how_it_works.steps.create_desc')
   },
@@ -1658,7 +1532,7 @@ const keyFeatures = computed(() => [
     description: t('landing.features.features.ai_guide_desc')
   },
   {
-    icon: 'pi-cog',
+    icon: 'pi-bolt',
     title: t('landing.features.features.portal_config_title'),
     description: t('landing.features.features.portal_config_desc')
   },
@@ -1671,8 +1545,8 @@ const keyFeatures = computed(() => [
 
 const pricingFeatures = computed(() => [
   t('landing.pricing.features.ai_voice'),
+  t('landing.pricing.features.ai_setup'),
   t('landing.pricing.features.qr_access'),
-  t('landing.pricing.features.design_dashboard'),
   t('landing.pricing.features.content_management'),
   t('landing.pricing.features.analytics'),
   t('landing.pricing.features.qr_generation'),
@@ -1758,11 +1632,6 @@ const premiumTierFeatures = computed(() => {
   return Array.isArray(features) ? features.map(interpolateFeature) : []
 })
 
-const physicalCardFeatures = computed(() => {
-  const features = tm('landing.pricing.physical_cards.features')
-  return Array.isArray(features) ? features.map(interpolateFeature) : []
-})
-
 const faqs = computed(() => [
   {
     question: t('landing.faq.q1'),
@@ -1809,8 +1678,7 @@ const faqs = computed(() => [
   },
   {
     question: t('landing.faq.q9'),
-    answer: t('landing.faq.a9', { 
-      min: minBatchQuantity,
+    answer: t('landing.faq.a9', {
       freeSessions: SubscriptionConfig.free.monthlySessionLimit,
       monthlyBudget: SubscriptionConfig.premium.monthlyBudgetUsd,
       aiCost: SubscriptionConfig.premium.aiEnabledSessionCostUsd,

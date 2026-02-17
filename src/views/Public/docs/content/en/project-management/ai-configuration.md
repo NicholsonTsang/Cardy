@@ -1,6 +1,6 @@
 ## AI Assistant Configuration
 
-ExperienceQR features a powerful dual AI assistant system that allows your audience to have natural conversations at both the project level and individual content item level.
+FunTell features a powerful dual AI assistant system that allows your audience to have natural conversations at both the project level and individual content item level.
 
 ## Dual AI Assistant System
 

@@ -15,6 +15,7 @@
       :input-mode="inputMode"
       :content-item-name="contentItemName"
       :assistant-mode="'content-item'"
+      :show-voice-toggle="isVoiceEnabled"
       @close="closeModal"
       @toggle-mode="toggleConversationMode"
     >
@@ -54,12 +55,22 @@
         @connect="connectRealtime"
         @disconnect="disconnectRealtime"
       />
+
+      <!-- Hard Timer Countdown Overlay -->
+      <div
+        v-if="hardTimer.showCountdown.value && realtimeConnection.isConnected.value"
+        class="hard-timer-overlay"
+        :class="{ 'timer-critical': hardTimer.isCritical.value }"
+      >
+        <i class="pi pi-clock" />
+        <span>{{ hardTimer.formattedTime.value }}</span>
+      </div>
     </AIAssistantModal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, onMounted, nextTick, onUnmounted, inject } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, inject } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AIAssistantModal from './components/AIAssistantModal.vue'
 import ChatInterface from './components/ChatInterface.vue'
@@ -69,6 +80,7 @@ import { useChatCompletion } from './composables/useChatCompletion'
 import { useVoiceRecording } from './composables/useVoiceRecording'
 import { useCostSafeguards } from './composables/useCostSafeguards'
 import { useInactivityTimer } from './composables/useInactivityTimer'
+import { useHardTimer } from './composables/useHardTimer'
 import { useMobileLanguageStore } from '@/stores/language'
 import { buildContentItemPrompt } from './utils/promptBuilder'
 import type { Message, ConversationMode, CardData } from './types'
@@ -292,6 +304,12 @@ const realtimeStatusText = computed(() => {
 })
 
 // ============================================================================
+// VOICE BILLING - Check if realtime voice is enabled for this project
+// ============================================================================
+
+const isVoiceEnabled = computed(() => props.cardData.realtime_voice_enabled === true)
+
+// ============================================================================
 // COST SAFEGUARDS & INACTIVITY TIMER
 // ============================================================================
 
@@ -300,6 +318,16 @@ const inactivityTimer = useInactivityTimer(300000, () => {
     disconnectRealtime()
   }
 })
+
+// Hard timer for voice call time limit
+const hardTimer = useHardTimer(
+  parseInt(import.meta.env.VITE_VOICE_CALL_HARD_LIMIT_SECONDS || '180'),
+  () => {
+    if (realtimeConnection.isConnected.value) {
+      disconnectRealtime()
+    }
+  }
+)
 
 useCostSafeguards(
   realtimeConnection.isConnected,
@@ -345,16 +373,20 @@ function closeModal() {
 
 function toggleConversationMode() {
   if (conversationMode.value === 'chat-completion') {
+    // Check if voice is enabled for this project
+    if (!isVoiceEnabled.value) {
+      connectionError.value = t('mobile.voice_not_enabled', 'Voice conversation is not available for this experience.')
+      return
+    }
     conversationMode.value = 'realtime'
-    messages.value = [] // Clear messages
-    connectionError.value = null // Clear errors when switching
+    messages.value = []
+    connectionError.value = null
   } else {
     conversationMode.value = 'chat-completion'
     if (realtimeConnection.isConnected.value) {
       disconnectRealtime()
     }
-    connectionError.value = null // Clear errors
-    // Add welcome message back
+    connectionError.value = null
     messages.value = [{
       id: Date.now().toString(),
       role: 'assistant',
@@ -507,14 +539,10 @@ async function playMessageAudio(message: Message) {
 
 async function connectRealtime() {
   const voiceAwareCode = languageStore.getVoiceAwareLanguageCode()
-  
-  // Clear any previous errors
   connectionError.value = null
-  
+
   try {
-    // Set up transcript callbacks before connecting
     realtimeConnection.onUserTranscript((text: string) => {
-      // Add user message to chat
       messages.value.push({
         id: Date.now().toString(),
         role: 'user',
@@ -522,9 +550,8 @@ async function connectRealtime() {
         timestamp: new Date()
       })
     })
-    
+
     realtimeConnection.onAssistantTranscript((text: string) => {
-      // Add assistant message to chat
       messages.value.push({
         id: Date.now().toString(),
         role: 'assistant',
@@ -532,54 +559,52 @@ async function connectRealtime() {
         timestamp: new Date()
       })
     })
-    
-    // Connect via WebRTC
-    // Pass custom welcome message (ai_welcome_item with {name} replaced) for voice greeting if configured
+
+    // Pass custom welcome message and cardId for voice billing
     let customWelcome: string | undefined
     if (props.cardData.ai_welcome_item) {
       customWelcome = props.cardData.ai_welcome_item.replace(/{name}/g, props.contentItemName)
     }
-    
+
     await realtimeConnection.connect(
       voiceAwareCode,
       systemInstructions.value,
-      customWelcome
+      customWelcome,
+      props.cardData.card_id
     )
-    
-    // Start inactivity timer
-    inactivityTimer.startTimer()
 
-    // Clear error on success
+    // Start both timers
+    inactivityTimer.startTimer()
+    hardTimer.start()
     connectionError.value = null
   } catch (err: any) {
     console.error('❌ Realtime connection error:', err)
-    
-    // Set error message for display
-    if (err.message?.includes('Backend server required') || err.message?.includes('VITE_BACKEND_URL')) {
-      connectionError.value = 'Realtime voice mode requires backend server. Please use Chat Mode instead (text or voice recording).'
+
+    if (err.message === 'NO_VOICE_CREDITS') {
+      connectionError.value = t('mobile.no_voice_credits', 'No voice credits remaining. The creator needs to purchase more credits.')
+    } else if (err.message === 'VOICE_NOT_ENABLED') {
+      connectionError.value = t('mobile.voice_not_enabled', 'Voice conversation is not available for this experience.')
+    } else if (err.message?.includes('Backend server required') || err.message?.includes('VITE_BACKEND_URL')) {
+      connectionError.value = 'Realtime voice mode requires backend server. Please use Chat Mode instead.'
     } else if (err.message?.includes('microphone') || err.message?.includes('getUserMedia')) {
-      connectionError.value = 'Microphone access denied. Please allow microphone permissions in your browser settings and try again.'
+      connectionError.value = 'Microphone access denied. Please allow microphone permissions.'
     } else if (err.message?.includes('network') || err.message?.includes('fetch')) {
-      connectionError.value = 'Network error. Please check your internet connection and try again.'
-    } else if (err.message?.includes('OpenAI')) {
-      connectionError.value = 'Failed to connect to AI service. Please try again in a moment.'
-    } else if (err.message?.includes('CORS')) {
-      connectionError.value = 'Connection blocked. Please use Chat Mode instead (text or voice recording).'
+      connectionError.value = 'Network error. Please check your internet connection.'
     } else if (err.message) {
       connectionError.value = `Connection failed: ${err.message}`
     } else {
       connectionError.value = 'Failed to start live call. Please try Chat Mode instead.'
     }
-    
-    await realtimeConnection.disconnect()
+
+    await realtimeConnection.disconnect(props.cardData.card_id)
   }
 }
 
 function disconnectRealtime() {
-  realtimeConnection.disconnect()
+  realtimeConnection.disconnect(props.cardData.card_id)
   inactivityTimer.clearTimer()
-  
-  // Add goodbye message
+  hardTimer.stop()
+
   if (messages.value.length > 0) {
     messages.value.push({
       id: Date.now().toString(),
@@ -689,6 +714,40 @@ if (aiDisconnectRegistry) {
 .ai-badge:active .ai-badge-arrow {
   transform: translateX(3px);
   opacity: 0.9;
+}
+
+/* Hard Timer Countdown Overlay */
+.hard-timer-overlay {
+  position: absolute;
+  top: 4.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: rgba(245, 158, 11, 0.9);
+  color: white;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  z-index: 10;
+  animation: fadeInTimer 0.3s ease;
+}
+
+.hard-timer-overlay.timer-critical {
+  background: rgba(239, 68, 68, 0.95);
+  animation: timerPulse 1s ease-in-out infinite;
+}
+
+@keyframes fadeInTimer {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes timerPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 </style>
 

@@ -186,16 +186,6 @@
             </template>
           </Column>
 
-          <Column field="issued_cards_count" :header="$t('admin.issued') || 'Issued'" sortable :style="{ width: '100px', minWidth: '100px' }" class="text-center">
-            <template #body="{ data }">
-              <div class="text-center">
-                <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                  {{ data.issued_cards_count || 0 }}
-                </span>
-              </div>
-            </template>
-          </Column>
-
           <Column field="created_at" :header="$t('admin.registered') || 'Registered'" sortable :style="{ width: '140px', minWidth: '140px' }">
             <template #body="{ data }">
               <span class="text-sm text-slate-600 whitespace-nowrap">{{ formatDate(data.created_at) }}</span>
@@ -789,7 +779,6 @@ const exportUsers = () => {
     'Subscription Tier': user.subscription_tier || 'free',
     'Subscription Status': user.subscription_status || 'active',
     'Cards Count': user.cards_count || 0,
-    'Issued Cards': user.issued_cards_count || 0,
     'Created Date': formatDate(user.created_at),
     'Last Sign In': user.last_sign_in_at ? formatDate(user.last_sign_in_at) : 'Never',
     'Stripe Subscription ID': user.stripe_subscription_id || '',

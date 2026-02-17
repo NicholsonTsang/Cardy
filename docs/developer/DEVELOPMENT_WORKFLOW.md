@@ -130,7 +130,7 @@ npm run build
 
 Use clear, descriptive commit messages:
 ```
-Add credit confirmation dialog for batch creation
+Add credit confirmation dialog for credit purchase
 
 - Display credit cost before consumption
 - Show balance before/after

@@ -1,6 +1,6 @@
 ## Multi-Language Translations
 
-ExperienceQR supports automatic translation to reach global audiences. Translate your entire project—including AI welcome messages—to multiple languages with one click.
+FunTell supports automatic translation to reach global audiences. Translate your entire project—including AI welcome messages—to multiple languages with one click.
 
 :::info Paid Feature
 Multi-language translations are available on paid plans:

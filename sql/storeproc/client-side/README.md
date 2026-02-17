@@ -48,21 +48,25 @@ GRANT EXECUTE ON FUNCTION my_function(UUID) TO authenticated;
 
 ## 📂 Files in This Folder
 
+### Infrastructure
+- `00_logging.sql` - Operation logging
+
 ### Core Management
 - `01_auth_functions.sql` - User authentication and role management
 - `02_card_management.sql` - Card CRUD operations
 - `03_content_management.sql` - Content item management
-- `04_batch_management.sql` - Card batch issuance (credit-based)
+- `03b_content_migration.sql` - Content migration utilities
+- `03c_content_pagination.sql` - Content pagination
 
 ### Features
 - `credit_management.sql` - Credit balance and transactions
-- `12_translation_management.sql` - Translation status and history
-- `06_print_requests.sql` - Print request management
 - `07_public_access.sql` - Public card viewing (mobile)
-- `08_user_profiles.sql` - User profile management
-- `09_user_analytics.sql` - User analytics
-- `10_shipping.sql` - Shipping management
+- `10_template_library.sql` - Template library management
 - `11_admin_functions.sql` - Admin operations
+- `12_subscription.sql` - Subscription management
+- `12_translation_management.sql` - Translation status and history
+- `13_access_tokens.sql` - Access token management
+- `admin_credit_management.sql` - Admin credit management
 
 ---
 

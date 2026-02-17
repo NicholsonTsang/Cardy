@@ -1,61 +1,9 @@
 <template>
     <div class="space-y-5">
-        <!-- Access Type (only if physical cards enabled) -->
-        <div v-if="isPhysicalCardsEnabled">
-            <label class="block text-sm font-medium text-slate-700 mb-2">{{ $t('dashboard.access_mode') }}</label>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <!-- Physical Card Option -->
-                <button
-                    type="button"
-                    @click="formData.billing_type = 'physical'"
-                    class="p-3.5 rounded-xl border-2 transition-all cursor-pointer w-full text-left"
-                    :class="formData.billing_type === 'physical'
-                        ? 'border-purple-400 bg-purple-50/50 shadow-sm'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
-                >
-                    <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
-                             :class="formData.billing_type === 'physical' ? 'bg-purple-100' : 'bg-slate-100'">
-                            <i class="pi pi-credit-card" :class="formData.billing_type === 'physical' ? 'text-purple-600' : 'text-slate-400'"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <span class="font-semibold text-sm" :class="formData.billing_type === 'physical' ? 'text-purple-900' : 'text-slate-700'">
-                                {{ $t('dashboard.physical_card') }}
-                            </span>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">{{ $t('dashboard.physical_card_full_desc') }}</p>
-                        </div>
-                    </div>
-                </button>
-
-                <!-- Digital Access Option -->
-                <button
-                    type="button"
-                    @click="formData.billing_type = 'digital'"
-                    class="p-3.5 rounded-xl border-2 transition-all cursor-pointer w-full text-left"
-                    :class="formData.billing_type === 'digital'
-                        ? 'border-cyan-400 bg-cyan-50/50 shadow-sm'
-                        : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'"
-                >
-                    <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors"
-                             :class="formData.billing_type === 'digital' ? 'bg-cyan-100' : 'bg-slate-100'">
-                            <i class="pi pi-qrcode" :class="formData.billing_type === 'digital' ? 'text-cyan-600' : 'text-slate-400'"></i>
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <span class="font-semibold text-sm" :class="formData.billing_type === 'digital' ? 'text-cyan-900' : 'text-slate-700'">
-                                {{ $t('dashboard.digital_access') }}
-                            </span>
-                            <p class="text-xs text-slate-500 mt-1 line-clamp-2">{{ $t('dashboard.digital_access_full_desc') }}</p>
-                        </div>
-                    </div>
-                </button>
-            </div>
-        </div>
-
         <!-- Project Name -->
         <div>
             <label for="createCardName" class="block text-sm font-medium text-slate-700 mb-1.5">
-                {{ formData.billing_type === 'digital' ? $t('dashboard.qr_name') : $t('dashboard.card_name') }}
+                {{ $t('dashboard.qr_name') }}
                 <span class="text-red-500">*</span>
             </label>
             <InputText
@@ -64,7 +12,7 @@
                 v-model="formData.name"
                 class="w-full"
                 :class="{ 'p-invalid': !formData.name.trim() && showValidation }"
-                :placeholder="formData.billing_type === 'digital' ? $t('dashboard.enter_qr_name') : $t('dashboard.enter_card_name')"
+                :placeholder="$t('dashboard.enter_qr_name')"
                 @keydown.enter="handleCreate"
             />
             <p v-if="!formData.name.trim() && showValidation" class="text-xs text-red-500 mt-1">{{ $t('dashboard.card_name_required') }}</p>
@@ -75,7 +23,7 @@
             <label for="createLanguage" class="block text-sm font-medium text-slate-700 mb-1.5">
                 {{ $t('dashboard.originalLanguage') }}
             </label>
-            <Dropdown
+            <Select
                 id="createLanguage"
                 v-model="formData.original_language"
                 :options="languageOptions"
@@ -97,7 +45,7 @@
                         <span>{{ slotProps.option.label }}</span>
                     </div>
                 </template>
-            </Dropdown>
+            </Select>
         </div>
 
         <!-- Footer -->
@@ -127,14 +75,12 @@ import { ref, reactive, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import { SUPPORTED_LANGUAGES } from '@/stores/translation';
 import { getLanguageFlag } from '@/utils/formatters';
-import { usePhysicalCards } from '@/composables/usePhysicalCards';
 
 const emit = defineEmits(['submit', 'cancel']);
 const { t } = useI18n();
-const { isPhysicalCardsEnabled, getDefaultBillingType } = usePhysicalCards();
 
 // State
 const isCreating = ref(false);
@@ -145,7 +91,7 @@ const formData = reactive({
     name: '',
     description: '',
     original_language: 'en',
-    billing_type: getDefaultBillingType.value,
+    billing_type: 'digital',
     content_mode: 'list',
     is_grouped: false,
     group_display: 'expanded',
@@ -177,7 +123,7 @@ const handleCreate = () => {
     isCreating.value = true;
     const payload = {
         ...formData,
-        default_daily_session_limit: formData.billing_type === 'digital' ? formData.default_daily_session_limit : null,
+        default_daily_session_limit: formData.default_daily_session_limit,
     };
     emit('submit', payload);
 };
@@ -189,7 +135,7 @@ const resetForm = () => {
     formData.name = '';
     formData.description = '';
     formData.original_language = 'en';
-    formData.billing_type = getDefaultBillingType.value;
+    formData.billing_type = 'digital';
     formData.content_mode = 'list';
     formData.is_grouped = false;
     formData.group_display = 'expanded';

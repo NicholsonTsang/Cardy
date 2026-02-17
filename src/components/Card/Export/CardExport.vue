@@ -27,7 +27,7 @@
               <i class="pi pi-qrcode"></i>
               <span class="text-xs font-medium mt-1">{{ $t('export.digital_access') }}</span>
             </div>
-            <!-- Physical Card: Show image -->
+            <!-- Card with image -->
             <img
               v-else-if="props.card.image_url"
               :src="props.card.image_url"
@@ -206,7 +206,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useToast } from 'primevue/usetoast'
 import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
-import { exportProject } from '@/utils/projectArchive'
+import { exportProject, estimateSize } from '@/utils/projectArchive'
 import Button from 'primevue/button'
 import ProgressSpinner from 'primevue/progressspinner'
 
@@ -292,11 +292,31 @@ async function exportCard() {
     if (contentError) throw contentError
     const contentItems = contentData || []
 
+    // Check estimated size and warn if large
+    const estimatedSizeBytes = estimateSize(card, contentItems)
+    const estimatedSizeMB = estimatedSizeBytes / (1024 * 1024)
+    const MAX_SIZE_WARNING_MB = 50
+
+    if (estimatedSizeMB > MAX_SIZE_WARNING_MB) {
+      toast.add({
+        severity: 'warn',
+        summary: t('export.large_export_warning'),
+        detail: t('export.large_export_detail', { size: estimatedSizeMB.toFixed(1) }),
+        life: 8000
+      })
+    }
+
     // Step 3: Create archive (fetches images at full quality)
     currentStep.value = 3
     exportStatus.value = 'Creating archive...'
 
-    const { blob, imageCount } = await exportProject(card, contentItems)
+    // Configure timeout based on estimated size (1 min per 10MB, min 2 min, max 10 min)
+    const timeoutMs = Math.min(Math.max(120000, estimatedSizeMB * 6000), 600000)
+
+    const { blob, imageCount, estimatedSize } = await exportProject(card, contentItems, {
+      timeout: timeoutMs,
+      compressionLevel: estimatedSizeMB > 100 ? 3 : 6 // Faster compression for very large exports
+    })
 
     // Step 4: Download file
     currentStep.value = 4

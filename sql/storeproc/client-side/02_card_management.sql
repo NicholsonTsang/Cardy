@@ -3,6 +3,14 @@
 -- Functions for managing card designs (CRUD operations)
 -- =================================================================
 
+-- Drop functions first to allow return type changes
+DROP FUNCTION IF EXISTS get_user_cards() CASCADE;
+DROP FUNCTION IF EXISTS create_card CASCADE;
+DROP FUNCTION IF EXISTS get_card_by_id(UUID) CASCADE;
+DROP FUNCTION IF EXISTS update_card CASCADE;
+DROP FUNCTION IF EXISTS delete_card CASCADE;
+DROP FUNCTION IF EXISTS get_card_with_content(UUID) CASCADE;
+
 -- Get all cards for the current user (more secure)
 -- Includes is_template flag to indicate if card is linked to a template
 -- Session stats are computed from card_access_tokens table
@@ -15,6 +23,7 @@ RETURNS TABLE (
     original_image_url TEXT,
     crop_parameters JSONB,
     conversation_ai_enabled BOOLEAN,
+    realtime_voice_enabled BOOLEAN,
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
     ai_welcome_general TEXT,
@@ -29,6 +38,7 @@ RETURNS TABLE (
     group_display TEXT,
     billing_type TEXT,
     default_daily_session_limit INTEGER,
+    metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
     monthly_sessions BIGINT,
@@ -42,14 +52,15 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
-        c.id, 
-        c.name, 
-        c.description, 
-        c.image_url, 
+    SELECT
+        c.id,
+        c.name,
+        c.description,
+        c.image_url,
         c.original_image_url,
         c.crop_parameters,
         c.conversation_ai_enabled,
+        c.realtime_voice_enabled,
         c.ai_instruction,
         c.ai_knowledge_base,
         c.ai_welcome_general,
@@ -64,6 +75,7 @@ BEGIN
         c.group_display,
         c.billing_type,
         c.default_daily_session_limit,
+        c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
         COALESCE(SUM(t.monthly_sessions), 0)::BIGINT AS monthly_sessions,
@@ -93,6 +105,7 @@ CREATE OR REPLACE FUNCTION create_card(
     p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
+    p_realtime_voice_enabled BOOLEAN DEFAULT FALSE,
     p_ai_instruction TEXT DEFAULT '',
     p_ai_knowledge_base TEXT DEFAULT '',
     p_ai_welcome_general TEXT DEFAULT '',
@@ -104,8 +117,9 @@ CREATE OR REPLACE FUNCTION create_card(
     p_content_mode TEXT DEFAULT 'list',  -- Content rendering mode: single, grid, list, cards
     p_is_grouped BOOLEAN DEFAULT FALSE,  -- Whether content is organized into categories
     p_group_display TEXT DEFAULT 'expanded',  -- How grouped items display: expanded or collapsed
-    p_billing_type TEXT DEFAULT 'physical',  -- Billing model: physical or digital
-    p_default_daily_session_limit INTEGER DEFAULT 500  -- Default daily session limit for new QR codes (default: 500)
+    p_billing_type TEXT DEFAULT 'digital',  -- Billing model: digital per-session subscription
+    p_default_daily_session_limit INTEGER DEFAULT 500,  -- Default daily session limit for new QR codes (default: 500)
+    p_metadata JSONB DEFAULT '{}'  -- Extensible metadata for future features
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_card_id UUID;
@@ -125,6 +139,7 @@ BEGIN
         original_image_url,
         crop_parameters,
         conversation_ai_enabled,
+        realtime_voice_enabled,
         ai_instruction,
         ai_knowledge_base,
         ai_welcome_general,
@@ -137,7 +152,8 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        default_daily_session_limit
+        default_daily_session_limit,
+        metadata
     ) VALUES (
         auth.uid(),
         p_name,
@@ -146,6 +162,7 @@ BEGIN
         p_original_image_url,
         p_crop_parameters,
         p_conversation_ai_enabled,
+        COALESCE(p_realtime_voice_enabled, FALSE),
         p_ai_instruction,
         p_ai_knowledge_base,
         COALESCE(p_ai_welcome_general, ''),
@@ -157,8 +174,9 @@ BEGIN
         COALESCE(p_content_mode, 'list'),
         COALESCE(p_is_grouped, FALSE),
         COALESCE(p_group_display, 'expanded'),
-        COALESCE(p_billing_type, 'physical'),
-        CASE WHEN p_billing_type = 'digital' THEN COALESCE(p_default_daily_session_limit, 500) ELSE NULL END
+        'digital',
+        COALESCE(p_default_daily_session_limit, 500),
+        COALESCE(p_metadata, '{}'::JSONB)
     )
     RETURNING id INTO v_card_id;
     
@@ -188,8 +206,7 @@ BEGIN
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER) TO authenticated;
--- Note: Last INTEGER parameter is p_default_daily_session_limit (was p_daily_session_limit)
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 -- Session stats are computed from card_access_tokens table
@@ -204,6 +221,7 @@ RETURNS TABLE (
     original_image_url TEXT,
     crop_parameters JSONB,
     conversation_ai_enabled BOOLEAN,
+    realtime_voice_enabled BOOLEAN,
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
     ai_welcome_general TEXT,
@@ -217,6 +235,7 @@ RETURNS TABLE (
     group_display TEXT,
     billing_type TEXT,
     default_daily_session_limit INTEGER,
+    metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
     monthly_sessions BIGINT,
@@ -228,16 +247,17 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
-        c.id, 
+    SELECT
+        c.id,
         c.user_id,
-        c.name, 
-        c.description, 
+        c.name,
+        c.description,
         c.qr_code_position::TEXT,
         c.image_url,
         c.original_image_url,
         c.crop_parameters,
         c.conversation_ai_enabled,
+        c.realtime_voice_enabled,
         c.ai_instruction,
         c.ai_knowledge_base,
         c.ai_welcome_general,
@@ -251,13 +271,14 @@ BEGIN
         c.group_display,
         c.billing_type,
         c.default_daily_session_limit,
+        c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
         COALESCE(SUM(t.monthly_sessions), 0)::BIGINT AS monthly_sessions,
         COALESCE(SUM(t.daily_sessions), 0)::BIGINT AS daily_sessions,
         COALESCE(COUNT(t.id) FILTER (WHERE t.is_enabled), 0)::BIGINT AS active_qr_codes,
         COALESCE(COUNT(t.id), 0)::BIGINT AS total_qr_codes,
-        c.created_at, 
+        c.created_at,
         c.updated_at
     FROM cards c
     LEFT JOIN card_access_tokens t ON t.card_id = c.id
@@ -277,6 +298,7 @@ CREATE OR REPLACE FUNCTION update_card(
     p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT NULL,
+    p_realtime_voice_enabled BOOLEAN DEFAULT NULL,
     p_ai_instruction TEXT DEFAULT NULL,
     p_ai_knowledge_base TEXT DEFAULT NULL,
     p_ai_welcome_general TEXT DEFAULT NULL,
@@ -287,7 +309,8 @@ CREATE OR REPLACE FUNCTION update_card(
     p_is_grouped BOOLEAN DEFAULT NULL,
     p_group_display TEXT DEFAULT NULL,
     p_billing_type TEXT DEFAULT NULL,
-    p_default_daily_session_limit INTEGER DEFAULT NULL
+    p_default_daily_session_limit INTEGER DEFAULT NULL,
+    p_metadata JSONB DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
     v_old_record RECORD;
@@ -303,6 +326,7 @@ BEGIN
         original_image_url,
         crop_parameters,
         conversation_ai_enabled,
+        realtime_voice_enabled,
         ai_instruction,
         ai_knowledge_base,
         ai_welcome_general,
@@ -314,6 +338,7 @@ BEGIN
         group_display,
         billing_type,
         default_daily_session_limit,
+        metadata,
         user_id,
         updated_at
     INTO v_old_record
@@ -354,7 +379,12 @@ BEGIN
         v_changes_made := v_changes_made || jsonb_build_object('conversation_ai_enabled', jsonb_build_object('from', v_old_record.conversation_ai_enabled, 'to', p_conversation_ai_enabled));
         has_changes := TRUE;
     END IF;
-    
+
+    IF p_realtime_voice_enabled IS NOT NULL AND p_realtime_voice_enabled IS DISTINCT FROM v_old_record.realtime_voice_enabled THEN
+        v_changes_made := v_changes_made || jsonb_build_object('realtime_voice_enabled', jsonb_build_object('from', v_old_record.realtime_voice_enabled, 'to', p_realtime_voice_enabled));
+        has_changes := TRUE;
+    END IF;
+
     IF p_ai_instruction IS NOT NULL AND p_ai_instruction != v_old_record.ai_instruction THEN
         v_changes_made := v_changes_made || jsonb_build_object('ai_instruction', jsonb_build_object('from', v_old_record.ai_instruction, 'to', p_ai_instruction));
         has_changes := TRUE;
@@ -408,7 +438,12 @@ BEGIN
         v_changes_made := v_changes_made || jsonb_build_object('default_daily_session_limit', jsonb_build_object('from', v_old_record.default_daily_session_limit, 'to', p_default_daily_session_limit));
         has_changes := TRUE;
     END IF;
-    
+
+    IF p_metadata IS NOT NULL AND p_metadata IS DISTINCT FROM v_old_record.metadata THEN
+        v_changes_made := v_changes_made || jsonb_build_object('metadata', 'updated');
+        has_changes := TRUE;
+    END IF;
+
     -- Only proceed if there are actual changes
     IF NOT has_changes THEN
         RETURN TRUE; -- No changes to make
@@ -424,6 +459,7 @@ BEGIN
         original_image_url = COALESCE(p_original_image_url, original_image_url),
         crop_parameters = COALESCE(p_crop_parameters, crop_parameters),
         conversation_ai_enabled = COALESCE(p_conversation_ai_enabled, conversation_ai_enabled),
+        realtime_voice_enabled = COALESCE(p_realtime_voice_enabled, realtime_voice_enabled),
         ai_instruction = COALESCE(p_ai_instruction, ai_instruction),
         ai_knowledge_base = COALESCE(p_ai_knowledge_base, ai_knowledge_base),
         ai_welcome_general = COALESCE(p_ai_welcome_general, ai_welcome_general),
@@ -434,7 +470,8 @@ BEGIN
         is_grouped = COALESCE(p_is_grouped, is_grouped),
         group_display = COALESCE(p_group_display, group_display),
         -- billing_type is immutable - not updated here
-        default_daily_session_limit = CASE WHEN billing_type = 'digital' THEN COALESCE(p_default_daily_session_limit, default_daily_session_limit) ELSE NULL END,
+        default_daily_session_limit = COALESCE(p_default_daily_session_limit, default_daily_session_limit),
+        metadata = COALESCE(p_metadata, metadata),
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
     
@@ -444,7 +481,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
@@ -484,6 +521,116 @@ END;
 $$;
 GRANT EXECUTE ON FUNCTION delete_card(UUID) TO authenticated;
 
--- NOTE: toggle_card_access and regenerate_access_token functions have been moved to 
+-- NOTE: toggle_card_access and regenerate_access_token functions have been moved to
 -- 13_access_tokens.sql as toggle_access_token and refresh_access_token since
 -- access control is now per-QR-code (access token) rather than per-card.
+
+-- =================================================================
+-- GET CARD WITH FULL CONTENT (P0 Features - Platform Optimization Roadmap)
+-- =================================================================
+
+-- Get card with all content items
+-- Purpose: Fetch complete card data with all content items for duplication
+-- Used by: Card duplication feature
+CREATE OR REPLACE FUNCTION get_card_with_content(
+  p_card_id UUID
+) RETURNS TABLE (
+  -- Card fields
+  card_id UUID,
+  card_name TEXT,
+  card_description TEXT,
+  card_image_url TEXT,
+  card_original_image_url TEXT,
+  card_crop_parameters JSONB,
+  card_conversation_ai_enabled BOOLEAN,
+  card_realtime_voice_enabled BOOLEAN,
+  card_ai_instruction TEXT,
+  card_ai_knowledge_base TEXT,
+  card_ai_welcome_general TEXT,
+  card_ai_welcome_item TEXT,
+  card_original_language TEXT,
+  card_translations JSONB,
+  card_content_mode TEXT,
+  card_is_grouped BOOLEAN,
+  card_group_display TEXT,
+  card_billing_type TEXT,
+  card_default_daily_session_limit INT,
+  card_qr_code_position TEXT,
+  card_metadata JSONB,
+  -- Content items array
+  content_items JSONB
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_user_id UUID;
+BEGIN
+  -- Get authenticated user
+  v_user_id := auth.uid();
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'Not authenticated';
+  END IF;
+
+  -- Verify user owns this card
+  IF NOT EXISTS (
+    SELECT 1 FROM cards
+    WHERE id = p_card_id AND user_id = v_user_id
+  ) THEN
+    RAISE EXCEPTION 'Card not found or access denied';
+  END IF;
+
+  -- Return card with content items
+  RETURN QUERY
+  SELECT
+    c.id,
+    c.name,
+    c.description,
+    c.image_url,
+    c.original_image_url,
+    c.crop_parameters,
+    c.conversation_ai_enabled,
+    c.realtime_voice_enabled,
+    c.ai_instruction,
+    c.ai_knowledge_base,
+    c.ai_welcome_general,
+    c.ai_welcome_item,
+    c.original_language::TEXT,  -- Cast VARCHAR(10) to TEXT
+    c.translations,
+    c.content_mode,
+    c.is_grouped,
+    c.group_display,
+    c.billing_type,
+    c.default_daily_session_limit,
+    c.qr_code_position::TEXT,  -- Cast enum to TEXT
+    c.metadata,
+    -- Aggregate content items into JSONB array
+    COALESCE(
+      (
+        SELECT jsonb_agg(
+          jsonb_build_object(
+            'id', ci.id,
+            'name', ci.name,
+            'content', ci.content,
+            'parent_id', ci.parent_id,
+            'image_url', ci.image_url,
+            'ai_knowledge_base', ci.ai_knowledge_base,
+            'sort_order', ci.sort_order,
+            'translations', ci.translations,
+            'crop_parameters', ci.crop_parameters
+          ) ORDER BY ci.sort_order
+        )
+        FROM content_items ci
+        WHERE ci.card_id = c.id
+      ),
+      '[]'::JSONB
+    ) as content_items
+  FROM cards c
+  WHERE c.id = p_card_id;
+
+  -- Log operation
+  PERFORM log_operation(format('Retrieved card with content for duplication: %s', (SELECT name FROM cards WHERE id = p_card_id)));
+
+END;
+$$;
+GRANT EXECUTE ON FUNCTION get_card_with_content(UUID) TO authenticated;

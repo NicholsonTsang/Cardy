@@ -22,7 +22,6 @@
           <Tag v-if="template.venue_type" :value="formatVenueType(template.venue_type)" severity="secondary" />
           <Tag :value="getModeLabel(template.content_mode)" :severity="getModeSeverity(template.content_mode)" />
           <Tag v-if="template.is_grouped" :value="$t('templates.grouped')" severity="info" />
-          <Tag v-if="isPhysicalCardsEnabled" :value="template.billing_type || 'digital'" severity="contrast" />
         </div>
       </div>
     </div>
@@ -112,10 +111,8 @@ import { useI18n } from 'vue-i18n'
 import type { ContentTemplateDetails, ContentItemData } from '@/stores/templateLibrary'
 import Tag from 'primevue/tag'
 import Button from 'primevue/button'
-import { usePhysicalCards } from '@/composables/usePhysicalCards'
 
 const { t } = useI18n()
-const { isPhysicalCardsEnabled } = usePhysicalCards()
 
 const props = defineProps<{
   template: ContentTemplateDetails

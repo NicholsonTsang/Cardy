@@ -59,7 +59,6 @@
     "optional": "Optional",
     "use": "使用"
   },
-  
   "auth": {
     "sign_in": "Sign In",
     "sign_up": "Sign Up",
@@ -98,7 +97,6 @@
     "cms_account_subtitle": "Sign in to your FunTell CMS account",
     "join_funtell": "Join FunTell CMS to start creating digital cards"
   },
-
   "dashboard": {
     "dashboard": "Dashboard",
     "my_cards": "My Cards",
@@ -108,7 +106,6 @@
     "general": "General",
     "content": "Content",
     "qr_access": "QR & Access",
-    "issuance": "Issuance",
     "mobile_preview": "Mobile Preview",
     "card_name": "Card Name",
     "card_description": "Card Description",
@@ -131,7 +128,6 @@
     "get_started_creating": "Get started by creating your first card",
     "select_card_to_view": "Select a card to view details"
   },
-
   "content": {
     "content_management": "Content Management",
     "content_items": "Content Items",
@@ -149,52 +145,26 @@
     "drag_to_reorder": "Drag to reorder",
     "reorder_tip": "Drag items to rearrange their display order"
   },
-
-  "batches": {
-    "card_batches": "Card Batches",
-    "issue_batch": "Issue Batch",
-    "batch_name": "Batch Name",
-    "quantity": "Quantity",
-    "payment_status": "Payment Status",
-    "batch_status": "Batch Status",
-    "payment_completed": "Payment Completed",
-    "payment_pending": "Payment Pending",
-    "admin_issued": "Admin Issued",
-    "cards_issued": "Cards Issued",
-    "view_cards": "View Cards",
-    "request_print": "Request Print",
-    "view_details": "View Details",
-    "no_batches_yet": "No batches issued yet",
-    "issue_first_batch": "Issue your first batch of cards"
-  },
-
   "admin": {
     "admin_dashboard": "Admin Dashboard",
     "user_management": "User Management",
-    "print_requests": "Print Requests",
     "operations_log": "Operations Log",
     "user_cards": "User Cards",
     "system_stats": "System Statistics",
     "total_users": "Total Users",
     "total_cards": "Total Cards",
-    "total_batches": "Total Batches",
-    "pending_print_requests": "Pending Print Requests",
     "search_by_email": "Search by email...",
     "user_email": "User Email",
     "user_role": "User Role",
     "change_role": "Change Role",
-    "issue_free_batch": "Issue Free Batch",
-    "print_status": "Print Status",
     "update_status": "Update Status",
     "operation_type": "Operation Type",
     "operation_user": "User",
     "operation_time": "Time",
     "operation_description": "Description",
     "no_users_found": "No users found",
-    "no_print_requests": "No print requests",
     "no_operations_logged": "No operations logged"
   },
-
   "mobile": {
     "scan_qr": "Scan QR Code",
     "card_overview": "Card Overview",
@@ -215,7 +185,6 @@
     "connected": "Connected",
     "disconnected": "Disconnected"
   },
-
   "validation": {
     "required_field": "This field is required",
     "invalid_email": "Invalid email address",
@@ -226,7 +195,6 @@
     "invalid_file_type": "Invalid file type",
     "max_words_exceeded": "Maximum {max} words allowed"
   },
-
   "messages": {
     "save_success": "Saved successfully",
     "delete_success": "Deleted successfully",
@@ -238,7 +206,6 @@
     "loading_data": "Loading data...",
     "network_error": "Network error. Please try again."
   },
-
   "landing": {
     "nav": {
       "about": "概要",
@@ -258,9 +225,9 @@
       "title_line1": "あらゆる施設を",
       "title_line2": "インタラクティブな",
       "title_line3": "AIガイドに変換",
-      "subtitle_part1": "AIパワードのデジタル体験プラットフォーム -",
-      "subtitle_highlight": "音声会話",
-      "subtitle_part2": "が即座に。アプリ不要。博物館、レストラン、ショッピングモールなどに最適。",
+      "subtitle_part1": "ドキュメントをインポートするだけで、AIがインタラクティブな体験を自動構築 —",
+      "subtitle_highlight": "多言語会話",
+      "subtitle_part2": " 付き。リンク、QRコード、埋め込みで共有。製品、施設、教育、あらゆるコンテンツに最適。",
       "cta_pilot": "パイロットのお問い合わせ",
       "cta_learn": "デモを見る",
       "cta_demo": "デモを見る",
@@ -281,15 +248,7 @@
       "project_features": "主な機能",
       "experience_features": "主な機能",
       "mode_toggle": {
-        "physical_card": "物理カード",
         "digital_access": "デジタルアクセス"
-      },
-      "physical_card": {
-        "title": "物理カード",
-        "desc": "QRコード付きのコレクティブルスーベニア",
-        "hint": "訪問者はまずカード画像を見て、その後コンテンツを探索",
-        "caption": "QRコード付きプリントカードの例",
-        "full_desc": "物理カードはQRコードが埋め込まれたコレクティブルスーベニアです。訪問者がスキャンすると、最初にカード概要ページ（カード画像と説明を表示）が表示され、その後インタラクティブコンテンツを探索できます。プレミアムな記念品を提供したい博物館、イベント、施設に最適です。"
       },
       "digital_access": {
         "title": "デジタルアクセス",
@@ -339,7 +298,8 @@
       "scroll_to_explore": "スクロールして探索",
       "no_templates": "テンプレートが見つかりません",
       "live_badge": "ライブ",
-      "open_button": "開く"
+      "open_button": "開く",
+      "featured_badge": "おすすめ"
     },
     "content_modes": {
       "title": "柔軟な",
@@ -378,8 +338,8 @@
         "ai_item": "特定の注目アイテムの専門ガイド"
       },
       "best_for": "最適な用途",
-      "easy_setup": "簡単セットアップ",
-      "setup_desc": "CMSダッシュボードから数秒で設定。コーディング不要。",
+      "easy_setup": "AIセットアップ",
+      "setup_desc": "ドキュメントをインポートすればAIがすべてを自動設定 — またはダッシュボードから手動設定も可能。",
       "mobile_optimized": "モバイル最適化",
       "mobile_desc": "あらゆるデバイスで完璧に表示されるレスポンシブデザイン。",
       "grouping_option": "オプションのグループ化",
@@ -394,10 +354,10 @@
     "how_it_works": {
       "title": "シンプルな",
       "title_highlight": "3ステップ",
-      "subtitle": "技術スキル不要で、数分でAIパワードのデジタル体験を立ち上げましょう。",
+      "subtitle": "数分でAIパワードのコンテンツ体験を立ち上げ — AIにドキュメントを渡すだけで、残りは自動で処理されます。",
       "steps": {
-        "create_title": "作成",
-        "create_desc": "直感的なダッシュボードでプロジェクトを作成し、コンテンツを追加。",
+        "create_title": "AIで作成",
+        "create_desc": "AIエージェントにドキュメントを渡すと、プロジェクトが自動構築されます — コンテンツ、カテゴリー、AIアシスタントすべて含む。",
         "share_title": "共有",
         "share_desc": "看板、メニュー、マーケティング資料にQRコードを表示。",
         "engage_title": "エンゲージ",
@@ -414,8 +374,8 @@
         "ai_guide_desc": "コンテキスト認識とフォローアップ質問を備えたリアルタイム会話。",
         "no_app_title": "アプリ不要",
         "no_app_desc": "どのスマートフォンカメラでも即時アクセス。ダウンロード不要、摩擦なし。",
-        "portal_config_title": "簡単なコンテンツ管理",
-        "portal_config_desc": "直感的なウェブポータルでいつでもコンテンツを設定・更新。",
+        "portal_config_title": "AIパワード セットアップ",
+        "portal_config_desc": "ドキュメントをインポートするか、プロジェクトを説明するだけ — AIが数秒ですべてを作成します。",
         "multilingual_title": "多言語サポート",
         "multilingual_desc": "1回のアップロードで10以上の言語でコンテンツと会話。",
         "no_hardware_title": "ハードウェア不要",
@@ -489,23 +449,10 @@
         "auto_topup_title": "自動トップアップ",
         "auto_topup_desc": "予算がなくなると、追加セッション用にUS$${topupCost}が自動チャージ"
       },
-      "physical_cards": {
-        "title": "物理カード",
-        "subtitle": "オプションアドオン",
-        "price": "US$ 2",
-        "per": "カード単価",
-        "desc": "訪問者向けコレクティブルスーベニアカード",
-        "features": [
-          "プレミアムプリントカード",
-          "カードあたり無制限スキャン",
-          "バッチ注文（最小100枚）",
-          "博物館やイベントに最適"
-        ],
-        "cta": "詳細を見る"
-      },
       "included_title": "全プランに含まれる機能",
       "features": {
         "ai_voice": "AI音声会話",
+        "ai_setup": "AI搭載のプロジェクトセットアップ",
         "qr_access": "即時QRアクセス",
         "design_dashboard": "デザインダッシュボード",
         "content_management": "コンテンツ管理",
@@ -521,9 +468,9 @@
       "title": "よくある",
       "title_highlight": "質問",
       "q1": "FunTellとは？",
-      "a1": "FunTellは、あらゆる施設をインタラクティブガイドに変えるAIパワードのデジタル体験プラットフォームです。訪問者はQRコードをスキャンして、多言語コンテンツと会話型AIアシスタントにアクセスできます—アプリ不要。オプションでコレクティブルスーベニアとして物理カードも利用可能。",
+      "a1": "FunTellは、あらゆるドキュメントを会話型AIが内蔵されたインタラクティブな多言語体験に変換するAIパワードのコンテンツ体験プラットフォームです。PDFをインポートするか、プロジェクトを説明するだけ — AIがすべてを自動構築します。リンク、QRコード、埋め込みで共有。アプリ不要。",
       "q2": "仕組みは？",
-      "a2": "1) 施設にQRコードを設置（または物理カードを使用）\n2) 訪問者がスマートフォンでスキャン\n3) AIアシスタントとデジタルコンテンツに即時アクセス\n4) オプション: カードはコレクティブルスーベニアに",
+      "a2": "1) AIエージェントにドキュメントをインポートするか、プロジェクトを説明 — すべてが自動生成されます\n2) リンク、QRコード、埋め込みで共有\n3) 訪問者があらゆるデバイスでAIパワードの多言語コンテンツに即時アクセス",
       "q3": "訪問者はアプリをダウンロードする必要がありますか？",
       "a3": "いいえ。FunTellはどのスマートフォンブラウザでも動作します。QRコードをスキャンするだけ—ダウンロードやインストール不要。",
       "q4": "対応言語は？",
@@ -531,7 +478,7 @@
       "q5": "料金に含まれるものは？",
       "a5": "3つのティア: 無料（{freeExperiences}プロジェクト、{freeSessions}セッション）、スターター（{starterBudget}/月、{starterAiSessions}AIセッション、最大2言語）、プレミアム（{monthlyBudget}/月、{aiSessions}AIセッション、無制限言語、ホワイトラベル）。有料プランは予算切れ時の自動トップアップ込み。全プランにAI音声、ダッシュボード、QRコード、ホスティングが含まれます。",
       "q6": "どのくらい早く始められますか？",
-      "a6": "デジタルQRプロジェクトは数分で開始可能。サインアップして、プロジェクトを作成し、QRコードを即座に共有。物理カードは印刷と配送に2〜3週間かかります。",
+      "a6": "プロジェクトは数分で開始可能です。Claude CodeなどのAIツールを接続し、ドキュメントをインポートすれば、AIがプロジェクト全体を自動構築します — コンテンツ、カテゴリー、AIアシスタント、QRコードすべて含む。",
       "q7": "コンテンツとAIをカスタマイズできますか？",
       "a7": "はい。セルフサービスダッシュボードを使用して完全にカスタマイズ可能。コンテンツ管理、AIアシスタントの動作設定、ウェルカムメッセージの設定、いつでも更新可能。",
       "q8": "カード製作のタイムラインは？",
@@ -551,6 +498,7 @@
       "contact_title": "お問い合わせ",
       "phone": "電話",
       "whatsapp_chat": "WhatsAppチャット",
+      "ai_setup_guide": "AIセットアップガイド",
       "copyright": "© 2025 FunTell. All rights reserved.",
       "privacy": "プライバシーポリシー",
       "terms": "利用規約",
@@ -559,4 +507,3 @@
     "floating_cta": "始める"
   }
 }
-

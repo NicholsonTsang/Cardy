@@ -140,7 +140,7 @@ Purchase additional credits.
 
 ### POST /api/payments/create-credit-checkout
 
-Create checkout for physical card credits.
+Create checkout for additional session credits.
 
 **Auth**: Required
 
@@ -291,14 +291,14 @@ Get card data by digital access token.
 }
 ```
 
-### GET /api/mobile/card/physical/:issueCardId
+### GET /api/mobile/card/issue/:issueCardId
 
-Get card data by physical card ID.
+Get card data by issue card ID.
 
 **Auth**: None (public)
 
 **Params**:
-- `issueCardId`: Physical card identifier
+- `issueCardId`: Issue card identifier
 
 **Response**: Same as digital endpoint
 
