@@ -533,18 +533,39 @@
                             </div>
                         </div>
 
-                        <!-- Live Preview Strip -->
+                        <!-- Live Preview -->
                         <div class="mb-4">
                             <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 block">{{ $t('dashboard.theme_preview') }}</label>
-                            <div class="rounded-xl overflow-hidden h-16 flex items-center px-4 gap-3"
-                                 :style="themePreviewStyle">
-                                <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                                     :style="{ background: formData.metadata?.theme?.primaryColor || DEFAULT_THEME.primaryColor }">
-                                    <i class="pi pi-star text-xs" :style="{ color: formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }"></i>
-                                </div>
-                                <div>
-                                    <p class="text-sm font-semibold m-0" :style="{ color: formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }">Sample Title</p>
-                                    <p class="text-xs m-0 opacity-70" :style="{ color: formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }">Preview text</p>
+
+                            <!-- Phone Simulator Preview (when VITE_THEME_PREVIEW_URL is configured) -->
+                            <div v-if="themePreviewUrl" class="flex flex-col items-center theme-preview-section">
+                                <PhoneIframePreview
+                                    ref="themePreviewIframe"
+                                    :src="themePreviewUrl"
+                                    :iframeKey="themePreviewIframeKey"
+                                    :width="220"
+                                    title="Theme Preview"
+                                    :loadingText="$t('dashboard.theme_preview_loading')"
+                                    :errorText="$t('dashboard.theme_preview_error')"
+                                    :showRetry="true"
+                                    :retryText="$t('common.try_again')"
+                                    @load="onThemePreviewLoad"
+                                />
+                                <p class="text-xs text-slate-400 mt-2 text-center">{{ $t('dashboard.theme_preview_hint') }}</p>
+                            </div>
+
+                            <!-- Fallback: Static gradient preview strip (when no preview URL) -->
+                            <div v-else>
+                                <div class="rounded-xl overflow-hidden h-16 flex items-center px-4 gap-3"
+                                     :style="themePreviewStyle">
+                                    <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                                         :style="{ background: formData.metadata?.theme?.primaryColor || DEFAULT_THEME.primaryColor }">
+                                        <i class="pi pi-star text-xs" :style="{ color: formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }"></i>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold m-0" :style="{ color: formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }">Sample Title</p>
+                                        <p class="text-xs m-0 opacity-70" :style="{ color: formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }">Preview text</p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -584,6 +605,7 @@ import { supabase } from '@/lib/supabase';
 import { useToast } from 'primevue/usetoast';
 import { useSubscriptionStore } from '@/stores/subscription';
 import { DEFAULT_THEME, isValidHexColor } from '@/utils/themeConfig';
+import PhoneIframePreview from '@/components/common/PhoneIframePreview.vue';
 
 const props = defineProps({
     cardProp: {
@@ -938,6 +960,8 @@ const updateThemeColor = (key, value) => {
 const resetThemeColors = () => {
     if (!formData.metadata) formData.metadata = {};
     formData.metadata.theme = {};
+    // Also send reset to preview iframe
+    postThemeToPreview();
 };
 
 const themePreviewStyle = computed(() => {
@@ -948,6 +972,42 @@ const themePreviewStyle = computed(() => {
         background: `linear-gradient(135deg, ${bg} 0%, ${end} 100%)`
     };
 });
+
+// Theme phone simulator preview
+const themePreviewUrl = computed(() => {
+    const url = import.meta.env.VITE_THEME_PREVIEW_URL;
+    return url || '';
+});
+const themePreviewIframe = ref(null);
+const themePreviewIframeKey = ref(0);
+
+// Post current theme colors to the preview iframe via postMessage
+const postThemeToPreview = () => {
+    if (!themePreviewUrl.value) return;
+    try {
+        const iframe = document.querySelector('.theme-preview-section iframe');
+        if (iframe && iframe.contentWindow) {
+            const theme = formData.metadata?.theme || {};
+            iframe.contentWindow.postMessage({
+                type: 'theme-preview',
+                theme: { ...theme }
+            }, '*');
+        }
+    } catch (e) {
+        // Cross-origin or iframe not ready — silently ignore
+    }
+};
+
+// Send theme to iframe when it finishes loading
+const onThemePreviewLoad = () => {
+    // Small delay to ensure iframe JS is initialized
+    setTimeout(() => postThemeToPreview(), 300);
+};
+
+// Watch theme changes and push to iframe in real-time
+watch(() => formData.metadata?.theme, () => {
+    postThemeToPreview();
+}, { deep: true });
 
 const initializeForm = () => {
     if (props.cardProp) {

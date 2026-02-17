@@ -561,12 +561,31 @@ function applyDocumentBackground(bgColor: string) {
   if (metaThemeColor) metaThemeColor.setAttribute('content', bgColor)
 }
 
+// PostMessage listener for real-time theme preview from dashboard editor
+const handleThemeMessage = (event: MessageEvent) => {
+  if (event.data?.type === 'theme-preview' && event.data.theme) {
+    // Apply theme override from parent (dashboard theme editor iframe)
+    const style = buildThemeStyleVars(event.data.theme as Partial<ThemeConfig>)
+    const container = document.querySelector('.mobile-card-container') as HTMLElement
+    if (container) {
+      Object.entries(style).forEach(([key, value]) => {
+        container.style.setProperty(key, value as string)
+      })
+    }
+    const resolved = resolveTheme(event.data.theme as Partial<ThemeConfig>)
+    applyDocumentBackground(resolved.backgroundColor)
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   fetchCardData()
 
   // Set initial dark background (prevents white flash in browser chrome)
   applyDocumentBackground('#0f172a')
+
+  // Listen for theme preview messages from parent window (dashboard editor)
+  window.addEventListener('message', handleThemeMessage)
 })
 
 // Update document background when theme changes (after card data loads)
@@ -589,6 +608,7 @@ watchEffect(() => {
 
 // Cleanup on unmount
 onUnmounted(() => {
+  window.removeEventListener('message', handleThemeMessage)
   document.body.style.overflow = ''
   document.documentElement.style.overflow = ''
   
