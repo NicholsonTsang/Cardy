@@ -233,7 +233,7 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
         }
       ],
       mode: 'subscription',
-      success_url: `${baseUrl}?success=true&session_id={CHECKOUT_SESSION_ID}&type=subscription${canceledPreviousTier ? `&switched_from=${canceledPreviousTier}` : ''}${isDowngrade ? '&downgrade=true' : ''}`,
+      success_url: `${baseUrl}?success=true&session_id={CHECKOUT_SESSION_ID}&type=subscription&tier=${tier}${canceledPreviousTier ? `&switched_from=${canceledPreviousTier}` : ''}${isDowngrade ? '&downgrade=true' : ''}`,
       cancel_url: `${baseUrl}?canceled=true&type=subscription`,
       metadata: {
         user_id: userId,

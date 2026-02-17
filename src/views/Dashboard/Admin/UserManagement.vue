@@ -20,7 +20,7 @@
 
     <div class="space-y-6">
       <!-- Statistics Cards -->
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
           <div class="flex items-center justify-between">
             <div>
@@ -56,6 +56,21 @@
             </div>
           </div>
         </div>
+      </div>
+
+      <!-- Subscription Tier Stats -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.enterprise_users') }}</h3>
+              <p class="text-2xl font-bold text-violet-600">{{ userStats.enterpriseUsers }}</p>
+            </div>
+            <div class="p-3 bg-gradient-to-r from-violet-500 to-purple-500 rounded-xl">
+              <i class="pi pi-building text-white text-xl"></i>
+            </div>
+          </div>
+        </div>
 
         <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
           <div class="flex items-center justify-between">
@@ -65,6 +80,18 @@
             </div>
             <div class="p-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-xl">
               <i class="pi pi-star-fill text-white text-xl"></i>
+            </div>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-xl shadow-soft border border-slate-200 p-5 hover:shadow-medium transition-shadow duration-200">
+          <div class="flex items-center justify-between">
+            <div>
+              <h3 class="text-sm font-medium text-slate-600 mb-1">{{ $t('admin.starter_users') }}</h3>
+              <p class="text-2xl font-bold text-emerald-600">{{ userStats.starterUsers }}</p>
+            </div>
+            <div class="p-3 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-xl">
+              <i class="pi pi-bolt text-white text-xl"></i>
             </div>
           </div>
         </div>

@@ -864,7 +864,7 @@
         <div class="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,rgba(180,120,255,0.15),transparent_50%)]"></div>
       </div>
       
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div class="text-center mb-12 sm:mb-16">
           <h2 class="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-white mb-4 sm:mb-6">
             {{ $t('landing.pricing.title') }} <span class="bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">{{ $t('landing.pricing.title_highlight') }}</span>
@@ -876,7 +876,7 @@
         </div>
 
         <!-- Subscription Tiers -->
-        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-12 max-w-7xl mx-auto">
+        <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 max-w-7xl mx-auto">
           <!-- Free Tier -->
           <div class="bg-gradient-to-br from-slate-500/10 to-slate-600/10 backdrop-blur-xl rounded-3xl border border-slate-400/30 overflow-hidden hover:border-slate-400/50 transition-all duration-300">
             <div class="bg-gradient-to-r from-slate-600/20 to-slate-700/20 p-6 border-b border-white/10">
@@ -887,8 +887,8 @@
                 <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.free_tier.title') }}</h3>
               </div>
               <div class="flex items-baseline gap-2">
-                <span class="text-5xl font-black text-white">{{ $t('landing.pricing.free_tier.price') }}</span>
-                <span class="text-xl text-slate-300">{{ $t('landing.pricing.free_tier.per') }}</span>
+                <span class="text-4xl font-black text-white">{{ $t('landing.pricing.free_tier.price') }}</span>
+                <span class="text-lg text-slate-300">{{ $t('landing.pricing.free_tier.per') }}</span>
               </div>
               <p class="text-slate-300 mt-2 text-sm">{{ $t('landing.pricing.free_tier.desc') }}</p>
             </div>
@@ -920,9 +920,9 @@
                 <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.starter_tier.title') }}</h3>
               </div>
               <div class="flex items-baseline gap-1">
-                <span class="text-2xl font-bold text-white/90">US$</span>
-                <span class="text-5xl font-black text-white whitespace-nowrap">{{ $t('landing.pricing.starter_tier.price', pricingVars) }}</span>
-                <span class="text-xl text-indigo-200 whitespace-nowrap ml-1">{{ $t('landing.pricing.starter_tier.per') }}</span>
+                <span class="text-xl font-bold text-white/90">US$</span>
+                <span class="text-4xl font-black text-white whitespace-nowrap">{{ $t('landing.pricing.starter_tier.price', pricingVars) }}</span>
+                <span class="text-lg text-indigo-200 whitespace-nowrap ml-1">{{ $t('landing.pricing.starter_tier.per') }}</span>
               </div>
               <p class="text-indigo-200 mt-2 text-sm">{{ $t('landing.pricing.starter_tier.desc') }}</p>
             </div>
@@ -958,9 +958,9 @@
                 <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.premium_tier.title') }}</h3>
               </div>
               <div class="flex items-baseline gap-1">
-                <span class="text-2xl font-bold text-white/90">US$</span>
-                <span class="text-5xl font-black text-white whitespace-nowrap">{{ $t('landing.pricing.premium_tier.price', pricingVars) }}</span>
-                <span class="text-xl text-blue-200 whitespace-nowrap ml-1">{{ $t('landing.pricing.premium_tier.per') }}</span>
+                <span class="text-xl font-bold text-white/90">US$</span>
+                <span class="text-4xl font-black text-white whitespace-nowrap">{{ $t('landing.pricing.premium_tier.price', pricingVars) }}</span>
+                <span class="text-lg text-blue-200 whitespace-nowrap ml-1">{{ $t('landing.pricing.premium_tier.per') }}</span>
               </div>
               <p class="text-blue-200 mt-2 text-sm">{{ $t('landing.pricing.premium_tier.desc') }}</p>
             </div>
@@ -992,9 +992,9 @@
                 <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.enterprise_tier.title') }}</h3>
               </div>
               <div class="flex items-baseline gap-1">
-                <span class="text-2xl font-bold text-white/90">US$</span>
-                <span class="text-5xl font-black text-white whitespace-nowrap">{{ $t('landing.pricing.enterprise_tier.price', pricingVars) }}</span>
-                <span class="text-xl text-violet-200 whitespace-nowrap ml-1">{{ $t('landing.pricing.enterprise_tier.per') }}</span>
+                <span class="text-xl font-bold text-white/90">US$</span>
+                <span class="text-4xl font-black text-white whitespace-nowrap">{{ $t('landing.pricing.enterprise_tier.price', pricingVars) }}</span>
+                <span class="text-lg text-violet-200 whitespace-nowrap ml-1">{{ $t('landing.pricing.enterprise_tier.per') }}</span>
               </div>
               <p class="text-violet-200 mt-2 text-sm">{{ $t('landing.pricing.enterprise_tier.desc') }}</p>
             </div>

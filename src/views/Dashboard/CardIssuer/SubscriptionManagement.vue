@@ -68,30 +68,44 @@ onMounted(async () => {
   const canceled = route.query.canceled;
   const type = route.query.type;
   const switchedFrom = route.query.switched_from as string | undefined;
-  
+  const subscribedTier = route.query.tier as string | undefined;
+
   if (success === 'true') {
     if (type === 'subscription') {
       // Check if this was a tier switch
       if (switchedFrom) {
-        // Determine the new tier based on what we switched FROM
-        const newTier = switchedFrom === 'starter' ? 'premium' : 'starter';
-        const isUpgrade = switchedFrom === 'starter';
-        
+        // Use tier param from URL, or infer from switchedFrom for backward compat
+        const toTier = subscribedTier || (switchedFrom === 'starter' ? 'premium' : 'starter');
+
+        const switchedMessageKey = toTier === 'enterprise'
+          ? 'subscription.messages.subscription_switched_to_enterprise'
+          : toTier === 'premium'
+            ? 'subscription.messages.subscription_switched_to_premium'
+            : 'subscription.messages.subscription_switched_to_starter';
+
         toast.add({
           severity: 'success',
           summary: t('subscription.messages.subscription_switched'),
-          detail: isUpgrade 
-            ? t('subscription.messages.subscription_switched_to_premium')
-            : t('subscription.messages.subscription_switched_to_starter'),
+          detail: t(switchedMessageKey),
           life: 5000
         });
       } else {
-        // Regular new subscription
-        // We'll determine premium vs starter after fetching subscription data
+        // Regular new subscription - use tier param to show correct welcome message
+        const welcomeKey = subscribedTier === 'enterprise'
+          ? 'subscription.messages.welcome_enterprise'
+          : subscribedTier === 'starter'
+            ? 'subscription.messages.welcome_starter'
+            : 'subscription.messages.welcome_premium';
+        const activeKey = subscribedTier === 'enterprise'
+          ? 'subscription.messages.subscription_active_enterprise'
+          : subscribedTier === 'starter'
+            ? 'subscription.messages.subscription_active_starter'
+            : 'subscription.messages.subscription_active';
+
         toast.add({
           severity: 'success',
-          summary: t('subscription.messages.welcome_premium'),
-          detail: t('subscription.messages.subscription_active'),
+          summary: t(welcomeKey),
+          detail: t(activeKey),
           life: 5000
         });
       }
@@ -152,6 +166,17 @@ const starterPricingVars = computed(() => ({
   nonAiSessions: config.value.calculated.starterDefaultAiDisabledSessions,
   projectLimit: config.value.starter.projectLimit,
   monthlyFee: config.value.starter.monthlyFeeUsd,
+}));
+
+const enterprisePricingVars = computed(() => ({
+  monthlyBudget: config.value.enterprise.monthlyBudgetUsd,
+  topupCost: config.value.overage.creditsPerBatch,
+  aiCost: config.value.enterprise.aiEnabledSessionCostUsd,
+  nonAiCost: config.value.enterprise.aiDisabledSessionCostUsd,
+  aiSessions: config.value.calculated.enterpriseDefaultAiEnabledSessions,
+  nonAiSessions: config.value.calculated.enterpriseDefaultAiDisabledSessions,
+  projectLimit: config.value.enterprise.projectLimit,
+  monthlyFee: config.value.enterprise.monthlyFeeUsd,
 }));
 
 // Calculate session rate savings (Premium vs Starter)
@@ -242,9 +267,16 @@ async function upgradeToPremium(tier: 'starter' | 'premium' | 'enterprise' = 'pr
   }
 }
 
+// Helper: get localized tier name for parameterized messages
+const currentTierName = computed(() => {
+  if (isEnterprise.value) return t('subscription.enterprise_plan');
+  if (isStarter.value) return t('subscription.starter_plan');
+  return t('subscription.premium_plan');
+});
+
 function confirmCancel() {
   confirm.require({
-    message: t('subscription.messages.confirm_cancel'),
+    message: t('subscription.messages.confirm_cancel', { tier: currentTierName.value }),
     header: t('subscription.cancel'),
     icon: 'pi pi-exclamation-triangle',
     acceptClass: 'p-button-danger',
@@ -275,7 +307,7 @@ async function reactivate() {
     toast.add({
       severity: 'success',
       summary: t('subscription.messages.subscription_reactivated'),
-      detail: t('subscription.messages.will_continue'),
+      detail: t('subscription.messages.will_continue', { tier: currentTierName.value }),
       life: 3000
     });
   } else {
@@ -386,7 +418,7 @@ async function openPortal() {
         </div>
 
         <!-- Plan Comparison -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
           
           <!-- Current Free Plan -->
           <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden h-full flex flex-col">
@@ -534,7 +566,65 @@ async function openPortal() {
               :loading="actionLoading"
             />
           </div>
-          
+
+          <!-- Enterprise Plan (Upgrade Option) -->
+          <div class="bg-white rounded-2xl p-6 border border-violet-200 shadow-sm relative overflow-hidden h-full flex flex-col hover:border-violet-400 hover:shadow-md transition-all duration-300">
+            <div class="mb-6">
+              <div class="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center mb-4">
+                <i class="pi pi-building text-xl text-violet-500"></i>
+              </div>
+              <h2 class="text-2xl font-bold text-slate-800">{{ $t('subscription.enterprise_plan') }}</h2>
+              <div class="text-3xl font-extrabold text-slate-900 mt-2">${{ config.enterprise.monthlyFeeUsd }} <span class="text-base font-normal text-slate-500">/mo</span></div>
+            </div>
+            <ul class="space-y-3 text-sm mb-8 flex-1">
+              <li class="flex items-center gap-3">
+                <div class="bg-violet-100 p-1 rounded-full"><i class="pi pi-check text-violet-600 text-xs"></i></div>
+                <span class="text-slate-700">{{ $t('subscription.features.enterprise_projects', { limit: config.enterprise.projectLimit }) }}</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <div class="bg-violet-100 p-1 rounded-full mt-0.5"><i class="pi pi-check text-violet-600 text-xs"></i></div>
+                <div>
+                  <div class="text-slate-700 font-medium"><strong>${{ config.enterprise.monthlyBudgetUsd }}</strong> {{ $t('subscription.usage.monthly_budget') }}</div>
+                  <div class="text-xs text-slate-500 mt-1">{{ $t('subscription.features.estimated_sessions', { ai: enterprisePricingVars.aiSessions, nonAi: enterprisePricingVars.nonAiSessions }) }}</div>
+                  <div class="text-xs text-slate-400 mt-0.5">{{ $t('subscription.features.session_cost_breakdown', { aiCost: config.enterprise.aiEnabledSessionCostUsd, nonAiCost: config.enterprise.aiDisabledSessionCostUsd }) }}</div>
+                </div>
+              </li>
+              <li class="flex items-center gap-3">
+                <div class="bg-violet-100 p-1 rounded-full"><i class="pi pi-bolt text-violet-600 text-xs"></i></div>
+                <span class="text-violet-700 font-medium">{{ $t('subscription.features.lowest_session_rates') }}</span>
+              </li>
+              <li class="flex items-center gap-3">
+                <div class="bg-violet-100 p-1 rounded-full"><i class="pi pi-check text-violet-600 text-xs"></i></div>
+                <span class="text-slate-700">{{ $t('subscription.features.ai_assistant_included') }}</span>
+              </li>
+              <li class="flex items-center gap-3">
+                <div class="bg-violet-100 p-1 rounded-full"><i class="pi pi-check text-violet-600 text-xs"></i></div>
+                <span class="text-slate-700">{{ $t('subscription.features.unlimited_translations') }}</span>
+              </li>
+              <li class="flex items-start gap-3">
+                <div class="bg-violet-100 p-1 rounded-full mt-0.5"><i class="pi pi-check text-violet-600 text-xs"></i></div>
+                <div>
+                  <div class="text-slate-700">{{ $t('subscription.features.overage_available') }}</div>
+                  <div class="text-xs text-slate-400 mt-0.5">{{ $t('subscription.features.overage', { cost: config.overage.creditsPerBatch, sessions: config.calculated.enterpriseAiDisabledSessionsPerBatch }) }}</div>
+                </div>
+              </li>
+              <li class="flex items-center gap-3">
+                <div class="bg-violet-100 p-1 rounded-full"><i class="pi pi-check text-violet-600 text-xs"></i></div>
+                <span class="text-slate-700">{{ $t('subscription.features.white_label') }}</span>
+              </li>
+              <li class="flex items-center gap-3">
+                <div class="bg-violet-100 p-1 rounded-full"><i class="pi pi-check text-violet-600 text-xs"></i></div>
+                <span class="text-slate-700">{{ $t('subscription.features.custom_domain') }}</span>
+              </li>
+            </ul>
+            <Button
+              :label="$t('subscription.upgrade_to_enterprise')"
+              class="w-full bg-gradient-to-r from-violet-500 to-purple-600 text-white border-0 hover:from-violet-600 hover:to-purple-700 font-bold"
+              @click="() => upgradeToPremium('enterprise')"
+              :loading="actionLoading"
+            />
+          </div>
+
         </div>
         
         <!-- Daily Access Chart Card -->
