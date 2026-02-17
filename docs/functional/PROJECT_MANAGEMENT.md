@@ -1,6 +1,6 @@
 # Project Management
 
-This guide covers creating, configuring, and managing your ExperienceQR projects.
+This guide covers creating, configuring, and managing your FunTell projects.
 
 ## Understanding Projects
 

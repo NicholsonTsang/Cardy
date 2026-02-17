@@ -1,4 +1,4 @@
-# ExperienceQR Content Templates
+# FunTell Content Templates
 
 This folder contains sample content templates for different venue types and content modes. Use these templates as a starting point when creating your digital experiences.
 
@@ -165,7 +165,7 @@ Include practical information visitors need:
 ## Usage
 
 1. Choose a template that matches your venue type and desired layout
-2. Copy the content to your ExperienceQR dashboard
+2. Copy the content to your FunTell dashboard
 3. Replace placeholder text with your actual content
 4. Upload your images
 5. Customize AI settings if needed

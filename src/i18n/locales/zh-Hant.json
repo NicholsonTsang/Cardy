@@ -1367,9 +1367,9 @@
       "title_line1": "將任何資訊變成",
       "title_line2": "AI 驅動的",
       "title_line3": "互動內容體驗",
-      "subtitle_part1": "打造人人都能對話的內容體驗 — 內建",
-      "subtitle_highlight": "多語言 AI 對話",
-      "subtitle_part2": "功能。透過連結、QR 碼或嵌入分享。適用產品、場館、教育及各種內容。",
+      "subtitle_part1": "匯入文件，AI 自動建立互動體驗 —",
+      "subtitle_highlight": "多語言對話",
+      "subtitle_part2": "功能內建。透過連結、QR 碼或嵌入分享。適用產品、場館、教育及各種內容。",
       "cta_pilot": "聯繫我們試用",
       "cta_learn": "立即體驗",
       "cta_demo": "觀看演示",
@@ -1479,8 +1479,8 @@
         "ai_item": "專屬精選項目導覽"
       },
       "best_for": "最適合",
-      "easy_setup": "簡易設定",
-      "setup_desc": "從 CMS 後台數秒內完成設定，無需編寫程式碼。",
+      "easy_setup": "AI 設定",
+      "setup_desc": "匯入文件，AI 自動設定一切 — 也可透過後台手動調整。",
       "mobile_optimized": "行動裝置優化",
       "mobile_desc": "響應式設計，在任何裝置上都能完美呈現。",
       "grouping_option": "可選分組",
@@ -1495,10 +1495,10 @@
     "how_it_works": {
       "title": "使用",
       "title_highlight": "超簡單",
-      "subtitle": "幾分鐘內啟動您的 AI 內容體驗，無需技術背景。",
+      "subtitle": "幾分鐘內啟動您的 AI 內容體驗 — 只需匯入文件，AI 幫你搞定一切。",
       "steps": {
-        "create_title": "建立內容",
-        "create_desc": "透過直覺化後台建立專案並新增內容。",
+        "create_title": "AI 建立",
+        "create_desc": "將文件交給 AI 代理，它會自動建立專案 — 內容、分類、AI 助理一次到位。",
         "share_title": "分享連結",
         "share_desc": "透過連結、QR 碼或嵌入到網站及印刷品中分享。",
         "engage_title": "互動體驗",
@@ -1515,8 +1515,8 @@
         "ai_guide_desc": "即時對話，理解上下文，回答追問。",
         "no_app_title": "免下載 App",
         "no_app_desc": "支援所有智慧型手機，無需安裝 App。",
-        "portal_config_title": "輕鬆管理內容",
-        "portal_config_desc": "透過網頁後台隨時設定和更新內容。",
+        "portal_config_title": "AI 自動設定",
+        "portal_config_desc": "匯入文件或描述專案內容 — AI 幾秒鐘內自動建立一切。",
         "multilingual_title": "多語言服務",
         "multilingual_desc": "上傳一次，自動提供 10+ 種語言版本。",
         "no_hardware_title": "免裝設備",
@@ -1581,8 +1581,8 @@
       "included_title": "所有方案皆包含",
       "features": {
         "ai_voice": "AI 語音對話",
+        "ai_setup": "AI 自動建立專案",
         "qr_access": "即時 QR 存取",
-        "design_dashboard": "設計儀表板",
         "content_management": "內容管理",
         "analytics": "使用分析",
         "qr_generation": "QR 碼生成",
@@ -1596,9 +1596,9 @@
       "title": "常見",
       "title_highlight": "問題",
       "q1": "FunTell 是什麼？",
-      "a1": "FunTell 是 AI 驅動的內容體驗平台，能將任何資訊轉化為互動式多語言體驗，並內建對話式 AI 助理。適用於產品介紹、場館導覽、教育內容、故事創作等各種場景，透過連結、QR 碼或嵌入方式分享。免下載 App。",
+      "a1": "FunTell 是 AI 驅動的內容體驗平台，能將任何文件轉化為互動式多語言體驗，並內建對話式 AI 助理。匯入 PDF 或描述專案內容，AI 自動建立一切。透過連結、QR 碼或嵌入方式分享。免下載 App。",
       "q2": "怎麼使用？",
-      "a2": "1) 透過後台建立專案並新增內容\n2) 透過連結、QR 碼或嵌入方式分享\n3) 訪客在任何裝置上即時存取 AI 驅動的多語言內容\n4) 可選：印製實體卡片作為收藏紀念品",
+      "a2": "1) 匯入文件或向 AI 代理描述專案內容 — 自動建立一切\n2) 透過連結、QR 碼或嵌入方式分享\n3) 訪客在任何裝置上即時存取 AI 驅動的多語言內容",
       "q3": "需要下載 App 嗎？",
       "a3": "不用。FunTell 支援任何手機瀏覽器，掃碼就能用。",
       "q4": "有哪些語言？",
@@ -1606,7 +1606,7 @@
       "q5": "費用包含什麼？",
       "a5": "免費版可建立 {freeExperiences} 個項目、每月 {freeSessions} 次會話。入門版（${starterFee}/月）含 {starterBudget} 會話預算：{starterAiSessions} 次 AI 或 {starterNonAiSessions} 次非 AI 會話。專業版（${premiumFee}/月）含 {monthlyBudget} 會話預算：{aiSessions} 次 AI 或 {nonAiSessions} 次非 AI 會話。預算用盡時自動加值 ${topupCost} 獲得額外會話。所有方案皆含 AI 語音、內容管理、QR 碼、數據分析和雲端託管。",
       "q6": "多久能開始用？",
-      "a6": "數位 QR 項目幾分鐘內即可上線。註冊、建立項目、分享 QR 碼立即開始。實體卡片印刷和寄送約需 2-3 週。",
+      "a6": "幾分鐘內即可上線。連接 Claude Code 等 AI 工具，匯入文件，AI 自動建立整個專案 — 內容、分類、AI 助理和 QR 碼全部搞定。",
       "q7": "能客製化嗎？",
       "a7": "當然可以。用我們的自助後台就能管理內容、設定 AI 助理行為、自訂歡迎訊息，隨時都能改。",
       "q8": "卡片多久做好？",
@@ -1626,6 +1626,7 @@
       "contact_title": "聯絡",
       "phone": "電話",
       "whatsapp_chat": "WhatsApp 聊天",
+      "ai_setup_guide": "AI 設定指南",
       "copyright": "© 2025 FunTell. 版權所有。",
       "privacy": "隱私政策",
       "terms": "服務條款",
@@ -2206,6 +2207,15 @@
           "credits": {
             "title": "點數管理",
             "description": "了解點數如何運作以及如何購買更多用於翻譯和功能。"
+          }
+        }
+      },
+      "automation": {
+        "title": "自動化",
+        "articles": {
+          "mcp_setup": {
+            "title": "AI 輔助建立專案",
+            "description": "使用 Claude 或 ChatGPT 等 AI 助手，透過簡單的提示詞快速建立與管理專案。"
           }
         }
       }

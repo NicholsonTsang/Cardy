@@ -690,7 +690,7 @@ async function openPortal() {
                   <div class="bg-amber-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-star text-amber-500 text-xs"></i></div>
                   <div>
                     <div class="text-slate-700 font-medium">{{ isStarter ? $t('subscription.features.branding_included') : $t('subscription.features.white_label') }}</div>
-                    <div class="text-slate-500 text-xs mt-0.5">{{ isStarter ? 'FunTell' : 'ExperienceQR' }}</div>
+                    <div class="text-slate-500 text-xs mt-0.5">FunTell</div>
                   </div>
                 </div>
               </div>

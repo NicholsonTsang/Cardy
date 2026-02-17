@@ -4,7 +4,7 @@ Content modes determine how your content is displayed to your audience. Choose t
 
 ## Available Modes
 
-ExperienceQR offers **4 content display modes**:
+FunTell offers **4 content display modes**:
 
 ### Single Mode
 

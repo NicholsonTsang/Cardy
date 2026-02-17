@@ -1,6 +1,6 @@
 ## 訂閱方案
 
-ExperienceQR 提供靈活的訂閱方案，從免費個人使用到企業級解決方案。
+FunTell 提供靈活的訂閱方案，從免費個人使用到企業級解決方案。
 
 ## 方案比較
 
@@ -32,7 +32,7 @@ ExperienceQR 提供靈活的訂閱方案，從免費個人使用到企業級解�
 
 ### 入門版 - $40/月
 
-適合成長中的場館和小型企業。
+適合成長中的創作者和小型企業。
 
 **包含：**
 - 最多 5 個專案
@@ -50,7 +50,7 @@ ExperienceQR 提供靈活的訂閱方案，從免費個人使用到企業級解�
 
 ### 專業版 - $280/月
 
-適合高流量場館，需要最大彈性。
+適合高流量專案，需要最大彈性。
 
 **包含：**
 - 最多 35 個專案
@@ -62,7 +62,7 @@ ExperienceQR 提供靈活的訂閱方案，從免費個人使用到企業級解�
 - 預算用盡可加購額度
 
 :::features
-- icon: "pi pi-check-circle" title: "更多專案" desc: "為多個場館創建最多 35 個專案" color: "green"
+- icon: "pi pi-check-circle" title: "更多專案" desc: "為所有內容需求創建最多 35 個專案" color: "green"
 - icon: "pi pi-globe" title: "無限語言" desc: "翻譯至全部 10 種支援語言" color: "blue"
 - icon: "pi pi-eye-slash" title: "白標服務" desc: "只顯示您的品牌 - 無 FunTell 標誌" color: "purple"
 - icon: "pi pi-bolt" title: "更低費率" desc: "訪問費用比入門版低 20%" color: "amber"

@@ -1,4 +1,4 @@
-# ExperienceQR - AI-Powered Content Experience Platform
+# FunTell - AI-Powered Content Experience Platform
 
 [![Vue.js](https://img.shields.io/badge/Vue.js-3-4FC08D.svg)](https://vuejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-blue.svg)](https://www.typescriptlang.org/)
@@ -6,7 +6,7 @@
 [![Express.js](https://img.shields.io/badge/Express.js-4.x-000000.svg)](https://expressjs.com/)
 [![Google Cloud Run](https://img.shields.io/badge/Google_Cloud_Run-4285F4.svg)](https://cloud.google.com/run)
 
-ExperienceQR is a comprehensive **AI-powered content experience platform** that turns any information into structured, multilingual content with AI conversational assistants. The platform enables businesses, educators, and organizations to create interactive content experiences for products, venues, education, storytelling, knowledge bases, print materials, and more. Content is distributed via links, QR codes, or embeds, and visitors access it for free with optional AI-powered voice conversations.
+FunTell is a comprehensive **AI-powered content experience platform** that turns any information into structured, multilingual content with AI conversational assistants. The platform enables businesses, educators, and organizations to create interactive content experiences for products, venues, education, storytelling, knowledge bases, print materials, and more. Content is distributed via links, QR codes, or embeds, and visitors access it for free with optional AI-powered voice conversations.
 
 ## Project Overview
 
@@ -14,7 +14,7 @@ ExperienceQR is a comprehensive **AI-powered content experience platform** that 
 
 -   **Three-Tier Ecosystem**:
     1.  **Creators** (B2B) - Businesses, educators, and organizations creating interactive content experiences.
-    2.  **Administrators** (Platform) - ExperienceQR operators managing platform operations.
+    2.  **Administrators** (Platform) - FunTell operators managing platform operations.
     3.  **Visitors** (B2C) - Anyone accessing content via links, QR codes, or embeds for free digital content and AI guidance.
 
 -   **Core Value Proposition**:
@@ -25,7 +25,7 @@ ExperienceQR is a comprehensive **AI-powered content experience platform** that 
 
 ### Subscription & Pricing
 
-ExperienceQR uses a **session-based pricing model** with Cloudflare user session tracking:
+FunTell uses a **session-based pricing model** with Cloudflare user session tracking:
 
 | Tier | Price | Projects | Session Budget | Translations | Branding |
 |------|-------|----------|----------------|--------------|----------|
@@ -334,7 +334,7 @@ Projects using Digital Access mode support **multiple QR codes** with independen
 
 ### Creator Documentation
 
-ExperienceQR includes a comprehensive **Documentation Center** (`/docs`) that provides step-by-step guides for creators. The documentation is designed similar to Microsoft Office support documentation with:
+FunTell includes a comprehensive **Documentation Center** (`/docs`) that provides step-by-step guides for creators. The documentation is designed similar to Microsoft Office support documentation with:
 
 **Structure:**
 - **Sidebar Navigation**: Organized categories with expandable article lists
@@ -481,7 +481,7 @@ See `planning_docs/BILLING_AND_CONTENT_MODES.md` for complete documentation.
 
 ### Template Library
 
-ExperienceQR includes a **Template Library** that allows users to quickly create projects from pre-built templates. Templates are organized by venue type and content mode.
+FunTell includes a **Template Library** that allows users to quickly create projects from pre-built templates. Templates are organized by venue type and content mode.
 
 **Architecture:**
 Templates are linked to actual `cards` records in the database. This allows full reuse of existing card components for creating and editing template content. When a user imports a template, the linked card and all its content items are copied to create a new card owned by that user.
@@ -1272,7 +1272,7 @@ Without Cloudflare, the system falls back to Supabase Anonymous Auth or IP finge
 
 ### Overview
 
-ExperienceQR uses a **Redis-first architecture** for session tracking and budget management:
+FunTell uses a **Redis-first architecture** for session tracking and budget management:
 
 ```
 ┌─────────────────┐     ┌──────────────┐     ┌──────────────┐
@@ -1450,7 +1450,7 @@ Cardy/
 
 ## Translation System
 
-ExperienceQR uses a **synchronous translation system** powered by Google Gemini that provides fast, reliable translations with immediate feedback.
+FunTell uses a **synchronous translation system** powered by Google Gemini that provides fast, reliable translations with immediate feedback.
 
 ### Architecture
 

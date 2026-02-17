@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "Enabling Generative Language API for project cardstudio-474313..."
+echo "Enabling Generative Language API for FunTell project (cardstudio-474313)..."
 
 # Enable the Generative Language API
 gcloud services enable generativelanguage.googleapis.com --project=cardstudio-474313

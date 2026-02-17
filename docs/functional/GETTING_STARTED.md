@@ -1,10 +1,10 @@
 # Getting Started
 
-Welcome to ExperienceQR! This guide will help you set up your account and create your first interactive digital experience.
+Welcome to FunTell! This guide will help you set up your account and create your first interactive digital experience.
 
-## What is ExperienceQR?
+## What is FunTell?
 
-ExperienceQR turns any information into an AI-powered, multilingual content experience. Create a project, add your content, and share it instantly via QR codes, links, or embeds. Your audience gets:
+FunTell turns any information into an AI-powered, multilingual content experience. Create a project, add your content, and share it instantly via QR codes, links, or embeds. Your audience gets:
 
 - Rich content (text, images, links)
 - AI-powered voice conversations
@@ -17,7 +17,7 @@ ExperienceQR turns any information into an AI-powered, multilingual content expe
 
 ### Step 1: Sign Up
 
-1. Visit the ExperienceQR website
+1. Visit the FunTell website
 2. Click **"Get Started"** or **"Sign Up"**
 3. Enter your email and create a password
 4. Verify your email address

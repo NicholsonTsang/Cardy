@@ -1,10 +1,10 @@
 # Functional Documentation
 
-Welcome to the ExperienceQR user guide. This documentation is for creators and administrators who use the platform to turn any information into AI-powered, multilingual content experiences.
+Welcome to the FunTell user guide. This documentation is for creators and administrators who use the platform to turn any information into AI-powered, multilingual content experiences.
 
 ## Getting Started
 
-New to ExperienceQR? Start here:
+New to FunTell? Start here:
 
 1. **[Getting Started](GETTING_STARTED.md)** - Account setup and platform overview
 2. **[Project Management](PROJECT_MANAGEMENT.md)** - Create your first project

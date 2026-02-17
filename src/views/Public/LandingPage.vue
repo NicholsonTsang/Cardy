@@ -1060,6 +1060,7 @@
               <li><a @click="scrollToSection('features')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.features') }}</a></li>
               <li><a @click="scrollToSection('demo-templates')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.demo') }}</a></li>
               <li><a @click="scrollToSection('pricing')" class="text-slate-400 hover:text-white transition-colors cursor-pointer">{{ $t('landing.footer.pricing') }}</a></li>
+              <li><router-link :to="`/${locale}/docs?category=automation&article=mcp_setup`" class="text-slate-400 hover:text-white transition-colors">{{ $t('landing.footer.ai_setup_guide') }}</router-link></li>
             </ul>
           </div>
 
@@ -1497,7 +1498,7 @@ const demoFeatures = computed(() => [
 
 const howItWorksSteps = computed(() => [
   {
-    icon: 'pi-pencil',
+    icon: 'pi-file-import',
     title: t('landing.how_it_works.steps.create_title'),
     description: t('landing.how_it_works.steps.create_desc')
   },
@@ -1525,7 +1526,7 @@ const keyFeatures = computed(() => [
     description: t('landing.features.features.ai_guide_desc')
   },
   {
-    icon: 'pi-cog',
+    icon: 'pi-bolt',
     title: t('landing.features.features.portal_config_title'),
     description: t('landing.features.features.portal_config_desc')
   },
@@ -1538,8 +1539,8 @@ const keyFeatures = computed(() => [
 
 const pricingFeatures = computed(() => [
   t('landing.pricing.features.ai_voice'),
+  t('landing.pricing.features.ai_setup'),
   t('landing.pricing.features.qr_access'),
-  t('landing.pricing.features.design_dashboard'),
   t('landing.pricing.features.content_management'),
   t('landing.pricing.features.analytics'),
   t('landing.pricing.features.qr_generation'),

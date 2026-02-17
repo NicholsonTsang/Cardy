@@ -4,7 +4,7 @@ This file provides guidance for AI assistants working on this repository. For de
 
 ## Project Overview
 
-ExperienceQR is a **digital-only, AI-powered content experience platform** that turns any information into structured, multilingual content with AI conversational assistants. Creators build interactive content experiences for products, venues, education, storytelling, knowledge bases, and more. Content is distributed via links, QR codes, or embeds, and visitors access it for free with optional AI-powered voice conversations.
+FunTell is a **digital-only, AI-powered content experience platform** that turns any information into structured, multilingual content with AI conversational assistants. Creators build interactive content experiences for products, venues, education, storytelling, knowledge bases, and more. Content is distributed via links, QR codes, or embeds, and visitors access it for free with optional AI-powered voice conversations.
 
 **Three-Tier Ecosystem:**
 1. **Creators** (B2B) - Businesses, educators, and organizations creating interactive content experiences

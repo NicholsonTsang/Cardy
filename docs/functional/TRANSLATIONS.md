@@ -4,7 +4,7 @@ This guide covers making your content available in multiple languages for intern
 
 ## Translation Overview
 
-ExperienceQR supports **10 languages**:
+FunTell supports **10 languages**:
 
 | Language | Code | Script |
 |----------|------|--------|

@@ -1,6 +1,6 @@
 # Content Management
 
-This guide covers adding, organizing, and managing content within your ExperienceQR projects.
+This guide covers adding, organizing, and managing content within your FunTell projects.
 
 ## Understanding Content Items
 

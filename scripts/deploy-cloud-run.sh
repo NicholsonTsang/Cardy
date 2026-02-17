@@ -13,7 +13,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}╔════════════════════════════════════════════════════════╗${NC}"
-echo -e "${BLUE}║   CardStudio Backend - Cloud Run Deployment           ║${NC}"
+echo -e "${BLUE}║   FunTell Backend - Cloud Run Deployment              ║${NC}"
 echo -e "${BLUE}╚════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
@@ -59,7 +59,7 @@ read -p "Enter region [us-central1]: " REGION
 REGION=${REGION:-us-central1}
 
 # Service name
-SERVICE_NAME="cardstudio-backend"
+SERVICE_NAME="funtell-backend"
 
 # Get CORS origins
 echo ""

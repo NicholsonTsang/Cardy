@@ -1,4 +1,4 @@
-# ExperienceQR Platform Optimization Roadmap
+# FunTell Platform Optimization Roadmap
 ## Comprehensive Enhancement Strategy (2026)
 
 **Document Version**: 1.0
@@ -28,7 +28,7 @@
 
 ### Overview
 
-ExperienceQR (FunTell) is embarking on a comprehensive platform optimization initiative targeting both the **visitor experience (Mobile Client)** and **creator experience (Dashboard/Portal)**. This dual-track strategy addresses critical gaps in user experience, performance, and enterprise readiness while building on our strong technical foundations.
+FunTell (FunTell) is embarking on a comprehensive platform optimization initiative targeting both the **visitor experience (Mobile Client)** and **creator experience (Dashboard/Portal)**. This dual-track strategy addresses critical gaps in user experience, performance, and enterprise readiness while building on our strong technical foundations.
 
 ### Current State Assessment
 
@@ -76,7 +76,7 @@ Transform from:
 
 ### Market Position
 
-ExperienceQR operates in the **AI-powered content experience** market, serving:
+FunTell operates in the **AI-powered content experience** market, serving:
 - **B2C**: Visitors accessing content via QR codes/links (10M+ annual sessions target)
 - **B2B**: Content creators (museums, restaurants, educators, businesses) managing immersive experiences
 

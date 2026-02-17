@@ -1404,9 +1404,9 @@
       "title_line1": "Turn Any Information Into An",
       "title_line2": "Interactive",
       "title_line3": "AI‑Powered Experience",
-      "subtitle_part1": "Create content experiences people can talk to — with",
-      "subtitle_highlight": "multilingual AI conversations",
-      "subtitle_part2": " built in. Share via links, QR codes, or embeds. Perfect for products, venues, education, and any content.",
+      "subtitle_part1": "Import a document, and AI builds your interactive experience —",
+      "subtitle_highlight": "multilingual conversations",
+      "subtitle_part2": " included. Share via links, QR codes, or embeds. Perfect for products, venues, education, and any content.",
       "cta_pilot": "Contact Us for a Pilot",
       "cta_learn": "See Demo",
       "cta_demo": "See Demo",
@@ -1513,8 +1513,8 @@
         "ai_item": "Specialized guide for the specific featured item"
       },
       "best_for": "Best For",
-      "easy_setup": "Easy Setup",
-      "setup_desc": "Configure in seconds from the CMS dashboard. No coding required.",
+      "easy_setup": "AI Setup",
+      "setup_desc": "Import a document and AI configures everything — or use the dashboard manually.",
       "mobile_optimized": "Mobile Optimized",
       "mobile_desc": "Responsive design that looks perfect on any device.",
       "grouping_option": "Optional Grouping",
@@ -1529,10 +1529,10 @@
     "how_it_works": {
       "title": "Simple",
       "title_highlight": "Three-Step Process",
-      "subtitle": "Launch your AI-powered content experience in minutes — no technical skills required.",
+      "subtitle": "Launch your AI-powered content experience in minutes — just give AI your document and it handles the rest.",
       "steps": {
-        "create_title": "Create",
-        "create_desc": "Build your project and add content through our intuitive dashboard.",
+        "create_title": "Create with AI",
+        "create_desc": "Give your document to an AI agent and it builds your project automatically — content, categories, and AI assistant included.",
         "share_title": "Share",
         "share_desc": "Share via link, QR code, or embed on your website or printed materials.",
         "engage_title": "Engage",
@@ -1549,8 +1549,8 @@
         "ai_guide_desc": "Real-time conversations with context awareness and follow-up questions.",
         "no_app_title": "No App Required",
         "no_app_desc": "Instant access via any smartphone camera. No downloads, no friction.",
-        "portal_config_title": "Easy Content Management",
-        "portal_config_desc": "Configure and update content through intuitive web portal anytime.",
+        "portal_config_title": "AI-Powered Setup",
+        "portal_config_desc": "Import a document or describe your project — AI creates everything for you in seconds.",
         "multilingual_title": "Multilingual Support",
         "multilingual_desc": "Content and conversations in 10+ languages from one upload.",
         "no_hardware_title": "Zero Hardware Needed",
@@ -1627,8 +1627,8 @@
       "included_title": "Included in All Plans",
       "features": {
         "ai_voice": "AI voice conversations",
+        "ai_setup": "AI-powered project setup",
         "qr_access": "Instant QR access",
-        "design_dashboard": "Design dashboard",
         "content_management": "Content management",
         "analytics": "Usage analytics",
         "qr_generation": "QR code generation",
@@ -1642,9 +1642,9 @@
       "title": "Frequently Asked",
       "title_highlight": "Questions",
       "q1": "What is FunTell?",
-      "a1": "FunTell is an AI-powered content experience platform that turns any information into interactive, multilingual experiences with built-in conversational AI. Create structured content for products, venues, education, storytelling, or any topic — then share via links, QR codes, or embeds. No app required.",
+      "a1": "FunTell is an AI-powered content experience platform that turns any document into an interactive, multilingual experience with built-in conversational AI. Import a PDF or describe your project — AI builds everything automatically. Share via links, QR codes, or embeds. No app required.",
       "q2": "How does it work?",
-      "a2": "1) Create a project and add your content through the dashboard\n2) Share via link, QR code, or embed\n3) Visitors access AI-powered, multilingual content instantly on any device",
+      "a2": "1) Import your document or describe your project to an AI agent — it creates everything automatically\n2) Share via link, QR code, or embed\n3) Visitors access AI-powered, multilingual content instantly on any device",
       "q3": "Do visitors need to download an app?",
       "a3": "No. FunTell works through any smartphone browser. Simply scan the QR code—nothing to download or install.",
       "q4": "What languages are supported?",
@@ -1652,7 +1652,7 @@
       "q5": "What's included in the price?",
       "a5": "Three tiers: Free ({freeExperiences} projects, {freeSessions} sessions), Starter ({starterBudget}/month, {starterAiSessions} AI sessions, max 2 languages), Premium ({monthlyBudget}/month, {aiSessions} AI sessions, unlimited languages, white label). Paid plans include auto top-up when budget runs out. All plans include AI voice, dashboard, QR codes, and hosting.",
       "q6": "How quickly can we get started?",
-      "a6": "Projects can launch within minutes. Sign up, create your project, and share your QR code instantly.",
+      "a6": "Projects can launch within minutes. Connect an AI tool like Claude Code, import your document, and AI builds your entire project automatically — content, categories, AI assistant, and QR codes.",
       "q7": "Can we customize the content and AI?",
       "a7": "Yes. Full customization using our self-service dashboard. Manage content, configure AI assistant behavior, set welcome messages, and update anytime.",
       "q8": "How quickly are QR experiences available?",
@@ -1672,6 +1672,7 @@
       "contact_title": "Contact",
       "phone": "Phone",
       "whatsapp_chat": "WhatsApp Chat",
+      "ai_setup_guide": "AI Setup Guide",
       "copyright": "© 2025 FunTell. All rights reserved.",
       "privacy": "Privacy Policy",
       "terms": "Terms of Service",
@@ -2498,6 +2499,15 @@
           "credits": {
             "title": "Credit Management",
             "description": "Learn how credits work and how to purchase more for translations and features."
+          }
+        }
+      },
+      "automation": {
+        "title": "Automation",
+        "articles": {
+          "mcp_setup": {
+            "title": "AI-Assisted Project Setup",
+            "description": "Use AI assistants like Claude or ChatGPT to create and manage projects through simple prompts."
           }
         }
       }

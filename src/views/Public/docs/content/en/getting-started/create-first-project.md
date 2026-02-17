@@ -16,7 +16,7 @@ A project is the foundation of your digital experience. It represents your conte
 
 After logging in, click on 'My Projects' in the navigation menu to access your project dashboard.
 
-![Navigate to Projects](/Image/docs/navigate-projects.png "ExperienceQR Dashboard")
+![Navigate to Projects](/Image/docs/navigate-projects.png "FunTell Dashboard")
 
 ### Step 2: Click Create New Project
 

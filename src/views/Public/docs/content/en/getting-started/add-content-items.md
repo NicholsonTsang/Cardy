@@ -78,7 +78,7 @@ If you have parent-child content but disable grouping, only the leaf items (chil
 
 ## Translating Content
 
-After adding content, you can translate it to other languages (Premium feature):
+After adding content, you can translate it to other languages (paid plans):
 
 1. Complete all content in your source language
 2. Open the Translation panel
