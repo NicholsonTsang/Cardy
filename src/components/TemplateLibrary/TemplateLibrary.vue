@@ -11,20 +11,20 @@
       <div class="category-tabs">
         <button 
           class="category-tab"
-          :class="{ active: selectedVenueType === null }"
-          @click="selectVenueType(null)"
+          :class="{ active: selectedScenarioCategory === null }"
+          @click="selectScenarioCategory(null)"
         >
           <i class="pi pi-thumbs-up"></i>
           {{ $t('templates.recommended') }}
         </button>
         <button 
-          v-for="vt in venueTypes"
-          :key="vt.venue_type"
+          v-for="sc in scenarioCategories"
+          :key="sc.scenario_category"
           class="category-tab"
-          :class="{ active: selectedVenueType === vt.venue_type }"
-          @click="selectVenueType(vt.venue_type)"
+          :class="{ active: selectedScenarioCategory === sc.scenario_category }"
+          @click="selectScenarioCategory(sc.scenario_category)"
         >
-          {{ formatVenueType(vt.venue_type) }}
+          {{ formatScenarioCategory(sc.scenario_category) }}
         </button>
       </div>
       
@@ -154,11 +154,11 @@ const emit = defineEmits<{
 const { t, locale } = useI18n()
 const router = useRouter()
 const templateStore = useTemplateLibraryStore()
-const { templates, venueTypes, isLoading } = storeToRefs(templateStore)
+const { templates, scenarioCategories, isLoading } = storeToRefs(templateStore)
 
 // Local state
 const searchQuery = ref('')
-const selectedVenueType = ref<string | null>(null)
+const selectedScenarioCategory = ref<string | null>(null)
 const selectedLanguage = ref<string | null>(null)  // Will be initialized to user's locale
 const showPreviewDialog = ref(false)
 const showImportDialog = ref(false)
@@ -174,22 +174,22 @@ const languageOptions = computed(() => {
 })
 
 // Helpers
-function formatVenueType(type: string): string {
-  // Use i18n translations from templates.venue_types
-  const translationKey = `templates.venue_types.${type}`
+function formatScenarioCategory(type: string): string {
+  // Use i18n translations from templates.scenario_categories
+  const translationKey = `templates.scenario_categories.${type}`
   const translated = t(translationKey)
   // Fallback to capitalized type if translation not found
   return translated !== translationKey ? translated : type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ')
 }
 
 // Actions
-function selectVenueType(type: string | null) {
-  selectedVenueType.value = type
+function selectScenarioCategory(type: string | null) {
+  selectedScenarioCategory.value = type
   fetchTemplates()
 }
 
 async function fetchTemplates() {
-  templateStore.filterVenueType = selectedVenueType.value
+  templateStore.filterScenarioCategory = selectedScenarioCategory.value
   templateStore.filterContentMode = null
   templateStore.searchQuery = searchQuery.value
   templateStore.previewLanguage = selectedLanguage.value
@@ -238,7 +238,7 @@ watch(searchQuery, () => {
 onMounted(async () => {
   // Initialize language to user's website locale
   selectedLanguage.value = locale.value
-  await templateStore.fetchVenueTypes()
+  await templateStore.fetchScenarioCategories()
   await fetchTemplates()
 })
 </script>

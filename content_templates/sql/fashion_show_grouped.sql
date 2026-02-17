@@ -89,7 +89,7 @@ BEGIN
     (v_card_id, v_seg_finale, 'Look 45 - Finale', E'**Designer Bow**\n\n*Élise Dubois*\n\n---\n\nCreative Director Élise Dubois takes her bow accompanied by the full cast of models in the finale walk.\n\nÉlise wears: Black silk shirt, tailored trousers, bare feet—her signature bow look. A single monarch butterfly pin on her collar.\n\n---\n\n🦋 *"Fashion is metamorphosis. We are all becoming."*\n— Élise Dubois', NULL, 'Élise always takes her bow barefoot - she says it keeps her grounded after months of work. The monarch pin was a gift from her first atelier teacher. This is her 15th collection for the house. Standing ovation lasted 3 minutes. Anna Wintour, Carine Roitfeld, and Edward Enninful all in attendance.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('fashion-show', v_card_id, 'events', true, true, 11);
 
     RAISE NOTICE 'Successfully created Fashion Show template with card ID: %', v_card_id;

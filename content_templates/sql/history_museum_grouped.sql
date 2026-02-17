@@ -106,7 +106,7 @@ BEGIN
     (v_card_id, v_cat_modern, 'Original Apple Macintosh (1984)', E'**Origin:** Cupertino, California, USA\n**Date:** January 1984\n**Material:** Plastic housing, CRT monitor, electronics\n\nThe Apple Macintosh introduced millions to personal computing with its revolutionary graphical user interface and mouse. Steve Jobs'' vision of "a computer for the rest of us" transformed how humans interact with technology.\n\nThis unit is one of the first 1,000 produced, still in working condition.', NULL, 'Serial number indicates production in January 1984, first month of manufacture. Cost $2,495 - equivalent to about $7,500 today. 128KB RAM, 9-inch black & white screen. Came with MacWrite and MacPaint software. The "1984" Super Bowl commercial is considered one of the greatest ads ever made. Donated by the original owner in 2010.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('history-museum', v_card_id, 'cultural', true, true, 2);
 
     RAISE NOTICE 'Successfully created History Museum template with card ID: %', v_card_id;

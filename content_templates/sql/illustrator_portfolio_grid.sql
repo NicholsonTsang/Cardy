@@ -84,7 +84,7 @@ BEGIN
     (v_card_id, v_cat_personal, 'Wild Things', E'**Personal Project / Prints**\n\nA series celebrating the weird and wonderful creatures of the natural world.\n\n---\n\nEach illustration reimagines a real animal through a surreal, colorful lens while staying true to their fascinating biology.\n\n**Medium:** Risograph prints\n**Size:** 11×14 inches\n**Edition:** 100 each\n\n🛒 *Available in my shop*', NULL, 'Passion project combining my love of nature documentaries with illustration. Animals featured: axolotl, pangolin, mantis shrimp, deep sea anglerfish, peacock spider, star-nosed mole. Limited edition of 100 per design.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('illustrator-portfolio', v_card_id, 'cultural', true, true, 4);
 
     RAISE NOTICE 'Successfully created Illustrator Portfolio template with card ID: %', v_card_id;

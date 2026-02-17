@@ -10,7 +10,7 @@ export interface ContentTemplate {
     card_id: string; // Links to actual card record
     name: string;
     description: string;
-    venue_type: string | null;
+    scenario_category: string | null;
     thumbnail_url: string | null;
     /**
      * NOTE: `cards` is a legacy value still present in some DB rows / exports.
@@ -52,8 +52,8 @@ export interface ContentItemData {
     sort_order: number;
 }
 
-export interface VenueTypeCount {
-    venue_type: string;
+export interface ScenarioCategoryCount {
+    scenario_category: string;
     template_count: number;
 }
 
@@ -84,13 +84,13 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
     const templates = ref<ContentTemplate[]>([]);
     const adminTemplates = ref<AdminContentTemplate[]>([]);
     const adminCards = ref<AdminCardForTemplate[]>([]);
-    const venueTypes = ref<VenueTypeCount[]>([]);
+    const scenarioCategories = ref<ScenarioCategoryCount[]>([]);
     const selectedTemplate = ref<ContentTemplateDetails | null>(null);
     const isLoading = ref(false);
     const error = ref<string | null>(null);
 
     // Filters
-    const filterVenueType = ref<string | null>(null);
+    const filterScenarioCategory = ref<string | null>(null);
     const filterContentMode = ref<string | null>(null);
     const searchQuery = ref<string>('');
     const featuredOnly = ref(false);
@@ -112,7 +112,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
             
             // Try with language parameter first (new stored procedure)
             let { data, error: err } = await supabase.rpc('list_content_templates', {
-                p_venue_type: filterVenueType.value,
+                p_scenario_category: filterScenarioCategory.value,
                 p_content_mode: filterContentMode.value,
                 p_search: searchQuery.value || null,
                 p_featured_only: featuredOnly.value,
@@ -123,7 +123,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
             if (err && err.message?.includes('function')) {
                 console.warn('New list_content_templates signature not available, using old signature');
                 const fallbackResult = await supabase.rpc('list_content_templates', {
-                    p_venue_type: filterVenueType.value,
+                    p_scenario_category: filterScenarioCategory.value,
                     p_content_mode: filterContentMode.value,
                     p_search: searchQuery.value || null,
                     p_featured_only: featuredOnly.value
@@ -174,14 +174,14 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
         }
     };
 
-    // Fetch venue types for filter dropdown
-    const fetchVenueTypes = async () => {
+    // Fetch scenario categories for filter dropdown
+    const fetchScenarioCategories = async () => {
         try {
-            const { data, error: err } = await supabase.rpc('get_template_venue_types');
+            const { data, error: err } = await supabase.rpc('get_template_scenario_categories');
             if (err) throw err;
-            venueTypes.value = data || [];
+            scenarioCategories.value = data || [];
         } catch (err: any) {
-            console.error('Error fetching venue types:', err);
+            console.error('Error fetching scenario categories:', err);
         }
     };
 
@@ -293,7 +293,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
     const createTemplateFromCard = async (
         cardId: string,
         slug: string,
-        venueType?: string | null,
+        scenarioCategory?: string | null,
         isFeatured?: boolean,
         sortOrder?: number
     ): Promise<{ success: boolean; template_id: string | null; message: string }> => {
@@ -309,7 +309,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
                 p_admin_user_id: userId,
                 p_card_id: cardId,
                 p_slug: slug,
-                p_venue_type: venueType || null,
+                p_scenario_category: scenarioCategory || null,
                 p_is_featured: isFeatured || false,
                 p_sort_order: sortOrder || 0
             });
@@ -341,7 +341,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
         templateId: string,
         settings: {
             slug?: string;
-            venue_type?: string | null;
+            scenario_category?: string | null;
             is_featured?: boolean;
             is_active?: boolean;
             sort_order?: number;
@@ -359,7 +359,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
                 p_admin_user_id: userId,
                 p_template_id: templateId,
                 p_slug: settings.slug || null,
-                p_venue_type: settings.venue_type,
+                p_scenario_category: settings.scenario_category,
                 p_is_featured: settings.is_featured,
                 p_is_active: settings.is_active,
                 p_sort_order: settings.sort_order
@@ -477,7 +477,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
 
     // Clear filters
     const clearFilters = () => {
-        filterVenueType.value = null;
+        filterScenarioCategory.value = null;
         filterContentMode.value = null;
         searchQuery.value = '';
         featuredOnly.value = false;
@@ -489,7 +489,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
     const bulkImportTemplate = async (
         cardData: any,
         slug: string,
-        venueType: string | null
+        scenarioCategory: string | null
     ): Promise<{ success: boolean; message: string; cardId?: string; templateId?: string }> => {
         try {
             const authStore = useAuthStore();
@@ -699,7 +699,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
             const templateResult = await createTemplateFromCard(
                 newCardId,
                 slug,
-                venueType,
+                scenarioCategory,
                 false, // not featured by default
                 adminTemplates.value.length // add at end
             );
@@ -731,13 +731,13 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
         templates,
         adminTemplates,
         adminCards,
-        venueTypes,
+        scenarioCategories,
         selectedTemplate,
         isLoading,
         error,
         
         // Filters
-        filterVenueType,
+        filterScenarioCategory,
         filterContentMode,
         searchQuery,
         featuredOnly,
@@ -749,7 +749,7 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
         // Actions
         fetchTemplates,
         fetchTemplateDetails,
-        fetchVenueTypes,
+        fetchScenarioCategories,
         importTemplate,
         clearFilters,
         

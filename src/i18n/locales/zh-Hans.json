@@ -326,7 +326,7 @@
     "featured": "精选",
     "recommended": "推荐",
     "search_placeholder": "搜索模板...",
-    "filter_venue_type": "场馆类型",
+    "filter_scenario_category": "场馆类型",
     "filter_content_mode": "布局",
     "filter_grouped": "组织方式",
     "all_venues": "所有场馆",
@@ -345,7 +345,7 @@
     "importing": "导入中...",
     "create_from_template": "创建项目",
     "import_failed": "模板导入失败",
-    "venue_types": {
+    "scenario_categories": {
       "cultural": "文化与艺术",
       "food": "餐饮",
       "events": "活动与娱乐",
@@ -421,7 +421,7 @@
       "validation_errors": "验证错误",
       "slug": "代称",
       "name": "名称",
-      "venue_type": "场馆类型",
+      "scenario_category": "场馆类型",
       "content_mode": "模式",
       "grouped": "分组",
       "items": "项目",
@@ -445,7 +445,7 @@
       "thumbnail_url": "缩略图网址",
       "thumbnail_url_placeholder": "https://example.com/image.jpg",
       "name_required": "模板名称为必填项",
-      "venue_type_required": "场馆类型为必填项",
+      "scenario_category_required": "场馆类型为必填项",
       "template_updated": "模板更新成功",
       "admin_settings": "管理员设置",
       "slug_readonly": "代称创建后无法更改",
@@ -454,7 +454,7 @@
       "ai_enabled": "启用 AI 助手",
       "ai_instruction": "AI 指令",
       "ai_knowledge_base": "AI 知识库",
-      "select_venue_type": "选择场馆类型...",
+      "select_scenario_category": "选择场馆类型...",
       "template_created": "模板创建成功",
       "feature": "设为精选",
       "unfeature": "取消精选",
@@ -1302,7 +1302,7 @@
       "view_all": "探索更多模板",
       "showing": "显示",
       "of": "共",
-      "venue_types": {
+      "scenario_categories": {
         "cultural": "文化艺术",
         "food": "餐饮美食",
         "events": "活动娱乐",

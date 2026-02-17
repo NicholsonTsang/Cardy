@@ -97,7 +97,7 @@ BEGIN
     (v_card_id, v_cat_information, 'Emergency Information', E'**Safety First**\n\n🚨 **Emergency:** Dial 911\n\n🏥 **Hotel Security:** Dial 0 (24 hours)\n\n---\n\n**Fire Safety:**\n- Fire exits marked on back of room door\n- Do not use elevators during fire\n- Meet at designated assembly point (front of hotel)\n\n**Medical:**\n- First aid available at front desk\n- Nearest hospital: City General (10 min by car)\n- 24-hour pharmacy: CVS, 2 blocks east\n\n**Lost & Found:**\n- Items found in hotel: Front desk\n- Items left after checkout: Call (555) 123-4567\n\n**Safe Deposit:**\nIn-room safe included. Front desk safe for valuables.', NULL, 'Hotel has full sprinkler system and smoke detectors in all rooms. AED machines on every floor. Security team includes former police officers. Doctor on call 24 hours (house call $150). Wheelchair accessible throughout. Service animals welcome. In-room safes hold standard laptop size.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('hotel-services', v_card_id, 'hospitality', true, true, 14);
 
     RAISE NOTICE 'Successfully created Hotel Services template with card ID: %', v_card_id;

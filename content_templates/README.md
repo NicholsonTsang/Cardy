@@ -4,7 +4,7 @@ This folder contains sample content templates for different venue types and cont
 
 ## Template Structure
 
-Each template file follows the naming convention: `{venue_type}_{content_mode}.md`
+Each template file follows the naming convention: `{scenario_category}_{content_mode}.md`
 
 ### Access Mode
 

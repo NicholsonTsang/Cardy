@@ -59,7 +59,7 @@ BEGIN
     (v_card_id, v_cat_classes, 'Recovery & Stretch', E'**Active Recovery**\n\n🧘‍♀️ 45 minutes | Restore & recover\n\nGentle stretching, foam rolling, and mobility work. Essential for preventing injury and improving performance.\n\n---\n\n🎯 **Benefits**\n- Muscle recovery\n- Injury prevention\n- Improved mobility\n- Relaxation\n\n👤 **Intensity:** ●○○○○\n\n📅 *Sun 11 AM, 4 PM | Wed 8 PM*\n\n*Foam rollers and massage balls provided*', NULL, 'Often overlooked but crucial class. Targets fascia and tight muscles from intense workouts. Foam rolling can be uncomfortable on tight spots - that''s normal. Great after leg day or long run. Wednesday night slot perfect for mid-week reset. Therapist designed the sequences. Free for unlimited members.', 7);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('fitness-studio', v_card_id, 'events', true, true, 13);
 
     RAISE NOTICE 'Successfully created Fitness Studio template with card ID: %', v_card_id;

@@ -57,7 +57,7 @@ BEGIN
     (v_card_id, v_cat_units, 'Building Amenities', E'**Exceptional Living**\n\nResort-caliber amenities for residents and guests.\n\n---\n\n🏊 **Wellness**\n- Rooftop infinity pool\n- State-of-the-art fitness center\n- Yoga/meditation studio\n- Spa treatment room\n\n🎉 **Social**\n- Residents'' lounge with kitchen\n- Private dining room\n- Rooftop terrace with grill\n- Wine cellar with lockers\n\n🚗 **Services**\n- 24/7 concierge\n- Valet parking\n- Package room\n- Pet spa', NULL, '$15M amenity package - among best in the city. Pool open May-October, heated. Fitness center 24/7 access with Pelotons. Wine cellar lockers $500/year - climate controlled. Pet spa includes grooming station and dog wash. Residents'' lounge bookable for private events. Valet parking $500/month additional. Guest suite available for out-of-town visitors.', 6);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('real-estate-showroom', v_card_id, 'retail', true, true, 18);
 
     RAISE NOTICE 'Successfully created Real Estate Showroom template with card ID: %', v_card_id;

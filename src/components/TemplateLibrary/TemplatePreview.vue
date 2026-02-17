@@ -19,7 +19,7 @@
         
         <!-- Tags -->
         <div class="preview-tags">
-          <Tag v-if="template.venue_type" :value="formatVenueType(template.venue_type)" severity="secondary" />
+          <Tag v-if="template.scenario_category" :value="formatScenarioCategory(template.scenario_category)" severity="secondary" />
           <Tag :value="getModeLabel(template.content_mode)" :severity="getModeSeverity(template.content_mode)" />
           <Tag v-if="template.is_grouped" :value="$t('templates.grouped')" severity="info" />
         </div>
@@ -151,7 +151,7 @@ function truncate(text: string, maxLength: number): string {
   return text.length > maxLength ? text.slice(0, maxLength) + '...' : text
 }
 
-function formatVenueType(type: string): string {
+function formatScenarioCategory(type: string): string {
   return type.charAt(0).toUpperCase() + type.slice(1).replace(/_/g, ' ')
 }
 

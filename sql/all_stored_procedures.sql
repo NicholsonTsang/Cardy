@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Wed Feb 18 00:46:49 HKT 2026
+-- Generated: Wed Feb 18 02:24:47 HKT 2026
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -2088,7 +2088,7 @@ GRANT EXECUTE ON FUNCTION get_card_preview_content(UUID, VARCHAR) TO authenticat
 -- -----------------------------------------------------------------
 DROP FUNCTION IF EXISTS list_content_templates CASCADE;
 DROP FUNCTION IF EXISTS get_content_template CASCADE;
-DROP FUNCTION IF EXISTS get_template_venue_types CASCADE;
+DROP FUNCTION IF EXISTS get_template_scenario_categories CASCADE;
 DROP FUNCTION IF EXISTS import_content_template CASCADE;
 DROP FUNCTION IF EXISTS create_template_from_card CASCADE;
 DROP FUNCTION IF EXISTS update_template_settings CASCADE;
@@ -2112,7 +2112,7 @@ DROP FUNCTION IF EXISTS get_demo_templates CASCADE;
 -- All fields included for consistency with Excel export/import
 -- -----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.list_content_templates(
-    p_venue_type TEXT DEFAULT NULL,
+    p_scenario_category TEXT DEFAULT NULL,
     p_content_mode TEXT DEFAULT NULL,
     p_search TEXT DEFAULT NULL,
     p_featured_only BOOLEAN DEFAULT FALSE,
@@ -2124,7 +2124,7 @@ RETURNS TABLE (
     card_id UUID,
     name TEXT,
     description TEXT,
-    venue_type TEXT,
+    scenario_category TEXT,
     thumbnail_url TEXT,
     content_mode TEXT,
     is_grouped BOOLEAN,
@@ -2160,7 +2160,7 @@ BEGIN
             THEN COALESCE(c.translations->p_language->>'description', c.description, '')
             ELSE COALESCE(c.description, '')
         END::TEXT AS description,
-        ct.venue_type,
+        ct.scenario_category,
         COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
         COALESCE(c.content_mode, 'list')::TEXT,
         COALESCE(c.is_grouped, false),
@@ -2177,7 +2177,7 @@ BEGIN
     FROM content_templates ct
     JOIN cards c ON ct.card_id = c.id
     WHERE ct.is_active = true
-        AND (p_venue_type IS NULL OR ct.venue_type = p_venue_type)
+        AND (p_scenario_category IS NULL OR ct.scenario_category = p_scenario_category)
         AND (p_content_mode IS NULL OR c.content_mode = p_content_mode)
         AND (p_featured_only = FALSE OR ct.is_featured = true)
         AND (
@@ -2213,7 +2213,7 @@ RETURNS TABLE (
     card_id UUID,
     name TEXT,
     description TEXT,
-    venue_type TEXT,
+    scenario_category TEXT,
     thumbnail_url TEXT,
     content_mode TEXT,
     is_grouped BOOLEAN,
@@ -2258,7 +2258,7 @@ BEGIN
             THEN COALESCE(c.translations->p_language->>'description', c.description, '')
             ELSE COALESCE(c.description, '')
         END::TEXT AS description,
-        ct.venue_type,
+        ct.scenario_category,
         COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
         COALESCE(c.content_mode, 'list')::TEXT,
         COALESCE(c.is_grouped, false),
@@ -2341,11 +2341,11 @@ END;
 $$;
 
 -- -----------------------------------------------------------------
--- Get available venue types for filtering
+-- Get available scenario categories for filtering
 -- -----------------------------------------------------------------
-CREATE OR REPLACE FUNCTION public.get_template_venue_types()
+CREATE OR REPLACE FUNCTION public.get_template_scenario_categories()
 RETURNS TABLE (
-    venue_type TEXT,
+    scenario_category TEXT,
     template_count BIGINT
 )
 LANGUAGE plpgsql
@@ -2355,12 +2355,12 @@ AS $$
 BEGIN
     RETURN QUERY
     SELECT 
-        ct.venue_type,
+        ct.scenario_category,
         COUNT(*)::BIGINT as template_count
     FROM content_templates ct
-    WHERE ct.is_active = true AND ct.venue_type IS NOT NULL
-    GROUP BY ct.venue_type
-    ORDER BY template_count DESC, ct.venue_type ASC;
+    WHERE ct.is_active = true AND ct.scenario_category IS NOT NULL
+    GROUP BY ct.scenario_category
+    ORDER BY template_count DESC, ct.scenario_category ASC;
 END;
 $$;
 
@@ -2596,7 +2596,7 @@ CREATE OR REPLACE FUNCTION public.create_template_from_card(
     p_admin_user_id UUID,
     p_card_id UUID,
     p_slug TEXT,
-    p_venue_type TEXT DEFAULT NULL,
+    p_scenario_category TEXT DEFAULT NULL,
     p_is_featured BOOLEAN DEFAULT FALSE,
     p_sort_order INTEGER DEFAULT 0
 )
@@ -2647,9 +2647,9 @@ BEGIN
     
     -- Create the template linking to the card
     INSERT INTO content_templates (
-        slug, card_id, venue_type, is_featured, sort_order
+        slug, card_id, scenario_category, is_featured, sort_order
     ) VALUES (
-        p_slug, p_card_id, p_venue_type, p_is_featured, p_sort_order
+        p_slug, p_card_id, p_scenario_category, p_is_featured, p_sort_order
     ) RETURNING id INTO v_result_id;
     
     -- Log the operation
@@ -2671,7 +2671,7 @@ CREATE OR REPLACE FUNCTION public.update_template_settings(
     p_admin_user_id UUID,
     p_template_id UUID,
     p_slug TEXT DEFAULT NULL,
-    p_venue_type TEXT DEFAULT NULL,
+    p_scenario_category TEXT DEFAULT NULL,
     p_is_featured BOOLEAN DEFAULT NULL,
     p_is_active BOOLEAN DEFAULT NULL,
     p_sort_order INTEGER DEFAULT NULL
@@ -2726,7 +2726,7 @@ BEGIN
     -- Update template settings
     UPDATE content_templates SET
         slug = COALESCE(p_slug, slug),
-        venue_type = COALESCE(p_venue_type, venue_type),
+        scenario_category = COALESCE(p_scenario_category, scenario_category),
         is_featured = COALESCE(p_is_featured, is_featured),
         is_active = COALESCE(p_is_active, is_active),
         sort_order = COALESCE(p_sort_order, sort_order),
@@ -2891,7 +2891,7 @@ RETURNS TABLE (
     card_id UUID,
     name TEXT,
     description TEXT,
-    venue_type TEXT,
+    scenario_category TEXT,
     thumbnail_url TEXT,
     content_mode TEXT,
     is_grouped BOOLEAN,
@@ -2928,7 +2928,7 @@ BEGIN
         ct.card_id,
         c.name,
         COALESCE(c.description, '')::TEXT,
-        ct.venue_type,
+        ct.scenario_category,
         COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
         COALESCE(c.content_mode, 'list')::TEXT,
         COALESCE(c.is_grouped, false),
@@ -3052,7 +3052,7 @@ GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEA
 GRANT EXECUTE ON FUNCTION public.list_content_templates(TEXT, TEXT, TEXT, BOOLEAN, TEXT) TO anon;
 GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_content_template(UUID, TEXT, TEXT) TO anon;
-GRANT EXECUTE ON FUNCTION public.get_template_venue_types() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_template_scenario_categories() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.import_content_template(UUID, UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.create_template_from_card(UUID, UUID, TEXT, TEXT, BOOLEAN, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_template_settings(UUID, UUID, TEXT, TEXT, BOOLEAN, BOOLEAN, INTEGER) TO authenticated;
@@ -3077,7 +3077,7 @@ RETURNS TABLE (
     slug TEXT,
     name TEXT,
     description TEXT,
-    venue_type TEXT,
+    scenario_category TEXT,
     thumbnail_url TEXT,
     content_mode TEXT,
     item_count BIGINT,
@@ -3096,7 +3096,7 @@ BEGIN
         -- Use translation if available, fallback to original
         COALESCE(c.translations->p_language->>'name', c.name)::TEXT AS name,
         COALESCE(c.translations->p_language->>'description', c.description, '')::TEXT AS description,
-        ct.venue_type,
+        ct.scenario_category,
         COALESCE(c.image_url, '')::TEXT AS thumbnail_url,
         COALESCE(c.content_mode, 'list')::TEXT,
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,

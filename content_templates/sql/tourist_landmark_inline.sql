@@ -75,7 +75,7 @@ BEGIN
     (v_card_id, v_cat_waterfront, 'Harbor View Park & Memorial', E'**Reflection and Remembrance** 🌅\n\n---\n\nEnd your tour at this peaceful waterfront park, where benches face the harbor and the memorial honors those who shaped this community''s history.\n\n**The Memorial:**\nBronze sculptures depict a whaler, a captain, a lighthouse keeper, and a fisherman''s wife—representing the people who built this town.\n\n**The View:**\nOn clear days, you can see 15 miles out to sea. Watch for seals on the outer rocks (bring binoculars).\n\n---\n\n⏰ **Park hours:** Dawn to dusk\n🎟️ **Admission:** Free\n🪑 **Benches throughout park**', NULL, 'Park created 1956 on site of old rope walk factory. Memorial dedicated 1976 for Bicentennial. Best sunset watching is late June. Ice cream shop Flanagan''s open since 1889.', 2);
 
     -- Insert into content_templates for template library management
-    INSERT INTO content_templates (slug, card_id, venue_type, is_featured, is_active, sort_order)
+    INSERT INTO content_templates (slug, card_id, scenario_category, is_featured, is_active, sort_order)
     VALUES ('tourist-landmark', v_card_id, 'tours', true, true, 19);
 
     RAISE NOTICE 'Successfully created Tourist Landmark template with card ID: %', v_card_id;

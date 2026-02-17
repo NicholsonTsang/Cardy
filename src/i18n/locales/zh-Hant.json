@@ -1442,7 +1442,7 @@
       "view_all": "探索更多模板",
       "showing": "顯示",
       "of": "共",
-      "venue_types": {
+      "scenario_categories": {
         "cultural": "文化藝術",
         "food": "餐飲美食",
         "events": "活動娛樂",
@@ -2292,7 +2292,7 @@
     "featured": "精選",
     "recommended": "推薦",
     "search_placeholder": "搜尋範本...",
-    "filter_venue_type": "場館類型",
+    "filter_scenario_category": "場館類型",
     "filter_content_mode": "版面配置",
     "filter_grouped": "組織方式",
     "all_venues": "所有場館",
@@ -2310,7 +2310,7 @@
     "access_limits_info": "此範本已設定存取限制",
     "daily_limit": "每日最多 {count} 次會話",
     "translations_available": "{count} 種翻譯",
-    "venue_types": {
+    "scenario_categories": {
       "cultural": "文化藝術",
       "food": "餐飲美食",
       "events": "活動娛樂",
@@ -2396,7 +2396,7 @@
       "validation_errors": "驗證錯誤",
       "slug": "代稱",
       "name": "名稱",
-      "venue_type": "場館類型",
+      "scenario_category": "場館類型",
       "content_mode": "模式",
       "grouped": "分組",
       "items": "項目",
@@ -2420,7 +2420,7 @@
       "thumbnail_url": "縮圖網址",
       "thumbnail_url_placeholder": "https://example.com/image.jpg",
       "name_required": "範本名稱為必填",
-      "venue_type_required": "場館類型為必填",
+      "scenario_category_required": "場館類型為必填",
       "template_updated": "範本更新成功",
       "admin_settings": "管理員設定",
       "slug_readonly": "代稱建立後無法變更",
@@ -2429,7 +2429,7 @@
       "ai_enabled": "啟用 AI 助手",
       "ai_instruction": "AI 指令",
       "ai_knowledge_base": "AI 知識庫",
-      "select_venue_type": "選擇場館類型...",
+      "select_scenario_category": "選擇場館類型...",
       "template_created": "範本建立成功",
       "feature": "設為精選",
       "unfeature": "取消精選",

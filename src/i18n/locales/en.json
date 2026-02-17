@@ -1476,7 +1476,7 @@
       "view_all": "Explore More Templates",
       "showing": "Showing",
       "of": "of",
-      "venue_types": {
+      "scenario_categories": {
         "cultural": "Cultural & Arts",
         "food": "Food & Beverage",
         "events": "Events & Entertainment",
@@ -2304,7 +2304,7 @@
     "browse_language": "Browse in",
     "recommended": "Recommended",
     "search_placeholder": "Search templates...",
-    "filter_venue_type": "Venue Type",
+    "filter_scenario_category": "Venue Type",
     "filter_content_mode": "Layout",
     "filter_grouped": "Organization",
     "active_filters": "Filters",
@@ -2329,7 +2329,7 @@
     "access_limits_info": "This template has access limits configured",
     "daily_limit": "Max {count} sessions/day",
     "translations_available": "{count} translations",
-    "venue_types": {
+    "scenario_categories": {
       "cultural": "Cultural & Arts",
       "food": "Food & Beverage",
       "events": "Events & Entertainment",
@@ -2426,7 +2426,7 @@
       "validation_errors": "Validation Errors",
       "slug": "Slug",
       "name": "Name",
-      "venue_type": "Venue Type",
+      "scenario_category": "Venue Type",
       "content_mode": "Mode",
       "grouped": "Grouped",
       "items": "Items",
@@ -2450,7 +2450,7 @@
       "thumbnail_url": "Thumbnail URL",
       "thumbnail_url_placeholder": "https://example.com/image.jpg",
       "name_required": "Template name is required",
-      "venue_type_required": "Venue type is required",
+      "scenario_category_required": "Venue type is required",
       "template_updated": "Template updated successfully",
       "admin_settings": "Admin Settings",
       "slug_readonly": "Slug cannot be changed after creation",
@@ -2459,7 +2459,7 @@
       "ai_enabled": "AI Assistant Enabled",
       "ai_instruction": "AI Instruction",
       "ai_knowledge_base": "AI Knowledge Base",
-      "select_venue_type": "Select venue type...",
+      "select_scenario_category": "Select venue type...",
       "template_created": "Template created successfully",
       "feature": "Feature",
       "unfeature": "Unfeature",
