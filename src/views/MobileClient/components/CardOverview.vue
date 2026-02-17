@@ -129,11 +129,13 @@ const cardLevelAssistantRef = ref<InstanceType<typeof CardLevelAssistant> | null
 
 interface Props {
   card: {
+    card_id?: string
     card_name: string
     card_description: string
     card_image_url: string
     crop_parameters?: any
     conversation_ai_enabled: boolean
+    realtime_voice_enabled?: boolean
     ai_instruction?: string
     ai_knowledge_base?: string
     ai_welcome_general?: string
@@ -159,10 +161,12 @@ const showBranding = computed(() => {
 
 // Card data formatted for AI assistant
 const cardDataForAssistant = computed(() => ({
+  card_id: props.card.card_id,
   card_name: props.card.card_name,
   card_description: props.card.card_description,
   card_image_url: props.card.card_image_url,
   conversation_ai_enabled: props.card.conversation_ai_enabled,
+  realtime_voice_enabled: props.card.realtime_voice_enabled,
   ai_instruction: props.card.ai_instruction || '',
   ai_knowledge_base: props.card.ai_knowledge_base || '',
   ai_welcome_general: props.card.ai_welcome_general || '',
@@ -441,82 +445,6 @@ function openAIAssistant() {
   100% {
     transform: scale(2.5);
     opacity: 0;
-  }
-}
-
-/* Responsive adjustments */
-@media (min-width: 640px) {
-  .icon-platform {
-    width: 160px;
-    height: 160px;
-  }
-  
-  .icon-cube {
-    inset: 40px;
-  }
-  
-  .cube-face {
-    width: 80px;
-    height: 80px;
-  }
-  
-  .cube-front,
-  .cube-back {
-    transform: translateZ(40px);
-  }
-  
-  .cube-front i {
-    font-size: 2.5rem;
-  }
-  
-  .cube-left {
-    transform: rotateY(-90deg) translateZ(40px);
-  }
-  
-  .cube-right {
-    transform: rotateY(90deg) translateZ(40px);
-  }
-  
-  .cube-top {
-    transform: rotateX(90deg) translateZ(40px);
-  }
-  
-  .cube-bottom {
-    transform: rotateX(-90deg) translateZ(40px);
-  }
-  
-  .welcome-title-3d {
-    font-size: 2rem;
-  }
-  
-  .glass-content {
-    font-size: 1rem;
-  }
-  
-  .content-card {
-    padding: 2rem;
-    max-width: 420px;
-  }
-}
-
-/* Reduce motion for accessibility */
-@media (prefers-reduced-motion: reduce) {
-  .floating-cube,
-  .floating-prism,
-  .glow-sphere,
-  .light-beam,
-  .platform-ring,
-  .icon-cube,
-  .icon-glow {
-    animation: none;
-  }
-  
-  .welcome-content-3d {
-    animation: none;
-  }
-  
-  .grid-floor {
-    display: none;
   }
 }
 
@@ -910,70 +838,64 @@ function openAIAssistant() {
 
 /* Responsive */
 @media (min-width: 640px) {
-  .hero-section {
-    padding: 3rem 2rem;
-  }
-  
-  .card-spotlight {
-    max-width: 420px;
-  }
-  
   .card-title {
     font-size: 1.875rem;
   }
-  
+
   .card-description {
-    font-size: 16px; /* Slightly larger on bigger screens */
+    font-size: 16px;
     line-height: 1.65;
   }
-  
+
   .description-wrapper {
-    max-height: 25vh; /* More room on larger screens */
+    max-height: 25vh;
   }
-  
+
   .info-panel {
     padding: 2rem 2rem 2.5rem;
   }
-  
+
   .language-label {
     font-size: 0.9375rem;
   }
-  
+
   .language-chip {
     padding: 0.5rem 1rem;
     font-size: 0.9375rem;
   }
-  
+
   .language-chip-icon {
     font-size: 1.125rem;
   }
-  
+
   .language-chip-flag {
     font-size: 1.25rem;
   }
 }
 
-@media (min-width: 768px) {
-  .card-spotlight {
-    max-width: 480px;
-  }
-}
-
 /* Accessibility */
 @media (prefers-reduced-motion: reduce) {
-  .card-spotlight,
   .info-panel {
     animation: none;
   }
-  
-  .spotlight-glow {
-    animation: none;
-    opacity: 0.5;
-  }
-  
+
   .language-chip:hover,
   .language-chip:active {
     transform: none;
+  }
+
+  .gradient-1,
+  .gradient-2,
+  .gradient-3 {
+    animation: none;
+  }
+
+  .perspective-grid {
+    animation: none;
+  }
+
+  .particle {
+    animation: none;
   }
 }
 

@@ -9,13 +9,19 @@ export function useWebRTCConnection() {
   const isConnected = ref(false)
   const status = ref<'disconnected' | 'connecting' | 'connected' | 'error'>('disconnected')
   const error = ref<string | null>(null)
-  
+
   // Audio state
   const isSpeaking = ref(false)
   const mediaStream = ref<MediaStream | null>(null)
   const audioElement = ref<HTMLAudioElement | null>(null)
   const audioAnalyser = ref<{ context: AudioContext; analyser: AnalyserNode } | null>(null)
-  
+
+  // Voice billing state
+  const hardLimitSeconds = ref(0)
+  const remainingCredits = ref(0)
+  const voiceSessionId = ref<string | null>(null)
+  const voiceCallStartTime = ref<number | null>(null)
+
   // Transcript callbacks
   let onUserTranscriptCallback: ((text: string) => void) | null = null
   let onAssistantTranscriptCallback: ((text: string) => void) | null = null
@@ -46,7 +52,8 @@ export function useWebRTCConnection() {
   }
   
   // Get ephemeral token from Backend API
-  async function getEphemeralToken(language: string) {
+  // cardId is required for voice billing (credit deduction happens server-side)
+  async function getEphemeralToken(language: string, cardId?: string) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -58,20 +65,39 @@ export function useWebRTCConnection() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          cardId,
           sessionConfig: {
             voice: voiceMap[language] || 'alloy'
           }
         })
       })
-      
+
       if (!response.ok) {
-        const errorData = await response.json()
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }))
+        // Surface specific billing errors for the UI to handle
+        if (response.status === 402) {
+          throw new Error('NO_VOICE_CREDITS')
+        }
+        if (response.status === 403) {
+          throw new Error('VOICE_NOT_ENABLED')
+        }
         throw new Error(errorData.error || 'Failed to get ephemeral token')
       }
 
       const data = await response.json()
       if (!data.success) throw new Error(data.error)
-      
+
+      // Store billing info from response
+      if (data.hardLimitSeconds) {
+        hardLimitSeconds.value = data.hardLimitSeconds
+      }
+      if (data.remainingCredits !== undefined) {
+        remainingCredits.value = data.remainingCredits
+      }
+      if (data.sessionId) {
+        voiceSessionId.value = data.sessionId
+      }
+
       return data.client_secret
     } catch (err: any) {
       console.error('Failed to get ephemeral token:', err)
@@ -81,7 +107,8 @@ export function useWebRTCConnection() {
   
   // Initialize WebRTC connection
   // customWelcome: Optional custom welcome message from card settings (ai_welcome_general/ai_welcome_item)
-  async function connect(language: string, instructions: string, customWelcome?: string): Promise<void> {
+  // cardId: Required for voice billing - credit deduction happens at connection time
+  async function connect(language: string, instructions: string, customWelcome?: string, cardId?: string): Promise<void> {
     // Prevent duplicate connections
     if (isConnected.value || status.value === 'connecting') {
       console.warn('⚠️ Connection already active or in progress, ignoring duplicate connect request')
@@ -118,8 +145,9 @@ export function useWebRTCConnection() {
         throw new Error('Backend server required. Please configure VITE_BACKEND_URL in your .env file.')
       }
       
-      // Get ephemeral token
-      const ephemeralToken = await getEphemeralToken(language)
+      // Get ephemeral token (also deducts voice credit server-side)
+      const ephemeralToken = await getEphemeralToken(language, cardId)
+      voiceCallStartTime.value = Date.now()
 
       // Request microphone access
       console.log('🎤 Requesting microphone access...')
@@ -597,8 +625,43 @@ export function useWebRTCConnection() {
     })
   }
   
+  // Report voice call end to backend for duration logging
+  // Uses sendBeacon for reliability (works during page unload)
+  function reportCallEnd(cardId?: string) {
+    if (!voiceSessionId.value || !voiceCallStartTime.value) return
+
+    const durationSeconds = Math.round((Date.now() - voiceCallStartTime.value) / 1000)
+    const backendUrl = import.meta.env.VITE_BACKEND_URL
+
+    if (!backendUrl) return
+
+    const payload = JSON.stringify({
+      cardId: cardId || '',
+      sessionId: voiceSessionId.value,
+      durationSeconds
+    })
+
+    // Use sendBeacon for reliability during page unload
+    const sent = navigator.sendBeacon(
+      `${backendUrl}/api/ai/realtime-end`,
+      new Blob([payload], { type: 'application/json' })
+    )
+
+    if (!sent) {
+      // Fallback to fetch (fire-and-forget)
+      fetch(`${backendUrl}/api/ai/realtime-end`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload
+      }).catch(() => {})
+    }
+
+    console.log(`📊 Voice call ended: ${durationSeconds}s, session ${voiceSessionId.value}`)
+  }
+
   // Disconnect and cleanup
-  function disconnect() {
+  function disconnect(cardId?: string) {
+    reportCallEnd(cardId)
     cleanup()
   }
   
@@ -690,6 +753,10 @@ export function useWebRTCConnection() {
     onAssistantTranscriptCallback = null
     greetingInfo = null
     greetingSent = false
+
+    // Reset billing state
+    voiceSessionId.value = null
+    voiceCallStartTime.value = null
   }
   
   // Set transcript callbacks
@@ -708,12 +775,18 @@ export function useWebRTCConnection() {
     error,
     isSpeaking,
 
+    // Voice billing state
+    hardLimitSeconds,
+    remainingCredits,
+    voiceSessionId,
+
     // Methods
     connect,
     disconnect,
     interrupt,
     sendText,
     onUserTranscript,
-    onAssistantTranscript
+    onAssistantTranscript,
+    reportCallEnd
   }
 }

@@ -22,6 +22,7 @@ export interface Message {
 }
 
 export interface CardData {
+  card_id?: string  // Card UUID for voice billing (passed from route params)
   card_name: string
   card_description: string
   card_image_url: string
@@ -31,6 +32,8 @@ export interface CardData {
   ai_welcome_general?: string  // Custom welcome message for General AI Assistant
   ai_welcome_item?: string  // Custom welcome message for Content Item AI Assistant
   ai_prompt?: string  // Legacy field, mapped from ai_instruction
+  content_directory?: string  // Compact list of all content items for General Assistant context
+  realtime_voice_enabled?: boolean  // Per-project toggle for realtime voice conversations
   is_activated: boolean
 }
 

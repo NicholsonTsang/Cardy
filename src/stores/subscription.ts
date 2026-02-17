@@ -107,7 +107,8 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   const subscription = ref<SubscriptionDetails | null>(null);
   const usage = ref<UsageStats | null>(null);
   const dailyStats = ref<DailyStats | null>(null);
-  const loading = ref(false);
+  const loading = ref(false);       // Data fetching (subscription, usage, daily stats)
+  const actionLoading = ref(false); // User-triggered actions (checkout, cancel, reactivate, portal, buy)
   const error = ref<string | null>(null);
   
   // Computed
@@ -263,13 +264,13 @@ export const useSubscriptionStore = defineStore('subscription', () => {
   
   async function createCheckout(tier: 'starter' | 'premium' = 'premium'): Promise<{ url: string } | null> {
     if (!authStore.session?.access_token) return null;
-    
-    loading.value = true;
+
+    actionLoading.value = true;
     error.value = null;
-    
+
     try {
       const baseUrl = `${window.location.origin}/cms/subscription`;
-      
+
       const response = await fetch(`${backendUrl}/api/subscriptions/create-checkout`, {
         method: 'POST',
         headers: {
@@ -278,28 +279,28 @@ export const useSubscriptionStore = defineStore('subscription', () => {
         },
         body: JSON.stringify({ baseUrl, tier })
       });
-      
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.message || 'Failed to create checkout');
       }
-      
+
       return await response.json();
     } catch (err: any) {
       console.error('Error creating checkout:', err);
       error.value = err.message;
       return null;
     } finally {
-      loading.value = false;
+      actionLoading.value = false;
     }
   }
   
   async function cancelSubscription(immediate: boolean = false): Promise<boolean> {
     if (!authStore.session?.access_token) return false;
-    
-    loading.value = true;
+
+    actionLoading.value = true;
     error.value = null;
-    
+
     try {
       const response = await fetch(`${backendUrl}/api/subscriptions/cancel`, {
         method: 'POST',
@@ -309,12 +310,12 @@ export const useSubscriptionStore = defineStore('subscription', () => {
         },
         body: JSON.stringify({ immediate })
       });
-      
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.message || 'Failed to cancel subscription');
       }
-      
+
       // Refresh subscription data
       await fetchSubscription();
       return true;
@@ -323,16 +324,16 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = err.message;
       return false;
     } finally {
-      loading.value = false;
+      actionLoading.value = false;
     }
   }
   
   async function reactivateSubscription(): Promise<boolean> {
     if (!authStore.session?.access_token) return false;
-    
-    loading.value = true;
+
+    actionLoading.value = true;
     error.value = null;
-    
+
     try {
       const response = await fetch(`${backendUrl}/api/subscriptions/reactivate`, {
         method: 'POST',
@@ -341,12 +342,12 @@ export const useSubscriptionStore = defineStore('subscription', () => {
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.message || 'Failed to reactivate subscription');
       }
-      
+
       // Refresh subscription data
       await fetchSubscription();
       return true;
@@ -355,31 +356,31 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = err.message;
       return false;
     } finally {
-      loading.value = false;
+      actionLoading.value = false;
     }
   }
   
   async function openBillingPortal(): Promise<string | null> {
     if (!authStore.session?.access_token) return null;
-    
-    loading.value = true;
+
+    actionLoading.value = true;
     error.value = null;
-    
+
     try {
       const returnUrl = `${window.location.origin}/cms/subscription`;
-      
+
       const response = await fetch(`${backendUrl}/api/subscriptions/portal?returnUrl=${encodeURIComponent(returnUrl)}`, {
         headers: {
           'Authorization': `Bearer ${authStore.session.access_token}`,
           'Content-Type': 'application/json'
         }
       });
-      
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.message || 'Failed to get portal URL');
       }
-      
+
       const { url } = await response.json();
       return url;
     } catch (err: any) {
@@ -387,19 +388,19 @@ export const useSubscriptionStore = defineStore('subscription', () => {
       error.value = err.message;
       return null;
     } finally {
-      loading.value = false;
+      actionLoading.value = false;
     }
   }
   
   async function buyCredits(amount: number): Promise<{ url: string } | null> {
     if (!authStore.session?.access_token) return null;
-    
-    loading.value = true;
+
+    actionLoading.value = true;
     error.value = null;
-    
+
     try {
       const baseUrl = `${window.location.origin}/cms/subscription`;
-      
+
       const response = await fetch(`${backendUrl}/api/subscriptions/buy-credits`, {
         method: 'POST',
         headers: {
@@ -408,19 +409,19 @@ export const useSubscriptionStore = defineStore('subscription', () => {
         },
         body: JSON.stringify({ amount, baseUrl })
       });
-      
+
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.message || 'Failed to create credit checkout');
       }
-      
+
       return await response.json();
     } catch (err: any) {
       console.error('Error buying credits:', err);
       error.value = err.message;
       return null;
     } finally {
-      loading.value = false;
+      actionLoading.value = false;
     }
   }
   
@@ -429,6 +430,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     usage.value = null;
     dailyStats.value = null;
     loading.value = false;
+    actionLoading.value = false;
     error.value = null;
   }
   
@@ -438,6 +440,7 @@ export const useSubscriptionStore = defineStore('subscription', () => {
     usage,
     dailyStats,
     loading,
+    actionLoading,
     error,
     
     // Computed

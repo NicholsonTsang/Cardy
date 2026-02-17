@@ -5,11 +5,15 @@
 -- NOTE (Dec 2025): Legacy credit-based access functions have been removed.
 -- Mobile client now uses Express backend (mobile.routes.ts) with Redis-first
 -- usage tracking (usage-tracker.ts) for both monthly and daily limits.
--- 
+--
 -- Removed functions:
 -- - get_public_card_content (legacy credit model, replaced by mobile API)
 -- - get_digital_card_content (legacy credit model, replaced by mobile API)
 -- =================================================================
+
+-- Drop functions first to allow return type changes
+DROP FUNCTION IF EXISTS get_card_preview_access CASCADE;
+DROP FUNCTION IF EXISTS get_card_preview_content CASCADE;
 
 -- Get card preview URL without requiring issued cards (for card owners)
 CREATE OR REPLACE FUNCTION get_card_preview_access(p_card_id UUID)
@@ -59,6 +63,7 @@ RETURNS TABLE (
     card_image_url TEXT,
     card_crop_parameters JSONB,
     card_conversation_ai_enabled BOOLEAN,
+    card_realtime_voice_enabled BOOLEAN,
     card_ai_instruction TEXT,
     card_ai_knowledge_base TEXT,
     card_ai_welcome_general TEXT,
@@ -121,6 +126,7 @@ BEGIN
         c.image_url AS card_image_url,
         c.crop_parameters AS card_crop_parameters,
         c.conversation_ai_enabled AS card_conversation_ai_enabled,
+        c.realtime_voice_enabled AS card_realtime_voice_enabled,
         -- Card AI fields with translation support
         COALESCE(c.translations->p_language->>'ai_instruction', c.ai_instruction)::TEXT AS card_ai_instruction,
         COALESCE(c.translations->p_language->>'ai_knowledge_base', c.ai_knowledge_base)::TEXT AS card_ai_knowledge_base,

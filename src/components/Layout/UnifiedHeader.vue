@@ -22,7 +22,7 @@
         <!-- Right Side: Dashboard Controls -->
         <div class="flex items-center space-x-2 sm:space-x-4">
           <!-- Credit Balance Display (for Card Issuers) -->
-          <div v-if="isAuthenticated && userRole === 'cardIssuer'" class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-gray-100 rounded-lg">
+          <div v-if="isAuthenticated && userRole === 'cardIssuer'" class="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 bg-slate-100 rounded-lg">
             <i class="pi pi-wallet text-blue-600 text-xs sm:text-sm"></i>
             <span class="hidden sm:inline text-sm font-medium text-gray-700">{{ $t('credits.balance') }}:</span>
             <span class="text-xs sm:text-sm font-bold text-blue-600">{{ creditBalance }}</span>

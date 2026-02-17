@@ -46,6 +46,7 @@ CREATE TABLE cards (
     original_image_url TEXT, -- Original uploaded image (raw, uncropped)
     crop_parameters JSONB, -- JSON object containing crop parameters for dynamic image cropping (position, zoom, dimensions, etc.)
     conversation_ai_enabled BOOLEAN DEFAULT false,
+    realtime_voice_enabled BOOLEAN DEFAULT FALSE, -- Whether realtime voice conversations are enabled (requires voice credits)
     ai_instruction TEXT DEFAULT '' NOT NULL, -- AI role and guidelines (max 100 words) - defines AI's role, personality, and restrictions
     ai_knowledge_base TEXT DEFAULT '' NOT NULL, -- Background knowledge for AI conversations (max 2000 words) - detailed domain knowledge, facts, specifications
     ai_welcome_general TEXT DEFAULT '' NOT NULL, -- Custom welcome message for General AI Assistant (card-level)
@@ -295,6 +296,69 @@ CREATE INDEX idx_translation_history_card_id ON translation_history(card_id);
 CREATE INDEX idx_translation_history_user_id ON translation_history(translated_by);
 CREATE INDEX idx_translation_history_created_at ON translation_history(translated_at DESC);
 CREATE INDEX idx_translation_history_status ON translation_history(status);
+
+-- =================================================================
+-- VOICE CREDIT SYSTEM TABLES
+-- =================================================================
+
+-- Voice credit balance per user (integer-based, not decimal like general credits)
+CREATE TABLE IF NOT EXISTS voice_credits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    balance INTEGER NOT NULL DEFAULT 0,  -- number of voice calls remaining
+    total_purchased INTEGER NOT NULL DEFAULT 0,
+    total_consumed INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(user_id)
+);
+
+-- Voice credit transaction log
+CREATE TABLE IF NOT EXISTS voice_credit_transactions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    amount INTEGER NOT NULL,  -- positive = purchase, negative = usage
+    balance_before INTEGER NOT NULL,
+    balance_after INTEGER NOT NULL,
+    type TEXT NOT NULL CHECK (type IN ('purchase', 'usage', 'refund', 'admin_adjustment')),
+    description TEXT,
+    stripe_session_id TEXT,  -- for purchases
+    card_id UUID REFERENCES cards(id) ON DELETE SET NULL,  -- for usage
+    session_id TEXT,  -- visitor session for usage tracking
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Voice call log for analytics
+CREATE TABLE IF NOT EXISTS voice_call_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    card_id UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,  -- card owner
+    session_id TEXT,  -- visitor session
+    started_at TIMESTAMPTZ DEFAULT NOW(),
+    ended_at TIMESTAMPTZ,
+    duration_seconds INTEGER,
+    credit_deducted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- RLS policies (all access via stored procedures with service_role)
+ALTER TABLE voice_credits ENABLE ROW LEVEL SECURITY;
+ALTER TABLE voice_credit_transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE voice_call_log ENABLE ROW LEVEL SECURITY;
+
+-- Indexes for voice credit system
+CREATE INDEX IF NOT EXISTS idx_voice_credits_user_id ON voice_credits(user_id);
+CREATE INDEX IF NOT EXISTS idx_voice_credit_transactions_user_id ON voice_credit_transactions(user_id);
+CREATE INDEX IF NOT EXISTS idx_voice_credit_transactions_created_at ON voice_credit_transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_voice_credit_transactions_type ON voice_credit_transactions(type);
+CREATE INDEX IF NOT EXISTS idx_voice_call_log_card_id ON voice_call_log(card_id);
+CREATE INDEX IF NOT EXISTS idx_voice_call_log_user_id ON voice_call_log(user_id);
+CREATE INDEX IF NOT EXISTS idx_voice_call_log_session_id ON voice_call_log(session_id);
+CREATE INDEX IF NOT EXISTS idx_voice_call_log_started_at ON voice_call_log(started_at DESC);
+
+COMMENT ON TABLE voice_credits IS 'Voice call credit balance per user (integer-based, 1 credit = 1 voice call)';
+COMMENT ON TABLE voice_credit_transactions IS 'Audit log of all voice credit movements';
+COMMENT ON TABLE voice_call_log IS 'Log of all voice calls for analytics and billing';
 
 -- =================================================================
 -- CONTENT TEMPLATES LIBRARY

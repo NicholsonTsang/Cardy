@@ -196,7 +196,7 @@
                                 <i class="pi pi-info-circle text-slate-400 text-xs ml-1 cursor-help"
                                    v-tooltip.right="{ value: $t('dashboard.originalLanguageTooltip'), class: 'max-w-xs' }"></i>
                             </label>
-                            <Dropdown
+                            <Select
                                 id="originalLanguage"
                                 v-model="formData.original_language"
                                 :options="languageOptions"
@@ -218,7 +218,7 @@
                                         <span>{{ slotProps.option.label }}</span>
                                     </div>
                                 </template>
-                            </Dropdown>
+                            </Select>
                         </div>
 
                         <!-- Card Description -->
@@ -326,6 +326,20 @@
                             :disabled="isGeneratingAi || !formData.name.trim()"
                             @click="generateAiSettings"
                         />
+                    </div>
+
+                    <!-- Voice Conversation Toggle (only shown when AI is enabled) -->
+                    <div v-if="formData.conversation_ai_enabled" class="flex items-center gap-3 p-3 rounded-xl border mb-4"
+                         :class="formData.realtime_voice_enabled ? 'bg-indigo-50 border-indigo-200' : 'bg-slate-50 border-slate-200'">
+                        <div class="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
+                             :class="formData.realtime_voice_enabled ? 'bg-indigo-100' : 'bg-slate-200'">
+                            <i :class="['pi pi-phone', formData.realtime_voice_enabled ? 'text-indigo-600' : 'text-slate-400']"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-slate-800 m-0">{{ $t('dashboard.realtime_voice_label') }}</p>
+                            <p class="text-xs text-slate-500 m-0">{{ $t('dashboard.realtime_voice_description') }}</p>
+                        </div>
+                        <ToggleSwitch v-model="formData.realtime_voice_enabled" />
                     </div>
 
                     <!-- AI Configuration Fields (always visible, disabled when AI off) -->
@@ -440,7 +454,7 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import ToggleSwitch from 'primevue/toggleswitch';
 import { MdEditor } from 'md-editor-v3';
 import 'md-editor-v3/lib/style.css';
@@ -494,6 +508,7 @@ const formData = reactive({
     ai_welcome_general: '', // Custom welcome message for General AI Assistant
     ai_welcome_item: '', // Custom welcome message for Content Item AI Assistant
     conversation_ai_enabled: false,
+    realtime_voice_enabled: false,
     cropParameters: null,
     content_mode: 'list', // Default mode: list (vertical rows)
     is_grouped: false, // Whether content is organized into categories
@@ -792,6 +807,7 @@ const initializeForm = () => {
         formData.ai_welcome_general = props.cardProp.ai_welcome_general || '';
         formData.ai_welcome_item = props.cardProp.ai_welcome_item || '';
         formData.conversation_ai_enabled = props.cardProp.conversation_ai_enabled || false;
+        formData.realtime_voice_enabled = props.cardProp.realtime_voice_enabled || false;
         formData.cropParameters = props.cardProp.cropParameters || props.cardProp.crop_parameters || null;
         formData.content_mode = props.cardProp.content_mode || 'list';
         formData.is_grouped = props.cardProp.is_grouped || false;
@@ -817,6 +833,7 @@ const resetForm = () => {
     formData.ai_welcome_general = '';
     formData.ai_welcome_item = '';
     formData.conversation_ai_enabled = false;
+    formData.realtime_voice_enabled = false;
     formData.cropParameters = null;
     formData.content_mode = 'list'; // Reset to default mode
     formData.is_grouped = false;

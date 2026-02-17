@@ -6,10 +6,11 @@
       <div class="attention-ring"></div>
       <div class="attention-ring attention-ring-2"></div>
       
-      <button 
-        @click="openModal" 
-        class="floating-ai-button" 
+      <button
+        @click="openModal"
+        class="floating-ai-button"
         :title="$t('mobile.general_assistant')"
+        :aria-label="$t('mobile.general_assistant')"
       >
         <span class="button-icon">
           <i class="pi pi-sparkles" />
@@ -26,6 +27,7 @@
       :input-mode="inputMode"
       :assistant-mode="'card-level'"
       :title="cardData.card_name"
+      :show-voice-toggle="isVoiceEnabled"
       @close="closeModal"
       @toggle-mode="toggleConversationMode"
     >
@@ -65,6 +67,16 @@
         @connect="connectRealtime"
         @disconnect="disconnectRealtime"
       />
+
+      <!-- Hard Timer Countdown Overlay -->
+      <div
+        v-if="hardTimer.showCountdown.value && realtimeConnection.isConnected.value"
+        class="hard-timer-overlay"
+        :class="{ 'timer-critical': hardTimer.isCritical.value }"
+      >
+        <i class="pi pi-clock" />
+        <span>{{ hardTimer.formattedTime.value }}</span>
+      </div>
     </AIAssistantModal>
   </div>
 </template>
@@ -80,6 +92,7 @@ import { useChatCompletion } from './composables/useChatCompletion'
 import { useVoiceRecording } from './composables/useVoiceRecording'
 import { useCostSafeguards } from './composables/useCostSafeguards'
 import { useInactivityTimer } from './composables/useInactivityTimer'
+import { useHardTimer } from './composables/useHardTimer'
 import { useMobileLanguageStore } from '@/stores/language'
 import { buildCardLevelPrompt } from './utils/promptBuilder'
 import type { Message, ConversationMode, CardData } from './types'
@@ -145,7 +158,8 @@ onMounted(() => {
     languageCode: languageStore.selectedLanguage.code,
     chineseVoice: languageStore.chineseVoice as 'mandarin' | 'cantonese' | undefined,
     knowledgeBase: props.cardData.ai_knowledge_base,
-    customInstruction: props.cardData.ai_instruction
+    customInstruction: props.cardData.ai_instruction,
+    contentDirectory: props.cardData.content_directory
   })
 })
 
@@ -157,7 +171,8 @@ watch(
     () => props.cardData.card_name,
     () => props.cardData.card_description,
     () => props.cardData.ai_knowledge_base,
-    () => props.cardData.ai_instruction
+    () => props.cardData.ai_instruction,
+    () => props.cardData.content_directory
   ],
   () => {
     systemInstructions.value = buildCardLevelPrompt({
@@ -167,7 +182,8 @@ watch(
       languageCode: languageStore.selectedLanguage.code,
       chineseVoice: languageStore.chineseVoice as 'mandarin' | 'cantonese' | undefined,
       knowledgeBase: props.cardData.ai_knowledge_base,
-      customInstruction: props.cardData.ai_instruction
+      customInstruction: props.cardData.ai_instruction,
+      contentDirectory: props.cardData.content_directory
     })
   }
 )
@@ -226,6 +242,22 @@ const realtimeStatusText = computed(() => {
 })
 
 // ============================================================================
+// VOICE BILLING - Check if realtime voice is enabled for this project
+// ============================================================================
+
+const isVoiceEnabled = computed(() => props.cardData.realtime_voice_enabled === true)
+
+const hardTimer = useHardTimer(
+  parseInt(import.meta.env.VITE_VOICE_CALL_HARD_LIMIT_SECONDS || '180'),
+  () => {
+    // Auto-disconnect when timer expires
+    if (realtimeConnection.isConnected.value) {
+      disconnectRealtime()
+    }
+  }
+)
+
+// ============================================================================
 // COST SAFEGUARDS & INACTIVITY TIMER
 // ============================================================================
 
@@ -278,6 +310,11 @@ function closeModal() {
 
 function toggleConversationMode() {
   if (conversationMode.value === 'chat-completion') {
+    // Check if voice is enabled for this project
+    if (!isVoiceEnabled.value) {
+      connectionError.value = t('mobile.voice_not_enabled', 'Voice conversation is not available for this experience.')
+      return
+    }
     conversationMode.value = 'realtime'
     messages.value = []
     connectionError.value = null
@@ -448,19 +485,26 @@ async function connectRealtime() {
       })
     })
     
-    // Pass custom welcome message (ai_welcome_general) for voice greeting if configured
+    // Pass custom welcome message and cardId for voice billing
     await realtimeConnection.connect(
       voiceAwareCode,
       systemInstructions.value,
-      props.cardData.ai_welcome_general || undefined
+      props.cardData.ai_welcome_general || undefined,
+      props.cardData.card_id
     )
-    
+
+    // Start both timers
     inactivityTimer.startTimer()
+    hardTimer.start()
     connectionError.value = null
   } catch (err: any) {
     console.error('❌ Realtime connection error:', err)
-    
-    if (err.message?.includes('Backend server required') || err.message?.includes('VITE_BACKEND_URL')) {
+
+    if (err.message === 'NO_VOICE_CREDITS') {
+      connectionError.value = t('mobile.no_voice_credits', 'No voice credits remaining. The creator needs to purchase more credits.')
+    } else if (err.message === 'VOICE_NOT_ENABLED') {
+      connectionError.value = t('mobile.voice_not_enabled', 'Voice conversation is not available for this experience.')
+    } else if (err.message?.includes('Backend server required') || err.message?.includes('VITE_BACKEND_URL')) {
       connectionError.value = 'Realtime voice mode requires backend server. Please use Chat Mode instead.'
     } else if (err.message?.includes('microphone') || err.message?.includes('getUserMedia')) {
       connectionError.value = 'Microphone access denied. Please allow microphone permissions.'
@@ -471,15 +515,16 @@ async function connectRealtime() {
     } else {
       connectionError.value = 'Failed to start live call. Please try Chat Mode instead.'
     }
-    
-    await realtimeConnection.disconnect()
+
+    await realtimeConnection.disconnect(props.cardData.card_id)
   }
 }
 
 function disconnectRealtime() {
-  realtimeConnection.disconnect()
+  realtimeConnection.disconnect(props.cardData.card_id)
   inactivityTimer.clearTimer()
-  
+  hardTimer.stop()
+
   if (messages.value.length > 0) {
     messages.value.push({
       id: Date.now().toString(),
@@ -622,6 +667,40 @@ if (aiDisconnectRegistry) {
   font-weight: 600;
   letter-spacing: 0.01em;
   white-space: nowrap;
+}
+
+/* Hard Timer Countdown Overlay */
+.hard-timer-overlay {
+  position: absolute;
+  top: 4.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.375rem 0.75rem;
+  background: rgba(245, 158, 11, 0.9);
+  color: white;
+  border-radius: 1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  z-index: 10;
+  animation: fadeIn 0.3s ease;
+}
+
+.hard-timer-overlay.timer-critical {
+  background: rgba(239, 68, 68, 0.95);
+  animation: timerPulse 1s ease-in-out infinite;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateX(-50%) translateY(-8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+@keyframes timerPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
 
 /* Responsive - hide label on very small screens */

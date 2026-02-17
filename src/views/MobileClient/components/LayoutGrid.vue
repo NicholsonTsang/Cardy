@@ -21,6 +21,7 @@
             :src="item.content_item_image_url"
             :alt="item.content_item_name"
             crossorigin="anonymous"
+            loading="lazy"
           />
         </div>
         <div class="item-info">
@@ -70,14 +71,15 @@ import { ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { CardLevelAssistant } from './AIAssistant'
+import { buildContentDirectory } from './AIAssistant/utils/promptBuilder'
 import { useFavorites } from '@/composables/useFavorites'
+import { truncateText } from '@/utils/formatters'
 
 const { t } = useI18n()
 const route = useRoute()
 
 // Favorites composable
-const cardId = computed(() => route.params.card_id as string)
-const { isFavorite, toggleFavorite } = useFavorites({ cardId: cardId.value })
+const { isFavorite, toggleFavorite } = useFavorites({ cardId: (route.params.issue_card_id as string) || '' })
 
 // Card Level Assistant ref
 const cardAssistantRef = ref<InstanceType<typeof CardLevelAssistant> | null>(null)
@@ -96,10 +98,12 @@ interface ContentItem {
 
 interface Props {
   card: {
+    card_id?: string
     card_name: string
     card_description: string
     card_image_url: string
     conversation_ai_enabled: boolean
+    realtime_voice_enabled?: boolean
     ai_instruction?: string
     ai_knowledge_base?: string
     ai_welcome_general?: string
@@ -122,29 +126,23 @@ const emit = defineEmits<{
 
 // Card data formatted for General AI assistant
 const cardDataForAssistant = computed(() => ({
+  card_id: props.card.card_id,
   card_name: props.card.card_name,
   card_description: props.card.card_description,
   card_image_url: props.card.card_image_url,
   conversation_ai_enabled: props.card.conversation_ai_enabled,
+  realtime_voice_enabled: props.card.realtime_voice_enabled,
   ai_instruction: props.card.ai_instruction || '',
   ai_knowledge_base: props.card.ai_knowledge_base || '',
   ai_welcome_general: props.card.ai_welcome_general || '',
   ai_welcome_item: props.card.ai_welcome_item || '',
+  content_directory: props.items.length > 0 ? buildContentDirectory(props.items, props.allItems) : undefined,
   is_activated: props.card.is_activated
 }))
 
 // Open the General Assistant
 function openAssistant() {
   cardAssistantRef.value?.openModal()
-}
-
-function truncateText(text: string, maxLength: number): string {
-  if (!text) return ''
-  // Strip HTML/markdown
-  const plainText = text.replace(/<[^>]*>/g, '').replace(/[#*_`]/g, '')
-  return plainText.length > maxLength 
-    ? plainText.slice(0, maxLength) + '...'
-    : plainText
 }
 
 function handleItemClick(item: ContentItem) {

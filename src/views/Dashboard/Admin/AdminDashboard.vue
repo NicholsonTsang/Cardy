@@ -602,11 +602,6 @@ const refreshData = async () => {
 </script>
 
 <style scoped>
-/* Custom hover effects */
-.hover\:bg-slate-50:hover {
-  background-color: rgb(248 250 252);
-}
-
 /* Tag sizing */
 :deep(.p-tag) {
   font-size: 0.75rem;

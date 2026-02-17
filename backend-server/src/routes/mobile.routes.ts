@@ -52,6 +52,7 @@ interface CardContentResponse {
     imageUrl: string | null;
     cropParameters: any;
     conversationAiEnabled: boolean; // Primary field: enables AI voice assistant in frontend
+    realtimeVoiceEnabled: boolean; // Whether realtime voice conversations are enabled
     aiEnabled: boolean; // Alias for billing (same value as conversationAiEnabled, kept for backward compatibility)
     aiInstruction: string | null;
     aiKnowledgeBase: string | null;
@@ -408,6 +409,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           imageUrl: cardData.image_url,
           cropParameters: cardData.crop_parameters,
           conversationAiEnabled: cardData.conversation_ai_enabled,
+          realtimeVoiceEnabled: cardData.realtime_voice_enabled ?? false,
           aiEnabled: cardData.conversation_ai_enabled ?? false,
           aiInstruction: langData.ai_instruction || cardData.ai_instruction,
           aiKnowledgeBase: langData.ai_knowledge_base || cardData.ai_knowledge_base,

@@ -23,7 +23,7 @@
             <label for="createLanguage" class="block text-sm font-medium text-slate-700 mb-1.5">
                 {{ $t('dashboard.originalLanguage') }}
             </label>
-            <Dropdown
+            <Select
                 id="createLanguage"
                 v-model="formData.original_language"
                 :options="languageOptions"
@@ -45,7 +45,7 @@
                         <span>{{ slotProps.option.label }}</span>
                     </div>
                 </template>
-            </Dropdown>
+            </Select>
         </div>
 
         <!-- Footer -->
@@ -75,7 +75,7 @@ import { ref, reactive, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import { SUPPORTED_LANGUAGES } from '@/stores/translation';
 import { getLanguageFlag } from '@/utils/formatters';
 

@@ -65,6 +65,40 @@
         </div>
       </div>
 
+      <!-- Voice Credits Section -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 sm:p-6">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+              <i class="pi pi-phone text-indigo-600"></i>
+            </div>
+            <div>
+              <h3 class="text-lg font-bold text-slate-800">{{ $t('subscription.voice_credits') }}</h3>
+              <p class="text-sm text-slate-500">{{ $t('subscription.voice_credits_description') }}</p>
+            </div>
+          </div>
+          <Button
+            :label="$t('subscription.buy_voice_credits')"
+            icon="pi pi-plus"
+            severity="help"
+            size="small"
+            @click="selectedVoicePackages = 1; showVoiceCreditConfirmDialog = true"
+          />
+        </div>
+        <div class="flex items-center gap-6">
+          <div>
+            <div class="text-xs sm:text-sm font-medium text-slate-500 uppercase tracking-wide mb-1">{{ $t('subscription.voice_credits_remaining') }}</div>
+            <div class="text-2xl sm:text-3xl font-bold" :class="voiceCreditStore.hasCredits ? 'text-indigo-600' : 'text-red-500'">
+              {{ voiceCreditStore.balance }}
+              <span class="text-base font-normal text-slate-500">{{ $t('subscription.voice_credits_balance').toLowerCase() }}</span>
+            </div>
+          </div>
+          <div class="text-sm text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+            {{ $t('subscription.voice_credits_package', { count: voiceCreditStore.packageSize, price: voiceCreditStore.packagePriceUsd }) }}
+          </div>
+        </div>
+      </div>
+
       <!-- History Tables -->
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
         <Tabs :value="activeTab" @update:value="(value) => activeTab = String(value)" class="flex-1 flex flex-col">
@@ -363,14 +397,118 @@
       </div>
     </div>
   </Dialog>
+
+  <!-- Voice Credit Purchase Confirmation Dialog -->
+  <CreditConfirmationDialog
+    :visible="showVoiceCreditConfirmDialog"
+    @update:visible="showVoiceCreditConfirmDialog = $event"
+    :creditsToConsume="totalVoiceCost"
+    :currentBalance="creditStore.balance"
+    :loading="voicePurchaseLoading"
+    :confirmLabel="$t('subscription.buy_voice_credits')"
+    :confirmationQuestion="$t('subscription.voice_credits_confirm_question')"
+    @confirm="confirmVoiceCreditPurchase"
+    @cancel="showVoiceCreditConfirmDialog = false"
+  >
+    <template #embedded-content>
+      <!-- Package Card with Quantity Stepper -->
+      <div class="bg-gradient-to-br from-indigo-50 to-slate-50 rounded-xl p-5 border border-indigo-200">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
+            <i class="pi pi-phone text-indigo-600"></i>
+          </div>
+          <div>
+            <div class="font-semibold text-slate-900">{{ $t('subscription.voice_credits') }}</div>
+            <div class="text-xs text-slate-500">{{ $t('subscription.voice_package_info', { size: voiceCreditStore.packageSize, price: voiceCreditStore.packagePriceUsd }) }}</div>
+          </div>
+        </div>
+
+        <!-- Quantity Stepper -->
+        <div class="flex items-center justify-between bg-white rounded-lg p-3 border border-slate-200">
+          <span class="text-sm font-medium text-slate-700">{{ $t('subscription.voice_select_package') }}</span>
+          <div class="flex items-center gap-1">
+            <button
+              @click="selectedVoicePackages = Math.max(1, selectedVoicePackages - 1)"
+              :disabled="selectedVoicePackages <= 1"
+              class="w-8 h-8 rounded-lg flex items-center justify-center text-lg font-bold transition-all"
+              :class="selectedVoicePackages <= 1
+                ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 active:bg-slate-300'"
+            >
+              −
+            </button>
+            <input
+              type="number"
+              :value="selectedVoicePackages"
+              @change="handleVoiceQtyInput($event)"
+              min="1"
+              max="10"
+              class="w-12 h-8 text-center text-lg font-bold text-indigo-700 border-0 bg-transparent focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <button
+              @click="selectedVoicePackages = Math.min(10, selectedVoicePackages + 1)"
+              :disabled="selectedVoicePackages >= 10"
+              class="w-8 h-8 rounded-lg flex items-center justify-center text-lg font-bold transition-all"
+              :class="selectedVoicePackages >= 10
+                ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                : 'bg-indigo-100 text-indigo-600 hover:bg-indigo-200 active:bg-indigo-300'"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <!-- Computed Result -->
+        <div class="mt-3 flex items-center justify-between text-sm">
+          <span class="text-slate-600">{{ totalVoiceCredits }} {{ $t('subscription.voice_credits_balance') }}</span>
+          <span class="text-lg font-bold text-indigo-700">${{ totalVoiceCost.toFixed(2) }}</span>
+        </div>
+      </div>
+
+      <!-- Balance Impact -->
+      <div class="rounded-xl border border-slate-200 overflow-hidden">
+        <div class="flex">
+          <div class="flex-1 p-3 text-center border-r border-slate-200">
+            <div class="text-xs text-slate-500 mb-1">{{ $t('batches.current_balance') }}</div>
+            <div class="text-base font-bold text-slate-900">${{ creditStore.balance.toFixed(2) }}</div>
+          </div>
+          <div class="flex-none px-3 flex items-center text-slate-400">
+            <i class="pi pi-arrow-right text-xs"></i>
+          </div>
+          <div class="flex-1 p-3 text-center">
+            <div class="text-xs text-slate-500 mb-1">{{ $t('batches.after_consumption') }}</div>
+            <div class="text-base font-bold" :class="creditStore.balance - totalVoiceCost < 0 ? 'text-red-600' : creditStore.balance - totalVoiceCost < 20 ? 'text-orange-600' : 'text-green-600'">
+              ${{ (creditStore.balance - totalVoiceCost).toFixed(2) }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Insufficient / Low Balance Warning -->
+      <div v-if="creditStore.balance - totalVoiceCost < 0" class="bg-red-50 border border-red-300 rounded-lg p-3">
+        <div class="flex items-center gap-2">
+          <i class="pi pi-exclamation-circle text-red-600"></i>
+          <span class="text-sm text-red-800">{{ $t('subscription.voice_insufficient_balance') }}</span>
+        </div>
+      </div>
+      <div v-else-if="creditStore.balance - totalVoiceCost < 20" class="bg-yellow-50 border border-yellow-300 rounded-lg p-3">
+        <div class="flex items-center gap-2">
+          <i class="pi pi-info-circle text-yellow-600"></i>
+          <span class="text-sm text-yellow-800">{{ $t('batches.low_balance_warning') }}</span>
+        </div>
+      </div>
+    </template>
+  </CreditConfirmationDialog>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useCreditStore } from '@/stores/credits'
+import { useVoiceCreditStore } from '@/stores/voiceCredits'
 import { useToast } from 'primevue/usetoast'
 import { createCreditPurchaseCheckout } from '@/utils/stripeCheckout'
+
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -384,17 +522,35 @@ import Tag from 'primevue/tag'
 import InputNumber from 'primevue/inputnumber'
 import Divider from 'primevue/divider'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
+import CreditConfirmationDialog from '@/components/CreditConfirmationDialog.vue'
 import { formatDate } from '@/utils/formatters'
 
 const { t } = useI18n()
 const toast = useToast()
 const creditStore = useCreditStore()
+const voiceCreditStore = useVoiceCreditStore()
 
 const activeTab = ref('0')
 const showPurchaseDialog = ref(false)
 const selectedAmount = ref(0)
 const customAmount = ref<number | null>(null)
 const purchaseLoading = ref(false)
+const showVoiceCreditConfirmDialog = ref(false)
+const voicePurchaseLoading = ref(false)
+const selectedVoicePackages = ref(1)
+
+const totalVoiceCredits = computed(() => selectedVoicePackages.value * voiceCreditStore.packageSize)
+const totalVoiceCost = computed(() => selectedVoicePackages.value * voiceCreditStore.packagePriceUsd)
+
+function handleVoiceQtyInput(event: Event) {
+  const value = parseInt((event.target as HTMLInputElement).value)
+  if (!isNaN(value) && value >= 1 && value <= 10) {
+    selectedVoicePackages.value = value
+  } else {
+    // Reset to valid value
+    (event.target as HTMLInputElement).value = String(selectedVoicePackages.value)
+  }
+}
 
 const creditAmounts = [50, 100, 200, 500, 1000]
 
@@ -406,7 +562,8 @@ onMounted(async () => {
     creditStore.fetchCreditStatistics(),
     creditStore.fetchTransactions(),
     creditStore.fetchPurchases(),
-    creditStore.fetchConsumptions()
+    creditStore.fetchConsumptions(),
+    voiceCreditStore.fetchBalance()
   ])
 })
 
@@ -511,6 +668,44 @@ function handleCustomAmountInput(event: { value: number | string | undefined | n
 
 function openReceipt(url: string) {
   window.open(url, '_blank')
+}
+
+async function confirmVoiceCreditPurchase() {
+  voicePurchaseLoading.value = true
+  try {
+    const success = await voiceCreditStore.purchaseCredits(selectedVoicePackages.value)
+    if (success) {
+      showVoiceCreditConfirmDialog.value = false
+      toast.add({
+        severity: 'success',
+        summary: t('common.success'),
+        detail: t('subscription.voice_credits_purchase_success'),
+        life: 3000
+      })
+      // Refresh general credit balance and consumptions since credits were deducted
+      await Promise.all([
+        creditStore.fetchCreditBalance(),
+        creditStore.fetchConsumptions(),
+        creditStore.fetchTransactions()
+      ])
+    } else {
+      toast.add({
+        severity: 'error',
+        summary: t('common.error'),
+        detail: voiceCreditStore.error || t('subscription.voice_credits_purchase_error'),
+        life: 5000
+      })
+    }
+  } catch (error: any) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: error.message || t('subscription.voice_credits_purchase_error'),
+      life: 5000
+    })
+  } finally {
+    voicePurchaseLoading.value = false
+  }
 }
 
 async function proceedToPayment() {

@@ -19,7 +19,7 @@
             class="item-button"
           >
             <div v-if="item.content_item_image_url" class="item-image">
-              <img :src="item.content_item_image_url" :alt="item.content_item_name" crossorigin="anonymous" />
+              <img :src="item.content_item_image_url" :alt="item.content_item_name" crossorigin="anonymous" loading="lazy" />
             </div>
             <div class="item-info">
               <span class="item-name">{{ item.content_item_name }}</span>
@@ -48,11 +48,11 @@
     />
     
     <!-- AI Badge at bottom for easy access -->
-    <div v-if="card.conversation_ai_enabled" class="ai-section">
-      <button @click="openAssistant" class="ai-browse-badge">
-        <span class="ai-badge-icon">✨</span>
+    <div v-if="card.conversation_ai_enabled" class="ai-section" role="complementary" :aria-label="$t('mobile.ask_ai')">
+      <button @click="openAssistant" class="ai-browse-badge" :aria-label="$t('mobile.tap_to_chat_with_ai')">
+        <span class="ai-badge-icon" aria-hidden="true">✨</span>
         <span class="ai-badge-text">{{ $t('mobile.tap_to_chat_with_ai') }}</span>
-        <i class="pi pi-chevron-right ai-badge-arrow" />
+        <i class="pi pi-chevron-right ai-badge-arrow" aria-hidden="true" />
       </button>
     </div>
   </div>
@@ -60,10 +60,9 @@
 
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useI18n } from 'vue-i18n'
 import { CardLevelAssistant } from './AIAssistant'
-
-const { t } = useI18n()
+import { buildContentDirectory } from './AIAssistant/utils/promptBuilder'
+import { truncateText } from '@/utils/formatters'
 
 // Card Level Assistant ref
 const cardAssistantRef = ref<InstanceType<typeof CardLevelAssistant> | null>(null)
@@ -82,10 +81,12 @@ interface ContentItem {
 
 interface Props {
   card: {
+    card_id?: string
     card_name: string
     card_description: string
     card_image_url: string
     conversation_ai_enabled: boolean
+    realtime_voice_enabled?: boolean
     ai_instruction?: string
     ai_knowledge_base?: string
     ai_welcome_general?: string
@@ -112,14 +113,17 @@ const emit = defineEmits<{
 
 // Card data formatted for General AI assistant
 const cardDataForAssistant = computed(() => ({
+  card_id: props.card.card_id,
   card_name: props.card.card_name,
   card_description: props.card.card_description,
   card_image_url: props.card.card_image_url,
   conversation_ai_enabled: props.card.conversation_ai_enabled,
+  realtime_voice_enabled: props.card.realtime_voice_enabled,
   ai_instruction: props.card.ai_instruction || '',
   ai_knowledge_base: props.card.ai_knowledge_base || '',
   ai_welcome_general: props.card.ai_welcome_general || '',
   ai_welcome_item: props.card.ai_welcome_item || '',
+  content_directory: props.allItems.length > 0 ? buildContentDirectory(props.items, props.allItems) : undefined,
   is_activated: props.card.is_activated
 }))
 
@@ -142,14 +146,6 @@ function getChildItems(parentId: string): ContentItem[] {
     .sort((a, b) => a.content_item_sort_order - b.content_item_sort_order)
 }
 
-function truncateText(text: string, maxLength: number): string {
-  if (!text) return ''
-  // Strip HTML/markdown
-  const plainText = text.replace(/<[^>]*>/g, '').replace(/[#*_`]/g, '')
-  return plainText.length > maxLength 
-    ? plainText.slice(0, maxLength) + '...'
-    : plainText
-}
 
 function handleItemClick(item: ContentItem) {
   emit('select', item)

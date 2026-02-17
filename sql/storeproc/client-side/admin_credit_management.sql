@@ -1,6 +1,14 @@
 -- Admin Credit Management Stored Procedures
 -- Admin functions for credit system auditing and management
 
+-- Drop functions first to allow return type changes
+DROP FUNCTION IF EXISTS admin_get_credit_purchases(INTEGER, INTEGER, UUID, VARCHAR) CASCADE;
+DROP FUNCTION IF EXISTS admin_get_credit_consumptions(INTEGER, INTEGER, UUID, TIMESTAMPTZ, TIMESTAMPTZ) CASCADE;
+DROP FUNCTION IF EXISTS admin_get_credit_transactions(INTEGER, INTEGER, UUID, VARCHAR) CASCADE;
+DROP FUNCTION IF EXISTS admin_get_user_credits(INTEGER, INTEGER, TEXT, TEXT, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS admin_adjust_user_credits(UUID, DECIMAL, TEXT) CASCADE;
+DROP FUNCTION IF EXISTS admin_get_credit_statistics() CASCADE;
+
 -- Admin: Get all credit purchases
 CREATE OR REPLACE FUNCTION admin_get_credit_purchases(
     p_limit INTEGER DEFAULT 50,

@@ -96,13 +96,13 @@
                 />
             </IconField>
             <div v-if="showFilters" class="flex items-center gap-1.5">
-                <Dropdown
+                <Select
                     :model-value="selectedYear"
                     @update:model-value="$emit('update:selectedYear', $event)"
                     :options="yearOptions" optionLabel="label" optionValue="value"
                     :placeholder="$t('dashboard.year')" showClear
                     class="flex-1 min-w-0 text-xs" />
-                <Dropdown
+                <Select
                     :model-value="selectedMonth"
                     @update:model-value="$emit('update:selectedMonth', $event)"
                     :options="monthOptions" optionLabel="label" optionValue="value"
@@ -266,7 +266,7 @@ import Button from 'primevue/button';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import Paginator from 'primevue/paginator';
 import Dialog from 'primevue/dialog';
 import Popover from 'primevue/popover';

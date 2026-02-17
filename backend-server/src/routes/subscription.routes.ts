@@ -2,7 +2,8 @@ import { Router, Request, Response } from 'express';
 import { authenticateUser } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
 import { SubscriptionConfig, getPricingInfo, getTierDetails } from '../config/subscription';
-import { getUsageStats, flushAccessLogBuffer, invalidateUserCache, updateUserTier } from '../services/usage-tracker';
+import { getUsageStats, flushAccessLogBuffer, invalidateUserCache, updateUserTier, getVoiceCreditBalance } from '../services/usage-tracker';
+import { getStripe, validateRedirectUrl } from '../config/stripe';
 
 const router = Router();
 
@@ -74,20 +75,10 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
       });
     }
 
-    // Validate baseUrl against allowed origins to prevent open redirect
-    const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173').split(',').map(s => s.trim());
-    try {
-      const parsedUrl = new URL(baseUrl);
-      if (!allowedOrigins.some(origin => parsedUrl.origin === new URL(origin).origin)) {
-        return res.status(400).json({
-          error: 'Validation error',
-          message: 'Invalid base URL'
-        });
-      }
-    } catch {
+    if (!validateRedirectUrl(baseUrl)) {
       return res.status(400).json({
         error: 'Validation error',
-        message: 'Invalid base URL format'
+        message: 'Invalid base URL'
       });
     }
 
@@ -98,18 +89,9 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
       });
     }
 
-    // Get Stripe configuration
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    const stripePriceId = tier === 'starter' 
-      ? process.env.STRIPE_STARTER_PRICE_ID 
+    const stripePriceId = tier === 'starter'
+      ? process.env.STRIPE_STARTER_PRICE_ID
       : process.env.STRIPE_PREMIUM_PRICE_ID;
-
-    if (!stripeKey) {
-      return res.status(500).json({
-        error: 'Configuration error',
-        message: 'Stripe secret key not configured'
-      });
-    }
 
     if (!stripePriceId) {
       return res.status(500).json({
@@ -118,12 +100,7 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
       });
     }
 
-    // Import Stripe
-    const Stripe = (await import('stripe')).default;
-    const stripeApiVersion = process.env.STRIPE_API_VERSION || '2025-08-27.basil';
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: stripeApiVersion as any,
-    });
+    const stripe = getStripe();
 
     // Check if user has existing subscription
     const { data: currentSubRows } = await supabaseAdmin.rpc('get_subscription_by_user_server', {
@@ -242,7 +219,6 @@ router.post('/create-checkout', authenticateUser, async (req: Request, res: Resp
     // Create Stripe Checkout session for subscription
     const session = await stripe.checkout.sessions.create({
       customer: customerId as string,
-      payment_method_types: ['card'],
       line_items: [
         {
           price: stripePriceId,
@@ -316,19 +292,7 @@ router.post('/cancel', authenticateUser, async (req: Request, res: Response) => 
       });
     }
 
-    // Get Stripe
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) {
-      return res.status(500).json({
-        error: 'Configuration error',
-        message: 'Stripe not configured'
-      });
-    }
-
-    const Stripe = (await import('stripe')).default;
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: (process.env.STRIPE_API_VERSION || '2025-08-27.basil') as any,
-    });
+    const stripe = getStripe();
 
     if (immediate) {
       // Cancel immediately
@@ -412,12 +376,7 @@ router.post('/reactivate', authenticateUser, async (req: Request, res: Response)
       });
     }
 
-    // Get Stripe
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    const Stripe = (await import('stripe')).default;
-    const stripe = new Stripe(stripeKey!, {
-      apiVersion: (process.env.STRIPE_API_VERSION || '2025-08-27.basil') as any,
-    });
+    const stripe = getStripe();
 
     // Reactivate subscription
     await stripe.subscriptions.update(subscription.stripe_subscription_id!, {
@@ -456,6 +415,14 @@ router.get('/portal', authenticateUser, async (req: Request, res: Response) => {
     const userId = req.user!.id;
     const returnUrl = req.query.returnUrl as string || process.env.FRONTEND_URL || 'http://localhost:5173';
 
+    // Validate returnUrl to prevent open redirect
+    if (!validateRedirectUrl(returnUrl)) {
+      return res.status(400).json({
+        error: 'Validation error',
+        message: 'Invalid return URL'
+      });
+    }
+
     // Get subscription with Stripe customer ID
     const { data: stripeCustomerId, error: subError } = await supabaseAdmin.rpc(
       'get_subscription_stripe_customer_server',
@@ -469,12 +436,7 @@ router.get('/portal', authenticateUser, async (req: Request, res: Response) => {
       });
     }
 
-    // Get Stripe
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    const Stripe = (await import('stripe')).default;
-    const stripe = new Stripe(stripeKey!, {
-      apiVersion: (process.env.STRIPE_API_VERSION || '2025-08-27.basil') as any,
-    });
+    const stripe = getStripe();
 
     // Create portal session
     const portalSession = await stripe.billingPortal.sessions.create({
@@ -732,43 +694,35 @@ router.post('/buy-credits', authenticateUser, async (req: Request, res: Response
       });
     }
 
-    // Validate baseUrl against allowed origins to prevent open redirect
-    const allowedOrigins = (process.env.ALLOWED_ORIGINS || process.env.FRONTEND_URL || 'http://localhost:5173').split(',').map(s => s.trim());
-    try {
-      const parsedUrl = new URL(baseUrl);
-      if (!allowedOrigins.some(origin => parsedUrl.origin === new URL(origin).origin)) {
-        return res.status(400).json({
-          error: 'Validation error',
-          message: 'Invalid base URL'
-        });
-      }
-    } catch {
+    if (!validateRedirectUrl(baseUrl)) {
       return res.status(400).json({
         error: 'Validation error',
-        message: 'Invalid base URL format'
+        message: 'Invalid base URL'
       });
     }
 
-    // Get Stripe
-    const stripeKey = process.env.STRIPE_SECRET_KEY;
-    if (!stripeKey) {
-      return res.status(500).json({
-        error: 'Configuration error',
-        message: 'Stripe not configured'
-      });
-    }
+    const stripe = getStripe();
 
-    const Stripe = (await import('stripe')).default;
-    const stripe = new Stripe(stripeKey, {
-      apiVersion: (process.env.STRIPE_API_VERSION || '2025-08-27.basil') as any,
-    });
+    // Get or create Stripe customer for this user
+    let customerId: string | null = await supabaseAdmin.rpc(
+      'get_subscription_stripe_customer_server',
+      { p_user_id: userId }
+    ).then(res => res.data ?? null);
+
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: req.user!.email,
+        metadata: { user_id: userId }
+      });
+      customerId = customer.id;
+    }
 
     // Convert credits to cents (1 credit = $1)
     const amountCents = Math.round(amount * 100);
 
     // Create checkout session for one-time payment
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
+      customer: customerId,
       line_items: [
         {
           price_data: {
@@ -812,6 +766,26 @@ router.post('/buy-credits', authenticateUser, async (req: Request, res: Response
     console.error('❌ Error creating credit checkout:', error);
     return res.status(500).json({
       error: 'Payment error',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/subscriptions/voice-credits
+ * Get current user's voice credit balance
+ */
+router.get('/voice-credits', authenticateUser, async (req: Request, res: Response) => {
+  try {
+    const userId = req.user!.id;
+
+    const balance = await getVoiceCreditBalance(userId);
+
+    return res.json({ balance });
+  } catch (error: any) {
+    console.error('❌ Error fetching voice credit balance:', error);
+    return res.status(500).json({
+      error: 'Internal server error',
       message: error.message
     });
   }

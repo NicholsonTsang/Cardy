@@ -20,6 +20,7 @@ export interface MobileCardResponse {
       imageUrl: string | null;
       cropParameters: any;
       conversationAiEnabled: boolean;
+      realtimeVoiceEnabled?: boolean; // Whether realtime voice conversations are enabled
       aiEnabled?: boolean; // For billing purposes (same as conversationAiEnabled)
       aiInstruction: string | null;
       aiKnowledgeBase: string | null;
@@ -250,6 +251,7 @@ export function transformCardResponse(response: MobileCardResponse): any {
       card_image_url: card.imageUrl,
       card_crop_parameters: card.cropParameters,
       card_conversation_ai_enabled: card.conversationAiEnabled,
+      card_realtime_voice_enabled: card.realtimeVoiceEnabled ?? false,
       card_ai_instruction: card.aiInstruction,
       card_ai_knowledge_base: card.aiKnowledgeBase,
       card_ai_welcome_general: card.aiWelcomeGeneral,

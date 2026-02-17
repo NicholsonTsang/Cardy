@@ -102,6 +102,54 @@ export class GeminiClient {
 
     return await response.json();
   }
+  /**
+   * Stream Gemini API response using SSE (Server-Sent Events).
+   * Used for text chat streaming to visitors.
+   * Returns the raw Response so the caller can read the stream.
+   */
+  async streamGenerateContent(
+    systemInstruction: string,
+    contents: Array<{ role: 'user' | 'model'; parts: Array<{ text: string }> }>,
+    config: {
+      model?: string;
+      temperature?: number;
+      maxOutputTokens?: number;
+    } = {}
+  ): Promise<Response> {
+    const model = config.model || process.env.GEMINI_CHAT_MODEL || 'gemini-2.5-flash-lite';
+    const temperature = config.temperature ?? parseFloat(process.env.GEMINI_CHAT_TEMPERATURE || '0.7');
+    const maxOutputTokens = config.maxOutputTokens ?? parseInt(process.env.GEMINI_CHAT_MAX_TOKENS || '3500');
+
+    const accessToken = await this.getAccessToken();
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: systemInstruction }]
+          },
+          contents,
+          generationConfig: {
+            temperature,
+            maxOutputTokens,
+          }
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json() as any;
+      throw new Error(`Gemini API error: ${error.error?.message || response.statusText}`);
+    }
+
+    return response;
+  }
 }
 
 // Export singleton instance

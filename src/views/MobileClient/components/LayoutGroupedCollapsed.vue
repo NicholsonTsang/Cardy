@@ -22,7 +22,7 @@
             :aria-label="`${category.content_item_name} - ${getChildCount(category.content_item_id)} ${t('mobile.items')}`"
           >
             <div v-if="category.content_item_image_url" class="category-image">
-              <img :src="category.content_item_image_url" :alt="category.content_item_name" crossorigin="anonymous" />
+              <img :src="category.content_item_image_url" :alt="category.content_item_name" crossorigin="anonymous" loading="lazy" />
             </div>
             <div class="category-info">
               <span class="category-name">{{ category.content_item_name }}</span>
@@ -47,7 +47,7 @@
             :aria-label="`${category.content_item_name} - ${getChildCount(category.content_item_id)} ${t('mobile.items')}`"
           >
             <div v-if="category.content_item_image_url" class="category-image-large">
-              <img :src="category.content_item_image_url" :alt="category.content_item_name" crossorigin="anonymous" />
+              <img :src="category.content_item_image_url" :alt="category.content_item_name" crossorigin="anonymous" loading="lazy" />
             </div>
             <div class="category-content">
               <span class="category-name-large">{{ category.content_item_name }}</span>
@@ -115,6 +115,8 @@
 import { ref, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { CardLevelAssistant } from './AIAssistant'
+import { truncateText } from '@/utils/formatters'
+import { buildContentDirectory } from './AIAssistant/utils/promptBuilder'
 
 const { t } = useI18n()
 
@@ -135,10 +137,12 @@ interface ContentItem {
 
 interface Props {
   card: {
+    card_id?: string
     card_name: string
     card_description: string
     card_image_url: string
     conversation_ai_enabled: boolean
+    realtime_voice_enabled?: boolean
     ai_instruction?: string
     ai_knowledge_base?: string
     ai_welcome_general?: string
@@ -163,14 +167,17 @@ const emit = defineEmits<{
 
 // Card data formatted for General AI assistant
 const cardDataForAssistant = computed(() => ({
+  card_id: props.card.card_id,
   card_name: props.card.card_name,
   card_description: props.card.card_description,
   card_image_url: props.card.card_image_url,
   conversation_ai_enabled: props.card.conversation_ai_enabled,
+  realtime_voice_enabled: props.card.realtime_voice_enabled,
   ai_instruction: props.card.ai_instruction || '',
   ai_knowledge_base: props.card.ai_knowledge_base || '',
   ai_welcome_general: props.card.ai_welcome_general || '',
   ai_welcome_item: props.card.ai_welcome_item || '',
+  content_directory: props.allItems.length > 0 ? buildContentDirectory(props.items, props.allItems) : undefined,
   is_activated: props.card.is_activated
 }))
 
@@ -184,13 +191,6 @@ function getChildCount(parentId: string): number {
   return (props.allItems || []).filter(item => item.content_item_parent_id === parentId).length
 }
 
-function truncateText(text: string, maxLength: number): string {
-  if (!text) return ''
-  const plainText = text.replace(/<[^>]*>/g, '').replace(/[#*_`]/g, '')
-  return plainText.length > maxLength 
-    ? plainText.slice(0, maxLength) + '...'
-    : plainText
-}
 
 function handleCategoryClick(category: ContentItem) {
   // Emit select with the category - parent component will navigate to show children

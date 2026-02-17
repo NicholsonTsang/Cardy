@@ -30,7 +30,7 @@
       
       <div class="filter-right">
         <!-- Language Selector -->
-        <Dropdown
+        <Select
           v-model="selectedLanguage"
           :options="languageOptions"
           optionLabel="label"
@@ -51,7 +51,7 @@
               <span>{{ slotProps.option.label }}</span>
             </div>
           </template>
-        </Dropdown>
+        </Select>
         
         <div class="search-box">
           <i class="pi pi-search search-icon"></i>
@@ -134,7 +134,7 @@ import { getLanguageFlag, getLanguageName } from '@/utils/formatters'
 import { storeToRefs } from 'pinia'
 
 import Dialog from 'primevue/dialog'
-import Dropdown from 'primevue/dropdown'
+import Select from 'primevue/select'
 import ProgressSpinner from 'primevue/progressspinner'
 
 import TemplateCard from './TemplateCard.vue'

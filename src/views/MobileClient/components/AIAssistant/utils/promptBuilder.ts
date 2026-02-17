@@ -36,6 +36,8 @@ interface PromptConfig {
   }
   // Mode context
   modeContext?: string
+  // Content directory for card-level assistant (list of all content items)
+  contentDirectory?: string
 }
 
 /**
@@ -108,6 +110,14 @@ ${config.knowledgeBase}
 `
   }
 
+  if (config.contentDirectory) {
+    prompt += `
+# CONTENT DIRECTORY
+The following items are available in this experience. Use this to help visitors find what they're looking for:
+${config.contentDirectory}
+`
+  }
+
   if (config.customInstruction) {
     prompt += `
 # SPECIAL INSTRUCTIONS
@@ -177,6 +187,46 @@ ${config.customInstruction}
 ${behavior}`
 
   return prompt.trim()
+}
+
+/**
+ * Build a compact content directory string from content items.
+ * For grouped content: shows categories with their children.
+ * For flat content: shows a simple list of item names.
+ * Truncates to stay within token budget (~2000 chars max).
+ */
+export function buildContentDirectory(
+  items: Array<{ content_item_id: string; content_item_parent_id: string | null; content_item_name: string; content_item_sort_order: number }>,
+  allItems?: Array<{ content_item_id: string; content_item_parent_id: string | null; content_item_name: string; content_item_sort_order: number }>
+): string {
+  const MAX_LENGTH = 2000
+  const source = allItems || items
+
+  // Separate parents (categories) and children (spread to avoid mutating input)
+  const parents = [...source.filter(i => !i.content_item_parent_id)]
+    .sort((a, b) => a.content_item_sort_order - b.content_item_sort_order)
+  const children = [...source.filter(i => i.content_item_parent_id)]
+    .sort((a, b) => a.content_item_sort_order - b.content_item_sort_order)
+
+  // If there are children, it's grouped content
+  if (children.length > 0) {
+    const lines: string[] = []
+    for (const parent of parents) {
+      const kids = children.filter(c => c.content_item_parent_id === parent.content_item_id)
+      if (kids.length > 0) {
+        lines.push(`• ${parent.content_item_name}: ${kids.map(k => k.content_item_name).join(', ')}`)
+      } else {
+        lines.push(`• ${parent.content_item_name}`)
+      }
+    }
+    const result = lines.join('\n')
+    return result.length > MAX_LENGTH ? result.substring(0, MAX_LENGTH) + '...' : result
+  }
+
+  // Flat content: simple list (spread to avoid mutating input)
+  const sorted = [...items].sort((a, b) => a.content_item_sort_order - b.content_item_sort_order)
+  const result = sorted.map(i => `• ${i.content_item_name}`).join('\n')
+  return result.length > MAX_LENGTH ? result.substring(0, MAX_LENGTH) + '...' : result
 }
 
 /**

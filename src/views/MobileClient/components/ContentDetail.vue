@@ -137,8 +137,7 @@ const route = useRoute()
 const { share, buildContentShareData, isSharing } = useShare()
 
 // Favorites composable (card ID from route)
-const cardId = computed(() => route.params.card_id as string)
-const { isFavorite, toggleFavorite } = useFavorites({ cardId: cardId.value })
+const { isFavorite, toggleFavorite } = useFavorites({ cardId: (route.params.issue_card_id as string) || '' })
 
 
 interface ContentItem {
@@ -156,10 +155,12 @@ interface ContentItem {
 }
 
 interface CardData {
+  card_id?: string
   card_name: string
   card_description: string
   card_image_url: string
   conversation_ai_enabled: boolean
+  realtime_voice_enabled?: boolean
   ai_instruction: string
   ai_knowledge_base: string
   ai_welcome_general?: string
@@ -189,10 +190,12 @@ const emit = defineEmits<{
 
 // Prepare card data for AI Assistant (matching CardData interface)
 const cardDataForAssistant = computed(() => ({
+  card_id: props.card.card_id,
   card_name: props.card.card_name,
   card_description: props.card.card_description,
   card_image_url: props.card.card_image_url,
   conversation_ai_enabled: props.card.conversation_ai_enabled,
+  realtime_voice_enabled: props.card.realtime_voice_enabled,
   ai_instruction: props.card.ai_instruction,
   ai_knowledge_base: props.card.ai_knowledge_base,
   ai_welcome_general: props.card.ai_welcome_general || '',

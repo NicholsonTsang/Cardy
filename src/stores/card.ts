@@ -35,6 +35,7 @@ export interface Card {
     original_image_url: string | null; // Original uploaded image (raw, uncropped)
     crop_parameters?: any; // JSON object containing crop parameters
     conversation_ai_enabled: boolean;
+    realtime_voice_enabled: boolean; // Per-project toggle for realtime voice conversations
     ai_instruction: string; // AI role and guidelines (max 100 words)
     ai_knowledge_base: string; // Background knowledge for AI (max 2000 words)
     ai_welcome_general: string; // Custom welcome message for General AI Assistant (card-level)
@@ -73,6 +74,7 @@ export interface CardFormData {
     original_image_url?: string; // Original image URL
     cropParameters?: any; // JSON object containing crop parameters for dynamic image cropping
     conversation_ai_enabled: boolean;
+    realtime_voice_enabled?: boolean; // Per-project toggle for realtime voice conversations
     ai_instruction: string; // AI role and guidelines (max 100 words)
     ai_knowledge_base: string; // Background knowledge for AI (max 2000 words)
     ai_welcome_general?: string; // Custom welcome message for General AI Assistant
@@ -203,6 +205,7 @@ export const useCardStore = defineStore('card', () => {
                     p_original_image_url: originalImageUrl,
                     p_crop_parameters: cardData.cropParameters || null,
                     p_conversation_ai_enabled: cardData.conversation_ai_enabled,
+                    p_realtime_voice_enabled: cardData.realtime_voice_enabled || false,
                     p_ai_instruction: cardData.ai_instruction,
                     p_ai_knowledge_base: cardData.ai_knowledge_base,
                     p_ai_welcome_general: cardData.ai_welcome_general || '',
@@ -314,6 +317,7 @@ export const useCardStore = defineStore('card', () => {
                 p_original_image_url: originalImageUrl || null,
                 p_crop_parameters: updateData.cropParameters || null,
                 p_conversation_ai_enabled: updateData.conversation_ai_enabled,
+                p_realtime_voice_enabled: updateData.realtime_voice_enabled ?? null,
                 p_ai_instruction: updateData.ai_instruction,
                 p_ai_knowledge_base: updateData.ai_knowledge_base,
                 p_ai_welcome_general: updateData.ai_welcome_general || null,
@@ -640,6 +644,7 @@ export const useCardStore = defineStore('card', () => {
                     p_original_image_url: original.card_original_image_url,
                     p_crop_parameters: original.card_crop_parameters || null,
                     p_conversation_ai_enabled: original.card_conversation_ai_enabled,
+                    p_realtime_voice_enabled: original.card_realtime_voice_enabled || false,
                     p_ai_instruction: original.card_ai_instruction || '',
                     p_ai_knowledge_base: original.card_ai_knowledge_base || '',
                     p_ai_welcome_general: original.card_ai_welcome_general || '',

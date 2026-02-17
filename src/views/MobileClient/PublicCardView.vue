@@ -20,7 +20,7 @@
     </div>
 
     <!-- Credits Insufficient State -->
-    <div v-else-if="cardData?.credits_insufficient" class="error-container credits-insufficient-container">
+    <div v-else-if="cardData?.credits_insufficient" class="error-container credits-insufficient-container" role="alert">
       <div class="error-icon-wrapper credits-icon">
         <i class="pi pi-wallet" />
       </div>
@@ -30,7 +30,7 @@
     </div>
 
     <!-- Monthly Limit Exceeded State -->
-    <div v-else-if="cardData?.monthly_limit_exceeded" class="error-container monthly-limit-container">
+    <div v-else-if="cardData?.monthly_limit_exceeded" class="error-container monthly-limit-container" role="alert">
       <div class="error-icon-wrapper monthly-limit-icon">
         <i class="pi pi-clock" />
       </div>
@@ -39,7 +39,7 @@
     </div>
 
     <!-- Daily Limit Exceeded State (creator protection) -->
-    <div v-else-if="cardData?.daily_limit_exceeded" class="error-container daily-limit-container">
+    <div v-else-if="cardData?.daily_limit_exceeded" class="error-container daily-limit-container" role="alert">
       <div class="error-icon-wrapper daily-limit-icon">
         <i class="pi pi-calendar" />
       </div>
@@ -49,7 +49,7 @@
     </div>
 
     <!-- Scan Limit Reached State (total limit) -->
-    <div v-else-if="cardData?.scan_limit_reached" class="error-container scan-limit-container">
+    <div v-else-if="cardData?.scan_limit_reached" class="error-container scan-limit-container" role="alert">
       <div class="error-icon-wrapper scan-limit-icon">
         <i class="pi pi-ban" />
       </div>
@@ -58,7 +58,7 @@
     </div>
 
     <!-- Access Disabled State -->
-    <div v-else-if="cardData?.access_disabled" class="error-container access-disabled-container">
+    <div v-else-if="cardData?.access_disabled" class="error-container access-disabled-container" role="alert">
       <div class="error-icon-wrapper access-disabled-icon">
         <i class="pi pi-lock" />
       </div>
@@ -67,8 +67,8 @@
     </div>
 
     <!-- Main Content -->
-    <div 
-      v-else-if="cardData && !cardData.scan_limit_reached && !cardData.monthly_limit_exceeded && !cardData.daily_limit_exceeded && !cardData.credits_insufficient && !cardData.access_disabled" 
+    <div
+      v-else-if="cardData"
       class="content-wrapper"
       ref="contentWrapperRef"
     >
@@ -168,11 +168,13 @@ import ContentDetail from './components/ContentDetail.vue'
 
 // Types
 interface CardData {
+  card_id?: string
   card_name: string
   card_description: string
   card_image_url: string
   crop_parameters?: any
   conversation_ai_enabled: boolean
+  realtime_voice_enabled?: boolean
   ai_instruction: string
   ai_knowledge_base: string
   ai_prompt: string  // For backward compatibility with AI Assistant
@@ -359,11 +361,13 @@ async function fetchCardData() {
     }
 
     cardData.value = {
+      card_id: route.params.issue_card_id as string || firstRow.card_id || '',
       card_name: firstRow.card_name,
       card_description: firstRow.card_description,
       card_image_url: firstRow.card_image_url,
       crop_parameters: firstRow.card_crop_parameters,
       conversation_ai_enabled: firstRow.card_conversation_ai_enabled,
+      realtime_voice_enabled: firstRow.card_realtime_voice_enabled || false,
       ai_instruction: firstRow.card_ai_instruction,
       ai_knowledge_base: firstRow.card_ai_knowledge_base,
       ai_prompt: firstRow.card_ai_instruction, // For backward compatibility with AI Assistant
@@ -508,10 +512,6 @@ watch(() => route.path, () => {
   } else if (path.endsWith('/list')) {
     currentView.value = 'content-list'
     selectedContent.value = null
-    // Scroll to top when entering list view (optional, maybe keep position?)
-    // User requested "click to content item -> show top", so detail needs scroll top.
-    // List view might benefit from keeping position if going back. 
-    // Vue router's scrollBehavior usually handles "savedPosition" on popstate (back button).
   } else {
     currentView.value = 'card'
     selectedContent.value = null

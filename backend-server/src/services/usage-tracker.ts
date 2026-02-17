@@ -1086,3 +1086,188 @@ export async function getTokenSessionStats(tokenId: string, dailyLimit: number |
     dailyRemaining: dailyLimit === null ? null : Math.max(0, dailyLimit - dailySessions)
   };
 }
+
+// ============================================================================
+// VOICE CREDIT FUNCTIONS
+// ============================================================================
+
+/**
+ * Check if a card has voice enabled and get the owner ID
+ * Uses Redis cache with 5-min TTL, falls back to database
+ */
+export async function getCardVoiceInfo(cardId: string): Promise<{ voiceEnabled: boolean; ownerId: string | null }> {
+  const cacheKey = `voice:card_enabled:${cardId}`;
+
+  try {
+    // Check cache
+    const cached = await redis.get(cacheKey);
+    if (cached) {
+      const parsed = JSON.parse(cached as string);
+      return { voiceEnabled: parsed.voice_enabled, ownerId: parsed.owner_id };
+    }
+
+    // DB fallback
+    const { data, error } = await supabaseAdmin.rpc('get_card_voice_enabled_server', {
+      p_card_id: cardId
+    });
+
+    if (error || !data || !data.found) {
+      return { voiceEnabled: false, ownerId: null };
+    }
+
+    // Cache for 5 min
+    await redis.set(cacheKey, JSON.stringify({
+      voice_enabled: data.voice_enabled,
+      owner_id: data.owner_id
+    }), { ex: 300 });
+
+    return { voiceEnabled: data.voice_enabled, ownerId: data.owner_id };
+  } catch (err) {
+    console.error('[VoiceCredit] Error checking card voice info:', err);
+    return { voiceEnabled: false, ownerId: null };
+  }
+}
+
+/**
+ * Get voice credit balance for a user
+ * Uses Redis cache with 5-min TTL, falls back to database
+ */
+export async function getVoiceCreditBalance(userId: string): Promise<number> {
+  const cacheKey = `voice:credits:${userId}`;
+
+  try {
+    const cached = await redis.get(cacheKey);
+    if (cached !== null && cached !== undefined) {
+      return parseInt(cached as string, 10);
+    }
+
+    const { data, error } = await supabaseAdmin.rpc('get_voice_credit_balance_server', {
+      p_user_id: userId
+    });
+
+    const balance = error ? 0 : (data ?? 0);
+    await redis.set(cacheKey, balance.toString(), { ex: 300 });
+
+    return balance;
+  } catch (err) {
+    console.error('[VoiceCredit] Error getting balance:', err);
+    return 0;
+  }
+}
+
+/**
+ * Check if a voice call is allowed (card has voice enabled + owner has credits)
+ */
+export async function checkVoiceCallAllowed(cardId: string): Promise<{
+  allowed: boolean;
+  reason?: string;
+  ownerId?: string;
+  balance?: number;
+}> {
+  const cardInfo = await getCardVoiceInfo(cardId);
+
+  if (!cardInfo.ownerId) {
+    return { allowed: false, reason: 'Card not found' };
+  }
+
+  if (!cardInfo.voiceEnabled) {
+    return { allowed: false, reason: 'Voice not enabled for this project' };
+  }
+
+  const balance = await getVoiceCreditBalance(cardInfo.ownerId);
+
+  if (balance <= 0) {
+    return { allowed: false, reason: 'No voice credits remaining', ownerId: cardInfo.ownerId, balance: 0 };
+  }
+
+  return { allowed: true, ownerId: cardInfo.ownerId, balance };
+}
+
+/**
+ * Start a voice call - deduct 1 credit and set active marker
+ */
+export async function startVoiceCall(cardId: string, userId: string, sessionId: string): Promise<{
+  success: boolean;
+  error?: string;
+  remainingCredits?: number;
+}> {
+  const activeKey = `voice:active:${cardId}:${sessionId}`;
+  const hardLimitBuffer = parseInt(process.env.VOICE_CALL_HARD_LIMIT_SECONDS || '180') + 60;
+
+  try {
+    // Check for duplicate (already active call)
+    const existing = await redis.get(activeKey);
+    if (existing) {
+      return { success: false, error: 'Voice call already active for this session' };
+    }
+
+    // Deduct credit via stored procedure
+    const { data, error } = await supabaseAdmin.rpc('deduct_voice_credit_server', {
+      p_user_id: userId,
+      p_card_id: cardId,
+      p_session_id: sessionId
+    });
+
+    if (error) {
+      console.error('[VoiceCredit] DB error deducting credit:', error);
+      return { success: false, error: 'Failed to deduct voice credit' };
+    }
+
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'No voice credits remaining' };
+    }
+
+    // Set active call marker with TTL
+    await redis.set(activeKey, JSON.stringify({
+      userId,
+      startedAt: Date.now()
+    }), { ex: hardLimitBuffer });
+
+    // Invalidate balance cache
+    await redis.del(`voice:credits:${userId}`);
+
+    return { success: true, remainingCredits: data.balance_after };
+  } catch (err) {
+    console.error('[VoiceCredit] Error starting voice call:', err);
+    return { success: false, error: 'Internal error' };
+  }
+}
+
+/**
+ * End a voice call - log duration and clear active marker
+ */
+export async function endVoiceCall(cardId: string, sessionId: string, durationSeconds: number): Promise<boolean> {
+  try {
+    const activeKey = `voice:active:${cardId}:${sessionId}`;
+
+    // Clear active marker
+    await redis.del(activeKey);
+
+    // Log duration via stored procedure
+    const { error } = await supabaseAdmin.rpc('log_voice_call_end_server', {
+      p_card_id: cardId,
+      p_session_id: sessionId,
+      p_duration_seconds: durationSeconds
+    });
+
+    if (error) {
+      console.error('[VoiceCredit] Error logging call end:', error);
+    }
+
+    return !error;
+  } catch (err) {
+    console.error('[VoiceCredit] Error ending voice call:', err);
+    return false;
+  }
+}
+
+/**
+ * Invalidate voice credit cache for a user (called after purchase)
+ */
+export async function invalidateVoiceCreditCache(userId: string): Promise<void> {
+  try {
+    await redis.del(`voice:credits:${userId}`);
+  } catch (err) {
+    console.error('[VoiceCredit] Error invalidating cache:', err);
+  }
+}

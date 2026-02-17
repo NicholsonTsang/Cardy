@@ -164,7 +164,7 @@
                     <!-- Preview dropdown (shown when translations exist) -->
                     <div v-if="translatedCount > 0" class="flex items-center gap-2">
                         <span class="text-xs text-slate-500 shrink-0">{{ $t('translation.preview') }}:</span>
-                        <Dropdown
+                        <Select
                             v-model="selectedPreviewLanguage"
                             :options="languageOptions"
                             optionLabel="label"
@@ -187,7 +187,7 @@
                                     <span>{{ slotProps.option.label }}</span>
                                 </div>
                             </template>
-                        </Dropdown>
+                        </Select>
                     </div>
 
                     <!-- Language Status List -->
@@ -452,7 +452,7 @@ import { computed, ref, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
-import Dropdown from 'primevue/dropdown';
+import Select from 'primevue/select';
 import MyDialog from '@/components/MyDialog.vue';
 import CardExport from '@/components/Card/Export/CardExport.vue';
 import DuplicateCardDialog from '@/components/Card/DuplicateCardDialog.vue';

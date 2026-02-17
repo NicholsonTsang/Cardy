@@ -3,6 +3,14 @@
 -- Functions for managing card designs (CRUD operations)
 -- =================================================================
 
+-- Drop functions first to allow return type changes
+DROP FUNCTION IF EXISTS get_user_cards() CASCADE;
+DROP FUNCTION IF EXISTS create_card CASCADE;
+DROP FUNCTION IF EXISTS get_card_by_id(UUID) CASCADE;
+DROP FUNCTION IF EXISTS update_card CASCADE;
+DROP FUNCTION IF EXISTS delete_card CASCADE;
+DROP FUNCTION IF EXISTS get_card_with_content(UUID) CASCADE;
+
 -- Get all cards for the current user (more secure)
 -- Includes is_template flag to indicate if card is linked to a template
 -- Session stats are computed from card_access_tokens table
@@ -15,6 +23,7 @@ RETURNS TABLE (
     original_image_url TEXT,
     crop_parameters JSONB,
     conversation_ai_enabled BOOLEAN,
+    realtime_voice_enabled BOOLEAN,
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
     ai_welcome_general TEXT,
@@ -43,14 +52,15 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
-        c.id, 
-        c.name, 
-        c.description, 
-        c.image_url, 
+    SELECT
+        c.id,
+        c.name,
+        c.description,
+        c.image_url,
         c.original_image_url,
         c.crop_parameters,
         c.conversation_ai_enabled,
+        c.realtime_voice_enabled,
         c.ai_instruction,
         c.ai_knowledge_base,
         c.ai_welcome_general,
@@ -95,6 +105,7 @@ CREATE OR REPLACE FUNCTION create_card(
     p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT FALSE,
+    p_realtime_voice_enabled BOOLEAN DEFAULT FALSE,
     p_ai_instruction TEXT DEFAULT '',
     p_ai_knowledge_base TEXT DEFAULT '',
     p_ai_welcome_general TEXT DEFAULT '',
@@ -128,6 +139,7 @@ BEGIN
         original_image_url,
         crop_parameters,
         conversation_ai_enabled,
+        realtime_voice_enabled,
         ai_instruction,
         ai_knowledge_base,
         ai_welcome_general,
@@ -150,6 +162,7 @@ BEGIN
         p_original_image_url,
         p_crop_parameters,
         p_conversation_ai_enabled,
+        COALESCE(p_realtime_voice_enabled, FALSE),
         p_ai_instruction,
         p_ai_knowledge_base,
         COALESCE(p_ai_welcome_general, ''),
@@ -193,7 +206,7 @@ BEGIN
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 -- Session stats are computed from card_access_tokens table
@@ -208,6 +221,7 @@ RETURNS TABLE (
     original_image_url TEXT,
     crop_parameters JSONB,
     conversation_ai_enabled BOOLEAN,
+    realtime_voice_enabled BOOLEAN,
     ai_instruction TEXT,
     ai_knowledge_base TEXT,
     ai_welcome_general TEXT,
@@ -233,16 +247,17 @@ RETURNS TABLE (
 ) LANGUAGE plpgsql SECURITY DEFINER AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
-        c.id, 
+    SELECT
+        c.id,
         c.user_id,
-        c.name, 
-        c.description, 
+        c.name,
+        c.description,
         c.qr_code_position::TEXT,
         c.image_url,
         c.original_image_url,
         c.crop_parameters,
         c.conversation_ai_enabled,
+        c.realtime_voice_enabled,
         c.ai_instruction,
         c.ai_knowledge_base,
         c.ai_welcome_general,
@@ -283,6 +298,7 @@ CREATE OR REPLACE FUNCTION update_card(
     p_original_image_url TEXT DEFAULT NULL,
     p_crop_parameters JSONB DEFAULT NULL,
     p_conversation_ai_enabled BOOLEAN DEFAULT NULL,
+    p_realtime_voice_enabled BOOLEAN DEFAULT NULL,
     p_ai_instruction TEXT DEFAULT NULL,
     p_ai_knowledge_base TEXT DEFAULT NULL,
     p_ai_welcome_general TEXT DEFAULT NULL,
@@ -310,6 +326,7 @@ BEGIN
         original_image_url,
         crop_parameters,
         conversation_ai_enabled,
+        realtime_voice_enabled,
         ai_instruction,
         ai_knowledge_base,
         ai_welcome_general,
@@ -362,7 +379,12 @@ BEGIN
         v_changes_made := v_changes_made || jsonb_build_object('conversation_ai_enabled', jsonb_build_object('from', v_old_record.conversation_ai_enabled, 'to', p_conversation_ai_enabled));
         has_changes := TRUE;
     END IF;
-    
+
+    IF p_realtime_voice_enabled IS NOT NULL AND p_realtime_voice_enabled IS DISTINCT FROM v_old_record.realtime_voice_enabled THEN
+        v_changes_made := v_changes_made || jsonb_build_object('realtime_voice_enabled', jsonb_build_object('from', v_old_record.realtime_voice_enabled, 'to', p_realtime_voice_enabled));
+        has_changes := TRUE;
+    END IF;
+
     IF p_ai_instruction IS NOT NULL AND p_ai_instruction != v_old_record.ai_instruction THEN
         v_changes_made := v_changes_made || jsonb_build_object('ai_instruction', jsonb_build_object('from', v_old_record.ai_instruction, 'to', p_ai_instruction));
         has_changes := TRUE;
@@ -437,6 +459,7 @@ BEGIN
         original_image_url = COALESCE(p_original_image_url, original_image_url),
         crop_parameters = COALESCE(p_crop_parameters, crop_parameters),
         conversation_ai_enabled = COALESCE(p_conversation_ai_enabled, conversation_ai_enabled),
+        realtime_voice_enabled = COALESCE(p_realtime_voice_enabled, realtime_voice_enabled),
         ai_instruction = COALESCE(p_ai_instruction, ai_instruction),
         ai_knowledge_base = COALESCE(p_ai_knowledge_base, ai_knowledge_base),
         ai_welcome_general = COALESCE(p_ai_welcome_general, ai_welcome_general),
@@ -458,7 +481,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
@@ -520,6 +543,7 @@ CREATE OR REPLACE FUNCTION get_card_with_content(
   card_original_image_url TEXT,
   card_crop_parameters JSONB,
   card_conversation_ai_enabled BOOLEAN,
+  card_realtime_voice_enabled BOOLEAN,
   card_ai_instruction TEXT,
   card_ai_knowledge_base TEXT,
   card_ai_welcome_general TEXT,
@@ -566,6 +590,7 @@ BEGIN
     c.original_image_url,
     c.crop_parameters,
     c.conversation_ai_enabled,
+    c.realtime_voice_enabled,
     c.ai_instruction,
     c.ai_knowledge_base,
     c.ai_welcome_general,

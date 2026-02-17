@@ -21,15 +21,8 @@
     <div class="space-y-6">
       <!-- Recent Activity -->
       <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-        <div class="flex items-center justify-between mb-6">
+        <div class="mb-6">
           <h2 class="text-xl font-bold text-slate-900">{{ $t('admin.recent_activity') }}</h2>
-          <Button 
-            icon="pi pi-refresh" 
-            text 
-            @click="refreshData" 
-            :loading="isLoadingActivity" 
-            class="text-blue-600 hover:bg-blue-50"
-          />
         </div>
 
         <!-- Activity Filters -->
@@ -57,7 +50,7 @@
 
           <!-- Other Filters -->
           <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Dropdown
+            <Select
               v-model="activityFilters.type"
               :options="activityTypes"
               optionLabel="label"
@@ -66,7 +59,7 @@
               class="w-full"
               @change="onFilterChange"
             />
-            <Calendar
+            <DatePicker
               v-model="activityFilters.startDate"
               :placeholder="$t('admin.start_date')"
               :showTime="true"
@@ -74,7 +67,7 @@
               class="w-full"
               @date-select="onFilterChange"
             />
-            <Calendar
+            <DatePicker
               v-model="activityFilters.endDate"
               :placeholder="$t('admin.end_date')"
               :showTime="true"
@@ -213,8 +206,8 @@ import PageWrapper from '@/components/Layout/PageWrapper.vue'
 
 // PrimeVue Components
 import Button from 'primevue/button'
-import Dropdown from 'primevue/dropdown'
-import Calendar from 'primevue/calendar'
+import Select from 'primevue/select'
+import DatePicker from 'primevue/datepicker'
 import Paginator from 'primevue/paginator'
 import InputText from 'primevue/inputtext'
 import IconField from 'primevue/iconfield'
