@@ -2,13 +2,14 @@
 # =============================================================================
 # FunTell - Interactive Environment Setup
 # =============================================================================
-# Guides you through creating both .env files from scratch.
+# Guides you through creating .env files from scratch.
 # Run once before first deployment or dev setup.
 #
 # Usage:
-#   ./scripts/setup-env.sh              # Interactive full setup
+#   ./scripts/setup-env.sh              # Interactive full setup (all three)
 #   ./scripts/setup-env.sh --backend    # Backend .env only
 #   ./scripts/setup-env.sh --frontend   # Frontend .env only
+#   ./scripts/setup-env.sh --mcp        # MCP server .env only
 # =============================================================================
 
 set -e
@@ -50,8 +51,12 @@ BACKEND_DIR="$ROOT_DIR/backend-server"
 
 DO_BACKEND=true
 DO_FRONTEND=true
-[[ "$1" == "--backend"  ]] && DO_FRONTEND=false
-[[ "$1" == "--frontend" ]] && DO_BACKEND=false
+DO_MCP=true
+case "${1:-}" in
+    --backend)  DO_FRONTEND=false; DO_MCP=false ;;
+    --frontend) DO_BACKEND=false;  DO_MCP=false ;;
+    --mcp)      DO_BACKEND=false;  DO_FRONTEND=false ;;
+esac
 
 # ═══════════════════════════════════════════════════════════════════════════════
 echo ""
@@ -381,6 +386,76 @@ fi
 fi  # DO_FRONTEND
 
 # ═══════════════════════════════════════════════════════════════════════════════
+# MCP SERVER .env
+# ═══════════════════════════════════════════════════════════════════════════════
+if $DO_MCP; then
+
+header "MCP Server Configuration  (mcp-server/.env)"
+info "The MCP server is optional — it exposes FunTell tools to LLM clients"
+info "(Claude Code, OpenAI Agents SDK, etc.) over Streamable HTTP."
+echo ""
+
+MCP_DIR="$ROOT_DIR/mcp-server"
+MCP_ENV="$MCP_DIR/.env"
+
+if [[ ! -d "$MCP_DIR" ]]; then
+    warn "mcp-server/ directory not found. Skipping MCP setup."
+    DO_MCP=false
+fi
+
+if $DO_MCP; then
+    if [[ -f "$MCP_ENV" ]]; then
+        warn "mcp-server/.env already exists."
+        prompt "Overwrite it? (y/n)" "n"
+        [[ ! "$REPLY" =~ ^[Yy]$ ]] && { info "Skipping MCP .env."; DO_MCP=false; }
+    fi
+fi
+
+if $DO_MCP; then
+    > "$MCP_ENV"
+
+    section "Supabase (MCP uses anon key, not service role)"
+    info "Same project as the backend. Find at: supabase.com → Project Settings → API"
+
+    # Reuse backend values if available
+    if [[ -n "$SUPA_URL" ]]; then
+        prompt "Supabase Project URL" "$SUPA_URL"
+    else
+        prompt "Supabase Project URL" "https://xxxx.supabase.co"
+    fi
+    MCP_SUPA_URL="$REPLY"
+
+    if [[ -n "$VITE_SUPA_ANON" ]]; then
+        prompt "Supabase Anon Key (public key)" "$VITE_SUPA_ANON"
+    else
+        prompt "Supabase Anon Key (public key, not service role)" ""
+    fi
+    MCP_ANON_KEY="$REPLY"
+
+    section "Backend URL"
+    info "The deployed backend (Express.js) URL. Set after deploying the backend."
+    if $IS_PROD; then
+        prompt "Backend URL" "https://funtell-backend-xxxx.a.run.app"
+    else
+        prompt "Backend URL" "http://localhost:8080"
+    fi
+    MCP_BACKEND_URL="$REPLY"
+
+    {
+        echo "# Supabase"
+        writenv SUPABASE_URL      "$MCP_SUPA_URL"
+        writenv SUPABASE_ANON_KEY "$MCP_ANON_KEY"
+        echo ""
+        echo "# Backend"
+        writenv BACKEND_URL "$MCP_BACKEND_URL"
+    } >> "$MCP_ENV"
+
+    ok "mcp-server/.env created"
+fi
+
+fi  # DO_MCP
+
+# ═══════════════════════════════════════════════════════════════════════════════
 echo ""
 echo -e "${GREEN}${BOLD}╔══════════════════════════════════════════╗${NC}"
 echo -e "${GREEN}${BOLD}║   Environment Setup Complete!            ║${NC}"
@@ -389,6 +464,7 @@ echo ""
 
 $DO_BACKEND  && ok "backend-server/.env"
 $DO_FRONTEND && ok ".env (frontend)"
+$DO_MCP      && ok "mcp-server/.env"
 
 echo ""
 echo -e "${YELLOW}${BOLD}Next Steps:${NC}"
@@ -397,12 +473,14 @@ if ! $IS_PROD; then
     echo -e "  1. Apply database schema → see ${BOLD}docs/developer/DEPLOYMENT.md${NC}"
     echo -e "  2. Start backend:  ${CYAN}cd backend-server && npm run dev${NC}"
     echo -e "  3. Start frontend: ${CYAN}npm run dev${NC}"
+    echo -e "  4. (Optional) Start MCP server: ${CYAN}cd mcp-server && npm run build && npm start${NC}"
 else
     echo -e "  1. Apply database schema → see ${BOLD}docs/developer/DEPLOYMENT.md${NC}"
     echo -e "  2. Deploy backend:  ${CYAN}./scripts/deploy-cloud-run.sh${NC}"
     echo -e "  3. Update VITE_BACKEND_URL in .env with the Cloud Run URL"
-    echo -e "  4. Build frontend:  ${CYAN}npm run build:production${NC}"
+    echo -e "  4. Build frontend:  ${CYAN}npm run build${NC}"
     echo -e "  5. Upload ${CYAN}dist/${NC} to your static host (Vercel / Netlify / Firebase)"
+    echo -e "  6. (Optional) Deploy MCP server: ${CYAN}./scripts/deploy-mcp.sh${NC}"
 fi
 echo ""
 warn "Never commit .env files to git — they contain secrets."

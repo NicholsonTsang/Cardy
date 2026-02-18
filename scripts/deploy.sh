@@ -6,13 +6,15 @@
 #   1. Pre-flight checks
 #   2. Database SQL (manual copy-paste reminder + verification)
 #   3. Backend → Google Cloud Run
-#   4. Frontend build
-#   5. Post-deploy smoke tests
+#   4. MCP Server → Google Cloud Run (optional)
+#   5. Frontend build
+#   6. Post-deploy smoke tests
 #
 # Usage:
 #   ./scripts/deploy.sh              # Full deployment (backend + frontend)
 #   ./scripts/deploy.sh --backend    # Backend only
 #   ./scripts/deploy.sh --frontend   # Frontend build only
+#   ./scripts/deploy.sh --mcp        # MCP server only
 #   ./scripts/deploy.sh --check      # Pre-flight checks only
 # =============================================================================
 
@@ -37,11 +39,13 @@ BACKEND_DIR="$ROOT_DIR/backend-server"
 
 DO_BACKEND=true
 DO_FRONTEND=true
+DO_MCP=false   # MCP is opt-in; use --mcp or prompted during full deploy
 CHECK_ONLY=false
 
 case "${1:-}" in
-    --backend)  DO_FRONTEND=false ;;
-    --frontend) DO_BACKEND=false ;;
+    --backend)  DO_FRONTEND=false; DO_MCP=false ;;
+    --frontend) DO_BACKEND=false;  DO_MCP=false ;;
+    --mcp)      DO_BACKEND=false;  DO_FRONTEND=false; DO_MCP=true ;;
     --check)    CHECK_ONLY=true ;;
 esac
 
@@ -139,6 +143,33 @@ if [[ -f "$ROOT_DIR/.env" ]]; then
     check_vite_key VITE_STRIPE_PUBLISHABLE_KEY
 fi
 
+# ── MCP .env (if mcp-server/ exists and --mcp flag used) ────────────────────
+MCP_DIR="$ROOT_DIR/mcp-server"
+if [[ -d "$MCP_DIR" ]]; then
+    if $DO_MCP; then
+        section "MCP Server .env — Required Keys"
+        check_mcp_key() {
+            local key="$1"
+            local val
+            val=$(grep "^${key}=" "$MCP_DIR/.env" 2>/dev/null | cut -d'=' -f2-)
+            if [[ -z "$val" || "$val" == "https://xxxx.supabase.co" ]]; then
+                warn "$key is not set in mcp-server/.env"
+                CHECKS_PASSED=false
+            else
+                ok "$key is set"
+            fi
+        }
+        if [[ -f "$MCP_DIR/.env" ]]; then
+            check_mcp_key SUPABASE_URL
+            check_mcp_key SUPABASE_ANON_KEY
+            check_mcp_key BACKEND_URL
+        else
+            warn "mcp-server/.env not found — run: ./scripts/setup-env.sh --mcp"
+            CHECKS_PASSED=false
+        fi
+    fi
+fi
+
 # ── Docker / Cloud Run files ─────────────────────────────────────────────────
 if $DO_BACKEND; then
     section "Backend Build Files"
@@ -214,6 +245,30 @@ if $DO_BACKEND; then
         read -rp "  Press Enter once you have updated VITE_BACKEND_URL..." _
     else
         info "Skipping backend deployment."
+    fi
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# MCP SERVER DEPLOYMENT (opt-in)
+# ═══════════════════════════════════════════════════════════════════════════════
+if [[ -d "$ROOT_DIR/mcp-server" ]] && ! $DO_MCP && $DO_BACKEND; then
+    # During a full deploy, ask if they also want to deploy MCP
+    echo ""
+    read -rp "  Also deploy the MCP server? (optional — y/n) [n]: " DEPLOY_MCP_PROMPT
+    [[ "$DEPLOY_MCP_PROMPT" =~ ^[Yy]$ ]] && DO_MCP=true
+fi
+
+if $DO_MCP; then
+    header "MCP Server — Google Cloud Run"
+    info "The MCP server exposes FunTell tools to LLM clients (Claude Code, OpenAI, etc.)"
+    echo ""
+    read -rp "  Deploy MCP server to Cloud Run now? (y/n) [y]: " DEPLOY_MCP_NOW
+    DEPLOY_MCP_NOW="${DEPLOY_MCP_NOW:-y}"
+    if [[ "$DEPLOY_MCP_NOW" =~ ^[Yy]$ ]]; then
+        bash "$SCRIPT_DIR/deploy-mcp.sh"
+        ok "MCP server deployment complete"
+    else
+        info "Skipping MCP server deployment."
     fi
 fi
 
@@ -318,6 +373,21 @@ echo -e "     • Scan a QR code on a mobile device"
 echo -e "     • Test AI chat and voice features"
 echo ""
 echo -e "  ${BOLD}4. Monitor logs${NC}"
-echo -e "     Cloud Run: ${CYAN}gcloud run services logs tail funtell-backend --region \${REGION:-us-central1}${NC}"
-echo -e "     Supabase:  ${CYAN}https://supabase.com/dashboard → Logs${NC}"
+echo -e "     Backend:  ${CYAN}gcloud run services logs tail funtell-backend --region \${REGION:-us-central1}${NC}"
+echo -e "     MCP:      ${CYAN}gcloud run services logs tail funtell-mcp --region \${REGION:-asia-east1}${NC}"
+echo -e "     Supabase: ${CYAN}https://supabase.com/dashboard → Logs${NC}"
 echo ""
+if $DO_MCP; then
+    echo -e "  ${BOLD}5. Connect Claude Code to MCP${NC}"
+    MCP_URL=$(gcloud run services describe funtell-mcp --region "${REGION:-asia-east1}" --format 'value(status.url)' 2>/dev/null || echo "https://funtell-mcp-xxxx.run.app")
+    echo -e "     Add to ${CYAN}.mcp.json${NC}:"
+    echo -e '     {'
+    echo -e '       "mcpServers": {'
+    echo -e '         "funtell": {'
+    echo -e '           "type": "streamable-http",'
+    echo -e "           \"url\": \"${MCP_URL}/mcp\""
+    echo -e '         }'
+    echo -e '       }'
+    echo -e '     }'
+    echo ""
+fi

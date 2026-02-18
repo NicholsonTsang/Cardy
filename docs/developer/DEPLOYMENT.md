@@ -7,6 +7,7 @@ This guide covers everything needed to deploy FunTell from scratch — prerequis
 | Component | Technology | Where it runs |
 |-----------|-----------|---------------|
 | **Backend API** | Express.js (Node 18) | Google Cloud Run |
+| **MCP Server** | Node.js 20 (MCP SDK) | Google Cloud Run |
 | **Frontend** | Vue 3 (Vite SPA) | Vercel / Netlify / Firebase / any CDN |
 | **Database** | Supabase PostgreSQL | Supabase cloud |
 | **Cache** | Upstash Redis | Upstash cloud |
@@ -313,6 +314,72 @@ All static hosts need to serve `index.html` for all routes (Vue Router uses HTML
   }
 }
 ```
+
+---
+
+## Step 6 — MCP Server Deployment (Optional)
+
+The MCP (Model Context Protocol) server exposes 22 tools for managing FunTell projects over Streamable HTTP. It lets LLM clients (Claude Code, OpenAI Agents SDK, etc.) create and manage content experiences programmatically. This is an optional component — it is not required for the core creator dashboard or mobile client.
+
+### MCP Server .env
+
+Create `mcp-server/.env`:
+
+```bash
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=eyJ...your-anon-key   # Public key, not service role
+BACKEND_URL=https://funtell-backend-xxxx.a.run.app
+```
+
+> Uses the **Supabase anon key** (not service role). RLS handles per-user security.
+
+### Deploy
+
+```bash
+./scripts/deploy-mcp.sh
+```
+
+The script builds the TypeScript, packages it as a Docker container via Cloud Build, and deploys to Cloud Run as `funtell-mcp`.
+
+**Cloud Run settings:**
+
+| Setting | Value |
+|---------|-------|
+| Service name | `funtell-mcp` |
+| Port | `8080` |
+| Memory | `512Mi` |
+| Default region | `asia-east1` |
+| Min/max instances | `0 / 10` |
+
+### Verify
+
+```bash
+curl https://funtell-mcp-xxxx.run.app/health
+# {"status":"ok","sessions":0}
+```
+
+### Connect from Claude Code
+
+Add to `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "funtell": {
+      "type": "streamable-http",
+      "url": "https://funtell-mcp-xxxx.run.app/mcp"
+    }
+  }
+}
+```
+
+### Connect from OpenAI Agents SDK
+
+```python
+MCPServerStreamableHttp(url="https://funtell-mcp-xxxx.run.app/mcp")
+```
+
+> Full MCP server documentation: [`mcp-server/DEPLOYMENT.md`](/mcp-server/DEPLOYMENT.md) and [`mcp-server/USAGE.md`](/mcp-server/USAGE.md)
 
 ---
 
