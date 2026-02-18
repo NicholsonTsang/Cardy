@@ -31,7 +31,7 @@
                     </Tab>
                 </TabList>
                 <TabPanels class="flex-1 overflow-hidden bg-slate-50">
-                    <TabPanel v-for="(tab, index) in tabs" :value="index.toString()" class="h-full">
+                    <TabPanel v-for="(tab, index) in tabs" :key="tab.label" :value="index.toString()" class="h-full">
                         <div class="h-full overflow-y-auto px-0 py-2 sm:p-3 lg:p-4 xl:p-6">
                             <!-- General Tab -->
                             <CardView
@@ -46,7 +46,7 @@
                             />
                             <!-- Content Tab -->
                             <CardContent
-                                v-if="getTabComponent(index) === 'content'"
+                                v-if="getTabComponent(index) === 'content' && selectedCard"
                                 :cardId="selectedCard.id"
                                 :card="selectedCard"
                                 :cardAiEnabled="selectedCard.conversation_ai_enabled"
@@ -58,17 +58,10 @@
                             />
                             <!-- QR & Access Tab -->
                             <DigitalAccessQR
-                                v-if="getTabComponent(index) === 'qr'"
+                                v-if="getTabComponent(index) === 'qr' && selectedCard"
                                 :card="selectedCard"
                                 :cardName="selectedCard.name"
                                 :key="`${selectedCard.id}-digital-qr`"
-                                @updated="handleDigitalAccessUpdated"
-                            />
-                            <!-- Control Settings Tab -->
-                            <DigitalAccessSettings 
-                                v-if="getTabComponent(index) === 'digital-access'"
-                                :card="selectedCard"
-                                :key="selectedCard.id + '-digital-access'"
                                 @updated="handleDigitalAccessUpdated"
                             />
                         </div>
@@ -87,9 +80,9 @@
             class="standardized-dialog"
         >
             <MobilePreview
-                v-if="showPreviewDialog"
+                v-if="showPreviewDialog && selectedCard"
                 :cardProp="selectedCard"
-                :key="`${selectedCard.id}-preview-dialog`"
+                :key="`${selectedCard?.id}-preview-dialog`"
             />
         </Dialog>
     </div>
@@ -108,7 +101,6 @@ import CardView from '@/components/CardComponents/CardView.vue';
 import CardContent from '@/components/CardContent/CardContent.vue';
 import DigitalAccessQR from '@/components/DigitalAccess/DigitalAccessQR.vue';
 import MobilePreview from '@/components/CardComponents/MobilePreview.vue';
-import DigitalAccessSettings from '@/components/DigitalAccess/DigitalAccessSettings.vue';
 import { useContentItemStore } from '@/stores/contentItem';
 
 const { t } = useI18n();
@@ -168,13 +160,6 @@ const tabs = computed(() => {
         }
     ];
 
-    // Control Settings tab
-    baseTabs.push({
-        label: t('digital_access.control_settings'),
-        icon: 'pi pi-sliders-h',
-        hint: t('dashboard.tab_hint_control')
-    });
-
     // QR & Access tab
     baseTabs.push({
         label: t('dashboard.qr_access'),
@@ -185,12 +170,11 @@ const tabs = computed(() => {
     return baseTabs;
 });
 
-// Map tab index to component type: [General, Content, Digital Access, QR]
+// Map tab index to component type: [General, Content, QR & Access]
 const getTabComponent = (index) => {
     if (index === 0) return 'general';
     if (index === 1) return 'content';
-    if (index === 2) return 'digital-access';
-    if (index === 3) return 'qr';
+    if (index === 2) return 'qr';
     return null;
 };
 
