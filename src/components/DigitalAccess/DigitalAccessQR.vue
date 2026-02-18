@@ -172,15 +172,35 @@
                 </div>
               </div>
 
-              <!-- Voice Limits (shown only if any are set) -->
-              <div v-if="token.daily_voice_limit || token.monthly_voice_limit" class="flex flex-wrap gap-2">
-                <div v-if="token.daily_voice_limit" class="flex items-center gap-1 bg-purple-50 text-purple-700 text-xs rounded-full px-3 py-1">
+              <!-- Voice Limits (always shown) -->
+              <div class="flex flex-wrap gap-2">
+                <!-- Daily voice limit -->
+                <div
+                  class="flex items-center gap-1 text-xs rounded-full px-3 py-1 transition-opacity"
+                  :class="token.daily_voice_limit && card.conversation_ai_enabled
+                    ? 'bg-purple-50 text-purple-700'
+                    : 'bg-slate-100 text-slate-400'"
+                >
                   <i class="pi pi-microphone text-xs"></i>
-                  <span>{{ $t('digital_access.daily') }}: {{ Math.floor(token.daily_voice_limit / 60) }}{{ $t('digital_access.minutes_abbr') }}</span>
+                  <span>
+                    {{ $t('digital_access.daily') }}:
+                    <template v-if="token.daily_voice_limit">{{ formatVoiceTime(token.daily_voice_limit) }}</template>
+                    <template v-else>∞</template>
+                  </span>
                 </div>
-                <div v-if="token.monthly_voice_limit" class="flex items-center gap-1 bg-purple-50 text-purple-700 text-xs rounded-full px-3 py-1">
+                <!-- Monthly voice limit -->
+                <div
+                  class="flex items-center gap-1 text-xs rounded-full px-3 py-1 transition-opacity"
+                  :class="token.monthly_voice_limit && card.conversation_ai_enabled
+                    ? 'bg-purple-50 text-purple-700'
+                    : 'bg-slate-100 text-slate-400'"
+                >
                   <i class="pi pi-microphone text-xs"></i>
-                  <span>{{ $t('digital_access.monthly') }}: {{ Math.floor(token.monthly_voice_limit / 60) }}{{ $t('digital_access.minutes_abbr') }}</span>
+                  <span>
+                    {{ $t('digital_access.monthly') }}:
+                    <template v-if="token.monthly_voice_limit">{{ formatVoiceTime(token.monthly_voice_limit) }}</template>
+                    <template v-else>∞</template>
+                  </span>
                 </div>
               </div>
 
@@ -461,6 +481,16 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'updated', card: Card): void
 }>()
+
+// Utility: format seconds into "Xh Ym" or "Ym" or "Xs"
+function formatVoiceTime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0 && m > 0) return `${h}h ${m}m`
+  if (h > 0) return `${h}h`
+  return `${m}m`
+}
 
 // State
 const isLoading = ref(false)

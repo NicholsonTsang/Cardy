@@ -202,7 +202,7 @@
               buttonLayout="horizontal"
               class="w-full max-w-[220px]"
             />
-            <span class="text-xs text-slate-500">{{ $t('digital_access.seconds_per_day') }} ({{ Math.floor(dailyVoiceLimit / 60) }}{{ $t('digital_access.minutes_abbr') }})</span>
+            <span class="text-xs text-slate-500">{{ $t('digital_access.seconds_per_day') }} (= {{ formatVoiceTime(dailyVoiceLimit) }})</span>
           </div>
 
           <div v-else class="text-center py-2">
@@ -258,6 +258,16 @@ const { t } = useI18n()
 const toast = useToast()
 const router = useRouter()
 const cardStore = useCardStore()
+
+// Utility: format seconds into "Xh Ym" or "Ym" or "Xs"
+function formatVoiceTime(seconds: number): string {
+  if (seconds < 60) return `${seconds}s`
+  const h = Math.floor(seconds / 3600)
+  const m = Math.floor((seconds % 3600) / 60)
+  if (h > 0 && m > 0) return `${h}h ${m}m`
+  if (h > 0) return `${h}h`
+  return `${m}m`
+}
 
 // Props
 const props = defineProps<{
