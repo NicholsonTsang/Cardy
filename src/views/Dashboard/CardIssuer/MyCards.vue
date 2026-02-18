@@ -8,6 +8,7 @@
                 :header="$t('dashboard.create_new_card')"
                 :showConfirm="false"
                 :showCancel="false"
+                :style="{ width: '90vw', maxWidth: '52rem' }"
                 @hide="onDialogHide"
             >
                 <CardCreateWizard

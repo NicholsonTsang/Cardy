@@ -65,7 +65,10 @@ const props = defineProps({
     type: Boolean,
     default: true
   },
-  style: [Object, String],
+  style: {
+    type: [Object, String],
+    default: () => ({ width: '90vw', maxWidth: '52rem' })
+  },
   confirmHandle: {
     type: Function,
     default: () => Promise.resolve()
