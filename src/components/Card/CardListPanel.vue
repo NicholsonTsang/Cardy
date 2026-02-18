@@ -187,26 +187,40 @@
         </div>
 
         <!-- Empty State — ambient visual, actions live in the right panel -->
-        <div v-else-if="cards.length === 0 && !searchQuery" class="flex flex-col items-center justify-center flex-1 px-4 py-8 text-center gap-4">
-            <!-- Stacked card illustration -->
-            <div class="relative w-16 h-16 mx-auto">
-                <div class="absolute bottom-0 left-2 right-2 h-12 rounded-xl bg-indigo-100 rotate-[-6deg]"></div>
-                <div class="absolute bottom-0 left-1 right-1 h-12 rounded-xl bg-blue-100 rotate-[3deg]"></div>
-                <div class="absolute bottom-0 left-0 right-0 h-12 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center">
-                    <i class="pi pi-id-card text-slate-300 text-xl"></i>
-                </div>
-            </div>
+        <div v-else-if="cards.length === 0 && !searchQuery" class="flex flex-col items-center justify-center flex-1 px-5 gap-6">
+
+            <!-- SVG dashed-border illustration -->
+            <svg width="120" height="100" viewBox="0 0 120 100" fill="none" xmlns="http://www.w3.org/2000/svg" class="opacity-60">
+                <!-- Card 3 (back-most) -->
+                <rect x="18" y="22" width="72" height="52" rx="8" fill="#EEF2FF" stroke="#C7D2FE" stroke-width="1.5" stroke-dasharray="4 3"/>
+                <!-- Card 2 (middle) -->
+                <rect x="10" y="15" width="72" height="52" rx="8" fill="#F0F9FF" stroke="#BAE6FD" stroke-width="1.5" stroke-dasharray="4 3"/>
+                <!-- Card 1 (front) -->
+                <rect x="2" y="8" width="72" height="52" rx="8" fill="white" stroke="#CBD5E1" stroke-width="1.5"/>
+                <!-- Shimmer lines on front card -->
+                <rect x="12" y="22" width="32" height="4" rx="2" fill="#E2E8F0"/>
+                <rect x="12" y="30" width="22" height="3" rx="1.5" fill="#F1F5F9"/>
+                <rect x="12" y="43" width="44" height="3" rx="1.5" fill="#F1F5F9"/>
+                <rect x="12" y="50" width="36" height="3" rx="1.5" fill="#F1F5F9"/>
+                <!-- Plus badge -->
+                <circle cx="96" cy="18" r="14" fill="#3B82F6"/>
+                <line x1="96" y1="11" x2="96" y2="25" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+                <line x1="89" y1="18" x2="103" y2="18" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+                <!-- Arrow pointing right -->
+                <path d="M 84 88 L 102 88" stroke="#CBD5E1" stroke-width="1.5" stroke-linecap="round"/>
+                <path d="M 97 83 L 102 88 L 97 93" stroke="#CBD5E1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
 
             <!-- Text -->
-            <div class="space-y-1">
+            <div class="space-y-1.5 text-center">
                 <p class="text-sm font-semibold text-slate-600">{{ $t('dashboard.sidebar_empty_title') }}</p>
-                <p class="text-xs text-slate-400 leading-relaxed max-w-[160px] mx-auto">{{ $t('dashboard.sidebar_empty_hint') }}</p>
+                <p class="text-xs text-slate-400 leading-relaxed">{{ $t('dashboard.sidebar_empty_hint') }}</p>
             </div>
 
-            <!-- Single subtle arrow hint pointing right -->
-            <div class="flex items-center gap-1.5 text-xs text-slate-300 mt-1">
+            <!-- Subtle right-pointing nudge -->
+            <div class="flex items-center gap-1.5 text-xs text-slate-300">
                 <span>{{ $t('dashboard.sidebar_empty_cta') }}</span>
-                <i class="pi pi-arrow-right text-xs"></i>
+                <i class="pi pi-arrow-right" style="font-size: 10px;"></i>
             </div>
         </div>
 
