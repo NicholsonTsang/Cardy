@@ -159,12 +159,28 @@
                   <p class="text-xs text-slate-500">{{ $t('digital_access.total') }}</p>
                 </div>
                 <div class="bg-slate-50 rounded-lg p-2">
-                  <p class="text-lg font-bold text-slate-900">{{ token.monthly_sessions || 0 }}</p>
+                  <p class="text-lg font-bold text-slate-900">{{ token.monthly_sessions || 0 }}
+                    <span v-if="token.monthly_session_limit" class="text-xs font-normal text-slate-400">/ {{ token.monthly_session_limit }}</span>
+                  </p>
                   <p class="text-xs text-slate-500">{{ $t('digital_access.monthly') }}</p>
                 </div>
                 <div class="bg-slate-50 rounded-lg p-2">
-                  <p class="text-lg font-bold text-slate-900">{{ token.daily_sessions || 0 }}</p>
+                  <p class="text-lg font-bold text-slate-900">{{ token.daily_sessions || 0 }}
+                    <span v-if="token.daily_session_limit" class="text-xs font-normal text-slate-400">/ {{ token.daily_session_limit }}</span>
+                  </p>
                   <p class="text-xs text-slate-500">{{ $t('digital_access.daily') }}</p>
+                </div>
+              </div>
+
+              <!-- Voice Limits (shown only if any are set) -->
+              <div v-if="token.daily_voice_limit || token.monthly_voice_limit" class="flex flex-wrap gap-2">
+                <div v-if="token.daily_voice_limit" class="flex items-center gap-1 bg-purple-50 text-purple-700 text-xs rounded-full px-3 py-1">
+                  <i class="pi pi-microphone text-xs"></i>
+                  <span>{{ $t('digital_access.daily') }}: {{ Math.floor(token.daily_voice_limit / 60) }}{{ $t('digital_access.minutes_abbr') }}</span>
+                </div>
+                <div v-if="token.monthly_voice_limit" class="flex items-center gap-1 bg-purple-50 text-purple-700 text-xs rounded-full px-3 py-1">
+                  <i class="pi pi-microphone text-xs"></i>
+                  <span>{{ $t('digital_access.monthly') }}: {{ Math.floor(token.monthly_voice_limit / 60) }}{{ $t('digital_access.minutes_abbr') }}</span>
                 </div>
               </div>
 
@@ -195,7 +211,7 @@
                   @click="toggleOverflowMenu($event, token)"
                   v-tooltip="$t('common.more_actions')"
                 />
-                <Menu ref="overflowMenuRef" :model="getOverflowMenuItems(token)" :popup="true" />
+                <Menu :ref="(el) => setOverflowMenuRef(token.id, el)" :model="getOverflowMenuItems(token)" :popup="true" />
               </div>
             </div>
           </div>
@@ -218,54 +234,126 @@
     </div>
 
     <!-- Add/Edit Dialog -->
-    <Dialog 
-      v-model:visible="showAddDialog" 
+    <Dialog
+      v-model:visible="showAddDialog"
       :header="editingToken ? $t('digital_access.edit_qr_code') : $t('digital_access.add_qr_code')"
-      :style="{ width: '450px' }"
+      :style="{ width: '500px' }"
       :modal="true"
     >
       <div class="space-y-4">
+        <!-- Name -->
         <div>
           <label class="block text-sm font-medium text-slate-700 mb-1">{{ $t('digital_access.qr_name') }}</label>
-          <InputText 
-            v-model="formData.name" 
-            class="w-full" 
+          <InputText
+            v-model="formData.name"
+            class="w-full"
             :placeholder="$t('digital_access.qr_name_placeholder')"
           />
           <p class="text-xs text-slate-500 mt-1">{{ $t('digital_access.qr_name_hint') }}</p>
         </div>
-        
-        <div>
-          <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-            <span class="text-sm font-medium text-slate-700">{{ $t('digital_access.enable_daily_limit') }}</span>
-            <ToggleSwitch v-model="formData.hasDailyLimit" />
+
+        <!-- Session Limits section -->
+        <div class="border border-slate-200 rounded-lg overflow-hidden">
+          <div class="bg-slate-50 px-3 py-2 border-b border-slate-200">
+            <p class="text-xs font-semibold text-slate-600 uppercase tracking-wider">{{ $t('digital_access.session_limits') }}</p>
+          </div>
+          <div class="p-3 space-y-3">
+            <!-- Daily session limit -->
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-slate-700">{{ $t('digital_access.enable_daily_limit') }}</span>
+                <ToggleSwitch v-model="formData.hasDailyLimit" />
+              </div>
+              <div v-if="formData.hasDailyLimit" class="mt-2">
+                <InputNumber
+                  v-model="formData.daily_session_limit"
+                  :min="1"
+                  :max="100000"
+                  showButtons
+                  class="w-full"
+                />
+                <p class="text-xs text-slate-500 mt-1">{{ $t('digital_access.daily_limit_hint') }}</p>
+              </div>
+            </div>
+
+            <!-- Monthly session limit -->
+            <div class="pt-2 border-t border-slate-100">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-slate-700">{{ $t('digital_access.enable_monthly_session_limit') }}</span>
+                <ToggleSwitch v-model="formData.hasMonthlySessionLimit" />
+              </div>
+              <div v-if="formData.hasMonthlySessionLimit" class="mt-2">
+                <InputNumber
+                  v-model="formData.monthly_session_limit"
+                  :min="1"
+                  :max="1000000"
+                  showButtons
+                  class="w-full"
+                />
+                <p class="text-xs text-slate-500 mt-1">{{ $t('digital_access.monthly_session_limit_hint') }}</p>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div v-if="formData.hasDailyLimit">
-          <label class="block text-sm font-medium text-slate-700 mb-1">{{ $t('digital_access.daily_limit') }}</label>
-          <InputNumber 
-            v-model="formData.daily_session_limit"
-            :min="1"
-            :max="100000"
-            showButtons
-            class="w-full"
-          />
-          <p class="text-xs text-slate-500 mt-1">{{ $t('digital_access.daily_limit_hint') }}</p>
+        <!-- Voice Limits section -->
+        <div class="border border-slate-200 rounded-lg overflow-hidden">
+          <div class="bg-slate-50 px-3 py-2 border-b border-slate-200">
+            <p class="text-xs font-semibold text-slate-600 uppercase tracking-wider">{{ $t('digital_access.voice_limits') }}</p>
+          </div>
+          <div class="p-3 space-y-3">
+            <!-- Daily voice limit -->
+            <div>
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-slate-700">{{ $t('digital_access.enable_daily_voice_limit') }}</span>
+                <ToggleSwitch v-model="formData.hasDailyVoiceLimit" />
+              </div>
+              <div v-if="formData.hasDailyVoiceLimit" class="mt-2">
+                <InputNumber
+                  v-model="formData.daily_voice_limit"
+                  :min="60"
+                  :max="86400"
+                  :step="60"
+                  showButtons
+                  class="w-full"
+                />
+                <p class="text-xs text-slate-500 mt-1">{{ $t('digital_access.daily_voice_limit_hint') }}</p>
+              </div>
+            </div>
+
+            <!-- Monthly voice limit -->
+            <div class="pt-2 border-t border-slate-100">
+              <div class="flex items-center justify-between">
+                <span class="text-sm font-medium text-slate-700">{{ $t('digital_access.enable_monthly_voice_limit') }}</span>
+                <ToggleSwitch v-model="formData.hasMonthlyVoiceLimit" />
+              </div>
+              <div v-if="formData.hasMonthlyVoiceLimit" class="mt-2">
+                <InputNumber
+                  v-model="formData.monthly_voice_limit"
+                  :min="60"
+                  :max="2592000"
+                  :step="60"
+                  showButtons
+                  class="w-full"
+                />
+                <p class="text-xs text-slate-500 mt-1">{{ $t('digital_access.monthly_voice_limit_hint') }}</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      
+
       <template #footer>
-        <Button 
-          :label="$t('common.cancel')" 
-          severity="secondary" 
+        <Button
+          :label="$t('common.cancel')"
+          severity="secondary"
           outlined
-          @click="closeDialog" 
+          @click="closeDialog"
         />
-        <Button 
+        <Button
           :label="editingToken ? $t('common.save') : $t('common.create')"
           icon="pi pi-check"
-          @click="saveToken" 
+          @click="saveToken"
           :loading="isSaving"
         />
       </template>
@@ -406,7 +494,13 @@ const refreshingTokenId = ref<string | null>(null)
 const formData = ref({
   name: '',
   daily_session_limit: 500,
-  hasDailyLimit: true
+  hasDailyLimit: true,
+  monthly_session_limit: 5000,
+  hasMonthlySessionLimit: false,
+  daily_voice_limit: 3600,
+  hasDailyVoiceLimit: false,
+  monthly_voice_limit: 36000,
+  hasMonthlyVoiceLimit: false
 })
 
 // Load data
@@ -446,10 +540,15 @@ function toggleTokenExpanded(tokenId: string) {
 }
 
 // Overflow menu
-const overflowMenuRef = ref()
+const overflowMenuRefs = ref<Record<string, any>>({})
+
+function setOverflowMenuRef(tokenId: string, el: any) {
+  if (el) overflowMenuRefs.value[tokenId] = el
+  else delete overflowMenuRefs.value[tokenId]
+}
 
 function toggleOverflowMenu(event: Event, token: AccessToken) {
-  overflowMenuRef.value?.toggle(event)
+  overflowMenuRefs.value[token.id]?.toggle(event)
   // Store token ref for menu item actions
   currentMenuToken.value = token
 }
@@ -570,7 +669,13 @@ function editToken(token: AccessToken) {
   formData.value = {
     name: token.name,
     daily_session_limit: token.daily_session_limit || 500,
-    hasDailyLimit: token.daily_session_limit !== null
+    hasDailyLimit: token.daily_session_limit !== null,
+    monthly_session_limit: token.monthly_session_limit || 5000,
+    hasMonthlySessionLimit: token.monthly_session_limit !== null,
+    daily_voice_limit: token.daily_voice_limit || 3600,
+    hasDailyVoiceLimit: token.daily_voice_limit !== null,
+    monthly_voice_limit: token.monthly_voice_limit || 36000,
+    hasMonthlyVoiceLimit: token.monthly_voice_limit !== null
   }
   showAddDialog.value = true
 }
@@ -581,7 +686,13 @@ function closeDialog() {
   formData.value = {
     name: '',
     daily_session_limit: 500,
-    hasDailyLimit: true
+    hasDailyLimit: true,
+    monthly_session_limit: 5000,
+    hasMonthlySessionLimit: false,
+    daily_voice_limit: 3600,
+    hasDailyVoiceLimit: false,
+    monthly_voice_limit: 36000,
+    hasMonthlyVoiceLimit: false
   }
 }
 
@@ -598,19 +709,28 @@ async function saveToken() {
 
   isSaving.value = true
   try {
-    const dailyLimit = formData.value.hasDailyLimit ? formData.value.daily_session_limit : null
-    
+    const dailySessionLimit = formData.value.hasDailyLimit ? formData.value.daily_session_limit : null
+    const monthlySessionLimit = formData.value.hasMonthlySessionLimit ? formData.value.monthly_session_limit : null
+    const dailyVoiceLimit = formData.value.hasDailyVoiceLimit ? formData.value.daily_voice_limit : null
+    const monthlyVoiceLimit = formData.value.hasMonthlyVoiceLimit ? formData.value.monthly_voice_limit : null
+
     if (editingToken.value) {
       // Update existing
       await cardStore.updateAccessToken(editingToken.value.id, props.card.id, {
         name: formData.value.name,
-        daily_session_limit: dailyLimit
+        daily_session_limit: dailySessionLimit,
+        monthly_session_limit: monthlySessionLimit,
+        daily_voice_limit: dailyVoiceLimit,
+        monthly_voice_limit: monthlyVoiceLimit
       })
     } else {
       // Create new
       await cardStore.createAccessToken(props.card.id, {
         name: formData.value.name,
-        daily_session_limit: dailyLimit
+        daily_session_limit: dailySessionLimit,
+        monthly_session_limit: monthlySessionLimit,
+        daily_voice_limit: dailyVoiceLimit,
+        monthly_voice_limit: monthlyVoiceLimit
       })
     }
     

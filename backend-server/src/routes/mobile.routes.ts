@@ -30,6 +30,7 @@ import {
   recordSession,
   logAccess,
   checkTokenDailyLimit,
+  checkTokenMonthlyLimit,
   recordTokenDailyAccess,
   recordTokenMonthlyAccess,
   invalidateTokenDailyLimit,
@@ -70,11 +71,15 @@ interface CardContentResponse {
     tokenName: string;
     totalSessions: number;
     dailySessionLimit: number | null;
+    monthlySessionLimit: number | null;
+    dailyVoiceLimit: number | null;
+    monthlyVoiceLimit: number | null;
     dailySessions: number;
     monthlySessions: number;
     // Access status flags (billing is per-user subscription, not per-project)
     budgetExhausted: boolean;
     dailyLimitExceeded: boolean;
+    monthlyLimitExceeded: boolean;
     creditsInsufficient: boolean;
     accessDisabled?: boolean;
     // Session billing info
@@ -263,6 +268,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
     };
     let budgetExhausted = false;
     let dailyLimitExceeded = false;
+    let monthlyLimitExceeded = false;
     let creditsInsufficient = false;
     
     // Skip usage tracking for template demo cards
@@ -279,14 +285,31 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
         cardInfo.token_id,
         cardInfo.token_daily_session_limit
       );
-      
+
       if (!dailyCheck.allowed) {
         dailyLimitExceeded = true;
         sessionResult.allowed = false;
         sessionResult.reason = dailyCheck.reason;
         console.log(`[Mobile] Access denied (daily limit) for token ${cardInfo.token_id}: ${dailyCheck.currentSessions}/${dailyCheck.dailyLimit}`);
-      } else {
-        // Step 6b: Check session allowance and handle billing
+      }
+
+      // Step 6b: Check MONTHLY limit (per-token protection)
+      if (!dailyLimitExceeded) {
+        const monthlyCheck = await checkTokenMonthlyLimit(
+          cardInfo.token_id,
+          cardInfo.token_monthly_session_limit
+        );
+
+        if (!monthlyCheck.allowed) {
+          monthlyLimitExceeded = true;
+          sessionResult.allowed = false;
+          sessionResult.reason = monthlyCheck.reason;
+          console.log(`[Mobile] Access denied (monthly limit) for token ${cardInfo.token_id}: ${monthlyCheck.currentSessions}/${monthlyCheck.dailyLimit}`);
+        }
+      }
+
+      if (!dailyLimitExceeded && !monthlyLimitExceeded) {
+        // Step 6c: Check session allowance and handle billing
         const sessionCheck = await checkSessionAllowed(
           cardInfo.user_id,
           cardInfo.id,
@@ -359,6 +382,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       // Update status fields with token-specific data
       content.card.budgetExhausted = budgetExhausted;
       content.card.dailyLimitExceeded = dailyLimitExceeded;
+      content.card.monthlyLimitExceeded = monthlyLimitExceeded;
       content.card.creditsInsufficient = creditsInsufficient;
       content.card.tokenId = cardInfo.token_id;
       content.card.tokenName = cardInfo.token_name;
@@ -366,6 +390,9 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       content.card.dailySessions = cardInfo.token_daily_sessions;
       content.card.monthlySessions = cardInfo.token_monthly_sessions;
       content.card.dailySessionLimit = cardInfo.token_daily_session_limit;
+      content.card.monthlySessionLimit = cardInfo.token_monthly_session_limit;
+      content.card.dailyVoiceLimit = cardInfo.token_daily_voice_limit ?? null;
+      content.card.monthlyVoiceLimit = cardInfo.token_monthly_voice_limit ?? null;
       content.card.sessionCost = sessionResult.sessionCost;
       content.card.isNewSession = sessionResult.isNewSession;
       content.card.aiEnabled = sessionResult.isAiEnabled;
@@ -427,10 +454,14 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           tokenName: cardInfo.token_name,
           totalSessions: cardInfo.token_total_sessions || 0,
           dailySessionLimit: cardInfo.token_daily_session_limit,
+          monthlySessionLimit: cardInfo.token_monthly_session_limit,
+          dailyVoiceLimit: cardInfo.token_daily_voice_limit ?? null,
+          monthlyVoiceLimit: cardInfo.token_monthly_voice_limit ?? null,
           dailySessions: cardInfo.token_daily_sessions ?? 0,
           monthlySessions: cardInfo.token_monthly_sessions ?? 0,
           budgetExhausted,
           dailyLimitExceeded,
+          monthlyLimitExceeded,
           creditsInsufficient,
           sessionCost: sessionResult.sessionCost,
           isNewSession: sessionResult.isNewSession,
@@ -461,6 +492,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
           ...content.card,
           budgetExhausted: false,
           dailyLimitExceeded: false,
+          monthlyLimitExceeded: false,
           creditsInsufficient: false,
           sessionCost: 0,
           isNewSession: false,

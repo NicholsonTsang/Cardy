@@ -46,6 +46,9 @@ const CARD_AI_ENABLED_KEY = (cardId: string) => `card:ai_enabled:${cardId}`;
 const TOKEN_DAILY_SESSIONS_KEY = (tokenId: string, date: string) => `access:token:${tokenId}:date:${date}:sessions`;
 const TOKEN_MONTHLY_SESSIONS_KEY = (tokenId: string, month: string) => `access:token:${tokenId}:month:${month}:sessions`;
 const TOKEN_DAILY_LIMIT_KEY = (tokenId: string) => `token:${tokenId}:daily_limit`;
+// Voice time tracking keys (seconds, per-QR code)
+const TOKEN_DAILY_VOICE_KEY = (tokenId: string, date: string) => `voice:token:${tokenId}:date:${date}:seconds`;
+const TOKEN_MONTHLY_VOICE_KEY = (tokenId: string, month: string) => `voice:token:${tokenId}:month:${month}:seconds`;
 
 // Cache TTLs
 const CACHE_TTL = 35 * 24 * 60 * 60; // 35 days (covers month + buffer)
@@ -1051,6 +1054,168 @@ export async function recordTokenMonthlyAccess(tokenId: string): Promise<number>
 export async function invalidateTokenDailyLimit(tokenId: string): Promise<void> {
   if (!isRedisConfigured()) return;
   await redis.del(TOKEN_DAILY_LIMIT_KEY(tokenId));
+}
+
+/**
+ * Check if token has reached its monthly session limit
+ */
+export async function checkTokenMonthlyLimit(
+  tokenId: string,
+  monthlyLimit: number | null
+): Promise<DailyLimitCheckResult> {
+  const isDebug = process.env.DEBUG_USAGE === 'true';
+
+  if (!isRedisConfigured()) {
+    return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'Redis not configured' };
+  }
+
+  try {
+    if (monthlyLimit === null || monthlyLimit === undefined) {
+      return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'No monthly limit configured' };
+    }
+
+    const currentSessions = await getCurrentTokenMonthlySessions(tokenId);
+
+    if (isDebug) {
+      console.log(`[SessionTracker] Token ${tokenId.slice(0, 8)}... monthly: ${currentSessions}/${monthlyLimit}`);
+    }
+
+    if (currentSessions < monthlyLimit) {
+      return { allowed: true, currentSessions, dailyLimit: monthlyLimit, reason: 'Within monthly limit' };
+    }
+
+    console.log(`[SessionTracker] ❌ Monthly limit reached for token ${tokenId.slice(0, 8)}...: ${currentSessions}/${monthlyLimit}`);
+    return {
+      allowed: false,
+      currentSessions,
+      dailyLimit: monthlyLimit,
+      reason: `Monthly session limit reached (${monthlyLimit}/month). Please try again next month.`
+    };
+  } catch (error) {
+    console.error('[SessionTracker] Token monthly limit check error:', error);
+    return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'Error checking - allowing access' };
+  }
+}
+
+/**
+ * Get current daily voice seconds for a token from Redis
+ */
+async function getCurrentTokenDailyVoiceSeconds(tokenId: string): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+  const date = getCurrentDate();
+  const val = await redis.get(TOKEN_DAILY_VOICE_KEY(tokenId, date));
+  return val ? parseInt(val as string, 10) : 0;
+}
+
+/**
+ * Get current monthly voice seconds for a token from Redis
+ */
+async function getCurrentTokenMonthlyVoiceSeconds(tokenId: string): Promise<number> {
+  if (!isRedisConfigured()) return 0;
+  const month = getCurrentMonth();
+  const val = await redis.get(TOKEN_MONTHLY_VOICE_KEY(tokenId, month));
+  return val ? parseInt(val as string, 10) : 0;
+}
+
+/**
+ * Check if token has reached its daily voice time limit
+ * @param tokenId - The access token ID
+ * @param dailyVoiceLimit - Daily voice limit in seconds (null = unlimited)
+ */
+export async function checkTokenDailyVoiceLimit(
+  tokenId: string,
+  dailyVoiceLimit: number | null
+): Promise<DailyLimitCheckResult> {
+  if (!isRedisConfigured()) {
+    return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'Redis not configured' };
+  }
+
+  try {
+    if (dailyVoiceLimit === null || dailyVoiceLimit === undefined) {
+      return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'No daily voice limit configured' };
+    }
+
+    const currentSeconds = await getCurrentTokenDailyVoiceSeconds(tokenId);
+
+    if (currentSeconds < dailyVoiceLimit) {
+      return { allowed: true, currentSessions: currentSeconds, dailyLimit: dailyVoiceLimit, reason: 'Within daily voice limit' };
+    }
+
+    console.log(`[SessionTracker] ❌ Daily voice limit reached for token ${tokenId.slice(0, 8)}...: ${currentSeconds}s/${dailyVoiceLimit}s`);
+    return {
+      allowed: false,
+      currentSessions: currentSeconds,
+      dailyLimit: dailyVoiceLimit,
+      reason: `Daily voice time limit reached (${Math.floor(dailyVoiceLimit / 60)} min/day). Please try again tomorrow.`
+    };
+  } catch (error) {
+    console.error('[SessionTracker] Token daily voice limit check error:', error);
+    return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'Error checking - allowing access' };
+  }
+}
+
+/**
+ * Check if token has reached its monthly voice time limit
+ * @param tokenId - The access token ID
+ * @param monthlyVoiceLimit - Monthly voice limit in seconds (null = unlimited)
+ */
+export async function checkTokenMonthlyVoiceLimit(
+  tokenId: string,
+  monthlyVoiceLimit: number | null
+): Promise<DailyLimitCheckResult> {
+  if (!isRedisConfigured()) {
+    return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'Redis not configured' };
+  }
+
+  try {
+    if (monthlyVoiceLimit === null || monthlyVoiceLimit === undefined) {
+      return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'No monthly voice limit configured' };
+    }
+
+    const currentSeconds = await getCurrentTokenMonthlyVoiceSeconds(tokenId);
+
+    if (currentSeconds < monthlyVoiceLimit) {
+      return { allowed: true, currentSessions: currentSeconds, dailyLimit: monthlyVoiceLimit, reason: 'Within monthly voice limit' };
+    }
+
+    console.log(`[SessionTracker] ❌ Monthly voice limit reached for token ${tokenId.slice(0, 8)}...: ${currentSeconds}s/${monthlyVoiceLimit}s`);
+    return {
+      allowed: false,
+      currentSessions: currentSeconds,
+      dailyLimit: monthlyVoiceLimit,
+      reason: `Monthly voice time limit reached (${Math.floor(monthlyVoiceLimit / 60)} min/month). Please try again next month.`
+    };
+  } catch (error) {
+    console.error('[SessionTracker] Token monthly voice limit check error:', error);
+    return { allowed: true, currentSessions: 0, dailyLimit: null, reason: 'Error checking - allowing access' };
+  }
+}
+
+/**
+ * Record voice call seconds for a token (called when a voice call ends)
+ * Increments both daily and monthly accumulators
+ */
+export async function recordTokenVoiceSeconds(tokenId: string, durationSeconds: number): Promise<void> {
+  if (!isRedisConfigured() || durationSeconds <= 0) return;
+
+  const date = getCurrentDate();
+  const month = getCurrentMonth();
+
+  const dailyKey = TOKEN_DAILY_VOICE_KEY(tokenId, date);
+  const monthlyKey = TOKEN_MONTHLY_VOICE_KEY(tokenId, month);
+
+  try {
+    const [newDaily, newMonthly] = await Promise.all([
+      redis.incrby(dailyKey, durationSeconds),
+      redis.incrby(monthlyKey, durationSeconds),
+    ]);
+
+    // Set TTLs on first write
+    if (newDaily === durationSeconds) await redis.expire(dailyKey, DAILY_CACHE_TTL);
+    if (newMonthly === durationSeconds) await redis.expire(monthlyKey, CACHE_TTL);
+  } catch (error) {
+    console.error('[SessionTracker] Failed to record token voice seconds:', error);
+  }
 }
 
 /**

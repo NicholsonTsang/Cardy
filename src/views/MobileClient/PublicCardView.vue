@@ -189,7 +189,11 @@ interface CardData {
   group_display?: 'expanded' | 'collapsed' // How grouped items display
   max_sessions?: number | null // Total scan limit
   total_sessions?: number // Current total scan count
+  token_id?: string | null // QR code token ID for voice billing limits
   daily_session_limit?: number | null // Daily scan limit for digital
+  monthly_session_limit?: number | null // Monthly scan limit per QR code
+  daily_voice_limit?: number | null // Daily voice time limit in seconds
+  monthly_voice_limit?: number | null // Monthly voice time limit in seconds
   daily_sessions?: number // Today's scan count
   scan_limit_reached?: boolean // TRUE if digital card has reached total limit
   monthly_limit_exceeded?: boolean // TRUE if monthly subscription access limit exceeded
@@ -381,9 +385,13 @@ async function fetchCardData() {
       content_mode: (firstRow.card_content_mode || 'list') as 'single' | 'grid' | 'list' | 'cards',
       is_grouped: firstRow.card_is_grouped || false,
       group_display: firstRow.card_group_display || 'expanded', // How grouped items display
+      token_id: firstRow.card_token_id || null,
       max_sessions: firstRow.card_max_sessions,
       total_sessions: firstRow.card_total_sessions,
       daily_session_limit: firstRow.card_daily_session_limit,
+      monthly_session_limit: firstRow.card_monthly_session_limit ?? null,
+      daily_voice_limit: firstRow.card_daily_voice_limit ?? null,
+      monthly_voice_limit: firstRow.card_monthly_voice_limit ?? null,
       daily_sessions: firstRow.card_daily_sessions,
       scan_limit_reached: firstRow.card_scan_limit_reached || false,
       monthly_limit_exceeded: firstRow.monthly_limit_exceeded || false,

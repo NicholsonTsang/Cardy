@@ -23,6 +23,9 @@ export interface Message {
 
 export interface CardData {
   card_id?: string  // Card UUID for voice billing (passed from route params)
+  token_id?: string | null  // QR code token ID for per-token voice limits
+  daily_voice_limit?: number | null  // Per-token daily voice time limit in seconds
+  monthly_voice_limit?: number | null  // Per-token monthly voice time limit in seconds
   card_name: string
   card_description: string
   card_image_url: string

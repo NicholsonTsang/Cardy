@@ -35,6 +35,9 @@ export interface MobileCardResponse {
       billingType: string;
       totalSessions: number;
       dailySessionLimit: number | null;
+      monthlySessionLimit?: number | null;
+      dailyVoiceLimit?: number | null;
+      monthlyVoiceLimit?: number | null;
       dailySessions: number;
       budgetExhausted: boolean; // True when monthly session budget is exhausted
       monthlyLimitExceeded?: boolean; // Deprecated: alias for budgetExhausted
@@ -264,8 +267,12 @@ export function transformCardResponse(response: MobileCardResponse): any {
       card_is_grouped: card.isGrouped,
       card_group_display: card.groupDisplay,
       card_billing_type: card.billingType,
+      card_token_id: (card as any).tokenId || null,
       card_total_sessions: card.totalSessions,
       card_daily_session_limit: card.dailySessionLimit,
+      card_monthly_session_limit: card.monthlySessionLimit ?? null,
+      card_daily_voice_limit: card.dailyVoiceLimit ?? null,
+      card_monthly_voice_limit: card.monthlyVoiceLimit ?? null,
       card_daily_sessions: card.dailySessions,
       monthly_limit_exceeded: card.budgetExhausted || card.monthlyLimitExceeded || false,
       daily_limit_exceeded: card.dailyLimitExceeded,

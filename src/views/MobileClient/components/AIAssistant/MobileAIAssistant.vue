@@ -570,7 +570,10 @@ async function connectRealtime() {
       voiceAwareCode,
       systemInstructions.value,
       customWelcome,
-      props.cardData.card_id
+      props.cardData.card_id,
+      props.cardData.token_id ?? undefined,
+      props.cardData.daily_voice_limit ?? null,
+      props.cardData.monthly_voice_limit ?? null,
     )
 
     // Start both timers
@@ -584,6 +587,8 @@ async function connectRealtime() {
       connectionError.value = t('mobile.no_voice_credits', 'No voice credits remaining. The creator needs to purchase more credits.')
     } else if (err.message === 'VOICE_NOT_ENABLED') {
       connectionError.value = t('mobile.voice_not_enabled', 'Voice conversation is not available for this experience.')
+    } else if (err.message === 'VOICE_TIME_LIMIT_REACHED') {
+      connectionError.value = t('mobile.voice_time_limit_reached', 'Voice call time limit has been reached for this QR code. Please try again later.')
     } else if (err.message?.includes('Backend server required') || err.message?.includes('VITE_BACKEND_URL')) {
       connectionError.value = 'Realtime voice mode requires backend server. Please use Chat Mode instead.'
     } else if (err.message?.includes('microphone') || err.message?.includes('getUserMedia')) {
