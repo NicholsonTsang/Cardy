@@ -5,7 +5,7 @@
     :modal="true"
     :closable="!translationStore.isTranslating && !isDeletingBatch"
     :close-on-escape="!translationStore.isTranslating && !isDeletingBatch"
-    :style="{ width: '90vw', maxWidth: '56rem' }"
+    :style="{ width: '90vw', maxWidth: '68rem' }"
     @update:visible="handleVisibleChange"
   >
     <!-- Step 1: Language Selection -->

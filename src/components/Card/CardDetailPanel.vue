@@ -74,7 +74,7 @@
             v-model:visible="showPreviewDialog"
             modal
             :header="t('dashboard.mobile_preview')"
-            :style="{ width: '90vw', maxWidth: '32rem' }"
+            :style="{ width: '90vw', maxWidth: '42rem' }"
             :dismissableMask="true"
             class="standardized-dialog"
         >

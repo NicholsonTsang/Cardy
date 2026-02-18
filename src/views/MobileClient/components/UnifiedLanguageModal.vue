@@ -172,10 +172,10 @@ function selectLanguage(language: Language) {
   align-items: center;
   gap: 0.5rem;
   padding: 0.5rem 0.75rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(var(--theme-text-rgb), 0.1);
+  border: 1px solid rgba(var(--theme-text-rgb), 0.2);
   border-radius: 8px;
-  color: white;
+  color: rgba(var(--theme-text-rgb), 1);
   cursor: pointer;
   transition: all 0.2s;
   font-size: 0.875rem;
@@ -185,8 +185,8 @@ function selectLanguage(language: Language) {
 }
 
 .language-button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(var(--theme-text-rgb), 0.2);
+  border-color: rgba(var(--theme-text-rgb), 0.3);
 }
 
 .language-button:active {

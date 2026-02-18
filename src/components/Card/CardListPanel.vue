@@ -122,7 +122,7 @@
             v-model:visible="showImportDialog"
             modal
             :header="$t('dashboard.import_cards')"
-            :style="{ width: '90vw', maxWidth: '56rem' }"
+            :style="{ width: '90vw', maxWidth: '68rem' }"
             class="import-dialog standardized-dialog"
         >
             <CardBulkImport mode="regular" @imported="handleImportComplete" />
@@ -133,7 +133,7 @@
             v-model:visible="showTemplateDialog"
             modal
             :header="$t('templates.library_title')"
-            :style="{ width: '90vw', maxWidth: '90rem' }"
+            :style="{ width: '90vw', maxWidth: '96rem' }"
             class="template-library-dialog standardized-dialog"
         >
             <TemplateLibrary @imported="handleTemplateImport" :dialog-mode="true" />
@@ -143,7 +143,7 @@
         <Dialog
             v-model:visible="showExportOptions"
             :header="$t('dashboard.export_options')"
-            :style="{ width: '90vw', maxWidth: '32rem' }"
+            :style="{ width: '90vw', maxWidth: '42rem' }"
             modal
             class="export-options-dialog"
         >

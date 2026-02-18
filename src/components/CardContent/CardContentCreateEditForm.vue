@@ -521,7 +521,7 @@
         v-model="showCropDialog"
         modal
         :header="$t('dashboard.crop_content_image', { type: itemTypeLabel })"
-        :style="{ width: '90vw', maxWidth: '800px' }"
+        :style="{ width: '90vw', maxWidth: '68rem' }"
         :closable="false"
         :showConfirm="true"
         :showCancel="true"
@@ -542,7 +542,7 @@
 </template>
 
 <script setup>
-import { ref, watch, computed, onMounted, nextTick, defineProps, defineEmits, defineExpose } from 'vue';
+import { ref, watch, computed, onMounted, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import Textarea from 'primevue/textarea';

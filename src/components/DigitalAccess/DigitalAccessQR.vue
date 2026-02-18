@@ -267,7 +267,7 @@
     <Dialog
       v-model:visible="showAddDialog"
       :header="editingToken ? $t('digital_access.edit_qr_code') : $t('digital_access.add_qr_code')"
-      :style="{ width: '90vw', maxWidth: '42rem' }"
+      :style="{ width: '90vw', maxWidth: '52rem' }"
       :modal="true"
     >
       <div class="space-y-4">
@@ -393,7 +393,7 @@
     <Dialog 
       v-model:visible="showDeleteDialog" 
       :header="$t('digital_access.delete_qr_confirm_title')"
-      :style="{ width: '90vw', maxWidth: '26rem' }"
+      :style="{ width: '90vw', maxWidth: '36rem' }"
       :modal="true"
     >
       <div class="flex items-start gap-4">
@@ -426,7 +426,7 @@
     <Dialog 
       v-model:visible="showRefreshDialog" 
       :header="$t('digital_access.refresh_qr_confirm_title')"
-      :style="{ width: '90vw', maxWidth: '26rem' }"
+      :style="{ width: '90vw', maxWidth: '36rem' }"
       :modal="true"
     >
       <div class="flex items-start gap-4">

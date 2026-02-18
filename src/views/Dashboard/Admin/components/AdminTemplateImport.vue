@@ -175,7 +175,7 @@
     <Dialog
       v-model:visible="showResults"
       :header="$t('templates.admin.import_complete')"
-      :style="{ width: '90vw', maxWidth: '42rem' }"
+      :style="{ width: '90vw', maxWidth: '52rem' }"
       :modal="true"
     >
       <div class="results-content">

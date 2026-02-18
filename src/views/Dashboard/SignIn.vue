@@ -143,7 +143,7 @@
             modal 
             :closable="true"
             :draggable="false"
-            :style="{ width: '90vw', maxWidth: '32rem' }"
+            :style="{ width: '90vw', maxWidth: '42rem' }"
             :header="$t('auth.reset_password')"
         >
             <div class="space-y-4">

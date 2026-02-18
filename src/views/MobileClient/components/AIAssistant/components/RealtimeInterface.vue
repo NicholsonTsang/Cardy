@@ -643,11 +643,11 @@ watch(streamingProgressKey, async () => {
 }
 
 .transcript-message.user .message-role {
-  color: #60a5fa;
+  color: var(--theme-primary, #6366f1);
 }
 
 .transcript-message.assistant .message-role {
-  color: #a78bfa;
+  color: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.75);
 }
 
 .message-text {

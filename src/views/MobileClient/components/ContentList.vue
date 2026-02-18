@@ -158,10 +158,10 @@ onMounted(() => {
 
 /* Content Card */
 .content-card {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--theme-surface, rgba(255, 255, 255, 0.07));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(var(--theme-text-rgb), 0.15);
   border-radius: 1.25rem;
   overflow: hidden;
   cursor: pointer;
@@ -172,7 +172,7 @@ onMounted(() => {
 
 .content-card:active {
   transform: scale(0.98);
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(var(--theme-text-rgb), 0.14);
 }
 
 /* Card Image */
@@ -180,8 +180,8 @@ onMounted(() => {
   position: relative;
   aspect-ratio: var(--content-aspect-ratio, 4/3);
   overflow: hidden;
-  background-color: white;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background-color: var(--theme-surface, rgba(255, 255, 255, 0.07));
+  border-bottom: 1px solid rgba(var(--theme-text-rgb), 0.1);
 }
 
 .image {
@@ -194,12 +194,12 @@ onMounted(() => {
   position: absolute;
   top: 1rem;
   right: 1rem;
-  background: rgba(59, 130, 246, 0.9);
+  background: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.9);
   backdrop-filter: blur(8px);
   padding: 0.375rem 0.875rem;
   border-radius: 9999px;
   font-size: 0.75rem;
-  color: white;
+  color: rgba(var(--theme-text-rgb), 1);
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
@@ -207,12 +207,12 @@ onMounted(() => {
 /* Inline badge for cards without images */
 .badge-inline {
   display: inline-block;
-  background: rgba(59, 130, 246, 0.2);
-  border: 1px solid rgba(59, 130, 246, 0.4);
+  background: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.2);
+  border: 1px solid rgba(var(--theme-primary-rgb, 99, 102, 241), 0.4);
   padding: 0.25rem 0.625rem;
   border-radius: 9999px;
   font-size: 0.6875rem;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(var(--theme-text-rgb), 0.9);
   font-weight: 600;
   margin-bottom: 0.5rem;
 }
@@ -230,7 +230,7 @@ onMounted(() => {
 .item-title {
   font-size: 1.125rem;
   font-weight: 700;
-  color: white;
+  color: var(--theme-text, #ffffff);
   margin: 0;
   margin-bottom: 0.5rem;
   overflow: hidden;
@@ -244,7 +244,7 @@ onMounted(() => {
 
 .item-description {
   font-size: 0.9375rem; /* 15px */
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--theme-text-rgb), 0.8);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -269,9 +269,9 @@ onMounted(() => {
   min-width: 44px;
   min-height: 44px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.7);
+  background: rgba(var(--theme-text-rgb), 0.08);
+  border: 1px solid rgba(var(--theme-text-rgb), 0.1);
+  color: rgba(var(--theme-text-rgb), 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -283,11 +283,11 @@ onMounted(() => {
 
 .card-action-btn:active {
   transform: scale(0.9);
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(var(--theme-text-rgb), 0.15);
 }
 
 .card-action-btn:focus-visible {
-  outline: 2px solid #60a5fa;
+  outline: 2px solid var(--theme-primary, #6366f1);
   outline-offset: 2px;
 }
 

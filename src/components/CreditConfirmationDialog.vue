@@ -3,7 +3,7 @@
     v-model:visible="isVisible" 
     modal 
     :header="$t('batches.confirm_credit_usage')" 
-    :style="{ width: '90vw', maxWidth: '42rem' }"
+    :style="{ width: '90vw', maxWidth: '52rem' }"
     class="standardized-dialog"
     appendTo="body"
     @update:visible="handleVisibilityChange"

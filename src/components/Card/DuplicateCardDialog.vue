@@ -84,7 +84,7 @@ const handleCancel = () => {
     v-model:visible="dialogVisible"
     modal
     :header="t('dashboard.duplicate_card')"
-    :style="{ width: '90vw', maxWidth: '32rem' }"
+    :style="{ width: '90vw', maxWidth: '42rem' }"
     class="standardized-dialog"
     :closable="!cardStore.isDuplicating"
     :closeOnEscape="!cardStore.isDuplicating"

@@ -9,7 +9,7 @@
     <Dialog 
       v-model:visible="showImportDialog" 
       :header="$t('templates.admin.import_tab')"
-      :style="{ width: '90vw', maxWidth: '72rem' }"
+      :style="{ width: '90vw', maxWidth: '84rem' }"
       :modal="true"
       :dismissableMask="true"
     >

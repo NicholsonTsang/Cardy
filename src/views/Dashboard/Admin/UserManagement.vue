@@ -317,7 +317,7 @@
         v-model:visible="showRoleDialog"
         modal
         :header="$t('admin.manage_user_role') || 'Manage User Role'"
-        :style="{ width: '90vw', maxWidth: '42rem' }"
+        :style="{ width: '90vw', maxWidth: '52rem' }"
         @hide="closeRoleDialog"
       >
         <div v-if="selectedUser" class="space-y-4">
@@ -374,7 +374,7 @@
         v-model:visible="showSubscriptionDialog"
         modal
         :header="$t('admin.manage_subscription') || 'Manage Subscription'"
-        :style="{ width: '90vw', maxWidth: '42rem' }"
+        :style="{ width: '90vw', maxWidth: '52rem' }"
         @hide="closeSubscriptionDialog"
       >
         <div v-if="selectedUser" class="space-y-4">
