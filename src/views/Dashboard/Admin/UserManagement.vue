@@ -287,10 +287,10 @@
             </template>
           </Column>
 
-          <Column :header="$t('common.actions')" :style="{ width: '140px', minWidth: '140px' }" frozen alignFrozen="right" class="text-center">
+          <Column :header="$t('common.actions')" :style="{ width: '180px', minWidth: '180px' }" frozen alignFrozen="right" class="text-center">
             <template #body="{ data }">
               <div class="flex items-center justify-center gap-1">
-                <Button 
+                <Button
                   icon="pi pi-cog"
                   size="small"
                   outlined
@@ -298,13 +298,21 @@
                   @click="manageUserRole(data)"
                   v-tooltip.top="$t('admin.manage_role')"
                 />
-                <Button 
+                <Button
                   icon="pi pi-star"
                   size="small"
                   outlined
                   :severity="data.subscription_tier === 'enterprise' ? 'contrast' : data.subscription_tier === 'premium' ? 'warning' : 'info'"
                   @click="manageUserSubscription(data)"
                   v-tooltip.top="$t('admin.manage_subscription') || 'Manage Subscription'"
+                />
+                <Button
+                  icon="pi pi-folder-open"
+                  size="small"
+                  outlined
+                  severity="secondary"
+                  @click="viewUserProjects(data)"
+                  v-tooltip.top="$t('admin.view_user_projects') || 'View Projects'"
                 />
               </div>
             </template>
@@ -647,6 +655,60 @@
           </Button>
         </template>
       </Dialog>
+      <!-- User Projects Dialog -->
+      <Dialog
+        v-model:visible="showUserProjectsDialog"
+        modal
+        :header="userProjectsDialogTitle"
+        :style="{ width: '95vw', maxWidth: '120rem' }"
+        @hide="closeUserProjectsDialog"
+      >
+        <!-- User Info Bar -->
+        <div v-if="projectsUser" class="mb-4 p-3 bg-slate-50 border border-slate-200 rounded-lg flex items-center gap-3">
+          <div class="w-8 h-8 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full flex items-center justify-center text-white text-xs font-medium flex-shrink-0">
+            {{ projectsUser.user_email.charAt(0).toUpperCase() }}
+          </div>
+          <div>
+            <p class="font-medium text-slate-900 text-sm">{{ projectsUser.user_email }}</p>
+            <div class="flex items-center gap-2 mt-0.5">
+              <Tag :value="getTierLabel(projectsUser.subscription_tier)" :severity="getTierSeverity(projectsUser.subscription_tier)" size="small" />
+              <span class="text-xs text-slate-400 flex items-center gap-1"><i class="pi pi-eye text-[10px]"></i> {{ $t('admin.read_only_view') }}</span>
+            </div>
+          </div>
+          <div class="ml-auto text-center px-3 py-1 bg-white rounded-lg border border-slate-200">
+            <p class="text-lg font-bold text-slate-900">{{ adminUserCardsStore.userCards.length }}</p>
+            <p class="text-[10px] text-slate-500 uppercase">{{ $t('admin.projects') }}</p>
+          </div>
+        </div>
+
+        <!-- Error state -->
+        <div v-if="adminUserCardsStore.error && !adminUserCardsStore.isLoadingCards" class="p-4 bg-red-50 border border-red-200 rounded-lg mb-4">
+          <div class="flex items-center gap-2 text-red-700">
+            <i class="pi pi-exclamation-circle"></i>
+            <span>{{ adminUserCardsStore.error }}</span>
+          </div>
+        </div>
+
+        <!-- Two-panel layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-4" style="min-height: 60vh;">
+          <div class="lg:col-span-1">
+            <AdminCardListPanel
+              :cards="adminUserCardsStore.userCards"
+              :selectedCardId="projectsSelectedCardId"
+              :isLoading="adminUserCardsStore.isLoadingCards"
+              @select-card="handleProjectsSelectCard"
+            />
+          </div>
+          <div class="lg:col-span-3">
+            <AdminCardDetailPanel
+              :selectedCard="projectsSelectedCard as any"
+              :content="adminUserCardsStore.selectedCardContent as any"
+              :isLoadingContent="adminUserCardsStore.isLoadingContent"
+              v-model:activeTab="projectsActiveTabString"
+            />
+          </div>
+        </div>
+      </Dialog>
     </div>
   </PageWrapper>
 </template>
@@ -656,6 +718,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { supabase } from '@/lib/supabase'
 import { useToast } from 'primevue/usetoast'
+import { storeToRefs } from 'pinia'
 import Button from 'primevue/button'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -668,11 +731,15 @@ import Tag from 'primevue/tag'
 import Textarea from 'primevue/textarea'
 import InputNumber from 'primevue/inputnumber'
 import PageWrapper from '@/components/Layout/PageWrapper.vue'
+import AdminCardListPanel from '@/components/Admin/AdminCardListPanel.vue'
+import AdminCardDetailPanel from '@/components/Admin/AdminCardDetailPanel.vue'
+import { useAdminUserCardsStore } from '@/stores/admin/userCards'
 import { SubscriptionConfig } from '@/config/subscription'
 import { formatDate } from '@/utils/formatters'
 
 const { t } = useI18n()
 const toast = useToast()
+const adminUserCardsStore = useAdminUserCardsStore()
 
 // State
 const isLoading = ref(false)
@@ -697,6 +764,35 @@ const subscriptionChangeReason = ref('')
 const isUpdatingSubscription = ref(false)
 const subscriptionDurationType = ref('permanent') // 'permanent' or 'months'
 const subscriptionDurationMonths = ref(12) // Default 12 months
+
+// Dialog state - User Projects
+const showUserProjectsDialog = ref(false)
+const projectsUser = ref(null)
+const projectsSelectedCardId = ref(null)
+const projectsActiveTab = ref(0)
+
+const projectsActiveTabString = computed({
+  get: () => projectsActiveTab.value.toString(),
+  set: (value) => { projectsActiveTab.value = parseInt(value) }
+})
+
+const userProjectsDialogTitle = computed(() => {
+  if (!projectsUser.value) return t('admin.user_projects') || 'User Projects'
+  return `${t('admin.projects_for') || 'Projects for'} ${projectsUser.value.user_email}`
+})
+
+const projectsSelectedCard = computed(() => {
+  if (!projectsSelectedCardId.value) return null
+  const card = adminUserCardsStore.userCards.find(c => c.id === projectsSelectedCardId.value)
+  if (!card) return null
+  return {
+    ...card,
+    user_id: projectsUser.value?.user_id || '',
+    description: card.description || '',
+    ai_instruction: card.ai_instruction || '',
+    ai_knowledge_base: card.ai_knowledge_base || ''
+  }
+})
 
 // Computed: Check if editing existing paid subscription
 const isEditingExistingSubscription = computed(() => {
@@ -833,6 +929,8 @@ const exportUsers = () => {
     'Stripe Subscription ID': user.stripe_subscription_id || '',
     'Period End': user.current_period_end ? formatDate(user.current_period_end) : ''
   }))
+
+  if (!csvData.length) return
 
   const csv = [
     Object.keys(csvData[0]).join(','),
@@ -1073,6 +1171,49 @@ const getDaysRemaining = (dateString) => {
   } else {
     const months = Math.floor(diffDays / 30)
     return (t('admin.months_remaining') || '{months} months remaining').replace('{months}', months)
+  }
+}
+
+// User Projects methods
+const viewUserProjects = async (user) => {
+  projectsUser.value = user
+  projectsSelectedCardId.value = null
+  projectsActiveTab.value = 0
+  adminUserCardsStore.clearCurrentUser()
+  showUserProjectsDialog.value = true
+
+  try {
+    await adminUserCardsStore.fetchUserCards(user.user_id)
+  } catch (err) {
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: t('admin.failed_to_load_user_projects') || 'Failed to load user projects',
+      life: 3000
+    })
+  }
+}
+
+const closeUserProjectsDialog = () => {
+  showUserProjectsDialog.value = false
+  projectsUser.value = null
+  projectsSelectedCardId.value = null
+  projectsActiveTab.value = 0
+  adminUserCardsStore.clearCurrentUser()
+}
+
+const handleProjectsSelectCard = async (cardId) => {
+  projectsSelectedCardId.value = cardId
+  projectsActiveTab.value = 0
+  try {
+    await adminUserCardsStore.fetchCardContent(cardId)
+  } catch (err) {
+    toast.add({
+      severity: 'error',
+      summary: t('messages.load_failed'),
+      detail: t('messages.failed_to_load_card_details'),
+      life: 3000
+    })
   }
 }
 

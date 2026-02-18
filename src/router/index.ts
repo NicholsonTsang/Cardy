@@ -123,13 +123,11 @@ const router = createRouter({
             },
             {
               path: 'admin/user-projects',
-              name: 'admin-user-projects',
-              component: () => import('@/views/Dashboard/Admin/UserCardsView.vue'),
-              meta: { requiredRole: 'admin' }
+              redirect: (to) => ({ name: 'admin-users', params: { lang: to.params.lang } })
             },
             {
               path: 'admin/user-cards',
-              redirect: (to) => ({ name: 'admin-user-projects', params: { lang: to.params.lang } })
+              redirect: (to) => ({ name: 'admin-users', params: { lang: to.params.lang } })
             },
             {
               path: 'admin/templates',
