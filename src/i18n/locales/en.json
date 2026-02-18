@@ -4,7 +4,7 @@
     "description": "Turn any information into an AI-powered, multilingual content experience. Create structured content with conversational AI assistants, shared via links, QR codes, or embeds. No app needed.",
     "keywords": "AI content platform, interactive content experience, multilingual AI assistant, QR code content, conversational AI, content management, knowledge base AI, digital experience platform, no-app experience, AI voice guide, content distribution, educational content, product information",
     "language": "English",
-    "structured_description": "AI-Powered Content Experience Platform — Create multilingual, interactive content with conversational AI assistants for products, education, venues, storytelling, and more",
+    "structured_description": "AI-Powered Content Experience Platform — Create multilingual, interactive content with conversational AI assistants for products, education, knowledge bases, storytelling, and more",
     "features": [
       "AI voice conversations",
       "Multi-language support in 10+ languages",
@@ -15,7 +15,7 @@
       "Cloud hosting",
       "24/7 support"
     ],
-    "audience": "Products, Education, Venues, Events, Knowledge Bases, Print Media, Storytelling, Tourism, Retail, Food & Beverage"
+    "audience": "Products, Education, Events, Knowledge Bases, Print Media, Storytelling, Tourism, Retail, Food & Beverage"
   },
   "common": {
     "app_name": "FunTell",
@@ -1442,18 +1442,18 @@
       "title_line1": "Turn Any Information Into An",
       "title_line2": "Interactive",
       "title_line3": "AI‑Powered Experience",
-      "subtitle_part1": "Import a document, and AI builds your interactive experience —",
+      "subtitle_part1": "Build your content experience via dashboard or let AI do it for you —",
       "subtitle_highlight": "multilingual conversations",
-      "subtitle_part2": " included. Share via links, QR codes, or embeds. Perfect for products, venues, education, and any content.",
+      "subtitle_part2": " included. Share via links, QR codes, or embeds. No app needed.",
       "cta_pilot": "Contact Us for a Pilot",
       "cta_learn": "See Demo",
       "cta_demo": "See Demo",
       "cta_start": "Get Started"
     },
     "demo": {
-      "title": "See",
-      "title_highlight": "How It Works",
-      "subtitle": "Try both access modes below to experience the difference.",
+      "title": "Experience",
+      "title_highlight": "It Live",
+      "subtitle": "Scan the QR code with your phone to try a real AI-powered content experience right now.",
       "video_coming_soon": "Demo Video Coming Soon",
       "video_description": "Watch a 1-2 minute demonstration",
       "card_title": "Interactive Experience Demo",
@@ -1463,13 +1463,13 @@
       "instant_demo": "Try it instantly!",
       "scan_qr_code": "Scan the QR code",
       "project_features": "Key Features",
-      "experience_features": "Key Features",
+      "experience_features": "What You'll Experience",
       "digital_access": {
-        "title": "Digital Access",
-        "desc": "QR code link directly to content",
+        "title": "Instant QR Access",
+        "desc": "Scan and go — no app, no sign-up required",
         "hint": "Visitors go directly to welcome page and content",
-        "caption": "QR code provides instant digital access to content",
-        "full_desc": "Digital access uses a QR code that links directly to your content. Ideal for digital menus, link-in-bio, event programs, or any scenario where quick, app-free access is key. Visitors scan and instantly explore your AI-powered experience."
+        "caption": "Point your camera at the code to try it now",
+        "full_desc": "Scan with any smartphone camera for instant access — no app, no sign-up. This is exactly what your audience sees."
       },
       "features": {
         "qr_access_title": "Instant QR Access",
@@ -1478,14 +1478,14 @@
         "ai_voice_desc": "Have real conversations about what you're seeing.",
         "multilingual_title": "10+ Languages",
         "multilingual_desc": "Content and conversations in your language.",
-        "keepsakes_title": "Collectible Keepsakes",
-        "keepsakes_desc": "Optional printed cards as premium souvenirs."
+        "keepsakes_title": "Always Up-to-Date",
+        "keepsakes_desc": "Update content anytime — QR codes always link to the latest version."
       }
     },
     "demo_templates": {
       "badge": "Live Demos",
       "title": "Try Our Demo Projects",
-      "subtitle": "Explore the demos below to experience FunTell in action. See how AI-powered content experiences work across different use cases.",
+      "subtitle": "Live demos — scan with your phone or browse in-app. Pick a template and experience the AI assistant yourself.",
       "all_types": "All",
       "items": "items",
       "no_description": "Experience this demo to see our platform in action.",
@@ -1518,7 +1518,7 @@
     "content_modes": {
       "title": "Flexible",
       "title_highlight": "Display Layouts",
-      "subtitle": "Choose the perfect layout for your content. Each layout is optimized for different use cases with optional grouping and AI assistants that adapt to your structure.",
+      "subtitle": "Choose the layout that fits your content — each mode supports optional grouping and context-aware AI assistants.",
       "ai_context_label": "AI Assistant Context",
       "ai_assistant": "AI Assistant",
       "ai_general_label": "General Assistant",
@@ -1552,8 +1552,8 @@
         "ai_item": "Specialized guide for the specific featured item"
       },
       "best_for": "Best For",
-      "easy_setup": "AI Setup",
-      "setup_desc": "Import a document and AI configures everything — or use the dashboard manually.",
+      "easy_setup": "Easy Setup",
+      "setup_desc": "Configure via dashboard, or import a document and let AI set everything up automatically.",
       "mobile_optimized": "Mobile Optimized",
       "mobile_desc": "Responsive design that looks perfect on any device.",
       "grouping_option": "Optional Grouping",
@@ -1566,21 +1566,21 @@
       "grouping_collapsed_desc": "Categories shown first, tap to navigate and view items inside"
     },
     "how_it_works": {
-      "title": "Simple",
-      "title_highlight": "Three-Step Process",
-      "subtitle": "Launch your AI-powered content experience in minutes — just give AI your document and it handles the rest.",
+      "title": "Up and Running",
+      "title_highlight": "in Minutes",
+      "subtitle": "Create your content experience via our dashboard, or let AI handle setup automatically — then share and engage.",
       "steps": {
-        "create_title": "Create with AI",
-        "create_desc": "Give your document to an AI agent and it builds your project automatically — content, categories, and AI assistant included.",
-        "share_title": "Share",
-        "share_desc": "Share via link, QR code, or embed on your website or printed materials.",
-        "engage_title": "Engage",
-        "engage_desc": "Visitors explore your content and interact with your AI-powered assistant."
+        "create_title": "Create Your Experience",
+        "create_desc": "Use the dashboard to build your project manually, or import a document and let AI generate content, categories, and your AI assistant automatically.",
+        "share_title": "Share Anywhere",
+        "share_desc": "Share via link, embed on your website, or print a QR code on packaging, signage, or any materials.",
+        "engage_title": "Audience Engages",
+        "engage_desc": "Visitors scan and instantly explore your content. Conversations happen in their language, on their own device."
       }
     },
     "features": {
-      "title": "Why",
-      "title_highlight": "FunTell",
+      "title": "Built for",
+      "title_highlight": "Creators & Audiences",
       "features": {
         "collectible_title": "QR-Powered Access",
         "collectible_desc": "Instant access via QR code. Share links, embed on websites, or print QR codes.",
@@ -1588,8 +1588,8 @@
         "ai_guide_desc": "Real-time conversations with context awareness and follow-up questions.",
         "no_app_title": "No App Required",
         "no_app_desc": "Instant access via any smartphone camera. No downloads, no friction.",
-        "portal_config_title": "AI-Powered Setup",
-        "portal_config_desc": "Import a document or describe your project — AI creates everything for you in seconds.",
+        "portal_config_title": "Flexible Setup",
+        "portal_config_desc": "Build manually via dashboard or import a document and let AI generate everything automatically.",
         "multilingual_title": "Multilingual Support",
         "multilingual_desc": "Content and conversations in 10+ languages from one upload.",
         "no_hardware_title": "Zero Hardware Needed",
@@ -1600,8 +1600,8 @@
     },
     "pricing": {
       "title": "Simple,",
-      "title_highlight": "Session-Based Pricing",
-      "subtitle": "Pay only for what you use. Start free, scale with your business.",
+      "title_highlight": "Transparent Pricing",
+      "subtitle": "Start free, pay only for what you use. Scale as your audience grows.",
       "currency_note": "All prices are in USD",
       "free_tier": {
         "title": "Free",
@@ -1622,7 +1622,7 @@
         "title": "Starter",
         "price": "{starterFee}",
         "per": "per month",
-        "desc": "For growing venues and businesses",
+        "desc": "For growing teams and businesses",
         "features": [
           "Up to 5 projects",
           "US${starterBudget} monthly credit included",
@@ -1638,7 +1638,7 @@
         "title": "Premium",
         "price": "{premiumFee}",
         "per": "per month",
-        "desc": "For high-volume venues with white label",
+        "desc": "For professionals and high-traffic experiences",
         "popular": "Best Value",
         "features": [
           "Up to 35 projects",
@@ -1684,7 +1684,7 @@
       "included_title": "Included in All Plans",
       "features": {
         "ai_voice": "AI voice conversations",
-        "ai_setup": "AI-powered project setup",
+        "ai_setup": "Dashboard & AI project setup",
         "qr_access": "Instant QR access",
         "content_management": "Content management",
         "analytics": "Usage analytics",
@@ -1699,17 +1699,17 @@
       "title": "Frequently Asked",
       "title_highlight": "Questions",
       "q1": "What is FunTell?",
-      "a1": "FunTell is an AI-powered content experience platform that turns any document into an interactive, multilingual experience with built-in conversational AI. Import a PDF or describe your project — AI builds everything automatically. Share via links, QR codes, or embeds. No app required.",
+      "a1": "FunTell is a content experience platform that turns any information into an interactive, multilingual experience with built-in AI assistants. Build via dashboard or import a document for automatic AI setup. Share via links, QR codes, or embeds — no app required.",
       "q2": "How does it work?",
-      "a2": "1) Import your document or describe your project to an AI agent — it creates everything automatically\n2) Share via link, QR code, or embed\n3) Visitors access AI-powered, multilingual content instantly on any device",
+      "a2": "1) Create your project via dashboard, or import a document and let AI generate everything automatically\n2) Share via link, QR code, or embed on any surface\n3) Visitors access AI-powered, multilingual content instantly — no app needed",
       "q3": "Do visitors need to download an app?",
       "a3": "No. FunTell works through any smartphone browser. Simply scan the QR code—nothing to download or install.",
       "q4": "What languages are supported?",
       "a4": "Content and AI conversations are available in 10+ languages: English, Mandarin, Cantonese, Japanese, Korean, Thai, Arabic, Spanish, French, Russian, and more.",
       "q5": "What's included in the price?",
-      "a5": "Three tiers: Free ({freeProjects} projects, {freeSessions} sessions), Starter ({starterBudget}/month, {starterAiSessions} AI sessions, max 2 languages), Premium ({monthlyBudget}/month, {aiSessions} AI sessions, unlimited languages, white label). Paid plans include auto top-up when budget runs out. All plans include AI voice, dashboard, QR codes, and hosting.",
+      "a5": "Four tiers: Free ({freeProjects} projects, {freeSessions} sessions/month), Starter ({starterBudget}/month, {starterAiSessions} AI sessions, max 2 languages), Premium ({monthlyBudget}/month, {aiSessions} AI sessions, unlimited languages, white label), Enterprise (lowest per-session rate, 100 projects, custom domain). All paid plans include auto top-up, AI voice, dashboard, QR codes, and hosting.",
       "q6": "How quickly can we get started?",
-      "a6": "Projects can launch within minutes. Connect an AI tool like Claude Code, import your document, and AI builds your entire project automatically — content, categories, AI assistant, and QR codes.",
+      "a6": "Projects can launch within minutes. Use our dashboard to set up your project manually, or import a document via an AI tool like Claude Code and have everything generated automatically — content, categories, AI assistant, and QR codes.",
       "q7": "Can we customize the content and AI?",
       "a7": "Yes. Full customization using our self-service dashboard. Manage content, configure AI assistant behavior, set welcome messages, and update anytime.",
       "q8": "How quickly are QR experiences available?",
@@ -2317,13 +2317,13 @@
   "templates": {
     "library_title": "Template Library",
     "browse_templates": "Browse Templates",
-    "library_description": "Browse pre-built templates for different venue types and quickly create new projects.",
+    "library_description": "Browse pre-built templates for different use cases and quickly create new projects.",
     "explore_templates": "Explore Templates",
     "explore_description": "Use these pre-built templates instantly or customize them to create your own projects.",
     "browse_language": "Browse in",
     "recommended": "Recommended",
     "search_placeholder": "Search templates...",
-    "filter_scenario_category": "Venue Type",
+    "filter_scenario_category": "Category",
     "filter_content_mode": "Layout",
     "filter_grouped": "Organization",
     "active_filters": "Filters",
@@ -2445,7 +2445,7 @@
       "validation_errors": "Validation Errors",
       "slug": "Slug",
       "name": "Name",
-      "scenario_category": "Venue Type",
+      "scenario_category": "Category",
       "content_mode": "Mode",
       "grouped": "Grouped",
       "items": "Items",
@@ -2469,7 +2469,7 @@
       "thumbnail_url": "Thumbnail URL",
       "thumbnail_url_placeholder": "https://example.com/image.jpg",
       "name_required": "Template name is required",
-      "scenario_category_required": "Venue type is required",
+      "scenario_category_required": "Category is required",
       "template_updated": "Template updated successfully",
       "admin_settings": "Admin Settings",
       "slug_readonly": "Slug cannot be changed after creation",
@@ -2478,7 +2478,7 @@
       "ai_enabled": "AI Assistant Enabled",
       "ai_instruction": "AI Instruction",
       "ai_knowledge_base": "AI Knowledge Base",
-      "select_scenario_category": "Select venue type...",
+      "select_scenario_category": "Select category...",
       "template_created": "Template created successfully",
       "feature": "Feature",
       "unfeature": "Unfeature",
@@ -2565,7 +2565,7 @@
           },
           "templates": {
             "title": "Template Library",
-            "description": "Jumpstart your project with pre-built templates for various venue types."
+            "description": "Jumpstart your project with pre-built templates for various use cases."
           }
         }
       },

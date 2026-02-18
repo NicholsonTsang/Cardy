@@ -21,7 +21,7 @@ Our template library includes 20+ ready-to-use templates organized into categori
 - Conference guide
 - Fashion show program
 - Football match info
-- Theatre/venue guide
+- Theatre program guide
 
 ### Hospitality & Wellness
 - Hotel services directory

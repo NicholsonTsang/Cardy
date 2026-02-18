@@ -199,7 +199,7 @@ Create QR codes for [location names, e.g. "Table 1", "Main Entrance"].
 ```
 
 :::info What to Fill In
-- **Project name** — your business, venue, or product name
+- **Project name** — your business, brand, or product name
 - **Layout mode** — pick from the layout table above (list, grid, cards, or single)
 - **Categories** — your section names (e.g., "Starters", "Main Course" for a restaurant)
 - **Items** — each item with a name and detailed description. The more detail you provide, the better the AI assistant works for your visitors.
