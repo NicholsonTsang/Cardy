@@ -1,25 +1,25 @@
 <template>
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden h-full">
+    <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-y-auto h-full">
         <!-- Empty State: No cards at all → rich onboarding -->
-        <div v-if="!selectedCard && !props.hasCards" class="flex flex-col items-center justify-center h-full min-h-[320px] p-8 overflow-y-auto">
+        <div v-if="!selectedCard && !props.hasCards" class="flex flex-col items-center px-8 py-10 w-full">
             <!-- Header -->
-            <div class="text-center mb-10">
-                <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                    <i class="pi pi-sparkles text-2xl text-white"></i>
+            <div class="text-center mb-6">
+                <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <i class="pi pi-sparkles text-xl text-white"></i>
                 </div>
                 <h2 class="text-2xl font-bold text-slate-900 mb-2">{{ $t('dashboard.empty_welcome_title') }}</h2>
-                <p class="text-slate-500 text-sm max-w-md">{{ $t('dashboard.empty_welcome_subtitle') }}</p>
+                <p class="text-slate-500 text-sm max-w-md mx-auto">{{ $t('dashboard.empty_welcome_subtitle') }}</p>
             </div>
 
             <!-- 3 Action Cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mb-10">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full max-w-2xl mb-6">
                 <!-- Create from scratch -->
                 <button
                     @click="emit('create-card')"
-                    class="group flex flex-col items-center text-center p-6 rounded-xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-all duration-200 cursor-pointer"
+                    class="group flex flex-col items-center text-center p-5 rounded-xl border-2 border-blue-200 bg-blue-50 hover:bg-blue-100 hover:border-blue-400 transition-all duration-200 cursor-pointer"
                 >
-                    <div class="w-12 h-12 bg-blue-500 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-md">
-                        <i class="pi pi-plus text-xl text-white"></i>
+                    <div class="w-11 h-11 bg-blue-500 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-md">
+                        <i class="pi pi-plus text-lg text-white"></i>
                     </div>
                     <span class="font-semibold text-slate-900 text-sm mb-1">{{ $t('dashboard.empty_action_create') }}</span>
                     <span class="text-xs text-slate-500">{{ $t('dashboard.empty_action_create_desc') }}</span>
@@ -28,10 +28,10 @@
                 <!-- Import project -->
                 <button
                     @click="emit('open-import')"
-                    class="group flex flex-col items-center text-center p-6 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 cursor-pointer"
+                    class="group flex flex-col items-center text-center p-5 rounded-xl border-2 border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-400 transition-all duration-200 cursor-pointer"
                 >
-                    <div class="w-12 h-12 bg-slate-700 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-md">
-                        <i class="pi pi-upload text-xl text-white"></i>
+                    <div class="w-11 h-11 bg-slate-700 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-md">
+                        <i class="pi pi-upload text-lg text-white"></i>
                     </div>
                     <span class="font-semibold text-slate-900 text-sm mb-1">{{ $t('dashboard.empty_action_import') }}</span>
                     <span class="text-xs text-slate-500">{{ $t('dashboard.empty_action_import_desc') }}</span>
@@ -40,10 +40,10 @@
                 <!-- Start from template -->
                 <button
                     @click="emit('open-template')"
-                    class="group flex flex-col items-center text-center p-6 rounded-xl border-2 border-violet-200 bg-violet-50 hover:bg-violet-100 hover:border-violet-400 transition-all duration-200 cursor-pointer"
+                    class="group flex flex-col items-center text-center p-5 rounded-xl border-2 border-violet-200 bg-violet-50 hover:bg-violet-100 hover:border-violet-400 transition-all duration-200 cursor-pointer"
                 >
-                    <div class="w-12 h-12 bg-violet-500 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-md">
-                        <i class="pi pi-copy text-xl text-white"></i>
+                    <div class="w-11 h-11 bg-violet-500 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform shadow-md">
+                        <i class="pi pi-copy text-lg text-white"></i>
                     </div>
                     <span class="font-semibold text-slate-900 text-sm mb-1">{{ $t('dashboard.empty_action_template') }}</span>
                     <span class="text-xs text-slate-500">{{ $t('dashboard.empty_action_template_desc') }}</span>
@@ -52,7 +52,7 @@
 
             <!-- Use case suggestions -->
             <div class="w-full max-w-2xl">
-                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center mb-4">{{ $t('dashboard.empty_suggestions_title') }}</p>
+                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center mb-3">{{ $t('dashboard.empty_suggestions_title') }}</p>
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     <button
                         v-for="suggestion in useCaseSuggestions"
@@ -60,7 +60,7 @@
                         @click="emit('create-card')"
                         class="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all text-left group"
                     >
-                        <span class="text-lg">{{ suggestion.emoji }}</span>
+                        <span class="text-base">{{ suggestion.emoji }}</span>
                         <span class="text-xs text-slate-600 group-hover:text-slate-900 font-medium leading-tight">{{ $t(suggestion.key) }}</span>
                     </button>
                 </div>
@@ -68,7 +68,7 @@
         </div>
 
         <!-- Empty State: Has cards but none selected -->
-        <div v-else-if="!selectedCard && props.hasCards" class="flex items-center justify-center h-full min-h-[320px] p-6">
+        <div v-else-if="!selectedCard && props.hasCards" class="flex items-center justify-center flex-1 p-6">
             <div class="text-center">
                 <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="pi pi-arrow-left text-2xl text-slate-400"></i>

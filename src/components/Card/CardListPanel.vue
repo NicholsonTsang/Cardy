@@ -179,7 +179,7 @@
         </Dialog>
 
         <!-- Loading State -->
-        <div v-if="loading" class="flex items-center justify-center p-8 h-full min-h-[320px]">
+        <div v-if="loading" class="flex items-center justify-center p-8 flex-1">
             <div class="text-center">
                 <i class="pi pi-spin pi-spinner text-3xl text-blue-600 mb-4"></i>
                 <p class="text-sm text-slate-500">{{ $t('dashboard.loading_cards') }}</p>
@@ -187,7 +187,7 @@
         </div>
 
         <!-- Empty State -->
-        <div v-else-if="cards.length === 0 && !searchQuery" class="flex flex-col items-center justify-center p-5 text-center h-full min-h-[320px]">
+        <div v-else-if="cards.length === 0 && !searchQuery" class="flex flex-col items-center justify-center p-5 text-center flex-1">
             <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md">
                 <i class="pi pi-sparkles text-xl text-white"></i>
             </div>
