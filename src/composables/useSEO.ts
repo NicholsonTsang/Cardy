@@ -183,7 +183,7 @@ export function useSEO() {
     
     // Get SEO content from i18n or use config
     const title = config?.title || t('seo.title', 'FunTell - Turn Any Information into an AI-Powered Content Experience')
-    const description = config?.description || t('seo.description', 'Create AI-powered, multilingual content experiences for products, venues, education, storytelling, and more. Share via QR code - no app required.')
+    const description = config?.description || t('seo.description', 'Create AI-powered, multilingual content experiences for products, education, storytelling, and more. Share via QR code - no app required.')
     const keywords = config?.keywords || t('seo.keywords', '')
     const image = config?.image || `${baseUrl}/logo.png`
     const currentUrl = config?.url || `${baseUrl}${route.path}`
@@ -306,7 +306,7 @@ export function useSEO() {
       "featureList": featuresArray,
       "audience": {
         "@type": "Audience",
-        "audienceType": t('seo.audience', 'Businesses, Educators, Creators, Venues, Product Teams, Storytellers')
+        "audienceType": t('seo.audience', 'Businesses, Educators, Creators, Product Teams, Storytellers')
       },
       "availableLanguage": SUPPORTED_LANGUAGES.map(l => ({
         "@type": "Language",

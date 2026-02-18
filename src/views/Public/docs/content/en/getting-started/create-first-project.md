@@ -1,6 +1,6 @@
 ## Creating a New Project
 
-A project is the foundation of your digital experience. It represents your content -- whether that is a product catalog, venue guide, educational course, storytelling collection, or any other information you want to share interactively.
+A project is the foundation of your digital experience. It represents your content -- whether that is a product catalog, educational course, knowledge base, storytelling collection, or any other information you want to share interactively.
 
 :::info Project Limits
 | Plan | Max Projects |

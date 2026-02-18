@@ -1,6 +1,6 @@
 ## Welcome to FunTell
 
-FunTell is an AI-powered content experience platform that turns any information into an interactive, multilingual digital experience. Whether you are showcasing products, guiding visitors through a venue, building educational content, telling stories, or creating a knowledge base, our platform helps you engage your audience like never before.
+FunTell is an AI-powered content experience platform that turns any information into an interactive, multilingual digital experience. Whether you are showcasing products, building educational content, telling stories, or creating a knowledge base, our platform helps you engage your audience like never before.
 
 :::info What is FunTell?
 FunTell combines QR codes with AI-powered voice assistants to create immersive, multilingual content experiences. Anyone simply scans a QR code to access rich content and have natural conversations with AI assistants - no app download required.

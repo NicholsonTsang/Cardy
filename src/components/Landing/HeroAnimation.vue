@@ -94,7 +94,7 @@ const qrPattern = [
   0, 1, 1, 1, 0  // Smile
 ]
 
-// Floating icons representing different venue types
+// Floating icons representing different use cases
 const floatingIcons = [
   { class: 'pi pi-building' },      // Museum
   { class: 'pi pi-star' },          // Restaurant
