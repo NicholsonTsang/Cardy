@@ -50,19 +50,18 @@
                 </button>
             </div>
 
-            <!-- Use case suggestions -->
+            <!-- Use case suggestions — informational only, not clickable -->
             <div class="w-full max-w-2xl">
                 <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider text-center mb-3">{{ $t('dashboard.empty_suggestions_title') }}</p>
-                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <button
+                <div class="flex flex-wrap justify-center gap-2">
+                    <span
                         v-for="suggestion in useCaseSuggestions"
                         :key="suggestion.key"
-                        @click="emit('create-card')"
-                        class="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 transition-all text-left group"
+                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-100 text-slate-600 text-xs font-medium select-none"
                     >
-                        <span class="text-base">{{ suggestion.emoji }}</span>
-                        <span class="text-xs text-slate-600 group-hover:text-slate-900 font-medium leading-tight">{{ $t(suggestion.key) }}</span>
-                    </button>
+                        <span>{{ suggestion.emoji }}</span>
+                        <span>{{ $t(suggestion.key) }}</span>
+                    </span>
                 </div>
             </div>
         </div>
