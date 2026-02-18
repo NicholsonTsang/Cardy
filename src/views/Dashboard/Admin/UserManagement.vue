@@ -701,8 +701,8 @@
           </div>
           <div class="lg:col-span-3">
             <AdminCardDetailPanel
-              :selectedCard="projectsSelectedCard as any"
-              :content="adminUserCardsStore.selectedCardContent as any"
+              :selectedCard="projectsSelectedCard"
+              :content="adminUserCardsStore.selectedCardContent"
               :isLoadingContent="adminUserCardsStore.isLoadingContent"
               v-model:activeTab="projectsActiveTabString"
             />
