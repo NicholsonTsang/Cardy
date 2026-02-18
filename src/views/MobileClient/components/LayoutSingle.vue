@@ -123,7 +123,7 @@ const renderedContent = computed(() => {
   overflow: hidden;
   margin-bottom: 1.5rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--theme-text-rgb), 0.1);
 }
 
 .content-image img {
@@ -135,7 +135,7 @@ const renderedContent = computed(() => {
 .content-title {
   font-size: 1.75rem;
   font-weight: 800;
-  color: white;
+  color: rgba(var(--theme-text-rgb), 1);
   margin: 0 0 1.25rem 0;
   line-height: 1.2;
   letter-spacing: -0.02em;
@@ -150,18 +150,18 @@ const renderedContent = computed(() => {
   left: 0;
   width: 60px;
   height: 3px;
-  background: linear-gradient(90deg, var(--theme-primary, #6366f1), var(--theme-gradient-end, #4338ca));
+  background: var(--theme-primary, #6366f1);
   border-radius: 2px;
 }
 
 .content-body {
   font-size: 1rem;
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(var(--theme-text-rgb), 0.9);
   line-height: 1.8;
   background: var(--theme-surface, rgba(255, 255, 255, 0.07));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--theme-text-rgb), 0.1);
   border-radius: 1rem;
   padding: 1.25rem;
 }
@@ -177,7 +177,7 @@ const renderedContent = computed(() => {
 .content-body :deep(h1),
 .content-body :deep(h2),
 .content-body :deep(h3) {
-  color: white;
+  color: rgba(var(--theme-text-rgb), 1);
   font-weight: 700;
   margin-top: 1.5rem;
   margin-bottom: 0.75rem;
@@ -206,7 +206,7 @@ const renderedContent = computed(() => {
 }
 
 .content-body :deep(a) {
-  color: #60a5fa;
+  color: var(--theme-primary, #6366f1);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -215,19 +215,19 @@ const renderedContent = computed(() => {
   border-left: 3px solid rgba(var(--theme-primary-rgb, 99, 102, 241), 0.5);
   padding-left: 1rem;
   margin: 1rem 0;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--theme-text-rgb), 0.8);
   font-style: italic;
 }
 
 .content-body :deep(code) {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(var(--theme-text-rgb), 0.1);
   padding: 0.125rem 0.375rem;
   border-radius: 0.25rem;
   font-size: 0.875em;
 }
 
 .content-body :deep(pre) {
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(var(--theme-text-rgb), 0.1);
   padding: 1rem;
   border-radius: 0.5rem;
   overflow-x: auto;
@@ -245,7 +245,7 @@ const renderedContent = computed(() => {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--theme-text-rgb), 0.5);
   gap: 1rem;
 }
 

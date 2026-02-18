@@ -29,7 +29,6 @@
                 <!-- Loading Overlay -->
                 <div v-if="src && !showPlaceholder && loading && !hasError" class="phone-loading">
                     <ProgressSpinner strokeWidth="3" animationDuration=".8s" class="w-8 h-8 sm:w-10 sm:h-10"/>
-                    <p class="loading-text">{{ loadingText }}</p>
                 </div>
                 
                 <!-- Error State -->
@@ -237,7 +236,7 @@ onUnmounted(() => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    background: #0f172a;
     padding: 1rem;
 }
 
@@ -245,11 +244,12 @@ onUnmounted(() => {
     width: 3rem;
     height: 3rem;
     border-radius: 0.75rem;
-    background: #f1f5f9;
+    background: rgba(255, 255, 255, 0.08);
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 0.75rem;
+    color: rgba(255, 255, 255, 0.5);
 }
 
 @media (min-width: 640px) {
@@ -262,15 +262,15 @@ onUnmounted(() => {
 }
 
 .placeholder-icon.error {
-    background: #fef2f2;
+    background: rgba(239, 68, 68, 0.15);
 }
 
 .placeholder-icon.error i {
-    color: #ef4444;
+    color: #f87171;
 }
 
 .placeholder-text {
-    color: #64748b;
+    color: rgba(255, 255, 255, 0.55);
     font-weight: 500;
     font-size: 0.875rem;
     text-align: center;
@@ -286,7 +286,7 @@ onUnmounted(() => {
 .phone-loading {
     position: absolute;
     inset: 0;
-    background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+    background: #0f172a;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -295,9 +295,34 @@ onUnmounted(() => {
     z-index: 10;
 }
 
+.phone-loading::before {
+    content: '';
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(99, 102, 241, 0.2) 0%, transparent 70%);
+    animation: phone-loading-glow 2s ease-in-out infinite;
+}
+
+@keyframes phone-loading-glow {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.6); opacity: 0.85; }
+}
+
+/* Ensure spinner and text sit above the glow pseudo-element */
+.phone-loading :deep(.p-progressspinner) {
+    position: relative;
+    z-index: 1;
+}
+
 .loading-text {
-    color: #64748b;
+    color: rgba(255, 255, 255, 0.7);
     font-size: 0.875rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    position: relative;
+    z-index: 1;
 }
 
 @media (min-width: 640px) {
@@ -313,18 +338,18 @@ onUnmounted(() => {
 
 .retry-button {
     padding: 0.5rem 1rem;
-    background: #3b82f6;
-    color: white;
+    background: rgba(99, 102, 241, 0.25);
+    color: rgba(255, 255, 255, 0.9);
     font-size: 0.875rem;
     font-weight: 500;
     border-radius: 0.5rem;
-    border: none;
+    border: 1px solid rgba(99, 102, 241, 0.4);
     cursor: pointer;
     transition: background-color 0.2s;
 }
 
 .retry-button:hover {
-    background: #2563eb;
+    background: rgba(99, 102, 241, 0.35);
 }
 </style>
 

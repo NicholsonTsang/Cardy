@@ -622,7 +622,7 @@ if (aiDisconnectRegistry) {
   align-items: center;
   gap: 0.5rem;
   padding: 0.75rem 1rem 0.75rem 0.875rem;
-  background: linear-gradient(135deg, var(--theme-primary, #6366f1) 0%, var(--theme-gradient-end, #4338ca) 50%, var(--theme-primary, #6366f1) 100%);
+  background: var(--theme-primary, #6366f1);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   color: white;

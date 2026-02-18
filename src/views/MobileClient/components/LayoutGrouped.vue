@@ -195,10 +195,10 @@ function handleItemClick(item: ContentItem) {
 
 .category-section {
   animation: fadeIn 0.5s ease-out;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--theme-text-rgb), 0.03);
   border-radius: 1rem;
   padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(var(--theme-text-rgb), 0.05);
 }
 
 @keyframes fadeIn {
@@ -209,12 +209,12 @@ function handleItemClick(item: ContentItem) {
 .category-title {
   font-size: 0.8125rem;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--theme-text-rgb), 0.5);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin: 0 0 0.875rem 0;
   padding-bottom: 0.625rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(var(--theme-text-rgb), 0.08);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -224,7 +224,7 @@ function handleItemClick(item: ContentItem) {
   content: '';
   width: 4px;
   height: 16px;
-  background: linear-gradient(to bottom, var(--theme-primary, #6366f1), var(--theme-gradient-end, #4338ca));
+  background: var(--theme-primary, #6366f1);
   border-radius: 2px;
 }
 
@@ -243,9 +243,9 @@ function handleItemClick(item: ContentItem) {
   background: var(--theme-surface, rgba(255, 255, 255, 0.07));
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(var(--theme-text-rgb), 0.08);
   border-radius: 0.875rem;
-  color: white;
+  color: rgba(var(--theme-text-rgb), 1);
   text-align: left;
   cursor: pointer;
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -266,9 +266,9 @@ function handleItemClick(item: ContentItem) {
 }
 
 .item-button:active {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(var(--theme-text-rgb), 0.12);
   transform: scale(0.98);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(var(--theme-text-rgb), 0.15);
 }
 
 .item-button:active::before {
@@ -281,7 +281,7 @@ function handleItemClick(item: ContentItem) {
   border-radius: 0.5rem;
   overflow: hidden;
   flex-shrink: 0;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--theme-text-rgb), 0.1);
 }
 
 .item-image img {
@@ -307,7 +307,7 @@ function handleItemClick(item: ContentItem) {
 
 .item-preview {
   font-size: 0.8125rem;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--theme-text-rgb), 0.5);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -315,7 +315,7 @@ function handleItemClick(item: ContentItem) {
 }
 
 .item-arrow {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(var(--theme-text-rgb), 0.3);
   font-size: 0.75rem;
   flex-shrink: 0;
 }
@@ -326,7 +326,7 @@ function handleItemClick(item: ContentItem) {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--theme-text-rgb), 0.5);
   gap: 1rem;
 }
 
@@ -370,10 +370,10 @@ function handleItemClick(item: ContentItem) {
   max-width: 400px;
   margin: 0 auto;
   padding: 0.75rem 1rem;
-  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.25) 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.2) 100%);
+  background: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.2);
   border: 1px solid rgba(var(--theme-primary-rgb, 99, 102, 241), 0.4);
   border-radius: 0.875rem;
-  color: white;
+  color: rgba(var(--theme-text-rgb), 1);
   font-size: 0.875rem;
   font-weight: 500;
   cursor: pointer;
@@ -385,7 +385,7 @@ function handleItemClick(item: ContentItem) {
 }
 
 .ai-browse-badge:hover {
-  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.35) 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.3) 100%);
+  background: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.3);
   border-color: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.5);
 }
 

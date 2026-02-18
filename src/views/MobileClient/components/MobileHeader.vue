@@ -67,10 +67,10 @@ function handleLanguageSelect() {
   left: 0;
   right: 0;
   z-index: 50;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.3));
+  background: linear-gradient(to bottom, rgba(var(--theme-bg-rgb, 15, 23, 42), 0.75), rgba(var(--theme-bg-rgb, 15, 23, 42), 0.55));
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(var(--theme-text-rgb, 255, 255, 255), 0.08);
   padding: 0.875rem 1.25rem; /* Slightly reduced vertical */
   padding-top: max(0.875rem, env(safe-area-inset-top)); /* Account for notch */
   display: flex;
@@ -86,9 +86,9 @@ function handleLanguageSelect() {
   min-width: 44px; /* iOS recommended touch target */
   min-height: 44px;
   border-radius: 0.75rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
+  background: rgba(var(--theme-text-rgb, 255, 255, 255), 0.1);
+  border: 1px solid rgba(var(--theme-text-rgb, 255, 255, 255), 0.1);
+  color: var(--theme-text, #ffffff);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -105,8 +105,8 @@ function handleLanguageSelect() {
 
 .back-button:active {
   transform: scale(0.92);
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(var(--theme-text-rgb, 255, 255, 255), 0.2);
+  border-color: rgba(var(--theme-text-rgb, 255, 255, 255), 0.2);
 }
 
 .back-button:active i {
@@ -114,7 +114,7 @@ function handleLanguageSelect() {
 }
 
 .back-button:focus-visible {
-  outline: 2px solid #60a5fa;
+  outline: 2px solid var(--theme-primary, #6366f1);
   outline-offset: 2px;
 }
 
@@ -135,7 +135,7 @@ function handleLanguageSelect() {
 .header-title {
   font-size: 1rem;
   font-weight: 700;
-  color: white;
+  color: var(--theme-text, #ffffff);
   margin: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -145,7 +145,7 @@ function handleLanguageSelect() {
 
 .header-subtitle {
   font-size: 0.75rem;
-  color: rgba(255, 255, 255, 0.75); /* WCAG AA: improved from 0.6 for contrast */
+  color: rgba(var(--theme-text-rgb, 255, 255, 255), 0.75); /* WCAG AA: improved from 0.6 for contrast */
   margin: 0;
   margin-top: 0.125rem;
   overflow: hidden;

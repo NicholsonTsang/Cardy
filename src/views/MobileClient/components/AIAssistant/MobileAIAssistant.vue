@@ -648,10 +648,10 @@ if (aiDisconnectRegistry) {
   max-width: 400px;
   margin: 0 auto;
   padding: 0.875rem 1.125rem;
-  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.25) 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.2) 100%);
+  background: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.2);
   border: 1px solid rgba(var(--theme-primary-rgb, 99, 102, 241), 0.4);
   border-radius: 1rem;
-  color: white;
+  color: var(--theme-text, #ffffff);
   font-size: 0.9375rem;
   font-weight: 500;
   cursor: pointer;
@@ -690,7 +690,7 @@ if (aiDisconnectRegistry) {
 }
 
 .ai-badge:hover {
-  background: linear-gradient(135deg, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.35) 0%, rgba(var(--theme-primary-rgb, 99, 102, 241), 0.3) 100%);
+  background: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.3);
   border-color: rgba(var(--theme-primary-rgb, 99, 102, 241), 0.5);
 }
 
