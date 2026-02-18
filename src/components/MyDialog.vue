@@ -6,7 +6,7 @@
     :modal="props.modal"
     :style="props.style"
     :draggable="false"
-    class="custom-dialog w-full mx-4 md:w-4/5 lg:w-3/4 xl:w-2/3 2xl:w-1/2 standardized-dialog"
+    class="custom-dialog standardized-dialog"
     @hide="onInternalDialogHide"
     :maximizable="true"
     :closable="true"

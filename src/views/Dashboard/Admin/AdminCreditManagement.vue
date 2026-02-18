@@ -241,7 +241,7 @@
             v-model:visible="showPurchasesDialog"
             modal
             :header="$t('admin.credits.purchasesFor', { name: viewingUser?.user_name })"
-            :style="{ width: '90vw', maxWidth: '1200px' }"
+            :style="{ width: '90vw', maxWidth: '90rem' }"
             :dismissableMask="true"
           >
             <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -337,7 +337,7 @@
             v-model:visible="showConsumptionsDialog"
             modal
             :header="$t('admin.credits.consumptionsFor', { name: viewingUser?.user_name })"
-            :style="{ width: '90vw', maxWidth: '1200px' }"
+            :style="{ width: '90vw', maxWidth: '90rem' }"
             :dismissableMask="true"
           >
             <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -434,7 +434,7 @@
             v-model:visible="showTransactionsDialog"
             modal
             :header="$t('admin.credits.transactionsFor', { name: viewingUser?.user_name })"
-            :style="{ width: '90vw', maxWidth: '1200px' }"
+            :style="{ width: '90vw', maxWidth: '90rem' }"
             :dismissableMask="true"
           >
             <div class="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
@@ -518,7 +518,7 @@
     v-model:visible="showAdjustDialog" 
     modal 
     :closable="!adjustLoading"
-    :style="{ width: '600px' }"
+    :style="{ width: '90vw', maxWidth: '56rem' }"
     class="adjust-dialog"
   >
     <template #header>

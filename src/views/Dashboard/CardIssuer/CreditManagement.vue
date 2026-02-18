@@ -318,7 +318,7 @@
     v-model:visible="showPurchaseDialog" 
     modal 
     :header="$t('credits.purchaseCredits')"
-    :style="{ width: '90vw', maxWidth: '600px' }"
+    :style="{ width: '90vw', maxWidth: '42rem' }"
     :draggable="false"
     class="p-0"
   >

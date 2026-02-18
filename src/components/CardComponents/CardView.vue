@@ -95,8 +95,7 @@
             v-model:visible="showExportDialog"
             modal
             :header="$t('common.export_card_data')"
-            :style="{ width: '40rem' }"
-            :breakpoints="{ '1199px': '75vw', '575px': '90vw' }"
+            :style="{ width: '90vw', maxWidth: '42rem' }"
             class="standardized-dialog"
         >
             <CardExport
@@ -558,9 +557,9 @@ const editDialogHeader = computed(() => {
 });
 
 const editDialogStyle = computed(() => {
-    if (editSection.value === 'ai') return 'width: 90vw; max-width: 800px;';
-    if (editSection.value) return 'width: 90vw; max-width: 700px;';
-    return 'width: 90vw; max-width: 1200px;';
+    if (editSection.value === 'ai') return 'width: 90vw; max-width: 56rem;';
+    if (editSection.value) return 'width: 90vw; max-width: 56rem;';
+    return 'width: 90vw; max-width: 72rem;';
 });
 
 // Language preview state

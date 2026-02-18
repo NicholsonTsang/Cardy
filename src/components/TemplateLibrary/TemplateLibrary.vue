@@ -96,7 +96,7 @@
       v-model:visible="showPreviewDialog" 
       :header="selectedTemplate?.name"
       :modal="true"
-      :style="{ width: '50rem', maxWidth: '95vw' }"
+      :style="{ width: '90vw', maxWidth: '72rem' }"
       :dismissableMask="true"
     >
       <TemplatePreview 
@@ -111,7 +111,7 @@
       v-model:visible="showImportDialog" 
       :header="$t('templates.import_template')"
       :modal="true"
-      :style="{ width: '30rem', maxWidth: '95vw' }"
+      :style="{ width: '90vw', maxWidth: '42rem' }"
     >
       <TemplateImportForm 
         v-if="templateToImport"

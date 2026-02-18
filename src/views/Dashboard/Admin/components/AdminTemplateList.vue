@@ -293,7 +293,7 @@
     <Dialog 
       v-model:visible="showCreateDialog" 
       :header="$t('templates.admin.create_template')"
-      :style="{ width: '600px' }"
+      :style="{ width: '90vw', maxWidth: '56rem' }"
       :modal="true"
       :contentStyle="{ overflow: 'visible' }"
     >
@@ -418,7 +418,7 @@
     <Dialog 
       v-model:visible="showSettingsDialog" 
       :header="$t('templates.admin.edit_settings')"
-      :style="{ width: '500px' }"
+      :style="{ width: '90vw', maxWidth: '42rem' }"
       :modal="true"
     >
       <div class="space-y-4">
