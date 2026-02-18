@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Wed Feb 18 15:21:31 HKT 2026
+-- Generated: Wed Feb 18 18:34:14 HKT 2026
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -254,8 +254,6 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    default_daily_session_limit INTEGER,
-    default_daily_voice_limit INTEGER,
     metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
@@ -292,8 +290,6 @@ BEGIN
         c.is_grouped,
         c.group_display,
         c.billing_type,
-        c.default_daily_session_limit,
-        c.default_daily_voice_limit,
         c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
@@ -337,7 +333,6 @@ CREATE OR REPLACE FUNCTION create_card(
     p_is_grouped BOOLEAN DEFAULT FALSE,  -- Whether content is organized into categories
     p_group_display TEXT DEFAULT 'expanded',  -- How grouped items display: expanded or collapsed
     p_billing_type TEXT DEFAULT 'digital',  -- Billing model: digital per-session subscription
-    p_default_daily_session_limit INTEGER DEFAULT 500,  -- Default daily session limit for new QR codes (default: 500)
     p_metadata JSONB DEFAULT '{}'  -- Extensible metadata for future features
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -371,7 +366,6 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        default_daily_session_limit,
         metadata
     ) VALUES (
         auth.uid(),
@@ -394,25 +388,24 @@ BEGIN
         COALESCE(p_is_grouped, FALSE),
         COALESCE(p_group_display, 'expanded'),
         'digital',
-        COALESCE(p_default_daily_session_limit, 500),
         COALESCE(p_metadata, '{}'::JSONB)
     )
     RETURNING id INTO v_card_id;
     
     -- Automatically create a default enabled access token (QR code) for all projects
     -- Every project must have at least one QR code
+    -- Default limits (daily_session_limit, daily_voice_limit) are configured via env vars on the frontend
+    -- and passed explicitly when creating QR codes via the create_access_token function
     INSERT INTO card_access_tokens (
         card_id,
         name,
         access_token,
-        is_enabled,
-        daily_session_limit
+        is_enabled
     ) VALUES (
         v_card_id,
         'Default',
         substring(replace(gen_random_uuid()::text, '-', ''), 1, 12),
-        true,  -- Enabled by default
-        COALESCE(p_default_daily_session_limit, 500)
+        true  -- Enabled by default
     );
     
     -- Log operation
@@ -425,7 +418,7 @@ BEGIN
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, JSONB) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 -- Session stats are computed from card_access_tokens table
@@ -453,8 +446,6 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    default_daily_session_limit INTEGER,
-    default_daily_voice_limit INTEGER,
     metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
@@ -490,8 +481,6 @@ BEGIN
         c.is_grouped,
         c.group_display,
         c.billing_type,
-        c.default_daily_session_limit,
-        c.default_daily_voice_limit,
         c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
@@ -530,8 +519,6 @@ CREATE OR REPLACE FUNCTION update_card(
     p_is_grouped BOOLEAN DEFAULT NULL,
     p_group_display TEXT DEFAULT NULL,
     p_billing_type TEXT DEFAULT NULL,
-    p_default_daily_session_limit INTEGER DEFAULT NULL,
-    p_default_daily_voice_limit INTEGER DEFAULT -1,  -- -1 = no change; NULL = set to unlimited
     p_metadata JSONB DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -559,8 +546,6 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        default_daily_session_limit,
-        default_daily_voice_limit,
         metadata,
         user_id,
         updated_at
@@ -655,18 +640,6 @@ BEGIN
     
     -- NOTE: billing_type cannot be changed after card creation
     -- Silently ignore any attempt to change billing_type
-    
-    -- Track default_daily_session_limit changes (only for digital cards)
-    IF p_default_daily_session_limit IS NOT NULL AND (v_old_record.default_daily_session_limit IS NULL OR p_default_daily_session_limit != v_old_record.default_daily_session_limit) THEN
-        v_changes_made := v_changes_made || jsonb_build_object('default_daily_session_limit', jsonb_build_object('from', v_old_record.default_daily_session_limit, 'to', p_default_daily_session_limit));
-        has_changes := TRUE;
-    END IF;
-
-    -- Track default_daily_voice_limit changes (-1 means no change; NULL means set to unlimited)
-    IF p_default_daily_voice_limit != -1 AND p_default_daily_voice_limit IS DISTINCT FROM v_old_record.default_daily_voice_limit THEN
-        v_changes_made := v_changes_made || jsonb_build_object('default_daily_voice_limit', jsonb_build_object('from', v_old_record.default_daily_voice_limit, 'to', p_default_daily_voice_limit));
-        has_changes := TRUE;
-    END IF;
 
     IF p_metadata IS NOT NULL AND p_metadata IS DISTINCT FROM v_old_record.metadata THEN
         v_changes_made := v_changes_made || jsonb_build_object('metadata', 'updated');
@@ -699,8 +672,6 @@ BEGIN
         is_grouped = COALESCE(p_is_grouped, is_grouped),
         group_display = COALESCE(p_group_display, group_display),
         -- billing_type is immutable - not updated here
-        default_daily_session_limit = COALESCE(p_default_daily_session_limit, default_daily_session_limit),
-        default_daily_voice_limit = CASE WHEN p_default_daily_voice_limit = -1 THEN default_daily_voice_limit ELSE p_default_daily_voice_limit END,
         metadata = COALESCE(p_metadata, metadata),
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
@@ -711,7 +682,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, INTEGER, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, JSONB) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
@@ -784,7 +755,6 @@ CREATE OR REPLACE FUNCTION get_card_with_content(
   card_is_grouped BOOLEAN,
   card_group_display TEXT,
   card_billing_type TEXT,
-  card_default_daily_session_limit INT,
   card_qr_code_position TEXT,
   card_metadata JSONB,
   -- Content items array
@@ -831,7 +801,6 @@ BEGIN
     c.is_grouped,
     c.group_display,
     c.billing_type,
-    c.default_daily_session_limit,
     c.qr_code_position::TEXT,  -- Cast enum to TEXT
     c.metadata,
     -- Aggregate content items into JSONB array
@@ -2143,7 +2112,6 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    default_daily_session_limit INTEGER,
     original_language TEXT,
     qr_code_position TEXT,
     item_count BIGINT,
@@ -2157,19 +2125,19 @@ SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         ct.id,
         ct.slug,
         ct.card_id,
         -- Use translated name if language specified and translation exists, else original
-        CASE 
-            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+        CASE
+            WHEN p_language IS NOT NULL AND c.translations ? p_language
             THEN COALESCE(c.translations->p_language->>'name', c.name)
             ELSE c.name
         END AS name,
         -- Use translated description if language specified and translation exists, else original
-        CASE 
-            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+        CASE
+            WHEN p_language IS NOT NULL AND c.translations ? p_language
             THEN COALESCE(c.translations->p_language->>'description', c.description, '')
             ELSE COALESCE(c.description, '')
         END::TEXT AS description,
@@ -2179,7 +2147,6 @@ BEGIN
         COALESCE(c.is_grouped, false),
         COALESCE(c.group_display, 'expanded')::TEXT,
         COALESCE(c.billing_type, 'digital')::TEXT,
-        c.default_daily_session_limit,
         COALESCE(c.original_language, 'en')::TEXT,
         COALESCE(c.qr_code_position::TEXT, 'BR'),
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
@@ -2239,7 +2206,6 @@ RETURNS TABLE (
     ai_welcome_item TEXT,
     original_language TEXT,
     qr_code_position TEXT,
-    default_daily_session_limit INTEGER,
     crop_parameters JSONB,
     translations JSONB,
     content_hash TEXT,
@@ -2279,29 +2245,28 @@ BEGIN
         COALESCE(c.billing_type, 'digital')::TEXT,
         COALESCE(c.conversation_ai_enabled, true),
         -- Use translated AI fields if language specified and translation exists
-        CASE 
-            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+        CASE
+            WHEN p_language IS NOT NULL AND c.translations ? p_language
             THEN COALESCE(c.translations->p_language->>'ai_instruction', c.ai_instruction, '')
             ELSE COALESCE(c.ai_instruction, '')
         END::TEXT AS ai_instruction,
-        CASE 
-            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+        CASE
+            WHEN p_language IS NOT NULL AND c.translations ? p_language
             THEN COALESCE(c.translations->p_language->>'ai_knowledge_base', c.ai_knowledge_base, '')
             ELSE COALESCE(c.ai_knowledge_base, '')
         END::TEXT AS ai_knowledge_base,
-        CASE 
-            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+        CASE
+            WHEN p_language IS NOT NULL AND c.translations ? p_language
             THEN COALESCE(c.translations->p_language->>'ai_welcome_general', c.ai_welcome_general, '')
             ELSE COALESCE(c.ai_welcome_general, '')
         END::TEXT AS ai_welcome_general,
-        CASE 
-            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+        CASE
+            WHEN p_language IS NOT NULL AND c.translations ? p_language
             THEN COALESCE(c.translations->p_language->>'ai_welcome_item', c.ai_welcome_item, '')
             ELSE COALESCE(c.ai_welcome_item, '')
         END::TEXT AS ai_welcome_item,
         COALESCE(c.original_language, 'en')::TEXT,
         COALESCE(c.qr_code_position::TEXT, 'BR'),
-        c.default_daily_session_limit,
         c.crop_parameters,
         COALESCE(c.translations, '{}'::JSONB),
         c.content_hash,
@@ -2453,7 +2418,6 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        default_daily_session_limit,
         conversation_ai_enabled,
         ai_instruction,
         ai_knowledge_base,
@@ -2474,7 +2438,6 @@ BEGIN
         v_template.is_grouped,
         v_template.group_display,
         'digital',
-        v_template.default_daily_session_limit,
         v_template.conversation_ai_enabled,
         CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_instruction', v_template.ai_instruction) ELSE v_template.ai_instruction END,
         CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_knowledge_base', v_template.ai_knowledge_base) ELSE v_template.ai_knowledge_base END,
@@ -2502,7 +2465,7 @@ BEGIN
         'Default',
         substring(replace(gen_random_uuid()::text, '-', ''), 1, 12),
         true,
-        v_template.default_daily_session_limit
+        NULL
     );
     
     -- PERFORMANCE: Bulk copy content items using CTE with ID mapping
@@ -3637,7 +3600,6 @@ RETURNS TABLE (
     content_mode TEXT,
     is_grouped BOOLEAN,
     group_display TEXT,
-    default_daily_session_limit INT,
     metadata JSONB,
     -- Aggregated from access tokens
     total_sessions BIGINT,
@@ -3680,7 +3642,6 @@ BEGIN
         c.content_mode::TEXT,
         c.is_grouped,
         c.group_display::TEXT,
-        c.default_daily_session_limit,
         c.metadata,
         -- Aggregate from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
@@ -3699,7 +3660,7 @@ BEGIN
     GROUP BY c.id, c.name, c.description, c.image_url, c.original_image_url,
              c.crop_parameters, c.conversation_ai_enabled, c.ai_instruction, c.ai_knowledge_base,
              c.ai_welcome_general, c.ai_welcome_item, c.qr_code_position, c.content_mode,
-             c.is_grouped, c.group_display, c.default_daily_session_limit, c.metadata,
+             c.is_grouped, c.group_display, c.metadata,
              c.translations, c.original_language, c.created_at, c.updated_at, au.email
     ORDER BY c.created_at DESC;
 END;
@@ -4908,8 +4869,6 @@ DECLARE
     v_card_owner_id UUID;
     v_new_token TEXT;
     v_token_id UUID;
-    v_default_session_limit INTEGER;
-    v_default_voice_limit INTEGER;
 BEGIN
     -- Get current user
     v_user_id := auth.uid();
@@ -4917,9 +4876,9 @@ BEGIN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
 
-    -- Verify card ownership and get default limits
-    SELECT user_id, default_daily_session_limit, default_daily_voice_limit
-    INTO v_card_owner_id, v_default_session_limit, v_default_voice_limit
+    -- Verify card ownership
+    SELECT user_id
+    INTO v_card_owner_id
     FROM cards
     WHERE id = p_card_id;
 
@@ -4933,15 +4892,6 @@ BEGIN
 
     -- Generate unique token
     v_new_token := generate_access_token();
-
-    -- Use provided limit or fall back to card defaults
-    IF p_daily_session_limit IS NULL THEN
-        p_daily_session_limit := v_default_session_limit;
-    END IF;
-
-    IF p_daily_voice_limit IS NULL THEN
-        p_daily_voice_limit := v_default_voice_limit;
-    END IF;
 
     -- Create the access token
     INSERT INTO card_access_tokens (

@@ -484,7 +484,6 @@ RETURNS TABLE (
     content_mode TEXT,
     is_grouped BOOLEAN,
     group_display TEXT,
-    default_daily_session_limit INT,
     metadata JSONB,
     -- Aggregated from access tokens
     total_sessions BIGINT,
@@ -527,7 +526,6 @@ BEGIN
         c.content_mode::TEXT,
         c.is_grouped,
         c.group_display::TEXT,
-        c.default_daily_session_limit,
         c.metadata,
         -- Aggregate from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
@@ -546,7 +544,7 @@ BEGIN
     GROUP BY c.id, c.name, c.description, c.image_url, c.original_image_url,
              c.crop_parameters, c.conversation_ai_enabled, c.ai_instruction, c.ai_knowledge_base,
              c.ai_welcome_general, c.ai_welcome_item, c.qr_code_position, c.content_mode,
-             c.is_grouped, c.group_display, c.default_daily_session_limit, c.metadata,
+             c.is_grouped, c.group_display, c.metadata,
              c.translations, c.original_language, c.created_at, c.updated_at, au.email
     ORDER BY c.created_at DESC;
 END;

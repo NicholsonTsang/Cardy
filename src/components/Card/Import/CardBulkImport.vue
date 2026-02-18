@@ -680,7 +680,6 @@ async function executeImport() {
           p_is_grouped: imported.card.is_grouped,
           p_group_display: imported.card.group_display,
           p_billing_type: imported.card.billing_type,
-          p_default_daily_session_limit: imported.card.default_daily_session_limit ?? 500,
           p_metadata: imported.card.metadata || {},
         })
 

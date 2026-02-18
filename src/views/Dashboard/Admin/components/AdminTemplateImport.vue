@@ -430,7 +430,6 @@ async function handleBulkImport() {
           ai_welcome_general: imported.card.ai_welcome_general,
           ai_welcome_item: imported.card.ai_welcome_item,
           qr_code_position: imported.card.qr_code_position,
-          default_daily_session_limit: imported.card.default_daily_session_limit,
           translations_json: imported.card.translations ? JSON.stringify(imported.card.translations) : null,
           content_hash: imported.card.content_hash,
           contentItems: imported.contentItems.map(item => ({

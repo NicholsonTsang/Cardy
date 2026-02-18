@@ -101,7 +101,6 @@ const formData = reactive({
     ai_welcome_general: '',
     ai_welcome_item: '',
     qr_code_position: 'BR',
-    default_daily_session_limit: 500,
     cropParameters: null as any,
     max_sessions: null as number | null,
 });
@@ -123,7 +122,6 @@ const handleCreate = () => {
     isCreating.value = true;
     const payload = {
         ...formData,
-        default_daily_session_limit: formData.default_daily_session_limit,
     };
     emit('submit', payload);
 };
@@ -145,7 +143,6 @@ const resetForm = () => {
     formData.ai_welcome_general = '';
     formData.ai_welcome_item = '';
     formData.qr_code_position = 'BR';
-    formData.default_daily_session_limit = 500;
     formData.cropParameters = null;
     formData.max_sessions = null;
 };

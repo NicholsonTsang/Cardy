@@ -102,48 +102,6 @@
                         </div>
                     </div>
 
-                    <!-- Daily Scan Limit - Collapsible Advanced Option -->
-                    <div class="mt-4">
-                        <button
-                            type="button"
-                            @click="showAdvancedAccess = !showAdvancedAccess"
-                            class="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800 transition-colors"
-                        >
-                            <i class="pi text-xs" :class="showAdvancedAccess ? 'pi-chevron-down' : 'pi-chevron-right'"></i>
-                            <span>{{ $t('dashboard.advanced_options') }}</span>
-                        </button>
-
-                        <Transition name="slide">
-                            <div v-show="showAdvancedAccess" class="mt-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
-                                <label class="text-sm font-medium text-slate-700 block mb-2">
-                                    {{ $t('digital_access.daily_limit') }}
-                                </label>
-                                <div class="flex items-center gap-3 flex-wrap">
-                                    <InputNumber
-                                        v-model="formData.default_daily_session_limit"
-                                        :disabled="isDailyLimitUnlimited"
-                                        :min="1"
-                                        :max="100000"
-                                        :step="100"
-                                        showButtons
-                                        buttonLayout="horizontal"
-                                        incrementButtonIcon="pi pi-plus"
-                                        decrementButtonIcon="pi pi-minus"
-                                        class="daily-limit-input"
-                                        size="small"
-                                    />
-                                    <span class="text-xs text-slate-500">{{ $t('digital_access.scans_per_day') }}</span>
-                                    <div class="flex items-center gap-2 ml-auto">
-                                        <ToggleSwitch v-model="isDailyLimitUnlimited" />
-                                        <span class="text-xs text-slate-600">{{ $t('digital_access.unlimited') }}</span>
-                                    </div>
-                                </div>
-                                <p class="text-xs text-slate-400 mt-2">
-                                    {{ $t('digital_access.set_daily_limit_hint') }}
-                                </p>
-                            </div>
-                        </Transition>
-                    </div>
                 </div>
             </Transition>
         </div>
@@ -475,9 +433,12 @@
                             <!-- Preset Themes -->
                             <div class="mb-5">
                                 <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3 block">{{ $t('dashboard.theme_presets') }}</label>
-                                <div class="grid grid-cols-4 sm:grid-cols-5 gap-2">
+
+                                <!-- Dark themes row -->
+                                <p class="text-xs text-slate-400 mb-1.5">{{ $t('dashboard.theme_presets_dark') }}</p>
+                                <div class="grid grid-cols-5 sm:grid-cols-5 gap-2 mb-3">
                                     <button
-                                        v-for="preset in THEME_PRESETS"
+                                        v-for="preset in THEME_PRESETS.filter(p => isLightTheme(p)  === false)"
                                         :key="preset.key"
                                         type="button"
                                         :title="$t(`dashboard.theme_preset_${preset.key}`)"
@@ -491,17 +452,17 @@
                                     >
                                         <!-- Gradient swatch -->
                                         <div
-                                            class="w-full aspect-square"
-                                            :style="{
-                                                background: `linear-gradient(135deg, ${preset.theme.backgroundColor} 0%, ${preset.theme.gradientEndColor} 100%)`
-                                            }"
+                                            class="w-full aspect-square flex flex-col justify-between p-1"
+                                            :style="{ background: `linear-gradient(135deg, ${preset.theme.backgroundColor} 0%, ${preset.theme.gradientEndColor} 100%)` }"
                                         >
+                                            <!-- Simulated text lines -->
+                                            <div class="flex flex-col gap-0.5">
+                                                <div class="h-1 rounded-full w-3/4 opacity-80" :style="{ background: preset.theme.textColor }"></div>
+                                                <div class="h-0.5 rounded-full w-1/2 opacity-40" :style="{ background: preset.theme.textColor }"></div>
+                                            </div>
                                             <!-- Primary color dot -->
-                                            <div class="flex items-end justify-end p-1 h-full">
-                                                <div
-                                                    class="w-3 h-3 rounded-full border border-white/40"
-                                                    :style="{ background: preset.theme.primaryColor }"
-                                                ></div>
+                                            <div class="flex justify-end">
+                                                <div class="w-3 h-3 rounded-full" :style="{ background: preset.theme.primaryColor }"></div>
                                             </div>
                                         </div>
                                         <!-- Active check -->
@@ -510,6 +471,45 @@
                                         </div>
                                     </button>
                                 </div>
+
+                                <!-- Light themes row -->
+                                <p class="text-xs text-slate-400 mb-1.5">{{ $t('dashboard.theme_presets_light') }}</p>
+                                <div class="grid grid-cols-5 sm:grid-cols-5 gap-2">
+                                    <button
+                                        v-for="preset in THEME_PRESETS.filter(p => isLightTheme(p) === true)"
+                                        :key="preset.key"
+                                        type="button"
+                                        :title="$t(`dashboard.theme_preset_${preset.key}`)"
+                                        :class="[
+                                            'theme-preset-swatch group relative rounded-xl overflow-hidden cursor-pointer border-2 transition-all',
+                                            isActivePreset(preset)
+                                                ? 'border-indigo-500 shadow-md scale-105'
+                                                : 'border-slate-200 hover:border-slate-400 hover:scale-102'
+                                        ]"
+                                        @click="applyPreset(preset)"
+                                    >
+                                        <!-- Gradient swatch -->
+                                        <div
+                                            class="w-full aspect-square flex flex-col justify-between p-1"
+                                            :style="{ background: `linear-gradient(135deg, ${preset.theme.backgroundColor} 0%, ${preset.theme.gradientEndColor} 100%)` }"
+                                        >
+                                            <!-- Simulated text lines -->
+                                            <div class="flex flex-col gap-0.5">
+                                                <div class="h-1 rounded-full w-3/4 opacity-80" :style="{ background: preset.theme.textColor }"></div>
+                                                <div class="h-0.5 rounded-full w-1/2 opacity-40" :style="{ background: preset.theme.textColor }"></div>
+                                            </div>
+                                            <!-- Primary color dot -->
+                                            <div class="flex justify-end">
+                                                <div class="w-3 h-3 rounded-full" :style="{ background: preset.theme.primaryColor }"></div>
+                                            </div>
+                                        </div>
+                                        <!-- Active check -->
+                                        <div v-if="isActivePreset(preset)" class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
+                                            <i class="pi pi-check text-white" style="font-size: 0.5rem"></i>
+                                        </div>
+                                    </button>
+                                </div>
+
                                 <!-- Preset label -->
                                 <p class="text-xs text-slate-400 mt-2">
                                     <span v-if="activePresetKey">{{ $t(`dashboard.theme_preset_${activePresetKey}`) }}</span>
@@ -665,7 +665,6 @@ import { useI18n } from 'vue-i18n';
 import { SubscriptionConfig } from '@/config/subscription';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
-import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
 import Select from 'primevue/select';
 import ToggleSwitch from 'primevue/toggleswitch';
@@ -681,6 +680,7 @@ import PhoneIframePreview from '@/components/common/PhoneIframePreview.vue';
 
 // Preset themes
 const THEME_PRESETS = [
+    // ── Dark themes ──────────────────────────────────────────────────────────
     {
         key: 'midnight',
         theme: { primaryColor: '#6366f1', backgroundColor: '#0f172a', gradientEndColor: '#4338ca', textColor: '#ffffff' }
@@ -720,6 +720,39 @@ const THEME_PRESETS = [
     {
         key: 'crimson',
         theme: { primaryColor: '#ef4444', backgroundColor: '#0f0a0a', gradientEndColor: '#7f1d1d', textColor: '#ffffff' }
+    },
+    // ── Light themes ─────────────────────────────────────────────────────────
+    {
+        key: 'cloud',
+        theme: { primaryColor: '#6366f1', backgroundColor: '#f8fafc', gradientEndColor: '#e2e8f0', textColor: '#1e293b' }
+    },
+    {
+        key: 'blossom',
+        theme: { primaryColor: '#e11d48', backgroundColor: '#fff1f2', gradientEndColor: '#fce7f3', textColor: '#881337' }
+    },
+    {
+        key: 'meadow',
+        theme: { primaryColor: '#16a34a', backgroundColor: '#f0fdf4', gradientEndColor: '#dcfce7', textColor: '#14532d' }
+    },
+    {
+        key: 'sky',
+        theme: { primaryColor: '#0284c7', backgroundColor: '#f0f9ff', gradientEndColor: '#dbeafe', textColor: '#0c4a6e' }
+    },
+    {
+        key: 'sand',
+        theme: { primaryColor: '#d97706', backgroundColor: '#fffbeb', gradientEndColor: '#fef3c7', textColor: '#78350f' }
+    },
+    {
+        key: 'lavender',
+        theme: { primaryColor: '#7c3aed', backgroundColor: '#faf5ff', gradientEndColor: '#ede9fe', textColor: '#4c1d95' }
+    },
+    {
+        key: 'peach',
+        theme: { primaryColor: '#ea580c', backgroundColor: '#fff7ed', gradientEndColor: '#fed7aa', textColor: '#7c2d12' }
+    },
+    {
+        key: 'arctic',
+        theme: { primaryColor: '#0891b2', backgroundColor: '#ecfeff', gradientEndColor: '#cffafe', textColor: '#164e63' }
     },
 ];
 
@@ -774,7 +807,6 @@ const formData = reactive({
     is_grouped: false, // Whether content is organized into categories
     group_display: 'expanded', // How grouped items display: expanded or collapsed
     billing_type: 'digital',
-    default_daily_session_limit: 500, // Default daily limit for new QR codes
     metadata: {} // Extensible metadata (theme settings, etc.)
 });
 
@@ -790,8 +822,6 @@ const expandedSections = reactive({
     theme: false // Theme section collapsed by default
 });
 
-// Advanced options visibility
-const showAdvancedAccess = ref(false);
 
 
 // Subscription store for tier-gated features
@@ -967,9 +997,6 @@ const aiWelcomeItemWordCount = computed(() => {
     return formData.ai_welcome_item.trim().split(/\s+/).filter(word => word.length > 0).length;
 });
 
-// Daily limit unlimited toggle for digital access
-const isDailyLimitUnlimited = ref(false);
-
 // Markdown editor configuration
 const markdownToolbars = ref([
     'bold',
@@ -1029,16 +1056,6 @@ watch(() => props.sections, (newSections) => {
     });
 }, { immediate: true });
 
-// Watch for daily limit unlimited toggle
-watch(isDailyLimitUnlimited, (isUnlimited) => {
-    if (isUnlimited) {
-        formData.default_daily_session_limit = null;
-    } else if (formData.default_daily_session_limit === null) {
-        // Set default when switching from unlimited
-        formData.default_daily_session_limit = 500;
-    }
-});
-
 // Watch for changes in cardProp to update form
 watch(() => props.cardProp, (newVal) => {
     if (newVal) {
@@ -1094,6 +1111,17 @@ const isActivePreset = (preset) => {
         t.gradientEndColor === preset.theme.gradientEndColor &&
         t.textColor === preset.theme.textColor
     );
+};
+
+// Determine if a preset is a light theme by checking background luminance.
+// Parse hex to relative luminance: light if > 0.4
+const isLightTheme = (preset) => {
+    const hex = preset.theme.backgroundColor.replace('#', '');
+    const r = parseInt(hex.slice(0, 2), 16) / 255;
+    const g = parseInt(hex.slice(2, 4), 16) / 255;
+    const b = parseInt(hex.slice(4, 6), 16) / 255;
+    const luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    return luminance > 0.4;
 };
 
 const activePresetKey = computed(() => {
@@ -1205,11 +1233,7 @@ const initializeForm = () => {
         formData.is_grouped = props.cardProp.is_grouped || false;
         formData.group_display = props.cardProp.group_display || 'expanded';
         formData.billing_type = 'digital';
-        formData.default_daily_session_limit = props.cardProp.default_daily_session_limit ?? 500;
         formData.metadata = props.cardProp.metadata ? JSON.parse(JSON.stringify(props.cardProp.metadata)) : {};
-
-        // Set unlimited toggle based on default_daily_session_limit value
-        isDailyLimitUnlimited.value = props.cardProp.default_daily_session_limit === null;
     } else {
         resetForm();
     }
@@ -1232,7 +1256,6 @@ const resetForm = () => {
     formData.is_grouped = false;
     formData.group_display = 'expanded';
     formData.billing_type = 'digital';
-    formData.default_daily_session_limit = 500; // Reset to default daily limit
     formData.metadata = {};
 };
 
@@ -1396,16 +1419,6 @@ defineExpose({
 .slide-leave-from {
     opacity: 1;
     max-height: 2000px;
-}
-
-/* ===== Daily Limit Input ===== */
-.daily-limit-input {
-    width: 120px;
-}
-
-.daily-limit-input :deep(.p-inputnumber-input) {
-    width: 60px;
-    text-align: center;
 }
 
 /* ===== Line Clamp Utility ===== */

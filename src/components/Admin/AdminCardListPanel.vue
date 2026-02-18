@@ -143,7 +143,6 @@ interface Card {
   daily_sessions?: number
   active_qr_codes?: number
   total_qr_codes?: number
-  default_daily_session_limit?: number | null
   created_at: string
 }
 

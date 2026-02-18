@@ -25,7 +25,6 @@ export interface ArchiveCard {
   content_mode: ContentMode
   is_grouped: boolean
   group_display: GroupDisplay
-  default_daily_session_limit: number | null
   conversation_ai_enabled: boolean
   ai_instruction: string
   ai_knowledge_base: string
@@ -286,7 +285,6 @@ export async function exportProject(
       content_mode: (card.content_mode || 'list') as ContentMode,
       is_grouped: !!card.is_grouped,
       group_display: (card.group_display || 'expanded') as GroupDisplay,
-      default_daily_session_limit: card.default_daily_session_limit as number | null ?? null,
       conversation_ai_enabled: !!card.conversation_ai_enabled,
       ai_instruction: (card.ai_instruction || '') as string,
       ai_knowledge_base: (card.ai_knowledge_base || '') as string,
@@ -374,7 +372,6 @@ function validateCardData(raw: Record<string, unknown>, warnings: string[]): Arc
     content_mode: contentMode as ContentMode,
     is_grouped: !!raw.is_grouped,
     group_display: groupDisplay as GroupDisplay,
-    default_daily_session_limit: (raw.default_daily_session_limit as number) ?? null,
     conversation_ai_enabled: !!raw.conversation_ai_enabled,
     ai_instruction: (raw.ai_instruction || '') as string,
     ai_knowledge_base: (raw.ai_knowledge_base || '') as string,

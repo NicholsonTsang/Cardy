@@ -65,6 +65,7 @@ interface ImportMetaEnv {
 
   // Digital Access Configuration
   readonly VITE_DIGITAL_ACCESS_DEFAULT_DAILY_LIMIT: string
+  readonly VITE_DIGITAL_ACCESS_DEFAULT_DAILY_VOICE_LIMIT: string
 }
 
 interface ImportMeta {

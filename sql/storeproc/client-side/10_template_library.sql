@@ -29,7 +29,6 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    default_daily_session_limit INTEGER,
     original_language TEXT,
     qr_code_position TEXT,
     item_count BIGINT,
@@ -43,19 +42,19 @@ SET search_path = public
 AS $$
 BEGIN
     RETURN QUERY
-    SELECT 
+    SELECT
         ct.id,
         ct.slug,
         ct.card_id,
         -- Use translated name if language specified and translation exists, else original
-        CASE 
-            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+        CASE
+            WHEN p_language IS NOT NULL AND c.translations ? p_language
             THEN COALESCE(c.translations->p_language->>'name', c.name)
             ELSE c.name
         END AS name,
         -- Use translated description if language specified and translation exists, else original
-        CASE 
-            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+        CASE
+            WHEN p_language IS NOT NULL AND c.translations ? p_language
             THEN COALESCE(c.translations->p_language->>'description', c.description, '')
             ELSE COALESCE(c.description, '')
         END::TEXT AS description,
@@ -65,7 +64,6 @@ BEGIN
         COALESCE(c.is_grouped, false),
         COALESCE(c.group_display, 'expanded')::TEXT,
         COALESCE(c.billing_type, 'digital')::TEXT,
-        c.default_daily_session_limit,
         COALESCE(c.original_language, 'en')::TEXT,
         COALESCE(c.qr_code_position::TEXT, 'BR'),
         (SELECT COUNT(*) FROM content_items ci WHERE ci.card_id = c.id)::BIGINT AS item_count,
@@ -125,7 +123,6 @@ RETURNS TABLE (
     ai_welcome_item TEXT,
     original_language TEXT,
     qr_code_position TEXT,
-    default_daily_session_limit INTEGER,
     crop_parameters JSONB,
     translations JSONB,
     content_hash TEXT,
@@ -165,29 +162,28 @@ BEGIN
         COALESCE(c.billing_type, 'digital')::TEXT,
         COALESCE(c.conversation_ai_enabled, true),
         -- Use translated AI fields if language specified and translation exists
-        CASE 
-            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+        CASE
+            WHEN p_language IS NOT NULL AND c.translations ? p_language
             THEN COALESCE(c.translations->p_language->>'ai_instruction', c.ai_instruction, '')
             ELSE COALESCE(c.ai_instruction, '')
         END::TEXT AS ai_instruction,
-        CASE 
-            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+        CASE
+            WHEN p_language IS NOT NULL AND c.translations ? p_language
             THEN COALESCE(c.translations->p_language->>'ai_knowledge_base', c.ai_knowledge_base, '')
             ELSE COALESCE(c.ai_knowledge_base, '')
         END::TEXT AS ai_knowledge_base,
-        CASE 
-            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+        CASE
+            WHEN p_language IS NOT NULL AND c.translations ? p_language
             THEN COALESCE(c.translations->p_language->>'ai_welcome_general', c.ai_welcome_general, '')
             ELSE COALESCE(c.ai_welcome_general, '')
         END::TEXT AS ai_welcome_general,
-        CASE 
-            WHEN p_language IS NOT NULL AND c.translations ? p_language 
+        CASE
+            WHEN p_language IS NOT NULL AND c.translations ? p_language
             THEN COALESCE(c.translations->p_language->>'ai_welcome_item', c.ai_welcome_item, '')
             ELSE COALESCE(c.ai_welcome_item, '')
         END::TEXT AS ai_welcome_item,
         COALESCE(c.original_language, 'en')::TEXT,
         COALESCE(c.qr_code_position::TEXT, 'BR'),
-        c.default_daily_session_limit,
         c.crop_parameters,
         COALESCE(c.translations, '{}'::JSONB),
         c.content_hash,
@@ -339,7 +335,6 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        default_daily_session_limit,
         conversation_ai_enabled,
         ai_instruction,
         ai_knowledge_base,
@@ -360,7 +355,6 @@ BEGIN
         v_template.is_grouped,
         v_template.group_display,
         'digital',
-        v_template.default_daily_session_limit,
         v_template.conversation_ai_enabled,
         CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_instruction', v_template.ai_instruction) ELSE v_template.ai_instruction END,
         CASE WHEN v_use_translation THEN COALESCE(v_lang_data->>'ai_knowledge_base', v_template.ai_knowledge_base) ELSE v_template.ai_knowledge_base END,
@@ -388,7 +382,7 @@ BEGIN
         'Default',
         substring(replace(gen_random_uuid()::text, '-', ''), 1, 12),
         true,
-        v_template.default_daily_session_limit
+        NULL
     );
     
     -- PERFORMANCE: Bulk copy content items using CTE with ID mapping

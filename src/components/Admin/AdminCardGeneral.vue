@@ -219,7 +219,6 @@ interface Card {
   content_mode: 'single' | 'grid' | 'list' | 'cards'
   is_grouped: boolean
   group_display: 'expanded' | 'collapsed'
-  default_daily_session_limit: number | null
   total_sessions: number
   monthly_sessions: number
   daily_sessions: number

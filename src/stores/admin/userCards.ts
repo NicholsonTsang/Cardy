@@ -30,7 +30,6 @@ export interface AdminUserCard {
   is_grouped: boolean
   group_display: 'expanded' | 'collapsed'
   billing_type: 'digital'
-  default_daily_session_limit: number | null // Default for new QR codes
   metadata?: Record<string, any>
   // Aggregated from access tokens
   total_sessions: number

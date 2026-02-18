@@ -51,8 +51,6 @@ export interface Card {
     is_grouped: boolean; // Whether content is organized into categories
     group_display: GroupDisplay; // How grouped items display: expanded or collapsed
     billing_type: 'digital'; // Billing model: per-session subscription
-    default_daily_session_limit: number | null; // Default daily limit for new QR codes (NULL = unlimited)
-    default_daily_voice_limit: number | null; // Default daily voice call limit in seconds for new QR codes (NULL = unlimited)
     metadata?: Record<string, any>; // Extensible JSONB metadata for future features
     // Computed from access_tokens (aggregated stats)
     total_sessions: number; // Sum of all tokens' all-time sessions
@@ -89,8 +87,6 @@ export interface CardFormData {
     is_grouped?: boolean; // Whether content is organized into categories
     group_display?: GroupDisplay; // How grouped items display
     billing_type?: 'digital'; // Billing model
-    default_daily_session_limit?: number | null; // Default daily limit for new QR codes (default: 500)
-    default_daily_voice_limit?: number | null; // Default daily voice call limit in seconds for new QR codes (NULL = unlimited)
     metadata?: Record<string, any>; // Extensible JSONB metadata
     id?: string; // Optional for updates
 }
@@ -202,9 +198,6 @@ export const useCardStore = defineStore('card', () => {
                 }
             }
             
-            // Get default daily limit from env
-            const defaultDailyLimit = Number(import.meta.env.VITE_DIGITAL_ACCESS_DEFAULT_DAILY_LIMIT) || 500;
-            
             const { data, error: createError } = await supabase
                 .rpc('create_card', {
                     p_name: cardData.name,
@@ -224,7 +217,6 @@ export const useCardStore = defineStore('card', () => {
                     p_is_grouped: cardData.is_grouped || false,
                     p_group_display: cardData.group_display || 'expanded',
                     p_billing_type: cardData.billing_type || 'digital',
-                    p_default_daily_session_limit: cardData.default_daily_session_limit ?? defaultDailyLimit,
                     p_metadata: cardData.metadata || {}
                 });
                 
@@ -336,9 +328,6 @@ export const useCardStore = defineStore('card', () => {
                 p_is_grouped: updateData.is_grouped ?? null,
                 p_group_display: updateData.group_display || null,
                 p_billing_type: updateData.billing_type || null,
-                p_default_daily_session_limit: updateData.default_daily_session_limit || null,
-                // -1 signals "no change"; null means "set to unlimited"; a positive number sets the limit
-                p_default_daily_voice_limit: updateData.default_daily_voice_limit === undefined ? -1 : (updateData.default_daily_voice_limit ?? null),
                 p_metadata: updateData.metadata || null
             };
             
@@ -348,7 +337,7 @@ export const useCardStore = defineStore('card', () => {
             if (updateError) throw updateError;
             
             // Invalidate backend caches after successful update
-            // This is critical for default_daily_session_limit and theme changes to take effect immediately
+            // This is critical for theme changes and other settings to take effect immediately
             try {
                 const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
                 const existingCard = cards.value.find(c => c.id === cardId);
@@ -687,7 +676,6 @@ export const useCardStore = defineStore('card', () => {
                     p_is_grouped: original.card_is_grouped || false,
                     p_group_display: original.card_group_display || 'expanded',
                     p_billing_type: original.card_billing_type || 'digital',
-                    p_default_daily_session_limit: original.card_default_daily_session_limit || null,
                     p_metadata: original.card_metadata || {}
                 });
 

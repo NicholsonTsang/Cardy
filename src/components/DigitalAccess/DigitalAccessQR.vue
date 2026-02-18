@@ -69,119 +69,6 @@
       </div>
     </div>
 
-    <!-- Default Limits for New QR Codes -->
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-      <!-- Header -->
-      <div class="p-4 border-b border-slate-200 bg-slate-50">
-        <div class="flex items-center gap-3">
-          <div class="p-2 bg-gradient-to-r from-purple-500 to-violet-500 rounded-lg">
-            <i class="pi pi-shield text-white"></i>
-          </div>
-          <div>
-            <h3 class="font-semibold text-slate-900">{{ $t('digital_access.default_limits_title') }}</h3>
-            <p class="text-xs text-slate-500">{{ $t('digital_access.default_limits_hint') }}</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Content -->
-      <div class="p-4 space-y-6">
-        <!-- Default Daily Session Limit -->
-        <div class="space-y-3">
-          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ $t('digital_access.default_daily_limit') }}</p>
-
-          <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-            <span class="text-sm font-medium text-slate-700">{{ $t('digital_access.enable_daily_limit') }}</span>
-            <ToggleSwitch v-model="hasDailyLimit" />
-          </div>
-
-          <div v-if="hasDailyLimit" class="flex flex-col items-center gap-2">
-            <InputNumber
-              v-model="dailyLimit"
-              :min="1"
-              :max="100000"
-              :step="100"
-              showButtons
-              buttonLayout="horizontal"
-              class="w-full max-w-[220px]"
-            />
-            <span class="text-xs text-slate-500">{{ $t('digital_access.sessions_per_day') }}</span>
-          </div>
-
-          <div v-else class="text-center py-2">
-            <div class="inline-flex items-center gap-2 px-4 py-2 bg-green-50 rounded-full">
-              <i class="pi pi-infinity text-green-600"></i>
-              <span class="font-medium text-green-700">{{ $t('digital_access.unlimited_daily') }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="border-t border-slate-100"></div>
-
-        <!-- Default Daily Voice Call Limit -->
-        <div class="space-y-3">
-          <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">{{ $t('digital_access.default_daily_voice_limit') }}</p>
-
-          <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
-            <span class="text-sm font-medium text-slate-700">{{ $t('digital_access.enable_daily_voice_limit') }}</span>
-            <ToggleSwitch v-model="hasDailyVoiceLimit" />
-          </div>
-
-          <div v-if="hasDailyVoiceLimit" class="flex flex-col items-center gap-2">
-            <InputNumber
-              v-model="dailyVoiceLimit"
-              :min="60"
-              :max="86400"
-              :step="60"
-              showButtons
-              buttonLayout="horizontal"
-              class="w-full max-w-[220px]"
-            />
-            <span class="text-xs text-slate-500">{{ $t('digital_access.seconds_per_day') }} (= {{ formatVoiceTime(dailyVoiceLimit) }})</span>
-          </div>
-
-          <div v-else class="text-center py-2">
-            <div class="inline-flex items-center gap-2 px-4 py-2 bg-green-50 rounded-full">
-              <i class="pi pi-infinity text-green-600"></i>
-              <span class="font-medium text-green-700">{{ $t('digital_access.unlimited_daily') }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Info hint -->
-        <p class="text-xs text-slate-500 text-center">
-          <i class="pi pi-info-circle text-xs mr-1"></i>
-          {{ $t('digital_access.default_limit_info') }}
-        </p>
-
-        <!-- Action buttons - only shown when value has changed -->
-        <div v-if="hasUnsavedLimits" class="flex gap-2 pt-3 border-t border-slate-200">
-          <Button
-            :label="$t('common.cancel')"
-            severity="secondary"
-            outlined
-            size="small"
-            class="flex-1"
-            @click="resetLimits"
-          />
-          <Button
-            :label="$t('common.save')"
-            :loading="isSavingLimits"
-            icon="pi pi-check"
-            size="small"
-            class="flex-1"
-            @click="saveLimits"
-          />
-        </div>
-      </div>
-    </div>
-
-    <!-- Session Window Info (compact) -->
-    <div class="flex items-center gap-2 text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2 border border-slate-200">
-      <i class="pi pi-info-circle text-blue-500 flex-shrink-0"></i>
-      <span>{{ $t('digital_access.session_window_duration') }} — {{ $t('digital_access.session_window_description') }}</span>
-    </div>
-
     <!-- Loading State -->
     <div v-if="isLoading" class="flex items-center justify-center py-12">
       <ProgressSpinner />
@@ -574,7 +461,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from 'primevue/usetoast'
 import { useI18n } from 'vue-i18n'
@@ -617,67 +504,12 @@ function formatVoiceTime(seconds: number): string {
   return `${m}m`
 }
 
-// Default limits form (merged from DigitalAccessSettings)
-const dailyLimit = ref<number>(props.card.default_daily_session_limit ?? 500)
-const hasDailyLimit = ref(props.card.default_daily_session_limit != null)
-const dailyVoiceLimit = ref<number>(props.card.default_daily_voice_limit ?? 3600)
-const hasDailyVoiceLimit = ref(props.card.default_daily_voice_limit != null)
-const isSavingLimits = ref(false)
-
-const hasUnsavedLimits = computed(() => {
-  const currentSession = hasDailyLimit.value ? dailyLimit.value : null
-  const currentVoice = hasDailyVoiceLimit.value ? dailyVoiceLimit.value : null
-  return (
-    currentSession !== (props.card.default_daily_session_limit ?? null) ||
-    currentVoice !== (props.card.default_daily_voice_limit ?? null)
-  )
-})
+// Env-var defaults for new QR code form
+const defaultDailySessionLimit = Number(import.meta.env.VITE_DIGITAL_ACCESS_DEFAULT_DAILY_LIMIT) || 500
+const defaultDailyVoiceLimit = Number(import.meta.env.VITE_DIGITAL_ACCESS_DEFAULT_DAILY_VOICE_LIMIT) || null
 
 function navigateToSubscription() {
   router.push('/cms/subscription')
-}
-
-function resetLimits() {
-  if (props.card.default_daily_session_limit == null) {
-    hasDailyLimit.value = false
-    dailyLimit.value = 500
-  } else {
-    hasDailyLimit.value = true
-    dailyLimit.value = props.card.default_daily_session_limit
-  }
-  if (props.card.default_daily_voice_limit == null) {
-    hasDailyVoiceLimit.value = false
-    dailyVoiceLimit.value = 3600
-  } else {
-    hasDailyVoiceLimit.value = true
-    dailyVoiceLimit.value = props.card.default_daily_voice_limit
-  }
-}
-
-async function saveLimits() {
-  isSavingLimits.value = true
-  try {
-    const newDailyLimit = hasDailyLimit.value ? dailyLimit.value : null
-    const newDailyVoiceLimit = hasDailyVoiceLimit.value ? dailyVoiceLimit.value : null
-    await cardStore.updateCard(props.card.id, {
-      name: props.card.name,
-      description: props.card.description,
-      conversation_ai_enabled: props.card.conversation_ai_enabled,
-      ai_instruction: props.card.ai_instruction,
-      ai_knowledge_base: props.card.ai_knowledge_base,
-      qr_code_position: props.card.qr_code_position,
-      billing_type: props.card.billing_type,
-      content_mode: props.card.content_mode,
-      default_daily_session_limit: newDailyLimit,
-      default_daily_voice_limit: newDailyVoiceLimit
-    })
-    toast.add({ severity: 'success', summary: t('common.success'), detail: t('digital_access.settings_saved'), life: 3000 })
-    emit('updated', { ...props.card, default_daily_session_limit: newDailyLimit, default_daily_voice_limit: newDailyVoiceLimit })
-  } catch (err: any) {
-    toast.add({ severity: 'error', summary: t('common.error'), detail: err.message || t('digital_access.settings_save_error'), life: 5000 })
-  } finally {
-    isSavingLimits.value = false
-  }
 }
 
 // State
@@ -711,12 +543,12 @@ const refreshingTokenId = ref<string | null>(null)
 // Form data
 const formData = ref({
   name: '',
-  daily_session_limit: props.card.default_daily_session_limit ?? 500,
-  hasDailyLimit: props.card.default_daily_session_limit != null,
+  daily_session_limit: defaultDailySessionLimit,
+  hasDailyLimit: defaultDailySessionLimit != null,
   monthly_session_limit: 5000,
   hasMonthlySessionLimit: false,
-  daily_voice_limit: props.card.default_daily_voice_limit ?? 3600,
-  hasDailyVoiceLimit: props.card.default_daily_voice_limit != null,
+  daily_voice_limit: defaultDailyVoiceLimit ?? 3600,
+  hasDailyVoiceLimit: defaultDailyVoiceLimit != null,
   monthly_voice_limit: 36000,
   hasMonthlyVoiceLimit: false
 })
@@ -906,12 +738,12 @@ function openAddDialog() {
   editingToken.value = null
   formData.value = {
     name: '',
-    daily_session_limit: props.card.default_daily_session_limit ?? 500,
-    hasDailyLimit: props.card.default_daily_session_limit != null,
+    daily_session_limit: defaultDailySessionLimit,
+    hasDailyLimit: defaultDailySessionLimit != null,
     monthly_session_limit: 5000,
     hasMonthlySessionLimit: false,
-    daily_voice_limit: props.card.default_daily_voice_limit ?? 3600,
-    hasDailyVoiceLimit: props.card.default_daily_voice_limit != null,
+    daily_voice_limit: defaultDailyVoiceLimit ?? 3600,
+    hasDailyVoiceLimit: defaultDailyVoiceLimit != null,
     monthly_voice_limit: 36000,
     hasMonthlyVoiceLimit: false
   }
@@ -923,12 +755,12 @@ function closeDialog() {
   editingToken.value = null
   formData.value = {
     name: '',
-    daily_session_limit: props.card.default_daily_session_limit ?? 500,
-    hasDailyLimit: props.card.default_daily_session_limit != null,
+    daily_session_limit: defaultDailySessionLimit,
+    hasDailyLimit: defaultDailySessionLimit != null,
     monthly_session_limit: 5000,
     hasMonthlySessionLimit: false,
-    daily_voice_limit: props.card.default_daily_voice_limit ?? 3600,
-    hasDailyVoiceLimit: props.card.default_daily_voice_limit != null,
+    daily_voice_limit: defaultDailyVoiceLimit ?? 3600,
+    hasDailyVoiceLimit: defaultDailyVoiceLimit != null,
     monthly_voice_limit: 36000,
     hasMonthlyVoiceLimit: false
   }
@@ -1032,36 +864,6 @@ function refreshToken(token: AccessToken) {
   refreshingToken.value = token
   showRefreshDialog.value = true
 }
-
-// Sync default limits form when card prop changes
-watch(() => props.card.default_daily_session_limit, (newVal) => {
-  if (newVal == null) {
-    hasDailyLimit.value = false
-    dailyLimit.value = 500
-  } else {
-    hasDailyLimit.value = true
-    dailyLimit.value = newVal
-  }
-})
-
-watch(() => props.card.default_daily_voice_limit, (newVal) => {
-  if (newVal == null) {
-    hasDailyVoiceLimit.value = false
-    dailyVoiceLimit.value = 3600
-  } else {
-    hasDailyVoiceLimit.value = true
-    dailyVoiceLimit.value = newVal
-  }
-})
-
-// Set sensible defaults when toggles are enabled
-watch(hasDailyLimit, (enabled) => {
-  if (enabled && !dailyLimit.value) dailyLimit.value = 500
-})
-
-watch(hasDailyVoiceLimit, (enabled) => {
-  if (enabled && !dailyVoiceLimit.value) dailyVoiceLimit.value = 3600
-})
 
 async function confirmRefreshToken() {
   if (!refreshingToken.value) return

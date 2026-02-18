@@ -37,8 +37,6 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    default_daily_session_limit INTEGER,
-    default_daily_voice_limit INTEGER,
     metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
@@ -75,8 +73,6 @@ BEGIN
         c.is_grouped,
         c.group_display,
         c.billing_type,
-        c.default_daily_session_limit,
-        c.default_daily_voice_limit,
         c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
@@ -120,7 +116,6 @@ CREATE OR REPLACE FUNCTION create_card(
     p_is_grouped BOOLEAN DEFAULT FALSE,  -- Whether content is organized into categories
     p_group_display TEXT DEFAULT 'expanded',  -- How grouped items display: expanded or collapsed
     p_billing_type TEXT DEFAULT 'digital',  -- Billing model: digital per-session subscription
-    p_default_daily_session_limit INTEGER DEFAULT 500,  -- Default daily session limit for new QR codes (default: 500)
     p_metadata JSONB DEFAULT '{}'  -- Extensible metadata for future features
 ) RETURNS UUID LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -154,7 +149,6 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        default_daily_session_limit,
         metadata
     ) VALUES (
         auth.uid(),
@@ -177,25 +171,24 @@ BEGIN
         COALESCE(p_is_grouped, FALSE),
         COALESCE(p_group_display, 'expanded'),
         'digital',
-        COALESCE(p_default_daily_session_limit, 500),
         COALESCE(p_metadata, '{}'::JSONB)
     )
     RETURNING id INTO v_card_id;
     
     -- Automatically create a default enabled access token (QR code) for all projects
     -- Every project must have at least one QR code
+    -- Default limits (daily_session_limit, daily_voice_limit) are configured via env vars on the frontend
+    -- and passed explicitly when creating QR codes via the create_access_token function
     INSERT INTO card_access_tokens (
         card_id,
         name,
         access_token,
-        is_enabled,
-        daily_session_limit
+        is_enabled
     ) VALUES (
         v_card_id,
         'Default',
         substring(replace(gen_random_uuid()::text, '-', ''), 1, 12),
-        true,  -- Enabled by default
-        COALESCE(p_default_daily_session_limit, 500)
+        true  -- Enabled by default
     );
     
     -- Log operation
@@ -208,7 +201,7 @@ BEGIN
     RETURN v_card_id;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_card(TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, JSONB, TEXT, BOOLEAN, TEXT, TEXT, JSONB) TO authenticated;
 
 -- Get a card by ID (more secure, relies on RLS policy)
 -- Session stats are computed from card_access_tokens table
@@ -236,8 +229,6 @@ RETURNS TABLE (
     is_grouped BOOLEAN,
     group_display TEXT,
     billing_type TEXT,
-    default_daily_session_limit INTEGER,
-    default_daily_voice_limit INTEGER,
     metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
@@ -273,8 +264,6 @@ BEGIN
         c.is_grouped,
         c.group_display,
         c.billing_type,
-        c.default_daily_session_limit,
-        c.default_daily_voice_limit,
         c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
@@ -313,8 +302,6 @@ CREATE OR REPLACE FUNCTION update_card(
     p_is_grouped BOOLEAN DEFAULT NULL,
     p_group_display TEXT DEFAULT NULL,
     p_billing_type TEXT DEFAULT NULL,
-    p_default_daily_session_limit INTEGER DEFAULT NULL,
-    p_default_daily_voice_limit INTEGER DEFAULT -1,  -- -1 = no change; NULL = set to unlimited
     p_metadata JSONB DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -342,8 +329,6 @@ BEGIN
         is_grouped,
         group_display,
         billing_type,
-        default_daily_session_limit,
-        default_daily_voice_limit,
         metadata,
         user_id,
         updated_at
@@ -438,18 +423,6 @@ BEGIN
     
     -- NOTE: billing_type cannot be changed after card creation
     -- Silently ignore any attempt to change billing_type
-    
-    -- Track default_daily_session_limit changes (only for digital cards)
-    IF p_default_daily_session_limit IS NOT NULL AND (v_old_record.default_daily_session_limit IS NULL OR p_default_daily_session_limit != v_old_record.default_daily_session_limit) THEN
-        v_changes_made := v_changes_made || jsonb_build_object('default_daily_session_limit', jsonb_build_object('from', v_old_record.default_daily_session_limit, 'to', p_default_daily_session_limit));
-        has_changes := TRUE;
-    END IF;
-
-    -- Track default_daily_voice_limit changes (-1 means no change; NULL means set to unlimited)
-    IF p_default_daily_voice_limit != -1 AND p_default_daily_voice_limit IS DISTINCT FROM v_old_record.default_daily_voice_limit THEN
-        v_changes_made := v_changes_made || jsonb_build_object('default_daily_voice_limit', jsonb_build_object('from', v_old_record.default_daily_voice_limit, 'to', p_default_daily_voice_limit));
-        has_changes := TRUE;
-    END IF;
 
     IF p_metadata IS NOT NULL AND p_metadata IS DISTINCT FROM v_old_record.metadata THEN
         v_changes_made := v_changes_made || jsonb_build_object('metadata', 'updated');
@@ -482,8 +455,6 @@ BEGIN
         is_grouped = COALESCE(p_is_grouped, is_grouped),
         group_display = COALESCE(p_group_display, group_display),
         -- billing_type is immutable - not updated here
-        default_daily_session_limit = COALESCE(p_default_daily_session_limit, default_daily_session_limit),
-        default_daily_voice_limit = CASE WHEN p_default_daily_voice_limit = -1 THEN default_daily_voice_limit ELSE p_default_daily_voice_limit END,
         metadata = COALESCE(p_metadata, metadata),
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
@@ -494,7 +465,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, INTEGER, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, JSONB) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
@@ -567,7 +538,6 @@ CREATE OR REPLACE FUNCTION get_card_with_content(
   card_is_grouped BOOLEAN,
   card_group_display TEXT,
   card_billing_type TEXT,
-  card_default_daily_session_limit INT,
   card_qr_code_position TEXT,
   card_metadata JSONB,
   -- Content items array
@@ -614,7 +584,6 @@ BEGIN
     c.is_grouped,
     c.group_display,
     c.billing_type,
-    c.default_daily_session_limit,
     c.qr_code_position::TEXT,  -- Cast enum to TEXT
     c.metadata,
     -- Aggregate content items into JSONB array

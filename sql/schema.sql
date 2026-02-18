@@ -59,9 +59,7 @@ CREATE TABLE cards (
     -- Note: conversation_ai_enabled (above) determines session billing rate (AI vs non-AI)
     -- Billing: Monthly subscription budget per user (tracked in Redis), not per-project limits
     billing_type TEXT DEFAULT 'digital' CHECK (billing_type = 'digital'), -- digital = per-session subscription
-    -- Default limits for new QR codes created under this project
-    default_daily_session_limit INTEGER DEFAULT 500, -- Default daily session limit for new QR codes (NULL = unlimited)
-    default_daily_voice_limit INTEGER DEFAULT NULL,  -- Default daily voice call limit in seconds for new QR codes (NULL = unlimited)
+    -- Note: Default limits for new QR codes are configured via env vars (VITE_DIGITAL_ACCESS_DEFAULT_DAILY_LIMIT, VITE_DIGITAL_ACCESS_DEFAULT_DAILY_VOICE_LIMIT)
     -- Note: Session tracking is now per-QR-code in card_access_tokens table
     -- Translation system columns
     -- translations JSONB structure for cards:

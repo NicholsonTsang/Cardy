@@ -20,8 +20,6 @@ export interface ContentTemplate {
     is_grouped: boolean;
     group_display: 'expanded' | 'collapsed';
     billing_type: 'digital';
-    // Default daily session limit for new QR codes
-    default_daily_session_limit: number | null;
     original_language: string;
     qr_code_position: string;
     item_count: number;
@@ -528,7 +526,6 @@ export const useTemplateLibraryStore = defineStore('templateLibrary', () => {
                 p_is_grouped: cardData.is_grouped || false,
                 p_group_display: cardData.group_display || 'expanded',
                 p_billing_type: cardData.billing_type || 'digital',
-                p_default_daily_session_limit: cardData.default_daily_session_limit || 500,
                 p_original_language: cardData.original_language || 'en',
                 p_translations: cardTranslations,
                 p_content_hash: cardData.content_hash || null
