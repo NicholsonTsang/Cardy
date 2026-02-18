@@ -29,6 +29,7 @@
                     :class="{ 'hidden lg:block': selectedCardId && isMobileView }"
                 >
                     <CardListPanel
+                        ref="cardListPanelRef"
                         :cards="cards"
                         :loading="isLoading"
                         @cards-imported="handleBulkImport"
@@ -75,6 +76,9 @@
                         @update-card="handleCardUpdate"
                         @delete-card="triggerDeleteConfirmation"
                         @card-imported="handleCardImported"
+                        @create-card="handleCreateCardClick"
+                        @open-import="cardListPanelRef?.openImportDialog()"
+                        @open-template="cardListPanelRef?.openTemplateDialog()"
                     />
                 </div>
             </div>
@@ -130,6 +134,7 @@ const selectedCardId = ref(null);
 const showAddCardDialog = ref(false);
 const cardCreateEditRef = ref(null);
 const activeTab = ref(0);
+const cardListPanelRef = ref(null);
 
 // Filters and pagination
 const selectedYear = ref(null);
