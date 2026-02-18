@@ -41,3 +41,4 @@ mcp-server/.env
 supabase/config.toml
 supabase/.branches/
 supabase/.temp/
+.claude/worktrees/
