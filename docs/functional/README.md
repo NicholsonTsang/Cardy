@@ -48,13 +48,13 @@ A project (also called an "experience") is a self-contained content experience t
 
 ### Subscription Tiers at a Glance
 
-| Feature | Free | Starter ($40/mo) | Premium ($280/mo) |
-|---------|------|------------------|-------------------|
-| Projects | 3 | 5 | 35 |
-| Monthly sessions | 50 | ~800-1,600 | ~7,000-14,000 |
-| AI Assistants | Yes | Yes | Yes |
-| Translations | No | 2 languages | Unlimited |
-| Branding | FunTell | FunTell | White label |
+| Feature | Free | Starter ($40/mo) | Premium ($280/mo) | Enterprise ($1,000/mo) |
+|---------|------|------------------|-------------------|------------------------|
+| Projects | 3 | 5 | 35 | 100 |
+| Monthly sessions | 50 | ~800-1,600 | ~7,000-14,000 | ~50,000-100,000 |
+| AI Assistants | Yes | Yes | Yes | Yes |
+| Translations | No | 2 languages | Unlimited | Unlimited |
+| Branding | FunTell | FunTell | White label | White label |
 
 ## Need Help?
 
