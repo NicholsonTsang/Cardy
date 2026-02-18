@@ -466,84 +466,180 @@
                         <p class="text-xs text-amber-700 m-0">{{ $t('dashboard.theme_upgrade_hint') }}</p>
                     </div>
 
-                    <!-- Theme Color Pickers -->
-                    <div :class="{ 'opacity-40 pointer-events-none select-none': !canCustomizeTheme }">
-                        <p class="text-xs text-slate-400 mb-4">{{ $t('dashboard.theme_default_hint') }}</p>
+                    <!-- Two-column layout: Controls + Phone Simulator -->
+                    <div class="flex flex-col lg:flex-row gap-6">
 
-                        <!-- Color Pickers Grid -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                            <!-- Primary Color -->
-                            <div>
-                                <label class="text-sm font-medium text-slate-700 mb-1 block">{{ $t('dashboard.theme_primary_color') }}</label>
-                                <div class="flex items-center gap-2">
-                                    <input
-                                        type="color"
-                                        :value="formData.metadata?.theme?.primaryColor || DEFAULT_THEME.primaryColor"
-                                        @input="updateThemeColor('primaryColor', $event.target.value)"
-                                        class="w-10 h-10 rounded-lg border border-slate-300 cursor-pointer p-0.5"
-                                    />
-                                    <span class="text-xs text-slate-500 font-mono">{{ formData.metadata?.theme?.primaryColor || DEFAULT_THEME.primaryColor }}</span>
+                        <!-- Left: Presets + Custom Pickers -->
+                        <div class="flex-1 min-w-0" :class="{ 'opacity-40 pointer-events-none select-none': !canCustomizeTheme }">
+
+                            <!-- Preset Themes -->
+                            <div class="mb-5">
+                                <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3 block">{{ $t('dashboard.theme_presets') }}</label>
+                                <div class="grid grid-cols-4 sm:grid-cols-5 gap-2">
+                                    <button
+                                        v-for="preset in THEME_PRESETS"
+                                        :key="preset.key"
+                                        type="button"
+                                        :title="$t(`dashboard.theme_preset_${preset.key}`)"
+                                        :class="[
+                                            'theme-preset-swatch group relative rounded-xl overflow-hidden cursor-pointer border-2 transition-all',
+                                            isActivePreset(preset)
+                                                ? 'border-indigo-500 shadow-md scale-105'
+                                                : 'border-transparent hover:border-slate-300 hover:scale-102'
+                                        ]"
+                                        @click="applyPreset(preset)"
+                                    >
+                                        <!-- Gradient swatch -->
+                                        <div
+                                            class="w-full aspect-square"
+                                            :style="{
+                                                background: `linear-gradient(135deg, ${preset.theme.backgroundColor} 0%, ${preset.theme.gradientEndColor} 100%)`
+                                            }"
+                                        >
+                                            <!-- Primary color dot -->
+                                            <div class="flex items-end justify-end p-1 h-full">
+                                                <div
+                                                    class="w-3 h-3 rounded-full border border-white/40"
+                                                    :style="{ background: preset.theme.primaryColor }"
+                                                ></div>
+                                            </div>
+                                        </div>
+                                        <!-- Active check -->
+                                        <div v-if="isActivePreset(preset)" class="absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
+                                            <i class="pi pi-check text-white" style="font-size: 0.5rem"></i>
+                                        </div>
+                                    </button>
                                 </div>
-                                <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.theme_primary_color_hint') }}</p>
+                                <!-- Preset label -->
+                                <p class="text-xs text-slate-400 mt-2">
+                                    <span v-if="activePresetKey">{{ $t(`dashboard.theme_preset_${activePresetKey}`) }}</span>
+                                    <span v-else>{{ $t('dashboard.theme_preset_custom') }}</span>
+                                </p>
                             </div>
 
-                            <!-- Background Color -->
-                            <div>
-                                <label class="text-sm font-medium text-slate-700 mb-1 block">{{ $t('dashboard.theme_background_color') }}</label>
-                                <div class="flex items-center gap-2">
-                                    <input
-                                        type="color"
-                                        :value="formData.metadata?.theme?.backgroundColor || DEFAULT_THEME.backgroundColor"
-                                        @input="updateThemeColor('backgroundColor', $event.target.value)"
-                                        class="w-10 h-10 rounded-lg border border-slate-300 cursor-pointer p-0.5"
-                                    />
-                                    <span class="text-xs text-slate-500 font-mono">{{ formData.metadata?.theme?.backgroundColor || DEFAULT_THEME.backgroundColor }}</span>
+                            <!-- Custom Color Pickers -->
+                            <div class="mb-4">
+                                <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 mb-3 block">{{ $t('dashboard.theme_custom_colors') }}</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <!-- Primary Color -->
+                                    <div class="flex items-center gap-2">
+                                        <input
+                                            type="color"
+                                            :value="formData.metadata?.theme?.primaryColor || DEFAULT_THEME.primaryColor"
+                                            @input="updateThemeColor('primaryColor', $event.target.value)"
+                                            class="w-9 h-9 rounded-lg border border-slate-300 cursor-pointer p-0.5 flex-shrink-0"
+                                        />
+                                        <div class="min-w-0">
+                                            <p class="text-xs font-medium text-slate-700 m-0 truncate">{{ $t('dashboard.theme_primary_color') }}</p>
+                                            <p class="text-xs text-slate-400 font-mono m-0">{{ formData.metadata?.theme?.primaryColor || DEFAULT_THEME.primaryColor }}</p>
+                                        </div>
+                                    </div>
+                                    <!-- Background Color -->
+                                    <div class="flex items-center gap-2">
+                                        <input
+                                            type="color"
+                                            :value="formData.metadata?.theme?.backgroundColor || DEFAULT_THEME.backgroundColor"
+                                            @input="updateThemeColor('backgroundColor', $event.target.value)"
+                                            class="w-9 h-9 rounded-lg border border-slate-300 cursor-pointer p-0.5 flex-shrink-0"
+                                        />
+                                        <div class="min-w-0">
+                                            <p class="text-xs font-medium text-slate-700 m-0 truncate">{{ $t('dashboard.theme_background_color') }}</p>
+                                            <p class="text-xs text-slate-400 font-mono m-0">{{ formData.metadata?.theme?.backgroundColor || DEFAULT_THEME.backgroundColor }}</p>
+                                        </div>
+                                    </div>
+                                    <!-- Gradient End Color -->
+                                    <div class="flex items-center gap-2">
+                                        <input
+                                            type="color"
+                                            :value="formData.metadata?.theme?.gradientEndColor || DEFAULT_THEME.gradientEndColor"
+                                            @input="updateThemeColor('gradientEndColor', $event.target.value)"
+                                            class="w-9 h-9 rounded-lg border border-slate-300 cursor-pointer p-0.5 flex-shrink-0"
+                                        />
+                                        <div class="min-w-0">
+                                            <p class="text-xs font-medium text-slate-700 m-0 truncate">{{ $t('dashboard.theme_gradient_end_color') }}</p>
+                                            <p class="text-xs text-slate-400 font-mono m-0">{{ formData.metadata?.theme?.gradientEndColor || DEFAULT_THEME.gradientEndColor }}</p>
+                                        </div>
+                                    </div>
+                                    <!-- Text Color -->
+                                    <div class="flex items-center gap-2">
+                                        <input
+                                            type="color"
+                                            :value="formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor"
+                                            @input="updateThemeColor('textColor', $event.target.value)"
+                                            class="w-9 h-9 rounded-lg border border-slate-300 cursor-pointer p-0.5 flex-shrink-0"
+                                        />
+                                        <div class="min-w-0">
+                                            <p class="text-xs font-medium text-slate-700 m-0 truncate">{{ $t('dashboard.theme_text_color') }}</p>
+                                            <p class="text-xs text-slate-400 font-mono m-0">{{ formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }}</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.theme_background_color_hint') }}</p>
                             </div>
 
-                            <!-- Gradient End Color -->
-                            <div>
-                                <label class="text-sm font-medium text-slate-700 mb-1 block">{{ $t('dashboard.theme_gradient_end_color') }}</label>
-                                <div class="flex items-center gap-2">
-                                    <input
-                                        type="color"
-                                        :value="formData.metadata?.theme?.gradientEndColor || DEFAULT_THEME.gradientEndColor"
-                                        @input="updateThemeColor('gradientEndColor', $event.target.value)"
-                                        class="w-10 h-10 rounded-lg border border-slate-300 cursor-pointer p-0.5"
-                                    />
-                                    <span class="text-xs text-slate-500 font-mono">{{ formData.metadata?.theme?.gradientEndColor || DEFAULT_THEME.gradientEndColor }}</span>
-                                </div>
-                                <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.theme_gradient_end_color_hint') }}</p>
-                            </div>
-
-                            <!-- Text Color -->
-                            <div>
-                                <label class="text-sm font-medium text-slate-700 mb-1 block">{{ $t('dashboard.theme_text_color') }}</label>
-                                <div class="flex items-center gap-2">
-                                    <input
-                                        type="color"
-                                        :value="formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor"
-                                        @input="updateThemeColor('textColor', $event.target.value)"
-                                        class="w-10 h-10 rounded-lg border border-slate-300 cursor-pointer p-0.5"
-                                    />
-                                    <span class="text-xs text-slate-500 font-mono">{{ formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }}</span>
-                                </div>
-                                <p class="text-xs text-slate-400 mt-1">{{ $t('dashboard.theme_text_color_hint') }}</p>
-                            </div>
+                            <!-- Reset Button -->
+                            <Button
+                                :label="$t('dashboard.theme_reset_default')"
+                                icon="pi pi-refresh"
+                                severity="secondary"
+                                outlined
+                                size="small"
+                                @click="resetThemeColors"
+                            />
                         </div>
 
-                        <!-- Live Preview -->
-                        <div class="mb-4">
-                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2 block">{{ $t('dashboard.theme_preview') }}</label>
+                        <!-- Right: Phone Simulator Preview -->
+                        <div class="flex flex-col items-center gap-2 lg:flex-shrink-0">
+                            <label class="text-xs font-semibold uppercase tracking-wider text-slate-500 self-start lg:self-center">{{ $t('dashboard.theme_preview') }}</label>
 
-                            <!-- Phone Simulator Preview (when VITE_THEME_PREVIEW_URL is configured) -->
-                            <div v-if="themePreviewUrl" class="flex flex-col items-center theme-preview-section">
+                            <!-- CSS Phone Simulator (always visible, instant updates) -->
+                            <div class="theme-phone-simulator" :style="themeSimulatorPhoneStyle">
+                                <!-- Phone screen -->
+                                <div class="theme-phone-screen" :style="themeSimulatorBgStyle">
+                                    <!-- Status bar -->
+                                    <div class="theme-status-bar">
+                                        <span class="theme-status-time">9:41</span>
+                                        <div class="flex items-center gap-1">
+                                            <i class="pi pi-wifi" style="font-size: 0.55rem; opacity: 0.8"></i>
+                                            <i class="pi pi-signal-bars" style="font-size: 0.55rem; opacity: 0.8"></i>
+                                            <i class="pi pi-battery" style="font-size: 0.55rem; opacity: 0.8"></i>
+                                        </div>
+                                    </div>
+                                    <!-- Hero / Header area -->
+                                    <div class="theme-hero-area" :style="themeSimulatorHeroStyle">
+                                        <div class="theme-hero-icon" :style="themeSimulatorPrimaryStyle">
+                                            <i class="pi pi-sparkles" style="font-size: 0.6rem;"></i>
+                                        </div>
+                                        <div class="theme-hero-text">
+                                            <div class="theme-hero-title" :style="themeSimulatorTextStyle"></div>
+                                            <div class="theme-hero-subtitle" :style="themeSimulatorSubtextStyle"></div>
+                                        </div>
+                                    </div>
+                                    <!-- Content list items -->
+                                    <div class="theme-content-area">
+                                        <div v-for="n in 3" :key="n" class="theme-content-item" :style="themeSimulatorCardStyle">
+                                            <div class="theme-item-dot" :style="themeSimulatorPrimaryStyle"></div>
+                                            <div class="theme-item-lines">
+                                                <div class="theme-item-line-title" :style="[themeSimulatorTextStyle, { width: n === 2 ? '60%' : '80%' }]"></div>
+                                                <div class="theme-item-line-sub" :style="themeSimulatorSubtextStyle"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- Bottom action button -->
+                                    <div class="theme-bottom-bar">
+                                        <div class="theme-action-btn" :style="themeSimulatorPrimaryStyle">
+                                            <i class="pi pi-comments" style="font-size: 0.55rem"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Iframe preview (if configured, shown below simulator) -->
+                            <div v-if="themePreviewUrl" class="theme-preview-section w-full flex flex-col items-center mt-2">
                                 <PhoneIframePreview
                                     ref="themePreviewIframe"
                                     :src="themePreviewUrl"
                                     :iframeKey="themePreviewIframeKey"
-                                    :width="220"
+                                    :width="200"
                                     title="Theme Preview"
                                     :loadingText="$t('dashboard.theme_preview_loading')"
                                     :errorText="$t('dashboard.theme_preview_error')"
@@ -551,34 +647,10 @@
                                     :retryText="$t('common.try_again')"
                                     @load="onThemePreviewLoad"
                                 />
-                                <p class="text-xs text-slate-400 mt-2 text-center">{{ $t('dashboard.theme_preview_hint') }}</p>
-                            </div>
-
-                            <!-- Fallback: Static gradient preview strip (when no preview URL) -->
-                            <div v-else>
-                                <div class="rounded-xl overflow-hidden h-16 flex items-center px-4 gap-3"
-                                     :style="themePreviewStyle">
-                                    <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                                         :style="{ background: formData.metadata?.theme?.primaryColor || DEFAULT_THEME.primaryColor }">
-                                        <i class="pi pi-star text-xs" :style="{ color: formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }"></i>
-                                    </div>
-                                    <div>
-                                        <p class="text-sm font-semibold m-0" :style="{ color: formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }">Sample Title</p>
-                                        <p class="text-xs m-0 opacity-70" :style="{ color: formData.metadata?.theme?.textColor || DEFAULT_THEME.textColor }">Preview text</p>
-                                    </div>
-                                </div>
+                                <p class="text-xs text-slate-400 mt-1 text-center">{{ $t('dashboard.theme_preview_hint') }}</p>
                             </div>
                         </div>
 
-                        <!-- Reset Button -->
-                        <Button
-                            :label="$t('dashboard.theme_reset_default')"
-                            icon="pi pi-refresh"
-                            severity="secondary"
-                            outlined
-                            size="small"
-                            @click="resetThemeColors"
-                        />
                     </div>
                 </div>
             </Transition>
@@ -606,6 +678,50 @@ import { useToast } from 'primevue/usetoast';
 import { useSubscriptionStore } from '@/stores/subscription';
 import { DEFAULT_THEME, isValidHexColor } from '@/utils/themeConfig';
 import PhoneIframePreview from '@/components/common/PhoneIframePreview.vue';
+
+// Preset themes
+const THEME_PRESETS = [
+    {
+        key: 'midnight',
+        theme: { primaryColor: '#6366f1', backgroundColor: '#0f172a', gradientEndColor: '#4338ca', textColor: '#ffffff' }
+    },
+    {
+        key: 'ocean',
+        theme: { primaryColor: '#38bdf8', backgroundColor: '#0c1a2e', gradientEndColor: '#0369a1', textColor: '#e0f2fe' }
+    },
+    {
+        key: 'forest',
+        theme: { primaryColor: '#4ade80', backgroundColor: '#052e16', gradientEndColor: '#166534', textColor: '#f0fdf4' }
+    },
+    {
+        key: 'sunset',
+        theme: { primaryColor: '#fb923c', backgroundColor: '#1c0a00', gradientEndColor: '#9a3412', textColor: '#fff7ed' }
+    },
+    {
+        key: 'rose',
+        theme: { primaryColor: '#f43f5e', backgroundColor: '#1a0010', gradientEndColor: '#881337', textColor: '#fff1f2' }
+    },
+    {
+        key: 'violet',
+        theme: { primaryColor: '#c084fc', backgroundColor: '#1a0a2e', gradientEndColor: '#7e22ce', textColor: '#faf5ff' }
+    },
+    {
+        key: 'gold',
+        theme: { primaryColor: '#fbbf24', backgroundColor: '#1a1000', gradientEndColor: '#92400e', textColor: '#fffbeb' }
+    },
+    {
+        key: 'slate',
+        theme: { primaryColor: '#94a3b8', backgroundColor: '#0f172a', gradientEndColor: '#334155', textColor: '#f8fafc' }
+    },
+    {
+        key: 'teal',
+        theme: { primaryColor: '#2dd4bf', backgroundColor: '#042f2e', gradientEndColor: '#0f766e', textColor: '#f0fdfa' }
+    },
+    {
+        key: 'crimson',
+        theme: { primaryColor: '#ef4444', backgroundColor: '#0f0a0a', gradientEndColor: '#7f1d1d', textColor: '#ffffff' }
+    },
+];
 
 const props = defineProps({
     cardProp: {
@@ -964,6 +1080,68 @@ const resetThemeColors = () => {
     postThemeToPreview();
 };
 
+// Preset theme helpers
+const applyPreset = (preset) => {
+    if (!formData.metadata) formData.metadata = {};
+    formData.metadata.theme = { ...preset.theme };
+};
+
+const isActivePreset = (preset) => {
+    const t = formData.metadata?.theme || {};
+    return (
+        t.primaryColor === preset.theme.primaryColor &&
+        t.backgroundColor === preset.theme.backgroundColor &&
+        t.gradientEndColor === preset.theme.gradientEndColor &&
+        t.textColor === preset.theme.textColor
+    );
+};
+
+const activePresetKey = computed(() => {
+    const found = THEME_PRESETS.find(p => isActivePreset(p));
+    return found ? found.key : null;
+});
+
+// CSS phone simulator computed styles
+const themeSimulatorPhoneStyle = computed(() => ({
+    '--sim-width': '180px',
+}));
+
+const themeSimulatorBgStyle = computed(() => {
+    const theme = formData.metadata?.theme || {};
+    const bg = theme.backgroundColor || DEFAULT_THEME.backgroundColor;
+    const end = theme.gradientEndColor || DEFAULT_THEME.gradientEndColor;
+    return { background: `linear-gradient(160deg, ${bg} 0%, ${end} 100%)` };
+});
+
+const themeSimulatorHeroStyle = computed(() => {
+    const theme = formData.metadata?.theme || {};
+    const bg = theme.backgroundColor || DEFAULT_THEME.backgroundColor;
+    const end = theme.gradientEndColor || DEFAULT_THEME.gradientEndColor;
+    return { background: `linear-gradient(135deg, ${bg} 0%, ${end} 100%)` };
+});
+
+const themeSimulatorPrimaryStyle = computed(() => {
+    const theme = formData.metadata?.theme || {};
+    return { background: theme.primaryColor || DEFAULT_THEME.primaryColor };
+});
+
+const themeSimulatorCardStyle = computed(() => {
+    const theme = formData.metadata?.theme || {};
+    const text = theme.textColor || DEFAULT_THEME.textColor;
+    return { background: `${text}0d`, borderColor: `${text}1a` };
+});
+
+const themeSimulatorTextStyle = computed(() => {
+    const theme = formData.metadata?.theme || {};
+    return { background: theme.textColor || DEFAULT_THEME.textColor };
+});
+
+const themeSimulatorSubtextStyle = computed(() => {
+    const theme = formData.metadata?.theme || {};
+    const text = theme.textColor || DEFAULT_THEME.textColor;
+    return { background: `${text}66` };
+});
+
 const themePreviewStyle = computed(() => {
     const theme = formData.metadata?.theme || {};
     const bg = theme.backgroundColor || DEFAULT_THEME.backgroundColor;
@@ -1274,5 +1452,166 @@ defineExpose({
         font-size: 0.6875rem;
     }
 
+}
+
+/* ===== Theme Preset Swatches ===== */
+.theme-preset-swatch {
+    padding: 0;
+    background: none;
+    outline: none;
+}
+.theme-preset-swatch:focus-visible {
+    outline: 2px solid #6366f1;
+    outline-offset: 2px;
+}
+.hover\:scale-102:hover {
+    transform: scale(1.02);
+}
+
+/* ===== CSS Phone Simulator ===== */
+.theme-phone-simulator {
+    width: var(--sim-width, 180px);
+    aspect-ratio: 9 / 19.5;
+    background: linear-gradient(145deg, #1f1f1f, #2a2a2a);
+    border-radius: calc(var(--sim-width, 180px) * 0.06);
+    padding: calc(var(--sim-width, 180px) * 0.025);
+    box-shadow:
+        0 25px 50px -12px rgba(0,0,0,0.35),
+        0 0 0 1px rgba(255,255,255,0.1) inset,
+        0 -1px 0 rgba(0,0,0,0.3) inset;
+    flex-shrink: 0;
+}
+
+.theme-phone-screen {
+    width: 100%;
+    height: 100%;
+    border-radius: calc(var(--sim-width, 180px) * 0.04);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: background 0.3s ease;
+}
+
+/* Status bar */
+.theme-status-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 3px 8px 2px;
+    color: rgba(255,255,255,0.75);
+    font-size: 0.45rem;
+    flex-shrink: 0;
+    background: rgba(0,0,0,0.15);
+}
+.theme-status-time {
+    font-weight: 600;
+    font-size: 0.5rem;
+    letter-spacing: 0.02em;
+}
+
+/* Hero area */
+.theme-hero-area {
+    padding: 8px 8px 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+    transition: background 0.3s ease;
+}
+.theme-hero-icon {
+    width: 22px;
+    height: 22px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    flex-shrink: 0;
+    transition: background 0.3s ease;
+}
+.theme-hero-text {
+    flex: 1;
+    min-width: 0;
+}
+.theme-hero-title {
+    height: 7px;
+    border-radius: 4px;
+    width: 70%;
+    margin-bottom: 4px;
+    transition: background 0.3s ease;
+    opacity: 0.9;
+}
+.theme-hero-subtitle {
+    height: 5px;
+    border-radius: 3px;
+    width: 45%;
+    opacity: 0.5;
+    transition: background 0.3s ease;
+}
+
+/* Content area */
+.theme-content-area {
+    flex: 1;
+    padding: 4px 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow: hidden;
+}
+.theme-content-item {
+    border-radius: 6px;
+    padding: 5px 6px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border: 1px solid transparent;
+    transition: background 0.3s ease, border-color 0.3s ease;
+}
+.theme-item-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background 0.3s ease;
+}
+.theme-item-lines {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.theme-item-line-title {
+    height: 5px;
+    border-radius: 3px;
+    width: 80%;
+    transition: background 0.3s ease;
+    opacity: 0.85;
+}
+.theme-item-line-sub {
+    height: 4px;
+    border-radius: 2px;
+    width: 55%;
+    opacity: 0.45;
+    transition: background 0.3s ease;
+}
+
+/* Bottom bar */
+.theme-bottom-bar {
+    padding: 4px 6px 6px;
+    display: flex;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.theme-action-btn {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    transition: background 0.3s ease;
 }
 </style>
