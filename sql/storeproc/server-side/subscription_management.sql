@@ -161,6 +161,35 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- =================================================================
+-- Get total budget consumed for a user in a given month
+-- Used to rehydrate the Redis BUDGET_KEY on cache miss without
+-- resetting it to the full monthly amount (Bug 1 fix).
+-- p_month format: 'YYYY-MM'
+-- Returns the sum of session_cost_usd for non-owner, non-free-tier sessions.
+-- =================================================================
+DROP FUNCTION IF EXISTS get_monthly_budget_consumed_server CASCADE;
+CREATE OR REPLACE FUNCTION get_monthly_budget_consumed_server(
+    p_user_id   UUID,
+    p_month     TEXT   -- 'YYYY-MM'
+)
+RETURNS NUMERIC AS $$
+DECLARE
+    v_consumed NUMERIC;
+BEGIN
+    SELECT COALESCE(SUM(session_cost_usd), 0)
+    INTO v_consumed
+    FROM card_access_log cal
+    JOIN cards c ON c.id = cal.card_id
+    WHERE c.user_id = p_user_id
+      AND to_char(cal.accessed_at AT TIME ZONE 'UTC', 'YYYY-MM') = p_month
+      AND cal.is_owner_access = FALSE
+      AND cal.subscription_tier != 'free';
+
+    RETURN v_consumed;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- =================================================================
 -- GRANTS - Only service_role can execute these
 -- =================================================================
 REVOKE ALL ON FUNCTION get_subscription_by_user_server FROM PUBLIC, authenticated, anon;
@@ -183,3 +212,6 @@ GRANT EXECUTE ON FUNCTION count_user_projects_server TO service_role;
 
 REVOKE ALL ON FUNCTION check_premium_subscription_server FROM PUBLIC, authenticated, anon;
 GRANT EXECUTE ON FUNCTION check_premium_subscription_server TO service_role;
+
+REVOKE ALL ON FUNCTION get_monthly_budget_consumed_server FROM PUBLIC, authenticated, anon;
+GRANT EXECUTE ON FUNCTION get_monthly_budget_consumed_server TO service_role;

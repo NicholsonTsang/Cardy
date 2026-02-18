@@ -106,20 +106,14 @@ export const SubscriptionConfig = {
   },
 
   // Overage/Top-up configuration
-  // When budget is exhausted, auto top-up with credits
+  // When budget is exhausted, auto top-up with credits.
+  // NOTE: Sessions-per-batch is tier-dependent — use getTierDetails(tier).overage
+  // or getOverageSessionsPerBatch(tier, isAiEnabled) for the correct per-tier value.
+  // The top-up always adds `creditsPerBatch` USD to the Redis budget; actual session
+  // cost is then deducted at the user's own tier rate via getSessionCost().
   overage: {
     // Credits per top-up batch (= USD value)
     creditsPerBatch: parseInt(process.env.OVERAGE_CREDITS_PER_BATCH || '5'),     // $5 per top-up
-    
-    // Sessions granted per top-up (based on session type)
-    // $5 / $0.05 = 100 AI-enabled sessions
-    // $5 / $0.025 = 200 AI-disabled sessions
-    get aiEnabledSessionsPerBatch() {
-      return Math.floor(this.creditsPerBatch / SubscriptionConfig.premium.aiEnabledSessionCostUsd); // 100
-    },
-    get aiDisabledSessionsPerBatch() {
-      return Math.floor(this.creditsPerBatch / SubscriptionConfig.premium.aiDisabledSessionCostUsd); // 200
-    },
   },
   
   // Session tracking configuration
@@ -166,6 +160,17 @@ export function getSessionCost(isAiEnabled: boolean, tier: 'free' | 'starter' | 
   return isAiEnabled
     ? SubscriptionConfig.premium.aiEnabledSessionCostUsd
     : SubscriptionConfig.premium.aiDisabledSessionCostUsd;
+}
+
+/**
+ * Get sessions granted per $5 top-up batch for a given tier and session type.
+ * Always use this instead of the old overage.aiEnabledSessionsPerBatch getter,
+ * which was incorrectly hardcoded to premium rates.
+ */
+export function getOverageSessionsPerBatch(tier: 'free' | 'starter' | 'premium' | 'enterprise', isAiEnabled: boolean): number {
+  const costPerSession = getSessionCost(isAiEnabled, tier);
+  if (costPerSession <= 0) return 0;
+  return Math.floor(SubscriptionConfig.overage.creditsPerBatch / costPerSession);
 }
 
 /**
@@ -222,12 +227,12 @@ export function getTierDetails(tier: 'free' | 'starter' | 'premium' | 'enterpris
       monthlyFeeUsd: SubscriptionConfig.premium.monthlyFeeUsd,
       overage: {
         creditsPerBatch: SubscriptionConfig.overage.creditsPerBatch,
-        aiEnabledSessionsPerBatch: SubscriptionConfig.overage.aiEnabledSessionsPerBatch,
-        aiDisabledSessionsPerBatch: SubscriptionConfig.overage.aiDisabledSessionsPerBatch,
+        aiEnabledSessionsPerBatch: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.premium.aiEnabledSessionCostUsd),
+        aiDisabledSessionsPerBatch: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.premium.aiDisabledSessionCostUsd),
       },
     };
   }
-  
+
   if (tier === 'starter') {
     return {
       tier: 'starter',
@@ -323,8 +328,8 @@ export function getPricingInfo() {
       },
       overage: {
         creditsPerBatch: SubscriptionConfig.overage.creditsPerBatch,
-        aiEnabledSessionsPerBatch: SubscriptionConfig.overage.aiEnabledSessionsPerBatch,
-        aiDisabledSessionsPerBatch: SubscriptionConfig.overage.aiDisabledSessionsPerBatch,
+        aiEnabledSessionsPerBatch: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.premium.aiEnabledSessionCostUsd),
+        aiDisabledSessionsPerBatch: Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.premium.aiDisabledSessionCostUsd),
       },
       translationsEnabled: true,
       maxLanguages: -1,
@@ -334,7 +339,7 @@ export function getPricingInfo() {
         `$${SubscriptionConfig.premium.monthlyBudgetUsd} monthly session budget`,
         `AI projects: $${SubscriptionConfig.premium.aiEnabledSessionCostUsd}/session (${SubscriptionConfig.premium.defaultAiEnabledSessions} included)`,
         `Non-AI projects: $${SubscriptionConfig.premium.aiDisabledSessionCostUsd}/session (${SubscriptionConfig.premium.defaultAiDisabledSessions} included)`,
-        `Auto top-up: $${SubscriptionConfig.overage.creditsPerBatch} = ${SubscriptionConfig.overage.aiEnabledSessionsPerBatch} AI sessions`,
+        `Auto top-up: $${SubscriptionConfig.overage.creditsPerBatch} = ${Math.floor(SubscriptionConfig.overage.creditsPerBatch / SubscriptionConfig.premium.aiEnabledSessionCostUsd)} AI sessions`,
         'Unlimited translations',
         'White label (No branding)'
       ]
