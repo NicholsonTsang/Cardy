@@ -44,7 +44,8 @@ DECLARE
     v_card_owner_id UUID;
     v_new_token TEXT;
     v_token_id UUID;
-    v_default_limit INTEGER;
+    v_default_session_limit INTEGER;
+    v_default_voice_limit INTEGER;
 BEGIN
     -- Get current user
     v_user_id := auth.uid();
@@ -52,9 +53,9 @@ BEGIN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
 
-    -- Verify card ownership and get default limit
-    SELECT user_id, default_daily_session_limit
-    INTO v_card_owner_id, v_default_limit
+    -- Verify card ownership and get default limits
+    SELECT user_id, default_daily_session_limit, default_daily_voice_limit
+    INTO v_card_owner_id, v_default_session_limit, v_default_voice_limit
     FROM cards
     WHERE id = p_card_id;
 
@@ -69,9 +70,13 @@ BEGIN
     -- Generate unique token
     v_new_token := generate_access_token();
 
-    -- Use provided limit or fall back to card default
+    -- Use provided limit or fall back to card defaults
     IF p_daily_session_limit IS NULL THEN
-        p_daily_session_limit := v_default_limit;
+        p_daily_session_limit := v_default_session_limit;
+    END IF;
+
+    IF p_daily_voice_limit IS NULL THEN
+        p_daily_voice_limit := v_default_voice_limit;
     END IF;
 
     -- Create the access token

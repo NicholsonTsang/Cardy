@@ -25,7 +25,7 @@
         icon="pi pi-plus"
         size="small"
         class="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 border-0"
-        @click="showAddDialog = true"
+        @click="openAddDialog"
         v-tooltip.left="$t('digital_access.add_qr_tooltip')"
       />
     </div>
@@ -229,7 +229,7 @@
         icon="pi pi-plus"
         size="small"
         class="mt-4"
-        @click="showAddDialog = true"
+        @click="openAddDialog"
       />
     </div>
 
@@ -493,12 +493,12 @@ const refreshingTokenId = ref<string | null>(null)
 // Form data
 const formData = ref({
   name: '',
-  daily_session_limit: 500,
-  hasDailyLimit: true,
+  daily_session_limit: props.card.default_daily_session_limit ?? 500,
+  hasDailyLimit: props.card.default_daily_session_limit != null,
   monthly_session_limit: 5000,
   hasMonthlySessionLimit: false,
-  daily_voice_limit: 3600,
-  hasDailyVoiceLimit: false,
+  daily_voice_limit: props.card.default_daily_voice_limit ?? 3600,
+  hasDailyVoiceLimit: props.card.default_daily_voice_limit != null,
   monthly_voice_limit: 36000,
   hasMonthlyVoiceLimit: false
 })
@@ -680,17 +680,33 @@ function editToken(token: AccessToken) {
   showAddDialog.value = true
 }
 
+function openAddDialog() {
+  editingToken.value = null
+  formData.value = {
+    name: '',
+    daily_session_limit: props.card.default_daily_session_limit ?? 500,
+    hasDailyLimit: props.card.default_daily_session_limit != null,
+    monthly_session_limit: 5000,
+    hasMonthlySessionLimit: false,
+    daily_voice_limit: props.card.default_daily_voice_limit ?? 3600,
+    hasDailyVoiceLimit: props.card.default_daily_voice_limit != null,
+    monthly_voice_limit: 36000,
+    hasMonthlyVoiceLimit: false
+  }
+  showAddDialog.value = true
+}
+
 function closeDialog() {
   showAddDialog.value = false
   editingToken.value = null
   formData.value = {
     name: '',
-    daily_session_limit: 500,
-    hasDailyLimit: true,
+    daily_session_limit: props.card.default_daily_session_limit ?? 500,
+    hasDailyLimit: props.card.default_daily_session_limit != null,
     monthly_session_limit: 5000,
     hasMonthlySessionLimit: false,
-    daily_voice_limit: 3600,
-    hasDailyVoiceLimit: false,
+    daily_voice_limit: props.card.default_daily_voice_limit ?? 3600,
+    hasDailyVoiceLimit: props.card.default_daily_voice_limit != null,
     monthly_voice_limit: 36000,
     hasMonthlyVoiceLimit: false
   }

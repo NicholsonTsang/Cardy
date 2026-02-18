@@ -38,6 +38,7 @@ RETURNS TABLE (
     group_display TEXT,
     billing_type TEXT,
     default_daily_session_limit INTEGER,
+    default_daily_voice_limit INTEGER,
     metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
@@ -75,6 +76,7 @@ BEGIN
         c.group_display,
         c.billing_type,
         c.default_daily_session_limit,
+        c.default_daily_voice_limit,
         c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
@@ -235,6 +237,7 @@ RETURNS TABLE (
     group_display TEXT,
     billing_type TEXT,
     default_daily_session_limit INTEGER,
+    default_daily_voice_limit INTEGER,
     metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
@@ -271,6 +274,7 @@ BEGIN
         c.group_display,
         c.billing_type,
         c.default_daily_session_limit,
+        c.default_daily_voice_limit,
         c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
@@ -310,6 +314,7 @@ CREATE OR REPLACE FUNCTION update_card(
     p_group_display TEXT DEFAULT NULL,
     p_billing_type TEXT DEFAULT NULL,
     p_default_daily_session_limit INTEGER DEFAULT NULL,
+    p_default_daily_voice_limit INTEGER DEFAULT -1,  -- -1 = no change; NULL = set to unlimited
     p_metadata JSONB DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -338,6 +343,7 @@ BEGIN
         group_display,
         billing_type,
         default_daily_session_limit,
+        default_daily_voice_limit,
         metadata,
         user_id,
         updated_at
@@ -439,6 +445,12 @@ BEGIN
         has_changes := TRUE;
     END IF;
 
+    -- Track default_daily_voice_limit changes (-1 means no change; NULL means set to unlimited)
+    IF p_default_daily_voice_limit != -1 AND p_default_daily_voice_limit IS DISTINCT FROM v_old_record.default_daily_voice_limit THEN
+        v_changes_made := v_changes_made || jsonb_build_object('default_daily_voice_limit', jsonb_build_object('from', v_old_record.default_daily_voice_limit, 'to', p_default_daily_voice_limit));
+        has_changes := TRUE;
+    END IF;
+
     IF p_metadata IS NOT NULL AND p_metadata IS DISTINCT FROM v_old_record.metadata THEN
         v_changes_made := v_changes_made || jsonb_build_object('metadata', 'updated');
         has_changes := TRUE;
@@ -471,6 +483,7 @@ BEGIN
         group_display = COALESCE(p_group_display, group_display),
         -- billing_type is immutable - not updated here
         default_daily_session_limit = COALESCE(p_default_daily_session_limit, default_daily_session_limit),
+        default_daily_voice_limit = CASE WHEN p_default_daily_voice_limit = -1 THEN default_daily_voice_limit ELSE p_default_daily_voice_limit END,
         metadata = COALESCE(p_metadata, metadata),
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
@@ -481,7 +494,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, INTEGER, JSONB) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)

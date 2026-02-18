@@ -52,6 +52,7 @@ export interface Card {
     group_display: GroupDisplay; // How grouped items display: expanded or collapsed
     billing_type: 'digital'; // Billing model: per-session subscription
     default_daily_session_limit: number | null; // Default daily limit for new QR codes (NULL = unlimited)
+    default_daily_voice_limit: number | null; // Default daily voice call limit in seconds for new QR codes (NULL = unlimited)
     metadata?: Record<string, any>; // Extensible JSONB metadata for future features
     // Computed from access_tokens (aggregated stats)
     total_sessions: number; // Sum of all tokens' all-time sessions
@@ -89,6 +90,7 @@ export interface CardFormData {
     group_display?: GroupDisplay; // How grouped items display
     billing_type?: 'digital'; // Billing model
     default_daily_session_limit?: number | null; // Default daily limit for new QR codes (default: 500)
+    default_daily_voice_limit?: number | null; // Default daily voice call limit in seconds for new QR codes (NULL = unlimited)
     metadata?: Record<string, any>; // Extensible JSONB metadata
     id?: string; // Optional for updates
 }
@@ -335,6 +337,8 @@ export const useCardStore = defineStore('card', () => {
                 p_group_display: updateData.group_display || null,
                 p_billing_type: updateData.billing_type || null,
                 p_default_daily_session_limit: updateData.default_daily_session_limit || null,
+                // -1 signals "no change"; null means "set to unlimited"; a positive number sets the limit
+                p_default_daily_voice_limit: updateData.default_daily_voice_limit === undefined ? -1 : (updateData.default_daily_voice_limit ?? null),
                 p_metadata: updateData.metadata || null
             };
             
@@ -344,22 +348,29 @@ export const useCardStore = defineStore('card', () => {
             if (updateError) throw updateError;
             
             // Invalidate backend caches after successful update
-            // This is critical for default_daily_session_limit changes to take effect immediately
-            const existingCard = cards.value.find(c => c.id === cardId);
-            // Get the first access token if available for cache invalidation
-            const firstToken = existingCard?.access_tokens?.[0];
-            if (firstToken?.access_token) {
-                try {
-                    const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
-                    await fetch(`${backendUrl}/api/mobile/card/${cardId}/invalidate-cache`, {
+            // This is critical for default_daily_session_limit and theme changes to take effect immediately
+            try {
+                const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8080';
+                const existingCard = cards.value.find(c => c.id === cardId);
+                let tokens = existingCard?.access_tokens;
+
+                // If tokens aren't loaded yet, fetch them now so we can invalidate all cache entries
+                if (!tokens || tokens.length === 0) {
+                    const { data: fetchedTokens } = await supabase.rpc('get_card_access_tokens', { p_card_id: cardId });
+                    tokens = fetchedTokens || [];
+                }
+
+                // Invalidate cache for all access tokens (each token has its own cache key)
+                await Promise.all((tokens || []).map((token: AccessToken) =>
+                    fetch(`${backendUrl}/api/mobile/card/${cardId}/invalidate-cache`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ accessToken: firstToken.access_token })
-                    });
-                } catch (cacheErr) {
-                    // Non-critical - log but don't fail the update
-                    console.warn('[CardStore] Failed to invalidate cache:', cacheErr);
-                }
+                        body: JSON.stringify({ accessToken: token.access_token, tokenId: token.id })
+                    }).catch(() => {}) // Non-critical per token
+                ));
+            } catch (cacheErr) {
+                // Non-critical - log but don't fail the update
+                console.warn('[CardStore] Failed to invalidate cache:', cacheErr);
             }
             
             await fetchCards();

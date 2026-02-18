@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Wed Feb 18 12:47:12 HKT 2026
+-- Generated: Wed Feb 18 15:21:31 HKT 2026
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -255,6 +255,7 @@ RETURNS TABLE (
     group_display TEXT,
     billing_type TEXT,
     default_daily_session_limit INTEGER,
+    default_daily_voice_limit INTEGER,
     metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
@@ -292,6 +293,7 @@ BEGIN
         c.group_display,
         c.billing_type,
         c.default_daily_session_limit,
+        c.default_daily_voice_limit,
         c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
@@ -452,6 +454,7 @@ RETURNS TABLE (
     group_display TEXT,
     billing_type TEXT,
     default_daily_session_limit INTEGER,
+    default_daily_voice_limit INTEGER,
     metadata JSONB,
     -- Computed from access tokens
     total_sessions BIGINT,
@@ -488,6 +491,7 @@ BEGIN
         c.group_display,
         c.billing_type,
         c.default_daily_session_limit,
+        c.default_daily_voice_limit,
         c.metadata,
         -- Aggregate stats from access tokens
         COALESCE(SUM(t.total_sessions), 0)::BIGINT AS total_sessions,
@@ -527,6 +531,7 @@ CREATE OR REPLACE FUNCTION update_card(
     p_group_display TEXT DEFAULT NULL,
     p_billing_type TEXT DEFAULT NULL,
     p_default_daily_session_limit INTEGER DEFAULT NULL,
+    p_default_daily_voice_limit INTEGER DEFAULT -1,  -- -1 = no change; NULL = set to unlimited
     p_metadata JSONB DEFAULT NULL
 ) RETURNS BOOLEAN LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE
@@ -555,6 +560,7 @@ BEGIN
         group_display,
         billing_type,
         default_daily_session_limit,
+        default_daily_voice_limit,
         metadata,
         user_id,
         updated_at
@@ -656,6 +662,12 @@ BEGIN
         has_changes := TRUE;
     END IF;
 
+    -- Track default_daily_voice_limit changes (-1 means no change; NULL means set to unlimited)
+    IF p_default_daily_voice_limit != -1 AND p_default_daily_voice_limit IS DISTINCT FROM v_old_record.default_daily_voice_limit THEN
+        v_changes_made := v_changes_made || jsonb_build_object('default_daily_voice_limit', jsonb_build_object('from', v_old_record.default_daily_voice_limit, 'to', p_default_daily_voice_limit));
+        has_changes := TRUE;
+    END IF;
+
     IF p_metadata IS NOT NULL AND p_metadata IS DISTINCT FROM v_old_record.metadata THEN
         v_changes_made := v_changes_made || jsonb_build_object('metadata', 'updated');
         has_changes := TRUE;
@@ -688,6 +700,7 @@ BEGIN
         group_display = COALESCE(p_group_display, group_display),
         -- billing_type is immutable - not updated here
         default_daily_session_limit = COALESCE(p_default_daily_session_limit, default_daily_session_limit),
+        default_daily_voice_limit = CASE WHEN p_default_daily_voice_limit = -1 THEN default_daily_voice_limit ELSE p_default_daily_voice_limit END,
         metadata = COALESCE(p_metadata, metadata),
         updated_at = now()
     WHERE id = p_card_id AND user_id = auth.uid();
@@ -698,7 +711,7 @@ BEGIN
     RETURN TRUE;
 END;
 $$;
-GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, JSONB) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_card(UUID, TEXT, TEXT, TEXT, TEXT, JSONB, BOOLEAN, BOOLEAN, TEXT, TEXT, TEXT, TEXT, TEXT, VARCHAR, TEXT, BOOLEAN, TEXT, TEXT, INTEGER, INTEGER, JSONB) TO authenticated;
 
 -- Delete a card (more secure)
 CREATE OR REPLACE FUNCTION delete_card(p_card_id UUID)
@@ -4895,7 +4908,8 @@ DECLARE
     v_card_owner_id UUID;
     v_new_token TEXT;
     v_token_id UUID;
-    v_default_limit INTEGER;
+    v_default_session_limit INTEGER;
+    v_default_voice_limit INTEGER;
 BEGIN
     -- Get current user
     v_user_id := auth.uid();
@@ -4903,9 +4917,9 @@ BEGIN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
 
-    -- Verify card ownership and get default limit
-    SELECT user_id, default_daily_session_limit
-    INTO v_card_owner_id, v_default_limit
+    -- Verify card ownership and get default limits
+    SELECT user_id, default_daily_session_limit, default_daily_voice_limit
+    INTO v_card_owner_id, v_default_session_limit, v_default_voice_limit
     FROM cards
     WHERE id = p_card_id;
 
@@ -4920,9 +4934,13 @@ BEGIN
     -- Generate unique token
     v_new_token := generate_access_token();
 
-    -- Use provided limit or fall back to card default
+    -- Use provided limit or fall back to card defaults
     IF p_daily_session_limit IS NULL THEN
-        p_daily_session_limit := v_default_limit;
+        p_daily_session_limit := v_default_session_limit;
+    END IF;
+
+    IF p_daily_voice_limit IS NULL THEN
+        p_daily_voice_limit := v_default_voice_limit;
     END IF;
 
     -- Create the access token
