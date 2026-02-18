@@ -203,7 +203,7 @@
             </template>
           </Column>
 
-          <Column field="cards_count" :header="$t('batches.cards')" sortable :style="{ width: '100px', minWidth: '100px' }" class="text-center">
+          <Column field="cards_count" :header="$t('admin.projects')" sortable :style="{ width: '100px', minWidth: '100px' }" class="text-center">
             <template #body="{ data }">
               <div class="text-center">
                 <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
