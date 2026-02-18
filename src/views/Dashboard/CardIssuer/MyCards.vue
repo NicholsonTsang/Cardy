@@ -20,7 +20,7 @@
             <!-- Delete Confirmation Dialog -->
             <ConfirmDialog group="deleteCardConfirmation"></ConfirmDialog>
 
-            <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 min-h-[calc(100vh-200px)]">
+            <div class="flex flex-col lg:flex-row gap-4 lg:gap-6">
                 <!-- Card List Panel - Fixed width sidebar -->
                 <!-- On mobile: hidden when a card is selected (show detail instead) -->
                 <div

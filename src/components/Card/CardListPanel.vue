@@ -181,7 +181,7 @@
         </Dialog>
 
         <!-- Loading State -->
-        <div v-if="loading" class="flex-1 flex items-center justify-center p-8 min-h-[400px]">
+        <div v-if="loading" class="flex items-center justify-center p-8">
             <div class="text-center">
                 <i class="pi pi-spin pi-spinner text-3xl text-blue-600 mb-4"></i>
                 <p class="text-sm text-slate-500">{{ $t('dashboard.loading_cards') }}</p>
@@ -189,7 +189,7 @@
         </div>
 
         <!-- Empty State -->
-        <div v-else-if="cards.length === 0 && !searchQuery" class="flex-1 flex flex-col items-center justify-center p-6 text-center min-h-[400px]">
+        <div v-else-if="cards.length === 0 && !searchQuery" class="flex flex-col items-center p-6 py-8 text-center">
             <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                 <i class="pi pi-id-card text-2xl text-slate-400"></i>
             </div>
@@ -204,7 +204,7 @@
         </div>
 
         <!-- No Search Results -->
-        <div v-else-if="filteredCards.length === 0 && searchQuery" class="flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <div v-else-if="filteredCards.length === 0 && searchQuery" class="flex flex-col items-center p-6 py-8 text-center">
             <div class="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mb-3">
                 <i class="pi pi-search text-xl text-slate-400"></i>
             </div>
