@@ -462,6 +462,7 @@
     "delete_template_warning": "⚠️ 此項目已連結至內容範本。刪除將同時刪除該範本。",
     "no_cards_yet": "尚無項目",
     "start_creating": "開始建立您的第一個項目",
+    "sidebar_empty_hint": "建立項目後將顯示在此處。",
     "empty_welcome_title": "歡迎使用 FunTell",
     "empty_welcome_subtitle": "建立具有 AI 功能的互動內容體驗。選擇您的起始方式。",
     "empty_action_create": "從頭開始建立",

@@ -186,47 +186,9 @@
             </div>
         </div>
 
-        <!-- Empty State -->
-        <div v-else-if="cards.length === 0 && !searchQuery" class="flex flex-col items-center justify-center p-5 text-center flex-1">
-            <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-md">
-                <i class="pi pi-sparkles text-xl text-white"></i>
-            </div>
-            <h3 class="text-base font-semibold text-slate-900 mb-1">{{ $t('dashboard.no_cards_yet') }}</h3>
-            <p class="text-xs text-slate-500 mb-5">{{ $t('dashboard.start_creating') }}</p>
-            <Button
-                :label="$t('dashboard.create_new_card')"
-                icon="pi pi-plus"
-                @click="$emit('create-card')"
-                severity="primary"
-                class="w-full mb-3"
-            />
-            <!-- Quick secondary actions -->
-            <div class="w-full space-y-1.5">
-                <button
-                    @click="showTemplateDialog = true"
-                    class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all text-left"
-                >
-                    <div class="w-7 h-7 bg-violet-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <i class="pi pi-copy text-xs text-violet-600"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-medium text-slate-700">{{ $t('dashboard.empty_action_template') }}</div>
-                        <div class="text-xs text-slate-400">{{ $t('dashboard.start_from_template') }}</div>
-                    </div>
-                </button>
-                <button
-                    @click="showImportDialog = true"
-                    class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-slate-200 hover:bg-slate-50 hover:border-slate-300 transition-all text-left"
-                >
-                    <div class="w-7 h-7 bg-slate-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <i class="pi pi-upload text-xs text-slate-600"></i>
-                    </div>
-                    <div>
-                        <div class="text-xs font-medium text-slate-700">{{ $t('dashboard.empty_action_import') }}</div>
-                        <div class="text-xs text-slate-400">{{ $t('dashboard.import_excel_json') }}</div>
-                    </div>
-                </button>
-            </div>
+        <!-- Empty State — minimal, defer to right panel for actions -->
+        <div v-else-if="cards.length === 0 && !searchQuery" class="flex flex-col items-center justify-center flex-1 px-5 py-8 text-center">
+            <p class="text-xs text-slate-400 leading-relaxed">{{ $t('dashboard.sidebar_empty_hint') }}</p>
         </div>
 
         <!-- No Search Results -->
