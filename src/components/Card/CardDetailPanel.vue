@@ -1,7 +1,7 @@
 <template>
     <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
         <!-- Empty State -->
-        <div v-if="!selectedCard" class="flex items-center justify-center p-6 py-8">
+        <div v-if="!selectedCard" class="flex items-center justify-center p-6 py-12 h-full min-h-[320px]">
             <div class="text-center">
                 <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i class="pi pi-id-card text-2xl text-slate-400"></i>

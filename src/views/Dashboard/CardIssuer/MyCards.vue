@@ -24,7 +24,7 @@
                 <!-- Card List Panel - Fixed width sidebar -->
                 <!-- On mobile: hidden when a card is selected (show detail instead) -->
                 <div
-                    class="w-full lg:w-[320px] lg:flex-shrink-0"
+                    class="w-full lg:w-[320px] lg:flex-shrink-0 lg:min-h-[420px]"
                     :class="{ 'hidden lg:block': selectedCardId && isMobileView }"
                 >
                     <CardListPanel
@@ -52,7 +52,7 @@
                 <!-- Card Detail Panel - Takes remaining space -->
                 <!-- On mobile: hidden when no card is selected -->
                 <div
-                    class="flex-1 min-w-0"
+                    class="flex-1 min-w-0 lg:min-h-[420px]"
                     :class="{ 'hidden lg:block': !selectedCardId && isMobileView }"
                 >
                     <!-- Mobile back button -->
