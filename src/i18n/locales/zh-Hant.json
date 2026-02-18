@@ -1582,7 +1582,7 @@
           "QR 碼生成",
           "雲端託管"
         ],
-        "cta": "免費開始"
+        "cta": "免費開始使用"
       },
       "starter_tier": {
         "title": "入門版",
@@ -1598,7 +1598,7 @@
           "最多 {starterMaxLanguages} 種翻譯語言",
           "由 FunTell 提供技術支援"
         ],
-        "cta": "選擇入門版"
+        "cta": "立即開始"
       },
       "premium_tier": {
         "title": "專業版",
@@ -1615,13 +1615,14 @@
           "無限翻譯語言",
           "白標服務（無品牌標示）"
         ],
-        "cta": "升級至專業版"
+        "cta": "立即開始"
       },
       "enterprise_tier": {
         "title": "企業版",
         "price": "{enterpriseFee}",
         "per": "每月",
         "desc": "適合大量營運，支援自訂網域",
+        "lowest_rate": "最低費率",
         "features": [
           "最多 100 個項目",
           "每月 US${enterpriseBudget} 會話額度",
@@ -1632,7 +1633,7 @@
           "白標服務（無品牌標示）",
           "自訂網域（即將推出）"
         ],
-        "cta": "聯繫業務"
+        "cta": "立即開始"
       },
       "included_title": "所有方案皆包含",
       "features": {

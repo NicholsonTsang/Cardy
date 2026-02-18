@@ -878,22 +878,22 @@
         <!-- Subscription Tiers -->
         <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 max-w-7xl mx-auto">
           <!-- Free Tier -->
-          <div class="bg-gradient-to-br from-slate-500/10 to-slate-600/10 backdrop-blur-xl rounded-3xl border border-slate-400/30 overflow-hidden hover:border-slate-400/50 transition-all duration-300">
+          <div class="flex flex-col bg-gradient-to-br from-slate-500/10 to-slate-600/10 backdrop-blur-xl rounded-3xl border border-slate-400/30 overflow-hidden hover:border-slate-400/50 transition-all duration-300">
             <div class="bg-gradient-to-r from-slate-600/20 to-slate-700/20 p-6 border-b border-white/10">
               <div class="flex items-center gap-3 mb-4">
-                <div class="w-10 h-10 bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl flex items-center justify-center">
+                <div class="w-10 h-10 bg-gradient-to-br from-slate-500 to-slate-600 rounded-xl flex items-center justify-center flex-shrink-0">
                   <i class="pi pi-user text-white text-lg"></i>
                 </div>
                 <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.free_tier.title') }}</h3>
               </div>
-              <div class="flex items-baseline gap-2">
+              <div class="flex items-baseline gap-2 flex-wrap">
                 <span class="text-4xl font-black text-white">{{ $t('landing.pricing.free_tier.price') }}</span>
                 <span class="text-lg text-slate-300">{{ $t('landing.pricing.free_tier.per') }}</span>
               </div>
               <p class="text-slate-300 mt-2 text-sm">{{ $t('landing.pricing.free_tier.desc') }}</p>
             </div>
-            <div class="p-6">
-              <ul class="space-y-3 mb-6">
+            <div class="flex flex-col flex-1 p-6">
+              <ul class="space-y-3 flex-1">
                 <li v-for="(feature, idx) in freeTierFeatures" :key="idx" class="flex items-center gap-3 text-slate-100">
                   <div class="w-5 h-5 bg-slate-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                     <i class="pi pi-check text-slate-400 text-xs"></i>
@@ -903,7 +903,7 @@
               </ul>
               <button
                 @click="handleGetStarted"
-                class="w-full py-3 px-6 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold rounded-xl transition-all duration-300"
+                class="w-full py-3 px-6 mt-6 bg-white/10 hover:bg-white/20 border border-white/20 text-white font-semibold rounded-xl transition-all duration-300"
               >
                 {{ $t('landing.pricing.free_tier.cta') }}
               </button>
@@ -911,23 +911,23 @@
           </div>
 
           <!-- Starter Tier -->
-          <div class="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 backdrop-blur-xl rounded-3xl border border-indigo-400/30 overflow-hidden hover:border-indigo-400/50 transition-all duration-300">
+          <div class="flex flex-col bg-gradient-to-br from-indigo-500/10 to-blue-500/10 backdrop-blur-xl rounded-3xl border border-indigo-400/30 overflow-hidden hover:border-indigo-400/50 transition-all duration-300">
             <div class="bg-gradient-to-r from-indigo-600/20 to-blue-600/20 p-6 border-b border-white/10">
               <div class="flex items-center gap-3 mb-4">
-                <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl flex items-center justify-center">
+                <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-blue-500 rounded-xl flex items-center justify-center flex-shrink-0">
                   <i class="pi pi-bolt text-white text-lg"></i>
                 </div>
                 <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.starter_tier.title') }}</h3>
               </div>
-              <div class="flex items-baseline gap-1">
+              <div class="flex items-baseline gap-1 flex-wrap">
                 <span class="text-xl font-bold text-white/90">US$</span>
                 <span class="text-4xl font-black text-white whitespace-nowrap">{{ $t('landing.pricing.starter_tier.price', pricingVars) }}</span>
-                <span class="text-lg text-indigo-200 whitespace-nowrap ml-1">{{ $t('landing.pricing.starter_tier.per') }}</span>
+                <span class="text-lg text-indigo-200 ml-1">{{ $t('landing.pricing.starter_tier.per') }}</span>
               </div>
               <p class="text-indigo-200 mt-2 text-sm">{{ $t('landing.pricing.starter_tier.desc') }}</p>
             </div>
-            <div class="p-6">
-              <ul class="space-y-3 mb-6">
+            <div class="flex flex-col flex-1 p-6">
+              <ul class="space-y-3 flex-1">
                 <li v-for="(feature, idx) in starterTierFeatures" :key="idx" class="flex items-center gap-3 text-indigo-100">
                   <div class="w-5 h-5 bg-indigo-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                     <i class="pi pi-check text-indigo-400 text-xs"></i>
@@ -937,7 +937,7 @@
               </ul>
               <button
                 @click="handleGetStarted"
-                class="w-full py-3 px-6 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                class="w-full py-3 px-6 mt-6 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 {{ $t('landing.pricing.starter_tier.cta') }}
               </button>
@@ -945,27 +945,28 @@
           </div>
 
           <!-- Premium Tier -->
-          <div class="bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-xl rounded-3xl border-2 border-blue-400/50 overflow-hidden hover:border-blue-400/70 transition-all duration-300 relative">
-            <!-- Popular Badge -->
-            <div class="absolute top-4 right-4 bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
-              {{ $t('landing.pricing.premium_tier.popular') }}
-            </div>
+          <div class="flex flex-col bg-gradient-to-br from-blue-500/10 to-purple-500/10 backdrop-blur-xl rounded-3xl border-2 border-blue-400/50 overflow-hidden hover:border-blue-400/70 transition-all duration-300">
             <div class="bg-gradient-to-r from-blue-600/20 to-purple-600/20 p-6 border-b border-white/10">
-              <div class="flex items-center gap-3 mb-4">
-                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl flex items-center justify-center flex-shrink-0">
                   <i class="pi pi-star text-white text-lg"></i>
                 </div>
                 <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.premium_tier.title') }}</h3>
               </div>
-              <div class="flex items-baseline gap-1">
+              <div class="mb-4">
+                <span class="bg-gradient-to-r from-blue-500 to-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                  {{ $t('landing.pricing.premium_tier.popular') }}
+                </span>
+              </div>
+              <div class="flex items-baseline gap-1 flex-wrap">
                 <span class="text-xl font-bold text-white/90">US$</span>
                 <span class="text-4xl font-black text-white whitespace-nowrap">{{ $t('landing.pricing.premium_tier.price', pricingVars) }}</span>
-                <span class="text-lg text-blue-200 whitespace-nowrap ml-1">{{ $t('landing.pricing.premium_tier.per') }}</span>
+                <span class="text-lg text-blue-200 ml-1">{{ $t('landing.pricing.premium_tier.per') }}</span>
               </div>
               <p class="text-blue-200 mt-2 text-sm">{{ $t('landing.pricing.premium_tier.desc') }}</p>
             </div>
-            <div class="p-6">
-              <ul class="space-y-3 mb-6">
+            <div class="flex flex-col flex-1 p-6">
+              <ul class="space-y-3 flex-1">
                 <li v-for="(feature, idx) in premiumTierFeatures" :key="idx" class="flex items-center gap-3 text-blue-100">
                   <div class="w-5 h-5 bg-blue-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                     <i class="pi pi-check text-blue-400 text-xs"></i>
@@ -975,7 +976,7 @@
               </ul>
               <button
                 @click="handleGetStarted"
-                class="w-full py-3 px-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                class="w-full py-3 px-6 mt-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 {{ $t('landing.pricing.premium_tier.cta') }}
               </button>
@@ -983,23 +984,28 @@
           </div>
 
           <!-- Enterprise Tier -->
-          <div class="bg-gradient-to-br from-violet-500/10 to-purple-500/10 backdrop-blur-xl rounded-3xl border border-violet-400/30 overflow-hidden hover:border-violet-400/50 transition-all duration-300">
+          <div class="flex flex-col bg-gradient-to-br from-violet-500/10 to-purple-500/10 backdrop-blur-xl rounded-3xl border-2 border-violet-400/50 overflow-hidden hover:border-violet-400/70 transition-all duration-300">
             <div class="bg-gradient-to-r from-violet-600/20 to-purple-600/20 p-6 border-b border-white/10">
-              <div class="flex items-center gap-3 mb-4">
-                <div class="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
                   <i class="pi pi-building text-white text-lg"></i>
                 </div>
                 <h3 class="text-xl font-bold text-white">{{ $t('landing.pricing.enterprise_tier.title') }}</h3>
               </div>
-              <div class="flex items-baseline gap-1">
+              <div class="mb-4">
+                <span class="bg-gradient-to-r from-violet-500 to-purple-500 text-white text-xs font-bold px-3 py-1 rounded-full shadow-lg">
+                  {{ $t('landing.pricing.enterprise_tier.lowest_rate') }}
+                </span>
+              </div>
+              <div class="flex items-baseline gap-1 flex-wrap">
                 <span class="text-xl font-bold text-white/90">US$</span>
                 <span class="text-4xl font-black text-white whitespace-nowrap">{{ $t('landing.pricing.enterprise_tier.price', pricingVars) }}</span>
-                <span class="text-lg text-violet-200 whitespace-nowrap ml-1">{{ $t('landing.pricing.enterprise_tier.per') }}</span>
+                <span class="text-lg text-violet-200 ml-1">{{ $t('landing.pricing.enterprise_tier.per') }}</span>
               </div>
               <p class="text-violet-200 mt-2 text-sm">{{ $t('landing.pricing.enterprise_tier.desc') }}</p>
             </div>
-            <div class="p-6">
-              <ul class="space-y-3 mb-6">
+            <div class="flex flex-col flex-1 p-6">
+              <ul class="space-y-3 flex-1">
                 <li v-for="(feature, idx) in enterpriseTierFeatures" :key="idx" class="flex items-center gap-3 text-violet-100">
                   <div class="w-5 h-5 bg-violet-500/20 rounded-full flex items-center justify-center flex-shrink-0">
                     <i class="pi pi-check text-violet-400 text-xs"></i>
@@ -1009,7 +1015,7 @@
               </ul>
               <button
                 @click="handleGetStarted"
-                class="w-full py-3 px-6 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
+                class="w-full py-3 px-6 mt-6 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300"
               >
                 {{ $t('landing.pricing.enterprise_tier.cta') }}
               </button>

@@ -1616,7 +1616,7 @@
           "QR code generation",
           "Cloud hosting included"
         ],
-        "cta": "Start Free"
+        "cta": "Get Started Free"
       },
       "starter_tier": {
         "title": "Starter",
@@ -1632,7 +1632,7 @@
           "Max {starterMaxLanguages} translation languages",
           "Powered by FunTell branding"
         ],
-        "cta": "Start with Starter"
+        "cta": "Get Started"
       },
       "premium_tier": {
         "title": "Premium",
@@ -1649,13 +1649,14 @@
           "Unlimited translation languages",
           "White label (No branding)"
         ],
-        "cta": "Upgrade to Premium"
+        "cta": "Get Started"
       },
       "enterprise_tier": {
         "title": "Enterprise",
         "price": "{enterpriseFee}",
         "per": "per month",
         "desc": "For high-volume operations with custom domain",
+        "lowest_rate": "Lowest Rate",
         "features": [
           "Up to 100 projects",
           "US${enterpriseBudget} monthly credit included",
@@ -1666,7 +1667,7 @@
           "White label (No branding)",
           "Custom domain (Coming soon)"
         ],
-        "cta": "Contact Sales"
+        "cta": "Get Started"
       },
       "session_info": {
         "title": "How Session Billing Works",

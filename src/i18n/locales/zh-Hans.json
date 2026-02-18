@@ -1442,7 +1442,7 @@
           "QR 码生成",
           "云端托管"
         ],
-        "cta": "免费开始"
+        "cta": "免费开始使用"
       },
       "starter_tier": {
         "title": "入门版",
@@ -1458,7 +1458,7 @@
           "最多 {starterMaxLanguages} 种翻译语言",
           "由 FunTell 提供技术支持"
         ],
-        "cta": "选择入门版"
+        "cta": "立即开始"
       },
       "premium_tier": {
         "title": "专业版",
@@ -1475,13 +1475,14 @@
           "无限翻译语言",
           "白标服务（无品牌标识）"
         ],
-        "cta": "升级至专业版"
+        "cta": "立即开始"
       },
       "enterprise_tier": {
         "title": "企业版",
         "price": "{enterpriseFee}",
         "per": "每月",
         "desc": "适合大量运营，支持自定义域名",
+        "lowest_rate": "最低费率",
         "features": [
           "最多 100 个项目",
           "每月 US${enterpriseBudget} 会话额度",
@@ -1492,7 +1493,7 @@
           "白标服务（无品牌标识）",
           "自定义域名（即将推出）"
         ],
-        "cta": "联系销售"
+        "cta": "立即开始"
       },
       "included_title": "所有方案皆包含",
       "features": {
