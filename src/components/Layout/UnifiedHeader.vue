@@ -334,11 +334,6 @@ const adminMenuItems = computed(() => {
       command: () => router.push('/cms/admin/credits')
     },
     {
-      label: t('admin.user_cards_viewer'),
-      icon: 'pi pi-id-card',
-      command: () => router.push('/cms/admin/user-projects')
-    },
-    {
       label: t('header.history_logs'),
       icon: 'pi pi-history',
       command: () => router.push('/cms/admin/history')

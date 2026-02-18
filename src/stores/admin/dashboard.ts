@@ -34,10 +34,11 @@ export interface AdminDashboardStats {
   content_mode_grid: number;
   content_mode_cards: number;
   is_grouped_count: number;
-  // Subscription metrics (3 tiers: free, starter, premium)
+  // Subscription metrics (4 tiers: free, starter, premium, enterprise)
   total_free_users: number;
   total_starter_users: number;
   total_premium_users: number;
+  total_enterprise_users: number;
   active_subscriptions: number;
   estimated_mrr_cents: number;
   // Access Log metrics
@@ -116,6 +117,7 @@ export const useAdminDashboardStore = defineStore('adminDashboard', () => {
         total_free_users: dbStats.total_free_users || 0,
         total_starter_users: dbStats.total_starter_users || 0,
         total_premium_users: dbStats.total_premium_users || 0,
+        total_enterprise_users: dbStats.total_enterprise_users || 0,
         active_subscriptions: dbStats.active_subscriptions || 0,
         estimated_mrr_cents: dbStats.estimated_mrr_cents || 0,
         // Access Log metrics

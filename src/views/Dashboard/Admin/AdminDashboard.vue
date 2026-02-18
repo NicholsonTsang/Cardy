@@ -13,38 +13,15 @@
     </template>
     
     <div class="space-y-8">
-      <!-- Quick Actions Section -->
-      <div class="bg-white rounded-xl shadow-lg border border-slate-200 p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h2 class="text-xl font-bold text-slate-900">{{ $t('admin.quick_actions') }}</h2>
-        </div>
-        
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
-          <router-link :to="{ name: 'admin-history-logs' }" class="block">
-            <div class="bg-gradient-to-r from-slate-50 to-slate-100 border border-slate-200 rounded-xl p-4 hover:from-slate-100 hover:to-slate-200 transition-colors">
-              <div class="flex items-center gap-3">
-                <div class="w-8 h-8 rounded-lg bg-slate-500 flex items-center justify-center">
-                  <i class="pi pi-history text-white text-sm"></i>
-                </div>
-                <div>
-                  <p class="text-sm font-medium text-slate-800">{{ $t('admin.view_history_logs') }}</p>
-                  <p class="text-xs text-slate-600">{{ $t('admin.all_admin_actions') }}</p>
-                </div>
-              </div>
-            </div>
-          </router-link>
-        </div>
-      </div>
-
       <!-- User Management Section -->
       <div>
         <h2 class="text-base sm:text-lg font-semibold text-slate-900 mb-3 sm:mb-4 flex items-center gap-2">
           <i class="pi pi-users text-blue-600 text-sm sm:text-base"></i>
           <span class="truncate">{{ $t('admin.user_management') }}</span>
         </h2>
-        <div class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
+        <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
           <template v-if="isLoadingStats">
-            <div v-for="i in 6" :key="i" class="bg-white rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 border border-slate-200 animate-pulse">
+            <div v-for="i in 7" :key="i" class="bg-white rounded-lg sm:rounded-xl shadow-lg p-3 sm:p-4 border border-slate-200 animate-pulse">
               <div class="h-16 sm:h-20"></div>
             </div>
           </template>
@@ -65,19 +42,51 @@
               </div>
             </div>
 
+            <!-- Enterprise Users -->
+            <div class="bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">{{ $t('admin.enterprise_users') }}</p>
+                  <h3 class="text-base sm:text-lg md:text-xl font-bold text-violet-700 truncate">{{ stats.total_enterprise_users || 0 }}</h3>
+                </div>
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shadow-md sm:shadow-lg flex-shrink-0">
+                  <i class="pi pi-building text-white text-xs sm:text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-1.5 sm:mt-2">
+                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">{{ $t('subscription.enterprise_plan') }}</span>
+              </div>
+            </div>
+
             <!-- Premium Users -->
             <div class="bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
               <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0 flex-1">
                   <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">{{ $t('admin.premium_users') }}</p>
-                  <h3 class="text-base sm:text-lg md:text-xl font-bold text-slate-900 truncate">{{ stats.total_premium_users }}</h3>
+                  <h3 class="text-base sm:text-lg md:text-xl font-bold text-amber-700 truncate">{{ stats.total_premium_users }}</h3>
                 </div>
                 <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shadow-md sm:shadow-lg flex-shrink-0">
                   <i class="pi pi-star text-white text-xs sm:text-sm"></i>
                 </div>
               </div>
               <div class="mt-1.5 sm:mt-2">
-                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">{{ stats.active_subscriptions }} {{ $t('admin.active_subs') }}</span>
+                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">{{ $t('subscription.premium_plan') }}</span>
+              </div>
+            </div>
+
+            <!-- Starter Users -->
+            <div class="bg-white rounded-lg sm:rounded-xl shadow-lg border border-slate-200 p-3 sm:p-4 hover:shadow-xl transition-all duration-200">
+              <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0 flex-1">
+                  <p class="text-[10px] sm:text-xs font-medium text-slate-600 mb-1 truncate leading-tight">{{ $t('admin.starter_users') }}</p>
+                  <h3 class="text-base sm:text-lg md:text-xl font-bold text-emerald-700 truncate">{{ stats.total_starter_users }}</h3>
+                </div>
+                <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-md sm:rounded-lg bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-md sm:shadow-lg flex-shrink-0">
+                  <i class="pi pi-bolt text-white text-xs sm:text-sm"></i>
+                </div>
+              </div>
+              <div class="mt-1.5 sm:mt-2">
+                <span class="text-[10px] sm:text-xs text-slate-500 truncate block">{{ $t('subscription.starter_plan') }}</span>
               </div>
             </div>
 
@@ -545,10 +554,11 @@ const stats = computed(() => dashboardStore.dashboardStats || {
   content_mode_grid: 0,
   content_mode_cards: 0,
   is_grouped_count: 0,
-  // Subscription metrics (3 tiers: free, starter, premium)
+  // Subscription metrics (4 tiers: free, starter, premium, enterprise)
   total_free_users: 0,
   total_starter_users: 0,
   total_premium_users: 0,
+  total_enterprise_users: 0,
   active_subscriptions: 0,
   estimated_mrr_cents: 0,
   // Access Log metrics

@@ -136,14 +136,25 @@ export const useAuditLogStore = defineStore('auditLog', () => {
 
   const fetchAuditLogsCount = async (filters: Partial<AuditLogFilters> = {}): Promise<number> => {
     try {
-      // Use new operations_log_stats instead of old admin_audit_logs_count
-      const { data, error: countError } = await supabase.rpc('get_operations_log_stats')
+      // Mirror the same filter logic as fetchAuditLogs to get accurate filtered count
+      let searchQuery = filters.search_query || null
+      if (filters.action_type && !filters.search_query) {
+        searchQuery = ACTION_TYPE_SEARCH_KEYWORDS[filters.action_type] || filters.action_type
+      }
+
+      const { data, error: countError } = await supabase.rpc('get_operations_log', {
+        p_limit: 10000,
+        p_offset: 0,
+        p_user_id: filters.admin_user_id || filters.target_user_id || null,
+        p_user_role: null,
+        p_search_query: searchQuery,
+        p_start_date: filters.start_date?.toISOString() || null,
+        p_end_date: filters.end_date?.toISOString() || null
+      })
 
       if (countError) throw countError
 
-      const stats = (data && data.length > 0) ? data[0] : null
-      const count = stats ? stats.total_operations : 0
-
+      const count = (data || []).length
       totalCount.value = count
       return count
     } catch (err: any) {
