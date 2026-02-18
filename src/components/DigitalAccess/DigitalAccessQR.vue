@@ -107,13 +107,13 @@
             </span>
             <i 
               class="pi transition-transform duration-200"
-              :class="expandedTokenId === token.id ? 'pi-chevron-up' : 'pi-chevron-down'"
+              :class="expandedTokenIds.has(token.id) ? 'pi-chevron-up' : 'pi-chevron-down'"
             ></i>
           </div>
         </div>
 
         <!-- Expanded Content -->
-        <div v-if="expandedTokenId === token.id" class="p-6">
+        <div v-if="expandedTokenIds.has(token.id)" class="p-6">
           <div class="flex flex-col lg:flex-row items-center gap-8">
             <!-- QR Code Display -->
             <div class="flex-shrink-0">
@@ -495,7 +495,7 @@ function formatVoiceTime(seconds: number): string {
 // State
 const isLoading = ref(false)
 const accessTokens = ref<AccessToken[]>([])
-const expandedTokenId = ref<string | null>(null)
+const expandedTokenIds = ref<Set<string>>(new Set())
 const monthlyStats = ref<{
   monthStart: string
   monthEnd: string
@@ -543,11 +543,9 @@ async function loadData() {
     ])
     accessTokens.value = tokens
     monthlyStats.value = stats
-    
-    // Expand first token by default if there's only one
-    if (tokens.length === 1) {
-      expandedTokenId.value = tokens[0].id
-    }
+
+    // Expand all tokens by default
+    expandedTokenIds.value = new Set(tokens.map((t: AccessToken) => t.id))
   } catch (err) {
     console.error('Error loading access tokens:', err)
   } finally {
@@ -566,7 +564,13 @@ function getAccessUrl(token: string): string {
 }
 
 function toggleTokenExpanded(tokenId: string) {
-  expandedTokenId.value = expandedTokenId.value === tokenId ? null : tokenId
+  if (expandedTokenIds.value.has(tokenId)) {
+    expandedTokenIds.value.delete(tokenId)
+  } else {
+    expandedTokenIds.value.add(tokenId)
+  }
+  // Trigger reactivity (Set mutations aren't tracked automatically)
+  expandedTokenIds.value = new Set(expandedTokenIds.value)
 }
 
 // Overflow menu
