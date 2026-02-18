@@ -1,5 +1,5 @@
 <template>
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
+    <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden h-full">
         <!-- Empty State -->
         <div v-if="!selectedCard" class="flex items-center justify-center p-6 py-12 h-full min-h-[320px]">
             <div class="text-center">

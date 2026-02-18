@@ -1,5 +1,5 @@
 <template>
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden">
+    <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden h-full">
         <!-- Header bar -->
         <div class="px-3 sm:px-4 py-2.5 border-b border-slate-200 bg-slate-50/80">
             <div v-if="!multiSelectMode" class="flex items-center gap-2">
@@ -181,7 +181,7 @@
         </Dialog>
 
         <!-- Loading State -->
-        <div v-if="loading" class="flex items-center justify-center p-8">
+        <div v-if="loading" class="flex items-center justify-center p-8 h-full min-h-[320px]">
             <div class="text-center">
                 <i class="pi pi-spin pi-spinner text-3xl text-blue-600 mb-4"></i>
                 <p class="text-sm text-slate-500">{{ $t('dashboard.loading_cards') }}</p>
