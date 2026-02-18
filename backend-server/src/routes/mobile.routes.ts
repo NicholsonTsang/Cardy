@@ -260,7 +260,7 @@ router.get('/card/digital/:accessToken', async (req: Request, res: Response) => 
       allowed: true, 
       isNewSession: !isExistingSession,
       sessionCost: 0,
-      tier: 'free' as 'free' | 'starter' | 'premium',
+      tier: 'free' as 'free' | 'starter' | 'premium' | 'enterprise',
       isAiEnabled: false,
       budgetRemaining: 0,
       needsOverage: false,
