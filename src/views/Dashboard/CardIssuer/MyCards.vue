@@ -281,14 +281,14 @@ const updateURL = (cardId = null, tab = 0) => {
 };
 
 const getTabName = (tabIndex) => {
-    const tabNames = ['general', 'content', 'qr-access'];
+    const tabNames = ['general', 'content', 'ai-translations', 'qr-access'];
     return tabNames[tabIndex] || 'general';
 };
 
 const getTabIndex = (tabName) => {
-    const tabNames = ['general', 'content', 'qr-access'];
-    // Handle legacy URL value from old 4-tab layout
-    if (tabName === 'control-settings') return 2;
+    const tabNames = ['general', 'content', 'ai-translations', 'qr-access'];
+    // Handle legacy URL values from old tab layouts
+    if (tabName === 'control-settings') return 3;
     const index = tabNames.indexOf(tabName);
     return index !== -1 ? index : 0;
 };

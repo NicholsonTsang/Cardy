@@ -118,6 +118,14 @@
                                 :key="selectedCard.id + '-content'"
                                 @update-card="$emit('update-card', $event)"
                             />
+                            <!-- AI & Translations Tab -->
+                            <CardAITranslationsTab
+                                v-if="getTabComponent(index) === 'ai-translations' && selectedCard"
+                                :cardProp="selectedCard"
+                                :updateCardFn="updateCardFn"
+                                :key="`${selectedCard.id}-ai-translations`"
+                                @update-card="$emit('update-card', $event)"
+                            />
                             <!-- QR & Access Tab -->
                             <DigitalAccessQR
                                 v-if="getTabComponent(index) === 'qr' && selectedCard"
@@ -159,6 +167,7 @@ import TabPanels from 'primevue/tabpanels';
 import TabPanel from 'primevue/tabpanel';
 import Dialog from 'primevue/dialog';
 import CardView from '@/components/CardComponents/CardView.vue';
+import CardAITranslationsTab from '@/components/CardComponents/CardAITranslationsTab.vue';
 import CardContent from '@/components/CardContent/CardContent.vue';
 import DigitalAccessQR from '@/components/DigitalAccess/DigitalAccessQR.vue';
 import MobilePreview from '@/components/CardComponents/MobilePreview.vue';
@@ -222,7 +231,7 @@ const showPreviewDialog = ref(false);
 // Tab configuration
 // Each tab includes a hint for tooltips to help users understand the workflow
 const tabs = computed(() => {
-    const baseTabs = [
+    return [
         {
             label: t('dashboard.general'),
             icon: 'pi pi-cog',
@@ -232,24 +241,26 @@ const tabs = computed(() => {
             label: t('dashboard.content'),
             icon: 'pi pi-list',
             hint: t('dashboard.tab_hint_content')
+        },
+        {
+            label: t('dashboard.ai_translations'),
+            icon: 'pi pi-sparkles',
+            hint: t('dashboard.tab_hint_ai_translations')
+        },
+        {
+            label: t('dashboard.qr_access'),
+            icon: 'pi pi-qrcode',
+            hint: t('dashboard.tab_hint_qr')
         }
     ];
-
-    // QR & Access tab
-    baseTabs.push({
-        label: t('dashboard.qr_access'),
-        icon: 'pi pi-qrcode',
-        hint: t('dashboard.tab_hint_qr')
-    });
-
-    return baseTabs;
 });
 
-// Map tab index to component type: [General, Content, QR & Access]
+// Map tab index to component type: [General, Content, AI & Translations, QR & Access]
 const getTabComponent = (index) => {
     if (index === 0) return 'general';
     if (index === 1) return 'content';
-    if (index === 2) return 'qr';
+    if (index === 2) return 'ai-translations';
+    if (index === 3) return 'qr';
     return null;
 };
 
