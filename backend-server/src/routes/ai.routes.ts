@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { optionalAuth, authenticateUser } from '../middleware/auth';
 import { supabaseAdmin } from '../config/supabase';
 import { geminiClient } from '../services/gemini-client';
-import { checkVoiceCallAllowed, startVoiceCall, endVoiceCall } from '../services/usage-tracker';
+import { checkVoiceCallAllowed, startVoiceCall, endVoiceCall, checkTokenDailyVoiceLimit, checkTokenMonthlyVoiceLimit, recordTokenVoiceSeconds } from '../services/usage-tracker';
 import { VOICE_CREDIT_CONFIG } from '../config/subscription';
 
 const router = Router();
@@ -216,7 +216,7 @@ router.post('/generate-tts', optionalAuth, async (req: Request, res: Response) =
  */
 router.post('/realtime-token', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const { sessionConfig, cardId } = req.body;
+    const { sessionConfig, cardId, tokenId, dailyVoiceLimit, monthlyVoiceLimit } = req.body;
 
     if (!cardId) {
       return res.status(400).json({
@@ -232,6 +232,30 @@ router.post('/realtime-token', optionalAuth, async (req: Request, res: Response)
         error: 'Configuration error',
         message: 'OpenAI API key not configured'
       });
+    }
+
+    // Check per-token daily voice time limit (if tokenId and limit are provided)
+    if (tokenId && dailyVoiceLimit != null) {
+      const dailyVoiceCheck = await checkTokenDailyVoiceLimit(tokenId, dailyVoiceLimit);
+      if (!dailyVoiceCheck.allowed) {
+        console.log(`[AI] Voice denied (daily voice limit) for token ${tokenId}: ${dailyVoiceCheck.currentSessions}s / ${dailyVoiceCheck.dailyLimit}s`);
+        return res.status(429).json({
+          error: 'Daily voice limit reached',
+          message: dailyVoiceCheck.reason
+        });
+      }
+    }
+
+    // Check per-token monthly voice time limit (if tokenId and limit are provided)
+    if (tokenId && monthlyVoiceLimit != null) {
+      const monthlyVoiceCheck = await checkTokenMonthlyVoiceLimit(tokenId, monthlyVoiceLimit);
+      if (!monthlyVoiceCheck.allowed) {
+        console.log(`[AI] Voice denied (monthly voice limit) for token ${tokenId}: ${monthlyVoiceCheck.currentSessions}s / ${monthlyVoiceCheck.dailyLimit}s`);
+        return res.status(429).json({
+          error: 'Monthly voice limit reached',
+          message: monthlyVoiceCheck.reason
+        });
+      }
     }
 
     // Check voice credit billing
@@ -326,13 +350,19 @@ router.post('/realtime-token', optionalAuth, async (req: Request, res: Response)
  */
 router.post('/realtime-end', optionalAuth, async (req: Request, res: Response) => {
   try {
-    const { cardId, sessionId, durationSeconds } = req.body;
+    const { cardId, sessionId, durationSeconds, tokenId } = req.body;
 
     if (!cardId || !sessionId) {
       return res.status(400).json({ error: 'cardId and sessionId required' });
     }
 
     const duration = Math.min(Math.max(0, parseInt(durationSeconds) || 0), 600);
+
+    // Record per-token voice seconds for limit enforcement (non-blocking)
+    if (tokenId && duration > 0) {
+      recordTokenVoiceSeconds(tokenId, duration)
+        .catch(err => console.error('[AI] Failed to record token voice seconds:', err));
+    }
 
     await endVoiceCall(cardId, sessionId, duration);
 

@@ -15,6 +15,9 @@ export interface AccessToken {
     access_token: string; // 12-char URL-safe token
     is_enabled: boolean; // Toggle to enable/disable this specific QR code
     daily_session_limit: number | null; // Daily session limit (NULL = unlimited)
+    monthly_session_limit: number | null; // Monthly session limit (NULL = unlimited)
+    daily_voice_limit: number | null; // Daily voice time limit in seconds (NULL = unlimited)
+    monthly_voice_limit: number | null; // Monthly voice time limit in seconds (NULL = unlimited)
     total_sessions: number; // All-time sessions for this QR code
     daily_sessions: number; // Today's session count
     monthly_sessions: number; // Current month's session count
@@ -94,6 +97,9 @@ export interface CardFormData {
 export interface AccessTokenFormData {
     name: string;
     daily_session_limit?: number | null; // NULL = unlimited
+    monthly_session_limit?: number | null; // NULL = unlimited
+    daily_voice_limit?: number | null; // NULL = unlimited, in seconds
+    monthly_voice_limit?: number | null; // NULL = unlimited, in seconds
     is_enabled?: boolean;
 }
 
@@ -439,15 +445,18 @@ export const useCardStore = defineStore('card', () => {
                 .rpc('create_access_token', {
                     p_card_id: cardId,
                     p_name: tokenData.name || 'Default',
-                    p_daily_session_limit: tokenData.daily_session_limit ?? null
+                    p_daily_session_limit: tokenData.daily_session_limit ?? null,
+                    p_monthly_session_limit: tokenData.monthly_session_limit ?? null,
+                    p_daily_voice_limit: tokenData.daily_voice_limit ?? null,
+                    p_monthly_voice_limit: tokenData.monthly_voice_limit ?? null
                 });
-            
+
             if (createError) throw createError;
-            
+
             if (data?.success) {
                 // Refresh tokens list
                 await fetchAccessTokens(cardId);
-                
+
                 // Return the new token info
                 return {
                     id: data.token_id,
@@ -456,6 +465,9 @@ export const useCardStore = defineStore('card', () => {
                     access_token: data.access_token,
                     is_enabled: true,
                     daily_session_limit: tokenData.daily_session_limit ?? null,
+                    monthly_session_limit: tokenData.monthly_session_limit ?? null,
+                    daily_voice_limit: tokenData.daily_voice_limit ?? null,
+                    monthly_voice_limit: tokenData.monthly_voice_limit ?? null,
                     total_sessions: 0,
                     daily_sessions: 0,
                     monthly_sessions: 0,
@@ -491,9 +503,18 @@ export const useCardStore = defineStore('card', () => {
                     p_token_id: tokenId,
                     p_name: updates.name ?? null,
                     p_is_enabled: updates.is_enabled ?? null,
-                    p_daily_session_limit: updates.daily_session_limit === undefined 
-                        ? null 
-                        : (updates.daily_session_limit === null ? -1 : updates.daily_session_limit)
+                    p_daily_session_limit: updates.daily_session_limit === undefined
+                        ? null
+                        : (updates.daily_session_limit === null ? -1 : updates.daily_session_limit),
+                    p_monthly_session_limit: updates.monthly_session_limit === undefined
+                        ? null
+                        : (updates.monthly_session_limit === null ? -1 : updates.monthly_session_limit),
+                    p_daily_voice_limit: updates.daily_voice_limit === undefined
+                        ? null
+                        : (updates.daily_voice_limit === null ? -1 : updates.daily_voice_limit),
+                    p_monthly_voice_limit: updates.monthly_voice_limit === undefined
+                        ? null
+                        : (updates.monthly_voice_limit === null ? -1 : updates.monthly_voice_limit)
                 });
             
             if (updateError) throw updateError;

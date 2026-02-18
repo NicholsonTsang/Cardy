@@ -1,5 +1,5 @@
 -- Combined Stored Procedures
--- Generated: Wed Feb 18 02:24:47 HKT 2026
+-- Generated: Wed Feb 18 12:47:12 HKT 2026
 
 -- =================================================================
 -- CLIENT-SIDE PROCEDURES
@@ -4881,7 +4881,10 @@ $$;
 CREATE OR REPLACE FUNCTION create_access_token(
     p_card_id UUID,
     p_name TEXT DEFAULT 'Default',
-    p_daily_session_limit INTEGER DEFAULT NULL
+    p_daily_session_limit INTEGER DEFAULT NULL,
+    p_monthly_session_limit INTEGER DEFAULT NULL,
+    p_daily_voice_limit INTEGER DEFAULT NULL,
+    p_monthly_voice_limit INTEGER DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -4899,43 +4902,49 @@ BEGIN
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
-    
+
     -- Verify card ownership and get default limit
-    SELECT user_id, default_daily_session_limit 
+    SELECT user_id, default_daily_session_limit
     INTO v_card_owner_id, v_default_limit
-    FROM cards 
+    FROM cards
     WHERE id = p_card_id;
-    
+
     IF v_card_owner_id IS NULL THEN
         RAISE EXCEPTION 'Card not found';
     END IF;
-    
+
     IF v_card_owner_id != v_user_id THEN
         RAISE EXCEPTION 'Not authorized';
     END IF;
-    
+
     -- Generate unique token
     v_new_token := generate_access_token();
-    
+
     -- Use provided limit or fall back to card default
     IF p_daily_session_limit IS NULL THEN
         p_daily_session_limit := v_default_limit;
     END IF;
-    
+
     -- Create the access token
     INSERT INTO card_access_tokens (
         card_id,
         name,
         access_token,
-        daily_session_limit
+        daily_session_limit,
+        monthly_session_limit,
+        daily_voice_limit,
+        monthly_voice_limit
     ) VALUES (
         p_card_id,
         COALESCE(p_name, 'Default'),
         v_new_token,
-        p_daily_session_limit
+        p_daily_session_limit,
+        p_monthly_session_limit,
+        p_daily_voice_limit,
+        p_monthly_voice_limit
     )
     RETURNING id INTO v_token_id;
-    
+
     RETURN jsonb_build_object(
         'success', true,
         'token_id', v_token_id,
@@ -4990,6 +4999,9 @@ BEGIN
             'access_token', t.access_token,
             'is_enabled', t.is_enabled,
             'daily_session_limit', t.daily_session_limit,
+            'monthly_session_limit', t.monthly_session_limit,
+            'daily_voice_limit', t.daily_voice_limit,
+            'monthly_voice_limit', t.monthly_voice_limit,
             'total_sessions', t.total_sessions,
             'daily_sessions', t.daily_sessions,
             'monthly_sessions', t.monthly_sessions,
@@ -5011,7 +5023,10 @@ CREATE OR REPLACE FUNCTION update_access_token(
     p_token_id UUID,
     p_name TEXT DEFAULT NULL,
     p_is_enabled BOOLEAN DEFAULT NULL,
-    p_daily_session_limit INTEGER DEFAULT NULL
+    p_daily_session_limit INTEGER DEFAULT NULL,
+    p_monthly_session_limit INTEGER DEFAULT NULL,
+    p_daily_voice_limit INTEGER DEFAULT NULL,
+    p_monthly_voice_limit INTEGER DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -5027,35 +5042,50 @@ BEGIN
     IF v_user_id IS NULL THEN
         RAISE EXCEPTION 'Not authenticated';
     END IF;
-    
+
     -- Get card_id and verify ownership
-    SELECT t.card_id, c.user_id 
+    SELECT t.card_id, c.user_id
     INTO v_card_id, v_card_owner_id
     FROM card_access_tokens t
     JOIN cards c ON c.id = t.card_id
     WHERE t.id = p_token_id;
-    
+
     IF v_card_id IS NULL THEN
         RAISE EXCEPTION 'Token not found';
     END IF;
-    
+
     IF v_card_owner_id != v_user_id THEN
         RAISE EXCEPTION 'Not authorized';
     END IF;
-    
-    -- Update the token
+
+    -- Update the token (-1 sentinel = set to NULL/unlimited)
     UPDATE card_access_tokens
     SET
         name = COALESCE(p_name, name),
         is_enabled = COALESCE(p_is_enabled, is_enabled),
-        daily_session_limit = CASE 
-            WHEN p_daily_session_limit = -1 THEN NULL  -- -1 means unlimited
+        daily_session_limit = CASE
+            WHEN p_daily_session_limit = -1 THEN NULL
             WHEN p_daily_session_limit IS NOT NULL THEN p_daily_session_limit
             ELSE daily_session_limit
         END,
+        monthly_session_limit = CASE
+            WHEN p_monthly_session_limit = -1 THEN NULL
+            WHEN p_monthly_session_limit IS NOT NULL THEN p_monthly_session_limit
+            ELSE monthly_session_limit
+        END,
+        daily_voice_limit = CASE
+            WHEN p_daily_voice_limit = -1 THEN NULL
+            WHEN p_daily_voice_limit IS NOT NULL THEN p_daily_voice_limit
+            ELSE daily_voice_limit
+        END,
+        monthly_voice_limit = CASE
+            WHEN p_monthly_voice_limit = -1 THEN NULL
+            WHEN p_monthly_voice_limit IS NOT NULL THEN p_monthly_voice_limit
+            ELSE monthly_voice_limit
+        END,
         updated_at = NOW()
     WHERE id = p_token_id;
-    
+
     RETURN jsonb_build_object('success', true);
 END;
 $$;
@@ -5224,9 +5254,9 @@ DROP FUNCTION IF EXISTS migrate_legacy_access_tokens() CASCADE;
 
 -- Grant permissions
 GRANT EXECUTE ON FUNCTION generate_access_token() TO authenticated;
-GRANT EXECUTE ON FUNCTION create_access_token(UUID, TEXT, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION create_access_token(UUID, TEXT, INTEGER, INTEGER, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_card_access_tokens(UUID) TO authenticated;
-GRANT EXECUTE ON FUNCTION update_access_token(UUID, TEXT, BOOLEAN, INTEGER) TO authenticated;
+GRANT EXECUTE ON FUNCTION update_access_token(UUID, TEXT, BOOLEAN, INTEGER, INTEGER, INTEGER, INTEGER) TO authenticated;
 GRANT EXECUTE ON FUNCTION delete_access_token(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION refresh_access_token(UUID) TO authenticated;
 GRANT EXECUTE ON FUNCTION get_card_monthly_stats(UUID) TO authenticated;
@@ -6478,6 +6508,9 @@ RETURNS TABLE (
     token_name TEXT,
     token_is_enabled BOOLEAN,
     token_daily_session_limit INTEGER,
+    token_monthly_session_limit INTEGER,
+    token_daily_voice_limit INTEGER,
+    token_monthly_voice_limit INTEGER,
     token_daily_sessions INTEGER,
     token_monthly_sessions INTEGER,
     token_total_sessions INTEGER,
@@ -6509,6 +6542,9 @@ BEGIN
         t.name AS token_name,
         t.is_enabled AS token_is_enabled,
         t.daily_session_limit AS token_daily_session_limit,
+        t.monthly_session_limit AS token_monthly_session_limit,
+        t.daily_voice_limit AS token_daily_voice_limit,
+        t.monthly_voice_limit AS token_monthly_voice_limit,
         t.daily_sessions AS token_daily_sessions,
         t.monthly_sessions AS token_monthly_sessions,
         t.total_sessions AS token_total_sessions,

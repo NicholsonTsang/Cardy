@@ -21,6 +21,8 @@ export function useWebRTCConnection() {
   const remainingCredits = ref(0)
   const voiceSessionId = ref<string | null>(null)
   const voiceCallStartTime = ref<number | null>(null)
+  // Per-token voice limit tracking
+  const voiceTokenId = ref<string | null>(null)
 
   // Transcript callbacks
   let onUserTranscriptCallback: ((text: string) => void) | null = null
@@ -53,7 +55,14 @@ export function useWebRTCConnection() {
   
   // Get ephemeral token from Backend API
   // cardId is required for voice billing (credit deduction happens server-side)
-  async function getEphemeralToken(language: string, cardId?: string) {
+  // tokenId + voice limits enable per-token voice time limit enforcement
+  async function getEphemeralToken(
+    language: string,
+    cardId?: string,
+    tokenId?: string,
+    dailyVoiceLimit?: number | null,
+    monthlyVoiceLimit?: number | null,
+  ) {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY
@@ -66,6 +75,9 @@ export function useWebRTCConnection() {
         },
         body: JSON.stringify({
           cardId,
+          tokenId,
+          dailyVoiceLimit,
+          monthlyVoiceLimit,
           sessionConfig: {
             voice: voiceMap[language] || 'alloy'
           }
@@ -80,6 +92,10 @@ export function useWebRTCConnection() {
         }
         if (response.status === 403) {
           throw new Error('VOICE_NOT_ENABLED')
+        }
+        if (response.status === 429) {
+          // Per-token voice time limit exceeded (daily or monthly)
+          throw new Error('VOICE_TIME_LIMIT_REACHED')
         }
         throw new Error(errorData.error || 'Failed to get ephemeral token')
       }
@@ -108,7 +124,17 @@ export function useWebRTCConnection() {
   // Initialize WebRTC connection
   // customWelcome: Optional custom welcome message from card settings (ai_welcome_general/ai_welcome_item)
   // cardId: Required for voice billing - credit deduction happens at connection time
-  async function connect(language: string, instructions: string, customWelcome?: string, cardId?: string): Promise<void> {
+  // tokenId: QR code token ID for per-token voice time limit enforcement
+  // dailyVoiceLimit / monthlyVoiceLimit: Per-token voice time limits in seconds (null = unlimited)
+  async function connect(
+    language: string,
+    instructions: string,
+    customWelcome?: string,
+    cardId?: string,
+    tokenId?: string,
+    dailyVoiceLimit?: number | null,
+    monthlyVoiceLimit?: number | null,
+  ): Promise<void> {
     // Prevent duplicate connections
     if (isConnected.value || status.value === 'connecting') {
       console.warn('⚠️ Connection already active or in progress, ignoring duplicate connect request')
@@ -146,8 +172,9 @@ export function useWebRTCConnection() {
       }
       
       // Get ephemeral token (also deducts voice credit server-side)
-      const ephemeralToken = await getEphemeralToken(language, cardId)
+      const ephemeralToken = await getEphemeralToken(language, cardId, tokenId, dailyVoiceLimit, monthlyVoiceLimit)
       voiceCallStartTime.value = Date.now()
+      voiceTokenId.value = tokenId ?? null
 
       // Request microphone access
       console.log('🎤 Requesting microphone access...')
@@ -637,6 +664,7 @@ export function useWebRTCConnection() {
 
     const payload = JSON.stringify({
       cardId: cardId || '',
+      tokenId: voiceTokenId.value || undefined,
       sessionId: voiceSessionId.value,
       durationSeconds
     })
@@ -757,6 +785,7 @@ export function useWebRTCConnection() {
     // Reset billing state
     voiceSessionId.value = null
     voiceCallStartTime.value = null
+    voiceTokenId.value = null
   }
   
   // Set transcript callbacks

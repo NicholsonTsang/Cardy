@@ -107,6 +107,9 @@ CREATE TABLE card_access_tokens (
     access_token TEXT UNIQUE NOT NULL, -- 12-char URL-safe token for access URL
     is_enabled BOOLEAN DEFAULT true, -- Toggle to enable/disable this specific QR code
     daily_session_limit INTEGER DEFAULT NULL, -- Daily session limit for this QR (NULL = unlimited)
+    monthly_session_limit INTEGER DEFAULT NULL, -- Monthly session limit for this QR (NULL = unlimited)
+    daily_voice_limit INTEGER DEFAULT NULL, -- Daily voice call time limit in seconds for this QR (NULL = unlimited)
+    monthly_voice_limit INTEGER DEFAULT NULL, -- Monthly voice call time limit in seconds for this QR (NULL = unlimited)
     -- Session counters (display purposes - Redis is source of truth for billing)
     total_sessions INTEGER DEFAULT 0, -- All-time sessions for this QR code
     daily_sessions INTEGER DEFAULT 0, -- Today's session count

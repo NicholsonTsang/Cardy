@@ -70,6 +70,11 @@ export const redis = {
     if (!client) return -1;
     return client.incr(key);
   },
+  incrby: async (key: string, increment: number) => {
+    const client = getRedisClient();
+    if (!client) return -1;
+    return client.incrby(key, increment);
+  },
   decr: async (key: string) => {
     const client = getRedisClient();
     if (!client) return -1;
