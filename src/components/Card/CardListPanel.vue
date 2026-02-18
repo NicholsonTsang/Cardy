@@ -186,9 +186,48 @@
             </div>
         </div>
 
-        <!-- Empty State — minimal, defer to right panel for actions -->
-        <div v-else-if="cards.length === 0 && !searchQuery" class="flex flex-col items-center justify-center flex-1 px-5 py-8 text-center">
-            <p class="text-xs text-slate-400 leading-relaxed">{{ $t('dashboard.sidebar_empty_hint') }}</p>
+        <!-- Empty State — compact visual with quick actions -->
+        <div v-else-if="cards.length === 0 && !searchQuery" class="flex flex-col items-center justify-center flex-1 px-4 py-8 text-center gap-5">
+            <!-- Illustration -->
+            <div class="relative">
+                <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center shadow-sm">
+                    <i class="pi pi-folder-open text-2xl text-indigo-400"></i>
+                </div>
+                <div class="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-blue-500 flex items-center justify-center shadow">
+                    <i class="pi pi-plus text-white" style="font-size: 9px;"></i>
+                </div>
+            </div>
+
+            <!-- Text -->
+            <div class="space-y-1">
+                <p class="text-sm font-semibold text-slate-700">{{ $t('dashboard.sidebar_empty_title') }}</p>
+                <p class="text-xs text-slate-400 leading-relaxed">{{ $t('dashboard.sidebar_empty_hint') }}</p>
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div class="w-full space-y-2">
+                <button
+                    @click="$emit('create-card')"
+                    class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium transition-all shadow-sm"
+                >
+                    <i class="pi pi-plus text-xs flex-shrink-0"></i>
+                    <span>{{ $t('dashboard.empty_action_create') }}</span>
+                </button>
+                <button
+                    @click="openTemplateLibrary()"
+                    class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium border border-slate-200 transition-all"
+                >
+                    <i class="pi pi-book text-emerald-500 text-xs flex-shrink-0"></i>
+                    <span>{{ $t('dashboard.empty_action_template') }}</span>
+                </button>
+                <button
+                    @click="openRegularImport()"
+                    class="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 text-xs font-medium border border-slate-200 transition-all"
+                >
+                    <i class="pi pi-upload text-blue-400 text-xs flex-shrink-0"></i>
+                    <span>{{ $t('dashboard.empty_action_import') }}</span>
+                </button>
+            </div>
         </div>
 
         <!-- No Search Results -->

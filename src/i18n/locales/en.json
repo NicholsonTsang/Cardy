@@ -480,6 +480,8 @@
     "delete_template_warning": "⚠️ This project is linked to a content template. Deleting it will also delete the template.",
     "no_cards_yet": "No Projects Yet",
     "start_creating": "Start by creating your first project",
+    "sidebar_empty_title": "No Projects Yet",
+    "sidebar_empty_hint": "Create your first project to get started.",
     "empty_welcome_title": "Welcome to FunTell",
     "empty_welcome_subtitle": "Create interactive content experiences with AI. Choose how you'd like to get started.",
     "empty_action_create": "Create from Scratch",
