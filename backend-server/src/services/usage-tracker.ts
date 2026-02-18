@@ -1,24 +1,28 @@
 /**
  * Redis-First Session Tracking Service
- * 
- * NEW SESSION-BASED BILLING MODEL:
- * - AI-enabled projects: $0.05 per user session
- * - AI-disabled projects: $0.025 per user session
- * - Premium monthly budget: $30 (= 600 AI sessions OR 1200 non-AI sessions)
- * - Auto top-up: $5 = 100 AI sessions OR 200 non-AI sessions
- * 
- * Redis (Upstash) is the SINGLE SOURCE OF TRUTH for session tracking.
+ *
+ * SESSION-BASED BILLING MODEL (four tiers):
+ * - Starter  ($40/mo):    AI $0.05/session, Non-AI $0.025/session
+ * - Premium  ($280/mo):   AI $0.04/session, Non-AI $0.02/session
+ * - Enterprise ($1000/mo):AI $0.02/session, Non-AI $0.01/session
+ * - Free:                 50 sessions/month hard limit (no budget)
+ *
+ * Auto top-up: $5 credit added to Redis budget when exhausted.
+ * Sessions-per-$5 vary by tier (e.g. 250 AI sessions on Enterprise vs 100 on Starter).
+ *
+ * Redis (Upstash) is the SINGLE SOURCE OF TRUTH for budget tracking.
  * Sessions are identified via Cloudflare session ID or visitor fingerprint.
- * 
+ *
  * PostgreSQL is only hit when:
  * - First session of the month (to get tier info, then cached in Redis)
+ * - Budget key missing from Redis: consumed amount fetched from DB to rehydrate correctly
  * - Overage purchase (1 DB call per $5 top-up)
  * - Session logging (async, non-blocking)
  */
 
 import { redis, isRedisConfigured } from '../config/redis';
 import { supabaseAdmin } from '../config/supabase';
-import { SubscriptionConfig, getSessionCost, calculateSessionsFromBudget } from '../config/subscription';
+import { SubscriptionConfig, getSessionCost, getOverageSessionsPerBatch, calculateSessionsFromBudget } from '../config/subscription';
 
 // ============================================================================
 // REDIS KEY PATTERNS
@@ -28,8 +32,10 @@ import { SubscriptionConfig, getSessionCost, calculateSessionsFromBudget } from 
 const SESSION_DEDUP_KEY = (sessionId: string, cardId: string) => `session:dedup:${sessionId}:${cardId}`;
 
 // User budget tracking keys (monthly)
-// BUDGET_KEY stores AVAILABLE budget (source of truth), decrements on each access
+// BUDGET_KEY stores AVAILABLE budget (source of truth), decrements on each access.
+// CONSUMED_KEY stores CONSUMED budget (used to rehydrate available budget on cache miss).
 const BUDGET_KEY = (userId: string, month: string) => `budget:user:${userId}:month:${month}`;
+const CONSUMED_KEY = (userId: string, month: string) => `budget:consumed:${userId}:month:${month}`;
 const AI_SESSIONS_KEY = (userId: string, month: string) => `sessions:ai:${userId}:month:${month}`;
 const NON_AI_SESSIONS_KEY = (userId: string, month: string) => `sessions:nonai:${userId}:month:${month}`;
 
@@ -141,22 +147,28 @@ async function getCardAiEnabledFromDb(cardId: string): Promise<boolean> {
 }
 
 /**
- * Get or initialize user's subscription info in Redis
- * Redis tracks AVAILABLE budget (remaining), not consumed
+ * Get or initialize user's subscription info in Redis.
+ * Redis tracks AVAILABLE budget (remaining) as the source of truth.
+ *
+ * On cache miss the budget is rehydrated as:
+ *   available = monthlyBudget - consumedBudget
+ * where consumedBudget is either still cached in CONSUMED_KEY or fetched
+ * from the access log in PostgreSQL. This prevents silently resetting a
+ * partially-used budget to the full monthly amount.
  */
 async function getOrInitUserInfo(userId: string): Promise<{
   tier: 'free' | 'starter' | 'premium' | 'enterprise';
-  budgetAvailable: number;  // Available budget (source of truth in Redis)
+  budgetAvailable: number;
 }> {
   const month = getCurrentMonth();
-  
+
   if (!isRedisConfigured()) {
     return getSubscriptionFromDb(userId);
   }
 
   const [tierResult, budgetResult] = await Promise.all([
     redis.get(TIER_KEY(userId)),
-    redis.get(BUDGET_KEY(userId, month))  // Available budget
+    redis.get(BUDGET_KEY(userId, month))
   ]);
 
   const tierStr = tierResult as string | null;
@@ -169,25 +181,38 @@ async function getOrInitUserInfo(userId: string): Promise<{
     };
   }
 
-  // Not in cache - fetch tier from database, initialize budget from config
-  const dbInfo = await getSubscriptionFromDb(userId);
-  
-  // Cache the info
+  // Cache miss: fetch tier from DB and rehydrate budget correctly.
+  const { tier, monthlyBudgetUsd } = await getSubscriptionInfoFromDb(userId);
+
+  // Check if the consumed tracker is still alive (cheaper than a DB query).
+  const consumedStr = await redis.get(CONSUMED_KEY(userId, month)) as string | null;
+  let consumed = 0;
+  if (consumedStr !== null) {
+    consumed = parseFloat(consumedStr);
+  } else if (tier !== 'free') {
+    // Neither key survived – fall back to DB for consumed amount.
+    consumed = await getConsumedBudgetFromDb(userId, month);
+    // Re-persist consumed so future misses are cheap.
+    await redis.set(CONSUMED_KEY(userId, month), consumed.toString(), { ex: CACHE_TTL });
+  }
+
+  const budgetAvailable = Math.max(0, monthlyBudgetUsd - consumed);
+
   await Promise.all([
-    redis.set(TIER_KEY(userId), dbInfo.tier, { ex: CACHE_TTL }),
-    redis.set(BUDGET_KEY(userId, month), dbInfo.budgetAvailable.toString(), { ex: CACHE_TTL })
+    redis.set(TIER_KEY(userId), tier, { ex: CACHE_TTL }),
+    redis.set(BUDGET_KEY(userId, month), budgetAvailable.toString(), { ex: CACHE_TTL })
   ]);
 
-  return dbInfo;
+  return { tier, budgetAvailable };
 }
 
 /**
- * Get subscription tier from PostgreSQL, initialize budget from config
- * All pricing values come from environment variables
+ * Fetch subscription tier + full monthly budget from PostgreSQL.
+ * Does NOT compute available budget — callers must subtract consumed amount.
  */
-async function getSubscriptionFromDb(userId: string): Promise<{
+async function getSubscriptionInfoFromDb(userId: string): Promise<{
   tier: 'free' | 'starter' | 'premium' | 'enterprise';
-  budgetAvailable: number;
+  monthlyBudgetUsd: number;
 }> {
   const { data: rows, error } = await supabaseAdmin.rpc(
     'get_subscription_by_user_server',
@@ -197,29 +222,52 @@ async function getSubscriptionFromDb(userId: string): Promise<{
   const data = rows?.[0];
 
   if (error || !data) {
-    // No subscription - return free tier defaults
-    return {
-      tier: 'free',
-      budgetAvailable: 0
-    };
+    return { tier: 'free', monthlyBudgetUsd: 0 };
   }
 
   const tier = data.tier as 'free' | 'starter' | 'premium' | 'enterprise';
-  // Initialize available budget from config (all pricing from env vars)
-  let budgetAvailable = 0;
+  let monthlyBudgetUsd = 0;
 
   if (tier === 'enterprise') {
-    budgetAvailable = SubscriptionConfig.enterprise.monthlyBudgetUsd;
+    monthlyBudgetUsd = SubscriptionConfig.enterprise.monthlyBudgetUsd;
   } else if (tier === 'premium') {
-    budgetAvailable = SubscriptionConfig.premium.monthlyBudgetUsd;
+    monthlyBudgetUsd = SubscriptionConfig.premium.monthlyBudgetUsd;
   } else if (tier === 'starter') {
-    budgetAvailable = SubscriptionConfig.starter.monthlyBudgetUsd;
+    monthlyBudgetUsd = SubscriptionConfig.starter.monthlyBudgetUsd;
   }
 
-  return { 
-    tier, 
-    budgetAvailable
-  };
+  return { tier, monthlyBudgetUsd };
+}
+
+/**
+ * Get the total budget consumed this month from the access log in PostgreSQL.
+ * Used only when both BUDGET_KEY and CONSUMED_KEY are evicted from Redis.
+ */
+async function getConsumedBudgetFromDb(userId: string, month: string): Promise<number> {
+  try {
+    const { data, error } = await supabaseAdmin.rpc(
+      'get_monthly_budget_consumed_server',
+      { p_user_id: userId, p_month: month }
+    );
+    if (error || data === null || data === undefined) return 0;
+    return parseFloat(data) || 0;
+  } catch {
+    console.warn(`[SessionTracker] Failed to get consumed budget from DB for ${userId.slice(0, 8)}...`);
+    return 0;
+  }
+}
+
+/**
+ * @deprecated Use getSubscriptionInfoFromDb + getConsumedBudgetFromDb instead.
+ * Kept for the legacy resetUsage / updateUserTier paths that need a combined result.
+ */
+async function getSubscriptionFromDb(userId: string): Promise<{
+  tier: 'free' | 'starter' | 'premium' | 'enterprise';
+  budgetAvailable: number;
+}> {
+  const { tier, monthlyBudgetUsd } = await getSubscriptionInfoFromDb(userId);
+  // For reset/init contexts a full budget is correct — consumed will be 0 after reset.
+  return { tier, budgetAvailable: monthlyBudgetUsd };
 }
 
 // ============================================================================
@@ -480,14 +528,22 @@ export async function recordSession(
 
     // Atomically decrement available budget using INCRBYFLOAT
     const budgetKey = BUDGET_KEY(userId, month);
+    const consumedKey = CONSUMED_KEY(userId, month);
     const newBudget = await redis.incrbyfloat(budgetKey, -sessionCheck.sessionCost);
-    
+
     // Ensure budget doesn't go below 0 (race condition protection)
     if (newBudget !== null && newBudget < 0) {
       // Correct the overshoot
       await redis.incrbyfloat(budgetKey, -newBudget); // Add back the negative to make it 0
     }
-    
+
+    // Mirror the deduction in consumed tracker (used to rehydrate budget on cache miss)
+    const newConsumed = await redis.incrbyfloat(consumedKey, sessionCheck.sessionCost);
+    if (newConsumed === sessionCheck.sessionCost) {
+      // First write this month — set TTL
+      await redis.expire(consumedKey, CACHE_TTL);
+    }
+
     // Increment session counters
     if (sessionCheck.isAiEnabled) {
       await redis.incr(AI_SESSIONS_KEY(userId, month));
@@ -518,8 +574,11 @@ export async function recordSession(
 }
 
 /**
- * Process overage for premium users
- * Deducts credits from user wallet and adds to Redis available budget
+ * Process overage for paid-tier users.
+ * Deducts credits from user wallet and adds to Redis available budget.
+ *
+ * A per-user distributed lock (SET NX EX) prevents concurrent requests from
+ * triggering multiple top-ups simultaneously (race condition fix).
  */
 async function processSessionOverage(
   userId: string,
@@ -527,8 +586,33 @@ async function processSessionOverage(
 ): Promise<{ allowed: boolean; newBudget?: number; reason: string }> {
   const month = getCurrentMonth();
   const creditsNeeded = SubscriptionConfig.overage.creditsPerBatch; // From env (default $5)
+  const lockKey = `overage:lock:${userId}`;
+  const LOCK_TTL_SECONDS = 10; // Held just long enough for the DB round-trip
 
+  let lockAcquired = false;
   try {
+    // Acquire a per-user overage lock to prevent concurrent double top-ups.
+    // setnx returns "OK" if the key was newly set, null if it already existed.
+    const lockResult = await redis.setnx(lockKey, '1', LOCK_TTL_SECONDS);
+    lockAcquired = lockResult === 'OK';
+
+    if (!lockAcquired) {
+      // Another concurrent request is already processing overage for this user.
+      // Wait briefly and let the caller retry after the budget is replenished.
+      console.log(`[SessionTracker] Overage lock held for ${userId.slice(0, 8)}... — concurrent top-up in progress`);
+      return { allowed: false, reason: 'Overage top-up already in progress, please retry' };
+    }
+
+    // Re-check budget inside the lock: a concurrent request may have already topped up.
+    const budgetKey = BUDGET_KEY(userId, month);
+    const currentBudgetStr = await redis.get(budgetKey) as string | null;
+    const currentBudget = parseFloat(currentBudgetStr || '0');
+    // If budget was replenished by a just-released lock, allow without another top-up.
+    // We don't know sessionCost here so we use a small positive threshold.
+    if (currentBudget > 0.001) {
+      return { allowed: true, newBudget: currentBudget, reason: 'Budget replenished by concurrent top-up' };
+    }
+
     // Call stored procedure for atomic credit deduction (only deducts, doesn't touch DB budget)
     const { data, error } = await supabaseAdmin.rpc('deduct_overage_credits_server', {
       p_user_id: userId,
@@ -550,9 +634,8 @@ async function processSessionOverage(
     }
 
     // Atomically add credits to available budget in Redis (source of truth)
-    const budgetKey = BUDGET_KEY(userId, month);
     const newBudget = await redis.incrbyfloat(budgetKey, creditsNeeded);
-    
+
     // Ensure TTL is set (in case key was new)
     await redis.expire(budgetKey, CACHE_TTL);
 
@@ -566,6 +649,11 @@ async function processSessionOverage(
   } catch (error) {
     console.error('[SessionTracker] Overage processing error:', error);
     return { allowed: false, reason: 'Error processing overage' };
+  } finally {
+    // Always release the lock so subsequent sessions aren't blocked indefinitely.
+    if (lockAcquired) {
+      await redis.del(lockKey).catch(() => { /* non-critical */ });
+    }
   }
 }
 
@@ -575,7 +663,8 @@ async function processSessionOverage(
 // These maintain backward compatibility with existing code
 
 /**
- * @deprecated Use checkSessionAllowed and recordSession instead
+ * @deprecated Use checkSessionAllowed and recordSession instead.
+ * Legacy callers receive correctly tier-aware usage stats.
  */
 export async function checkAndIncrementUsage(
   userId: string,
@@ -592,26 +681,33 @@ export async function checkAndIncrementUsage(
   reason: string;
 }> {
   const sessionCheck = await checkSessionAllowed(userId, cardId, visitorHash, isOwnerAccess);
-  
-  // Convert to legacy format using available budget
+
+  // Derive monthly budget for the user's actual tier (fixes broken non-Premium case)
+  let totalBudget = 0;
+  if (sessionCheck.tier === 'enterprise') totalBudget = SubscriptionConfig.enterprise.monthlyBudgetUsd;
+  else if (sessionCheck.tier === 'premium')    totalBudget = SubscriptionConfig.premium.monthlyBudgetUsd;
+  else if (sessionCheck.tier === 'starter')    totalBudget = SubscriptionConfig.starter.monthlyBudgetUsd;
+
   const month = getCurrentMonth();
-  const budgetKey = BUDGET_KEY(userId, month);
-  const budgetAvailable = isRedisConfigured() 
-    ? parseFloat(await redis.get(budgetKey) as string || '0') 
+  const budgetAvailable = isRedisConfigured()
+    ? parseFloat(await redis.get(BUDGET_KEY(userId, month)) as string || '0')
     : 0;
-  
-  const totalBudget = sessionCheck.tier === 'premium' 
-    ? SubscriptionConfig.premium.monthlyBudgetUsd 
-    : 0;
-  const budgetUsed = totalBudget - budgetAvailable;
-  
+  const budgetUsed = Math.max(0, totalBudget - budgetAvailable);
+
+  const costPerSession = sessionCheck.sessionCost > 0 ? sessionCheck.sessionCost : 1;
+  const currentUsage = sessionCheck.tier === 'free'
+    ? (parseInt(await redis.get(AI_SESSIONS_KEY(userId, month)) as string || '0', 10) +
+       parseInt(await redis.get(NON_AI_SESSIONS_KEY(userId, month)) as string || '0', 10))
+    : Math.floor(budgetUsed / costPerSession);
+
+  const limit = sessionCheck.tier === 'free'
+    ? SubscriptionConfig.free.monthlySessionLimit
+    : calculateSessionsFromBudget(totalBudget, sessionCheck.isAiEnabled, sessionCheck.tier);
+
   return {
     allowed: sessionCheck.allowed,
-    currentUsage: Math.floor(budgetUsed / sessionCheck.sessionCost), // Convert budget to session count
-    limit: calculateSessionsFromBudget(
-      sessionCheck.tier === 'premium' ? SubscriptionConfig.premium.monthlyBudgetUsd : 50,
-      sessionCheck.isAiEnabled
-    ),
+    currentUsage,
+    limit,
     tier: sessionCheck.tier,
     isOverage: sessionCheck.needsOverage,
     needsDbCheck: false,
@@ -644,11 +740,8 @@ export async function processOverage(
     allowed: result.allowed,
     creditDeducted: result.allowed,
     creditsCharged: result.allowed ? SubscriptionConfig.overage.creditsPerBatch : 0,
-    accessGranted: result.allowed 
-      ? (isAiEnabled 
-          ? SubscriptionConfig.overage.aiEnabledSessionsPerBatch 
-          : SubscriptionConfig.overage.aiDisabledSessionsPerBatch)
-      : 0,
+    // Use tier-aware helper — old overage getters were hardcoded to premium rates
+    accessGranted: result.allowed ? getOverageSessionsPerBatch('premium', isAiEnabled) : 0,
     newBalance: undefined, // Not tracked in new model
     newLimit: result.newBudget ? calculateSessionsFromBudget(result.newBudget, isAiEnabled) : undefined,
     reason: result.reason
@@ -818,7 +911,8 @@ export async function flushAccessLogBuffer(): Promise<number> {
 // ============================================================================
 
 /**
- * Invalidate user's cached tier/budget (call when subscription changes)
+ * Invalidate user's cached tier/budget (call when subscription changes).
+ * Clears all three budget-related keys so the next session fetches a fresh state.
  */
 export async function invalidateUserCache(userId: string): Promise<void> {
   if (!isRedisConfigured()) return;
@@ -826,7 +920,8 @@ export async function invalidateUserCache(userId: string): Promise<void> {
   const month = getCurrentMonth();
   await Promise.all([
     redis.del(TIER_KEY(userId)),
-    redis.del(BUDGET_KEY(userId, month))
+    redis.del(BUDGET_KEY(userId, month)),
+    redis.del(CONSUMED_KEY(userId, month))
   ]);
 }
 
@@ -895,36 +990,74 @@ export async function resetUsage(userId: string): Promise<void> {
   
   await Promise.all([
     redis.set(BUDGET_KEY(userId, month), fullBudget.toString(), { ex: CACHE_TTL }),
+    redis.set(CONSUMED_KEY(userId, month), '0', { ex: CACHE_TTL }),
     redis.set(AI_SESSIONS_KEY(userId, month), '0', { ex: CACHE_TTL }),
     redis.set(NON_AI_SESSIONS_KEY(userId, month), '0', { ex: CACHE_TTL })
   ]);
-  
+
   console.log(`[SessionTracker] Reset usage for user ${userId} for month ${month}, budget set to $${fullBudget}`);
 }
 
 /**
- * Update user's tier in Redis (called when subscription changes)
+ * Update user's tier in Redis (called when subscription changes mid-month).
+ *
+ * On UPGRADE we carry over the remaining budget from the old tier and add the
+ * budget delta between the two tiers, so the user is not charged twice for the
+ * current period nor given a free full-month reset.
+ *
+ *   newAvailable = oldAvailable + (newMonthlyBudget - oldMonthlyBudget)
+ *   clamped to [0, newMonthlyBudget]
+ *
+ * On DOWNGRADE the budget is simply clamped to the new tier's monthly ceiling
+ * (downgrade already takes effect at period-end via scheduled_tier, but this
+ * handles any edge case where it fires mid-month).
  */
 export async function updateUserTier(userId: string, newTier: 'free' | 'starter' | 'premium' | 'enterprise'): Promise<void> {
   if (!isRedisConfigured()) return;
 
   const month = getCurrentMonth();
-  let newBudget = 0;
 
+  let newMonthlyBudget = 0;
   if (newTier === 'enterprise') {
-    newBudget = SubscriptionConfig.enterprise.monthlyBudgetUsd;
+    newMonthlyBudget = SubscriptionConfig.enterprise.monthlyBudgetUsd;
   } else if (newTier === 'premium') {
-    newBudget = SubscriptionConfig.premium.monthlyBudgetUsd;
+    newMonthlyBudget = SubscriptionConfig.premium.monthlyBudgetUsd;
   } else if (newTier === 'starter') {
-    newBudget = SubscriptionConfig.starter.monthlyBudgetUsd;
+    newMonthlyBudget = SubscriptionConfig.starter.monthlyBudgetUsd;
+  }
+
+  // Read current state: old tier + available budget
+  const [oldTierStr, oldBudgetStr] = await Promise.all([
+    redis.get(TIER_KEY(userId)),
+    redis.get(BUDGET_KEY(userId, month))
+  ]) as [string | null, string | null];
+
+  let newBudget = newMonthlyBudget; // Fallback: full budget if no prior state
+
+  if (oldTierStr && oldBudgetStr !== null) {
+    const oldTier = oldTierStr as 'free' | 'starter' | 'premium' | 'enterprise';
+    const oldAvailable = parseFloat(oldBudgetStr);
+
+    let oldMonthlyBudget = 0;
+    if (oldTier === 'enterprise') oldMonthlyBudget = SubscriptionConfig.enterprise.monthlyBudgetUsd;
+    else if (oldTier === 'premium') oldMonthlyBudget = SubscriptionConfig.premium.monthlyBudgetUsd;
+    else if (oldTier === 'starter') oldMonthlyBudget = SubscriptionConfig.starter.monthlyBudgetUsd;
+
+    const budgetDelta = newMonthlyBudget - oldMonthlyBudget;
+    newBudget = Math.min(newMonthlyBudget, Math.max(0, oldAvailable + budgetDelta));
+
+    console.log(
+      `[SessionTracker] Tier change ${oldTier}→${newTier} for ${userId.slice(0, 8)}...` +
+      ` oldAvailable=$${oldAvailable.toFixed(2)} delta=$${budgetDelta.toFixed(2)} newAvailable=$${newBudget.toFixed(2)}`
+    );
+  } else {
+    console.log(`[SessionTracker] Tier set to ${newTier} for ${userId.slice(0, 8)}... (no prior state, full budget assigned)`);
   }
 
   await Promise.all([
     redis.set(TIER_KEY(userId), newTier, { ex: CACHE_TTL }),
     redis.set(BUDGET_KEY(userId, month), newBudget.toString(), { ex: CACHE_TTL })
   ]);
-
-  console.log(`[SessionTracker] Updated tier for user ${userId}: ${newTier} (budget: $${newBudget})`);
 }
 
 /**

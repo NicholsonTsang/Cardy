@@ -120,6 +120,16 @@ export const redis = {
     const client = getRedisClient();
     if (!client) return 'OK';
     return client.rename(key, newKey);
+  },
+  /**
+   * SET key value NX EX ttl — set only if key does not exist.
+   * Returns 'OK' if the key was set, null if it already existed.
+   */
+  setnx: async (key: string, value: string, ttlSeconds: number): Promise<string | null> => {
+    const client = getRedisClient();
+    if (!client) return null;
+    const result = await client.set(key, value, { nx: true, ex: ttlSeconds });
+    return result as string | null;
   }
 };
 
