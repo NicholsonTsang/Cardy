@@ -30,9 +30,10 @@ Creator-facing pages for managing projects:
 
 | View | Route | Purpose |
 |------|-------|---------|
-| MyCards | `/dashboard/cards` | Project list + detail (tabbed: General, Content, Issuance/Control, QR & Access) |
-| CreditManagement | `/dashboard/credits` | Credit purchase and history |
-| SubscriptionManagement | `/dashboard/subscription` | Plan management |
+| MyCards | `/:lang/cms/projects` | Project list + detail (tabbed: General, Content, QR & Access) |
+| CreditManagement | `/:lang/cms/credits` | Credit purchase and history |
+| SubscriptionManagement | `/:lang/cms/subscription` | Plan management |
+| Admin pages | `/:lang/cms/admin/*` | User management, templates, history, credits |
 
 ### Mobile Client (`/views/MobileClient/`)
 
@@ -40,8 +41,8 @@ Visitor-facing experience:
 
 | View | Route | Purpose |
 |------|-------|---------|
-| PublicCardView | `/c/:accessToken` | Main card experience |
-| ContentDetailView | `/c/:accessToken/item/:itemId` | Single content item |
+| PublicCardView | `/:lang/c/:issue_card_id` | Main card experience (list/overview) |
+| ContentDetailView | `/:lang/c/:issue_card_id/item/:content_item_id` | Single content item detail |
 
 ### Public (`/views/Public/`)
 

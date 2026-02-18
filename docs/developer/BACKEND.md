@@ -20,8 +20,7 @@ backend-server/
 │   │   ├── redis.ts         # Redis client setup
 │   │   └── stripe.ts        # Stripe client and shared config
 │   └── types/               # TypeScript types
-├── ENVIRONMENT_VARIABLES.md # Environment documentation
-└── REALTIME_JOB_PROCESSOR.md # Job processor docs
+└── ENVIRONMENT_VARIABLES.md # Environment documentation
 ```
 
 ## Route Modules

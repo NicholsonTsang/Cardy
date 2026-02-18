@@ -47,7 +47,7 @@ Create Stripe checkout session for new subscription.
 **Body**:
 ```json
 {
-  "tier": "starter" | "premium",
+  "tier": "starter" | "premium" | "enterprise",
   "successUrl": "https://...",
   "cancelUrl": "https://..."
 }

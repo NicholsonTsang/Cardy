@@ -90,7 +90,7 @@ Frontend runs at `http://localhost:5173`, backend at `http://localhost:8080`.
 
 2. Regenerate combined file:
 ```bash
-./scripts/combine-stored-procedures.sh
+./scripts/combine-storeproc.sh
 ```
 
 3. Deploy via Supabase Dashboard:

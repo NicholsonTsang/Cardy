@@ -230,7 +230,7 @@ Server-side: `sql/storeproc/server-side/*.sql`
 ### 2. Regenerate Combined File
 
 ```bash
-./scripts/combine-stored-procedures.sh
+./scripts/combine-storeproc.sh
 ```
 
 ### 3. Deploy to Supabase
