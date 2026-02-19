@@ -1,0 +1,409 @@
+{
+  "landing": {
+    "nav": {
+      "about": "關於我們",
+      "demo": "功能演示",
+      "features": "核心功能",
+      "how_it_works": "運作方式",
+      "pricing": "價格方案",
+      "contact": "聯絡我們",
+      "docs": "使用指南",
+      "sign_in": "登入",
+      "start_free_trial": "開始免費試用",
+      "start_free": "免費開始",
+      "create_account": "建立帳號",
+      "get_started": "開始使用"
+    },
+    "hero": {
+      "title_line1": "將任何資訊變成",
+      "title_line2": "AI 驅動的",
+      "title_line3": "互動內容體驗",
+      "subtitle_part1": "匯入文件，AI 自動建立互動體驗 —",
+      "subtitle_highlight": "多語言對話",
+      "subtitle_part2": "功能內建。透過連結、QR 碼或嵌入分享。適用產品、場館、教育及各種內容。",
+      "cta_pilot": "聯繫我們試用",
+      "cta_learn": "立即體驗",
+      "cta_demo": "觀看演示",
+      "cta_start": "開始使用"
+    },
+    "demo": {
+      "title": "看看",
+      "title_highlight": "怎麼用",
+      "subtitle": "試用以下兩種模式，體驗不同的使用方式。",
+      "video_coming_soon": "演示影片即將推出",
+      "video_description": "觀看 1-2 分鐘的演示",
+      "card_title": "互動項目演示",
+      "try_live_demo": "立即試用",
+      "scan_to_try": "掃碼試用",
+      "scan_with_phone": "使用手機掃描",
+      "instant_demo": "立即體驗！",
+      "scan_qr_code": "掃描 QR 碼",
+      "project_features": "項目功能",
+      "experience_features": "項目功能",
+      "digital_access": {
+        "title": "數位通行",
+        "desc": "QR 碼直接連結到內容",
+        "hint": "訪客直接進入歡迎頁面和內容",
+        "caption": "QR 碼提供即時數位通行體驗",
+        "full_desc": "數位通行使用 QR 碼直接連結到您的內容——無需實體卡片。非常適合數位菜單、社群連結、活動節目，或任何需要快速、免 App 存取的場景。訪客掃碼即可立即探索您的 AI 互動項目。"
+      },
+      "features": {
+        "qr_access_title": "掃碼即用",
+        "qr_access_desc": "任何手機都能掃，免下載 App。",
+        "ai_voice_title": "AI 語音導覽",
+        "ai_voice_desc": "智能對話，依照個人興趣客製化講解。",
+        "multilingual_title": "支援 10+ 語言",
+        "multilingual_desc": "自動翻譯，服務全球訪客。",
+        "keepsakes_title": "實體收藏卡",
+        "keepsakes_desc": "精美卡片永久保存，隨時回味。"
+      }
+    },
+    "demo_templates": {
+      "badge": "即時項目",
+      "title": "試用我們的示範項目",
+      "subtitle": "探索以下示範，親身體驗 FunTell 的功能。了解 AI 互動內容體驗在不同場景中的實際效果。",
+      "all_types": "全部",
+      "items": "項目",
+      "no_description": "試用此示範以了解我們的平台功能。",
+      "try_demo": "試用示範",
+      "scan_or_click": "掃描 QR 碼或點擊開啟",
+      "view_all": "探索更多模板",
+      "showing": "顯示",
+      "of": "共",
+      "scenario_categories": {
+        "cultural": "文化藝術",
+        "food": "餐飲美食",
+        "events": "活動娛樂",
+        "hospitality": "酒店水療",
+        "retail": "購物展廳",
+        "tours": "導覽教育",
+        "general": "一般"
+      },
+      "select_template": "選擇一個模板預覽",
+      "open_full": "開啟完整體驗",
+      "scan_qr_hint": "或用手機掃描 QR 碼",
+      "scan_to_view": "掃描以在手機上查看",
+      "scan_hint": "使用手機相機掃描體驗此示範",
+      "templates_available": "個範本",
+      "scroll_to_explore": "滾動瀏覽更多",
+      "no_templates": "找不到範本",
+      "live_badge": "即時",
+      "open_button": "開啟",
+      "featured_badge": "精選"
+    },
+    "content_modes": {
+      "title": "靈活",
+      "title_highlight": "顯示版面",
+      "subtitle": "為您的內容選擇最佳版面配置，每種版面都針對不同用途優化，可選擇分組功能，AI 助理會根據內容結構自動調整。",
+      "ai_context_label": "AI 助理內容",
+      "ai_assistant": "AI 助理",
+      "ai_general_label": "通用助理",
+      "ai_item_label": "展品助理",
+      "single": {
+        "name": "單頁內容",
+        "desc": "完整頁面文章或公告",
+        "use_case": "產品詳情、活動資訊、公告、文章",
+        "ai_single": "私人 AI 助理，擁有完整知識庫，可回答任何問題",
+        "ai_note": "單頁模式只有一個內容項目，使用統一的 AI 助理"
+      },
+      "grid": {
+        "name": "網格圖庫",
+        "desc": "視覺化雙欄網格版面",
+        "use_case": "相簿、作品集、產品目錄、展覽",
+        "ai_general": "私人導覽，擁有完整圖庫知識，可回答任何問題",
+        "ai_item": "專屬項目專家，提供詳細背景資訊"
+      },
+      "list": {
+        "name": "清單",
+        "desc": "簡潔的垂直項目列表",
+        "use_case": "菜單、資源列表、目錄、聯絡人",
+        "ai_general": "私人助理，擁有卡片級知識，可回答任何問題",
+        "ai_item": "專屬項目導覽，提供深入專業知識"
+      },
+      "cards": {
+        "name": "卡片",
+        "desc": "全寬卡片，每行一個",
+        "use_case": "精選項目、文章、新聞、公告",
+        "ai_general": "私人助理，擁有完整卡片知識，可回答任何問題",
+        "ai_item": "專屬精選項目導覽"
+      },
+      "best_for": "最適合",
+      "easy_setup": "AI 設定",
+      "setup_desc": "匯入文件，AI 自動設定一切 — 也可透過後台手動調整。",
+      "mobile_optimized": "行動裝置優化",
+      "mobile_desc": "響應式設計，在任何裝置上都能完美呈現。",
+      "grouping_option": "可選分組",
+      "grouping_desc": "將項目整理成分類。可選擇直接顯示或點擊分類後顯示。",
+      "grouping_flat": "平面",
+      "grouping_expanded": "分組（同頁）",
+      "grouping_collapsed": "分組（導航）",
+      "grouping_flat_desc": "簡單版面，無分類，所有項目直接顯示",
+      "grouping_expanded_desc": "項目按分類標題整理，全部顯示在同一頁面",
+      "grouping_collapsed_desc": "先顯示分類，點擊後導航查看內容項目"
+    },
+    "how_it_works": {
+      "title": "使用",
+      "title_highlight": "超簡單",
+      "subtitle": "幾分鐘內啟動您的 AI 內容體驗 — 只需匯入文件，AI 幫你搞定一切。",
+      "steps": {
+        "create_title": "AI 建立",
+        "create_desc": "將文件交給 AI 代理，它會自動建立專案 — 內容、分類、AI 助理一次到位。",
+        "share_title": "分享連結",
+        "share_desc": "透過連結、QR 碼或嵌入到網站及印刷品中分享。",
+        "engage_title": "互動體驗",
+        "engage_desc": "訪客瀏覽您的內容，並與 AI 助理即時互動。"
+      }
+    },
+    "features": {
+      "title": "為什麼選擇",
+      "title_highlight": "FunTell",
+      "features": {
+        "collectible_title": "QR 碼即時存取",
+        "collectible_desc": "掃碼即用。可選配實體卡片增添紀念價值。",
+        "ai_guide_title": "AI 智能導覽",
+        "ai_guide_desc": "即時對話，理解上下文，回答追問。",
+        "no_app_title": "免下載 App",
+        "no_app_desc": "支援所有智慧型手機，無需安裝 App。",
+        "portal_config_title": "AI 自動設定",
+        "portal_config_desc": "匯入文件或描述專案內容 — AI 幾秒鐘內自動建立一切。",
+        "multilingual_title": "多語言服務",
+        "multilingual_desc": "上傳一次，自動提供 10+ 種語言版本。",
+        "no_hardware_title": "免裝設備",
+        "no_hardware_desc": "訪客用自己的手機，場館零成本。",
+        "dashboard_title": "後台管理",
+        "dashboard_desc": "內容管理、數據分析、QR 碼發行一站搞定。"
+      }
+    },
+    "pricing": {
+      "title": "定價",
+      "title_highlight": "超清楚",
+      "subtitle": "免費開始，準備好再升級。無隱藏費用。",
+      "currency_note": "所有價格均以美元計價",
+      "free_tier": {
+        "title": "免費方案",
+        "price": "$0",
+        "per": "永久免費",
+        "desc": "適合試用平台",
+        "features": [
+          "最多 3 個項目",
+          "每月 50 次存取額度",
+          "AI 語音對話",
+          "內容管理儀表板",
+          "QR 碼生成",
+          "雲端託管"
+        ],
+        "cta": "免費開始使用"
+      },
+      "starter_tier": {
+        "title": "入門版",
+        "price": "{starterFee}",
+        "per": "每月",
+        "desc": "適合成長中的場館與企業",
+        "features": [
+          "最多 5 個項目",
+          "每月 US${starterBudget} 會話額度",
+          "AI 會話：US${starterAiCost}/次",
+          "一般會話：US${starterNonAiCost}/次",
+          "自動加值：US${topupCost} 增加 {starterAiTopupSessions} 次 AI 或 {starterNonAiTopupSessions} 次一般會話",
+          "最多 {starterMaxLanguages} 種翻譯語言",
+          "由 FunTell 提供技術支援"
+        ],
+        "cta": "立即開始"
+      },
+      "premium_tier": {
+        "title": "專業版",
+        "price": "{premiumFee}",
+        "per": "每月",
+        "desc": "適合高流量場館與企業",
+        "popular": "最受歡迎",
+        "features": [
+          "最多 35 個項目",
+          "每月 US${monthlyBudget} 會話額度",
+          "AI 會話：US${aiCost}/次",
+          "一般會話：US${nonAiCost}/次",
+          "自動加值：US${topupCost} 增加 {aiTopupSessions} 次 AI 或 {nonAiTopupSessions} 次一般會話",
+          "無限翻譯語言",
+          "白標服務（無品牌標示）"
+        ],
+        "cta": "立即開始"
+      },
+      "enterprise_tier": {
+        "title": "企業版",
+        "price": "{enterpriseFee}",
+        "per": "每月",
+        "desc": "適合大量營運，支援自訂網域",
+        "lowest_rate": "最低費率",
+        "features": [
+          "最多 100 個項目",
+          "每月 US${enterpriseBudget} 會話額度",
+          "AI 會話：US${enterpriseAiCost}/次",
+          "一般會話：US${enterpriseNonAiCost}/次",
+          "自動加值：US${topupCost} 增加 {enterpriseAiTopupSessions} 次 AI 或 {enterpriseNonAiTopupSessions} 次一般會話",
+          "無限翻譯語言",
+          "白標服務（無品牌標示）",
+          "自訂網域（即將推出）"
+        ],
+        "cta": "立即開始"
+      },
+      "included_title": "所有方案皆包含",
+      "features": {
+        "ai_voice": "AI 語音對話",
+        "ai_setup": "AI 自動建立專案",
+        "qr_access": "即時 QR 存取",
+        "content_management": "內容管理",
+        "analytics": "使用分析",
+        "qr_generation": "QR 碼生成",
+        "cloud_hosting": "雲端託管",
+        "support": "電郵支援"
+      },
+      "cta": "免費開始使用",
+      "footer_text": "免費開始 • 隨時升級 • 隨時取消",
+      "session_info": {
+        "title": "會話計費方式",
+        "ai_enabled": "啟用 AI 的專案",
+        "ai_enabled_desc": "每次訪客會話 US${aiCost}",
+        "ai_enabled_sessions": "包含 {aiSessions} 個會話",
+        "ai_disabled": "未啟用 AI 的專案",
+        "ai_disabled_desc": "每次訪客會話 US${nonAiCost}",
+        "ai_disabled_sessions": "包含 {nonAiSessions} 個會話",
+        "tracking_note": "每次唯一訪客掃描計為一個會話",
+        "auto_topup_title": "自動補充",
+        "auto_topup_desc": "當預算用盡時，系統將自動收取 US${topupCost} 以獲取額外會話"
+      }
+    },
+    "faq": {
+      "title": "常見",
+      "title_highlight": "問題",
+      "q1": "FunTell 是什麼？",
+      "a1": "FunTell 是 AI 驅動的內容體驗平台，能將任何文件轉化為互動式多語言體驗，並內建對話式 AI 助理。匯入 PDF 或描述專案內容，AI 自動建立一切。透過連結、QR 碼或嵌入方式分享。免下載 App。",
+      "q2": "怎麼使用？",
+      "a2": "1) 匯入文件或向 AI 代理描述專案內容 — 自動建立一切\n2) 透過連結、QR 碼或嵌入方式分享\n3) 訪客在任何裝置上即時存取 AI 驅動的多語言內容",
+      "q3": "需要下載 App 嗎？",
+      "a3": "不用。FunTell 支援任何手機瀏覽器，掃碼就能用。",
+      "q4": "有哪些語言？",
+      "a4": "內容和 AI 對話支援 10+ 種語言：英文、國語、粵語、日文、韓文、泰文、阿拉伯文、西班牙文、法文、俄文等。",
+      "q5": "費用包含什麼？",
+      "a5": "免費版可建立 {freeProjects} 個項目、每月 {freeSessions} 次會話。入門版（${starterFee}/月）含 {starterBudget} 會話預算：{starterAiSessions} 次 AI 或 {starterNonAiSessions} 次非 AI 會話。專業版（${premiumFee}/月）含 {monthlyBudget} 會話預算：{aiSessions} 次 AI 或 {nonAiSessions} 次非 AI 會話。預算用盡時自動加值 ${topupCost} 獲得額外會話。所有方案皆含 AI 語音、內容管理、QR 碼、數據分析和雲端託管。",
+      "q6": "多久能開始用？",
+      "a6": "幾分鐘內即可上線。連接 Claude Code 等 AI 工具，匯入文件，AI 自動建立整個專案 — 內容、分類、AI 助理和 QR 碼全部搞定。",
+      "q7": "能客製化嗎？",
+      "a7": "當然可以。用我們的自助後台就能管理內容、設定 AI 助理行為、自訂歡迎訊息，隨時都能改。",
+      "q8": "卡片多久做好？",
+      "a8": "實體卡片印刷約 4 個工作天，寄送看地點約 5-10 天。數位 QR 項目即時可用。",
+      "q9": "有使用限制嗎？",
+      "a9": "免費版：每月 {freeSessions} 次會話額度。入門版：${starterBudget} 月預算，AI 項目 ${starterAiCost}/次（含 {starterAiSessions} 次）、非 AI ${starterNonAiCost}/次（含 {starterNonAiSessions} 次）。專業版：${monthlyBudget} 月預算，AI ${aiCost}/次（含 {aiSessions} 次）、非 AI ${nonAiCost}/次（含 {nonAiSessions} 次）。預算用盡自動加值（${topupCost} = {aiTopupSessions}-{nonAiTopupSessions} 會話）。實體卡片掃碼無限次。",
+      "still_have_questions": "還有問題？填寫聯絡表單跟我們聊聊。"
+    },
+    "footer": {
+      "brand": "FunTell",
+      "description": "AI 驅動的內容體驗平台。將任何資訊轉化為互動式多語言體驗。",
+      "quick_links": "快速連結",
+      "features": "功能特色",
+      "demo": "演示",
+      "pricing": "定價",
+      "contact": "聯絡",
+      "contact_title": "聯絡",
+      "phone": "電話",
+      "whatsapp_chat": "WhatsApp 聊天",
+      "ai_setup_guide": "AI 設定指南",
+      "copyright": "© 2025 FunTell. 版權所有。",
+      "privacy": "隱私政策",
+      "terms": "服務條款",
+      "contact_link": "聯絡"
+    },
+    "floating_cta": "開始使用"
+  },
+  "docs": {
+    "title": "使用指南",
+    "search_placeholder": "搜尋文件...",
+    "previous": "上一篇",
+    "next": "下一篇",
+    "screenshot_placeholder": "截圖即將推出",
+    "feedback": {
+      "title": "這篇文章有幫助嗎？",
+      "subtitle": "幫助我們改善文件品質",
+      "yes": "有幫助",
+      "no": "需改進",
+      "thanks": "感謝您的回饋！"
+    },
+    "categories": {
+      "getting_started": {
+        "title": "快速入門",
+        "articles": {
+          "overview": {
+            "title": "平台概覽",
+            "description": "了解 FunTell 是什麼，以及如何將任何資訊轉化為 AI 驅動的互動內容體驗。"
+          },
+          "create_project": {
+            "title": "建立您的第一個專案",
+            "description": "逐步指南教您如何在 FunTell 上建立第一個專案。"
+          },
+          "add_content": {
+            "title": "新增內容項目",
+            "description": "學習如何為專案新增展品、菜單項目或景點資訊。"
+          }
+        }
+      },
+      "project_management": {
+        "title": "專案管理",
+        "articles": {
+          "settings": {
+            "title": "專案設定",
+            "description": "配置專案設定，包括外觀、存取控制等。"
+          },
+          "content_modes": {
+            "title": "內容顯示模式",
+            "description": "選擇最適合的方式顯示內容，提供五種不同的版面選項。"
+          },
+          "ai_config": {
+            "title": "AI 配置",
+            "description": "設定和自訂 AI 助理以進行引人入勝的訪客對話。"
+          }
+        }
+      },
+      "features": {
+        "title": "功能介紹",
+        "articles": {
+          "translations": {
+            "title": "多語言翻譯",
+            "description": "將內容翻譯成多種語言，以觸及國際訪客。"
+          },
+          "qr_sharing": {
+            "title": "QR 碼與分享",
+            "description": "產生 QR 碼並與訪客分享您的專案。"
+          },
+          "bulk_import": {
+            "title": "批次匯入",
+            "description": "從 Excel 試算表匯入多個專案和內容項目。"
+          },
+          "templates": {
+            "title": "範本庫",
+            "description": "使用各種場館類型的預建範本快速啟動專案。"
+          }
+        }
+      },
+      "billing": {
+        "title": "帳單與點數",
+        "articles": {
+          "subscription": {
+            "title": "訂閱方案",
+            "description": "了解我們的訂閱層級，選擇最適合您需求的方案。"
+          },
+          "credits": {
+            "title": "點數管理",
+            "description": "了解點數如何運作以及如何購買更多用於翻譯和功能。"
+          }
+        }
+      },
+      "automation": {
+        "title": "自動化",
+        "articles": {
+          "mcp_setup": {
+            "title": "AI 輔助建立專案",
+            "description": "使用 Claude 或 ChatGPT 等 AI 助手，透過簡單的提示詞快速建立與管理專案。"
+          }
+        }
+      }
+    }
+  }
+}

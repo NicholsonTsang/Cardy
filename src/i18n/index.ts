@@ -1,6 +1,51 @@
 import { createI18n } from 'vue-i18n'
-import en from './locales/en.json'
-import zhHant from './locales/zh-Hant.json'
+import enCommon from './locales/en.common.json'
+import enAuth from './locales/en.auth.json'
+import enDashboard from './locales/en.dashboard.json'
+import enContent from './locales/en.content.json'
+import enAdmin from './locales/en.admin.json'
+import enMobile from './locales/en.mobile.json'
+import enLanding from './locales/en.landing.json'
+import enSubscription from './locales/en.subscription.json'
+import enTranslation from './locales/en.translation.json'
+import enTemplates from './locales/en.templates.json'
+
+const en = {
+  ...enCommon,
+  ...enAuth,
+  ...enDashboard,
+  ...enContent,
+  ...enAdmin,
+  ...enMobile,
+  ...enLanding,
+  ...enSubscription,
+  ...enTranslation,
+  ...enTemplates,
+}
+
+import zhHantCommon from './locales/zh-Hant.common.json'
+import zhHantAuth from './locales/zh-Hant.auth.json'
+import zhHantDashboard from './locales/zh-Hant.dashboard.json'
+import zhHantContent from './locales/zh-Hant.content.json'
+import zhHantAdmin from './locales/zh-Hant.admin.json'
+import zhHantMobile from './locales/zh-Hant.mobile.json'
+import zhHantLanding from './locales/zh-Hant.landing.json'
+import zhHantSubscription from './locales/zh-Hant.subscription.json'
+import zhHantTranslation from './locales/zh-Hant.translation.json'
+import zhHantTemplates from './locales/zh-Hant.templates.json'
+
+const zhHant = {
+  ...zhHantCommon,
+  ...zhHantAuth,
+  ...zhHantDashboard,
+  ...zhHantContent,
+  ...zhHantAdmin,
+  ...zhHantMobile,
+  ...zhHantLanding,
+  ...zhHantSubscription,
+  ...zhHantTranslation,
+  ...zhHantTemplates,
+}
 import zhHans from './locales/zh-Hans.json'
 import ja from './locales/ja.json'
 import ko from './locales/ko.json'

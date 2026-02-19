@@ -1,0 +1,409 @@
+{
+  "landing": {
+    "nav": {
+      "about": "About",
+      "demo": "Demo",
+      "features": "Features",
+      "how_it_works": "How It Works",
+      "pricing": "Pricing",
+      "contact": "Contact",
+      "docs": "Docs",
+      "sign_in": "Sign In",
+      "start_free_trial": "Start Free Trial",
+      "start_free": "Start Free",
+      "create_account": "Create Account",
+      "get_started": "Get Started"
+    },
+    "hero": {
+      "title_line1": "Turn Any Information Into An",
+      "title_line2": "Interactive",
+      "title_line3": "AI‑Powered Experience",
+      "subtitle_part1": "Build your content experience via dashboard or let AI do it for you —",
+      "subtitle_highlight": "multilingual conversations",
+      "subtitle_part2": " included. Share via links, QR codes, or embeds. No app needed.",
+      "cta_pilot": "Contact Us for a Pilot",
+      "cta_learn": "See Demo",
+      "cta_demo": "See Demo",
+      "cta_start": "Get Started"
+    },
+    "demo": {
+      "title": "Experience",
+      "title_highlight": "It Live",
+      "subtitle": "Scan the QR code with your phone to try a real AI-powered content experience right now.",
+      "video_coming_soon": "Demo Video Coming Soon",
+      "video_description": "Watch a 1-2 minute demonstration",
+      "card_title": "Interactive Experience Demo",
+      "try_live_demo": "Try Live Demo",
+      "scan_to_try": "Scan to Try",
+      "scan_with_phone": "Scan with Phone",
+      "instant_demo": "Try it instantly!",
+      "scan_qr_code": "Scan the QR code",
+      "project_features": "Key Features",
+      "experience_features": "What You'll Experience",
+      "digital_access": {
+        "title": "Instant QR Access",
+        "desc": "Scan and go — no app, no sign-up required",
+        "hint": "Visitors go directly to welcome page and content",
+        "caption": "Point your camera at the code to try it now",
+        "full_desc": "Scan with any smartphone camera for instant access — no app, no sign-up. This is exactly what your audience sees."
+      },
+      "features": {
+        "qr_access_title": "Instant QR Access",
+        "qr_access_desc": "Works with any smartphone camera. No app needed.",
+        "ai_voice_title": "AI Voice Guide",
+        "ai_voice_desc": "Have real conversations about what you're seeing.",
+        "multilingual_title": "10+ Languages",
+        "multilingual_desc": "Content and conversations in your language.",
+        "keepsakes_title": "Always Up-to-Date",
+        "keepsakes_desc": "Update content anytime — QR codes always link to the latest version."
+      }
+    },
+    "demo_templates": {
+      "badge": "Live Demos",
+      "title": "Try Our Demo Projects",
+      "subtitle": "Live demos — scan with your phone or browse in-app. Pick a template and experience the AI assistant yourself.",
+      "all_types": "All",
+      "items": "items",
+      "no_description": "Experience this demo to see our platform in action.",
+      "try_demo": "Try Demo",
+      "scan_or_click": "Scan QR code or click to open",
+      "view_all": "Explore More Templates",
+      "showing": "Showing",
+      "of": "of",
+      "scenario_categories": {
+        "cultural": "Cultural & Arts",
+        "food": "Food & Beverage",
+        "events": "Events & Entertainment",
+        "hospitality": "Hospitality & Wellness",
+        "retail": "Shopping & Showrooms",
+        "tours": "Tours & Education",
+        "general": "General"
+      },
+      "select_template": "Select a template to preview",
+      "open_full": "Open Full Experience",
+      "scan_qr_hint": "Or scan the QR code on your phone",
+      "scan_to_view": "Scan to view on your phone",
+      "scan_hint": "Use your mobile camera to scan and experience this demo",
+      "templates_available": "templates",
+      "scroll_to_explore": "Scroll to explore",
+      "no_templates": "No templates found",
+      "live_badge": "Live",
+      "open_button": "Open",
+      "featured_badge": "Featured"
+    },
+    "content_modes": {
+      "title": "Flexible",
+      "title_highlight": "Display Layouts",
+      "subtitle": "Choose the layout that fits your content — each mode supports optional grouping and context-aware AI assistants.",
+      "ai_context_label": "AI Assistant Context",
+      "ai_assistant": "AI Assistant",
+      "ai_general_label": "General Assistant",
+      "ai_item_label": "Item Assistant",
+      "single": {
+        "name": "Single Page",
+        "desc": "Full-page article or announcement",
+        "use_case": "Product details, event info, announcements, articles",
+        "ai_single": "Personal AI assistant with full knowledge base - answers any question about the content",
+        "ai_note": "Single mode uses one unified AI assistant since there's only one content item"
+      },
+      "grid": {
+        "name": "Grid Gallery",
+        "desc": "Visual 2-column grid layout",
+        "use_case": "Photo galleries, portfolios, product catalogs, exhibitions",
+        "ai_general": "Personal guide with full gallery knowledge - answers any question",
+        "ai_item": "Expert on the specific item with detailed background"
+      },
+      "list": {
+        "name": "List",
+        "desc": "Clean vertical list of items",
+        "use_case": "Menus, resource lists, directories, contacts",
+        "ai_general": "Personal assistant with experience-level knowledge - answers any question",
+        "ai_item": "Dedicated guide for the specific item with focused expertise"
+      },
+      "cards": {
+        "name": "Cards",
+        "desc": "Full-width cards, one per row",
+        "use_case": "Featured items, articles, news, announcements",
+        "ai_general": "Personal assistant with complete experience knowledge - answers any question",
+        "ai_item": "Specialized guide for the specific featured item"
+      },
+      "best_for": "Best For",
+      "easy_setup": "Easy Setup",
+      "setup_desc": "Configure via dashboard, or import a document and let AI set everything up automatically.",
+      "mobile_optimized": "Mobile Optimized",
+      "mobile_desc": "Responsive design that looks perfect on any device.",
+      "grouping_option": "Optional Grouping",
+      "grouping_desc": "Organize items into categories. Choose to show items inline or after clicking the category.",
+      "grouping_flat": "Flat",
+      "grouping_expanded": "Grouped (Inline)",
+      "grouping_collapsed": "Grouped (Navigate)",
+      "grouping_flat_desc": "Simple layout without categories - all items displayed directly",
+      "grouping_expanded_desc": "Items organized under category headers, all visible on one page",
+      "grouping_collapsed_desc": "Categories shown first, tap to navigate and view items inside"
+    },
+    "how_it_works": {
+      "title": "Up and Running",
+      "title_highlight": "in Minutes",
+      "subtitle": "Create your content experience via our dashboard, or let AI handle setup automatically — then share and engage.",
+      "steps": {
+        "create_title": "Create Your Experience",
+        "create_desc": "Use the dashboard to build your project manually, or import a document and let AI generate content, categories, and your AI assistant automatically.",
+        "share_title": "Share Anywhere",
+        "share_desc": "Share via link, embed on your website, or print a QR code on packaging, signage, or any materials.",
+        "engage_title": "Audience Engages",
+        "engage_desc": "Visitors scan and instantly explore your content. Conversations happen in their language, on their own device."
+      }
+    },
+    "features": {
+      "title": "Built for",
+      "title_highlight": "Creators & Audiences",
+      "features": {
+        "collectible_title": "QR-Powered Access",
+        "collectible_desc": "Instant access via QR code. Share links, embed on websites, or print QR codes.",
+        "ai_guide_title": "AI Voice Assistant",
+        "ai_guide_desc": "Real-time conversations with context awareness and follow-up questions.",
+        "no_app_title": "No App Required",
+        "no_app_desc": "Instant access via any smartphone camera. No downloads, no friction.",
+        "portal_config_title": "Flexible Setup",
+        "portal_config_desc": "Build manually via dashboard or import a document and let AI generate everything automatically.",
+        "multilingual_title": "Multilingual Support",
+        "multilingual_desc": "Content and conversations in 10+ languages from one upload.",
+        "no_hardware_title": "Zero Hardware Needed",
+        "no_hardware_desc": "Uses visitors' own phones. No expensive equipment to buy or maintain.",
+        "dashboard_title": "Admin Dashboard",
+        "dashboard_desc": "Self-service platform for content management, analytics, and QR distribution."
+      }
+    },
+    "pricing": {
+      "title": "Simple,",
+      "title_highlight": "Transparent Pricing",
+      "subtitle": "Start free, pay only for what you use. Scale as your audience grows.",
+      "currency_note": "All prices are in USD",
+      "free_tier": {
+        "title": "Free",
+        "price": "$0",
+        "per": "forever",
+        "desc": "Perfect for trying out the platform",
+        "features": [
+          "Up to 3 projects",
+          "50 monthly visitor sessions",
+          "AI voice conversations",
+          "Content management dashboard",
+          "QR code generation",
+          "Cloud hosting included"
+        ],
+        "cta": "Get Started Free"
+      },
+      "starter_tier": {
+        "title": "Starter",
+        "price": "{starterFee}",
+        "per": "per month",
+        "desc": "For growing teams and businesses",
+        "features": [
+          "Up to 5 projects",
+          "US${starterBudget} monthly credit included",
+          "AI sessions: US${starterAiCost}/session",
+          "Standard sessions: US${starterNonAiCost}/session",
+          "Auto-refill: US${topupCost} adds {starterAiTopupSessions} AI or {starterNonAiTopupSessions} Standard sessions",
+          "Max {starterMaxLanguages} translation languages",
+          "Powered by FunTell branding"
+        ],
+        "cta": "Get Started"
+      },
+      "premium_tier": {
+        "title": "Premium",
+        "price": "{premiumFee}",
+        "per": "per month",
+        "desc": "For professionals and high-traffic experiences",
+        "popular": "Best Value",
+        "features": [
+          "Up to 35 projects",
+          "US${monthlyBudget} monthly credit included",
+          "AI sessions: US${aiCost}/session",
+          "Standard sessions: US${nonAiCost}/session",
+          "Auto-refill: US${topupCost} adds {aiTopupSessions} AI or {nonAiTopupSessions} Standard sessions",
+          "Unlimited translation languages",
+          "White label (No branding)"
+        ],
+        "cta": "Get Started"
+      },
+      "enterprise_tier": {
+        "title": "Enterprise",
+        "price": "{enterpriseFee}",
+        "per": "per month",
+        "desc": "For high-volume operations with custom domain",
+        "lowest_rate": "Lowest Rate",
+        "features": [
+          "Up to 100 projects",
+          "US${enterpriseBudget} monthly credit included",
+          "AI sessions: US${enterpriseAiCost}/session",
+          "Standard sessions: US${enterpriseNonAiCost}/session",
+          "Auto-refill: US${topupCost} adds {enterpriseAiTopupSessions} AI or {enterpriseNonAiTopupSessions} Standard sessions",
+          "Unlimited translation languages",
+          "White label (No branding)",
+          "Custom domain (Coming soon)"
+        ],
+        "cta": "Get Started"
+      },
+      "session_info": {
+        "title": "How Session Billing Works",
+        "ai_enabled": "AI-Enabled Projects",
+        "ai_enabled_desc": "US$${aiCost} per visitor session",
+        "ai_enabled_sessions": "{aiSessions} sessions included",
+        "ai_disabled": "Non-AI Projects",
+        "ai_disabled_desc": "US$${nonAiCost} per visitor session",
+        "ai_disabled_sessions": "{nonAiSessions} sessions included",
+        "tracking_note": "Each unique visitor scan counts as one session",
+        "auto_topup_title": "Auto Top-Up",
+        "auto_topup_desc": "When budget runs out, US$${topupCost} is automatically charged for extra sessions"
+      },
+      "included_title": "Included in All Plans",
+      "features": {
+        "ai_voice": "AI voice conversations",
+        "ai_setup": "Dashboard & AI project setup",
+        "qr_access": "Instant QR access",
+        "content_management": "Content management",
+        "analytics": "Usage analytics",
+        "qr_generation": "QR code generation",
+        "cloud_hosting": "Cloud hosting",
+        "support": "Email support"
+      },
+      "cta": "Get Started Free",
+      "footer_text": "Start free • Pay per session • Cancel anytime"
+    },
+    "faq": {
+      "title": "Frequently Asked",
+      "title_highlight": "Questions",
+      "q1": "What is FunTell?",
+      "a1": "FunTell is a content experience platform that turns any information into an interactive, multilingual experience with built-in AI assistants. Build via dashboard or import a document for automatic AI setup. Share via links, QR codes, or embeds — no app required.",
+      "q2": "How does it work?",
+      "a2": "1) Create your project via dashboard, or import a document and let AI generate everything automatically\n2) Share via link, QR code, or embed on any surface\n3) Visitors access AI-powered, multilingual content instantly — no app needed",
+      "q3": "Do visitors need to download an app?",
+      "a3": "No. FunTell works through any smartphone browser. Simply scan the QR code—nothing to download or install.",
+      "q4": "What languages are supported?",
+      "a4": "Content and AI conversations are available in 10+ languages: English, Mandarin, Cantonese, Japanese, Korean, Thai, Arabic, Spanish, French, Russian, and more.",
+      "q5": "What's included in the price?",
+      "a5": "Four tiers: Free ({freeProjects} projects, {freeSessions} sessions/month), Starter ({starterBudget}/month, {starterAiSessions} AI sessions, max 2 languages), Premium ({monthlyBudget}/month, {aiSessions} AI sessions, unlimited languages, white label), Enterprise (lowest per-session rate, 100 projects, custom domain). All paid plans include auto top-up, AI voice, dashboard, QR codes, and hosting.",
+      "q6": "How quickly can we get started?",
+      "a6": "Projects can launch within minutes. Use our dashboard to set up your project manually, or import a document via an AI tool like Claude Code and have everything generated automatically — content, categories, AI assistant, and QR codes.",
+      "q7": "Can we customize the content and AI?",
+      "a7": "Yes. Full customization using our self-service dashboard. Manage content, configure AI assistant behavior, set welcome messages, and update anytime.",
+      "q8": "How quickly are QR experiences available?",
+      "a8": "QR experiences are available instantly after creation. Create your project, add content, and share your QR code right away.",
+      "q9": "Are there any usage limits?",
+      "a9": "Free: {freeSessions} sessions/month, no translations. Starter: {starterBudget} budget, AI {starterAiCost}/session ({starterAiSessions} included), max 2 languages. Premium: {monthlyBudget} budget, AI {aiCost}/session ({aiSessions} included), unlimited languages. Auto top-up available for paid plans.",
+      "still_have_questions": "Still have questions? Reach out via our Contact form."
+    },
+    "footer": {
+      "brand": "FunTell",
+      "description": "AI-powered content experience platform. Turn any information into interactive, multilingual experiences.",
+      "quick_links": "Quick Links",
+      "features": "Features",
+      "demo": "Demo",
+      "pricing": "Pricing",
+      "contact": "Contact",
+      "contact_title": "Contact",
+      "phone": "Phone",
+      "whatsapp_chat": "WhatsApp Chat",
+      "ai_setup_guide": "AI Setup Guide",
+      "copyright": "© 2025 FunTell. All rights reserved.",
+      "privacy": "Privacy Policy",
+      "terms": "Terms of Service",
+      "contact_link": "Contact"
+    },
+    "floating_cta": "Get Started"
+  },
+  "docs": {
+    "title": "Documentation",
+    "search_placeholder": "Search documentation...",
+    "previous": "Previous",
+    "next": "Next",
+    "screenshot_placeholder": "Screenshot coming soon",
+    "feedback": {
+      "title": "Was this helpful?",
+      "subtitle": "Help us improve our documentation",
+      "yes": "Yes",
+      "no": "No",
+      "thanks": "Thank you for your feedback!"
+    },
+    "categories": {
+      "getting_started": {
+        "title": "Getting Started",
+        "articles": {
+          "overview": {
+            "title": "Platform Overview",
+            "description": "Learn what FunTell is and how it can turn any information into an interactive, AI-powered content experience."
+          },
+          "create_project": {
+            "title": "Create Your First Project",
+            "description": "Step-by-step guide to creating your first project on FunTell."
+          },
+          "add_content": {
+            "title": "Adding Content Items",
+            "description": "Learn how to add exhibits, menu items, or points of interest to your project."
+          }
+        }
+      },
+      "project_management": {
+        "title": "Project Management",
+        "articles": {
+          "settings": {
+            "title": "Project Settings",
+            "description": "Configure your project settings including appearance, access control, and more."
+          },
+          "content_modes": {
+            "title": "Content Display Modes",
+            "description": "Choose the best way to display your content with five different layout options."
+          },
+          "ai_config": {
+            "title": "AI Configuration",
+            "description": "Set up and customize the AI assistant for engaging visitor conversations."
+          }
+        }
+      },
+      "features": {
+        "title": "Features",
+        "articles": {
+          "translations": {
+            "title": "Multi-Language Translations",
+            "description": "Translate your content into multiple languages to reach international visitors."
+          },
+          "qr_sharing": {
+            "title": "QR Code & Sharing",
+            "description": "Generate QR codes and share your project with visitors."
+          },
+          "bulk_import": {
+            "title": "Bulk Import",
+            "description": "Import multiple projects and content items from Excel spreadsheets."
+          },
+          "templates": {
+            "title": "Template Library",
+            "description": "Jumpstart your project with pre-built templates for various use cases."
+          }
+        }
+      },
+      "billing": {
+        "title": "Billing & Credits",
+        "articles": {
+          "subscription": {
+            "title": "Subscription Plans",
+            "description": "Understand our subscription tiers and choose the best plan for your needs."
+          },
+          "credits": {
+            "title": "Credit Management",
+            "description": "Learn how credits work and how to purchase more for translations and features."
+          }
+        }
+      },
+      "automation": {
+        "title": "Automation",
+        "articles": {
+          "mcp_setup": {
+            "title": "AI-Assisted Project Setup",
+            "description": "Use AI assistants like Claude or ChatGPT to create and manage projects through simple prompts."
+          }
+        }
+      }
+    }
+  }
+}
