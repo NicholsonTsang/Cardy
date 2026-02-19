@@ -21,11 +21,11 @@
             <!-- Delete Confirmation Dialog -->
             <ConfirmDialog group="deleteCardConfirmation"></ConfirmDialog>
 
-            <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 lg:h-[calc(100vh-140px)]">
+            <div class="flex flex-col lg:flex-row gap-4 lg:gap-6 lg:items-start">
                 <!-- Card List Panel - Fixed width sidebar -->
                 <!-- On mobile: hidden when a card is selected (show detail instead) -->
                 <div
-                    class="w-full lg:w-[320px] lg:flex-shrink-0 lg:h-full"
+                    class="w-full lg:w-[320px] lg:flex-shrink-0"
                     :class="{ 'hidden lg:block': selectedCardId && isMobileView }"
                 >
                     <CardListPanel
@@ -54,7 +54,7 @@
                 <!-- Card Detail Panel - Takes remaining space -->
                 <!-- On mobile: hidden when no card is selected -->
                 <div
-                    class="flex-1 min-w-0 lg:h-full"
+                    class="flex-1 min-w-0"
                     :class="{ 'hidden lg:block': !selectedCardId && isMobileView }"
                 >
                     <!-- Mobile back button -->

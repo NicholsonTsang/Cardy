@@ -1,5 +1,5 @@
 <template>
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-hidden h-full">
+    <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col">
         <!-- Header bar -->
         <div class="px-3 sm:px-4 py-2.5 border-b border-slate-200 bg-slate-50/80">
             <div v-if="!multiSelectMode" class="flex items-center gap-2">
@@ -234,7 +234,7 @@
         </div>
 
         <!-- Cards List -->
-        <div v-else-if="cards.length > 0" class="flex-1 overflow-y-auto">
+        <div v-else-if="cards.length > 0">
             <div class="space-y-1.5 p-2">
                 <CardListItem
                     v-for="card in paginatedCards"

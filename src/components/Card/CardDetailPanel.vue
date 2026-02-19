@@ -1,5 +1,5 @@
 <template>
-    <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col overflow-y-auto h-full">
+    <div class="bg-white rounded-xl shadow-lg border border-slate-200 flex flex-col">
         <!-- Empty State: No cards at all → rich onboarding -->
         <div v-if="!selectedCard && !props.hasCards" class="flex flex-col items-center px-8 py-10 w-full">
             <!-- Header -->
@@ -92,9 +92,9 @@
                         <span v-if="index === 1 && contentCount === 0" class="ml-1 w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
                     </Tab>
                 </TabList>
-                <TabPanels class="flex-1 overflow-hidden bg-slate-50">
-                    <TabPanel v-for="(tab, index) in tabs" :key="tab.label" :value="index.toString()" class="h-full">
-                        <div class="h-full overflow-y-auto px-0 py-2 sm:p-3 lg:p-4 xl:p-6">
+                <TabPanels class="bg-slate-50">
+                    <TabPanel v-for="(tab, index) in tabs" :key="tab.label" :value="index.toString()">
+                        <div class="px-0 py-2 sm:p-3 lg:p-4 xl:p-6">
                             <!-- General Tab -->
                             <CardView
                                 v-if="getTabComponent(index) === 'general'"
@@ -134,6 +134,14 @@
                                 :key="`${selectedCard.id}-digital-qr`"
                                 @updated="handleDigitalAccessUpdated"
                             />
+                            <!-- Theme & Appearance Tab -->
+                            <CardThemeTab
+                                v-if="getTabComponent(index) === 'theme' && selectedCard"
+                                :card="selectedCard"
+                                :updateCardFn="updateCardFn"
+                                :key="`${selectedCard.id}-theme`"
+                                @update-card="$emit('update-card', $event)"
+                            />
                         </div>
                     </TabPanel>
                 </TabPanels>
@@ -170,6 +178,7 @@ import CardView from '@/components/CardComponents/CardView.vue';
 import CardAITranslationsTab from '@/components/CardComponents/CardAITranslationsTab.vue';
 import CardContent from '@/components/CardContent/CardContent.vue';
 import DigitalAccessQR from '@/components/DigitalAccess/DigitalAccessQR.vue';
+import CardThemeTab from '@/components/CardComponents/CardThemeTab.vue';
 import MobilePreview from '@/components/CardComponents/MobilePreview.vue';
 import { useContentItemStore } from '@/stores/contentItem';
 
@@ -251,16 +260,22 @@ const tabs = computed(() => {
             label: t('dashboard.qr_access'),
             icon: 'pi pi-qrcode',
             hint: t('dashboard.tab_hint_qr')
+        },
+        {
+            label: t('dashboard.theme_appearance'),
+            icon: 'pi pi-palette',
+            hint: t('dashboard.tab_hint_theme')
         }
     ];
 });
 
-// Map tab index to component type: [General, Content, AI & Translations, QR & Access]
+// Map tab index to component type: [General, Content, AI & Translations, QR & Access, Theme]
 const getTabComponent = (index) => {
     if (index === 0) return 'general';
     if (index === 1) return 'content';
     if (index === 2) return 'ai-translations';
     if (index === 3) return 'qr';
+    if (index === 4) return 'theme';
     return null;
 };
 

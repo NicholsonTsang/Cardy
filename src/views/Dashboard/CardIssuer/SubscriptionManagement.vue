@@ -6,7 +6,6 @@ import { useSubscriptionStore, type DailyAccessData } from '@/stores/subscriptio
 import { useCreditStore } from '@/stores/credits';
 import { useVoiceCreditStore } from '@/stores/voiceCredits';
 import { useToast } from 'primevue/usetoast';
-import Card from 'primevue/card';
 import Button from 'primevue/button';
 import ProgressBar from 'primevue/progressbar';
 import Tag from 'primevue/tag';
@@ -121,7 +120,7 @@ onMounted(async () => {
     });
     window.history.replaceState({}, '', route.path);
   }
-  
+
   // Fetch all data in parallel (independent API calls)
   await Promise.all([
     subscriptionStore.fetchSubscription(),
@@ -249,11 +248,125 @@ function formatChartDate(dateStr: string) {
   return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
+// ---- Plan card definitions ----
+interface PlanFeature {
+  text: string;
+  included: boolean;
+}
+
+interface PlanDefinition {
+  key: string;
+  labelKey: string;
+  price: number;
+  icon: string;
+  color: string;
+  badge: string | null;
+  features: PlanFeature[];
+}
+
+const plans = computed<PlanDefinition[]>(() => [
+  {
+    key: 'free',
+    labelKey: 'subscription.free_plan',
+    price: 0,
+    icon: 'pi-user',
+    color: 'slate',
+    badge: null,
+    features: [
+      { text: t('subscription.features.project_limit', { limit: config.value.free.projectLimit }), included: true },
+      { text: t('subscription.features.monthly_pool', { count: config.value.free.monthlySessionLimit }), included: true },
+      { text: t('subscription.features.ai_assistant_included'), included: true },
+      { text: t('subscription.features.no_translations'), included: false },
+      { text: t('subscription.features.branding_included'), included: false },
+    ]
+  },
+  {
+    key: 'starter',
+    labelKey: 'subscription.starter_plan',
+    price: config.value.starter.monthlyFeeUsd,
+    icon: 'pi-bolt',
+    color: 'emerald',
+    badge: null,
+    features: [
+      { text: t('subscription.features.starter_projects', { limit: config.value.starter.projectLimit }), included: true },
+      { text: `$${config.value.starter.monthlyBudgetUsd} ${t('subscription.usage.monthly_budget')}`, included: true },
+      { text: t('subscription.features.ai_assistant_included'), included: true },
+      { text: t('subscription.features.starter_translations', { count: config.value.starter.maxLanguages }), included: true },
+      { text: t('subscription.features.branding_included'), included: false },
+    ]
+  },
+  {
+    key: 'premium',
+    labelKey: 'subscription.premium_plan',
+    price: config.value.premium.monthlyFeeUsd,
+    icon: 'pi-star-fill',
+    color: 'amber',
+    badge: t('subscription.best_value'),
+    features: [
+      { text: t('subscription.features.unlimited_projects', { limit: config.value.premium.projectLimit }), included: true },
+      { text: `$${config.value.premium.monthlyBudgetUsd} ${t('subscription.usage.monthly_budget')}`, included: true },
+      { text: t('subscription.features.ai_assistant_included'), included: true },
+      { text: t('subscription.features.unlimited_translations'), included: true },
+      { text: t('subscription.features.white_label'), included: true },
+    ]
+  },
+  {
+    key: 'enterprise',
+    labelKey: 'subscription.enterprise_plan',
+    price: config.value.enterprise.monthlyFeeUsd,
+    icon: 'pi-building',
+    color: 'violet',
+    badge: null,
+    features: [
+      { text: t('subscription.features.enterprise_projects', { limit: config.value.enterprise.projectLimit }), included: true },
+      { text: `$${config.value.enterprise.monthlyBudgetUsd} ${t('subscription.usage.monthly_budget')}`, included: true },
+      { text: t('subscription.features.lowest_session_rates'), included: true },
+      { text: t('subscription.features.unlimited_translations'), included: true },
+      { text: t('subscription.features.white_label'), included: true },
+    ]
+  }
+]);
+
+// Determine which plan is currently active
+const activePlanKey = computed(() => {
+  if (isEnterprise.value) return 'enterprise';
+  if (isPremium.value) return 'premium';
+  if (isStarter.value) return 'starter';
+  return 'free';
+});
+
+// Get CTA info for a plan card
+function getPlanCta(planKey: string): { label: string; action: (() => void) | null; severity: string; disabled: boolean; text?: boolean } {
+  const current = activePlanKey.value;
+  if (planKey === current) {
+    // Current plan -- show reactivate if cancelling, else disabled
+    if (subscriptionStore.isScheduledForCancellation) {
+      return { label: t('subscription.reactivate'), action: reactivate, severity: 'success', disabled: false };
+    }
+    return { label: t('subscription.current_plan'), action: null, severity: 'secondary', disabled: true };
+  }
+  const tierOrder = ['free', 'starter', 'premium', 'enterprise'];
+  const currentIdx = tierOrder.indexOf(current);
+  const targetIdx = tierOrder.indexOf(planKey);
+  if (targetIdx > currentIdx) {
+    // Upgrade
+    if (planKey === 'starter') return { label: t('subscription.upgrade'), action: () => upgradeToPremium('starter'), severity: 'success', disabled: false };
+    if (planKey === 'premium') return { label: t('subscription.upgrade_to_premium'), action: () => upgradeToPremium('premium'), severity: 'warning', disabled: false };
+    if (planKey === 'enterprise') return { label: t('subscription.upgrade_to_enterprise'), action: () => upgradeToPremium('enterprise'), severity: 'help', disabled: false };
+  } else {
+    // Downgrade / switch
+    if (planKey === 'free') return { label: t('subscription.cancel'), action: confirmCancel, severity: 'danger', disabled: false, text: true };
+    const targetPlan = plans.value.find(p => p.key === planKey);
+    return { label: `${t('subscription.switch_plan')} \u2192 ${t(targetPlan?.labelKey || '')}`, action: () => upgradeToPremium(planKey as 'starter' | 'premium' | 'enterprise'), severity: 'secondary', disabled: false };
+  }
+  return { label: '', action: null, severity: 'secondary', disabled: true };
+}
+
 // Actions
 async function upgradeToPremium(tier: 'starter' | 'premium' | 'enterprise' = 'premium') {
   // If called without arguments from template (event object), default to premium
   if (typeof tier !== 'string') tier = 'premium';
-  
+
   const result = await subscriptionStore.createCheckout(tier);
   if (result?.url) {
     window.location.href = result.url;
@@ -342,11 +455,12 @@ async function confirmVoiceCreditPurchase() {
         life: 5000
       })
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : t('subscription.voice_credits_purchase_error');
     toast.add({
       severity: 'error',
       summary: t('common.error'),
-      detail: error.message || t('subscription.voice_credits_purchase_error'),
+      detail: message,
       life: 5000
     })
   } finally {
@@ -373,7 +487,7 @@ async function openPortal() {
 <template>
   <div class="max-w-6xl mx-auto p-4 sm:p-6 space-y-8">
     <ConfirmDialog />
-    
+
     <!-- Page Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
       <div>
@@ -386,676 +500,561 @@ async function openPortal() {
         <Tag v-else severity="success" :value="subscriptionStore.isEnterprise ? $t('subscription.status.enterprise_active') : isStarter ? $t('subscription.status.starter_active') : $t('subscription.status.premium_active')" icon="pi pi-check-circle" rounded />
       </div>
     </div>
-    
+
     <!-- Loading State -->
     <div v-if="loading && !subscription" class="flex flex-col items-center justify-center py-20 bg-white rounded-xl shadow-sm border border-slate-100">
       <i class="pi pi-spin pi-spinner text-4xl text-blue-500 mb-4"></i>
       <p class="text-slate-500">{{ $t('subscription.status.loading_details') }}</p>
     </div>
-    
+
     <!-- Main Content -->
     <div v-else class="space-y-8">
-      
-      <!-- ============ FREE USER VIEW ============ -->
-      <div v-if="!isPaid" class="space-y-8">
-        
-        <!-- Usage Stats (Compact) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
-            <div class="flex justify-between items-center mb-3">
-              <span class="text-slate-600 font-medium">{{ $t('subscription.usage.experiences') }}</span>
-              <span class="text-slate-800 font-bold">{{ subscriptionStore.projectCount }} / {{ subscriptionStore.projectLimit }}</span>
+
+      <!-- ============ SECTION 1: Current Status Banner ============ -->
+      <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5 sm:p-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <!-- Left: tier icon + name + billing -->
+          <div class="flex items-center gap-4">
+            <div
+              class="w-12 h-12 rounded-xl flex items-center justify-center shadow-sm shrink-0"
+              :class="{
+                'bg-gradient-to-br from-violet-500 to-purple-700': isEnterprise,
+                'bg-gradient-to-br from-amber-400 to-amber-600': isPremium,
+                'bg-gradient-to-br from-emerald-400 to-cyan-600': isStarter,
+                'bg-slate-200': !isPaid
+              }"
+            >
+              <i
+                class="pi text-xl"
+                :class="{
+                  'pi-building text-white': isEnterprise,
+                  'pi-star-fill text-white': isPremium,
+                  'pi-bolt text-white': isStarter,
+                  'pi-user text-slate-500': !isPaid
+                }"
+              ></i>
+            </div>
+            <div>
+              <h2 class="text-lg font-bold text-slate-800">
+                {{ isEnterprise ? $t('subscription.enterprise_plan') : isPremium ? $t('subscription.premium_plan') : isStarter ? $t('subscription.starter_plan') : $t('subscription.free_plan') }}
+              </h2>
+              <div class="text-sm text-slate-500 mt-0.5">
+                <template v-if="isPaid && periodEndFormatted">
+                  <span v-if="subscriptionStore.isScheduledForCancellation" class="text-amber-600 font-medium">
+                    {{ $t('subscription.current_plan_expires', { date: periodEndFormatted }) }}
+                  </span>
+                  <span v-else>{{ $t('subscription.billing.next_billing') }} {{ periodEndFormatted }}</span>
+                </template>
+                <template v-else-if="!isPaid">
+                  <span class="text-slate-400">{{ $t('subscription.no_active_subscription') }}</span>
+                </template>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: price + action buttons -->
+          <div class="flex items-center gap-3 flex-wrap">
+            <template v-if="isPaid">
+              <div class="text-right mr-2 hidden sm:block">
+                <div class="text-xl font-bold text-slate-800">${{ subscriptionStore.monthlyFee }}</div>
+                <div class="text-xs text-slate-400 uppercase font-bold tracking-wider">{{ $t('common.per_month') }}</div>
+              </div>
+              <template v-if="subscriptionStore.isScheduledForCancellation">
+                <Button
+                  :label="$t('subscription.reactivate')"
+                  icon="pi pi-refresh"
+                  severity="success"
+                  @click="reactivate"
+                  :loading="actionLoading"
+                  size="small"
+                />
+              </template>
+              <template v-else>
+                <Button
+                  :label="$t('subscription.manage_billing')"
+                  icon="pi pi-credit-card"
+                  severity="secondary"
+                  outlined
+                  @click="openPortal"
+                  size="small"
+                />
+                <Button
+                  :label="$t('common.cancel')"
+                  icon="pi pi-times"
+                  severity="danger"
+                  text
+                  @click="confirmCancel"
+                  size="small"
+                />
+              </template>
+            </template>
+            <template v-else>
+              <a href="#plans" class="text-sm text-blue-500 hover:text-blue-700 font-medium flex items-center gap-1">
+                <i class="pi pi-arrow-down text-xs"></i>
+                {{ $t('subscription.view_plans') }}
+              </a>
+            </template>
+          </div>
+        </div>
+
+        <!-- Cancellation warning banner (inside status bar) -->
+        <div v-if="subscriptionStore.isScheduledForCancellation && periodEndFormatted" class="mt-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-center gap-3">
+          <i class="pi pi-exclamation-triangle text-amber-500"></i>
+          <span class="text-sm text-amber-800 font-medium">{{ $t('subscription.current_plan_expires', { date: periodEndFormatted }) }}</span>
+        </div>
+      </div>
+
+      <!-- ============ SECTION 2: Plan Comparison Grid ============ -->
+      <div id="plans">
+        <div class="mb-6">
+          <h2 class="text-xl font-bold text-slate-800">{{ $t('subscription.plan_comparison') }}</h2>
+          <p class="text-sm text-slate-500 mt-1">{{ $t('subscription.plan_comparison_subtitle') }}</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
+          <div
+            v-for="plan in plans"
+            :key="plan.key"
+            class="rounded-2xl p-6 relative overflow-hidden flex flex-col transition-all duration-300"
+            :class="{
+              // Premium always gets dark treatment
+              'bg-gradient-to-b from-slate-900 to-slate-800 text-white shadow-xl': plan.key === 'premium' && activePlanKey !== 'premium',
+              'bg-gradient-to-b from-slate-900 to-slate-800 text-white shadow-xl ring-2 ring-offset-2 ring-amber-400': plan.key === 'premium' && activePlanKey === 'premium',
+              // Current plan (non-premium) gets ring highlight
+              'bg-white border border-slate-200 shadow-sm ring-2 ring-offset-2 ring-slate-400': plan.key === 'free' && activePlanKey === 'free',
+              'bg-white border border-emerald-200 shadow-sm ring-2 ring-offset-2 ring-emerald-500 hover:border-emerald-400': plan.key === 'starter' && activePlanKey === 'starter',
+              'bg-white border border-violet-200 shadow-sm ring-2 ring-offset-2 ring-violet-500 hover:border-violet-400': plan.key === 'enterprise' && activePlanKey === 'enterprise',
+              // Non-current, non-premium cards
+              'bg-white border border-slate-200 shadow-sm hover:shadow-md': plan.key === 'free' && activePlanKey !== 'free',
+              'bg-white border border-emerald-200 shadow-sm hover:border-emerald-400 hover:shadow-md': plan.key === 'starter' && activePlanKey !== 'starter',
+              'bg-white border border-violet-200 shadow-sm hover:border-violet-400 hover:shadow-md': plan.key === 'enterprise' && activePlanKey !== 'enterprise',
+            }"
+          >
+            <!-- Current Plan badge (top-right) -->
+            <div v-if="activePlanKey === plan.key" class="absolute top-3 right-3">
+              <Tag :value="$t('subscription.current_plan')" severity="secondary" rounded class="text-xs" />
+            </div>
+
+            <!-- Best Value badge (Premium only, when not current) -->
+            <div v-if="plan.badge && activePlanKey !== plan.key" class="absolute top-0 right-0">
+              <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl shadow-lg uppercase">{{ plan.badge }}</div>
+            </div>
+            <!-- Best Value badge on Premium when it IS current -->
+            <div v-if="plan.badge && activePlanKey === plan.key" class="absolute top-0 right-20">
+              <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl shadow-lg uppercase">{{ plan.badge }}</div>
+            </div>
+
+            <!-- Icon + Name + Price -->
+            <div class="mb-5">
+              <div
+                class="w-11 h-11 rounded-xl flex items-center justify-center mb-3"
+                :class="{
+                  'bg-slate-100': plan.key === 'free' && plan.key !== 'premium',
+                  'bg-emerald-100': plan.key === 'starter',
+                  'bg-white/10 backdrop-blur-sm': plan.key === 'premium',
+                  'bg-violet-100': plan.key === 'enterprise',
+                }"
+              >
+                <i
+                  class="pi text-lg"
+                  :class="{
+                    'text-slate-500': plan.key === 'free',
+                    'text-emerald-600': plan.key === 'starter',
+                    'text-amber-400': plan.key === 'premium',
+                    'text-violet-600': plan.key === 'enterprise',
+                  }"
+                  :style="{ fontFamily: 'primeicons' }"
+                >
+                  <i :class="`pi ${plan.icon}`"></i>
+                </i>
+              </div>
+              <h3 class="text-xl font-bold" :class="plan.key === 'premium' ? 'text-white' : 'text-slate-800'">{{ $t(plan.labelKey) }}</h3>
+              <div class="text-2xl font-extrabold mt-1" :class="plan.key === 'premium' ? 'text-white' : 'text-slate-900'">
+                ${{ plan.price }}
+                <span class="text-sm font-normal" :class="plan.key === 'premium' ? 'text-slate-400' : 'text-slate-500'">/mo</span>
+              </div>
+            </div>
+
+            <!-- Features list -->
+            <ul class="space-y-3 text-sm flex-1 mb-6">
+              <li v-for="(feature, fi) in plan.features" :key="fi" class="flex items-center gap-3" :class="{ 'opacity-50': !feature.included }">
+                <template v-if="plan.key === 'premium'">
+                  <div class="p-1 rounded-full shrink-0" :class="feature.included ? 'bg-emerald-500/20' : 'bg-white/10'">
+                    <i class="pi text-xs" :class="feature.included ? 'pi-check text-emerald-400' : 'pi-times text-slate-500'"></i>
+                  </div>
+                  <span :class="feature.included ? 'text-slate-100' : 'text-slate-500'">{{ feature.text }}</span>
+                </template>
+                <template v-else>
+                  <div class="p-1 rounded-full shrink-0" :class="{
+                    'bg-emerald-100': feature.included && plan.key === 'starter',
+                    'bg-violet-100': feature.included && plan.key === 'enterprise',
+                    'bg-slate-100': feature.included && plan.key === 'free',
+                    'bg-slate-50': !feature.included,
+                  }">
+                    <i class="pi text-xs" :class="{
+                      'pi-check text-emerald-600': feature.included && plan.key === 'starter',
+                      'pi-check text-violet-600': feature.included && plan.key === 'enterprise',
+                      'pi-check text-slate-600': feature.included && plan.key === 'free',
+                      'pi-times text-slate-400': !feature.included,
+                    }"></i>
+                  </div>
+                  <span :class="feature.included ? 'text-slate-700' : 'text-slate-400'">{{ feature.text }}</span>
+                </template>
+              </li>
+            </ul>
+
+            <!-- Cancellation warning inside current plan card -->
+            <div v-if="activePlanKey === plan.key && subscriptionStore.isScheduledForCancellation && periodEndFormatted" class="mb-4 bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-800 flex items-center gap-2">
+              <i class="pi pi-exclamation-triangle text-amber-500"></i>
+              {{ $t('subscription.current_plan_expires', { date: periodEndFormatted }) }}
+            </div>
+
+            <!-- CTA Button -->
+            <div>
+              <Button
+                v-if="getPlanCta(plan.key).action || getPlanCta(plan.key).disabled"
+                :label="getPlanCta(plan.key).label"
+                :severity="getPlanCta(plan.key).severity as any"
+                :disabled="getPlanCta(plan.key).disabled"
+                :text="getPlanCta(plan.key).text || false"
+                :loading="actionLoading && !getPlanCta(plan.key).disabled"
+                class="w-full font-bold"
+                :class="{
+                  'bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 border-0 hover:from-amber-500 hover:to-orange-600': plan.key === 'premium' && activePlanKey !== 'premium',
+                  'bg-gradient-to-r from-violet-500 to-purple-600 text-white border-0 hover:from-violet-600 hover:to-purple-700': plan.key === 'enterprise' && activePlanKey !== 'enterprise' && activePlanKey !== 'premium' && activePlanKey !== 'starter',
+                }"
+                @click="getPlanCta(plan.key).action?.()"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ============ SECTION 3: Usage & Traffic (paid users only) ============ -->
+      <div v-if="isPaid" class="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
+        <!-- Left Col: Usage -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <i class="pi pi-chart-pie text-blue-500"></i> {{ $t('subscription.usage.title') }}
+          </h3>
+
+          <div class="space-y-6">
+            <!-- Monthly Budget -->
+            <div>
+              <div class="flex justify-between items-end mb-2">
+                <div>
+                  <div class="text-sm font-medium text-slate-600">{{ $t('subscription.usage.monthly_budget_title') }}</div>
+                  <div class="text-2xl font-bold text-slate-800">
+                    ${{ currentSpend.toFixed(2) }}
+                    <span class="text-sm font-normal text-slate-400">/ ${{ currentBudget }}</span>
+                  </div>
+                </div>
+                <div class="text-right">
+                  <div class="text-sm font-bold" :class="budgetPercent > 90 ? 'text-amber-600' : 'text-blue-600'">{{ budgetPercent }}%</div>
+                </div>
+              </div>
+              <ProgressBar :value="budgetPercent" :showValue="false" class="h-3 rounded-full bg-slate-100" :class="budgetPercent > 90 ? 'progress-warning' : ''" />
+
+              <!-- Session breakdown -->
+              <div class="mt-4 grid grid-cols-2 gap-3">
+                <div class="bg-blue-50 rounded-lg p-3">
+                  <div class="flex items-center gap-2 mb-1">
+                    <i class="pi pi-microphone text-blue-500 text-sm"></i>
+                    <span class="text-xs font-medium text-blue-700">{{ $t('subscription.usage.ai_spend') }}</span>
+                  </div>
+                  <div class="text-lg font-bold text-blue-800">${{ (chartSummary?.ai_cost_usd || 0).toFixed(2) }}</div>
+                  <div class="text-xs text-blue-600">{{ chartSummary?.ai_sessions || 0 }} sessions @ ${{ subscriptionStore.aiEnabledSessionCost }}</div>
+                </div>
+                <div class="bg-slate-50 rounded-lg p-3">
+                  <div class="flex items-center gap-2 mb-1">
+                    <i class="pi pi-file text-slate-500 text-sm"></i>
+                    <span class="text-xs font-medium text-slate-700">{{ $t('subscription.usage.non_ai_spend') }}</span>
+                  </div>
+                  <div class="text-lg font-bold text-slate-800">${{ (chartSummary?.non_ai_cost_usd || 0).toFixed(2) }}</div>
+                  <div class="text-xs text-slate-600">{{ chartSummary?.non_ai_sessions || 0 }} sessions @ ${{ subscriptionStore.aiDisabledSessionCost }}</div>
+                </div>
+              </div>
+
+              <div v-if="budgetPercent > 80" class="mt-4 bg-amber-50 text-amber-800 text-sm p-3 rounded-lg flex items-center gap-2">
+                <i class="pi pi-exclamation-triangle"></i>
+                <span>{{ $t('subscription.usage.running_low') }}</span>
+              </div>
+            </div>
+
+            <Divider />
+
+            <!-- Experiences -->
+            <div>
+              <div class="flex justify-between items-end mb-2">
+                <div>
+                  <div class="text-sm font-medium text-slate-600">{{ $t('subscription.usage.experiences') }}</div>
+                  <div class="text-2xl font-bold text-slate-800">{{ subscriptionStore.projectCount }} <span class="text-sm font-normal text-slate-400">/ {{ subscriptionStore.projectLimit }}</span></div>
+                </div>
+                <div class="text-right">
+                  <div class="text-sm font-bold" :class="projectUsagePercent >= 100 ? 'text-amber-600' : 'text-emerald-600'">{{ projectUsagePercent }}%</div>
+                </div>
+              </div>
+              <ProgressBar :value="projectUsagePercent" :showValue="false" class="h-3 rounded-full bg-slate-100" :class="projectUsagePercent >= 100 ? 'progress-warning' : 'progress-success'" />
+            </div>
+          </div>
+
+          <!-- Buy Credits CTA -->
+          <div class="mt-8 pt-6 border-t border-slate-100">
+            <div class="flex items-center justify-between">
+              <div>
+                <div class="font-bold text-slate-800">{{ $t('subscription.overage_cta.need_more') }}</div>
+                <div class="text-sm text-slate-500">
+                  {{ $t('subscription.overage_cta.balance') }} <span class="font-bold text-amber-600">${{ creditStore.balance.toFixed(2) }} {{ $t('subscription.credits') }}</span>
+                  <span class="mx-2 text-slate-300">|</span>
+                  {{ $t('subscription.overage_cta.buy_visits', { count: subscriptionStore.overageAccessPerBatch, credits: subscriptionStore.overageCreditsPerBatch }) }}
+                </div>
+              </div>
+              <Button
+                :label="$t('subscription.buy_credits')"
+                icon="pi pi-plus"
+                severity="warning"
+                @click="buyCredits"
+                :loading="actionLoading"
+                size="small"
+              />
+            </div>
+          </div>
+
+          <!-- Voice Credits -->
+          <div class="mt-6 pt-6 border-t border-slate-100">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
+                  <i class="pi pi-phone text-indigo-600 text-sm"></i>
+                </div>
+                <div>
+                  <div class="font-bold text-slate-800">{{ $t('subscription.voice_credits') }}</div>
+                  <div class="text-sm text-slate-500">
+                    <span class="font-bold" :class="voiceCreditStore.hasCredits ? 'text-indigo-600' : 'text-red-500'">{{ voiceCreditStore.balance }}</span>
+                    {{ $t('subscription.voice_credits_remaining') }}
+                  </div>
+                </div>
+              </div>
+              <Button
+                :label="$t('subscription.buy_voice_credits')"
+                icon="pi pi-plus"
+                severity="help"
+                @click="selectedVoicePackages = 1; showVoiceCreditConfirmDialog = true"
+                size="small"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Col: Daily Chart -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+          <div class="flex items-center justify-between mb-6">
+            <div>
+              <h3 class="text-lg font-bold text-slate-800">{{ $t('subscription.traffic.title') }}</h3>
+              <p class="text-sm text-slate-500">{{ $t('subscription.traffic.subtitle') }}</p>
+            </div>
+            <Select v-model="chartDays" :options="chartDaysOptions" optionLabel="label" optionValue="value" class="w-36 text-sm" @change="reloadChart" />
+          </div>
+
+          <!-- Summary Stats Grid -->
+          <div v-if="chartSummary" class="grid grid-cols-3 gap-4 mb-4">
+            <div class="bg-slate-50 rounded-xl p-4 text-center">
+              <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{{ $t('subscription.traffic.total') }}</div>
+              <div class="text-xl font-bold text-slate-800">{{ chartSummary.total_access.toLocaleString() }}</div>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-4 text-center">
+              <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{{ $t('subscription.traffic.peak') }}</div>
+              <div class="text-xl font-bold text-purple-600">{{ chartSummary.peak_count.toLocaleString() }}</div>
+            </div>
+            <div class="bg-slate-50 rounded-xl p-4 text-center">
+              <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{{ $t('subscription.traffic.overage') }}</div>
+              <div class="text-xl font-bold text-amber-600">{{ chartSummary.total_overage.toLocaleString() }}</div>
+            </div>
+          </div>
+
+          <!-- AI vs Non-AI Session Breakdown -->
+          <div v-if="chartSummary && (chartSummary.ai_sessions > 0 || chartSummary.non_ai_sessions > 0)" class="grid grid-cols-2 gap-4 mb-8">
+            <div class="bg-blue-50 rounded-xl p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <i class="pi pi-microphone text-blue-600"></i>
+                <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">{{ $t('subscription.traffic.ai_sessions') }}</span>
+              </div>
+              <div class="text-xl font-bold text-blue-700">{{ chartSummary.ai_sessions.toLocaleString() }}</div>
+              <div class="text-sm text-blue-600">${{ chartSummary.ai_cost_usd?.toFixed(2) || '0.00' }}</div>
+            </div>
+            <div class="bg-slate-100 rounded-xl p-4">
+              <div class="flex items-center gap-2 mb-2">
+                <i class="pi pi-file text-slate-500"></i>
+                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">{{ $t('subscription.traffic.non_ai_sessions') }}</span>
+              </div>
+              <div class="text-xl font-bold text-slate-700">{{ chartSummary.non_ai_sessions.toLocaleString() }}</div>
+              <div class="text-sm text-slate-500">${{ chartSummary.non_ai_cost_usd?.toFixed(2) || '0.00' }}</div>
+            </div>
+          </div>
+
+          <!-- Chart -->
+          <div class="h-[250px] relative">
+            <div v-if="chartData.length" class="absolute inset-0 flex flex-col">
+              <!-- Grid -->
+              <div class="flex-1 relative border-l border-b border-slate-200 ml-8 mb-6">
+                <!-- Y Axis Labels -->
+                <div class="absolute -left-8 top-0 text-xs text-slate-400 w-6 text-right">{{ maxDailyAccess }}</div>
+                <div class="absolute -left-8 top-1/2 -translate-y-1/2 text-xs text-slate-400 w-6 text-right">{{ Math.round(maxDailyAccess / 2) }}</div>
+                <div class="absolute -left-8 bottom-0 text-xs text-slate-400 w-6 text-right">0</div>
+
+                <!-- Grid Lines -->
+                <div class="absolute top-0 left-0 right-0 h-px bg-slate-100"></div>
+                <div class="absolute top-1/2 left-0 right-0 h-px bg-slate-100 -translate-y-1/2"></div>
+
+                <!-- Bars -->
+                <div class="absolute inset-0 flex items-end justify-between px-2 pt-4">
+                  <div
+                    v-for="day in chartData"
+                    :key="day.date"
+                    class="h-full flex-1 flex items-end justify-center px-[2px] group relative"
+                    @mouseenter="showTooltip(day)"
+                    @mouseleave="hideTooltip"
+                  >
+                    <div class="w-full max-w-[24px] bg-slate-100 rounded-t-sm flex flex-col justify-end h-full relative transition-all duration-200 group-hover:bg-slate-200 overflow-hidden">
+                      <!-- Overage -->
+                      <div v-if="day.overage > 0" class="w-full bg-amber-400 shrink-0" :style="{ height: `${(day.overage / maxDailyAccess) * 100}%` }"></div>
+                      <!-- Included -->
+                      <div class="w-full bg-blue-500 shrink-0 transition-all duration-300 group-hover:bg-blue-600" :style="{ height: `${(day.included / maxDailyAccess) * 100}%` }"></div>
+                    </div>
+
+                    <!-- Floating Tooltip -->
+                    <div v-if="hoveredDay === day" class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+                      <div class="bg-slate-800 text-white text-xs rounded-lg py-2 px-3 shadow-xl whitespace-nowrap">
+                        <div class="font-bold border-b border-slate-600 pb-1 mb-1">{{ formatChartDate(day.date) }}</div>
+                        <div class="flex justify-between gap-4"><span>{{ $t('subscription.traffic.total') }}:</span> <strong>{{ day.total }}</strong></div>
+                        <div v-if="day.ai_sessions > 0" class="flex justify-between gap-4 text-blue-300"><span>{{ $t('subscription.traffic.ai_short') }}:</span> <strong>{{ day.ai_sessions }}</strong></div>
+                        <div v-if="day.non_ai_sessions > 0" class="flex justify-between gap-4 text-slate-300"><span>{{ $t('subscription.traffic.non_ai_short') }}:</span> <strong>{{ day.non_ai_sessions }}</strong></div>
+                        <div v-if="day.overage > 0" class="flex justify-between gap-4 text-amber-300"><span>{{ $t('subscription.traffic.overage') }}:</span> <strong>{{ day.overage }}</strong></div>
+                      </div>
+                      <div class="w-2 h-2 bg-slate-800 rotate-45 mx-auto -mt-1"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- X Axis Labels (Adaptive) -->
+              <div class="ml-8 flex justify-between text-xs text-slate-400">
+                <span>{{ formatChartDate(chartData[0].date) }}</span>
+                <span class="hidden sm:inline">{{ formatChartDate(chartData[Math.floor(chartData.length / 2)].date) }}</span>
+                <span>{{ formatChartDate(chartData[chartData.length - 1].date) }}</span>
+              </div>
+            </div>
+
+            <div v-else class="flex flex-col items-center justify-center h-full text-slate-400">
+              <i class="pi pi-chart-bar text-4xl mb-4 opacity-20"></i>
+              <p>{{ $t('subscription.traffic.no_data') }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Free user: Simple chart (no usage stats, just chart) -->
+      <div v-if="!isPaid" class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <i class="pi pi-chart-line text-slate-400"></i>
+              {{ $t('subscription.chart.daily_access') }}
+            </h3>
+          </div>
+          <Select v-model="chartDays" :options="chartDaysOptions" optionLabel="label" optionValue="value" class="w-36 text-sm" @change="reloadChart" />
+        </div>
+
+        <!-- Free usage stats (compact) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div class="bg-slate-50 rounded-xl p-4">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-slate-600 font-medium text-sm">{{ $t('subscription.usage.experiences') }}</span>
+              <span class="text-slate-800 font-bold text-sm">{{ subscriptionStore.projectCount }} / {{ subscriptionStore.projectLimit }}</span>
             </div>
             <ProgressBar :value="projectUsagePercent" :showValue="false" class="h-2" :class="projectUsagePercent >= 100 ? 'progress-danger' : ''" />
           </div>
-          <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-100">
-            <div class="flex justify-between items-center mb-3">
-              <span class="text-slate-600 font-medium">{{ $t('subscription.usage.monthly_access') }}</span>
-              <span class="text-slate-800 font-bold">{{ subscriptionStore.monthlyAccessUsed }} / {{ subscriptionStore.monthlyAccessLimit }}</span>
+          <div class="bg-slate-50 rounded-xl p-4">
+            <div class="flex justify-between items-center mb-2">
+              <span class="text-slate-600 font-medium text-sm">{{ $t('subscription.usage.monthly_access') }}</span>
+              <span class="text-slate-800 font-bold text-sm">{{ subscriptionStore.monthlyAccessUsed }} / {{ subscriptionStore.monthlyAccessLimit }}</span>
             </div>
             <ProgressBar :value="usagePercent" :showValue="false" class="h-2" :class="usagePercent >= 100 ? 'progress-danger' : ''" />
           </div>
         </div>
 
-        <!-- Plan Comparison -->
-        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 items-start">
-          
-          <!-- Current Free Plan -->
-          <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm relative overflow-hidden h-full flex flex-col">
-            <div class="absolute top-0 right-0 p-4">
-              <Tag :value="$t('subscription.current_plan')" severity="secondary" rounded />
-            </div>
-            <div class="mb-6">
-              <div class="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mb-4">
-                <i class="pi pi-user text-xl text-slate-500"></i>
-              </div>
-              <h2 class="text-2xl font-bold text-slate-800">{{ $t('subscription.free_plan') }}</h2>
-              <div class="text-3xl font-extrabold text-slate-900 mt-2">$0 <span class="text-base font-normal text-slate-500">/mo</span></div>
-            </div>
-            <ul class="space-y-4 text-sm flex-1">
-              <li class="flex items-center gap-3">
-                <i class="pi pi-check text-slate-600"></i>
-                <span class="text-slate-700">{{ $t('subscription.features.project_limit', { limit: config.free.projectLimit }) }}</span>
-              </li>
-              <li class="flex items-center gap-3">
-                <i class="pi pi-check text-slate-600"></i>
-                <span class="text-slate-700">{{ $t('subscription.features.monthly_pool', { count: config.free.monthlySessionLimit }) }}</span>
-              </li>
-              <li class="flex items-center gap-3">
-                <i class="pi pi-check text-slate-600"></i>
-                <span class="text-slate-700">{{ $t('subscription.features.ai_assistant_included') }}</span>
-              </li>
-              <li class="flex items-center gap-3 opacity-50">
-                <i class="pi pi-times text-slate-400"></i>
-                <span class="text-slate-500">{{ $t('subscription.features.no_translations') }}</span>
-              </li>
-              <li class="flex items-center gap-3 opacity-50">
-                <i class="pi pi-times text-slate-400"></i>
-                <span class="text-slate-500">{{ $t('subscription.features.no_overage') }}</span>
-              </li>
-              <li class="flex items-center gap-3">
-                <i class="pi pi-check text-slate-600"></i>
-                <span class="text-slate-700">{{ $t('subscription.features.branding_included') }}</span>
-              </li>
-            </ul>
+        <!-- Chart summary -->
+        <div v-if="chartSummary" class="flex gap-8 mb-6 border-b border-slate-100 pb-4">
+          <div>
+            <div class="text-2xl font-bold text-slate-800">{{ chartSummary.total_access.toLocaleString() }}</div>
+            <div class="text-xs font-medium text-slate-500 uppercase tracking-wide">{{ $t('subscription.chart.total_access') }}</div>
           </div>
-
-          <!-- Starter Plan (Upgrade Option) -->
-          <div class="bg-white rounded-2xl p-6 border border-emerald-200 shadow-sm relative overflow-hidden h-full flex flex-col hover:border-emerald-400 hover:shadow-md transition-all duration-300">
-            <div class="mb-6">
-              <div class="w-12 h-12 rounded-xl bg-emerald-50 flex items-center justify-center mb-4">
-                <i class="pi pi-bolt text-xl text-emerald-500"></i>
-              </div>
-              <h2 class="text-2xl font-bold text-slate-800">{{ $t('subscription.starter_plan') }}</h2>
-              <div class="text-3xl font-extrabold text-slate-900 mt-2">${{ config.starter.monthlyFeeUsd }} <span class="text-base font-normal text-slate-500">/mo</span></div>
-            </div>
-            <ul class="space-y-3 text-sm mb-8 flex-1">
-              <li class="flex items-center gap-3">
-                <div class="bg-emerald-100 p-1 rounded-full"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
-                <span class="text-slate-700">{{ $t('subscription.features.starter_projects', { limit: config.starter.projectLimit }) }}</span>
-              </li>
-              <li class="flex items-start gap-3">
-                <div class="bg-emerald-100 p-1 rounded-full mt-0.5"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
-                <div>
-                  <div class="text-slate-700 font-medium"><strong>${{ config.starter.monthlyBudgetUsd }}</strong> {{ $t('subscription.usage.monthly_budget') }}</div>
-                  <div class="text-xs text-slate-500 mt-1">{{ $t('subscription.features.estimated_sessions', { ai: starterPricingVars.aiSessions, nonAi: starterPricingVars.nonAiSessions }) }}</div>
-                  <div class="text-xs text-slate-400 mt-0.5">{{ $t('subscription.features.session_cost_breakdown', { aiCost: config.starter.aiEnabledSessionCostUsd, nonAiCost: config.starter.aiDisabledSessionCostUsd }) }}</div>
-                </div>
-              </li>
-              <li class="flex items-center gap-3">
-                <div class="bg-emerald-100 p-1 rounded-full"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
-                <span class="text-slate-700">{{ $t('subscription.features.ai_assistant_included') }}</span>
-              </li>
-              <li class="flex items-center gap-3">
-                <div class="bg-emerald-100 p-1 rounded-full"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
-                <span class="text-slate-700">{{ $t('subscription.features.starter_translations', { count: config.starter.maxLanguages }) }}</span>
-              </li>
-              <li class="flex items-start gap-3">
-                <div class="bg-emerald-100 p-1 rounded-full mt-0.5"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
-                <div>
-                  <div class="text-slate-700">{{ $t('subscription.features.overage_available') }}</div>
-                  <div class="text-xs text-slate-400 mt-0.5">{{ $t('subscription.features.overage', { cost: config.overage.creditsPerBatch, sessions: config.calculated.starterAiDisabledSessionsPerBatch }) }}</div>
-                </div>
-              </li>
-              <li class="flex items-center gap-3">
-                <div class="bg-emerald-100 p-1 rounded-full"><i class="pi pi-check text-emerald-600 text-xs"></i></div>
-                <span class="text-slate-700">{{ $t('subscription.features.branding_included') }}</span>
-              </li>
-            </ul>
-            <Button
-              :label="$t('subscription.upgrade')"
-              class="w-full bg-emerald-500 text-white border-0 hover:bg-emerald-600 font-bold"
-              @click="upgradeToPremium('starter')"
-              :loading="actionLoading"
-            />
+          <div>
+            <div class="text-2xl font-bold text-slate-800">{{ chartSummary.average_daily }}</div>
+            <div class="text-xs font-medium text-slate-500 uppercase tracking-wide">{{ $t('subscription.chart.avg_day') }}</div>
           </div>
-          
-          <!-- Premium Plan (Upgrade Option) -->
-          <div class="bg-gradient-to-b from-slate-900 to-slate-800 rounded-2xl p-6 shadow-xl relative overflow-hidden text-white transform hover:scale-[1.02] transition-transform duration-300 h-full flex flex-col">
-            <div class="absolute top-0 right-0 p-0">
-              <div class="bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold px-3 py-1 rounded-bl-xl shadow-lg uppercase">{{ $t('subscription.best_value') }}</div>
-            </div>
-            <div class="mb-6">
-              <div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4 backdrop-blur-sm">
-                <i class="pi pi-star-fill text-xl text-amber-400"></i>
-              </div>
-              <h2 class="text-2xl font-bold text-white">{{ $t('subscription.premium_plan') }}</h2>
-              <div class="text-3xl font-extrabold text-white mt-2">${{ config.premium.monthlyFeeUsd }} <span class="text-base font-normal text-slate-400">/mo</span></div>
-            </div>
-            <ul class="space-y-3 text-sm mb-8 flex-1">
-              <li class="flex items-center gap-3">
-                <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
-                <span class="text-slate-100">{{ $t('subscription.features.unlimited_projects', { limit: config.premium.projectLimit }) }}</span>
-              </li>
-              <li class="flex items-start gap-3">
-                <div class="bg-emerald-500/20 p-1 rounded-full mt-0.5"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
-                <div>
-                  <div class="text-slate-100 font-medium"><strong>${{ config.premium.monthlyBudgetUsd }}</strong> {{ $t('subscription.usage.monthly_budget') }}</div>
-                  <div class="text-xs text-slate-400 mt-1">{{ $t('subscription.features.estimated_sessions', { ai: pricingVars.aiSessions, nonAi: pricingVars.nonAiSessions }) }}</div>
-                  <div class="text-xs text-slate-500 mt-0.5">{{ $t('subscription.features.session_cost_breakdown', { aiCost: config.premium.aiEnabledSessionCostUsd, nonAiCost: config.premium.aiDisabledSessionCostUsd }) }}</div>
-                </div>
-              </li>
-              <li class="flex items-center gap-3">
-                <div class="bg-amber-500/20 p-1 rounded-full"><i class="pi pi-bolt text-amber-400 text-xs"></i></div>
-                <span class="text-amber-300">{{ $t('subscription.features.session_rate_savings', { percent: sessionRateSavings }) }}</span>
-              </li>
-              <li class="flex items-center gap-3">
-                <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
-                <span class="text-slate-100">{{ $t('subscription.features.ai_assistant_included') }}</span>
-              </li>
-              <li class="flex items-center gap-3">
-                <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
-                <span class="text-slate-100">{{ $t('subscription.features.unlimited_translations') }}</span>
-              </li>
-              <li class="flex items-start gap-3">
-                <div class="bg-emerald-500/20 p-1 rounded-full mt-0.5"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
-                <div>
-                  <div class="text-slate-100">{{ $t('subscription.features.overage_available') }}</div>
-                  <div class="text-xs text-slate-500 mt-0.5">{{ $t('subscription.features.overage', { cost: config.overage.creditsPerBatch, sessions: config.calculated.aiDisabledSessionsPerBatch }) }}</div>
-                </div>
-              </li>
-              <li class="flex items-center gap-3">
-                <div class="bg-emerald-500/20 p-1 rounded-full"><i class="pi pi-check text-emerald-400 text-xs"></i></div>
-                <span class="text-slate-100">{{ $t('subscription.features.white_label') }}</span>
-              </li>
-            </ul>
-            <Button
-              :label="$t('subscription.upgrade_to_premium')"
-              class="w-full bg-gradient-to-r from-amber-400 to-orange-500 text-slate-900 border-0 hover:from-amber-500 hover:to-orange-600 font-bold"
-              @click="() => upgradeToPremium('premium')"
-              :loading="actionLoading"
-            />
-          </div>
-
-          <!-- Enterprise Plan (Upgrade Option) -->
-          <div class="bg-white rounded-2xl p-6 border border-violet-200 shadow-sm relative overflow-hidden h-full flex flex-col hover:border-violet-400 hover:shadow-md transition-all duration-300">
-            <div class="mb-6">
-              <div class="w-12 h-12 rounded-xl bg-violet-50 flex items-center justify-center mb-4">
-                <i class="pi pi-building text-xl text-violet-500"></i>
-              </div>
-              <h2 class="text-2xl font-bold text-slate-800">{{ $t('subscription.enterprise_plan') }}</h2>
-              <div class="text-3xl font-extrabold text-slate-900 mt-2">${{ config.enterprise.monthlyFeeUsd }} <span class="text-base font-normal text-slate-500">/mo</span></div>
-            </div>
-            <ul class="space-y-3 text-sm mb-8 flex-1">
-              <li class="flex items-center gap-3">
-                <div class="bg-violet-100 p-1 rounded-full"><i class="pi pi-check text-violet-600 text-xs"></i></div>
-                <span class="text-slate-700">{{ $t('subscription.features.enterprise_projects', { limit: config.enterprise.projectLimit }) }}</span>
-              </li>
-              <li class="flex items-start gap-3">
-                <div class="bg-violet-100 p-1 rounded-full mt-0.5"><i class="pi pi-check text-violet-600 text-xs"></i></div>
-                <div>
-                  <div class="text-slate-700 font-medium"><strong>${{ config.enterprise.monthlyBudgetUsd }}</strong> {{ $t('subscription.usage.monthly_budget') }}</div>
-                  <div class="text-xs text-slate-500 mt-1">{{ $t('subscription.features.estimated_sessions', { ai: enterprisePricingVars.aiSessions, nonAi: enterprisePricingVars.nonAiSessions }) }}</div>
-                  <div class="text-xs text-slate-400 mt-0.5">{{ $t('subscription.features.session_cost_breakdown', { aiCost: config.enterprise.aiEnabledSessionCostUsd, nonAiCost: config.enterprise.aiDisabledSessionCostUsd }) }}</div>
-                </div>
-              </li>
-              <li class="flex items-center gap-3">
-                <div class="bg-violet-100 p-1 rounded-full"><i class="pi pi-bolt text-violet-600 text-xs"></i></div>
-                <span class="text-violet-700 font-medium">{{ $t('subscription.features.lowest_session_rates') }}</span>
-              </li>
-              <li class="flex items-center gap-3">
-                <div class="bg-violet-100 p-1 rounded-full"><i class="pi pi-check text-violet-600 text-xs"></i></div>
-                <span class="text-slate-700">{{ $t('subscription.features.ai_assistant_included') }}</span>
-              </li>
-              <li class="flex items-center gap-3">
-                <div class="bg-violet-100 p-1 rounded-full"><i class="pi pi-check text-violet-600 text-xs"></i></div>
-                <span class="text-slate-700">{{ $t('subscription.features.unlimited_translations') }}</span>
-              </li>
-              <li class="flex items-start gap-3">
-                <div class="bg-violet-100 p-1 rounded-full mt-0.5"><i class="pi pi-check text-violet-600 text-xs"></i></div>
-                <div>
-                  <div class="text-slate-700">{{ $t('subscription.features.overage_available') }}</div>
-                  <div class="text-xs text-slate-400 mt-0.5">{{ $t('subscription.features.overage', { cost: config.overage.creditsPerBatch, sessions: config.calculated.enterpriseAiDisabledSessionsPerBatch }) }}</div>
-                </div>
-              </li>
-              <li class="flex items-center gap-3">
-                <div class="bg-violet-100 p-1 rounded-full"><i class="pi pi-check text-violet-600 text-xs"></i></div>
-                <span class="text-slate-700">{{ $t('subscription.features.white_label') }}</span>
-              </li>
-              <li class="flex items-center gap-3">
-                <div class="bg-violet-100 p-1 rounded-full"><i class="pi pi-check text-violet-600 text-xs"></i></div>
-                <span class="text-slate-700">{{ $t('subscription.features.custom_domain') }}</span>
-              </li>
-            </ul>
-            <Button
-              :label="$t('subscription.upgrade_to_enterprise')"
-              class="w-full bg-gradient-to-r from-violet-500 to-purple-600 text-white border-0 hover:from-violet-600 hover:to-purple-700 font-bold"
-              @click="() => upgradeToPremium('enterprise')"
-              :loading="actionLoading"
-            />
-          </div>
-
-        </div>
-        
-        <!-- Daily Access Chart Card -->
-        <Card class="shadow-sm border-0 rounded-xl overflow-hidden">
-          <template #title>
-            <div class="flex items-center justify-between px-2 pt-2">
-              <div class="flex items-center gap-2">
-                <i class="pi pi-chart-line text-slate-400"></i>
-                <span class="font-semibold text-slate-700">{{ $t('subscription.chart.daily_access') }}</span>
-              </div>
-              <Select v-model="chartDays" :options="chartDaysOptions" optionLabel="label" optionValue="value" class="w-36 text-sm" @change="reloadChart" />
-            </div>
-          </template>
-          <template #content>
-            <div v-if="chartSummary" class="flex gap-8 mb-8 px-2 border-b border-slate-100 pb-6">
-              <div>
-                <div class="text-2xl font-bold text-slate-800">{{ chartSummary.total_access.toLocaleString() }}</div>
-                <div class="text-xs font-medium text-slate-500 uppercase tracking-wide">{{ $t('subscription.chart.total_access') }}</div>
-              </div>
-              <div>
-                <div class="text-2xl font-bold text-slate-800">{{ chartSummary.average_daily }}</div>
-                <div class="text-xs font-medium text-slate-500 uppercase tracking-wide">{{ $t('subscription.chart.avg_day') }}</div>
-              </div>
-              <div>
-                <div class="text-2xl font-bold text-amber-500">{{ chartSummary.total_overage }}</div>
-                <div class="text-xs font-medium text-slate-500 uppercase tracking-wide">{{ $t('subscription.traffic.overage') }}</div>
-              </div>
-            </div>
-            
-            <div v-if="chartData.length" class="chart-wrapper h-64 relative mt-4">
-              <!-- Y-axis grid lines -->
-              <div class="absolute inset-0 flex flex-col justify-between text-xs text-slate-300 pointer-events-none">
-                <div class="border-b border-slate-100 w-full h-0 relative"><span class="absolute -top-2.5 right-full pr-2">{{ maxDailyAccess }}</span></div>
-                <div class="border-b border-slate-100 w-full h-0 relative"><span class="absolute -top-2.5 right-full pr-2">{{ Math.round(maxDailyAccess / 2) }}</span></div>
-                <div class="border-b border-slate-100 w-full h-0 relative"><span class="absolute -top-2.5 right-full pr-2">0</span></div>
-              </div>
-              
-              <div class="flex items-end h-full gap-1 pt-2 pb-6 pl-8 relative z-10">
-                <div 
-                  v-for="day in chartData" 
-                  :key="day.date" 
-                  class="flex-1 flex flex-col justify-end h-full relative group"
-                  @mouseenter="showTooltip(day)"
-                  @mouseleave="hideTooltip"
-                >
-                  <!-- Bar Container -->
-                  <div class="w-full flex flex-col justify-end bg-slate-50/50 rounded-t-sm h-full overflow-hidden relative transition-all duration-300 group-hover:bg-slate-100">
-                    <!-- Overage Bar -->
-                    <div 
-                      v-if="day.overage > 0"
-                      class="w-full bg-amber-400"
-                      :style="{ height: `${(day.overage / maxDailyAccess) * 100}%` }"
-                    ></div>
-                    <!-- Included Bar -->
-                    <div 
-                      class="w-full bg-blue-500 transition-all duration-300 group-hover:bg-blue-600"
-                      :style="{ height: `${(day.included / maxDailyAccess) * 100}%` }"
-                    ></div>
-                  </div>
-                  
-                  <!-- Tooltip -->
-                  <div 
-                    v-if="hoveredDay === day"
-                    class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20 pointer-events-none"
-                  >
-                    <div class="bg-slate-900 text-white text-xs rounded-lg py-2 px-3 shadow-xl whitespace-nowrap text-center">
-                      <div class="font-bold border-b border-slate-700 pb-1 mb-1">{{ formatChartDate(day.date) }}</div>
-                      <div class="flex justify-between gap-3"><span class="text-slate-300">{{ $t('subscription.traffic.total') }}:</span> <span>{{ day.total }}</span></div>
-                      <div v-if="day.ai_sessions > 0" class="flex justify-between gap-3 text-blue-400"><span>{{ $t('subscription.traffic.ai_short') }}:</span> <span>{{ day.ai_sessions }}</span></div>
-                      <div v-if="day.non_ai_sessions > 0" class="flex justify-between gap-3 text-slate-400"><span>{{ $t('subscription.traffic.non_ai_short') }}:</span> <span>{{ day.non_ai_sessions }}</span></div>
-                      <div v-if="day.overage > 0" class="flex justify-between gap-3 text-amber-400"><span>{{ $t('subscription.traffic.overage') }}:</span> <span>{{ day.overage }}</span></div>
-                    </div>
-                    <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-900 mx-auto"></div>
-                  </div>
-                </div>
-              </div>
-              
-              <!-- X-axis Labels -->
-              <div class="absolute bottom-0 left-8 right-0 flex justify-between text-[10px] text-slate-400 pt-2 border-t border-slate-200">
-                <span>{{ formatChartDate(chartData[0].date) }}</span>
-                <span>{{ formatChartDate(chartData[chartData.length - 1].date) }}</span>
-              </div>
-            </div>
-            
-            <div v-else class="text-center py-16 text-slate-400">
-              <i class="pi pi-chart-bar text-4xl mb-3 opacity-20"></i>
-              <p>{{ $t('subscription.traffic.no_data') }}</p>
-            </div>
-          </template>
-        </Card>
-      </div>
-      
-      <!-- ============ PAID USER VIEW (Starter & Premium) ============ -->
-      <div v-else class="space-y-8">
-        
-        <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
-          <!-- Left Col: Plan & Usage -->
-          <div class="space-y-8">
-            <!-- Paid Plan Status -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-              <div class="flex justify-between items-start mb-6">
-                <div class="flex items-center gap-4">
-                  <div
-                    class="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md"
-                    :class="isEnterprise ? 'bg-gradient-to-br from-violet-500 to-purple-700' : isStarter ? 'bg-gradient-to-br from-emerald-400 to-cyan-600' : 'bg-gradient-to-br from-amber-400 to-amber-600'"
-                  >
-                    <i class="pi text-2xl text-white" :class="isEnterprise ? 'pi-building' : isStarter ? 'pi-sparkles' : 'pi-star-fill'"></i>
-                  </div>
-                  <div>
-                    <h2 class="text-xl font-bold text-slate-800">{{ isEnterprise ? $t('subscription.enterprise_plan') : isStarter ? $t('subscription.starter_plan') : $t('subscription.premium_plan') }}</h2>
-                    <div class="text-sm text-slate-500 mt-1" v-if="periodEndFormatted">
-                      <span v-if="subscriptionStore.isScheduledForCancellation" class="text-amber-600 font-medium">{{ $t('subscription.billing.access_until') }} {{ periodEndFormatted }}</span>
-                      <span v-else>{{ $t('subscription.billing.next_billing') }} {{ periodEndFormatted }}</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="text-right">
-                  <div class="text-2xl font-bold text-slate-800">${{ subscriptionStore.monthlyFee }}</div>
-                  <div class="text-xs text-slate-500 uppercase font-bold tracking-wider">{{ $t('common.per_month') }}</div>
-                </div>
-              </div>
-              
-              <div class="flex flex-wrap gap-3 pt-4 border-t border-slate-100">
-                <template v-if="subscriptionStore.isScheduledForCancellation">
-                  <Button
-                    :label="$t('subscription.reactivate')"
-                    icon="pi pi-refresh"
-                    severity="success"
-                    @click="reactivate"
-                    :loading="actionLoading"
-                    class="flex-1 sm:flex-none"
-                  />
-                </template>
-                <template v-else>
-                  <Button 
-                    :label="$t('subscription.manage_billing')" 
-                    icon="pi pi-credit-card" 
-                    severity="secondary" 
-                    outlined 
-                    @click="openPortal" 
-                    class="flex-1 sm:flex-none"
-                  />
-                  <!-- Upgrade Button for Starter/Premium -->
-                  <Button
-                    v-if="isStarter"
-                    :label="$t('subscription.upgrade_to_premium')"
-                    icon="pi pi-arrow-up"
-                    class="flex-1 sm:flex-none bg-gradient-to-r from-amber-500 to-orange-500 border-0 hover:from-amber-600 hover:to-orange-600"
-                    @click="() => upgradeToPremium('premium')"
-                  />
-                  <Button
-                    v-if="isStarter || isPremium"
-                    :label="$t('subscription.upgrade_to_enterprise')"
-                    icon="pi pi-arrow-up"
-                    class="flex-1 sm:flex-none bg-gradient-to-r from-violet-500 to-purple-600 border-0 hover:from-violet-600 hover:to-purple-700 text-white"
-                    @click="() => upgradeToPremium('enterprise')"
-                  />
-                  <Button 
-                    :label="$t('common.cancel')" 
-                    icon="pi pi-times" 
-                    severity="danger" 
-                    text 
-                    @click="confirmCancel" 
-                    class="flex-1 sm:flex-none"
-                  />
-                </template>
-              </div>
-
-              <!-- Plan Features Recap -->
-              <div class="mt-6 pt-6 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                <div class="flex items-start gap-3">
-                  <div class="bg-blue-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-wallet text-blue-500 text-xs"></i></div>
-                  <div>
-                    <div class="text-slate-700 font-medium">{{ $t('subscription.usage.monthly_budget_title') }}</div>
-                    <div class="text-slate-500 text-xs mt-0.5">${{ isEnterprise ? config.enterprise.monthlyBudgetUsd : isStarter ? config.starter.monthlyBudgetUsd : config.premium.monthlyBudgetUsd }} / {{ $t('common.month') }}</div>
-                  </div>
-                </div>
-                <div class="flex items-start gap-3">
-                  <div class="bg-purple-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-tags text-purple-500 text-xs"></i></div>
-                  <div>
-                    <div class="text-slate-700 font-medium">{{ $t('subscription.features.session_cost_breakdown', {
-                      aiCost: isEnterprise ? config.enterprise.aiEnabledSessionCostUsd : isStarter ? config.starter.aiEnabledSessionCostUsd : config.premium.aiEnabledSessionCostUsd,
-                      nonAiCost: isEnterprise ? config.enterprise.aiDisabledSessionCostUsd : isStarter ? config.starter.aiDisabledSessionCostUsd : config.premium.aiDisabledSessionCostUsd
-                    }) }}</div>
-                    <div class="text-slate-500 text-xs mt-0.5">{{ $t('subscription.features.estimated_sessions', {
-                      ai: isEnterprise ? Math.floor(config.enterprise.monthlyBudgetUsd / config.enterprise.aiEnabledSessionCostUsd) : isStarter ? starterPricingVars.aiSessions : pricingVars.aiSessions,
-                      nonAi: isEnterprise ? Math.floor(config.enterprise.monthlyBudgetUsd / config.enterprise.aiDisabledSessionCostUsd) : isStarter ? starterPricingVars.nonAiSessions : pricingVars.nonAiSessions
-                    }) }}</div>
-                  </div>
-                </div>
-                <div class="flex items-start gap-3">
-                  <div class="bg-emerald-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-globe text-emerald-500 text-xs"></i></div>
-                  <div>
-                    <div class="text-slate-700 font-medium">{{ $t('subscription.features.translations') }}</div>
-                    <div class="text-slate-500 text-xs mt-0.5">{{ isStarter ? $t('subscription.features.starter_translations', { count: config.starter.maxLanguages }) : $t('subscription.features.unlimited_translations') }}</div>
-                  </div>
-                </div>
-                <div class="flex items-start gap-3">
-                  <div class="bg-amber-50 p-1.5 rounded-full mt-0.5"><i class="pi pi-star text-amber-500 text-xs"></i></div>
-                  <div>
-                    <div class="text-slate-700 font-medium">{{ isStarter ? $t('subscription.features.branding_included') : (isEnterprise || isPremium) ? $t('subscription.features.white_label') : '' }}</div>
-                    <div class="text-slate-500 text-xs mt-0.5">FunTell</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- Usage Cards -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-              <h3 class="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <i class="pi pi-chart-pie text-blue-500"></i> {{ $t('subscription.usage.title') }}
-              </h3>
-              
-              <div class="space-y-6">
-                <!-- Monthly Budget (Paid users) -->
-                <div>
-                  <div class="flex justify-between items-end mb-2">
-                    <div>
-                      <div class="text-sm font-medium text-slate-600">{{ $t('subscription.usage.monthly_budget_title') }}</div>
-                      <div class="text-2xl font-bold text-slate-800">
-                        ${{ currentSpend.toFixed(2) }} 
-                        <span class="text-sm font-normal text-slate-400">/ ${{ currentBudget }}</span>
-                      </div>
-                    </div>
-                    <div class="text-right">
-                      <div class="text-sm font-bold" :class="budgetPercent > 90 ? 'text-amber-600' : 'text-blue-600'">{{ budgetPercent }}%</div>
-                    </div>
-                  </div>
-                  <ProgressBar :value="budgetPercent" :showValue="false" class="h-3 rounded-full bg-slate-100" :class="budgetPercent > 90 ? 'progress-warning' : ''" />
-                  
-                  <!-- Session breakdown -->
-                  <div class="mt-4 grid grid-cols-2 gap-3">
-                    <div class="bg-blue-50 rounded-lg p-3">
-                      <div class="flex items-center gap-2 mb-1">
-                        <i class="pi pi-microphone text-blue-500 text-sm"></i>
-                        <span class="text-xs font-medium text-blue-700">{{ $t('subscription.usage.ai_spend') }}</span>
-                      </div>
-                      <div class="text-lg font-bold text-blue-800">${{ (chartSummary?.ai_cost_usd || 0).toFixed(2) }}</div>
-                      <div class="text-xs text-blue-600">{{ chartSummary?.ai_sessions || 0 }} sessions @ ${{ subscriptionStore.aiEnabledSessionCost }}</div>
-                    </div>
-                    <div class="bg-slate-50 rounded-lg p-3">
-                      <div class="flex items-center gap-2 mb-1">
-                        <i class="pi pi-file text-slate-500 text-sm"></i>
-                        <span class="text-xs font-medium text-slate-700">{{ $t('subscription.usage.non_ai_spend') }}</span>
-                      </div>
-                      <div class="text-lg font-bold text-slate-800">${{ (chartSummary?.non_ai_cost_usd || 0).toFixed(2) }}</div>
-                      <div class="text-xs text-slate-600">{{ chartSummary?.non_ai_sessions || 0 }} sessions @ ${{ subscriptionStore.aiDisabledSessionCost }}</div>
-                    </div>
-                  </div>
-                  
-                  <div v-if="budgetPercent > 80" class="mt-4 bg-amber-50 text-amber-800 text-sm p-3 rounded-lg flex items-center gap-2">
-                    <i class="pi pi-exclamation-triangle"></i>
-                    <span>{{ $t('subscription.usage.running_low') }}</span>
-                  </div>
-                </div>
-                
-                <Divider />
-                
-                <!-- Experiences -->
-                <div>
-                  <div class="flex justify-between items-end mb-2">
-                    <div>
-                      <div class="text-sm font-medium text-slate-600">{{ $t('subscription.usage.experiences') }}</div>
-                      <div class="text-2xl font-bold text-slate-800">{{ subscriptionStore.projectCount }} <span class="text-sm font-normal text-slate-400">/ {{ subscriptionStore.projectLimit }}</span></div>
-                    </div>
-                    <div class="text-right">
-                      <div class="text-sm font-bold" :class="projectUsagePercent >= 100 ? 'text-amber-600' : 'text-emerald-600'">{{ projectUsagePercent }}%</div>
-                    </div>
-                  </div>
-                  <ProgressBar :value="projectUsagePercent" :showValue="false" class="h-3 rounded-full bg-slate-100" :class="projectUsagePercent >= 100 ? 'progress-warning' : 'progress-success'" />
-                </div>
-              </div>
-              
-              <!-- Buy Credits CTA -->
-              <div class="mt-8 pt-6 border-t border-slate-100">
-                <div class="flex items-center justify-between">
-                  <div>
-                    <div class="font-bold text-slate-800">{{ $t('subscription.overage_cta.need_more') }}</div>
-                    <div class="text-sm text-slate-500">
-                      {{ $t('subscription.overage_cta.balance') }} <span class="font-bold text-amber-600">${{ creditStore.balance.toFixed(2) }} {{ $t('subscription.credits') }}</span>
-                      <span class="mx-2 text-slate-300">|</span>
-                      {{ $t('subscription.overage_cta.buy_visits', { count: subscriptionStore.overageAccessPerBatch, credits: subscriptionStore.overageCreditsPerBatch }) }}
-                    </div>
-                  </div>
-                  <Button
-                    :label="$t('subscription.buy_credits')"
-                    icon="pi pi-plus"
-                    severity="warning"
-                    @click="buyCredits"
-                    :loading="actionLoading"
-                    size="small"
-                  />
-                </div>
-              </div>
-
-              <!-- Voice Credits -->
-              <div class="mt-6 pt-6 border-t border-slate-100">
-                <div class="flex items-center justify-between">
-                  <div class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-lg bg-indigo-100 flex items-center justify-center">
-                      <i class="pi pi-phone text-indigo-600 text-sm"></i>
-                    </div>
-                    <div>
-                      <div class="font-bold text-slate-800">{{ $t('subscription.voice_credits') }}</div>
-                      <div class="text-sm text-slate-500">
-                        <span class="font-bold" :class="voiceCreditStore.hasCredits ? 'text-indigo-600' : 'text-red-500'">{{ voiceCreditStore.balance }}</span>
-                        {{ $t('subscription.voice_credits_remaining') }}
-                      </div>
-                    </div>
-                  </div>
-                  <Button
-                    :label="$t('subscription.buy_voice_credits')"
-                    icon="pi pi-plus"
-                    severity="help"
-                    @click="selectedVoicePackages = 1; showVoiceCreditConfirmDialog = true"
-                    size="small"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          <!-- Right Col: Daily Chart -->
-          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
-            <div class="flex items-center justify-between mb-6">
-              <div>
-                <h3 class="text-lg font-bold text-slate-800">{{ $t('subscription.traffic.title') }}</h3>
-                <p class="text-sm text-slate-500">{{ $t('subscription.traffic.subtitle') }}</p>
-              </div>
-              <Select v-model="chartDays" :options="chartDaysOptions" optionLabel="label" optionValue="value" class="w-36 text-sm" @change="reloadChart" />
-            </div>
-            
-                <!-- Summary Stats Grid -->
-                <div v-if="chartSummary" class="grid grid-cols-3 gap-4 mb-4">
-                  <div class="bg-slate-50 rounded-xl p-4 text-center">
-                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{{ $t('subscription.traffic.total') }}</div>
-                    <div class="text-xl font-bold text-slate-800">{{ chartSummary.total_access.toLocaleString() }}</div>
-                  </div>
-                  <div class="bg-slate-50 rounded-xl p-4 text-center">
-                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{{ $t('subscription.traffic.peak') }}</div>
-                    <div class="text-xl font-bold text-purple-600">{{ chartSummary.peak_count.toLocaleString() }}</div>
-                  </div>
-                  <div class="bg-slate-50 rounded-xl p-4 text-center">
-                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{{ $t('subscription.traffic.overage') }}</div>
-                    <div class="text-xl font-bold text-amber-600">{{ chartSummary.total_overage.toLocaleString() }}</div>
-                  </div>
-                </div>
-                
-                <!-- AI vs Non-AI Session Breakdown -->
-                <div v-if="chartSummary && (chartSummary.ai_sessions > 0 || chartSummary.non_ai_sessions > 0)" class="grid grid-cols-2 gap-4 mb-8">
-                  <div class="bg-blue-50 rounded-xl p-4">
-                    <div class="flex items-center gap-2 mb-2">
-                      <i class="pi pi-microphone text-blue-600"></i>
-                      <span class="text-xs font-bold text-blue-600 uppercase tracking-wider">{{ $t('subscription.traffic.ai_sessions') }}</span>
-                    </div>
-                    <div class="text-xl font-bold text-blue-700">{{ chartSummary.ai_sessions.toLocaleString() }}</div>
-                    <div class="text-sm text-blue-600">${{ chartSummary.ai_cost_usd?.toFixed(2) || '0.00' }}</div>
-                  </div>
-                  <div class="bg-slate-100 rounded-xl p-4">
-                    <div class="flex items-center gap-2 mb-2">
-                      <i class="pi pi-file text-slate-500"></i>
-                      <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">{{ $t('subscription.traffic.non_ai_sessions') }}</span>
-                    </div>
-                    <div class="text-xl font-bold text-slate-700">{{ chartSummary.non_ai_sessions.toLocaleString() }}</div>
-                    <div class="text-sm text-slate-500">${{ chartSummary.non_ai_cost_usd?.toFixed(2) || '0.00' }}</div>
-                  </div>
-                </div>
-                
-                <!-- Chart -->
-                <div class="h-[250px] relative">
-                  <div v-if="chartData.length" class="absolute inset-0 flex flex-col">
-                    <!-- Grid -->
-                    <div class="flex-1 relative border-l border-b border-slate-200 ml-8 mb-6">
-                      <!-- Y Axis Labels -->
-                      <div class="absolute -left-8 top-0 text-xs text-slate-400 w-6 text-right">{{ maxDailyAccess }}</div>
-                      <div class="absolute -left-8 top-1/2 -translate-y-1/2 text-xs text-slate-400 w-6 text-right">{{ Math.round(maxDailyAccess / 2) }}</div>
-                      <div class="absolute -left-8 bottom-0 text-xs text-slate-400 w-6 text-right">0</div>
-                      
-                      <!-- Grid Lines -->
-                      <div class="absolute top-0 left-0 right-0 h-px bg-slate-100"></div>
-                      <div class="absolute top-1/2 left-0 right-0 h-px bg-slate-100 -translate-y-1/2"></div>
-                      
-                      <!-- Bars -->
-                      <div class="absolute inset-0 flex items-end justify-between px-2 pt-4">
-                        <div 
-                          v-for="day in chartData" 
-                          :key="day.date" 
-                          class="h-full flex-1 flex items-end justify-center px-[2px] group relative"
-                          @mouseenter="showTooltip(day)"
-                          @mouseleave="hideTooltip"
-                        >
-                          <div class="w-full max-w-[24px] bg-slate-100 rounded-t-sm flex flex-col justify-end h-full relative transition-all duration-200 group-hover:bg-slate-200 overflow-hidden">
-                            <!-- Overage -->
-                            <div v-if="day.overage > 0" class="w-full bg-amber-400 shrink-0" :style="{ height: `${(day.overage / maxDailyAccess) * 100}%` }"></div>
-                            <!-- Included -->
-                            <div class="w-full bg-blue-500 shrink-0 transition-all duration-300 group-hover:bg-blue-600" :style="{ height: `${(day.included / maxDailyAccess) * 100}%` }"></div>
-                          </div>
-                          
-                          <!-- Floating Tooltip -->
-                          <div v-if="hoveredDay === day" class="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
-                            <div class="bg-slate-800 text-white text-xs rounded-lg py-2 px-3 shadow-xl whitespace-nowrap">
-                              <div class="font-bold border-b border-slate-600 pb-1 mb-1">{{ formatChartDate(day.date) }}</div>
-                              <div class="flex justify-between gap-4"><span>{{ $t('subscription.traffic.total') }}:</span> <strong>{{ day.total }}</strong></div>
-                              <div v-if="day.ai_sessions > 0" class="flex justify-between gap-4 text-blue-300"><span>{{ $t('subscription.traffic.ai_short') }}:</span> <strong>{{ day.ai_sessions }}</strong></div>
-                              <div v-if="day.non_ai_sessions > 0" class="flex justify-between gap-4 text-slate-300"><span>{{ $t('subscription.traffic.non_ai_short') }}:</span> <strong>{{ day.non_ai_sessions }}</strong></div>
-                              <div v-if="day.overage > 0" class="flex justify-between gap-4 text-amber-300"><span>{{ $t('subscription.traffic.overage') }}:</span> <strong>{{ day.overage }}</strong></div>
-                            </div>
-                            <div class="w-2 h-2 bg-slate-800 rotate-45 mx-auto -mt-1"></div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <!-- X Axis Labels (Adaptive) -->
-                    <div class="ml-8 flex justify-between text-xs text-slate-400">
-                      <span>{{ formatChartDate(chartData[0].date) }}</span>
-                      <span class="hidden sm:inline">{{ formatChartDate(chartData[Math.floor(chartData.length / 2)].date) }}</span>
-                      <span>{{ formatChartDate(chartData[chartData.length - 1].date) }}</span>
-                    </div>
-                  </div>
-                  
-                  <div v-else class="flex flex-col items-center justify-center h-full text-slate-400">
-                    <i class="pi pi-chart-bar text-4xl mb-4 opacity-20"></i>
-                    <p>{{ $t('subscription.traffic.no_data') }}</p>
-                  </div>
-                </div>
+          <div>
+            <div class="text-2xl font-bold text-amber-500">{{ chartSummary.total_overage }}</div>
+            <div class="text-xs font-medium text-slate-500 uppercase tracking-wide">{{ $t('subscription.traffic.overage') }}</div>
           </div>
         </div>
-        
+
+        <div v-if="chartData.length" class="h-64 relative">
+          <!-- Y-axis grid lines -->
+          <div class="absolute inset-0 flex flex-col justify-between text-xs text-slate-300 pointer-events-none">
+            <div class="border-b border-slate-100 w-full h-0 relative"><span class="absolute -top-2.5 right-full pr-2">{{ maxDailyAccess }}</span></div>
+            <div class="border-b border-slate-100 w-full h-0 relative"><span class="absolute -top-2.5 right-full pr-2">{{ Math.round(maxDailyAccess / 2) }}</span></div>
+            <div class="border-b border-slate-100 w-full h-0 relative"><span class="absolute -top-2.5 right-full pr-2">0</span></div>
+          </div>
+
+          <div class="flex items-end h-full gap-1 pt-2 pb-6 pl-8 relative z-10">
+            <div
+              v-for="day in chartData"
+              :key="day.date"
+              class="flex-1 flex flex-col justify-end h-full relative group"
+              @mouseenter="showTooltip(day)"
+              @mouseleave="hideTooltip"
+            >
+              <div class="w-full flex flex-col justify-end bg-slate-50/50 rounded-t-sm h-full overflow-hidden relative transition-all duration-300 group-hover:bg-slate-100">
+                <div
+                  v-if="day.overage > 0"
+                  class="w-full bg-amber-400"
+                  :style="{ height: `${(day.overage / maxDailyAccess) * 100}%` }"
+                ></div>
+                <div
+                  class="w-full bg-blue-500 transition-all duration-300 group-hover:bg-blue-600"
+                  :style="{ height: `${(day.included / maxDailyAccess) * 100}%` }"
+                ></div>
+              </div>
+
+              <div
+                v-if="hoveredDay === day"
+                class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-20 pointer-events-none"
+              >
+                <div class="bg-slate-900 text-white text-xs rounded-lg py-2 px-3 shadow-xl whitespace-nowrap text-center">
+                  <div class="font-bold border-b border-slate-700 pb-1 mb-1">{{ formatChartDate(day.date) }}</div>
+                  <div class="flex justify-between gap-3"><span class="text-slate-300">{{ $t('subscription.traffic.total') }}:</span> <span>{{ day.total }}</span></div>
+                  <div v-if="day.ai_sessions > 0" class="flex justify-between gap-3 text-blue-400"><span>{{ $t('subscription.traffic.ai_short') }}:</span> <span>{{ day.ai_sessions }}</span></div>
+                  <div v-if="day.non_ai_sessions > 0" class="flex justify-between gap-3 text-slate-400"><span>{{ $t('subscription.traffic.non_ai_short') }}:</span> <span>{{ day.non_ai_sessions }}</span></div>
+                  <div v-if="day.overage > 0" class="flex justify-between gap-3 text-amber-400"><span>{{ $t('subscription.traffic.overage') }}:</span> <span>{{ day.overage }}</span></div>
+                </div>
+                <div class="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-slate-900 mx-auto"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="absolute bottom-0 left-8 right-0 flex justify-between text-[10px] text-slate-400 pt-2 border-t border-slate-200">
+            <span>{{ formatChartDate(chartData[0].date) }}</span>
+            <span>{{ formatChartDate(chartData[chartData.length - 1].date) }}</span>
+          </div>
+        </div>
+
+        <div v-else class="text-center py-16 text-slate-400">
+          <i class="pi pi-chart-bar text-4xl mb-3 opacity-20"></i>
+          <p>{{ $t('subscription.traffic.no_data') }}</p>
+        </div>
       </div>
-      
+
     </div>
   </div>
 
@@ -1096,7 +1095,7 @@ async function openPortal() {
                 ? 'bg-slate-100 text-slate-300 cursor-not-allowed'
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200 active:bg-slate-300'"
             >
-              −
+              &minus;
             </button>
             <input
               type="number"
